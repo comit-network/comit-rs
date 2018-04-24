@@ -3,13 +3,12 @@ extern crate serde;
 extern crate serde_json;
 extern crate spectral;
 
-use self::reqwest::{Client as HTTPClient, Error};
+use self::reqwest::{Client as HTTPClient, Error as ResponseError};
 use self::serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use self::serde::ser::{Serialize, Serializer};
 
 #[derive(Serialize)]
 enum JsonRpcVersion {
-
     #[serde(rename = "1.0")]
     V1,
 
@@ -25,21 +24,27 @@ struct Payload<T> where T: Serialize {
     params: T,
 }
 
-#[derive(Debug)]
-struct Response<'a, R: 'a, E: 'a> where R: Deserialize<'a>, E: Deserialize<'a> {
-    id: &'a str,
-    result: &'a R,
-    error: &'a E,
+#[derive(Debug, Deserialize, PartialEq)]
+struct Error {
+    code: i32,
+    message: String
 }
 
-struct JsonRpcClient {
+#[derive(Debug, Deserialize, PartialEq)]
+struct Response<R> {
+    id: String,
+    result: Option<R>,
+    error: Option<Error>,
+}
+
+struct Client {
     client: HTTPClient,
     url: String,
 }
 
-impl JsonRpcClient {
+impl Client {
     fn new(client: HTTPClient, url: &str) -> Self {
-        JsonRpcClient {
+        Client {
             client,
             url: url.to_string(),
         }
@@ -76,7 +81,6 @@ impl JsonRpcClient {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use super::spectral::prelude::*;
 
@@ -94,5 +98,22 @@ mod tests {
         let serialized_payload = serde_json::to_string(&payload).unwrap();
 
         assert_that(&serialized_payload).is_equal_to(expected_payload);
+    }
+
+    #[test]
+    fn can_deserialize_into_generic_type() {
+        let result = r#"{"result": 519521,"error": null,"id": "id"}"#;
+
+        let expected_response = Response {
+            id: "id".to_string(),
+            result: Some(519521),
+            error: None,
+        };
+
+        let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
+
+
+
+        println!("{:?}", deserialized_response)
     }
 }
