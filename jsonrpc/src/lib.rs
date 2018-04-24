@@ -5,4 +5,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate spectral;
 
-pub mod jsonrpc;
+pub mod client;
+pub mod response;
+pub mod request;
+pub mod version;

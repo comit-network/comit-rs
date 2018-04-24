@@ -1,4 +1,4 @@
-use jsonrpc::version::Version;
+use version::Version;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct Error {
@@ -28,7 +28,7 @@ mod tests {
 
     use serde_json::from_str;
     use spectral::assert_that;
-    use jsonrpc::response::Response;
+    use response::Response;
 
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {
