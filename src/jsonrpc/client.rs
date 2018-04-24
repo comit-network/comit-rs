@@ -5,7 +5,7 @@ extern crate spectral;
 
 use self::reqwest::{Client as HTTPClient, Error as ResponseError};
 use self::serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use self::serde::ser::{Serialize};
+use self::serde::ser::Serialize;
 
 #[derive(Serialize)]
 enum JsonRpcVersion {
@@ -80,7 +80,6 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use super::spectral::prelude::*;
     use super::reqwest::header::*;
@@ -112,11 +111,11 @@ mod tests {
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful{id, result} => {
+            Response::Successful { id, result } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&result).is_equal_to(519521);
             }
-            Response::Error{id, error} => {
+            Response::Error { id, error } => {
                 panic!("Should not yield error")
             }
         }
@@ -136,10 +135,10 @@ mod tests {
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful{id, result} => {
+            Response::Successful { id, result } => {
                 panic!("Should not yield successful result");
             }
-            Response::Error{id, error} => {
+            Response::Error { id, error } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&error.code).is_equal_to(-123);
                 assert_that(&error.message).is_equal_to("Something went wrong".to_string());
