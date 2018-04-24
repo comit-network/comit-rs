@@ -1,4 +1,4 @@
-use jsonrpc::version::Version;
+use version::Version;
 use serde::Serialize;
 
 #[derive(Serialize)]

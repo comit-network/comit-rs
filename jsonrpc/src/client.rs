@@ -1,8 +1,8 @@
 use reqwest::{Client as HTTPClient, Error as ResponseError};
-use jsonrpc::request::Request;
-use jsonrpc::response::Response;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use request::Request;
+use response::Response;
 
 pub struct Client {
     client: HTTPClient,
