@@ -49,40 +49,41 @@ impl Client {
             url: url.to_string(),
         }
     }
-//
-//    pub fn call0<E, R>(&self, id: &str, method: &str) -> Result<Response<R, E>, Error> where E: DeserializeOwned, R: DeserializeOwned {
-//        self.call::<E, R, Vec<i32>>(id, method, vec![])
-//    }
-////
-//    pub fn call1<'a, E, R, A>(&self, id: &str, method: &str, a: A) -> Result<Response<'a, R, E>, Error> where A: Serialize, E: DeserializeOwned, R: DeserializeOwned {
-//        self.call(id, method, [a])
-//    }
-//
-//    pub fn call2<'a, E, R, A, B>(&self, id: &str, method: &str, a: A, b: B) -> Result<Response<'a, R, E>, Error> where A: Serialize, B: Serialize, E: DeserializeOwned, R: DeserializeOwned {
-//        self.call(id, method, (a, b))
-//    }
-//
-//    fn call<E, R, Params>(&self, id: &str, method: &str, params: Params) -> Result<Response<R, E>, Error> where Params: Serialize, E: DeserializeOwned, R: DeserializeOwned {
-//        let payload = Payload {
-//            jsonrpc: JsonRpcVersion::V1,
-//            id: id.to_string(),
-//            method: method.to_string(),
-//            params,
-//        };
-//
-//        self.client
-//            .post(self.url.as_str())
-//            .json(&payload)
-//            .send()
-//            .and_then(|mut res| res.json::<Response<R, E>>())
-//    }
-}
 
+    pub fn call0<R>(&self, id: &str, method: &str) -> Result<Response<R>, ResponseError> where R: DeserializeOwned {
+        self.call::<R, Vec<i32>>(id, method, vec![])
+    }
+
+    pub fn call1<R, A>(&self, id: &str, method: &str, a: A) -> Result<Response<R>, ResponseError> where A: Serialize, R: DeserializeOwned {
+        self.call(id, method, [a])
+    }
+
+    pub fn call2<R, A, B>(&self, id: &str, method: &str, a: A, b: B) -> Result<Response<R>, ResponseError> where A: Serialize, B: Serialize, R: DeserializeOwned {
+        self.call(id, method, (a, b))
+    }
+
+    fn call<R, Params>(&self, id: &str, method: &str, params: Params) -> Result<Response<R>, ResponseError> where Params: Serialize, R: DeserializeOwned {
+        let payload = Payload {
+            jsonrpc: JsonRpcVersion::V1,
+            id: id.to_string(),
+            method: method.to_string(),
+            params,
+        };
+
+        self.client
+            .post(self.url.as_str())
+            .json(&payload)
+            .send()
+            .and_then(|mut res| res.json::<Response<R>>())
+    }
+}
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use super::spectral::prelude::*;
+    use super::reqwest::header::*;
 
     #[test]
     fn can_serialize_payload_with_no_params() {
@@ -144,5 +145,25 @@ mod tests {
                 assert_that(&error.message).is_equal_to("Something went wrong".to_string());
             }
         }
+    }
+
+    #[test]
+    fn test_connect_to_bitcoin() {
+        let mut headers = Headers::new();
+        headers.set(Authorization(Basic {
+            username: "bitcoinrpc".to_string(),
+            password: Some("ic1RhcJW+aO3G36iAevasRZA+Q0pOJ5GG9uoGrC0DSpo".to_string()),
+        }));
+
+        let client = HTTPClient::builder()
+            .default_headers(headers)
+            .build()
+            .unwrap();
+
+        let rpc_client = Client::new(client, "http://127.0.0.1:8332");
+
+        let result: Result<Response<i32>, ResponseError> = rpc_client.call0("id", "getblockcount");
+
+        println!("{:?}", result);
     }
 }
