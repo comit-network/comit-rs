@@ -112,11 +112,36 @@ mod tests {
 
         match deserialized_response {
             Response::Successful{id, result} => {
-                assert_that(&result).is_equal_to(519521);
                 assert_that(&id).is_equal_to("test".to_string());
+                assert_that(&result).is_equal_to(519521);
             }
             Response::Error{id, error} => {
-                panic!("Shoudl not yield error")
+                panic!("Should not yield error")
+            }
+        }
+    }
+
+    #[test]
+    fn can_deserialize_error_response() {
+        let result = r#"{
+            "id": "test",
+            "result": null,
+            "error": {
+                "code": -123,
+                "message": "Something went wrong"
+            }
+        }"#;
+
+        let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
+
+        match deserialized_response {
+            Response::Successful{id, result} => {
+                panic!("Should not yield successful result");
+            }
+            Response::Error{id, error} => {
+                assert_that(&id).is_equal_to("test".to_string());
+                assert_that(&error.code).is_equal_to(-123);
+                assert_that(&error.message).is_equal_to("Something went wrong".to_string());
             }
         }
     }
