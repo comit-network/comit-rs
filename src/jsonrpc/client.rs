@@ -4,7 +4,7 @@ extern crate serde_json;
 extern crate spectral;
 
 use self::reqwest::{Client as HTTPClient, Error as ResponseError};
-use self::serde::de::{DeserializeOwned};
+use self::serde::de::DeserializeOwned;
 use self::serde::ser::Serialize;
 
 #[derive(Serialize, Debug, Deserialize, PartialEq)]
@@ -17,7 +17,10 @@ pub enum Version {
 }
 
 #[derive(Serialize)]
-pub struct Request<P> where P: Serialize {
+pub struct Request<P>
+where
+    P: Serialize,
+{
     jsonrpc: Version,
     id: String,
     method: String,
@@ -25,36 +28,116 @@ pub struct Request<P> where P: Serialize {
 }
 
 impl Request<()> {
-
     pub fn new0(version: Version, id: &str, method: &str) -> Request<()> {
         Request::new(version, id, method, ())
     }
 
-    pub fn new1<A>(version: Version, id: &str, method: &str, first: A) -> Request<Vec<A>> where A: Serialize {
+    pub fn new1<A>(version: Version, id: &str, method: &str, first: A) -> Request<Vec<A>>
+    where
+        A: Serialize,
+    {
         Request::new(version, id, method, vec![first]) // Handles the special case of one parameter. A tuple would be serialized as a single value.
     }
 
-    pub fn new2<A, B>(version: Version, id: &str, method: &str, first: A, second: B) -> Request<(A, B)> where A: Serialize, B: Serialize {
+    pub fn new2<A, B>(
+        version: Version,
+        id: &str,
+        method: &str,
+        first: A,
+        second: B,
+    ) -> Request<(A, B)>
+    where
+        A: Serialize,
+        B: Serialize,
+    {
         Request::new(version, id, method, (first, second))
     }
 
-    pub fn new3<A, B, C>(version: Version, id: &str, method: &str, first: A, second: B, third: C) -> Request<(A, B, C)> where A: Serialize, B: Serialize, C: Serialize {
+    pub fn new3<A, B, C>(
+        version: Version,
+        id: &str,
+        method: &str,
+        first: A,
+        second: B,
+        third: C,
+    ) -> Request<(A, B, C)>
+    where
+        A: Serialize,
+        B: Serialize,
+        C: Serialize,
+    {
         Request::new(version, id, method, (first, second, third))
     }
 
-    pub fn new4<A, B, C, D>(version: Version, id: &str, method: &str, first: A, second: B, third: C, fourth: D) -> Request<(A, B, C, D)> where A: Serialize, B: Serialize, C: Serialize, D: Serialize {
+    pub fn new4<A, B, C, D>(
+        version: Version,
+        id: &str,
+        method: &str,
+        first: A,
+        second: B,
+        third: C,
+        fourth: D,
+    ) -> Request<(A, B, C, D)>
+    where
+        A: Serialize,
+        B: Serialize,
+        C: Serialize,
+        D: Serialize,
+    {
         Request::new(version, id, method, (first, second, third, fourth))
     }
 
-    pub fn new5<A, B, C, D, E>(version: Version, id: &str, method: &str, first: A, second: B, third: C, fourth: D, fifth: E) -> Request<(A, B, C, D, E)> where A: Serialize, B: Serialize, C: Serialize, D: Serialize, E: Serialize {
+    pub fn new5<A, B, C, D, E>(
+        version: Version,
+        id: &str,
+        method: &str,
+        first: A,
+        second: B,
+        third: C,
+        fourth: D,
+        fifth: E,
+    ) -> Request<(A, B, C, D, E)>
+    where
+        A: Serialize,
+        B: Serialize,
+        C: Serialize,
+        D: Serialize,
+        E: Serialize,
+    {
         Request::new(version, id, method, (first, second, third, fourth, fifth))
     }
 
-    pub fn new6<A, B, C, D, E, F>(version: Version, id: &str, method: &str, first: A, second: B, third: C, fourth: D, fifth: E, sixth: F) -> Request<(A, B, C, D, E, F)> where A: Serialize, B: Serialize, C: Serialize, D: Serialize, E: Serialize, F: Serialize {
-        Request::new(version, id, method, (first, second, third, fourth, fifth, sixth))
+    pub fn new6<A, B, C, D, E, F>(
+        version: Version,
+        id: &str,
+        method: &str,
+        first: A,
+        second: B,
+        third: C,
+        fourth: D,
+        fifth: E,
+        sixth: F,
+    ) -> Request<(A, B, C, D, E, F)>
+    where
+        A: Serialize,
+        B: Serialize,
+        C: Serialize,
+        D: Serialize,
+        E: Serialize,
+        F: Serialize,
+    {
+        Request::new(
+            version,
+            id,
+            method,
+            (first, second, third, fourth, fifth, sixth),
+        )
     }
 
-    fn new<P>(version: Version, id: &str, method: &str, params: P) -> Request<P> where P: Serialize {
+    fn new<P>(version: Version, id: &str, method: &str, params: P) -> Request<P>
+    where
+        P: Serialize,
+    {
         Request {
             jsonrpc: version,
             id: id.to_string(),
@@ -100,8 +183,11 @@ impl Client {
         }
     }
 
-    pub fn send<R, T>(&self, request: Request<T>) -> Result<Response<R>, ResponseError> where T: Serialize, R: DeserializeOwned {
-
+    pub fn send<R, T>(&self, request: Request<T>) -> Result<Response<R>, ResponseError>
+    where
+        T: Serialize,
+        R: DeserializeOwned,
+    {
         self.client
             .post(self.url.as_str())
             .json(&request)
@@ -109,7 +195,6 @@ impl Client {
             .and_then(|mut res| res.json::<Response<R>>())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -122,7 +207,8 @@ mod tests {
     #[test]
     fn can_serialize_payload_with_0_params() {
         let payload = Request::new0(Version::V1, "test", "test");
-        let expected_payload = r#"{"jsonrpc":"1.0","id":"test","method":"test","params":null}"#.to_string();
+        let expected_payload =
+            r#"{"jsonrpc":"1.0","id":"test","method":"test","params":null}"#.to_string();
         let serialized_payload = serde_json::to_string(&payload).unwrap();
 
         assert_that(&serialized_payload).is_equal_to(expected_payload);
@@ -131,7 +217,8 @@ mod tests {
     #[test]
     fn can_serialize_payload_with_1_param() {
         let payload = Request::new1(Version::V1, "test", "test", 100);
-        let expected_payload = r#"{"jsonrpc":"1.0","id":"test","method":"test","params":[100]}"#.to_string();
+        let expected_payload =
+            r#"{"jsonrpc":"1.0","id":"test","method":"test","params":[100]}"#.to_string();
         let serialized_payload = serde_json::to_string(&payload).unwrap();
 
         assert_that(&serialized_payload).is_equal_to(expected_payload);
@@ -140,7 +227,8 @@ mod tests {
     #[test]
     fn can_serialize_payload_with_2_params() {
         let payload = Request::new2(Version::V1, "test", "test", 100, "foo");
-        let expected_payload = r#"{"jsonrpc":"1.0","id":"test","method":"test","params":[100,"foo"]}"#.to_string();
+        let expected_payload =
+            r#"{"jsonrpc":"1.0","id":"test","method":"test","params":[100,"foo"]}"#.to_string();
         let serialized_payload = serde_json::to_string(&payload).unwrap();
 
         assert_that(&serialized_payload).is_equal_to(expected_payload);
@@ -158,13 +246,15 @@ mod tests {
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful { id, version, result } => {
+            Response::Successful {
+                id,
+                version,
+                result,
+            } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&result).is_equal_to(519521);
             }
-            Response::Error { id, version, error } => {
-                panic!("Should not yield error")
-            }
+            Response::Error { id, version, error } => panic!("Should not yield error"),
         }
     }
 
@@ -183,7 +273,11 @@ mod tests {
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful { id, version, result } => {
+            Response::Successful {
+                id,
+                version,
+                result,
+            } => {
                 panic!("Should not yield successful result");
             }
             Response::Error { id, version, error } => {
