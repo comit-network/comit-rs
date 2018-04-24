@@ -5,7 +5,7 @@ extern crate spectral;
 
 use self::reqwest::{Client as HTTPClient, Error as ResponseError};
 use self::serde::de::{Deserialize, DeserializeOwned, Deserializer};
-use self::serde::ser::{Serialize, Serializer};
+use self::serde::ser::{Serialize};
 
 #[derive(Serialize)]
 enum JsonRpcVersion {
@@ -27,14 +27,14 @@ struct Payload<T> where T: Serialize {
 #[derive(Debug, Deserialize, PartialEq)]
 struct Error {
     code: i32,
-    message: String
+    message: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-struct Response<R> {
-    id: String,
-    result: Option<R>,
-    error: Option<Error>,
+#[serde(untagged)]
+enum Response<R> {
+    Successful { id: String, result: R },
+    Error { id: String, error: Error },
 }
 
 struct Client {
@@ -101,19 +101,23 @@ mod tests {
     }
 
     #[test]
-    fn can_deserialize_into_generic_type() {
-        let result = r#"{"result": 519521,"error": null,"id": "id"}"#;
-
-        let expected_response = Response {
-            id: "id".to_string(),
-            result: Some(519521),
-            error: None,
-        };
+    fn can_deserialize_successful_response_into_generic_type() {
+        let result = r#"{
+            "id": "test",
+            "result": 519521,
+            "error": null
+        }"#;
 
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
-
-
-        println!("{:?}", deserialized_response)
+        match deserialized_response {
+            Response::Successful{id, result} => {
+                assert_that(&result).is_equal_to(519521);
+                assert_that(&id).is_equal_to("test".to_string());
+            }
+            Response::Error{id, error} => {
+                panic!("Shoudl not yield error")
+            }
+        }
     }
 }
