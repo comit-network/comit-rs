@@ -25,25 +25,25 @@ struct Payload<T> where T: Serialize {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-struct Error {
+pub struct Error {
     code: i32,
     message: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
-enum Response<R> {
+pub enum Response<R> {
     Successful { id: String, result: R },
     Error { id: String, error: Error },
 }
 
-struct Client {
+pub struct Client {
     client: HTTPClient,
     url: String,
 }
 
 impl Client {
-    fn new(client: HTTPClient, url: &str) -> Self {
+    pub fn new(client: HTTPClient, url: &str) -> Self {
         Client {
             client,
             url: url.to_string(),
