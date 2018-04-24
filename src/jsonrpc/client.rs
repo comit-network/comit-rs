@@ -2,13 +2,14 @@ extern crate reqwest;
 extern crate serde;
 extern crate serde_json;
 extern crate spectral;
+extern crate jsonrpc_minihttp_server;
 
 use self::reqwest::{Client as HTTPClient, Error as ResponseError};
 use self::serde::de::{Deserialize, DeserializeOwned, Deserializer};
 use self::serde::ser::Serialize;
 
-#[derive(Serialize)]
-enum JsonRpcVersion {
+#[derive(Serialize, Debug, Deserialize, PartialEq)]
+enum Version {
     #[serde(rename = "1.0")]
     V1,
 
@@ -18,7 +19,7 @@ enum JsonRpcVersion {
 
 #[derive(Serialize)]
 struct Payload<T> where T: Serialize {
-    jsonrpc: JsonRpcVersion,
+    jsonrpc: Version,
     id: String,
     method: String,
     params: T,
@@ -33,8 +34,18 @@ pub struct Error {
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Response<R> {
-    Successful { id: String, result: R },
-    Error { id: String, error: Error },
+    Successful {
+        id: String,
+        #[serde(rename = "jsonrpc")]
+        version: Version,
+        result: R
+    },
+    Error {
+        id: String,
+        #[serde(rename = "jsonrpc")]
+        version: Version,
+        error: Error
+    },
 }
 
 pub struct Client {
@@ -64,7 +75,7 @@ impl Client {
 
     fn call<R, Params>(&self, id: &str, method: &str, params: Params) -> Result<Response<R>, ResponseError> where Params: Serialize, R: DeserializeOwned {
         let payload = Payload {
-            jsonrpc: JsonRpcVersion::V1,
+            jsonrpc: Version::V1,
             id: id.to_string(),
             method: method.to_string(),
             params,
@@ -84,10 +95,16 @@ mod tests {
     use super::spectral::prelude::*;
     use super::reqwest::header::*;
 
+    use super::jsonrpc_minihttp_server::{ServerBuilder};
+    use super::jsonrpc_minihttp_server::jsonrpc_core::{IoHandler};
+    use super::serde_json::Value;
+    use std::thread::*;
+    use std::time::Duration;
+
     #[test]
     fn can_serialize_payload_with_no_params() {
         let payload = Payload {
-            jsonrpc: JsonRpcVersion::V1,
+            jsonrpc: Version::V1,
             id: "test".to_string(),
             method: "test".to_string(),
             params: (),
@@ -103,6 +120,7 @@ mod tests {
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {
         let result = r#"{
+            "jsonrpc": "1.0",
             "id": "test",
             "result": 519521,
             "error": null
@@ -111,11 +129,11 @@ mod tests {
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful { id, result } => {
+            Response::Successful { id, version, result } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&result).is_equal_to(519521);
             }
-            Response::Error { id, error } => {
+            Response::Error { id, version, error } => {
                 panic!("Should not yield error")
             }
         }
@@ -125,6 +143,7 @@ mod tests {
     fn can_deserialize_error_response() {
         let result = r#"{
             "id": "test",
+            "jsonrpc": "1.0",
             "result": null,
             "error": {
                 "code": -123,
@@ -135,34 +154,50 @@ mod tests {
         let deserialized_response: Response<i32> = serde_json::from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful { id, result } => {
+            Response::Successful { id, version, result } => {
                 panic!("Should not yield successful result");
             }
-            Response::Error { id, error } => {
+            Response::Error { id, version, error } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&error.code).is_equal_to(-123);
                 assert_that(&error.message).is_equal_to("Something went wrong".to_string());
             }
         }
     }
+//
+//    #[test]
+//    fn can_send_request_to_actual_server() {
+//
+//        spawn(move|| {
+//            let mut io = IoHandler::default();
+//            io.add_method("say_hello", |_| {
+//                Ok(Value::String("hello".into()))
+//            });
+//
+//            let server = ServerBuilder::new(io)
+//                .start_http(&"127.0.0.1:3030".parse().unwrap())
+//                .expect("Unable to start RPC server");
+//
+//            server.wait().unwrap();
+//        });
+//
+//        sleep(Duration::from_secs(1));
+//
+//        let http_client = HTTPClient::new();
+//        let rpc_client = Client::new(http_client, "http://127.0.0.1:3030");
+//
+//        let response: Response<String> = rpc_client.call0("test", "say_hello").unwrap();
+//
+//        match response {
+//            Response::Successful { id, version, result } => {
+//                assert_that(&id).is_equal_to("test".to_string());
+//                assert_that(&result).is_equal_to("hello".to_string());
+//            }
+//            Response::Error { id, version, error } => {
+//                println!("{:?}|{:?}|{:?}", id, version, error);
+//                panic!("Should not yield error result");
+//            }
+//        }
+//    }
 
-    #[test]
-    fn test_connect_to_bitcoin() {
-        let mut headers = Headers::new();
-        headers.set(Authorization(Basic {
-            username: "bitcoinrpc".to_string(),
-            password: Some("ic1RhcJW+aO3G36iAevasRZA+Q0pOJ5GG9uoGrC0DSpo".to_string()),
-        }));
-
-        let client = HTTPClient::builder()
-            .default_headers(headers)
-            .build()
-            .unwrap();
-
-        let rpc_client = Client::new(client, "http://127.0.0.1:8332");
-
-        let result: Result<Response<i32>, ResponseError> = rpc_client.call0("id", "getblockcount");
-
-        println!("{:?}", result);
-    }
 }
