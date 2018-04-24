@@ -1,4 +1,4 @@
-use reqwest::{Client as HTTPClient, Error as ResponseError};
+use reqwest::{Client as HTTPClient, Error};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use request::Request;
@@ -17,7 +17,7 @@ impl Client {
         }
     }
 
-    pub fn send<R, T>(&self, request: Request<T>) -> Result<Response<R>, ResponseError>
+    pub fn send<R, T>(&self, request: Request<T>) -> Result<Response<R>, Error>
     where
         T: Serialize,
         R: DeserializeOwned,
