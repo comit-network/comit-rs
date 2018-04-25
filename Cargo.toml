@@ -1,14 +1,8 @@
-[package]
-name = "swap"
-version = "0.1.0"
-authors = [
-    "Thomas Eizinger <thomas@tenx.tech>",
-    "Philipp Hoenisch <philipp@tenx.tech>"
-]
-
-[dependencies]
-
 [workspace]
+
 members = [
-	"jsonrpc"
+	"jsonrpc",
+	"trader",
+	"exchange",
+	"asx"
 ]
