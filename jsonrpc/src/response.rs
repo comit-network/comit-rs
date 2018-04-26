@@ -11,14 +11,14 @@ pub struct Error {
 pub enum Response<R> {
     Successful {
         id: String,
-        #[serde(rename = "jsonrpc")]
-        version: Version,
+        //        #[serde(rename = "jsonrpc")]
+        //        version: Version,
         result: R,
     },
     Error {
         id: String,
-        #[serde(rename = "jsonrpc")]
-        version: Version,
+        //        #[serde(rename = "jsonrpc")]
+        //        version: Version,
         error: Error,
     },
 }
@@ -44,13 +44,38 @@ mod tests {
         match deserialized_response {
             Response::Successful {
                 id,
-                version,
+                //                version,
                 result,
             } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&result).is_equal_to(519521);
             }
-            Response::Error { id, version, error } => panic!("Should not yield error"),
+            Response::Error {
+                id,
+                /*version, */ error,
+            } => panic!("Should not yield error"),
+        }
+    }
+
+    #[test]
+    fn can_deserialize_successful_btc_rsponse() {
+        let result = r#"{
+                "id": "curltest",
+                "result": 1,
+                "error": null
+            }"#;
+
+        let deserialized_response: Response<i32> = from_str(result).unwrap();
+
+        match deserialized_response {
+            Response::Successful { id, result } => {
+                assert_that(&id).is_equal_to("curltest".to_string());
+                assert_that(&result).is_equal_to(1);
+            }
+            Response::Error {
+                id,
+                /*version,*/ error,
+            } => panic!("Should not yield error"),
         }
     }
 
@@ -71,12 +96,17 @@ mod tests {
         match deserialized_response {
             Response::Successful {
                 id,
+                /*
                 version,
+*/
                 result,
             } => {
                 panic!("Should not yield successful result");
             }
-            Response::Error { id, version, error } => {
+            Response::Error {
+                id,
+                /*version, */ error,
+            } => {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&error.code).is_equal_to(-123);
                 assert_that(&error.message).is_equal_to("Something went wrong".to_string());
