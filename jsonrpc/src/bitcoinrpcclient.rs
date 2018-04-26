@@ -82,8 +82,20 @@ mod tests {
 
         let result: Result<Response<String>, Error> = bitcoin_rpc_client.get_new_address();
 
-        println!("{:?}", result);
-        //        assert_that(&result.unwrap()).is_equal_to("mgMrYuUEYweWVDgjwHJm4Rs4YW6pkb9tcq");
+        println!("result: {:?}", result);
+
+        let response = result.unwrap();
+        match response {
+            Response::Successful { id, result } => {
+                assert_that(&id).is_equal_to("new_address".to_string());
+                assert_that(&result.len()).is_equal_to(34);
+            }
+            Response::Error {
+                id,
+                /*version, */
+                error,
+            } => panic!("Should not yield error"),
+        }
     }
 
     #[test]
