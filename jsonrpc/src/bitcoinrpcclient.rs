@@ -37,8 +37,8 @@ impl BitcoinRPCClient {
         self.client.send(new_address_request)
     }
 
-    fn generate_block(&self) -> Result<Response<Vec<String>>, Error> {
-        let generate_block = Request::new1(Version::V1, "generate_new_block", "generate", 1);
+    fn generate_block(&self, amount: i32) -> Result<Response<Vec<String>>, Error> {
+        let generate_block = Request::new1(Version::V1, "generate_new_block", "generate", amount);
 
         self.client.send(generate_block)
     }
@@ -67,7 +67,7 @@ mod tests {
         match response {
             Response::Successful { id, result } => {
                 assert_that(&id).is_equal_to("block_count".to_string());
-                assert_that(&result).is_equal_to(2);
+                assert_that(&result).is_equal_to(1);
             }
             Response::Error {
                 id,
@@ -102,7 +102,7 @@ mod tests {
     fn test_generate_block() {
         let bitcoin_rpc_client = BitcoinRPCClient::new();
 
-        let result: Result<Response<Vec<String>>, Error> = bitcoin_rpc_client.generate_block();
+        let result: Result<Response<Vec<String>>, Error> = bitcoin_rpc_client.generate_block(1);
 
         println!("{:?}", result);
 
@@ -112,6 +112,30 @@ mod tests {
             Response::Successful { id, result } => {
                 assert_that(&id).is_equal_to("generate_new_block".to_string());
                 assert_that(&result.len()).is_equal_to(1);
+                assert_that(&result[0].len()).is_equal_to(64);
+            }
+            Response::Error {
+                id,
+                /*version, */
+                error,
+            } => panic!("Should not yield error"),
+        }
+    }
+
+    #[test]
+    fn test_generate_42_blocks() {
+        let bitcoin_rpc_client = BitcoinRPCClient::new();
+
+        let result: Result<Response<Vec<String>>, Error> = bitcoin_rpc_client.generate_block(42);
+
+        println!("{:?}", result);
+
+        let response = result.unwrap();
+
+        match response {
+            Response::Successful { id, result } => {
+                assert_that(&id).is_equal_to("generate_new_block".to_string());
+                assert_that(&result.len()).is_equal_to(42);
                 assert_that(&result[0].len()).is_equal_to(64);
             }
             Response::Error {
