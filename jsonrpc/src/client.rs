@@ -1,23 +1,23 @@
 use reqwest::{Client as HTTPClient, Error};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use request::Request;
-use response::Response;
+use request::RpcRequest;
+use response::RpcResponse;
 
-pub struct Client {
+pub struct RpcClient {
     client: HTTPClient,
     url: String,
 }
 
-impl Client {
+impl RpcClient {
     pub fn new(client: HTTPClient, url: &str) -> Self {
-        Client {
+        RpcClient {
             client,
             url: url.to_string(),
         }
     }
 
-    pub fn send<R, T>(&self, request: Request<T>) -> Result<Response<R>, Error>
+    pub fn send<R, T>(&self, request: RpcRequest<T>) -> Result<RpcResponse<R>, Error>
     where
         T: Serialize,
         R: DeserializeOwned,
@@ -26,6 +26,6 @@ impl Client {
             .post(self.url.as_str())
             .json(&request)
             .send()
-            .and_then(|mut res| res.json::<Response<R>>())
+            .and_then(|mut res| res.json::<RpcResponse<R>>())
     }
 }

@@ -1,14 +1,14 @@
-use version::Version;
+use version::JsonRpcVersion;
 
 #[derive(Debug, Deserialize, PartialEq)]
-pub struct Error {
+pub struct RpcError {
     code: i32,
     message: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
-pub enum Response<R> {
+pub enum RpcResponse<R> {
     Successful {
         id: String,
         //        #[serde(rename = "jsonrpc")]
@@ -19,7 +19,7 @@ pub enum Response<R> {
         id: String,
         //        #[serde(rename = "jsonrpc")]
         //        version: Version,
-        error: Error,
+        error: RpcError,
     },
 }
 
@@ -28,7 +28,7 @@ mod tests {
 
     use serde_json::from_str;
     use spectral::assert_that;
-    use response::Response;
+    use response::RpcResponse;
 
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {
@@ -39,10 +39,10 @@ mod tests {
             "error": null
         }"#;
 
-        let deserialized_response: Response<i32> = from_str(result).unwrap();
+        let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful {
+            RpcResponse::Successful {
                 id,
                 //                version,
                 result,
@@ -50,7 +50,7 @@ mod tests {
                 assert_that(&id).is_equal_to("test".to_string());
                 assert_that(&result).is_equal_to(519521);
             }
-            Response::Error {
+            RpcResponse::Error {
                 id,
                 /*version, */ error,
             } => panic!("Should not yield error"),
@@ -65,14 +65,14 @@ mod tests {
                 "error": null
             }"#;
 
-        let deserialized_response: Response<i32> = from_str(result).unwrap();
+        let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful { id, result } => {
+            RpcResponse::Successful { id, result } => {
                 assert_that(&id).is_equal_to("curltest".to_string());
                 assert_that(&result).is_equal_to(1);
             }
-            Response::Error {
+            RpcResponse::Error {
                 id,
                 /*version,*/ error,
             } => panic!("Should not yield error"),
@@ -91,10 +91,10 @@ mod tests {
             }
         }"#;
 
-        let deserialized_response: Response<i32> = from_str(result).unwrap();
+        let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
         match deserialized_response {
-            Response::Successful {
+            RpcResponse::Successful {
                 id,
                 /*
                 version,
@@ -103,7 +103,7 @@ mod tests {
             } => {
                 panic!("Should not yield successful result");
             }
-            Response::Error {
+            RpcResponse::Error {
                 id,
                 /*version, */ error,
             } => {
