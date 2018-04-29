@@ -4,6 +4,7 @@ use jsonrpc::{RpcClient, JsonRpcVersion, RpcRequest, RpcResponse};
 use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
 use jsonrpc::HTTPError;
+use types::BlockHash;
 
 struct BitcoinCoreClient {
     client: RpcClient,
@@ -31,11 +32,11 @@ impl BitcoinCoreClient {
         self.client.send(RpcRequest::new0(JsonRpcVersion::V1, "test", "getblockcount"))
     }
 
-    fn get_new_address(&self) -> Result<RpcResponse<String>, HTTPError> {
+    fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
         self.client.send(RpcRequest::new0(JsonRpcVersion::V1, "test", "getnewaddress"))
     }
 
-    fn generate(&self, number_of_blocks: i32) -> Result<RpcResponse<Vec<String>>, HTTPError> {
+    fn generate(&self, number_of_blocks: i32) -> Result<RpcResponse<Vec<BlockHash>>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "generate", number_of_blocks))
     }
 }
@@ -48,7 +49,7 @@ mod tests {
     fn test_get_block_count() {
         let bitcoin_rpc_client = BitcoinCoreClient::new();
 
-        let response: RpcResponse<i32> = bitcoin_rpc_client.get_block_count().unwrap();
+        let response = bitcoin_rpc_client.get_block_count().unwrap();
 
         println!("result: {:?}", response);
     }
@@ -57,7 +58,7 @@ mod tests {
     fn test_get_new_address() {
         let bitcoin_rpc_client = BitcoinCoreClient::new();
 
-        let response: RpcResponse<String> = bitcoin_rpc_client.get_new_address().unwrap();
+        let response = bitcoin_rpc_client.get_new_address().unwrap();
 
         println!("result: {:?}", response);
     }
@@ -66,7 +67,7 @@ mod tests {
     fn test_generate_block() {
         let bitcoin_rpc_client = BitcoinCoreClient::new();
 
-        let response: RpcResponse<Vec<String>> = bitcoin_rpc_client.generate(1).unwrap();
+        let response = bitcoin_rpc_client.generate(1).unwrap();
 
         println!("{:?}", response);
     }

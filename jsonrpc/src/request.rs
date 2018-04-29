@@ -167,4 +167,18 @@ mod tests {
 
         assert_that(&serialized_payload).is_equal_to(expected_payload);
     }
+
+    #[test]
+    fn can_serialize_request_with_new_type_structs() {
+
+        #[derive(Serialize)]
+        struct Test(String);
+
+        let payload = RpcRequest::new2(JsonRpcVersion::V1, "test", "test", Test("ABCD".to_string()), "foo");
+        let expected_payload =
+            r#"{"jsonrpc":"1.0","id":"test","method":"test","params":["ABCD","foo"]}"#.to_string();
+        let serialized_payload = to_string(&payload).unwrap();
+
+        assert_that(&serialized_payload).is_equal_to(expected_payload);
+    }
 }
