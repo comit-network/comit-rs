@@ -8,6 +8,13 @@ impl<'a> From<&'a str> for Address {
     }
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct MultiSigAddress {
+    address: Address,
+    #[serde(rename = "redeemScript")]
+    redeem_script: String,
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json;

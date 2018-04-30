@@ -34,6 +34,10 @@ impl<R> Into<StdResult<R, RpcError>> for RpcResponse<R> {
 }
 
 impl<R> RpcResponse<R> {
+    pub fn to_result(self) -> StdResult<R, RpcError> {
+        self.into()
+    }
+
     pub fn id(&self) -> &str {
         match self {
             &RpcResponse::Successful { ref id, ref result } => id,

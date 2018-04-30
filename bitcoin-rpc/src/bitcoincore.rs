@@ -28,6 +28,20 @@ impl BitcoinCoreClient {
         BitcoinCoreClient { client: rpc_client }
     }
 
+    fn add_multisig_address(
+        &self,
+        number_of_required_signatures: u32,
+        participants: Vec<Address>,
+    ) -> Result<RpcResponse<MultiSigAddress>, HTTPError> {
+        self.client.send(RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "addmultisigaddress",
+            number_of_required_signatures,
+            participants,
+        ))
+    }
+
     fn get_block_count(&self) -> Result<RpcResponse<i32>, HTTPError> {
         self.client.send(RpcRequest::new0(
             JsonRpcVersion::V1,
@@ -98,11 +112,24 @@ mod tests {
         let client = BitcoinCoreClient::new();
         let result: Result<R, RpcError> = invocation(&client).unwrap().into();
 
-        // Having a successful result means:
-        // - No HTTP Error occured
-        // - No deserialization error occured
-        assert!(result.is_ok());
-        println!("{:?}", result.unwrap())
+        if result.is_err() {
+            println!("{:?}", result.unwrap_err());
+            panic!("Result should be successful")
+        } else {
+            // Having a successful result means:
+            // - No HTTP Error occured
+            // - No deserialization error occured
+            println!("{:?}", result.unwrap())
+        }
+    }
+
+    #[test]
+    fn test_add_multisig_address() {
+        assert_successful_result(|client| {
+            let address = client.get_new_address().unwrap().to_result().unwrap();
+
+            client.add_multisig_address(1, vec![address])
+        })
     }
 
     #[test]
