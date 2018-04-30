@@ -47,7 +47,9 @@ impl BitcoinCoreClient {
     fn generate(&self, number_of_blocks: i32) -> Result<RpcResponse<Vec<BlockHash>>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
-            "test", "generate", number_of_blocks,
+            "test",
+            "generate",
+            number_of_blocks,
         ))
     }
 
