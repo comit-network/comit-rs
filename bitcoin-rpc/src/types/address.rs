@@ -2,11 +2,7 @@
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Address(String);
 
-impl<'a> From<&'a str> for Address {
-    fn from(s: &'a str) -> Self {
-        Address(s.to_string())
-    }
-}
+from_str!(Address);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct MultiSigAddress {
