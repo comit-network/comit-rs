@@ -40,15 +40,15 @@ impl BitcoinCoreClient {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "generate", number_of_blocks))
     }
 
-    fn getaccount(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
+    fn get_account(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "getaccount", address))
     }
 
-    fn gettransaction(&self, tx: TransactionId) -> Result<RpcResponse<Transaction>, HTTPError> {
+    fn get_transaction(&self, tx: TransactionId) -> Result<RpcResponse<Transaction>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "gettransaction", tx))
     }
 
-    fn sendrawtransaction(&self, tx_data: RawTransactionHex) -> Result<RpcResponse<Transaction>, HTTPError> {
+    fn send_raw_transaction(&self, tx_data: RawTransactionHex) -> Result<RpcResponse<Transaction>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "sendrawtransaction", tx_data))
     }
 }
@@ -87,11 +87,11 @@ mod tests {
 
     #[test]
     fn test_getaccount() {
-        assert_successful_result(|client| client.getaccount(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW")))
+        assert_successful_result(|client| client.get_account(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW")))
     }
 
     #[test]
     fn test_gettransaction() {
-        assert_successful_result(|client| client.gettransaction(TransactionId::from("7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4")))
+        assert_successful_result(|client| client.get_transaction(TransactionId::from("7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4")))
     }
 }
