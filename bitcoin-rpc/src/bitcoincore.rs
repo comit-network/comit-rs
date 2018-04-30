@@ -28,6 +28,8 @@ impl BitcoinCoreClient {
         BitcoinCoreClient { client: rpc_client }
     }
 
+    // Order as per: https://bitcoin.org/en/developer-reference#rpcs
+
     fn add_multisig_address(
         &self,
         number_of_required_signatures: u32,
@@ -42,21 +44,24 @@ impl BitcoinCoreClient {
         ))
     }
 
-    fn get_block_count(&self) -> Result<RpcResponse<i32>, HTTPError> {
-        self.client.send(RpcRequest::new0(
-            JsonRpcVersion::V1,
-            "test",
-            "getblockcount",
-        ))
-    }
-
-    fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
-        self.client.send(RpcRequest::new0(
-            JsonRpcVersion::V1,
-            "test",
-            "getnewaddress",
-        ))
-    }
+    // TODO: abandontransaction
+    // TODO: addmultisigaddress
+    // TODO: addnode
+    // TODO: addwitnessaddress
+    // TODO: backupwallet
+    // TODO: bumpfee
+    // TODO: clearbanned
+    // TODO: createmultisig
+    // TODO: createrawtransaction
+    // TODO: decoderawtransaction
+    // TODO: decodescript
+    // TODO: disconnectnode
+    // TODO: dumpprivkey
+    // TODO: dumpwallet
+    // TODO: encryptwallet
+    // TODO: estimatefee
+    // TODO: estimatepriority
+    // TODO: fundrawtransaction
 
     fn generate(&self, number_of_blocks: i32) -> Result<RpcResponse<Vec<BlockHash>>, HTTPError> {
         self.client.send(RpcRequest::new1(
@@ -67,6 +72,9 @@ impl BitcoinCoreClient {
         ))
     }
 
+    // TODO: generatetoaddress
+    // TODO: getaccountaddress
+
     fn get_account(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
@@ -76,6 +84,56 @@ impl BitcoinCoreClient {
         ))
     }
 
+    // TODO: getaddednodeinfo
+    // TODO: getaddressesbyaccount
+    // TODO: getbalance
+    // TODO: getbestblockhash
+    // TODO: getblock
+
+    // TODO: getblockchaininfo
+
+    fn get_block_count(&self) -> Result<RpcResponse<i32>, HTTPError> {
+        self.client.send(RpcRequest::new0(
+            JsonRpcVersion::V1,
+            "test",
+            "getblockcount",
+        ))
+    }
+
+    // TODO: getblockhash
+    // TODO: getblockheader
+    // TODO: getblocktemplate
+    // TODO: getchaintips
+    // TODO: getconnectioncount
+    // TODO: getdifficulty
+    // TODO: getgenerate
+    // TODO: gethashespersec
+    // TODO: getinfo
+    // TODO: getmemoryinfo
+    // TODO: getmempoolancestors
+    // TODO: getmempooldescendants
+    // TODO: getmempoolentry
+    // TODO: getmempoolinfo
+    // TODO: getmininginfo
+    // TODO: getnettotals
+    // TODO: getnetworkhashesps
+    // TODO: getnetworkinfo
+
+    fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
+        self.client.send(RpcRequest::new0(
+            JsonRpcVersion::V1,
+            "test",
+            "getnewaddress",
+        ))
+    }
+
+    // TODO: getpeerinfo
+    // TODO: getrawchangeaddress
+    // TODO: getrawmempool
+    // TODO: getrawtransaction
+    // TODO: getreceivedbyaccount
+    // TODO: getreceivedbyaddress
+
     fn get_transaction(&self, tx: TransactionId) -> Result<RpcResponse<Transaction>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
@@ -84,6 +142,38 @@ impl BitcoinCoreClient {
             tx,
         ))
     }
+
+    // TODO: gettxout
+    // TODO: gettxoutsetinfo
+    // TODO: getunconfirmedbalance
+    // TODO: getwalletinfo
+    // TODO: getwork
+    // TODO: importaddress
+    // TODO: importmulti
+    // TODO: importprivkey
+    // TODO: importprunedfunds
+    // TODO: importwallet
+    // TODO: keypoolrefill
+    // TODO: invalidateblock
+    // TODO: keypoolrefill
+    // TODO: listaccounts
+    // TODO: listaddressgroupings
+    // TODO: listbanned
+    // TODO: listlockunspent
+    // TODO: listreceivedbyaccount
+    // TODO: listreceivedbyaddress
+    // TODO: listsinceblock
+    // TODO: listtransactions
+    // TODO: listunspent
+    // TODO: lockunspent
+    // TODO: move
+    // TODO: ping
+    // TODO: preciousblock
+    // TODO: prioritisetransaction
+    // TODO: pruneblockchain
+    // TODO: removeprunedfunds
+    // TODO: sendfrom
+    // TODO: sendmany
 
     fn send_raw_transaction(
         &self,
@@ -96,6 +186,25 @@ impl BitcoinCoreClient {
             tx_data,
         ))
     }
+
+    // TODO: sendtoaddress
+    // TODO: setaccount
+    // TODO: setban
+    // TODO: setgenerate
+    // TODO: setnetworkactive
+    // TODO: settxfee
+    // TODO: signmessage
+    // TODO: signmessagewithprivkey
+    // TODO: signrawtransaction
+    // TODO: stop
+    // TODO: submitblock
+    // TODO: validateaddress
+    // TODO: verifychain
+    // TODO: verifymessage
+    // TODO: verifytxoutproof
+    // TODO: walletlock
+    // TODO: walletpassphrase
+    // TODO: walletpassphrasechange
 }
 
 #[cfg(test)]
