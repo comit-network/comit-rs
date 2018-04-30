@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn test_add_multisig_address() {
         assert_successful_result(|client| {
-            let address = client.get_new_address().unwrap().to_result().unwrap();
+            let address = client.get_new_address().unwrap().into_result().unwrap();
 
             client.add_multisig_address(1, vec![address])
         })

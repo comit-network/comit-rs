@@ -26,16 +26,20 @@ pub struct Transaction {
     amount: f64,
     fee: Option<f64>,
     confirmations: u32,
-    blockhash: BlockHash,
+    generated: Option<bool>,
+    blockhash: Option<BlockHash>,
     /// Unix Timestamp
-    blocktime: u64,
+    blocktime: Option<u64>,
     /// Unix Timestamp
-    blockindex: u64,
+    blockindex: Option<u64>,
+    walletconflicts: Vec<TransactionId>,
     txid: TransactionId,
     /// Unix Timestamp
     time: u64,
     /// Unix Timestamp
     timereceived: u64,
+    comment: Option<String>,
+    to: Option<String>,
     #[serde(rename = "bip125-replaceable")]
     bip125_replaceable: String, // yes|no|unknown: TODO: Create enum if needed
     details: Vec<Detail>,
@@ -45,11 +49,14 @@ pub struct Transaction {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Detail {
     account: String,
-    address: Address,
-    category: String, // send|receive|immature TODO: Create enum if needed
+    address: Option<Address>,
+    category: String, // send|receive|immature|generate|orphan TODO: Create enum if needed
     amount: f64,
-    label: Option<String>,
+    fee: Option<f64>,
     vout: u32,
+    #[serde(rename = "involvesWatchonly")]
+    involves_watchonly: Option<bool>,
+    abandoned: Option<bool>,
 }
 
 #[cfg(test)]
