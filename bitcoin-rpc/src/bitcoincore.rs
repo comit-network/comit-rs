@@ -5,6 +5,7 @@ use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
 use jsonrpc::HTTPError;
 use types::BlockHash;
+use types::Account;
 
 struct BitcoinCoreClient {
     client: RpcClient,
@@ -39,21 +40,27 @@ impl BitcoinCoreClient {
     fn generate(&self, number_of_blocks: i32) -> Result<RpcResponse<Vec<BlockHash>>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "generate", number_of_blocks))
     }
+
+    fn getaccount(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
+        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "getaccount", address))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use jsonrpc::RpcError;
+    use std::fmt::Debug;
 
-    fn assert_successful_result<R>(invocation: fn(client: &BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>) {
+    fn assert_successful_result<R>(invocation: fn(client: &BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>) where R : Debug {
         let client = BitcoinCoreClient::new();
         let result: Result<R, RpcError> = invocation(&client).unwrap().into();
 
         // Having a successful result means:
         // - No HTTP Error occured
         // - No deserialization error occured
-        assert!(result.is_ok())
+        assert!(result.is_ok());
+        println!("{:?}", result.unwrap())
     }
 
     #[test]
@@ -67,7 +74,12 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_block() {
+    fn test_generate() {
         assert_successful_result(|client| client.generate(1))
+    }
+
+    #[test]
+    fn test_getaccount() {
+        assert_successful_result(|client| client.getaccount(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW")))
     }
 }
