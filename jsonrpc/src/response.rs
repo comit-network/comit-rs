@@ -47,7 +47,7 @@ mod tests {
 
     use serde_json::from_str;
     use spectral::assert_that;
-    use response::RpcResponse;
+    use super::*;
 
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {
@@ -60,20 +60,7 @@ mod tests {
 
         let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
-        match deserialized_response {
-            RpcResponse::Successful {
-                id,
-                //                version,
-                result,
-            } => {
-                assert_that(&id).is_equal_to("test".to_string());
-                assert_that(&result).is_equal_to(519521);
-            }
-            RpcResponse::Error {
-                id,
-                /*version, */ error,
-            } => panic!("Should not yield error"),
-        }
+        assert_eq!(deserialized_response.to_result(), Ok(519521));
     }
 
     #[test]
@@ -84,18 +71,9 @@ mod tests {
                 "error": null
             }"#;
 
-        let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
+        let result: RpcResponse<i32> = from_str(result).unwrap();
 
-        match deserialized_response {
-            RpcResponse::Successful { id, result } => {
-                assert_that(&id).is_equal_to("curltest".to_string());
-                assert_that(&result).is_equal_to(1);
-            }
-            RpcResponse::Error {
-                id,
-                /*version,*/ error,
-            } => panic!("Should not yield error"),
-        }
+        assert_eq!(result.to_result(), Ok(1))
     }
 
     #[test]
@@ -112,24 +90,12 @@ mod tests {
 
         let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
-        match deserialized_response {
-            RpcResponse::Successful {
-                id,
-                /*
-                version,
-*/
-                result,
-            } => {
-                panic!("Should not yield successful result");
-            }
-            RpcResponse::Error {
-                id,
-                /*version, */ error,
-            } => {
-                assert_that(&id).is_equal_to("test".to_string());
-                assert_that(&error.code).is_equal_to(-123);
-                assert_that(&error.message).is_equal_to("Something went wrong".to_string());
-            }
-        }
+        assert_eq!(
+            deserialized_response.to_result(),
+            Err(RpcError {
+                code: -123,
+                message: "Something went wrong".to_string(),
+            })
+        )
     }
 }
