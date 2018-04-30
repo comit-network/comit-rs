@@ -44,25 +44,30 @@ impl BitcoinCoreClient {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use jsonrpc::RpcError;
+
+    fn assert_successful_result<R>(invocation: fn(client: &BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>) {
+        let client = BitcoinCoreClient::new();
+        let result: Result<R, RpcError> = invocation(&client).unwrap().into();
+
+        // Having a successful result means:
+        // - No HTTP Error occured
+        // - No deserialization error occured
+        assert!(result.is_ok())
+    }
 
     #[test]
     fn test_get_block_count() {
-        let response = BitcoinCoreClient::new().get_block_count().unwrap();
-
-        println!("result: {:?}", response);
+        assert_successful_result(BitcoinCoreClient::get_block_count)
     }
 
     #[test]
     fn test_get_new_address() {
-        let response = BitcoinCoreClient::new().get_new_address().unwrap();
-
-        println!("result: {:?}", response);
+        assert_successful_result(BitcoinCoreClient::get_new_address)
     }
 
     #[test]
     fn test_generate_block() {
-        let response = BitcoinCoreClient::new().generate(1).unwrap();
-
-        println!("{:?}", response);
+        assert_successful_result(|client| client.generate(1))
     }
 }
