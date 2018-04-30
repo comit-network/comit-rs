@@ -88,7 +88,15 @@ impl BitcoinCoreClient {
     // TODO: getaddressesbyaccount
     // TODO: getbalance
     // TODO: getbestblockhash
-    // TODO: getblock
+
+    fn get_block(&self, header_hash: &BlockHash) -> Result<RpcResponse<Block>, HTTPError> {
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "getblock",
+            header_hash,
+        ))
+    }
 
     // TODO: getblockchaininfo
 
@@ -213,25 +221,6 @@ mod tests {
     use jsonrpc::RpcError;
     use std::fmt::Debug;
 
-    fn assert_successful_result<R>(
-        invocation: fn(client: &BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
-    ) where
-        R: Debug,
-    {
-        let client = BitcoinCoreClient::new();
-        let result: Result<R, RpcError> = invocation(&client).unwrap().into();
-
-        if result.is_err() {
-            println!("{:?}", result.unwrap_err());
-            panic!("Result should be successful")
-        } else {
-            // Having a successful result means:
-            // - No HTTP Error occured
-            // - No deserialization error occured
-            println!("{:?}", result.unwrap())
-        }
-    }
-
     #[test]
     fn test_add_multisig_address() {
         assert_successful_result(|client| {
@@ -270,5 +259,36 @@ mod tests {
                 "70935ecf77405bccda14ed73a7e2d79f0bb75e0b1c06b8f1c3c2e3f6b600ff46",
             ))
         })
+    }
+
+    #[test]
+    fn test_getblock() {
+        let generated_blocks = BitcoinCoreClient::new()
+            .generate(1)
+            .unwrap()
+            .into_result()
+            .unwrap();
+        let block_hash = generated_blocks.get(0).unwrap().to_owned();
+
+        assert_successful_result(|client| client.get_block(block_hash))
+    }
+
+    fn assert_successful_result<R, I>(invocation: I)
+    where
+        R: Debug,
+        I: Fn(&BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
+    {
+        let client = BitcoinCoreClient::new();
+        let result: Result<R, RpcError> = invocation(&client).unwrap().into();
+
+        if result.is_err() {
+            println!("{:?}", result.unwrap_err());
+            panic!("Result should be successful")
+        } else {
+            // Having a successful result means:
+            // - No HTTP Error occured
+            // - No deserialization error occured
+            println!("{:?}", result.unwrap())
+        }
     }
 }

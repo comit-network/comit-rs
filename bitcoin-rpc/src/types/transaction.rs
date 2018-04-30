@@ -1,6 +1,6 @@
 use types::*;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct TransactionId(String);
 
 impl<'a> From<&'a str> for TransactionId {
