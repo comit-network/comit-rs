@@ -60,7 +60,7 @@ mod tests {
 
         let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
-        assert_eq!(deserialized_response.to_result(), Ok(519521));
+        assert_eq!(deserialized_response.into_result(), Ok(519521));
     }
 
     #[test]
@@ -73,7 +73,7 @@ mod tests {
 
         let result: RpcResponse<i32> = from_str(result).unwrap();
 
-        assert_eq!(result.to_result(), Ok(1))
+        assert_eq!(result.into_result(), Ok(1))
     }
 
     #[test]
@@ -91,7 +91,7 @@ mod tests {
         let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
         assert_eq!(
-            deserialized_response.to_result(),
+            deserialized_response.into_result(),
             Err(RpcError {
                 code: -123,
                 message: "Something went wrong".to_string(),
