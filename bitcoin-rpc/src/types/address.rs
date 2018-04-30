@@ -15,16 +15,20 @@ mod tests {
 
     #[test]
     fn can_deserialize_address() {
-
         #[derive(Deserialize, Serialize, Debug, PartialEq)]
         struct TestStruct {
-            address: Address
+            address: Address,
         }
 
         let address = r#"{"address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"}"#;
 
         let test_struct: TestStruct = serde_json::from_str(address).unwrap();
 
-        assert_eq!(test_struct, TestStruct { address: Address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".to_string()) })
+        assert_eq!(
+            test_struct,
+            TestStruct {
+                address: Address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".to_string()),
+            }
+        )
     }
 }

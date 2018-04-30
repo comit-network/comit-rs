@@ -1,9 +1,9 @@
+extern crate jsonrpc;
+extern crate rustc_serialize;
+extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate jsonrpc;
-extern crate serde;
-extern crate rustc_serialize;
 
 pub mod types;
 pub use types::*;

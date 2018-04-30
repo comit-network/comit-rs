@@ -1,6 +1,6 @@
 use jsonrpc::HTTPClient;
 use jsonrpc::header;
-use jsonrpc::{RpcClient, JsonRpcVersion, RpcRequest, RpcResponse};
+use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
 use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
 use jsonrpc::HTTPError;
@@ -29,27 +29,56 @@ impl BitcoinCoreClient {
     }
 
     fn get_block_count(&self) -> Result<RpcResponse<i32>, HTTPError> {
-        self.client.send(RpcRequest::new0(JsonRpcVersion::V1, "test", "getblockcount"))
+        self.client.send(RpcRequest::new0(
+            JsonRpcVersion::V1,
+            "test",
+            "getblockcount",
+        ))
     }
 
     fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
-        self.client.send(RpcRequest::new0(JsonRpcVersion::V1, "test", "getnewaddress"))
+        self.client.send(RpcRequest::new0(
+            JsonRpcVersion::V1,
+            "test",
+            "getnewaddress",
+        ))
     }
 
     fn generate(&self, number_of_blocks: i32) -> Result<RpcResponse<Vec<BlockHash>>, HTTPError> {
-        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "generate", number_of_blocks))
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test", "generate", number_of_blocks,
+        ))
     }
 
     fn get_account(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
-        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "getaccount", address))
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "getaccount",
+            address,
+        ))
     }
 
     fn get_transaction(&self, tx: TransactionId) -> Result<RpcResponse<Transaction>, HTTPError> {
-        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "gettransaction", tx))
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "gettransaction",
+            tx,
+        ))
     }
 
-    fn send_raw_transaction(&self, tx_data: RawTransactionHex) -> Result<RpcResponse<Transaction>, HTTPError> {
-        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "sendrawtransaction", tx_data))
+    fn send_raw_transaction(
+        &self,
+        tx_data: RawTransactionHex,
+    ) -> Result<RpcResponse<Transaction>, HTTPError> {
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "sendrawtransaction",
+            tx_data,
+        ))
     }
 }
 
@@ -59,7 +88,11 @@ mod tests {
     use jsonrpc::RpcError;
     use std::fmt::Debug;
 
-    fn assert_successful_result<R>(invocation: fn(client: &BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>) where R : Debug {
+    fn assert_successful_result<R>(
+        invocation: fn(client: &BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
+    ) where
+        R: Debug,
+    {
         let client = BitcoinCoreClient::new();
         let result: Result<R, RpcError> = invocation(&client).unwrap().into();
 
@@ -87,11 +120,17 @@ mod tests {
 
     #[test]
     fn test_getaccount() {
-        assert_successful_result(|client| client.get_account(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW")))
+        assert_successful_result(|client| {
+            client.get_account(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW"))
+        })
     }
 
     #[test]
     fn test_gettransaction() {
-        assert_successful_result(|client| client.get_transaction(TransactionId::from("7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4")))
+        assert_successful_result(|client| {
+            client.get_transaction(TransactionId::from(
+                "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4",
+            ))
+        })
     }
 }
