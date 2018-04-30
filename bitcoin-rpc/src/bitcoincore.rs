@@ -47,27 +47,21 @@ mod tests {
 
     #[test]
     fn test_get_block_count() {
-        let bitcoin_rpc_client = BitcoinCoreClient::new();
-
-        let response = bitcoin_rpc_client.get_block_count().unwrap();
+        let response = BitcoinCoreClient::new().get_block_count().unwrap();
 
         println!("result: {:?}", response);
     }
 
     #[test]
     fn test_get_new_address() {
-        let bitcoin_rpc_client = BitcoinCoreClient::new();
-
-        let response = bitcoin_rpc_client.get_new_address().unwrap();
+        let response = BitcoinCoreClient::new().get_new_address().unwrap();
 
         println!("result: {:?}", response);
     }
 
     #[test]
     fn test_generate_block() {
-        let bitcoin_rpc_client = BitcoinCoreClient::new();
-
-        let response = bitcoin_rpc_client.generate(1).unwrap();
+        let response = BitcoinCoreClient::new().generate(1).unwrap();
 
         println!("{:?}", response);
     }
