@@ -16,12 +16,18 @@ pub struct RpcResponse<R> {
 
 impl<R> Into<StdResult<R, RpcError>> for RpcResponse<R> {
     fn into(self) -> Result<R, RpcError> {
-        match self.result {
-            Some(response) => Ok(response),
-            None => match self.error {
-                Some(rpc_error) => Err(rpc_error),
-                None => panic!("Response did neither contain result nur error"),
-            },
+        match self {
+            RpcResponse {
+                result: Some(result),
+                error: None,
+                ..
+            } => Ok(result),
+            RpcResponse {
+                result: None,
+                error: Some(rpc_error),
+                ..
+            } => Err(rpc_error),
+            _ => panic!("Response must contain either result or error."),
         }
     }
 }
