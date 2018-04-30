@@ -8,27 +8,20 @@ pub struct RpcError {
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum RpcResponse<R> {
-    Successful {
-        id: String,
-        //        #[serde(rename = "jsonrpc")]
-        //        version: Version,
-        result: R,
-    },
-    Error {
-        id: String,
-        //        #[serde(rename = "jsonrpc")]
-        //        version: Version,
-        error: RpcError,
-    },
+pub struct RpcResponse<R> {
+    id: String,
+    result: Option<R>,
+    error: Option<RpcError>,
 }
 
 impl<R> Into<StdResult<R, RpcError>> for RpcResponse<R> {
     fn into(self) -> Result<R, RpcError> {
-        match self {
-            RpcResponse::Successful { id, result } => Ok(result),
-            RpcResponse::Error { id, error } => Err(error),
+        match self.result {
+            Some(response) => Ok(response),
+            None => match self.error {
+                Some(rpc_error) => Err(rpc_error),
+                None => panic!("Response did neither contain result nur error"),
+            },
         }
     }
 }
@@ -39,10 +32,7 @@ impl<R> RpcResponse<R> {
     }
 
     pub fn id(&self) -> &str {
-        match self {
-            &RpcResponse::Successful { ref id, ref result } => id,
-            &RpcResponse::Error { ref id, ref error } => id,
-        }
+        &self.id
     }
 }
 

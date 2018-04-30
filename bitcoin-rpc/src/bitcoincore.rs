@@ -158,7 +158,7 @@ mod tests {
     fn test_gettransaction() {
         assert_successful_result(|client| {
             client.get_transaction(TransactionId::from(
-                "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4",
+                "70935ecf77405bccda14ed73a7e2d79f0bb75e0b1c06b8f1c3c2e3f6b600ff46",
             ))
         })
     }
