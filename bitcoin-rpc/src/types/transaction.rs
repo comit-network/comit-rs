@@ -9,6 +9,12 @@ impl<'a> From<&'a str> for TransactionId {
     }
 }
 
+/// Currently the internal representation is the serialized string
+/// We might want to have a more sophisticated struct that can de- and encode the tx later on.
+/// We will need serializers and deserializers then.
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RawTransactionHex(String);
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {
     amount: f64,
@@ -27,7 +33,7 @@ pub struct Transaction {
     #[serde(rename = "bip125-replaceable")]
     bip125_replaceable: String, // yes|no|unknown: TODO: Create enum if needed
     details: Vec<Detail>,
-    hex: String
+    hex: RawTransactionHex
 }
 
 #[derive(Deserialize, Serialize, Debug)]
