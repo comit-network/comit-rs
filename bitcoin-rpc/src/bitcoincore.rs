@@ -53,7 +53,18 @@ impl BitcoinCoreClient {
     // TODO: clearbanned
     // TODO: createmultisig
     // TODO: createrawtransaction
-    // TODO: decoderawtransaction
+
+    fn decode_rawtransaction(
+        &self,
+        tx: RawTransactionHex,
+    ) -> Result<RpcResponse<DecodedRawTransaction>, HTTPError> {
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "decoderawtransaction",
+            tx,
+        ))
+    }
 
     fn decode_script(&self, script: RedeemScript) -> Result<RpcResponse<DecodedScript>, HTTPError> {
         self.client.send(RpcRequest::new1(
@@ -298,6 +309,15 @@ mod tests {
 
         assert_successful_result(|client| {
             client.decode_script(RedeemScript::from("522103ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf2102ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f21022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d553ae"))
+        })
+    }
+
+    #[test]
+    fn test_decode_rawtransaction() {
+        let _ = env_logger::try_init();
+
+        assert_successful_result(|client| {
+            client.decode_rawtransaction(RawTransactionHex::from("0100000001bafe2175b9d7b3041ebac529056b393cf2997f7964485aa382ffa449ffdac02a000000008a473044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b01410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8ffffffff01b0a86a00000000001976a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac00000000"))
         })
     }
 

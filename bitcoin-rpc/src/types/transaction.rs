@@ -3,11 +3,7 @@ use types::*;
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct TransactionId(String);
 
-impl<'a> From<&'a str> for TransactionId {
-    fn from(s: &'a str) -> Self {
-        TransactionId(s.to_string())
-    }
-}
+from_str!(TransactionId);
 
 /// Currently the internal representation is the serialized string
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
@@ -15,11 +11,7 @@ impl<'a> From<&'a str> for TransactionId {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct RawTransactionHex(String);
 
-impl<'a> From<&'a str> for RawTransactionHex {
-    fn from(s: &'a str) -> Self {
-        RawTransactionHex(s.to_string())
-    }
-}
+from_str!(RawTransactionHex);
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {
@@ -41,7 +33,8 @@ pub struct Transaction {
     comment: Option<String>,
     to: Option<String>,
     #[serde(rename = "bip125-replaceable")]
-    bip125_replaceable: String, // yes|no|unknown: TODO: Create enum if needed
+    bip125_replaceable: String,
+    // yes|no|unknown: TODO: Create enum if needed
     details: Vec<Detail>,
     hex: RawTransactionHex,
 }
@@ -50,7 +43,8 @@ pub struct Transaction {
 pub struct Detail {
     account: String,
     address: Option<Address>,
-    category: String, // send|receive|immature|generate|orphan TODO: Create enum if needed
+    category: String,
+    // send|receive|immature|generate|orphan TODO: Create enum if needed
     amount: f64,
     fee: Option<f64>,
     vout: u32,
@@ -59,9 +53,54 @@ pub struct Detail {
     abandoned: Option<bool>,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct DecodedRawTransaction {
+    txid: TransactionId,
+    hash: String,
+    size: u32,
+    vsize: u32,
+    version: u32,
+    locktime: u32,
+    vin: Vec<TransactionInput>,
+    vout: Vec<TransactionOutput>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct ScriptSig {
+    asm: String,
+    hex: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct TransactionInput {
+    txid: TransactionId,
+    vout: u32,
+    #[serde(rename = "scriptSig")]
+    script_sig: ScriptSig,
+    sequence: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct ScriptPubKey {
+    asm: String,
+    hex: String,
+    #[serde(rename = "reqSigs")]
+    req_sigs: u32,
+    #[serde(rename = "type")]
+    script_type: ScriptType,
+    addresses: Vec<Address>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct TransactionOutput {
+    value: f64,
+    n: u32,
+    #[serde(rename = "scriptPubKey")]
+    script_pub_key: ScriptPubKey,
+}
+
 #[cfg(test)]
 mod tests {
-
     use serde_json;
     use super::*;
 
@@ -72,4 +111,80 @@ mod tests {
         let _tx: Transaction = serde_json::from_str(tx).unwrap();
     }
 
+    #[test]
+    fn should_deserialize_decoded_raw_transaction() {
+        let json = r#"
+        {
+            "txid": "52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46",
+            "hash": "52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46",
+            "size": 223,
+            "vsize": 223,
+            "version": 1,
+            "locktime": 0,
+            "vin": [
+                {
+                    "txid": "2ac0daff49a4ff82a35a4864797f99f23c396b0529c5ba1e04b3d7b97521feba",
+                    "vout": 0,
+                    "scriptSig": {
+                        "asm": "3044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b[ALL] 0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8",
+                        "hex": "473044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b01410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"
+                    },
+                    "sequence": 4294967295
+                }
+            ],
+            "vout": [
+                {
+                    "value": 0.06990000,
+                    "n": 0,
+                    "scriptPubKey": {
+                    "asm": "OP_DUP OP_HASH160 01b81d5fa1e55e069e3cc2db9c19e2e80358f306 OP_EQUALVERIFY OP_CHECKSIG",
+                    "hex": "76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac",
+                    "reqSigs": 1,
+                    "type": "pubkeyhash",
+                    "addresses": [
+                        "1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z"
+                    ]
+                    }
+                }
+            ]
+        }
+        "#;
+
+        let tx: DecodedRawTransaction = serde_json::from_str(json).unwrap();
+
+        assert_eq!(tx, DecodedRawTransaction {
+            txid: TransactionId::from("52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46"),
+            hash: "52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46".to_string(),
+            size: 223,
+            vsize: 223,
+            version: 1,
+            locktime: 0,
+            vin: vec![
+                TransactionInput {
+                    txid: TransactionId::from("2ac0daff49a4ff82a35a4864797f99f23c396b0529c5ba1e04b3d7b97521feba"),
+                    vout: 0,
+                    script_sig: ScriptSig {
+                        asm: "3044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b[ALL] 0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8".to_string(),
+                        hex: "473044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b01410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8".to_string(),
+                    },
+                    sequence: 4294967295,
+                }
+            ],
+            vout: vec![
+                TransactionOutput {
+                    value: 0.06990000,
+                    n: 0,
+                    script_pub_key: ScriptPubKey {
+                        asm: "OP_DUP OP_HASH160 01b81d5fa1e55e069e3cc2db9c19e2e80358f306 OP_EQUALVERIFY OP_CHECKSIG".to_string(),
+                        hex: "76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac".to_string(),
+                        req_sigs: 1,
+                        script_type: ScriptType::PubKeyHash,
+                        addresses: vec![
+                            Address::from("1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z")
+                        ],
+                    },
+                }
+            ],
+        })
+    }
 }
