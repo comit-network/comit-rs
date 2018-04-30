@@ -1,6 +1,3 @@
-use serde::Deserialize;
-use std::str::FromStr;
-
 // TODO: Use a proper struct that represents the actual address format
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Address(String);
@@ -10,12 +7,6 @@ impl<'a> From<&'a str> for Address {
         Address(s.to_string())
     }
 }
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BlockHash(String);
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Account(String);
 
 #[cfg(test)]
 mod tests {

@@ -6,6 +6,8 @@ extern crate serde;
 extern crate rustc_serialize;
 
 pub mod types;
+pub use types::*;
+
 pub mod bitcoincore;
 
 pub use rustc_serialize::hex;

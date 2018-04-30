@@ -6,6 +6,7 @@ use types::Address;
 use jsonrpc::HTTPError;
 use types::BlockHash;
 use types::Account;
+use types::TransactionId;
 
 struct BitcoinCoreClient {
     client: RpcClient,
@@ -44,6 +45,10 @@ impl BitcoinCoreClient {
     fn getaccount(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "getaccount", address))
     }
+
+    fn gettransaction(&self, tx: TransactionId) -> Result<RpcResponse<Account>, HTTPError> {
+        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "gettransaction", tx))
+    }
 }
 
 #[cfg(test)]
@@ -81,5 +86,10 @@ mod tests {
     #[test]
     fn test_getaccount() {
         assert_successful_result(|client| client.getaccount(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW")))
+    }
+
+    #[test]
+    fn test_gettransaction() {
+        assert_successful_result(|client| client.gettransaction(TransactionId::from("1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d")))
     }
 }
