@@ -15,6 +15,12 @@ impl<'a> From<&'a str> for TransactionId {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct RawTransactionHex(String);
 
+impl<'a> From<&'a str> for RawTransactionHex {
+    fn from(s: &'a str) -> Self {
+        RawTransactionHex(s.to_string())
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {
     amount: f64,

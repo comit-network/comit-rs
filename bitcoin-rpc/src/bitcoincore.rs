@@ -49,7 +49,7 @@ impl BitcoinCoreClient {
     }
 
     fn sendrawtransaction(&self, tx_data: RawTransactionHex) -> Result<RpcResponse<Transaction>, HTTPError> {
-        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "sendrawtransaction", tx))
+        self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "sendrawtransaction", tx_data))
     }
 }
 
