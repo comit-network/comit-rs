@@ -4,9 +4,7 @@ use jsonrpc::{RpcClient, JsonRpcVersion, RpcRequest, RpcResponse};
 use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
 use jsonrpc::HTTPError;
-use types::BlockHash;
-use types::Account;
-use types::TransactionId;
+use types::*;
 
 struct BitcoinCoreClient {
     client: RpcClient,
@@ -46,7 +44,7 @@ impl BitcoinCoreClient {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "getaccount", address))
     }
 
-    fn gettransaction(&self, tx: TransactionId) -> Result<RpcResponse<Account>, HTTPError> {
+    fn gettransaction(&self, tx: TransactionId) -> Result<RpcResponse<Transaction>, HTTPError> {
         self.client.send(RpcRequest::new1(JsonRpcVersion::V1, "test", "gettransaction", tx))
     }
 }
@@ -90,6 +88,6 @@ mod tests {
 
     #[test]
     fn test_gettransaction() {
-        assert_successful_result(|client| client.gettransaction(TransactionId::from("1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d")))
+        assert_successful_result(|client| client.gettransaction(TransactionId::from("7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4")))
     }
 }
