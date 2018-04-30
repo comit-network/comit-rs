@@ -1,5 +1,4 @@
 use jsonrpc::HTTPClient;
-use jsonrpc::header;
 use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
 use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
@@ -10,6 +9,7 @@ struct BitcoinCoreClient {
     client: RpcClient,
 }
 
+#[allow(dead_code)]
 impl BitcoinCoreClient {
     pub fn new() -> Self {
         let mut headers = Headers::new();
@@ -217,12 +217,16 @@ impl BitcoinCoreClient {
 
 #[cfg(test)]
 mod tests {
+
+    extern crate env_logger;
+
     use super::*;
     use jsonrpc::RpcError;
     use std::fmt::Debug;
 
     #[test]
     fn test_add_multisig_address() {
+        let _ = env_logger::try_init();
         assert_successful_result(|client| {
             let address = client.get_new_address().unwrap().into_result().unwrap();
 
@@ -232,21 +236,25 @@ mod tests {
 
     #[test]
     fn test_get_block_count() {
+        let _ = env_logger::try_init();
         assert_successful_result(BitcoinCoreClient::get_block_count)
     }
 
     #[test]
     fn test_get_new_address() {
+        let _ = env_logger::try_init();
         assert_successful_result(BitcoinCoreClient::get_new_address)
     }
 
     #[test]
     fn test_generate() {
+        let _ = env_logger::try_init();
         assert_successful_result(|client| client.generate(1))
     }
 
     #[test]
     fn test_getaccount() {
+        let _ = env_logger::try_init();
         assert_successful_result(|client| {
             client.get_account(Address::from("2N2PMtfaKc9knQYxmTZRg3dcC1SMZ7SC8PW"))
         })
@@ -254,6 +262,7 @@ mod tests {
 
     #[test]
     fn test_gettransaction() {
+        let _ = env_logger::try_init();
         assert_successful_result(|client| {
             client.get_transaction(TransactionId::from(
                 "70935ecf77405bccda14ed73a7e2d79f0bb75e0b1c06b8f1c3c2e3f6b600ff46",
@@ -263,6 +272,7 @@ mod tests {
 
     #[test]
     fn test_getblock() {
+        let _ = env_logger::try_init();
         let generated_blocks = BitcoinCoreClient::new()
             .generate(1)
             .unwrap()
@@ -282,13 +292,13 @@ mod tests {
         let result: Result<R, RpcError> = invocation(&client).unwrap().into();
 
         if result.is_err() {
-            println!("{:?}", result.unwrap_err());
+            error!("{:?}", result.unwrap_err());
             panic!("Result should be successful")
         } else {
             // Having a successful result means:
             // - No HTTP Error occured
             // - No deserialization error occured
-            println!("{:?}", result.unwrap())
+            debug!("{:?}", result.unwrap())
         }
     }
 }
