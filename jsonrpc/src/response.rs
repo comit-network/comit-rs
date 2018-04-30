@@ -33,7 +33,7 @@ impl<R> Into<StdResult<R, RpcError>> for RpcResponse<R> {
 }
 
 impl<R> RpcResponse<R> {
-    pub fn to_result(self) -> StdResult<R, RpcError> {
+    pub fn into_result(self) -> StdResult<R, RpcError> {
         self.into()
     }
 
