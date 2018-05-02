@@ -226,7 +226,19 @@ impl BitcoinCoreClient {
     // TODO: signrawtransaction
     // TODO: stop
     // TODO: submitblock
-    // TODO: validateaddress
+
+    fn validate_address(
+        &self,
+        address: &Address,
+    ) -> Result<RpcResponse<AddressValidationResult>, HTTPError> {
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "validateaddress",
+            address,
+        ))
+    }
+
     // TODO: verifychain
     // TODO: verifymessage
     // TODO: verifytxoutproof
@@ -301,6 +313,18 @@ mod tests {
         let block_hash = generated_blocks.get(0).unwrap().to_owned();
 
         assert_successful_result(|client| client.get_block(block_hash))
+    }
+
+    #[test]
+    fn test_validate_address() {
+        let _ = env_logger::try_init();
+        let address = BitcoinCoreClient::new()
+            .get_new_address()
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        assert_successful_result(|client| client.validate_address(&address))
     }
 
     #[test]

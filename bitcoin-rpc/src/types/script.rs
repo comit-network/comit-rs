@@ -15,6 +15,9 @@ pub enum ScriptType {
     MultiSig,
     #[serde(rename = "nonstandard")]
     NonStandard,
+    #[serde(rename = "witness_v0_keyhash")]
+    WitnessPubKeyHash,
+    // TODO: Missing witness pay to script hash
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
