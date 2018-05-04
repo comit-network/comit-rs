@@ -2,7 +2,7 @@ use types::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Block {
-    hash: BlockHash,
+    pub hash: BlockHash,
     confirmations: i32,
     size: u32,
     strippedsize: u32,

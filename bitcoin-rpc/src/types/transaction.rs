@@ -148,6 +148,23 @@ pub struct TransactionOutput {
     script_pub_key: ScriptPubKey,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct UnspentTransactionOutput {
+    txid: TransactionId,
+    vout: u32,
+    address: Option<Address>,
+    account: Option<String>,
+    /// The output script paid, encoded as hex. TODO: Create a dedicated type for this
+    #[serde(rename = "scriptPubKey")]
+    script_pub_key: String,
+    redeem_script: Option<String>,
+    amount: f64,
+    confirmations: i32,
+    spendable: bool,
+    solvable: bool,
+    safe: Option<bool>,
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json;
@@ -336,5 +353,43 @@ mod tests {
             time: 1525393130,
             blocktime: 1525393130,
         })
+    }
+
+    #[test]
+    fn should_deserialize_unspent_transaction_output() {
+        let json = r#"
+        {
+            "txid" : "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
+            "vout" : 1,
+            "address" : "mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe",
+            "account" : "test label",
+            "scriptPubKey" : "76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac",
+            "amount" : 0.00010000,
+            "confirmations" : 6210,
+            "spendable" : true,
+            "solvable" : true
+        }
+        "#;
+
+        let utxo: UnspentTransactionOutput = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            utxo,
+            UnspentTransactionOutput {
+                txid: TransactionId::from(
+                    "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a"
+                ),
+                vout: 1,
+                address: Some(Address::from("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe")),
+                account: Some(String::from("test label")),
+                script_pub_key: String::from("76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac"),
+                redeem_script: None,
+                amount: 0.0001,
+                confirmations: 6210,
+                spendable: true,
+                solvable: true,
+                safe: None,
+            }
+        )
     }
 }

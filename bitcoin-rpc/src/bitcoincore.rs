@@ -4,11 +4,15 @@ use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
 use jsonrpc::HTTPError;
 use types::*;
-use serde::de::Deserialize;
 use serde::de::DeserializeOwned;
 
 pub struct BitcoinCoreClient {
     client: RpcClient,
+}
+
+pub enum TxOutConfirmations {
+    Unconfirmed,
+    AtLeast(i32),
 }
 
 #[allow(dead_code)]
@@ -35,7 +39,7 @@ impl BitcoinCoreClient {
     pub fn add_multisig_address(
         &self,
         number_of_required_signatures: u32,
-        participants: Vec<Address>,
+        participants: Vec<&Address>,
     ) -> Result<RpcResponse<MultiSigAddress>, HTTPError> {
         self.client.send(RpcRequest::new2(
             JsonRpcVersion::V1,
@@ -103,7 +107,7 @@ impl BitcoinCoreClient {
     // TODO: generatetoaddress
     // TODO: getaccountaddress
 
-    pub fn get_account(&self, address: Address) -> Result<RpcResponse<Account>, HTTPError> {
+    pub fn get_account(&self, address: &Address) -> Result<RpcResponse<Account>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
             "test",
@@ -203,7 +207,7 @@ impl BitcoinCoreClient {
 
     pub fn get_transaction(
         &self,
-        tx: TransactionId,
+        tx: &TransactionId,
     ) -> Result<RpcResponse<Transaction>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
@@ -234,7 +238,28 @@ impl BitcoinCoreClient {
     // TODO: listreceivedbyaddress
     // TODO: listsinceblock
     // TODO: listtransactions
-    // TODO: listunspent
+
+    pub fn list_unspent(
+        &self,
+        min_confirmations: TxOutConfirmations,
+        max_confirmations: Option<u32>,
+        recipients: Option<Vec<Address>>,
+    ) -> Result<RpcResponse<Vec<UnspentTransactionOutput>>, HTTPError> {
+        let min_confirmations = match min_confirmations {
+            TxOutConfirmations::Unconfirmed => 0,
+            TxOutConfirmations::AtLeast(number) => number,
+        };
+
+        self.client.send(RpcRequest::new3(
+            JsonRpcVersion::V1,
+            "test",
+            "listunspent",
+            min_confirmations,
+            max_confirmations,
+            recipients,
+        ))
+    }
+
     // TODO: lockunspent
     // TODO: move
     // TODO: ping
