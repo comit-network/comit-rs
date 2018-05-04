@@ -32,10 +32,10 @@ impl BitcoinCoreTestClient {
 
     pub fn a_block(&self) -> Block {
         self.client
-            .generate(1)
+            .generate(101)
             .and_then(|response| {
                 let blocks = response.into_result().unwrap();
-                let block = blocks.get(0).unwrap();
+                let block = blocks.get(100).unwrap();
                 self.client.get_block(block)
             })
             .unwrap()
