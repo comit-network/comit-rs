@@ -9,9 +9,9 @@ from_str!(TransactionId);
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
 /// We will need serializers and deserializers then.
 #[derive(Deserialize, Serialize, Debug)]
-pub struct RawTransactionHex(String);
+pub struct SerializedRawTransaction(String);
 
-from_str!(RawTransactionHex);
+from_str!(SerializedRawTransaction);
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {
@@ -33,18 +33,18 @@ pub struct Transaction {
     comment: Option<String>,
     to: Option<String>,
     #[serde(rename = "bip125-replaceable")]
+    /// yes|no|unknown: TODO: Create enum if needed
     bip125_replaceable: String,
-    // yes|no|unknown: TODO: Create enum if needed
     details: Vec<Detail>,
-    hex: RawTransactionHex,
+    hex: SerializedRawTransaction,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Detail {
     account: String,
     address: Option<Address>,
+    /// send|receive|immature|generate|orphan TODO: Create enum if needed
     category: String,
-    // send|receive|immature|generate|orphan TODO: Create enum if needed
     amount: f64,
     fee: Option<f64>,
     vout: u32,
