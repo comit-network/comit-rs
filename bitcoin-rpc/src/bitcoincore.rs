@@ -4,6 +4,8 @@ use jsonrpc::header::{Authorization, Basic, Headers};
 use types::Address;
 use jsonrpc::HTTPError;
 use types::*;
+use serde::de::Deserialize;
+use serde::de::DeserializeOwned;
 
 pub struct BitcoinCoreClient {
     client: RpcClient,
@@ -169,12 +171,30 @@ impl BitcoinCoreClient {
         &self,
         tx: &TransactionId,
     ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError> {
+        self.get_raw_transaction(tx, false)
+    }
+
+    pub fn get_raw_transaction_verbose(
+        &self,
+        tx: &TransactionId,
+    ) -> Result<RpcResponse<VerboseRawTransaction>, HTTPError> {
+        self.get_raw_transaction(tx, true)
+    }
+
+    fn get_raw_transaction<R>(
+        &self,
+        tx: &TransactionId,
+        verbose: bool,
+    ) -> Result<RpcResponse<R>, HTTPError>
+    where
+        R: DeserializeOwned,
+    {
         self.client.send(RpcRequest::new2(
             JsonRpcVersion::V1,
             "test",
             "getrawtransaction",
             tx,
-            false,
+            verbose,
         ))
     }
 

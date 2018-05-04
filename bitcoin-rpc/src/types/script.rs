@@ -17,6 +17,9 @@ pub enum ScriptType {
     NonStandard,
     #[serde(rename = "witness_v0_keyhash")]
     WitnessPubKeyHash,
+    /// Appears for generated transactions
+    #[serde(rename = "nulldata")]
+    NullData,
     // TODO: Missing witness pay to script hash
 }
 

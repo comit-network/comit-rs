@@ -8,7 +8,7 @@ from_str!(TransactionId);
 /// Currently the internal representation is the serialized string
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
 /// We will need serializers and deserializers then.
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct SerializedRawTransaction(String);
 
 from_str!(SerializedRawTransaction);
@@ -66,18 +66,67 @@ pub struct DecodedRawTransaction {
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct VerboseRawTransaction {
+    txid: TransactionId,
+    hash: String,
+    size: u32,
+    vsize: u32,
+    version: u32,
+    locktime: u32,
+    vin: Vec<TransactionInput>,
+    vout: Vec<TransactionOutput>,
+    hex: SerializedRawTransaction,
+    blockhash: BlockHash,
+    confirmations: i32,
+    time: u64,
+    blocktime: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct ScriptSig {
     asm: String,
     hex: String,
 }
 
+/// Transaction input can either be a regular transaction or a coinbase transaction.
+/// The have different fields, but most of the time, we will be interactings with regular transactions.
+/// For deserialization compatiblity, we define all the fields as Option<T> and provide accessors.
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct TransactionInput {
-    txid: TransactionId,
-    vout: u32,
+    txid: Option<TransactionId>,
+    vout: Option<u32>,
     #[serde(rename = "scriptSig")]
-    script_sig: ScriptSig,
+    script_sig: Option<ScriptSig>,
+
+    coinbase: Option<String>,
+
     sequence: u64,
+}
+
+impl TransactionInput {
+    pub fn txid(&self) -> &TransactionId {
+        self.txid.as_ref().expect("This is a coinbase transaction.")
+    }
+
+    pub fn vout(&self) -> u32 {
+        self.vout.expect("This is a coinbase transaction.")
+    }
+
+    pub fn script_sig(&self) -> &ScriptSig {
+        self.script_sig
+            .as_ref()
+            .expect("This is a coinbase transaction.")
+    }
+
+    pub fn coinbase(&self) -> &str {
+        self.coinbase
+            .as_ref()
+            .expect("This is NOT a coinbase transaction.")
+    }
+
+    pub fn sequence(&self) -> u64 {
+        self.sequence
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -85,10 +134,10 @@ pub struct ScriptPubKey {
     asm: String,
     hex: String,
     #[serde(rename = "reqSigs")]
-    req_sigs: u32,
+    req_sigs: Option<u32>,
     #[serde(rename = "type")]
     script_type: ScriptType,
-    addresses: Vec<Address>,
+    addresses: Option<Vec<Address>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -161,12 +210,13 @@ mod tests {
             locktime: 0,
             vin: vec![
                 TransactionInput {
-                    txid: TransactionId::from("2ac0daff49a4ff82a35a4864797f99f23c396b0529c5ba1e04b3d7b97521feba"),
-                    vout: 0,
-                    script_sig: ScriptSig {
+                    txid: Some(TransactionId::from("2ac0daff49a4ff82a35a4864797f99f23c396b0529c5ba1e04b3d7b97521feba")),
+                    vout: Some(0),
+                    script_sig: Some(ScriptSig {
                         asm: "3044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b[ALL] 0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8".to_string(),
                         hex: "473044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b01410479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8".to_string(),
-                    },
+                    }),
+                    coinbase: None,
                     sequence: 4294967295,
                 }
             ],
@@ -177,14 +227,114 @@ mod tests {
                     script_pub_key: ScriptPubKey {
                         asm: "OP_DUP OP_HASH160 01b81d5fa1e55e069e3cc2db9c19e2e80358f306 OP_EQUALVERIFY OP_CHECKSIG".to_string(),
                         hex: "76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac".to_string(),
-                        req_sigs: 1,
+                        req_sigs: Some(1),
                         script_type: ScriptType::PubKeyHash,
-                        addresses: vec![
+                        addresses: Some(vec![
                             Address::from("1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z")
-                        ],
+                        ]),
                     },
                 }
             ],
+        })
+    }
+
+    #[test]
+    fn should_deserialize_verbose_raw_transaction() {
+        let json = r#"
+        {
+          "txid": "96e038ae072e3328cc3fe7dfbac8748127a26335461f8b61bb2082a67c230e38",
+          "hash": "b1826b1f6514187abcfcb95cdc870d74125bebaa408e3bab015139990f4c1f5b",
+          "version": 2,
+          "size": 184,
+          "vsize": 157,
+          "locktime": 0,
+          "vin": [
+            {
+              "coinbase": "03142d010101",
+              "sequence": 4294967295
+            }
+          ],
+          "vout": [
+            {
+              "value": 0.00000000,
+              "n": 0,
+              "scriptPubKey": {
+                "asm": "039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1 OP_CHECKSIG",
+                "hex": "21039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac",
+                "reqSigs": 1,
+                "type": "pubkey",
+                "addresses": [
+                  "my9XdXbMLZm3v8uqGLuPRKatWjnpXw2boX"
+                ]
+              }
+            },
+            {
+              "value": 0.00000000,
+              "n": 1,
+              "scriptPubKey": {
+                "asm": "OP_RETURN aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
+                "hex": "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9",
+                "type": "nulldata"
+              }
+            }
+          ],
+          "hex": "020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0603142d010101ffffffff0200000000000000002321039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000",
+          "blockhash": "796d7a2dbb1213b65dc2f7170575755efdfae8340b2183e971ed5a89113bbedf",
+          "confirmations": 9,
+          "time": 1525393130,
+          "blocktime": 1525393130
+        }
+        "#;
+
+        let tx: VerboseRawTransaction = serde_json::from_str(json).unwrap();
+
+        assert_eq!(tx, VerboseRawTransaction {
+            txid: TransactionId::from("96e038ae072e3328cc3fe7dfbac8748127a26335461f8b61bb2082a67c230e38"),
+            hash: "b1826b1f6514187abcfcb95cdc870d74125bebaa408e3bab015139990f4c1f5b".to_string(),
+            size: 184,
+            vsize: 157,
+            version: 2,
+            locktime: 0,
+            vin: vec![
+                TransactionInput {
+                    txid: None,
+                    vout: None,
+                    script_sig: None,
+                    coinbase: Some(String::from("03142d010101")),
+                    sequence: 4294967295,
+                }
+            ],
+            vout: vec![
+                TransactionOutput {
+                    value: 0.0,
+                    n: 0,
+                    script_pub_key: ScriptPubKey {
+                        asm: "039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1 OP_CHECKSIG".to_string(),
+                        hex: "21039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac".to_string(),
+                        req_sigs: Some(1),
+                        script_type: ScriptType::PubKey,
+                        addresses: Some(vec![
+                            Address::from("my9XdXbMLZm3v8uqGLuPRKatWjnpXw2boX")
+                        ]),
+                    },
+                },
+                TransactionOutput {
+                    value: 0.0,
+                    n: 1,
+                    script_pub_key: ScriptPubKey {
+                        asm: "OP_RETURN aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9".to_string(),
+                        hex: "6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9".to_string(),
+                        req_sigs: None,
+                        script_type: ScriptType::NullData,
+                        addresses: None,
+                    },
+                }
+            ],
+            hex: SerializedRawTransaction::from("020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0603142d010101ffffffff0200000000000000002321039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000"),
+            blockhash: BlockHash::from("796d7a2dbb1213b65dc2f7170575755efdfae8340b2183e971ed5a89113bbedf"),
+            confirmations: 9,
+            time: 1525393130,
+            blocktime: 1525393130,
         })
     }
 }
