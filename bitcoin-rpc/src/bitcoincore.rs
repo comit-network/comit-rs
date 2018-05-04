@@ -158,7 +158,20 @@ impl BitcoinCoreClient {
     // TODO: getpeerinfo
     // TODO: getrawchangeaddress
     // TODO: getrawmempool
-    // TODO: getrawtransaction
+
+    fn get_raw_transaction_serialized(
+        &self,
+        tx: &TransactionId,
+    ) -> Result<RpcResponse<RawTransactionHex>, HTTPError> {
+        self.client.send(RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "getrawtransaction",
+            tx,
+            false,
+        ))
+    }
+
     // TODO: getreceivedbyaccount
     // TODO: getreceivedbyaddress
 
@@ -325,6 +338,27 @@ mod tests {
             .unwrap();
 
         assert_successful_result(|client| client.validate_address(&address))
+    }
+
+    #[test]
+    fn test_get_raw_transaction_serialized() {
+        let _ = env_logger::try_init();
+        let client = BitcoinCoreClient::new();
+
+        let block = client
+            .generate(1)
+            .and_then(|response| {
+                let blocks = response.into_result().unwrap();
+                let block = blocks.get(0).unwrap();
+                client.get_block(block)
+            })
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        let tx_id = block.tx.get(0).unwrap();
+
+        assert_successful_result(|client| client.get_raw_transaction_serialized(tx_id));
     }
 
     #[test]

@@ -12,7 +12,7 @@ pub struct Block {
     #[serde(rename = "versionHex")]
     version_hex: String,
     merkleroot: String,
-    tx: Vec<TransactionId>,
+    pub tx: Vec<TransactionId>,
     time: u64,
     mediantime: u64,
     nonce: u32,
