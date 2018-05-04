@@ -47,14 +47,14 @@ fn test_getaccount() {
     assert_successful_result(|client| client.get_account(&address))
 }
 
-//#[test]
-//fn test_listunspent() {
-//    setup();
-//    assert_successful_result(|client| {
-//        client.generate(1);
-//        client.list_unspent(TxOutConfirmations::AtLeast(5), None, None)
-//    })
-//}
+#[test]
+fn test_listunspent() {
+    setup();
+    assert_successful_result(|client| {
+        client.generate(101);
+        client.list_unspent(TxOutConfirmations::Unconfirmed, Some(101), None)
+    })
+}
 
 #[test]
 fn test_gettransaction() {
