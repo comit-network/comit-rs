@@ -12,6 +12,28 @@ impl BitcoinCoreTestClient {
         }
     }
 
+    pub fn a_transaction(&self) -> VerboseRawTransaction {
+        let id = self.a_transaction_id();
+
+        self.client
+            .get_raw_transaction_verbose(&id)
+            .unwrap()
+            .into_result()
+            .unwrap()
+    }
+
+    pub fn a_utxo(&self) -> UnspentTransactionOutput {
+        let id = self.a_transaction_id();
+
+        let mut utxos = self.client
+            .list_unspent(TxOutConfirmations::AtLeast(6), None, None)
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        utxos.remove(0)
+    }
+
     pub fn a_transaction_id(&self) -> TransactionId {
         let mut block = self.a_block();
 

@@ -1,7 +1,7 @@
 use types::*;
 
 // TODO: Use a proper struct that represents the actual address format
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash)]
 pub struct Address(String);
 
 from_str!(Address);

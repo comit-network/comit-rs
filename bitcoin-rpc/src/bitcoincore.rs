@@ -58,7 +58,20 @@ impl BitcoinCoreClient {
     // TODO: bumpfee
     // TODO: clearbanned
     // TODO: createmultisig
-    // TODO: createrawtransaction
+
+    pub fn create_raw_transaction(
+        &self,
+        inputs: Vec<&NewTransactionInput>,
+        output: &NewTransactionOutput,
+    ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError> {
+        self.client.send(RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "createrawtransaction",
+            inputs,
+            output,
+        ))
+    }
 
     pub fn decode_rawtransaction(
         &self,

@@ -1,6 +1,7 @@
 use types::*;
+use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TransactionId(String);
 
 from_str!(TransactionId);
@@ -158,12 +159,31 @@ pub struct UnspentTransactionOutput {
     #[serde(rename = "scriptPubKey")]
     script_pub_key: String,
     redeem_script: Option<String>,
-    amount: f64,
+    pub amount: f64,
     confirmations: i32,
     spendable: bool,
     solvable: bool,
     safe: Option<bool>,
 }
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct NewTransactionInput {
+    txid: TransactionId,
+    vout: u32,
+    sequence: Option<u32>,
+}
+
+impl NewTransactionInput {
+    pub fn from_utxo(utxo: &UnspentTransactionOutput) -> Self {
+        NewTransactionInput {
+            txid: utxo.txid.clone(),
+            vout: utxo.vout,
+            sequence: None,
+        }
+    }
+}
+
+pub type NewTransactionOutput = HashMap<Address, f64>;
 
 #[cfg(test)]
 mod tests {
@@ -391,5 +411,19 @@ mod tests {
                 safe: None,
             }
         )
+    }
+
+    #[test]
+    fn new_transaction_output_should_serialize_to_object() {
+        let mut output: NewTransactionOutput = HashMap::new();
+        output.insert(
+            Address::from("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe"),
+            10.12345,
+        );
+
+        let actual_json = serde_json::to_string(&output).unwrap();
+        let expected_json = r#"{"mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe":10.12345}"#;
+
+        assert_eq!(actual_json, expected_json)
     }
 }
