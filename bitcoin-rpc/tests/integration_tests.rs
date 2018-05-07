@@ -177,3 +177,25 @@ fn test_sign_raw_transaction() {
         )
     })
 }
+
+#[test]
+fn test_fund_raw_transaction() {
+    setup();
+
+    let test_client = BitcoinCoreTestClient::new();
+
+    let alice = test_client.an_address();
+
+    let mut outputs = HashMap::new();
+    outputs.insert(alice, 10f64);
+
+    let raw_tx = test_client
+        .client
+        .create_raw_transaction(Vec::new(), &outputs)
+        .unwrap()
+        .into_result()
+        .unwrap();
+    let options = FundingOptions::new();
+
+    assert_successful_result(|client| client.fund_raw_transaction(&raw_tx, &options))
+}

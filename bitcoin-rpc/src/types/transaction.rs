@@ -202,6 +202,56 @@ pub struct SigningResult {
     errors: Option<Vec<SigningError>>,
 }
 
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct FundingOptions {
+    #[serde(rename = "changeAddress", skip_serializing_if = "Option::is_none")]
+    change_address: Option<Address>,
+    #[serde(rename = "changePosition", skip_serializing_if = "Option::is_none")]
+    change_position: Option<u32>,
+    #[serde(rename = "includeWatching", skip_serializing_if = "Option::is_none")]
+    include_watching: Option<bool>,
+    #[serde(rename = "lockUnspents", skip_serializing_if = "Option::is_none")]
+    lock_unspents: Option<bool>,
+    #[serde(rename = "reserveChangeKey", skip_serializing_if = "Option::is_none")]
+    reserve_change_key: Option<bool>,
+    #[serde(rename = "feeRate", skip_serializing_if = "Option::is_none")]
+    fee_rate: Option<u32>,
+    #[serde(rename = "subtractFeeFromOutputs", skip_serializing_if = "Option::is_none")]
+    subtract_fee_from_outputs: Option<Vec<u32>>,
+}
+
+impl FundingOptions {
+    pub fn new() -> Self {
+        FundingOptions {
+            change_address: None,
+            change_position: None,
+            include_watching: None,
+            lock_unspents: None,
+            reserve_change_key: None,
+            fee_rate: None,
+            subtract_fee_from_outputs: None,
+        }
+    }
+
+    pub fn with_change_address(self, address: &Address) -> Self {
+        FundingOptions {
+            change_address: Some(address.clone()),
+            ..self
+        }
+    }
+
+    // TODO: Implement other builder methods
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct FundingResult {
+    hex: SerializedRawTransaction,
+    fee: f64,
+    // TODO: This is -1 if no change output was added. Add custom deserializer that converts to Option<u32>
+    #[serde(rename = "changepos")]
+    change_pos: i32,
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json;

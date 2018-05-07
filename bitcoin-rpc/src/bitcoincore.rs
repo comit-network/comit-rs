@@ -112,7 +112,20 @@ impl BitcoinCoreClient {
     // TODO: encryptwallet
     // TODO: estimatefee
     // TODO: estimatepriority
-    // TODO: fundrawtransaction
+
+    pub fn fund_raw_transaction(
+        &self,
+        tx: &SerializedRawTransaction,
+        options: &FundingOptions,
+    ) -> Result<RpcResponse<FundingResult>, HTTPError> {
+        self.client.send(RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "fundrawtransaction",
+            tx,
+            options,
+        ))
+    }
 
     pub fn generate(
         &self,
