@@ -13,13 +13,13 @@ from_str!(EncodedScriptPubKey);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct ScriptPubKey {
-    asm: String,
-    hex: EncodedScriptPubKey,
+    pub asm: String,
+    pub hex: EncodedScriptPubKey,
     #[serde(rename = "reqSigs")]
-    req_sigs: Option<u32>,
+    pub req_sigs: Option<u32>,
     #[serde(rename = "type")]
-    script_type: ScriptType,
-    addresses: Option<Vec<Address>>,
+    pub script_type: ScriptType,
+    pub addresses: Option<Vec<Address>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
