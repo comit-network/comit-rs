@@ -52,7 +52,7 @@ fn test_getaccount() {
 fn test_listunspent() {
     setup();
     assert_successful_result(|client| {
-        client.generate(101);
+        let _ = client.generate(101);
         client.list_unspent(TxOutConfirmations::Unconfirmed, Some(101), None)
     })
 }
@@ -127,4 +127,53 @@ fn test_create_raw_transaction() {
     map.insert(alice, utxo.amount);
 
     assert_successful_result(|client| client.create_raw_transaction(vec![&input], &map))
+}
+
+#[test]
+fn test_dump_privkey() {
+    setup();
+
+    let test_client = BitcoinCoreTestClient::new();
+
+    let alice = test_client.an_address();
+
+    assert_successful_result(|client| client.dump_privkey(&alice))
+}
+
+#[test]
+fn test_sign_raw_transaction() {
+    setup();
+
+    let test_client = BitcoinCoreTestClient::new();
+
+    let alice = test_client.an_address();
+    let alice_private_key = test_client
+        .client
+        .dump_privkey(&alice)
+        .unwrap()
+        .into_result()
+        .unwrap();
+
+    let utxo = test_client.a_utxo();
+
+    let input = NewTransactionInput::from_utxo(&utxo);
+    let mut map = HashMap::new();
+    map.insert(alice, utxo.amount);
+
+    let tx = test_client
+        .client
+        .create_raw_transaction(vec![&input], &map)
+        .unwrap()
+        .into_result()
+        .unwrap();
+
+    // Note: The signing actually fails but this way, we get to test the deserialization of the datastructures
+    assert_successful_result(|client| {
+        client.sign_raw_transaction(
+            &tx,
+            None,
+            Some(vec![&alice_private_key]),
+            Some(SigHashType::Single_AnyoneCanPay),
+        )
+    })
 }

@@ -2,7 +2,7 @@ use bitcoin_rpc::*;
 use self::super::client_factory::create_client;
 
 pub struct BitcoinCoreTestClient {
-    client: BitcoinCoreClient,
+    pub client: BitcoinCoreClient,
 }
 
 impl BitcoinCoreTestClient {
@@ -12,18 +12,8 @@ impl BitcoinCoreTestClient {
         }
     }
 
-    pub fn a_transaction(&self) -> VerboseRawTransaction {
-        let id = self.a_transaction_id();
-
-        self.client
-            .get_raw_transaction_verbose(&id)
-            .unwrap()
-            .into_result()
-            .unwrap()
-    }
-
     pub fn a_utxo(&self) -> UnspentTransactionOutput {
-        let id = self.a_transaction_id();
+        let _ = self.a_block(); // Need to generate a block first
 
         let mut utxos = self.client
             .list_unspent(TxOutConfirmations::AtLeast(6), None, None)

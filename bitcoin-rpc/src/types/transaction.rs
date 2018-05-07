@@ -83,6 +83,7 @@ pub struct VerboseRawTransaction {
     blocktime: u64,
 }
 
+// TODO: Create serializer and deserializer that can create this struct from the only the hex string
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct ScriptSig {
     asm: String,
@@ -131,17 +132,6 @@ impl TransactionInput {
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
-pub struct ScriptPubKey {
-    asm: String,
-    hex: String,
-    #[serde(rename = "reqSigs")]
-    req_sigs: Option<u32>,
-    #[serde(rename = "type")]
-    script_type: ScriptType,
-    addresses: Option<Vec<Address>>,
-}
-
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct TransactionOutput {
     value: f64,
     n: u32,
@@ -155,9 +145,8 @@ pub struct UnspentTransactionOutput {
     vout: u32,
     address: Option<Address>,
     account: Option<String>,
-    /// The output script paid, encoded as hex. TODO: Create a dedicated type for this
     #[serde(rename = "scriptPubKey")]
-    script_pub_key: String,
+    script_pub_key: EncodedScriptPubKey,
     redeem_script: Option<String>,
     pub amount: f64,
     confirmations: i32,
@@ -184,6 +173,34 @@ impl NewTransactionInput {
 }
 
 pub type NewTransactionOutput = HashMap<Address, f64>;
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct TransactionOutputDetail {
+    txid: TransactionId,
+    vout: u32,
+    #[serde(rename = "scriptPubKey")]
+    script_pub_key: EncodedScriptPubKey,
+    #[serde(rename = "redeemScript")]
+    redeem_script: Option<RedeemScript>,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct SigningError {
+    txid: TransactionId,
+    vout: u32,
+    // TODO: Use ScriptSig type here once we have the (de)serializer
+    #[serde(rename = "scriptSig")]
+    script_sig: String,
+    sequence: u32,
+    error: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, PartialEq)]
+pub struct SigningResult {
+    hex: String,
+    complete: bool,
+    errors: Option<Vec<SigningError>>,
+}
 
 #[cfg(test)]
 mod tests {

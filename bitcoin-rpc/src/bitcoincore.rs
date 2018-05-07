@@ -98,7 +98,16 @@ impl BitcoinCoreClient {
     }
 
     // TODO: disconnectnode
-    // TODO: dumpprivkey
+
+    pub fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<PrivateKey>, HTTPError> {
+        self.client.send(RpcRequest::new1(
+            JsonRpcVersion::V1,
+            "test",
+            "dumpprivkey",
+            address,
+        ))
+    }
+
     // TODO: dumpwallet
     // TODO: encryptwallet
     // TODO: estimatefee
@@ -303,7 +312,25 @@ impl BitcoinCoreClient {
     // TODO: settxfee
     // TODO: signmessage
     // TODO: signmessagewithprivkey
-    // TODO: signrawtransaction
+
+    pub fn sign_raw_transaction(
+        &self,
+        tx: &SerializedRawTransaction,
+        dependencies: Option<Vec<&TransactionOutputDetail>>,
+        private_keys: Option<Vec<&PrivateKey>>,
+        signature_hash_type: Option<SigHashType>,
+    ) -> Result<RpcResponse<SigningResult>, HTTPError> {
+        self.client.send(RpcRequest::new4(
+            JsonRpcVersion::V1,
+            "test",
+            "signrawtransaction",
+            tx,
+            dependencies,
+            private_keys,
+            signature_hash_type,
+        ))
+    }
+
     // TODO: stop
     // TODO: submitblock
 
