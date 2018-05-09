@@ -2,7 +2,7 @@
 
 members = [
 	"jsonrpc",
-	"trader",
+	"trading-service",
 	"exchange",
 	"trading-client",
 	"fake-treasury-service"
