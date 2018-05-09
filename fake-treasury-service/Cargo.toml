@@ -1,7 +1,13 @@
 [package]
 name = "fake-treasury-service"
 version = "0.1.0"
-authors = ["Thomas Eizinger <thomas@eizinger.io>"]
+
+authors = [
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+    "Franck Royer <franck@coblox.tech>",
+    "Lloyd Fournier <lloyd@coblox.tech>",
+]
 
 [dependencies]
 rocket = "0.3.10"
