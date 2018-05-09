@@ -1,5 +1,5 @@
 [package]
-name = "asx"
+name = "trading-client"
 version = "0.1.0"
 authors = ["Thomas Eizinger <thomas@eizinger.io>"]
 
