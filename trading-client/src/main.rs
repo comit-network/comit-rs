@@ -10,7 +10,7 @@ impl FromStr for Currency {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, String> {
-        Ok(Currency(String::from(s)))
+        Ok(Currency(s.to_string()))
     }
 }
 
