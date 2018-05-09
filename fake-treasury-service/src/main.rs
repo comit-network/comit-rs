@@ -1,7 +1,6 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
-#[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
 #[macro_use]
@@ -11,17 +10,15 @@ use rocket_contrib::Json;
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Rate {
-    sell: String,
-    buy: String,
+    symbol: String,
     rate: f32,
 }
 
-#[get("/<sell>/<buy>")]
-fn rate(sell: String, buy: String) -> Json<Rate> {
+#[get("/<symbol>")]
+fn rate(symbol: String) -> Json<Rate> {
     Json(Rate {
-        sell,
-        buy,
-        rate: 0.5,
+        symbol,
+        rate: 0.5
     })
 }
 
