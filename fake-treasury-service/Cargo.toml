@@ -1,0 +1,8 @@
+[package]
+name = "fake-treasury-service"
+version = "0.1.0"
+authors = ["Thomas Eizinger <thomas@eizinger.io>"]
+
+[dependencies]
+rocket = "0.3.10"
+rocket_codegen = "0.3.10"

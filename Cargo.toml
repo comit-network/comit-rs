@@ -4,5 +4,6 @@ members = [
 	"jsonrpc",
 	"trader",
 	"exchange",
-	"trading-client"
+	"trading-client",
+	"fake-treasury-service"
 ]
