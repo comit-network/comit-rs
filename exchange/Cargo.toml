@@ -4,3 +4,6 @@ version = "0.1.0"
 authors = ["Thomas Eizinger <thomas@eizinger.io>"]
 
 [dependencies]
+reqwest = "0.8.5"
+serde = "1.0.51"
+serde_derive = "1.0.51"
