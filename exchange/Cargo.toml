@@ -21,3 +21,4 @@ log = "0.4.1"
 rocket_codegen = "0.3.10"
 common-types = { path = "../common-types" }
 bitcoin-rpc = { path = "../bitcoin-rpc" }
+http-api-problem = { version = "0.5.2", features = ["with_rocket"] }

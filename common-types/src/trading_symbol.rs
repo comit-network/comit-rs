@@ -9,8 +9,18 @@ use serde::Serializer;
 use std::fmt;
 use super::*;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct TradingSymbol(Currency, Currency);
+
+impl TradingSymbol {
+    pub fn first(&self) -> &Currency {
+        &self.0
+    }
+
+    pub fn second(&self) -> &Currency {
+        &self.1
+    }
+}
 
 impl<'de> Deserialize<'de> for TradingSymbol {
     fn deserialize<D>(deserializer: D) -> Result<TradingSymbol, D::Error>

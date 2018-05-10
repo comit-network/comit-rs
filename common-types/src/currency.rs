@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use std::fmt;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Currency {
     BTC,
     ETH,
