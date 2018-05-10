@@ -4,7 +4,6 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate reqwest;
-#[macro_use]
 extern crate rocket;
 extern crate rocket_contrib;
 #[macro_use]
@@ -15,10 +14,7 @@ extern crate log;
 
 use rocket_contrib::Json;
 use rocket::response::status::BadRequest;
-use rocket::State;
 use std::env::var;
-
-struct Currency(String);
 
 #[derive(Serialize, Deserialize)]
 struct Symbol(String); // Expected format: BTC:LTC
