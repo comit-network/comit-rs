@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde::Serializer;
 use std::fmt;
 use super::*;
+use super::*;
 
 #[derive(PartialEq, Debug)]
 pub struct TradingSymbol(String, String);
@@ -36,7 +37,7 @@ impl<'de> Visitor<'de> for TradingSymbolVisitor {
     type Value = TradingSymbol;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "a trading symbol")
+        write!(formatter, "a trading symbol (BTC:ETH)")
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
