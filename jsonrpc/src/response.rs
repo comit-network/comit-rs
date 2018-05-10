@@ -1,26 +1,45 @@
-use version::Version;
+use version::JsonRpcVersion;
+use std::result::Result as StdResult;
 
 #[derive(Debug, Deserialize, PartialEq)]
-pub struct Error {
+pub struct RpcError {
     code: i32,
     message: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum Response<R> {
-    Successful {
-        id: String,
-        //        #[serde(rename = "jsonrpc")]
-        //        version: Version,
-        result: R,
-    },
-    Error {
-        id: String,
-        //        #[serde(rename = "jsonrpc")]
-        //        version: Version,
-        error: Error,
-    },
+pub struct RpcResponse<R> {
+    id: String,
+    result: Option<R>,
+    error: Option<RpcError>,
+}
+
+impl<R> Into<StdResult<R, RpcError>> for RpcResponse<R> {
+    fn into(self) -> Result<R, RpcError> {
+        match self {
+            RpcResponse {
+                result: Some(result),
+                error: None,
+                ..
+            } => Ok(result),
+            RpcResponse {
+                result: None,
+                error: Some(rpc_error),
+                ..
+            } => Err(rpc_error),
+            _ => panic!("Response must contain either result or error."),
+        }
+    }
+}
+
+impl<R> RpcResponse<R> {
+    pub fn into_result(self) -> StdResult<R, RpcError> {
+        self.into()
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
 }
 
 #[cfg(test)]
@@ -28,7 +47,7 @@ mod tests {
 
     use serde_json::from_str;
     use spectral::assert_that;
-    use response::Response;
+    use super::*;
 
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {
@@ -39,22 +58,9 @@ mod tests {
             "error": null
         }"#;
 
-        let deserialized_response: Response<i32> = from_str(result).unwrap();
+        let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
-        match deserialized_response {
-            Response::Successful {
-                id,
-                //                version,
-                result,
-            } => {
-                assert_that(&id).is_equal_to("test".to_string());
-                assert_that(&result).is_equal_to(519521);
-            }
-            Response::Error {
-                id,
-                /*version, */ error,
-            } => panic!("Should not yield error"),
-        }
+        assert_eq!(deserialized_response.into_result(), Ok(519521));
     }
 
     #[test]
@@ -65,18 +71,9 @@ mod tests {
                 "error": null
             }"#;
 
-        let deserialized_response: Response<i32> = from_str(result).unwrap();
+        let result: RpcResponse<i32> = from_str(result).unwrap();
 
-        match deserialized_response {
-            Response::Successful { id, result } => {
-                assert_that(&id).is_equal_to("curltest".to_string());
-                assert_that(&result).is_equal_to(1);
-            }
-            Response::Error {
-                id,
-                /*version,*/ error,
-            } => panic!("Should not yield error"),
-        }
+        assert_eq!(result.into_result(), Ok(1))
     }
 
     #[test]
@@ -91,26 +88,14 @@ mod tests {
             }
         }"#;
 
-        let deserialized_response: Response<i32> = from_str(result).unwrap();
+        let deserialized_response: RpcResponse<i32> = from_str(result).unwrap();
 
-        match deserialized_response {
-            Response::Successful {
-                id,
-                /*
-                version,
-*/
-                result,
-            } => {
-                panic!("Should not yield successful result");
-            }
-            Response::Error {
-                id,
-                /*version, */ error,
-            } => {
-                assert_that(&id).is_equal_to("test".to_string());
-                assert_that(&error.code).is_equal_to(-123);
-                assert_that(&error.message).is_equal_to("Something went wrong".to_string());
-            }
-        }
+        assert_eq!(
+            deserialized_response.into_result(),
+            Err(RpcError {
+                code: -123,
+                message: "Something went wrong".to_string(),
+            })
+        )
     }
 }

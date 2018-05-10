@@ -1,5 +1,5 @@
 #[derive(Serialize, Debug, Deserialize, PartialEq)]
-pub enum Version {
+pub enum JsonRpcVersion {
     #[serde(rename = "1.0")]
     V1,
 
