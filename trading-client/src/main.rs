@@ -18,10 +18,10 @@ impl FromStr for Currency {
 #[structopt(name = "Trading Client", about = "CLI for the atomic swap trading service.")]
 struct Opt {
     /// The currency you want to sell.
-    #[structopt(short = "s", long = "sell")]
+    #[structopt(short = "s", long = "sell", name = "currency to sell")]
     sell: Currency,
     /// The currency you want to buy.
-    #[structopt(short = "b", long = "buy")]
+    #[structopt(short = "b", long = "buy", name = "currency to buy")]
     buy: Currency,
     /// The amount you want to sell.
     #[structopt(short = "S", long = "sell-amount", name = "amount")]
