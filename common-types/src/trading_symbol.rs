@@ -10,7 +10,7 @@ use std::fmt;
 use super::*;
 
 #[derive(PartialEq, Debug)]
-pub struct TradingSymbol(String, String);
+pub struct TradingSymbol(Currency, Currency);
 
 impl<'de> Deserialize<'de> for TradingSymbol {
     fn deserialize<D>(deserializer: D) -> Result<TradingSymbol, D::Error>
@@ -48,7 +48,7 @@ impl<'de> Visitor<'de> for TradingSymbolVisitor {
                 let first = &groups["first"];
                 let second = &groups["second"];
 
-                Ok(TradingSymbol(first.to_string(), second.to_string()))
+                Ok(TradingSymbol(Currency::from(first), Currency::from(second)))
             }
             None => Err(de::Error::invalid_value(Unexpected::Str(value), &self)),
         }
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn serializes_correctly() {
-        let symbol = TradingSymbol("ETH".to_string(), "BTC".to_string());
+        let symbol = TradingSymbol(Currency::ETH, Currency::BTC);
 
         let serialized_symbol = serde_json::to_string(&symbol).unwrap();
 
@@ -87,7 +87,7 @@ mod tests {
 
         let symbol = serde_json::from_str::<TradingSymbol>(serialized_symbol).unwrap();
 
-        assert_eq!(symbol, TradingSymbol("ETH".to_string(), "BTC".to_string()))
+        assert_eq!(symbol, TradingSymbol(Currency::ETH, Currency::BTC))
     }
 
 }

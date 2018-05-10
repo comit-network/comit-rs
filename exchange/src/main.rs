@@ -7,6 +7,8 @@ extern crate lazy_static;
 extern crate log;
 extern crate reqwest;
 
+extern crate bitcoin_rpc;
+extern crate common_types;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -19,15 +21,14 @@ use rocket_contrib::Json;
 use rocket::response::status::BadRequest;
 use std::env::var;
 use uuid::Uuid;
+use common_types::TradingSymbol;
+use bitcoin_rpc::*;
 
 #[derive(Debug, Deserialize)]
 struct Rate {
-    symbol: String,
+    symbol: TradingSymbol,
     rate: f32,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Symbol(String); // Expected format: BTC:LTC
 
 #[derive(Serialize, Deserialize, Debug)]
 struct OfferRequest {
@@ -37,10 +38,13 @@ struct OfferRequest {
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Offer {
-    symbol: String,
+    symbol: TradingSymbol,
     rate: f32,
     uid: Uuid,
+    target_address: Address,
 }
+
+const BTC_ADDRESS: &'static Address = Address::from("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ");
 
 lazy_static! {
     static ref TREASURY_SERVICE_URL: String = var("TREASURY_SERVICE_URL").unwrap();

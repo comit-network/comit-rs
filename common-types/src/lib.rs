@@ -3,6 +3,8 @@ extern crate lazy_static;
 extern crate regex;
 extern crate serde;
 
-pub use trading_symbol::TradingSymbol;
-
 mod trading_symbol;
+mod currency;
+
+pub use trading_symbol::TradingSymbol;
+pub use currency::Currency;

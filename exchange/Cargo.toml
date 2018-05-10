@@ -19,3 +19,5 @@ rocket = "0.3.10"
 rocket_contrib = "0.3.10"
 log = "0.4.1"
 rocket_codegen = "0.3.10"
+common-types = { path = "../common-types" }
+bitcoin-rpc = { path = "../bitcoin-rpc" }
