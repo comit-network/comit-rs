@@ -16,10 +16,7 @@ struct Rate {
 
 #[get("/<symbol>")]
 fn rate(symbol: String) -> Json<Rate> {
-    Json(Rate {
-        symbol,
-        rate: 0.5
-    })
+    Json(Rate { symbol, rate: 0.5 })
 }
 
 fn main() {
