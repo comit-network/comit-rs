@@ -6,7 +6,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate reqwest;
-#[macro_use]
+
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -17,7 +17,6 @@ extern crate uuid;
 use reqwest::Error;
 use rocket_contrib::Json;
 use rocket::response::status::BadRequest;
-use rocket::State;
 use std::env::var;
 use uuid::Uuid;
 
@@ -53,7 +52,6 @@ fn get(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
 
 #[post("/offers", format = "application/json", data = "<offer_request>")]
 fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadRequest<String>> {
-    let client = reqwest::Client::new();
     let offer_request = offer_request.into_inner();
 
     let res = get(&*TREASURY_SERVICE_URL, offer_request);
