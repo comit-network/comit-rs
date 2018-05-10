@@ -46,7 +46,7 @@ lazy_static! {
     static ref TREASURY_SERVICE_URL: String = var("TREASURY_SERVICE_URL").unwrap();
 }
 
-fn get(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
+fn get_rate(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
     reqwest::get(format!("{}/rate/{}", url, offer_request.symbol).as_str())?.json::<Rate>()
 }
 
@@ -54,7 +54,7 @@ fn get(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
 fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadRequest<String>> {
     let offer_request = offer_request.into_inner();
 
-    let res = get(&*TREASURY_SERVICE_URL, offer_request);
+    let res = get_rate(&*TREASURY_SERVICE_URL, offer_request);
 
     match res {
         Ok(rate) => {
