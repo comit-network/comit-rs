@@ -8,7 +8,6 @@ use serde::Serialize;
 use serde::Serializer;
 use std::fmt;
 use super::*;
-use super::*;
 
 #[derive(PartialEq, Debug)]
 pub struct TradingSymbol(String, String);
@@ -69,6 +68,8 @@ impl Serialize for TradingSymbol {
 
 #[cfg(test)]
 mod tests {
+
+    use super::*;
     extern crate serde_json;
 
     #[test]
