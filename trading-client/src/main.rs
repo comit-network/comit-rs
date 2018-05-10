@@ -24,8 +24,8 @@ struct Opt {
     #[structopt(short = "b", long = "buy")]
     buy: Currency,
     /// The amount you want to sell.
-    #[structopt(short = "a", long = "amount")]
-    amount: u32,
+    #[structopt(short = "S", long = "sell-amount", name = "amount")]
+    sell_amount: u32,
 }
 
 fn main() {
