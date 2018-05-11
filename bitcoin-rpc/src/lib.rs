@@ -5,10 +5,9 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-pub mod types;
+mod types;
 mod bitcoincore;
 
 pub use types::*;
 pub use bitcoincore::*;
-
 pub use rustc_serialize::hex;

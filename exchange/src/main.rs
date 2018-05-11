@@ -14,7 +14,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate uuid;
 
-use bitcoin_rpc::types::Address;
+use bitcoin_rpc::Address;
 use reqwest::Error;
 use rocket::response::status::BadRequest;
 use rocket::State;
@@ -60,7 +60,7 @@ fn get_rate(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
 }
 
 #[post("/offers", format = "application/json", data = "<offer_request>")]
-fn offers_request(
+fn post_offers_route(
     offers: State<Offers>,
     offer_request: Json<OfferRequest>,
 ) -> Result<Json<Offer>, BadRequest<String>> {
@@ -104,6 +104,6 @@ fn main() {
 
     rocket::ignite()
         .manage(offers)
-        .mount("/", routes![self::offers_request])
+        .mount("/", routes![self::post_offers_route])
         .launch();
 }
