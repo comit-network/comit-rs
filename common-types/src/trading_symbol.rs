@@ -1,25 +1,16 @@
-use regex::Regex;
 use serde::de;
-use serde::de::Unexpected;
 use serde::de::Visitor;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
 use std::fmt;
-use super::*;
 
-#[derive(PartialEq, Debug, Clone)]
-pub struct TradingSymbol(Currency, Currency);
-
-impl TradingSymbol {
-    pub fn first(&self) -> &Currency {
-        &self.0
-    }
-
-    pub fn second(&self) -> &Currency {
-        &self.1
-    }
+#[derive(PartialEq, Debug)]
+#[allow(non_camel_case_types)]
+pub enum TradingSymbol {
+    ETH_BTC,
+    UNKNOWN(String),
 }
 
 impl<'de> Deserialize<'de> for TradingSymbol {
@@ -29,15 +20,6 @@ impl<'de> Deserialize<'de> for TradingSymbol {
     {
         deserializer.deserialize_string(TradingSymbolVisitor)
     }
-}
-
-lazy_static! {
-    static ref TRADING_SYMBOL_REGEX: Regex = Regex::new(r"(?x)
-    (?P<first>[A-Z0-9]+)  # the first part
-    :                     # separator
-    (?P<second>[A-Z0-9]+) # the second part
-    ")
-    .unwrap();
 }
 
 struct TradingSymbolVisitor;
@@ -53,14 +35,9 @@ impl<'de> Visitor<'de> for TradingSymbolVisitor {
     where
         E: de::Error,
     {
-        match TRADING_SYMBOL_REGEX.captures(value) {
-            Some(groups) => {
-                let first = &groups["first"];
-                let second = &groups["second"];
-
-                Ok(TradingSymbol(Currency::from(first), Currency::from(second)))
-            }
-            None => Err(de::Error::invalid_value(Unexpected::Str(value), &self)),
+        match value {
+            "ETH:BTC" => Ok(TradingSymbol::ETH_BTC),
+            _ => Ok(TradingSymbol::UNKNOWN(value.to_string())),
         }
     }
 }
@@ -70,9 +47,12 @@ impl Serialize for TradingSymbol {
     where
         S: Serializer,
     {
-        let serialized_symbol = format!("{}:{}", self.0, self.1);
+        let serialized_symbol = match self {
+            &TradingSymbol::ETH_BTC => "ETH:BTC",
+            &TradingSymbol::UNKNOWN(ref string) => string.as_str(),
+        };
 
-        serializer.serialize_str(&serialized_symbol)
+        serializer.serialize_str(serialized_symbol)
     }
 }
 
@@ -84,7 +64,7 @@ mod tests {
 
     #[test]
     fn serializes_correctly() {
-        let symbol = TradingSymbol(Currency::ETH, Currency::BTC);
+        let symbol = TradingSymbol::ETH_BTC;
 
         let serialized_symbol = serde_json::to_string(&symbol).unwrap();
 
@@ -97,7 +77,7 @@ mod tests {
 
         let symbol = serde_json::from_str::<TradingSymbol>(serialized_symbol).unwrap();
 
-        assert_eq!(symbol, TradingSymbol(Currency::ETH, Currency::BTC))
+        assert_eq!(symbol, TradingSymbol::ETH_BTC)
     }
 
 }
