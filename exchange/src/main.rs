@@ -90,7 +90,7 @@ fn offers_request(offers: State<Offers>, offer_request: Json<OfferRequest>) -> R
 
 fn main() {
     let offers = Offers { all_offers: Mutex::new(HashMap::new()) };
-    
+
     rocket::ignite()
         .manage(offers)
         .mount("/", routes![self::offers_request])
