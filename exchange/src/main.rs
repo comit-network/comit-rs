@@ -58,7 +58,10 @@ fn get_rate(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
 }
 
 #[post("/offers", format = "application/json", data = "<offer_request>")]
-fn offers_request(offers: State<Offers>, offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadRequest<String>> {
+fn offers_request(
+    offers: State<Offers>,
+    offer_request: Json<OfferRequest>,
+) -> Result<Json<Offer>, BadRequest<String>> {
     let offer_request = offer_request.into_inner();
 
     let res = get_rate(&*TREASURY_SERVICE_URL, offer_request);
@@ -89,7 +92,9 @@ fn offers_request(offers: State<Offers>, offer_request: Json<OfferRequest>) -> R
 }
 
 fn main() {
-    let offers = Offers { all_offers: Mutex::new(HashMap::new()) };
+    let offers = Offers {
+        all_offers: Mutex::new(HashMap::new()),
+    };
 
     rocket::ignite()
         .manage(offers)
