@@ -1,5 +1,5 @@
 [package]
-name = "exchange"
+name = "trading-service"
 version = "0.1.0"
 
 authors = [
@@ -10,13 +10,12 @@ authors = [
 ]
 
 [dependencies]
-bitcoin-rpc = { path = "../bitcoin-rpc" }
-reqwest = "0.8.5"
-serde = "1.0.51"
-serde_derive = "1.0.51"
-lazy_static = "1.0.0"
-uuid = { version = "0.6.3", features = ["serde", "v4"] }
 rocket = "0.3.10"
 rocket_contrib = "0.3.10"
-log = "0.4.1"
+serde_derive = "1.0.51"
+reqwest = "0.8.5"
 rocket_codegen = "0.3.10"
+serde = "1.0.51"
+lazy_static = "1.0.0"
+log = "0.4.1"
+env_logger = "0.5.10"
