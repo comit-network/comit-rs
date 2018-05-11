@@ -19,6 +19,9 @@ use rocket_contrib::Json;
 use rocket::response::status::BadRequest;
 use std::env::var;
 use uuid::Uuid;
+use std::collections::HashMap;
+use rocket::State;
+use std::sync::Mutex;
 
 #[derive(Debug, Deserialize)]
 struct Rate {
@@ -35,11 +38,15 @@ struct OfferRequest {
     sell_amount: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Offer {
     symbol: String,
     rate: f32,
     uid: Uuid,
+}
+
+struct Offers {
+    all_offers: Mutex<HashMap<Uuid, Offer>>,
 }
 
 lazy_static! {
@@ -51,7 +58,7 @@ fn get_rate(url: &str, offer_request: OfferRequest) -> Result<Rate, Error> {
 }
 
 #[post("/offers", format = "application/json", data = "<offer_request>")]
-fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadRequest<String>> {
+fn offers_request(offers: State<Offers>, offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadRequest<String>> {
     let offer_request = offer_request.into_inner();
 
     let res = get_rate(&*TREASURY_SERVICE_URL, offer_request);
@@ -66,9 +73,12 @@ fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadR
                 uid,
             };
 
-            //TODO: store uid?
+            let mut result = offers.all_offers.lock().unwrap();
+            result.insert(uid, offer);
 
-            Ok(Json(offer))
+            let offer = result.get(&uid).unwrap();
+            //TODO: avoid the clone
+            Ok(Json(offer.clone()))
         }
         Err(e) => {
             error!("{:?}", e);
@@ -79,7 +89,10 @@ fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadR
 }
 
 fn main() {
+    let offers = Offers { all_offers: Mutex::new(HashMap::new()) };
+    
     rocket::ignite()
+        .manage(offers)
         .mount("/", routes![self::offers_request])
         .launch();
 }
