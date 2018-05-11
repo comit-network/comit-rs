@@ -1,0 +1,20 @@
+language: rust
+cache: cargo
+env:
+  global:
+    - BITCOIN_RPC_URL="http://localhost:18443"
+    - BITCOIN_RPC_USERNAME="bitcoin"
+    - BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+rust:
+  - stable
+  - nightly
+matrix:
+  allow_failures:
+    - rust: stable
+before_script:
+  - ./install-rust-fmt.sh
+  - .docker/bitcoind-regtest
+script:
+  - ./check-rust-fmt.sh
+  - cargo test
+  - cargo build
