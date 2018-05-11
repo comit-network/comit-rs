@@ -1,12 +1,12 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
+extern crate bitcoin_rpc;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
 extern crate reqwest;
-
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
@@ -14,14 +14,15 @@ extern crate serde;
 extern crate serde_derive;
 extern crate uuid;
 
+use bitcoin_rpc::types::Address;
 use reqwest::Error;
-use rocket_contrib::Json;
 use rocket::response::status::BadRequest;
-use std::env::var;
-use uuid::Uuid;
-use std::collections::HashMap;
 use rocket::State;
+use rocket_contrib::Json;
+use std::collections::HashMap;
+use std::env::var;
 use std::sync::Mutex;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 struct Rate {
@@ -43,6 +44,7 @@ struct Offer {
     symbol: String,
     rate: f32,
     uid: Uuid,
+    address: Address,
 }
 
 struct Offers {
@@ -64,6 +66,7 @@ fn offers_request(
 ) -> Result<Json<Offer>, BadRequest<String>> {
     let offer_request = offer_request.into_inner();
 
+    //TODO: grab TREASURY_SERVICE_URL in the main and add it to the state
     let res = get_rate(&*TREASURY_SERVICE_URL, offer_request);
 
     match res {
@@ -74,6 +77,9 @@ fn offers_request(
                 symbol: rate.symbol,
                 rate: rate.rate,
                 uid,
+                // TODO: retrieve and use real address
+                // This should never be used. Private key is: cSVXkgbkkkjzXV2JMg1zWui4A4dCj55sp9hFoVSUQY9DVh9WWjuj
+                address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
             };
 
             let mut result = offers.all_offers.lock().unwrap();
