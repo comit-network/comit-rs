@@ -15,6 +15,7 @@ extern crate log;
 use rocket_contrib::Json;
 use rocket::response::status::BadRequest;
 use std::env::var;
+use rocket::State;
 
 #[derive(Serialize, Deserialize)]
 struct Symbol(String); // Expected format: BTC:LTC
@@ -32,20 +33,55 @@ struct Offer {
     uid: String,
 }
 
-lazy_static! {
-    static ref EXCHANGE_SERVICE_URL: String = var("EXCHANGE_SERVICE_URL").unwrap();
+trait ApiClient {
+    fn create_offer(&self, offer_request: &OfferRequest) -> Result<Offer, reqwest::Error>;
 }
 
+struct DefaultApiClient {
+    client: reqwest::Client,
+    url: ExchangeApiUrl,
+}
+
+impl ApiClient for DefaultApiClient {
+    fn create_offer(&self, offer_request: &OfferRequest) -> Result<Offer, reqwest::Error> {
+        self.client
+            .post(self.url.0.as_str())
+            .json(offer_request)
+            .send()
+            .and_then(|mut res| res.json::<Offer>())
+    }
+}
+
+struct ApiClientFactory;
+
+impl ApiClientFactory {
+    #[cfg(test)]
+    fn create_client(url: &ExchangeApiUrl) -> impl ApiClient {
+        unimplemented!()
+    }
+
+    #[cfg(not(test))]
+    fn create_client(url: &ExchangeApiUrl) -> impl ApiClient {
+        DefaultApiClient {
+            client: reqwest::Client::new(),
+            url: url.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct ExchangeApiUrl(String);
+
 #[post("/offers", format = "application/json", data = "<offer_request>")]
-fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadRequest<String>> {
-    let client = reqwest::Client::new();
+fn offers_request(
+    offer_request: Json<OfferRequest>,
+    url: State<ExchangeApiUrl>,
+) -> Result<Json<Offer>, BadRequest<String>> {
     let offer_request = offer_request.into_inner();
 
-    let res = client
-        .post(&*EXCHANGE_SERVICE_URL)
-        .json(&offer_request)
-        .send()
-        .and_then(|mut res| res.json::<Offer>());
+    let client = ApiClientFactory::create_client(url.inner());
+
+    let res = client.create_offer(&offer_request);
 
     match res {
         Ok(offer) => {
@@ -64,5 +100,6 @@ fn offers_request(offer_request: Json<OfferRequest>) -> Result<Json<Offer>, BadR
 fn main() {
     rocket::ignite()
         .mount("/", routes![self::offers_request])
+        .manage(ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap()))
         .launch();
 }
