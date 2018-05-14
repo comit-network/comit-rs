@@ -5,11 +5,11 @@ extern crate trading_service;
 extern crate rocket;
 
 use std::env::var;
+use trading_service::rocket_factory::create_rocket_instance;
 use trading_service::types::ExchangeApiUrl;
 
 fn main() {
-    rocket::ignite()
-        .mount("/", routes![trading_service::routes::offers::post])
-        .manage(ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap()))
-        .launch();
+    let exchange_api_url = ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap());
+
+    create_rocket_instance(exchange_api_url).launch();
 }

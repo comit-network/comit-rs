@@ -31,3 +31,32 @@ pub fn post(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use types::ExchangeApiUrl;
+    use rocket_factory::create_rocket_instance;
+    use rocket::http::*;
+    use rocket;
+
+    #[test]
+    fn given_an_offer_from_exchange_should_attach_hash_of_secret() {
+        let url = ExchangeApiUrl("stub".to_string());
+
+        let rocket = create_rocket_instance(url);
+        let client = rocket::local::Client::new(rocket).unwrap();
+
+        let request = client
+            .post("/offers")
+            .header(ContentType::JSON)
+            .body(r#"{
+            "symbol": "ETH:BTC",
+            "sell_amount": 0
+        }"#);
+
+        let response = request.dispatch();
+
+        assert_eq!(response.status(), Status::Ok)
+    }
+}

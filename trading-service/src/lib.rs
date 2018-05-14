@@ -18,4 +18,4 @@ mod exchange_api_client;
 
 pub mod types;
 pub mod routes;
-
+pub mod rocket_factory;
