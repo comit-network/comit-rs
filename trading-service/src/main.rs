@@ -52,20 +52,16 @@ impl ApiClient for DefaultApiClient {
     }
 }
 
-struct ApiClientFactory;
+#[cfg(test)]
+fn create_client(url: &ExchangeApiUrl) -> impl ApiClient {
+    unimplemented!()
+}
 
-impl ApiClientFactory {
-    #[cfg(test)]
-    fn create_client(url: &ExchangeApiUrl) -> impl ApiClient {
-        unimplemented!()
-    }
-
-    #[cfg(not(test))]
-    fn create_client(url: &ExchangeApiUrl) -> impl ApiClient {
-        DefaultApiClient {
-            client: reqwest::Client::new(),
-            url: url.clone(),
-        }
+#[cfg(not(test))]
+fn create_client(url: &ExchangeApiUrl) -> impl ApiClient {
+    DefaultApiClient {
+        client: reqwest::Client::new(),
+        url: url.clone(),
     }
 }
 
@@ -79,7 +75,7 @@ fn offers_request(
 ) -> Result<Json<Offer>, BadRequest<String>> {
     let offer_request = offer_request.into_inner();
 
-    let client = ApiClientFactory::create_client(url.inner());
+    let client = create_client(url.inner());
 
     let res = client.create_offer(&offer_request);
 
