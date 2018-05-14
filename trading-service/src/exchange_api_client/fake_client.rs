@@ -1,7 +1,7 @@
 use super::client::ApiClient;
-use types::OfferRequest;
-use types::Offer;
 use reqwest;
+use types::Offer;
+use types::OfferRequest;
 
 pub struct FakeApiClient;
 

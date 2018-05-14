@@ -1,9 +1,9 @@
+use self::super::client_factory::create_client;
 use bitcoin_rpc::*;
 use jsonrpc::HTTPError;
 use jsonrpc::RpcError;
 use jsonrpc::RpcResponse;
 use std::fmt::Debug;
-use self::super::client_factory::create_client;
 
 pub fn assert_successful_result<R, I>(invocation: I)
 where

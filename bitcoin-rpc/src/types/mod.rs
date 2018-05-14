@@ -1,10 +1,10 @@
 #[macro_use]
 mod from_str;
-mod transaction;
 mod address;
 mod block;
-mod script;
 mod keys;
+mod script;
+mod transaction;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct BlockHash(String);
@@ -35,7 +35,7 @@ pub enum SigHashType {
 }
 
 pub use self::address::*;
-pub use self::transaction::*;
 pub use self::block::*;
-pub use self::script::*;
 pub use self::keys::*;
+pub use self::script::*;
+pub use self::transaction::*;

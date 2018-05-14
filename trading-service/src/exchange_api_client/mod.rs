@@ -1,5 +1,5 @@
-use types::ExchangeApiUrl;
 use reqwest;
+use types::ExchangeApiUrl;
 
 mod client;
 mod fake_client;

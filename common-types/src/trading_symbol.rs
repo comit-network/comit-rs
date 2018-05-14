@@ -1,9 +1,9 @@
-use serde::de;
-use serde::de::Visitor;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
 use serde::Serializer;
+use serde::de;
+use serde::de::Visitor;
 use std::fmt;
 
 #[derive(PartialEq, Debug)]

@@ -1,10 +1,10 @@
 use jsonrpc::HTTPClient;
-use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
-use jsonrpc::header::{Authorization, Basic, Headers};
-use types::Address;
 use jsonrpc::HTTPError;
-use types::*;
+use jsonrpc::header::{Authorization, Basic, Headers};
+use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
 use serde::de::DeserializeOwned;
+use types::Address;
+use types::*;
 
 pub struct BitcoinCoreClient {
     client: RpcClient,

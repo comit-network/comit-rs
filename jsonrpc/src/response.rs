@@ -1,5 +1,5 @@
-use version::JsonRpcVersion;
 use std::result::Result as StdResult;
+use version::JsonRpcVersion;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct RpcError {
@@ -45,9 +45,9 @@ impl<R> RpcResponse<R> {
 #[cfg(test)]
 mod tests {
 
+    use super::*;
     use serde_json::from_str;
     use spectral::assert_that;
-    use super::*;
 
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {

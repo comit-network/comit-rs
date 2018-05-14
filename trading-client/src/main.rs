@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate structopt;
-use structopt::StructOpt;
 use std::str::FromStr;
+use structopt::StructOpt;
 
 #[derive(Debug)]
 struct Currency(String);

@@ -1,8 +1,8 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
-extern crate trading_service;
 extern crate rocket;
+extern crate trading_service;
 
 use std::env::var;
 use trading_service::rocket_factory::create_rocket_instance;
