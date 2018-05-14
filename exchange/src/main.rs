@@ -16,8 +16,8 @@ extern crate uuid;
 
 use bitcoin_rpc::Address;
 use reqwest::Error;
-use rocket::response::status::BadRequest;
 use rocket::State;
+use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use std::collections::HashMap;
 use std::env::var;

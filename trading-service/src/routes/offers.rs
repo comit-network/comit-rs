@@ -1,11 +1,11 @@
-use rocket_contrib::Json;
-use rocket::response::status::BadRequest;
-use std::env::var;
+use exchange_api_client::*;
 use rocket::State;
-use types::OfferRequest;
+use rocket::response::status::BadRequest;
+use rocket_contrib::Json;
+use std::env::var;
 use types::ExchangeApiUrl;
 use types::Offer;
-use exchange_api_client::*;
+use types::OfferRequest;
 
 #[post("/offers", format = "application/json", data = "<offer_request>")]
 pub fn post(
@@ -35,10 +35,10 @@ pub fn post(
 #[cfg(test)]
 mod tests {
 
-    use types::ExchangeApiUrl;
-    use rocket_factory::create_rocket_instance;
-    use rocket::http::*;
     use rocket;
+    use rocket::http::*;
+    use rocket_factory::create_rocket_instance;
+    use types::ExchangeApiUrl;
 
     #[test]
     fn given_an_offer_from_exchange_should_attach_hash_of_secret() {
@@ -47,13 +47,12 @@ mod tests {
         let rocket = create_rocket_instance(url);
         let client = rocket::local::Client::new(rocket).unwrap();
 
-        let request = client
-            .post("/offers")
-            .header(ContentType::JSON)
-            .body(r#"{
+        let request = client.post("/offers").header(ContentType::JSON).body(
+            r#"{
             "symbol": "ETH:BTC",
             "sell_amount": 0
-        }"#);
+        }"#,
+        );
 
         let response = request.dispatch();
 

@@ -1,5 +1,5 @@
-use types::*;
 use std::collections::HashMap;
+use types::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TransactionId(String);
@@ -254,8 +254,8 @@ pub struct FundingResult {
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use super::*;
+    use serde_json;
 
     #[test]
     fn should_deserialize_transaction() {

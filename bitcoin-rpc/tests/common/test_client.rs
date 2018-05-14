@@ -1,5 +1,5 @@
-use bitcoin_rpc::*;
 use self::super::client_factory::create_client;
+use bitcoin_rpc::*;
 
 pub struct BitcoinCoreTestClient {
     pub client: BitcoinCoreClient,

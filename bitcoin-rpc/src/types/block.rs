@@ -26,8 +26,8 @@ pub struct Block {
 #[cfg(test)]
 mod tests {
 
-    use serde_json;
     use super::*;
+    use serde_json;
 
     #[test]
     fn can_deserialize_block_struct() {
@@ -83,10 +83,10 @@ mod tests {
                 chainwork: "0000000000000000000000000000000000000000000000000000000200020002"
                     .to_string(),
                 previousblockhash: Some(BlockHash::from(
-                    "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+                    "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
                 )),
                 nextblockhash: Some(BlockHash::from(
-                    "000000006a625f06636b8bb6ac7b960a8d03705d1ace08b1a19da3fdcc99ddbd"
+                    "000000006a625f06636b8bb6ac7b960a8d03705d1ace08b1a19da3fdcc99ddbd",
                 )),
             }
         )

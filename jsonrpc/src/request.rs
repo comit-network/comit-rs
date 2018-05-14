@@ -1,5 +1,5 @@
-use version::JsonRpcVersion;
 use serde::Serialize;
+use version::JsonRpcVersion;
 
 #[derive(Serialize)]
 pub struct RpcRequest<P>

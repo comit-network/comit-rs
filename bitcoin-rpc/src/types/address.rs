@@ -47,8 +47,8 @@ pub struct AddressValidationResult {
 
 #[cfg(test)]
 mod tests {
-    use serde_json;
     use super::*;
+    use serde_json;
 
     #[test]
     fn can_deserialize_address() {

@@ -16,6 +16,6 @@ extern crate log;
 
 mod exchange_api_client;
 
-pub mod types;
-pub mod routes;
 pub mod rocket_factory;
+pub mod routes;
+pub mod types;

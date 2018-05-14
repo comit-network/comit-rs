@@ -1,8 +1,8 @@
-use reqwest::{Client as HTTPClient, Error};
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use request::RpcRequest;
+use reqwest::{Client as HTTPClient, Error};
 use response::RpcResponse;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 pub struct RpcClient {
     client: HTTPClient,
