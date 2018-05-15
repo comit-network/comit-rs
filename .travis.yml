@@ -13,4 +13,7 @@ before_script:
 script:
   - ./check-rust-fmt.sh
   - cargo build --verbose
-  - cargo test --verbose
+
+  # Bitcoin-RPC has integration tests with a bitcoin node. Those MUST run sequentially.
+  - cargo test --verbose --all --exclude bitcoin-rpc
+  - cargo test --verbose --all --package bitcoin-rpc --jobs 1 
