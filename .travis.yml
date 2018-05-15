@@ -8,10 +8,10 @@ env:
 rust: nightly-2018-05-05
 install: true # Install would run cargo build again - we don't need that
 before_script:
-  - ./install-rust-fmt.sh
+  - ./setup.sh
   - .docker/bitcoind-regtest
 script:
-  - ./check-rust-fmt.sh
+  - ./check-fmt.sh
   - cargo build --verbose
 
   # Bitcoin-RPC has integration tests with a bitcoin node. Those MUST run sequentially.
