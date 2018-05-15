@@ -1,5 +1,5 @@
 #[derive(Serialize, Deserialize)]
-pub struct Symbol(String); // Expected format: BTC:LTC
+pub struct Symbol(pub String); // Expected format: BTC:LTC
 
 #[derive(Serialize, Deserialize)]
 pub struct OfferRequest {
@@ -9,9 +9,9 @@ pub struct OfferRequest {
 
 #[derive(Serialize, Deserialize)]
 pub struct Offer {
-    symbol: Symbol,
-    rate: f32,
-    uid: String,
+    pub symbol: Symbol,
+    pub rate: f32,
+    pub uid: String,
 }
 
 #[derive(Clone)]
