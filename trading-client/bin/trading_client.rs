@@ -7,20 +7,12 @@ use structopt::StructOpt;
 
 extern crate reqwest;
 extern crate serde;
+extern crate trading_client;
+
+use trading_client::trading_service_api_client::create_client;
 
 #[macro_use]
 extern crate serde_derive;
-
-#[derive(Debug, Serialize)]
-struct Currency(String);
-
-impl FromStr for Currency {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, String> {
-        Ok(Currency(s.to_string()))
-    }
-}
 
 #[derive(Debug, StructOpt, Serialize)]
 #[structopt(name = "Trading Client", about = "CLI for the atomic swap trading service.")]
@@ -52,34 +44,10 @@ impl<T, E> UnwrapOrExit<T, E> for Result<T, E> {
     }
 }
 
-// TODO implement API
-// struct TradingServiceClient {
-//     client: reqwest::Client,
-//     service_url: String
-// }
-
-// trait TradingServiceApi {
-//     pub fn create_offer() -> Result<> {
-
-//     }
-// }
-
-// struct FakeTradingServiceClient {
-
-// }
-
 fn main() {
     let opt = Opt::from_args();
-
     println!("{:?}", opt);
 
-    let trading_service_url =
-        var("TRADING_SERVICE_URL").unwrap_or_exit("TRADING_SERVICE_URL not set");
-
-    let client = reqwest::Client::new();
-    let res = client.post(trading_service_url.as_str()).json(&opt).send();
-
-    println!("{:?}", res);
     // self.client
     //     .json(&request)
     //     .send()
