@@ -14,7 +14,7 @@ impl ApiClient for DefaultApiClient {
     fn request_offer(&self, request: &OfferRequest) -> Result<Offer, reqwest::Error> {
         let client = reqwest::Client::new();
         client
-            .post(self.url.0.as_str())
+            .post(format!("{}/offers", self.url.0).as_str())
             .json(request)
             .send()
             .and_then(|mut res| res.json::<Offer>())
