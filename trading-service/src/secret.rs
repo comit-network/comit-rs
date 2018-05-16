@@ -75,7 +75,7 @@ mod tests {
         let bytes: Vec<u8> = b"hello world, you are beautiful!!".to_vec();
         let mut secret = Secret::new(bytes);
         assert_eq!(
-            secret.hash(),
+            *secret.hash(),
             SecretHash(
                 "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec".to_string()
             )
