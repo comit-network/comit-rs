@@ -1,21 +1,26 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
-#[macro_use]
+extern crate bitcoin_rpc;
 extern crate lazy_static;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
 #[macro_use]
-extern crate rocket_codegen;
-#[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
+extern crate uuid;
+
+extern crate crypto;
+extern crate rand;
 
 #[macro_use]
 extern crate log;
+extern crate serde;
 
 mod exchange_api_client;
 
 pub mod rocket_factory;
 pub mod routes;
+pub mod secret;
 pub mod types;
