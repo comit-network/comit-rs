@@ -47,7 +47,7 @@ impl BitcoinCoreTestClient {
             .generate(101)
             .and_then(|response| {
                 let blocks = response.into_result().unwrap();
-                let block = blocks.get(100).unwrap();
+                let block = blocks.get(50).unwrap();
                 self.client.get_block(block)
             })
             .unwrap()
