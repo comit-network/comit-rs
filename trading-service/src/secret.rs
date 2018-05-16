@@ -15,7 +15,7 @@ impl SecretHash {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Secret {
-    pub secret: Vec<u8>,
+    secret: Vec<u8>,
     hash: Option<SecretHash>,
 }
 
