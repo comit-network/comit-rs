@@ -29,16 +29,16 @@ impl Secret {
         Secret { secret, hash: None }
     }
 
-    pub fn hash(&mut self) -> SecretHash {
+    pub fn hash(&mut self) -> &SecretHash {
         match self.hash {
             None => {
                 let mut sha = Sha256::new();
                 sha.input(self.secret.as_slice());
                 let hash = SecretHash(sha.result_str());
                 self.hash = Some(hash.clone());
-                hash
+                self.hash()
             }
-            Some(ref hash) => hash.clone(),
+            Some(ref hash) => hash,
         }
     }
 }

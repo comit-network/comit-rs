@@ -26,19 +26,20 @@ pub fn post(
 
             let mut secret = Secret::generate(&mut *rng);
 
-            let secret_hash = secret.hash();
-            let trading_offer =
-                SwapProposal::from_exchange_offer(exchange_offer, secret_hash.clone());
+            let swap_proposal = {
+                let secret_hash = secret.hash();
+                SwapProposal::from_exchange_offer(exchange_offer, secret_hash.clone())
+            };
 
-            let stored_offer = SwapData::new(trading_offer.clone(), secret);
+            let swap_data = SwapData::new(swap_proposal.clone(), secret);
 
             {
                 //TODO: make it nicer by creating method Offer::insert()
                 let mut offers = offers.all_offers.lock().unwrap();
-                offers.insert(stored_offer.uid(), stored_offer);
+                offers.insert(swap_data.uid(), swap_data);
             }
 
-            Ok(Json(trading_offer))
+            Ok(Json(swap_proposal))
         }
         Err(e) => {
             error!("{:?}", e);
