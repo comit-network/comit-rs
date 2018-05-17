@@ -2,7 +2,7 @@ use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use rand::{OsRng, Rng};
 
-pub const SHA256_DIGEST_LENGTH: usize = 32;
+const SHA256_DIGEST_LENGTH: usize = 32;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SecretHash(String); // String is hexadecimal!
