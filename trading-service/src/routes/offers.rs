@@ -22,6 +22,7 @@ pub fn post(
 
     match res {
         Ok(exchange_offer) => {
+            // TODO: clean up this unwrap
             let mut rng = rng.lock().unwrap();
 
             let mut secret = Secret::generate(&mut *rng);
