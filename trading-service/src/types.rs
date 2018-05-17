@@ -1,16 +1,35 @@
 use bitcoin_rpc::Address;
 use secret::{Secret, SecretHash};
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Mutex;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Symbol(pub String); // Expected format: BTC:LTC
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct Symbol(pub String); // Expected format: BTC-LTC
+
+#[derive(Serialize, Deserialize)]
+pub struct OfferRequestBody {
+    pub amount: u32,
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl OfferRequestBody {
+    pub fn new(offer_request: &OfferRequest) -> OfferRequestBody {
+        let amount = offer_request.amount;
+        OfferRequestBody { amount }
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 pub struct OfferRequest {
     pub symbol: Symbol,
-    sell_amount: u32,
+    pub amount: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -7,14 +7,19 @@ use secret::Secret;
 use std::sync::Mutex;
 use types::*;
 
-#[post("/offers", format = "application/json", data = "<offer_request>")]
+#[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post(
-    offer_request: Json<OfferRequest>,
+    offer_request_body: Json<OfferRequestBody>,
     url: State<ExchangeApiUrl>,
     offers: State<Offers>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<SwapProposal>, BadRequest<String>> {
-    let offer_request = offer_request.into_inner();
+    let offer_request_body = offer_request_body.into_inner();
+
+    let offer_request = OfferRequest {
+        symbol: Symbol("ETH-BTC".to_string()),
+        amount: offer_request_body.amount,
+    };
 
     let client = create_client(url.inner());
 
@@ -67,12 +72,10 @@ mod tests {
         let rocket = create_rocket_instance(url, offers);
         let client = rocket::local::Client::new(rocket).unwrap();
 
-        let request = client.post("/offers").header(ContentType::JSON).body(
-            r#"{
-            "symbol": "ETH:BTC",
-            "sell_amount": 0
-        }"#,
-        );
+        let request = client
+            .post("/trades/ETH-BTC/buy-offers")
+            .header(ContentType::JSON)
+            .body(r#"{ "amount": 43 }"#);
 
         let mut response = request.dispatch();
 
@@ -80,7 +83,7 @@ mod tests {
         let offer_response: SwapProposal =
             serde_json::from_str::<SwapProposal>(&response.body_string().unwrap()).unwrap();
 
-        assert_eq!(offer_response.symbol, Symbol("ETH:BTC".to_string()));
+        assert_eq!(offer_response.symbol, Symbol("ETH-BTC".to_string()));
 
         // 32 bytes -> 64 hex characters
         assert_eq!(offer_response.secret_hash.as_hex().len(), 64);

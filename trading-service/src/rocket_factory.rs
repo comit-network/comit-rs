@@ -8,7 +8,7 @@ pub fn create_rocket_instance(exchange_api_url: ExchangeApiUrl, offers: Offers) 
     // TODO: allow caller to choose randomness source
     let rng = OsRng::new().expect("Failed to get randomness from OS");
     rocket::ignite()
-        .mount("/", routes![routes::offers::post])
+        .mount("/", routes![routes::eth_btc::post])
         .manage(exchange_api_url)
         .manage(offers)
         .manage(Mutex::new(rng))
