@@ -3,18 +3,19 @@ use rocket::State;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use treasury_api_client::{create_client, ApiClient};
-use types::{Offer, OfferRequest, Offers, TreasuryApiUrl};
+use types::{Offer, OfferRequestBody, Offers, Symbol, TreasuryApiUrl};
 use uuid::Uuid;
 
-#[post("/trades/ETH-BTC/buy-offer", format = "application/json", data = "<offer_request>")]
+#[post("/trades/ETH-BTC/buy-offer", format = "application/json", data = "<offer_request_body>")]
 fn post(
     offers: State<Offers>,
-    offer_request: Json<OfferRequest>,
+    offer_request_body: Json<OfferRequestBody>,
     treasury_api_url: State<TreasuryApiUrl>,
 ) -> Result<Json<Offer>, BadRequest<String>> {
-    let offer_request = offer_request.into_inner();
+    let offer_request_body = offer_request_body.into_inner();
+
     let client = create_client(treasury_api_url.inner());
-    let res = client.request_rate(offer_request.symbol);
+    let res = client.request_rate(Symbol("ETH-BTC".to_string()));
 
     match res {
         Ok(rate) => {
@@ -22,6 +23,7 @@ fn post(
 
             let offer = Offer {
                 symbol: rate.symbol,
+                amount: offer_request_body.amount,
                 rate: rate.rate,
                 uid,
                 // TODO: retrieve and use real address
@@ -50,7 +52,7 @@ mod tests {
     use rocket::http::{ContentType, Status};
     use rocket_factory::create_rocket_instance;
     use serde_json;
-    use types::{Rate, Symbol};
+    use types::{OfferRequest, Rate};
 
     #[test]
     fn given_a_buy_offer_query_should_call_treasury_and_respond() {
@@ -61,7 +63,7 @@ mod tests {
         let client = rocket::local::Client::new(rocket).unwrap();
 
         let offer_request = OfferRequest {
-            symbol: Symbol("ETH:BTC".to_string()),
+            symbol: Symbol("ETH-BTC".to_string()),
             amount: 42,
         };
 
@@ -75,6 +77,6 @@ mod tests {
 
         let rate = serde_json::from_str::<Rate>(&response.body_string().unwrap()).unwrap();
 
-        assert_eq!(rate.symbol, Symbol("ETH:BTC".to_string()));
+        assert_eq!(rate.symbol, Symbol("ETH-BTC".to_string()));
     }
 }

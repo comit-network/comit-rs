@@ -1,7 +1,5 @@
 use reqwest;
-use types::ExchangeApiUrl;
-use types::Offer;
-use types::OfferRequest;
+use types::{ExchangeApiUrl, Offer, OfferRequest, OfferRequestBody};
 
 pub trait ApiClient {
     fn create_offer(&self, offer_request: &OfferRequest) -> Result<Offer, reqwest::Error>;
@@ -16,8 +14,8 @@ pub struct DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn create_offer(&self, offer_request: &OfferRequest) -> Result<Offer, reqwest::Error> {
         self.client
-            .post(format!("{}/offers", self.url.0).as_str())
-            .json(offer_request)
+            .post(format!("{}/trades/{}/buy-offer", self.url.0, offer_request.symbol).as_str())
+            .json(&OfferRequestBody::new(offer_request))
             .send()
             .and_then(|mut res| res.json::<Offer>())
     }
