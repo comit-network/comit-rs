@@ -10,12 +10,21 @@ authors = [
 ]
 
 [dependencies]
-rocket = "0.3.10"
-rocket_contrib = "0.3.10"
-serde_derive = "1.0.51"
-reqwest = "0.8.5"
-rocket_codegen = "0.3.10"
-serde = "1.0.51"
+env_logger = "0.5.10"
 lazy_static = "1.0.0"
 log = "0.4.1"
-env_logger = "0.5.10"
+rand = "0.4.2"
+reqwest = "0.8.5"
+rocket = "0.3.10"
+rocket_codegen = "0.3.10"
+rocket_contrib = "0.3.10"
+rust-crypto = "0.2.36"
+serde = "1.0.51"
+serde_derive = "1.0.51"
+serde_json = "1.0.17"
+
+bitcoin-rpc = { path = "../bitcoin-rpc" }
+
+[dependencies.uuid]
+features = ["serde", "v4"]
+version = "0.6.3"
