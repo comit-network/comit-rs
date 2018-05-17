@@ -1,5 +1,16 @@
+#![feature(plugin, decl_macro)]
+#![plugin(rocket_codegen)]
+
+extern crate bitcoin_rpc;
 extern crate exchange;
+extern crate log;
+extern crate reqwest;
 extern crate rocket;
+extern crate rocket_contrib;
+extern crate serde;
+extern crate serde_derive;
+extern crate serde_json;
+extern crate uuid;
 
 use exchange::rocket_factory::create_rocket_instance;
 use exchange::types::Offers;

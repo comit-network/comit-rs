@@ -9,6 +9,10 @@ pub struct FakeApiClient;
 
 impl ApiClient for FakeApiClient {
     fn request_rate(&self, symbol: Symbol) -> Result<Rate, reqwest::Error> {
-        unimplemented!();
+        let rate = Rate {
+            symbol,
+            rate: 3.14159,
+        };
+        Ok(rate)
     }
 }

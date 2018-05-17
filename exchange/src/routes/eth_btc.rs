@@ -2,8 +2,7 @@ use bitcoin_rpc::Address;
 use rocket::State;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use treasury_api_client::ApiClient;
-use treasury_api_client::create_client;
+use treasury_api_client::{create_client, ApiClient};
 use types::{Offer, OfferRequest, Offers, TreasuryApiUrl};
 use uuid::Uuid;
 
@@ -41,5 +40,41 @@ fn post(
             error!("{:?}", e);
             Err(BadRequest(None))
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rocket;
+    use rocket::http::{ContentType, Status};
+    use rocket_factory::create_rocket_instance;
+    use serde_json;
+    use types::{Rate, Symbol};
+
+    #[test]
+    fn given_a_buy_offer_query_should_call_treasury_and_respond() {
+        let url = TreasuryApiUrl("stub".to_string());
+        let offers = Offers::new();
+
+        let rocket = create_rocket_instance(url, offers);
+        let client = rocket::local::Client::new(rocket).unwrap();
+
+        let offer_request = OfferRequest {
+            symbol: Symbol("ETH:BTC".to_string()),
+            amount: 42,
+        };
+
+        let request = client
+            .post("/ETH-BTC/buy-offer")
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&offer_request).unwrap());
+        let mut response = request.dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+
+        let rate = serde_json::from_str::<Rate>(&response.body_string().unwrap()).unwrap();
+
+        assert_eq!(rate.symbol, Symbol("ETH:BTC".to_string()));
     }
 }

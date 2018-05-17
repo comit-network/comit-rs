@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Symbol(pub String); // Expected format: BTC:LTC
 
 #[derive(Debug, Deserialize)]
