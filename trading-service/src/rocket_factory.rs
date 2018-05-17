@@ -10,6 +10,7 @@ pub fn create_rocket_instance(exchange_api_url: ExchangeApiUrl, offers: Offers) 
         .manage(exchange_api_url)
         .manage(offers)
         .manage(Mutex::new(
+            // TODO: allow caller to choose randomness source
             OsRng::new().expect("Failed to get randomness from OS"),
         ))
 }
