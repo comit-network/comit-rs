@@ -7,7 +7,7 @@ use secret::Secret;
 use std::sync::Mutex;
 use types::*;
 
-#[post("/trades/ETH-BTC/buy-offer", format = "application/json", data = "<offer_request_body>")]
+#[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post(
     offer_request_body: Json<OfferRequestBody>,
     url: State<ExchangeApiUrl>,
@@ -73,7 +73,7 @@ mod tests {
         let client = rocket::local::Client::new(rocket).unwrap();
 
         let request = client
-            .post("/trades/ETH-BTC/buy-offer")
+            .post("/trades/ETH-BTC/buy-offers")
             .header(ContentType::JSON)
             .body(r#"{ "amount": 43 }"#);
 

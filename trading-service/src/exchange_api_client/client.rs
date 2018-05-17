@@ -14,7 +14,7 @@ pub struct DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn create_offer(&self, offer_request: &OfferRequest) -> Result<Offer, reqwest::Error> {
         self.client
-            .post(format!("{}/trades/{}/buy-offer", self.url.0, offer_request.symbol).as_str())
+            .post(format!("{}/trades/{}/buy-offers", self.url.0, offer_request.symbol).as_str())
             .json(&OfferRequestBody::new(offer_request))
             .send()
             .and_then(|mut res| res.json::<Offer>())
