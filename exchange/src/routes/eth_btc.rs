@@ -6,7 +6,7 @@ use treasury_api_client::{create_client, ApiClient};
 use types::{Offer, OfferRequest, Offers, TreasuryApiUrl};
 use uuid::Uuid;
 
-#[post("/ETH-BTC/buy-offer", format = "application/json", data = "<offer_request>")]
+#[post("/trades/ETH-BTC/buy-offer", format = "application/json", data = "<offer_request>")]
 fn post(
     offers: State<Offers>,
     offer_request: Json<OfferRequest>,
@@ -66,7 +66,7 @@ mod tests {
         };
 
         let request = client
-            .post("/ETH-BTC/buy-offer")
+            .post("/trades/ETH-BTC/buy-offer")
             .header(ContentType::JSON)
             .body(serde_json::to_string(&offer_request).unwrap());
         let mut response = request.dispatch();
