@@ -15,5 +15,5 @@ script:
   - cargo build --verbose
 
   # Bitcoin-RPC has integration tests with a bitcoin node. Those MUST run sequentially.
-  - cargo test --verbose --all --exclude bitcoin-rpc
-  - cargo test --verbose --all --package bitcoin-rpc --jobs 1 
+  - cargo test --verbose --all --exclude bitcoin_rpc
+  - cargo test --verbose --all --package bitcoin_rpc --jobs 1 
