@@ -2,10 +2,10 @@
 
 members = [
 	"jsonrpc",
-	"trading-service",
-	"exchange",
-	"trading-client",
-	"fake-treasury-service",
-	"common-types",
-	"bitcoin-rpc",
+	"trading_service",
+	"exchange_service",
+	"trading_client",
+	"fake_treasury_service",
+	"common_types",
+	"bitcoin_rpc",
 ]

@@ -1,5 +1,5 @@
 [package]
-name = "common-types"
+name = "common_types"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",

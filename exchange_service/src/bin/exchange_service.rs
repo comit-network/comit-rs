@@ -2,7 +2,7 @@
 #![plugin(rocket_codegen)]
 
 extern crate bitcoin_rpc;
-extern crate exchange;
+extern crate exchange_service;
 extern crate log;
 extern crate reqwest;
 extern crate rocket;
@@ -12,9 +12,9 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate uuid;
 
-use exchange::rocket_factory::create_rocket_instance;
-use exchange::types::Offers;
-use exchange::types::TreasuryApiUrl;
+use exchange_service::rocket_factory::create_rocket_instance;
+use exchange_service::types::Offers;
+use exchange_service::types::TreasuryApiUrl;
 use std::env::var;
 
 fn main() {
