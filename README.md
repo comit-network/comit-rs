@@ -8,8 +8,8 @@ Trustless, easy trading through atomic swaps.
 
 This produces three applications:
 
-- `trader`
-- `exchange`
+- `trader_service`
+- `exchange_service`
 - `trading-cli`
 
 ## Contributing
