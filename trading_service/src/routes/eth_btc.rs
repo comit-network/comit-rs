@@ -5,6 +5,7 @@ use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::Offer;
 use exchange_api_client::*;
 use rocket::State;
+use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use symbol::Symbol;
@@ -47,23 +48,31 @@ pub struct BuyOrderRequestBody {
     client_success_address: String,
     client_refund_address: String,
 }
-//
-//#[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json", data = "<buy_order_request_body>")]
-//pub fn post_buy_orders(
-//    trade_id: Uuid,
-//    buy_order_request_body: Json<BuyOrderRequestBody>,
-//    url: State<ExchangeApiUrl>,
-//    offer_repository: State<OfferRepository>,
-//) -> Result<Json<()>, BadRequest<String>> {
-//
-//    // pull offer for trade from DB
-//    // generate secret
-//    // generate HTLC
-//
-//    // secret and HTLC in DB
-//
-//    // send stuff to exchange
-//}
+
+#[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
+       data = "<buy_order_request_body>")]
+pub fn post_buy_orders(
+    trade_id: &RawStr,
+    buy_order_request_body: Json<BuyOrderRequestBody>,
+    url: State<ExchangeApiUrl>,
+    event_store: State<EventStore>,
+) -> Result<Json<()>, BadRequest<String>> {
+    // pull offer for trade from DB
+    // generate secret
+    // generate HTLC
+    // secret and HTLC in DB
+    // send stuff to exchange
+
+    if let Ok(trade_id) = Uuid::parse_str(trade_id.as_ref()) {
+        if let Some(offer) = event_store.get_offer_created(&trade_id) {
+            Err(BadRequest(None))
+        } else {
+            Err(BadRequest(None))
+        }
+    } else {
+        Err(BadRequest(Some("Invalid trade id".to_string())))
+    }
+}
 
 #[cfg(test)]
 mod tests {
