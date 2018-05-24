@@ -18,9 +18,10 @@ extern crate rand;
 extern crate log;
 extern crate serde;
 
-mod exchange_api_client;
+pub mod exchange_api_client;
 
+pub mod offer;
 pub mod rocket_factory;
 pub mod routes;
 pub mod secret;
-pub mod types;
+pub mod symbol;
