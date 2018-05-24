@@ -20,7 +20,7 @@ extern crate serde;
 
 pub mod exchange_api_client;
 
-pub mod offer;
+pub mod event_store;
 pub mod rocket_factory;
 pub mod routes;
 pub mod secret;

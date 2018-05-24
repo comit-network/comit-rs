@@ -1,7 +1,7 @@
 mod client;
 mod fake_client;
 
-pub use self::client::{ApiClient, ExchangeApiUrl};
+pub use self::client::{ApiClient, ExchangeApiUrl, Offer};
 
 #[cfg(test)]
 pub fn create_client(_url: &ExchangeApiUrl) -> impl ApiClient {
