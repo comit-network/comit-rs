@@ -10,7 +10,7 @@ pub struct OfferCreated {
     pub trade_id: Uuid,
     pub symbol: Symbol,
     pub rate: f32,
-    pub address: Address,
+    pub exchange_success_address: Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -27,7 +27,7 @@ impl From<Offer> for OfferCreated {
             trade_id: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            address: offer.address,
+            exchange_success_address: offer.exchange_success_address,
         }
     }
 }

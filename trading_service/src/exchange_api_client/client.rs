@@ -11,7 +11,7 @@ pub struct Offer {
     pub uid: Uuid,
     pub symbol: Symbol,
     pub rate: f32,
-    pub address: Address,
+    pub exchange_success_address: Address,
 }
 
 pub trait ApiClient {
