@@ -1,9 +1,18 @@
-use offer::Offer;
+use bitcoin_rpc::Address;
 use reqwest;
 use symbol::Symbol;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ExchangeApiUrl(pub String);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Offer {
+    pub uid: Uuid,
+    pub symbol: Symbol,
+    pub rate: f32,
+    pub address: Address,
+}
 
 pub trait ApiClient {
     fn create_offer(&self, symbol: Symbol, amount: u32) -> Result<Offer, reqwest::Error>;

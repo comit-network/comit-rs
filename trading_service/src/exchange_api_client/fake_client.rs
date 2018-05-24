@@ -1,6 +1,6 @@
 use super::client::ApiClient;
 use bitcoin_rpc::Address;
-use offer::Offer;
+use exchange_api_client::client::Offer;
 use reqwest;
 use symbol::Symbol;
 use uuid::Uuid;
