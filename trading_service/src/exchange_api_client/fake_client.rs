@@ -1,8 +1,7 @@
 use super::client::ApiClient;
 use bitcoin_rpc::Address;
 use reqwest;
-use types::Offer;
-use types::OfferRequest;
+use types::{Epoch, Offer, OfferRequest};
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -15,6 +14,7 @@ impl ApiClient for FakeApiClient {
             symbol: offer_request.symbol.clone(),
             rate: 0.42,
             address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
+            expiry: Epoch(1527135132),
         };
         Ok(offer)
     }

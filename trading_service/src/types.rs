@@ -13,6 +13,9 @@ pub struct OfferRequestBody {
     pub amount: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct Epoch(pub u32); // Unix timestamp
+
 impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -38,6 +41,7 @@ pub struct Offer {
     pub symbol: Symbol,
     pub rate: f32,
     pub address: Address,
+    pub expiry: Epoch,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -46,6 +50,7 @@ pub struct SwapProposal {
     pub symbol: Symbol,
     pub rate: f32,
     pub address: Address,
+    pub expiry: Epoch,
     pub secret_hash: SecretHash,
 }
 
@@ -60,6 +65,7 @@ impl SwapProposal {
         symbol: Symbol,
         rate: f32,
         address: Address,
+        expiry: Epoch,
         secret_hash: SecretHash,
     ) -> SwapProposal {
         SwapProposal {
@@ -68,6 +74,7 @@ impl SwapProposal {
             rate,
             address,
             secret_hash,
+            expiry,
         }
     }
 
@@ -77,6 +84,7 @@ impl SwapProposal {
             exchange_offer.symbol,
             exchange_offer.rate,
             exchange_offer.address,
+            exchange_offer.expiry,
             secret_hash,
         )
     }
