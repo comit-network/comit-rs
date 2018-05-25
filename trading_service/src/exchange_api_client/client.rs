@@ -14,6 +14,8 @@ pub struct Offer {
     pub uid: Uuid,
     pub symbol: Symbol,
     pub rate: f32,
+    // TODO: There is no reason for this to be here.
+    // It can be moved to TradeAcceptance
     pub exchange_success_address: bitcoin_rpc::Address,
 }
 
