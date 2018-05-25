@@ -1,19 +1,10 @@
 pub use self::OfferEvent as OfferState;
 use bitcoin_rpc;
+pub use routes::eth_btc::OfferRequestResponse as OfferEvent;
 use std::collections::HashMap;
 use std::sync::RwLock;
-use types::{BtcBlockHeight, EthAddress, EthTimestamp, SecretHash, Symbol};
+use types::{BtcBlockHeight, EthAddress, EthTimestamp, SecretHash};
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferEvent {
-    pub uid: Uuid,
-    pub symbol: Symbol,
-    pub amount: u32,
-    pub rate: f32,
-    pub exchange_success_address: bitcoin_rpc::Address,
-    // TODO: treasury_expiry_timestamp
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TradeEvent {
@@ -51,7 +42,7 @@ impl EventStore {
             trades: RwLock::new(HashMap::new()),
         }
     }
-    
+
     pub fn store_offer(&self, event: OfferEvent) -> Result<(), Error> {
         let uid = event.uid.clone();
         let mut states = self.states.write().unwrap();
@@ -69,10 +60,12 @@ impl EventStore {
         Ok(())
     }
 
+    /* To uncomment when needed
     pub fn get_offer(&self, id: &Uuid) -> Option<OfferState> {
         let offers = self.offers.read().unwrap();
         offers.get(id).map(|offer| offer.clone())
     }
+*/
 
     pub fn store_trade(&self, event: TradeEvent) -> Result<(), Error> {
         let uid = event.uid.clone();

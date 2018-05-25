@@ -5,7 +5,7 @@ pub struct BtcBlockHeight(pub u32);
 // TODO: implement Eth Web3 :)
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct EthAddress(pub String);
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 pub struct EthTimestamp(pub u32);
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -19,8 +19,3 @@ pub struct Rate {
 
 #[derive(Clone)]
 pub struct TreasuryApiUrl(pub String);
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OfferRequestBody {
-    pub amount: u32,
-}
