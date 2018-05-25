@@ -224,4 +224,66 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn given_a_trade_without_offer_should_fail() {
+        let url = TreasuryApiUrl("stub".to_string());
+        let event_store = EventStore::new();
+
+        let rocket = create_rocket_instance(url, event_store);
+        let mut client = rocket::local::Client::new(rocket).unwrap();
+
+        let uid = Uuid::new_v4();
+
+        {
+            let response = request_trade(&mut client, uid);
+            assert_eq!(response.status(), Status::BadRequest);
+
+        }
+    }
+
+    #[test]
+    fn given_two_trade_request_with_same_uid_should_fail() {
+        let url = TreasuryApiUrl("stub".to_string());
+        let event_store = EventStore::new();
+
+        let rocket = create_rocket_instance(url, event_store);
+        let mut client = rocket::local::Client::new(rocket).unwrap();
+
+        let uid = {
+            let mut response = request_offer(&mut client);
+            assert_eq!(response.status(), Status::Ok);
+
+            let offer_response =
+                serde_json::from_str::<OfferRequestResponse>(&response.body_string().unwrap())
+                    .unwrap();
+            assert_eq!(
+                offer_response.symbol,
+                Symbol("ETH-BTC".to_string()),
+                "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
+                offer_response
+            );
+
+            offer_response.uid.clone()
+        };
+
+        {
+            let mut response = request_trade(&mut client, uid);
+            assert_eq!(response.status(), Status::Ok);
+
+            let trade_response =
+                serde_json::from_str::<TradeRequestResponse>(&response.body_string().unwrap())
+                    .unwrap();
+            assert!(
+                (trade_response.short_relative_time_lock > types::EthTimestamp(0)),
+                "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
+                trade_response
+            );
+        }
+
+        {
+            let mut response = request_trade(&mut client, uid);
+            assert_eq!(response.status(), Status::BadRequest);
+        }
+    }
 }
