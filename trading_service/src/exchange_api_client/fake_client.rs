@@ -14,7 +14,7 @@ impl ApiClient for FakeApiClient {
             uid: Uuid::new_v4(),
             symbol: symbol.clone(),
             rate: 0.42,
-            address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
+            exchange_success_address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
         };
         Ok(offer)
     }
