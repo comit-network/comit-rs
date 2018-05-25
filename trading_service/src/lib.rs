@@ -24,4 +24,5 @@ pub mod event_store;
 pub mod rocket_factory;
 pub mod routes;
 pub mod secret;
+pub mod stub;
 pub mod symbol;

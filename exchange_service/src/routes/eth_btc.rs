@@ -238,7 +238,6 @@ mod tests {
         {
             let response = request_trade(&mut client, uid);
             assert_eq!(response.status(), Status::BadRequest);
-
         }
     }
 
