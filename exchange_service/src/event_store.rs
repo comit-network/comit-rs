@@ -26,36 +26,6 @@ pub struct TradeEvent {
     pub exchange_refund_address: EthAddress,
 }
 
-/*
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferCreated {
-    pub trade_id: Uuid,
-    pub symbol: Symbol,
-    pub rate: f32,
-    pub exchange_success_address: Address,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeCreated {
-    pub trade_id: Uuid,
-    pub symbol: Symbol,
-    pub rate: f32,
-    pub address: Address,
-}
-*/
-/*
-impl From<OfferRequestBody> for OfferRequest {
-    fn from(offer_request_body: OfferRequestBody, symbol: Symbol, rate: f32, uid: Uuid, exchange_success_address: bitcoin_rpc::Address) -> Self {
-        OfferRequest {
-            symbol,
-            amount: offer_request_body.amount,
-            rate,
-            uid,
-            exchange_success_address,
-        }
-    }
-}*/
-
 pub enum State {
     Offer,
     // Offer has been requested and answered
@@ -81,7 +51,7 @@ impl EventStore {
             trades: RwLock::new(HashMap::new()),
         }
     }
-
+    
     pub fn store_offer(&self, event: OfferEvent) -> Result<(), Error> {
         let uid = event.uid.clone();
         let mut states = self.states.write().unwrap();
