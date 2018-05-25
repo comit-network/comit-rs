@@ -5,10 +5,8 @@ use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use treasury_api_client::{create_client, ApiClient};
-use types::BtcBlockHeight;
-use types::SecretHash;
-use types::{EthAddress, EthTimestamp};
-use types::{OfferRequestBody, Symbol, TreasuryApiUrl};
+use types::{BtcBlockHeight, EthAddress, EthTimestamp};
+use types::{OfferRequestBody, Symbol, SecretHash, TreasuryApiUrl};
 use uuid::Uuid;
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
@@ -144,18 +142,17 @@ mod tests {
     use rocket::http::{ContentType, Status};
     use rocket_factory::create_rocket_instance;
     use serde_json;
-    use types::{OfferRequest, Rate};
+    use types::Rate;
 
     #[test]
     fn given_a_buy_offer_query_should_call_treasury_and_respond() {
         let url = TreasuryApiUrl("stub".to_string());
-        let offers = Offers::new();
+        let event_store = EventStore::new();
 
-        let rocket = create_rocket_instance(url, offers);
+        let rocket = create_rocket_instance(url, event_store);
         let client = rocket::local::Client::new(rocket).unwrap();
 
-        let offer_request = OfferRequest {
-            symbol: Symbol("ETH-BTC".to_string()),
+        let offer_request = OfferRequestBody {
             amount: 42,
         };
 
