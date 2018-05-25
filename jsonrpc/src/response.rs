@@ -1,5 +1,4 @@
 use std::result::Result as StdResult;
-use version::JsonRpcVersion;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct RpcError {
