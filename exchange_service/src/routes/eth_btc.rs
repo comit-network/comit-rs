@@ -1,13 +1,28 @@
 use bitcoin_rpc;
-use event_store::{EventStore, OfferEvent, OfferState, TradeEvent};
+use event_store::{EventStore, OfferState, TradeEvent};
 use rocket::State;
 use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use treasury_api_client::{create_client, ApiClient};
 use types::{BtcBlockHeight, EthAddress, EthTimestamp};
-use types::{OfferRequestBody, Symbol, SecretHash, TreasuryApiUrl};
+use types::{SecretHash, Symbol, TreasuryApiUrl};
 use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OfferRequestBody {
+    pub amount: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OfferRequestResponse {
+    pub uid: Uuid,
+    pub symbol: Symbol,
+    pub amount: u32,
+    pub rate: f32,
+    pub exchange_success_address: bitcoin_rpc::Address,
+    // TODO: treasury_expiry_timestamp
+}
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
 fn post_buy_offers(
@@ -33,7 +48,7 @@ fn post_buy_offers(
     };
 
     let uid = Uuid::new_v4();
-    let offer_event = OfferEvent {
+    let offer_event = OfferRequestResponse {
         uid,
         symbol: rate.symbol,
         amount: offer_request_body.amount,
@@ -140,32 +155,73 @@ mod tests {
     use super::*;
     use rocket;
     use rocket::http::{ContentType, Status};
+    use rocket::local::{Client, LocalResponse};
     use rocket_factory::create_rocket_instance;
     use serde_json;
-    use types::Rate;
+    use types;
 
-    #[test]
-    fn given_a_buy_offer_query_should_call_treasury_and_respond() {
-        let url = TreasuryApiUrl("stub".to_string());
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(url, event_store);
-        let client = rocket::local::Client::new(rocket).unwrap();
-
-        let offer_request = OfferRequestBody {
-            amount: 42,
-        };
+    fn request_offer(client: &mut Client) -> LocalResponse {
+        let offer_request = OfferRequestBody { amount: 42 };
 
         let request = client
             .post("/trades/ETH-BTC/buy-offers")
             .header(ContentType::JSON)
             .body(serde_json::to_string(&offer_request).unwrap());
-        let mut response = request.dispatch();
+        request.dispatch()
+    }
 
-        assert_eq!(response.status(), Status::Ok);
+    fn request_trade(client: &mut Client, uid: Uuid) -> LocalResponse {
+        let trade_request = TradeRequestBody {
+            secret_hash: SecretHash("MySecretHash".to_string()),
+            client_refund_address: bitcoin_rpc::Address::from("ClientRefundAddressInBtc"),
+            client_success_address: EthAddress("0xClientSuccessAddressInEth".to_string()),
+            long_relative_time_lock: BtcBlockHeight(24),
+        };
 
-        let rate = serde_json::from_str::<Rate>(&response.body_string().unwrap()).unwrap();
+        let request = client
+            .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&trade_request).unwrap());
+        request.dispatch()
+    }
 
-        assert_eq!(rate.symbol, Symbol("ETH-BTC".to_string()));
+    #[test]
+    fn given_a_buy_offer_and_trade_should_respond_with_ok() {
+        let url = TreasuryApiUrl("stub".to_string());
+        let event_store = EventStore::new();
+
+        let rocket = create_rocket_instance(url, event_store);
+        let mut client = rocket::local::Client::new(rocket).unwrap();
+
+        let uid = {
+            let mut response = request_offer(&mut client);
+            assert_eq!(response.status(), Status::Ok);
+
+            let offer_response =
+                serde_json::from_str::<OfferRequestResponse>(&response.body_string().unwrap())
+                    .unwrap();
+            assert_eq!(
+                offer_response.symbol,
+                Symbol("ETH-BTC".to_string()),
+                "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
+                offer_response
+            );
+
+            offer_response.uid.clone()
+        };
+
+        {
+            let mut response = request_trade(&mut client, uid);
+            assert_eq!(response.status(), Status::Ok);
+
+            let trade_response =
+                serde_json::from_str::<TradeRequestResponse>(&response.body_string().unwrap())
+                    .unwrap();
+            assert!(
+                (trade_response.short_relative_time_lock > types::EthTimestamp(0)),
+                "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
+                trade_response
+            );
+        }
     }
 }
