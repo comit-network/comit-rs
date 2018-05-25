@@ -55,18 +55,6 @@ pub struct TradeRequestBody {
     pub long_relative_timelock: BtcBlockHeight,
 }
 
-impl TradeRequestBody {
-    pub fn from_event(trade_created_event: &mut TradeCreated) -> Self {
-        TradeRequestBody {
-            uid: trade_created_event.uid.clone(),
-            secret_hash: trade_created_event.secret.hash().clone(),
-            client_refund_address: trade_created_event.client_refund_address.clone(),
-            client_success_address: trade_created_event.client_success_address.clone(),
-            long_relative_timelock: trade_created_event.long_relative_timelock.clone(),
-        }
-    }
-}
-
 impl ApiClient for DefaultApiClient {
     fn create_offer(&self, symbol: Symbol, amount: u32) -> Result<Offer, reqwest::Error> {
         let body = OfferRequestBody { amount };
