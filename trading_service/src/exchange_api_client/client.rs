@@ -1,5 +1,4 @@
 use bitcoin_rpc;
-use event_store::TradeCreated;
 use reqwest;
 use secret::SecretHash;
 use stub::{BtcBlockHeight, EthAddress, EthTimeDelta};
