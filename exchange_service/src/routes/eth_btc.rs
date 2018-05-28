@@ -57,9 +57,8 @@ fn post_buy_offers(
     match event_store.store_offer(offer_event.clone()) {
         Ok(_) => (),
         Err(e) => {
-            error!("{:?}", e);
-            // TODO: create a to_string for e to return something nice.
-            return Err(BadRequest(None));
+            error!("{}", e);
+            return Err(BadRequest(Some(e.to_string())));
         }
     }
 
@@ -113,8 +112,8 @@ pub fn post_buy_orders(
     let uid = match Uuid::parse_str(trade_id.as_str()) {
         Ok(uid) => uid,
         Err(e) => {
-            error!("{:?}", e);
-            return Err(BadRequest(Some(e.to_string())));
+            error!("{}", e);
+            return Err(BadRequest(Some(format!("Error when parsing uid: {}", e))));
         }
     };
 
@@ -143,7 +142,7 @@ pub fn post_buy_orders(
         Err(e) => {
             error!("{:?}", e);
             // TODO: create a to_string for e to return something nice.
-            return Err(BadRequest(None));
+            return Err(BadRequest(Some(e.to_string())));
         }
     }
 
@@ -242,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn given_two_trade_request_with_same_uid_should_fail() {
+    fn given_two_trades_request_with_same_uid_should_fail() {
         let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
@@ -281,7 +280,7 @@ mod tests {
         }
 
         {
-            let mut response = request_trade(&mut client, uid);
+            let response = request_trade(&mut client, uid);
             assert_eq!(response.status(), Status::BadRequest);
         }
     }

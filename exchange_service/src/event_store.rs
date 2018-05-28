@@ -2,6 +2,7 @@ pub use self::OfferEvent as OfferState;
 use bitcoin_rpc;
 pub use routes::eth_btc::OfferRequestResponse as OfferEvent;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::RwLock;
 use types::{BtcBlockHeight, EthAddress, EthTimestamp, SecretHash};
 use uuid::Uuid;
@@ -33,7 +34,18 @@ pub struct EventStore {
 
 #[derive(Debug)]
 pub enum Error {
-    IncorrectState,
+    UnexpectedState,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::UnexpectedState => write!(
+                f,
+                "UnexpectedState: Known state for the given uid does not match the query"
+            ),
+        }
+    }
 }
 
 impl EventStore {
@@ -50,7 +62,7 @@ impl EventStore {
         let mut states = self.states.write().unwrap();
 
         match states.get(&uid) {
-            Some(_state) => return Err(Error::IncorrectState),
+            Some(_state) => return Err(Error::UnexpectedState),
             None => (),
         }
         states.insert(uid, RwLock::new(State::Offer));
@@ -74,12 +86,12 @@ impl EventStore {
         let mut states = self.states.write().unwrap();
 
         match states.get_mut(&uid) {
-            None => return Err(Error::IncorrectState),
+            None => return Err(Error::UnexpectedState),
             Some(state) => {
                 let mut state = state.write().unwrap();
                 match *state {
                     State::Offer => *state = State::Trade,
-                    _ => return Err(Error::IncorrectState),
+                    _ => return Err(Error::UnexpectedState),
                 }
             }
         }
