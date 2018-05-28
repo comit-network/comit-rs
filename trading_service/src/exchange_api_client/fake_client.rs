@@ -17,7 +17,6 @@ impl ApiClient for FakeApiClient {
             uid: Uuid::new_v4(),
             symbol: symbol.clone(),
             rate: 0.42,
-            exchange_success_address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
         };
         Ok(offer)
     }
@@ -32,6 +31,7 @@ impl ApiClient for FakeApiClient {
             exchange_refund_address: EthAddress(
                 "0x34b19d15e793883d840c563d7dbc8a6723465146".to_string(),
             ),
+            exchange_success_address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
             short_relative_timelock: EthTimeDelta(43200),
         };
 

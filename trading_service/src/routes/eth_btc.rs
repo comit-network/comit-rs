@@ -132,7 +132,7 @@ pub fn post_buy_orders(
     };
 
     let htlc = BtcHtlc::new(
-        offer.exchange_success_address,
+        trade_acceptance.exchange_success_address.clone(),
         client_refund_address,
         long_relative_timelock,
     );
@@ -141,6 +141,7 @@ pub fn post_buy_orders(
         uid: trade_id,
         short_relative_timelock: trade_acceptance.short_relative_timelock,
         exchange_refund_address: trade_acceptance.exchange_refund_address,
+        exchange_success_address: trade_acceptance.exchange_success_address,
         htlc: htlc.clone(),
     };
 

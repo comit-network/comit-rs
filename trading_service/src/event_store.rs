@@ -17,7 +17,6 @@ pub struct OfferCreated {
     pub uid: Uuid,
     pub symbol: Symbol,
     pub rate: f32, // Actually need to specify the exact amounts of each currency
-    pub exchange_success_address: bitcoin_rpc::Address,
 }
 
 impl From<Offer> for OfferCreated {
@@ -26,7 +25,6 @@ impl From<Offer> for OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            exchange_success_address: offer.exchange_success_address,
         }
     }
 }
@@ -45,6 +43,8 @@ pub struct TradeCreated {
 pub struct TradeAccepted {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,
+    // nThis is embedded in the HTLC but we keep it here as well for completeness
+    pub exchange_success_address: bitcoin_rpc::Address,
     pub short_relative_timelock: EthTimeDelta,
     pub htlc: BtcHtlc,
 }
