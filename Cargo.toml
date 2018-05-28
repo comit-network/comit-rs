@@ -9,5 +9,6 @@ members = [
 	"fake_treasury_service",
 	"common_types",
 	"bitcoin_rpc",
-	"bitcoin_wallet"
+	"bitcoin_wallet",
+	"eth_htlc"
 ]
