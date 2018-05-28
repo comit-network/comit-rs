@@ -13,9 +13,6 @@ pub struct Offer {
     pub uid: Uuid,
     pub symbol: Symbol,
     pub rate: f32,
-    // TODO: There is no reason for this to be here.
-    // It can be moved to TradeAcceptance
-    pub exchange_success_address: bitcoin_rpc::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -23,6 +20,7 @@ pub struct TradeAcceptance {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,
     pub short_relative_timelock: EthTimeDelta,
+    pub exchange_success_address: bitcoin_rpc::Address,
 }
 
 pub trait ApiClient {
