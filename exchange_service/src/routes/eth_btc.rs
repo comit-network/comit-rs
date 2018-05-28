@@ -20,7 +20,6 @@ pub struct OfferRequestResponse {
     pub symbol: Symbol,
     pub amount: u32,
     pub rate: f32,
-    pub exchange_success_address: bitcoin_rpc::Address,
     // TODO: treasury_expiry_timestamp
 }
 
@@ -53,10 +52,6 @@ fn post_buy_offers(
         symbol: rate.symbol,
         amount: offer_request_body.amount,
         rate: rate.rate,
-        // TODO: retrieve and use real address
-        // This should never be used. Private key is: 'cSVXkgbkkkjzXV2JMg1zWui4A4dCj55sp9hFoVSUQY9DVh9WWjuj'
-        // TODO: this address can be returned at post_buy_orders, the trading service does not need it yet!
-        exchange_success_address: bitcoin_rpc::Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
     };
 
     match event_store.store_offer(offer_event.clone()) {
@@ -83,6 +78,7 @@ pub struct TradeRequestBody {
 pub struct TradeRequestResponse {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,
+    pub exchange_success_address: bitcoin_rpc::Address,
     pub short_relative_time_lock: EthTimestamp,
 }
 
@@ -91,6 +87,7 @@ impl From<TradeEvent> for TradeRequestResponse {
         TradeRequestResponse {
             uid: trade_event.uid.clone(),
             exchange_refund_address: trade_event.exchange_refund_address.clone(),
+            exchange_success_address: trade_event.exchange_success_address.clone(),
             short_relative_time_lock: trade_event.short_relative_time_lock.clone(),
         }
     }
@@ -136,6 +133,9 @@ pub fn post_buy_orders(
         short_relative_time_lock: EthTimestamp(12), //TODO: this is obviously not "12" :)
         client_success_address: trade_request_body.client_success_address,
         exchange_refund_address: exchange_refund_address.clone(),
+        // TODO: retrieve and use real address
+        // This should never be used. Private key is: 'cSVXkgbkkkjzXV2JMg1zWui4A4dCj55sp9hFoVSUQY9DVh9WWjuj'
+        exchange_success_address: bitcoin_rpc::Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
     };
 
     match event_store.store_trade(trade_event.clone()) {
