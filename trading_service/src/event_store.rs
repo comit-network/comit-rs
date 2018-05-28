@@ -64,38 +64,35 @@ impl EventStore {
         }
     }
 
+    fn _store<E>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: Uuid, event: E) {
+        event_map.write().unwrap().insert(id, event);
+    }
+
     pub fn store_offer_created(&self, event: OfferCreated) {
-        let mut offer_created_events = self.offer_created_events.write().unwrap();
-        let uid = event.uid.clone();
-        offer_created_events.insert(uid, event);
+        self._store(&self.offer_created_events, event.uid.clone(), event);
     }
 
     pub fn store_trade_created(&self, event: TradeCreated) {
-        let mut trade_created_events = self.trade_created_events.write().unwrap();
-        let uid = event.uid.clone();
-        trade_created_events.insert(uid, event);
+        self._store(&self.trade_created_events, event.uid.clone(), event);
     }
 
     pub fn store_trade_accepted(&self, event: TradeAccepted) {
-        let mut trade_acceptances = self.trade_accepted_events.write().unwrap();
-        let uid = event.uid.clone();
-        trade_acceptances.insert(uid, event);
+        self._store(&self.trade_accepted_events, event.uid.clone(), event);
+    }
+
+    fn _get<E: Clone>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: &Uuid) -> Option<E> {
+        event_map.read().unwrap().get(id).map(|x| x.clone())
     }
 
     pub fn get_offer_created(&self, id: &Uuid) -> Option<OfferCreated> {
-        let offers = self.offer_created_events.read().unwrap();
-        offers.get(id).map(|offer| offer.clone())
+        self._get(&self.offer_created_events, id)
     }
 
     pub fn get_trade_created(&self, id: &Uuid) -> Option<TradeCreated> {
-        let trades = self.trade_created_events.read().unwrap();
-        trades.get(id).map(|trade| trade.clone())
+        self._get(&self.trade_created_events, id)
     }
 
     pub fn get_trade_accept(&self, id: &Uuid) -> Option<TradeAccepted> {
-        let trade_acceptances = self.trade_accepted_events.read().unwrap();
-        trade_acceptances
-            .get(id)
-            .map(|trade_accept| trade_accept.clone())
+        self._get(&self.trade_accepted_events, id)
     }
 }
