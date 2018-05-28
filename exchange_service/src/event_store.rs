@@ -15,6 +15,7 @@ pub struct TradeEvent {
     pub short_relative_time_lock: EthTimestamp,
     pub client_success_address: EthAddress,
     pub exchange_refund_address: EthAddress,
+    pub exchange_success_address: bitcoin_rpc::Address,
 }
 
 pub enum State {
