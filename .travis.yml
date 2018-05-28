@@ -2,18 +2,20 @@ language: rust
 cache: cargo
 env:
   global:
-    - BITCOIN_RPC_URL="http://localhost:18443"
-    - BITCOIN_RPC_USERNAME="bitcoin"
-    - BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+  - BITCOIN_RPC_URL="http://localhost:18443"
+  - BITCOIN_RPC_USERNAME="bitcoin"
+  - BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 rust: nightly-2018-05-05
-install: true # Install would run cargo build again - we don't need that
+install: true
 before_script:
-  - ./setup.sh
-  - .docker/bitcoind-regtest
+- "./setup.sh"
+- ".docker/bitcoind-regtest"
 script:
-  - ./check-fmt.sh
-  - cargo build --verbose
-
-  # Bitcoin-RPC has integration tests with a bitcoin node. Those MUST run sequentially.
-  - cargo test --verbose --all --exclude bitcoin_rpc
-  - cargo test --verbose --all --package bitcoin_rpc --jobs 1 
+- "./check-fmt.sh"
+- cargo build --verbose
+- cargo test --verbose --all --exclude bitcoin_rpc
+- cargo test --verbose --all --package bitcoin_rpc --jobs 1
+notifications:
+  email: false
+  slack:
+    secure: PuMxjpPDdip4zk9BXT62sUdZp5GqGQV1wOUpFOv4LstXDfbS/c+P0OoP6mgptr0bG0/MB8zh3G+D+r46XvV1BdG52taloUl0oSkJais1vPfsvxNN142DoEOr5eJV279akTWeZ0WKn/A4KSd+SnAhcqK4q1E7ASiPxGfCwB6tqZilWKLNjNMaFB1WB7xKZoefS7JsXK3jCYvrZ6DbiHTiGByrt/SowanLACblqXFpYY/xwgtLEBtSedklHzC37VoI7syU0o6vL5NKoAeTZAAkILjzSG2WAs55X5rWY8GsVogWsoiUDQgtHozrVAIvQs7UQSpQfSTHQRggoA4YK9SVubyPGsg/DL9EDwfJoS4UYLk+Z4i4k26g8DhBR1b4RjmZLNzpN4kY5lcyeqjwengw/YBSgoKtiNdYLKLUeTSUEeu1cUz8lZb1/tzdkqvrK28WVSePbkICEK6Pv0czR9ixENAKwlSaSXrkUDg9RCuuQIy2IqP5Qm7J7SuqXluGZUie8HQheBJrrdCTDLZbFLVc9LgXian1qOHW1tkfiMwqvQRE1k7VcGLI+DMBNZKPjk5HWH18iwmHWga5HKVKA5i3fWppAkCFAS+zjfr/mjffmAPdaXNRD/BgCj9MDuI7a1mLzppwVSFtzfn0u3HcLhZ2nsj3DXCMyu6s7HF6unG0ttg=
