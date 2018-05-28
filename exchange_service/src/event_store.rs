@@ -18,9 +18,10 @@ pub struct TradeEvent {
 }
 
 pub enum State {
-    Offer,
     // Offer has been requested and answered
-    Trade, // Trade/Order has been requested and all details provided to move forward. Now waiting for address to be funded
+    Offer,
+    // Trade/Order has been requested and all details provided to move forward. Now waiting for address to be funded
+    Trade,
 }
 
 pub struct EventStore {
@@ -65,7 +66,7 @@ impl EventStore {
         let offers = self.offers.read().unwrap();
         offers.get(id).map(|offer| offer.clone())
     }
-*/
+    */
 
     pub fn store_trade(&self, event: TradeEvent) -> Result<(), Error> {
         let uid = event.uid.clone();
@@ -76,8 +77,8 @@ impl EventStore {
             Some(state) => {
                 let mut state = state.write().unwrap();
                 match *state {
-                    State::Trade => return Err(Error::IncorrectState),
                     State::Offer => *state = State::Trade,
+                    _ => return Err(Error::IncorrectState),
                 }
             }
         }
