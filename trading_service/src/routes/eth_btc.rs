@@ -1,4 +1,5 @@
 use bitcoin_rpc;
+use event_store;
 use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::TradeAccepted;
@@ -64,7 +65,13 @@ pub struct RequestToFund {
     //TODO: specify amount of BTC
 }
 
-const BTC_BLOCKS_IN_24H: BtcBlockHeight = BtcBlockHeight(144); // 24 * 60 /10
+const BTC_BLOCKS_IN_24H: BtcBlockHeight = BtcBlockHeight(24 * 60 / 10);
+
+impl From<event_store::Error> for BadRequest<String> {
+    fn from(_: event_store::Error) -> Self {
+        BadRequest(None)
+    }
+}
 
 #[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
        data = "<buy_order_request_body>")]
@@ -80,16 +87,9 @@ pub fn post_buy_orders(
         Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
     };
 
-    //TODO: Fix the race condition here
-    if event_store.get_trade_created(&trade_id).is_some() {
-        return Err(BadRequest(Some(
-            "You have already accepted this offer".to_string(),
-        )));
-    };
-
     let offer = match event_store.get_offer_created(&trade_id) {
         Some(offer) => offer,
-        None => return Err(BadRequest(None)), // should 404
+        None => return Err(BadRequest(None)),
     };
 
     let buy_order = buy_order_request_body.into_inner();
@@ -111,7 +111,7 @@ pub fn post_buy_orders(
         long_relative_timelock: long_relative_timelock.clone(),
     };
 
-    event_store.store_trade_created(trade_created_event.clone());
+    event_store.store_trade_created(trade_created_event.clone())?;
 
     let client = create_client(url.inner());
 
@@ -145,7 +145,7 @@ pub fn post_buy_orders(
         htlc: htlc.clone(),
     };
 
-    event_store.store_trade_accepted(trade_accepted_event);
+    event_store.store_trade_accepted(trade_accepted_event)?;
 
     Ok(Json(RequestToFund {
         uid: trade_id,
