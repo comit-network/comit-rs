@@ -1,7 +1,7 @@
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}
+extern crate web3;
+
+mod htlc;
+
+pub use htlc::*;
+pub type SecretHash = web3::types::H256;
+pub use web3::types::Address;

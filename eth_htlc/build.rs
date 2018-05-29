@@ -22,9 +22,7 @@ fn main() -> std::io::Result<()> {
     solc.stdin.as_mut().unwrap().write_all(CONTRACT.as_bytes())?;
 
     let output = solc.wait_with_output()?;
-
     let stdout = String::from_utf8(output.stdout).unwrap();
-
     let regex = Regex::new(r"\nBinary representation:\n(?P<hexcode>.+)\n").unwrap();
 
     let captures = regex
