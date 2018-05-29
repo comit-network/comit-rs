@@ -40,7 +40,7 @@ fn post_buy_offers(
         Ok(rate) => rate,
         Err(e) => {
             error!("{:?}", e);
-            return Err(BadRequest(Some(e.to_string())));
+            return Err(BadRequest(None));
         }
     };
 
@@ -56,7 +56,7 @@ fn post_buy_offers(
         Ok(_) => (),
         Err(e) => {
             error!("{}", e);
-            return Err(BadRequest(Some(e.to_string())));
+            return Err(BadRequest(None));
         }
     }
 
