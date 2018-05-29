@@ -1,12 +1,15 @@
 use bitcoin_rpc;
-use event_store::{EventStore, OfferState, TradeEvent};
+use event_store::BtcBlockHeight;
+use event_store::EthAddress;
+use event_store::EthTimestamp;
+use event_store::SecretHash;
+use event_store::{EventStore, OfferAccepted, OfferState};
 use rocket::State;
 use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use treasury_api_client::{create_client, ApiClient};
-use types::{BtcBlockHeight, EthAddress, EthTimestamp};
-use types::{SecretHash, Symbol, TreasuryApiUrl};
+use rocket_factory::TreasuryApiUrl;
+use treasury_api_client::{create_client, ApiClient, Symbol};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -81,13 +84,13 @@ pub struct TradeRequestResponse {
     pub short_relative_time_lock: EthTimestamp,
 }
 
-impl From<TradeEvent> for TradeRequestResponse {
-    fn from(trade_event: TradeEvent) -> Self {
+impl From<OfferAccepted> for TradeRequestResponse {
+    fn from(offer: OfferAccepted) -> Self {
         TradeRequestResponse {
-            uid: trade_event.uid.clone(),
-            exchange_refund_address: trade_event.exchange_refund_address.clone(),
-            exchange_success_address: trade_event.exchange_success_address.clone(),
-            short_relative_time_lock: trade_event.short_relative_time_lock.clone(),
+            uid: offer.uid.clone(),
+            exchange_refund_address: offer.exchange_refund_address.clone(),
+            exchange_success_address: offer.exchange_success_address.clone(),
+            short_relative_time_lock: offer.short_relative_time_lock.clone(),
         }
     }
 }
@@ -124,7 +127,7 @@ pub fn post_buy_orders(
     let exchange_refund_address =
         EthAddress("0x1084d2C416fcc39564a4700a9B231270d463C5eA".to_string());
 
-    let trade_event = TradeEvent {
+    let offer = OfferAccepted {
         uid,
         secret_hash: trade_request_body.secret_hash,
         client_refund_address: trade_request_body.client_refund_address,
@@ -137,7 +140,7 @@ pub fn post_buy_orders(
         exchange_success_address: bitcoin_rpc::Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
     };
 
-    match event_store.store_trade(trade_event.clone()) {
+    match event_store.store_accepted_offer(offer.clone()) {
         Ok(_) => (),
         Err(e) => {
             error!("{:?}", e);
@@ -146,7 +149,7 @@ pub fn post_buy_orders(
         }
     }
 
-    Ok(Json(TradeRequestResponse::from(trade_event)))
+    Ok(Json(offer.into()))
 }
 
 #[cfg(test)]
@@ -157,30 +160,27 @@ mod tests {
     use rocket::local::{Client, LocalResponse};
     use rocket_factory::create_rocket_instance;
     use serde_json;
-    use types;
 
     fn request_offer(client: &mut Client) -> LocalResponse {
-        let offer_request = OfferRequestBody { amount: 42 };
-
         let request = client
             .post("/trades/ETH-BTC/buy-offers")
             .header(ContentType::JSON)
-            .body(serde_json::to_string(&offer_request).unwrap());
+            .body(r#"{ "amount": 42 }"#);
         request.dispatch()
     }
 
     fn request_trade(client: &mut Client, uid: Uuid) -> LocalResponse {
-        let trade_request = TradeRequestBody {
-            secret_hash: SecretHash("MySecretHash".to_string()),
-            client_refund_address: bitcoin_rpc::Address::from("ClientRefundAddressInBtc"),
-            client_success_address: EthAddress("0xClientSuccessAddressInEth".to_string()),
-            long_relative_time_lock: BtcBlockHeight(24),
-        };
-
         let request = client
             .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
             .header(ContentType::JSON)
-            .body(serde_json::to_string(&trade_request).unwrap());
+            .body(
+                r#"{
+                    "secret_hash": "MySecretHash",
+                    "client_refund_address": "ClientRefundAddressInBtc",
+                    "client_success_address": "0xClientSuccessAddressInEth",
+                    "long_relative_time_lock": 24
+                  }"#,
+            );
         request.dispatch()
     }
 
@@ -197,16 +197,15 @@ mod tests {
             assert_eq!(response.status(), Status::Ok);
 
             let offer_response =
-                serde_json::from_str::<OfferRequestResponse>(&response.body_string().unwrap())
+                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
                     .unwrap();
             assert_eq!(
-                offer_response.symbol,
-                Symbol("ETH-BTC".to_string()),
+                offer_response["symbol"], "ETH-BTC",
                 "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
                 offer_response
             );
 
-            offer_response.uid.clone()
+            Uuid::parse_str(offer_response["uid"].as_str().unwrap()).unwrap()
         };
 
         {
@@ -214,10 +213,10 @@ mod tests {
             assert_eq!(response.status(), Status::Ok);
 
             let trade_response =
-                serde_json::from_str::<TradeRequestResponse>(&response.body_string().unwrap())
+                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
                     .unwrap();
             assert!(
-                (trade_response.short_relative_time_lock > types::EthTimestamp(0)),
+                (trade_response["short_relative_time_lock"].as_i64().unwrap() > 0),
                 "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
                 trade_response
             );
@@ -273,7 +272,7 @@ mod tests {
                 serde_json::from_str::<TradeRequestResponse>(&response.body_string().unwrap())
                     .unwrap();
             assert!(
-                (trade_response.short_relative_time_lock > types::EthTimestamp(0)),
+                (trade_response.short_relative_time_lock > EthTimestamp(0)),
                 "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
                 trade_response
             );

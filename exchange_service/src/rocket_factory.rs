@@ -1,7 +1,9 @@
 use event_store::EventStore;
 use rocket;
 use routes;
-use types::TreasuryApiUrl;
+
+#[derive(Clone)]
+pub struct TreasuryApiUrl(pub String);
 
 pub fn create_rocket_instance(
     exchange_api_url: TreasuryApiUrl,

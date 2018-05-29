@@ -13,8 +13,7 @@ extern crate serde_json;
 extern crate uuid;
 
 use exchange_service::event_store::EventStore;
-use exchange_service::rocket_factory::create_rocket_instance;
-use exchange_service::types::TreasuryApiUrl;
+use exchange_service::rocket_factory::{create_rocket_instance, TreasuryApiUrl};
 use std::env::var;
 
 fn main() {
