@@ -1,9 +1,9 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
-pub use routes::eth_btc::OfferRequestResponse as OfferCreated;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
+use treasury_api_client::Symbol;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -15,6 +15,15 @@ pub struct BtcBlockHeight(pub u32);
 pub struct EthAddress(pub String);
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
 pub struct EthTimestamp(pub u32);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OfferCreated {
+    pub uid: Uuid,
+    pub symbol: Symbol,
+    pub amount: u32,
+    pub rate: f32,
+    // TODO: treasury_expiry_timestamp
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferAccepted {
