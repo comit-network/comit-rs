@@ -24,9 +24,9 @@ const SECRET_HASH: &str = "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
-    let endpoint = var("GANACHE_ENDPOINT");
+    let endpoint = var("GANACHE_ENDPOINT").unwrap();
 
-    let (_eloop, transport) = web3::transports::Http::new(endpoint).unwrap();
+    let (_eloop, transport) = web3::transports::Http::new(&endpoint).unwrap();
     let web3 = web3::Web3::new(transport);
 
     let now = SystemTime::now()
