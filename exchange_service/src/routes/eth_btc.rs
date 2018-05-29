@@ -5,6 +5,7 @@ use event_store::EthTimestamp;
 use event_store::EventStore;
 use event_store::OfferAccepted;
 use event_store::OfferCreated;
+pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::OfferState;
 use event_store::SecretHash;
 use rocket::State;
@@ -18,15 +19,6 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
     pub amount: u32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferRequestResponse {
-    pub uid: Uuid,
-    pub symbol: Symbol,
-    pub amount: u32,
-    pub rate: f32,
-    // TODO: treasury_expiry_timestamp
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
