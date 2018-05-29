@@ -2,18 +2,24 @@ language: rust
 cache: cargo
 env:
   global:
-    - BITCOIN_RPC_URL="http://localhost:18443"
-    - BITCOIN_RPC_USERNAME="bitcoin"
-    - BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+  - BITCOIN_RPC_URL="http://localhost:18443"
+  - BITCOIN_RPC_USERNAME="bitcoin"
+  - BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 rust: nightly-2018-05-05
-install: true # Install would run cargo build again - we don't need that
+install: true
 before_script:
-  - ./setup.sh
-  - .docker/bitcoind-regtest
+- "./setup.sh"
+- ".docker/bitcoind-regtest"
 script:
-  - ./check-fmt.sh
-  - cargo build --verbose
-
-  # Bitcoin-RPC has integration tests with a bitcoin node. Those MUST run sequentially.
-  - cargo test --verbose --all --exclude bitcoin_rpc
-  - cargo test --verbose --all --package bitcoin_rpc --jobs 1 
+- "./check-fmt.sh"
+- cargo build --verbose
+- cargo test --verbose --all --exclude bitcoin_rpc
+- cargo test --verbose --all --package bitcoin_rpc --jobs 1
+notifications:
+  email: false
+  slack:
+    rooms:
+      - tenx-company:buMm6Pg6Sbhljx2HRLwNC44z#coblox-swap-bots
+    on_success: always
+    on_failure: always
+    on_pull_requests: true
