@@ -8,6 +8,8 @@ pub struct Htlc {
     secret_hash: SecretHash,
 }
 
+// TODO: Create IntoAddress and IntoSecretHash trait
+
 impl Htlc {
     const TEMPLATE: &'static str = include_str!("../contract.asm.hex");
     const EXPIRY: &'static str = "20000002";
@@ -31,7 +33,7 @@ impl Htlc {
     }
 
     pub fn compile_to_hex(&self) -> String {
-        Self::TEMPLATE
+        let contract_code = Self::TEMPLATE
             .to_string()
             .replace(
                 Self::EXPIRY,
@@ -42,7 +44,9 @@ impl Htlc {
             .replace(
                 Self::SECRET_HASH,
                 format!("{:x}", self.secret_hash).as_str(),
-            )
+            );
+
+        format!("6069600E600039600060696000f3{}", contract_code)
     }
 }
 
