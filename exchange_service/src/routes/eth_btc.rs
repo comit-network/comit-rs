@@ -2,8 +2,11 @@ use bitcoin_rpc;
 use event_store::BtcBlockHeight;
 use event_store::EthAddress;
 use event_store::EthTimestamp;
+use event_store::EventStore;
+use event_store::OfferAccepted;
+use event_store::OfferCreated;
+use event_store::OfferState;
 use event_store::SecretHash;
-use event_store::{EventStore, OfferAccepted, OfferState};
 use rocket::State;
 use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
@@ -50,7 +53,7 @@ fn post_buy_offers(
     };
 
     let uid = Uuid::new_v4();
-    let offer_event = OfferRequestResponse {
+    let offer_event = OfferCreated {
         uid,
         symbol: rate.symbol,
         amount: offer_request_body.amount,
