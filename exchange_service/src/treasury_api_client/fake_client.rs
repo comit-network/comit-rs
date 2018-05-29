@@ -1,8 +1,6 @@
 use super::client::ApiClient;
-//use bitcoin_rpc::Address;
+use super::{Rate, Symbol};
 use reqwest;
-use types::{Rate, Symbol};
-//use uuid::Uuid;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
