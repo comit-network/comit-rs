@@ -1,0 +1,9 @@
+[package]
+name = "ganache_rust_web3"
+version = "0.1.0"
+authors = ["Thomas Eizinger <thomas@eizinger.io>"]
+
+[dependencies]
+web3 = "0.3.0"
+serde_derive = "1.0.63"
+serde = "1.0.63"
