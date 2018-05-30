@@ -192,34 +192,30 @@ mod tests {
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
-        let epoch = 1527559350;
+        let epoch = SystemTime::now();
         let epoch_hex = "5b0cb4b6";
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
-            htlc_hex.len(),
-            Htlc::TEMPLATE.len(),
-            "HTLC is the same length as template"
-        );
-        assert!(
-            htlc_hex.contains(epoch_hex),
-            "The epoch_hex exists in output"
+            htlc_hex.0.len(),
+            Htlc::TEMPLATE.len() + 12 * 2,
+            "HTLC is the same length as template plus deploy code"
         );
     }
 
     #[test]
     fn should_prepend_deploy_code_to_contract() {
-        let epoch = 1527559350;
+        let epoch = SystemTime::now();
         let epoch_hex = "5b0cb4b6";
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
         let htlc_hex = htlc.compile_to_hex();
 
-        assert_eq!(&htlc_hex[0..24], "6069600C60003960696000F3");
+        assert_eq!(&htlc_hex.0[0..24], "607C600C600039607C6000F3");
     }
 
     #[test]
     fn deploy_code_length_should_be_12_opcodes() {
-        let epoch = 1527559350;
+        let epoch = SystemTime::now();
         let epoch_hex = "5b0cb4b6";
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
         let deploy_header = htlc.generate_deploy_header("");

@@ -6,7 +6,7 @@ extern crate serde_json;
 use web3::Transport;
 use web3::api::Namespace;
 use web3::helpers::CallResult;
-use web3::types::{BlockId, BlockNumber, U256};
+use web3::types::U256;
 
 #[derive(Debug, Clone)]
 pub struct Ganache<T: Transport> {
