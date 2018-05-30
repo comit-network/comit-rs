@@ -193,7 +193,6 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() {
         let epoch = SystemTime::now();
-        let epoch_hex = "5b0cb4b6";
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
@@ -206,7 +205,6 @@ mod tests {
     #[test]
     fn should_prepend_deploy_code_to_contract() {
         let epoch = SystemTime::now();
-        let epoch_hex = "5b0cb4b6";
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
         let htlc_hex = htlc.compile_to_hex();
 
@@ -216,7 +214,6 @@ mod tests {
     #[test]
     fn deploy_code_length_should_be_12_opcodes() {
         let epoch = SystemTime::now();
-        let epoch_hex = "5b0cb4b6";
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
         let deploy_header = htlc.generate_deploy_header("");
 
