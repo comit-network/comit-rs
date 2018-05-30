@@ -3,10 +3,10 @@ use event_store::BtcBlockHeight;
 use event_store::EthAddress;
 use event_store::EthTimestamp;
 use event_store::EventStore;
-use event_store::OfferAccepted;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::OfferState;
+use event_store::OrderTaken;
 use event_store::SecretHash;
 use rocket::State;
 use rocket::http::RawStr;
@@ -64,7 +64,7 @@ fn post_buy_offers(
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeRequestBody {
+pub struct OrderRequestBody {
     pub secret_hash: SecretHash,
     pub client_refund_address: bitcoin_rpc::Address,
     pub client_success_address: EthAddress,
@@ -72,16 +72,16 @@ pub struct TradeRequestBody {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeRequestResponse {
+pub struct OrderTakenResponseBody {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,
     pub exchange_success_address: bitcoin_rpc::Address,
     pub short_relative_time_lock: EthTimestamp,
 }
 
-impl From<OfferAccepted> for TradeRequestResponse {
-    fn from(offer: OfferAccepted) -> Self {
-        TradeRequestResponse {
+impl From<OrderTaken> for OrderTakenResponseBody {
+    fn from(offer: OrderTaken) -> Self {
+        OrderTakenResponseBody {
             uid: offer.uid.clone(),
             exchange_refund_address: offer.exchange_refund_address.clone(),
             exchange_success_address: offer.exchange_success_address.clone(),
@@ -91,13 +91,13 @@ impl From<OfferAccepted> for TradeRequestResponse {
 }
 
 #[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
-       data = "<trade_request_body>")]
+       data = "<order_request_body>")]
 pub fn post_buy_orders(
     trade_id: &RawStr,
-    trade_request_body: Json<TradeRequestBody>,
+    order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
     _treasury_api_url: State<TreasuryApiUrl>,
-) -> Result<Json<TradeRequestResponse>, BadRequest<String>> {
+) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
     // Receive trade information
     // - Hashed Secret
     // - Client refund address (BTC)
@@ -106,7 +106,7 @@ pub fn post_buy_orders(
     // = generates exchange refund address
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
 
-    let trade_request_body: TradeRequestBody = trade_request_body.into_inner();
+    let order_request_body: OrderRequestBody = order_request_body.into_inner();
     let uid = match Uuid::parse_str(trade_id.as_str()) {
         Ok(uid) => uid,
         Err(e) => {
@@ -122,20 +122,20 @@ pub fn post_buy_orders(
     let exchange_refund_address =
         EthAddress("0x1084d2C416fcc39564a4700a9B231270d463C5eA".to_string());
 
-    let offer = OfferAccepted {
+    let offer = OrderTaken {
         uid,
-        secret_hash: trade_request_body.secret_hash,
-        client_refund_address: trade_request_body.client_refund_address,
-        long_relative_time_lock: trade_request_body.long_relative_time_lock,
+        secret_hash: order_request_body.secret_hash,
+        client_refund_address: order_request_body.client_refund_address,
+        long_relative_time_lock: order_request_body.long_relative_time_lock,
         short_relative_time_lock: EthTimestamp(12), //TODO: this is obviously not "12" :)
-        client_success_address: trade_request_body.client_success_address,
+        client_success_address: order_request_body.client_success_address,
         exchange_refund_address: exchange_refund_address.clone(),
         // TODO: retrieve and use real address
         // This should never be used. Private key is: 'cSVXkgbkkkjzXV2JMg1zWui4A4dCj55sp9hFoVSUQY9DVh9WWjuj'
         exchange_success_address: bitcoin_rpc::Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
     };
 
-    match event_store.store_accepted_offer(offer.clone()) {
+    match event_store.store_order_taken(offer.clone()) {
         Ok(_) => (),
         Err(e) => {
             error!("{:?}", e);
@@ -164,7 +164,7 @@ mod tests {
         request.dispatch()
     }
 
-    fn request_trade(client: &mut Client, uid: Uuid) -> LocalResponse {
+    fn request_order(client: &mut Client, uid: Uuid) -> LocalResponse {
         let request = client
             .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
             .header(ContentType::JSON)
@@ -224,7 +224,7 @@ mod tests {
         };
 
         {
-            let mut response = request_trade(&mut client, uid);
+            let mut response = request_order(&mut client, uid);
             assert_eq!(response.status(), Status::Ok);
 
             let trade_response =
@@ -239,7 +239,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_trade_without_offer_should_fail() {
+    fn given_a_order_request_without_offer_should_fail() {
         let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
@@ -249,13 +249,13 @@ mod tests {
         let uid = Uuid::new_v4();
 
         {
-            let response = request_trade(&mut client, uid);
+            let response = request_order(&mut client, uid);
             assert_eq!(response.status(), Status::BadRequest);
         }
     }
 
     #[test]
-    fn given_two_trades_request_with_same_uid_should_fail() {
+    fn given_two_orders_request_with_same_uid_should_fail() {
         let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
@@ -280,11 +280,11 @@ mod tests {
         };
 
         {
-            let mut response = request_trade(&mut client, uid);
+            let mut response = request_order(&mut client, uid);
             assert_eq!(response.status(), Status::Ok);
 
             let trade_response =
-                serde_json::from_str::<TradeRequestResponse>(&response.body_string().unwrap())
+                serde_json::from_str::<OrderTakenResponseBody>(&response.body_string().unwrap())
                     .unwrap();
             assert!(
                 (trade_response.short_relative_time_lock > EthTimestamp(0)),
@@ -294,7 +294,7 @@ mod tests {
         }
 
         {
-            let response = request_trade(&mut client, uid);
+            let response = request_order(&mut client, uid);
             assert_eq!(response.status(), Status::BadRequest);
         }
     }

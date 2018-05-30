@@ -26,7 +26,7 @@ pub struct OfferCreated {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferAccepted {
+pub struct OrderTaken {
     pub uid: Uuid,
     pub secret_hash: SecretHash,
     pub client_refund_address: bitcoin_rpc::Address,
@@ -38,17 +38,17 @@ pub struct OfferAccepted {
 }
 
 #[derive(Debug, PartialEq)]
-enum State {
+enum TradeState {
     // Offer has been requested and answered
-    Offer,
-    // Trade/Order has been requested and all details provided to move forward. Now waiting for address to be funded
-    Trade,
+    OfferCreated,
+    // Order has been requested and all details provided to move forward. Now waiting for address to be funded.
+    OrderTaken,
 }
 
 pub struct EventStore {
-    states: RwLock<HashMap<Uuid, State>>,
+    states: RwLock<HashMap<Uuid, TradeState>>,
     offers: RwLock<HashMap<Uuid, OfferCreated>>,
-    accepted_offers: RwLock<HashMap<Uuid, OfferAccepted>>,
+    order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
 }
 
 #[derive(Debug)]
@@ -72,7 +72,7 @@ impl EventStore {
         EventStore {
             states: RwLock::new(HashMap::new()),
             offers: RwLock::new(HashMap::new()),
-            accepted_offers: RwLock::new(HashMap::new()),
+            order_taken: RwLock::new(HashMap::new()),
         }
     }
 
@@ -89,7 +89,7 @@ impl EventStore {
 
         match states.get(&uid) {
             Some(_) => return Err(Error::UnexpectedState),
-            None => states.insert(uid, State::Offer),
+            None => states.insert(uid, TradeState::OfferCreated),
         };
 
         {
@@ -99,18 +99,20 @@ impl EventStore {
         Ok(())
     }
 
-    pub fn store_accepted_offer(&self, event: OfferAccepted) -> Result<(), Error> {
+    pub fn store_order_taken(&self, event: OrderTaken) -> Result<(), Error> {
         let uid = event.uid.clone();
         let mut states = self.states.write().unwrap();
 
         match states.get_mut(&uid) {
-            Some(ref mut state) if **state == State::Offer => **state = State::Trade,
+            Some(ref mut state) if **state == TradeState::OfferCreated => {
+                **state = TradeState::OrderTaken
+            }
             _ => return Err(Error::UnexpectedState),
         }
 
         {
-            let mut offers = self.accepted_offers.write().unwrap();
-            offers.insert(uid, event.clone());
+            let mut order_taken = self.order_taken.write().unwrap();
+            order_taken.insert(uid, event.clone());
         }
         Ok(())
     }

@@ -2,11 +2,11 @@ use bitcoin_rpc;
 use event_store;
 use event_store::EventStore;
 use event_store::OfferCreated;
-use event_store::TradeAccepted;
-use event_store::TradeCreated;
+use event_store::OrderCreated;
+use event_store::OrderTaken;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
-use exchange_api_client::Offer;
+use exchange_api_client::OfferResponseBody;
 use exchange_api_client::*;
 use rand::OsRng;
 use rocket::State;
@@ -31,7 +31,7 @@ pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
     url: State<ExchangeApiUrl>,
     event_store: State<EventStore>,
-) -> Result<Json<Offer>, BadRequest<String>> {
+) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
     let symbol = Symbol("ETH-BTC".to_string());
 
@@ -41,7 +41,7 @@ pub fn post_buy_offers(
 
     match res {
         Ok(offer) => {
-            event_store.store_offer_created(OfferCreated::from(offer.clone()));
+            event_store.store_offer_created(OfferCreated::from(offer.clone()))?;
             Ok(Json(offer))
         }
         Err(e) => {
@@ -103,7 +103,7 @@ pub fn post_buy_orders(
 
     let long_relative_timelock = BTC_BLOCKS_IN_24H;
 
-    let trade_created_event = TradeCreated {
+    let order_created_event = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
@@ -111,13 +111,13 @@ pub fn post_buy_orders(
         long_relative_timelock: long_relative_timelock.clone(),
     };
 
-    event_store.store_trade_created(trade_created_event.clone())?;
+    event_store.store_trade_created(order_created_event.clone())?;
 
     let client = create_client(url.inner());
 
     let res = client.create_trade(
         offer.symbol,
-        &TradeRequestBody {
+        &OrderRequestBody {
             uid: trade_id,
             secret_hash: secret.hash().clone(),
             client_refund_address: client_refund_address.clone(),
@@ -126,26 +126,26 @@ pub fn post_buy_orders(
         },
     );
 
-    let trade_acceptance = match res {
-        Ok(trade_acceptance) => trade_acceptance,
+    let order_response = match res {
+        Ok(order_response) => order_response,
         Err(_) => return Err(BadRequest(None)), //TODO: handle error properly
     };
 
     let htlc = BtcHtlc::new(
-        trade_acceptance.exchange_success_address.clone(),
+        order_response.exchange_success_address.clone(),
         client_refund_address,
         long_relative_timelock,
     );
 
-    let trade_accepted_event = TradeAccepted {
+    let order_taken_event = OrderTaken {
         uid: trade_id,
-        short_relative_timelock: trade_acceptance.short_relative_timelock,
-        exchange_refund_address: trade_acceptance.exchange_refund_address,
-        exchange_success_address: trade_acceptance.exchange_success_address,
+        short_relative_timelock: order_response.short_relative_timelock,
+        exchange_refund_address: order_response.exchange_refund_address,
+        exchange_success_address: order_response.exchange_success_address,
         htlc: htlc.clone(),
     };
 
-    event_store.store_trade_accepted(trade_accepted_event)?;
+    event_store.store_trade_accepted(order_taken_event)?;
 
     Ok(Json(RequestToFund {
         uid: trade_id,
@@ -178,7 +178,7 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
         let offer_response =
-            serde_json::from_str::<Offer>(&response.body_string().unwrap()).unwrap();
+            serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
 
         assert_eq!(
             offer_response.symbol,
@@ -197,11 +197,11 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
 
-        let trade =
+        let funding_request =
             serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
 
         assert_eq!(
-            trade.uid, uid,
+            funding_request.uid, uid,
             "UID for the funding request is the same as the offer response"
         );
     }

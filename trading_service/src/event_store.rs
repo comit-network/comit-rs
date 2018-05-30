@@ -1,5 +1,5 @@
 use bitcoin_rpc;
-use exchange_api_client::Offer;
+use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -19,8 +19,8 @@ pub struct OfferCreated {
     pub rate: f32, // Actually need to specify the exact amounts of each currency
 }
 
-impl From<Offer> for OfferCreated {
-    fn from(offer: Offer) -> Self {
+impl From<OfferResponseBody> for OfferCreated {
+    fn from(offer: OfferResponseBody) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
@@ -31,7 +31,7 @@ impl From<Offer> for OfferCreated {
 
 // State after client accepts trade offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeCreated {
+pub struct OrderCreated {
     pub uid: Uuid,
     pub client_success_address: EthAddress,
     pub client_refund_address: bitcoin_rpc::Address,
@@ -40,7 +40,7 @@ pub struct TradeCreated {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeAccepted {
+pub struct OrderTaken {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,
     // This is embedded in the HTLC but we keep it here as well for completeness
@@ -50,17 +50,17 @@ pub struct TradeAccepted {
 }
 
 pub struct EventStore {
-    offer_created_events: RwLock<HashMap<Uuid, OfferCreated>>,
-    trade_created_events: RwLock<HashMap<Uuid, TradeCreated>>,
-    trade_accepted_events: RwLock<HashMap<Uuid, TradeAccepted>>,
+    offer_created: RwLock<HashMap<Uuid, OfferCreated>>,
+    order_created: RwLock<HashMap<Uuid, OrderCreated>>,
+    order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
 }
 
 #[derive(PartialEq)]
 enum TradeState {
     NonExistent,
     OfferCreated,
-    TradeCreated,
-    TradeAccepted,
+    OrderCreated,
+    OrderTaken,
 }
 
 pub enum Error {
@@ -70,38 +70,37 @@ pub enum Error {
 impl EventStore {
     pub fn new() -> EventStore {
         EventStore {
-            offer_created_events: RwLock::new(HashMap::new()),
-            trade_created_events: RwLock::new(HashMap::new()),
-            trade_accepted_events: RwLock::new(HashMap::new()),
+            offer_created: RwLock::new(HashMap::new()),
+            order_created: RwLock::new(HashMap::new()),
+            order_taken: RwLock::new(HashMap::new()),
         }
     }
 
     fn current_state(&self, id: &Uuid) -> TradeState {
-        if self._get(&self.offer_created_events, id).is_none() {
+        if self._get(&self.offer_created, id).is_none() {
             return TradeState::NonExistent;
         }
 
-        if self._get(&self.trade_created_events, id).is_none() {
+        if self._get(&self.order_created, id).is_none() {
             return TradeState::OfferCreated;
         }
 
-        if self._get(&self.trade_accepted_events, id).is_none() {
-            return TradeState::TradeCreated;
+        if self._get(&self.order_taken, id).is_none() {
+            return TradeState::OrderCreated;
         }
 
-        TradeState::TradeAccepted
+        TradeState::OrderTaken
     }
 
-    fn _store<E: Clone>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: Uuid, event: &E) {
-        event_map.write().unwrap().insert(id, event.clone());
-    }
-
-    fn _do_only_in_state<F>(&self, uid: &Uuid, state: TradeState, f: F) -> Result<(), Error>
-    where
-        F: Fn(),
-    {
-        if self.current_state(uid) == state {
-            f();
+    fn _store<E: Clone>(
+        &self,
+        event_map: &RwLock<HashMap<Uuid, E>>,
+        required_state: TradeState,
+        id: Uuid,
+        event: &E,
+    ) -> Result<(), Error> {
+        if self.current_state(&id) == required_state {
+            event_map.write().unwrap().insert(id, event.clone());
             Ok(())
         } else {
             Err(Error::IncorrectState)
@@ -110,38 +109,32 @@ impl EventStore {
 
     pub fn store_offer_created(&self, event: OfferCreated) -> Result<(), Error> {
         let uid = event.uid.clone();
-        self._do_only_in_state(&uid, TradeState::NonExistent, || {
-            self._store(&self.offer_created_events, uid, &event)
-        })
+        self._store(&self.offer_created, TradeState::NonExistent, uid, &event)
     }
 
-    pub fn store_trade_created(&self, event: TradeCreated) -> Result<(), Error> {
+    pub fn store_trade_created(&self, event: OrderCreated) -> Result<(), Error> {
         let uid = event.uid.clone();
-        self._do_only_in_state(&uid, TradeState::OfferCreated, || {
-            self._store(&self.trade_created_events, uid, &event)
-        })
+        self._store(&self.order_created, TradeState::OfferCreated, uid, &event)
     }
 
-    pub fn store_trade_accepted(&self, event: TradeAccepted) -> Result<(), Error> {
+    pub fn store_trade_accepted(&self, event: OrderTaken) -> Result<(), Error> {
         let uid = event.uid.clone();
-        self._do_only_in_state(&uid, TradeState::TradeCreated, || {
-            self._store(&self.trade_accepted_events, uid, &event);
-        })
+        self._store(&self.order_taken, TradeState::OrderCreated, uid, &event)
     }
 
     fn _get<E: Clone>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: &Uuid) -> Option<E> {
-        event_map.read().unwrap().get(id).map(|x| x.clone())
+        event_map.read().unwrap().get(id).map(Clone::clone)
     }
 
     pub fn get_offer_created(&self, id: &Uuid) -> Option<OfferCreated> {
-        self._get(&self.offer_created_events, id)
+        self._get(&self.offer_created, id)
     }
 
-    pub fn get_trade_created(&self, id: &Uuid) -> Option<TradeCreated> {
-        self._get(&self.trade_created_events, id)
+    pub fn get_order_created(&self, id: &Uuid) -> Option<OrderCreated> {
+        self._get(&self.order_created, id)
     }
 
-    pub fn get_trade_accept(&self, id: &Uuid) -> Option<TradeAccepted> {
-        self._get(&self.trade_accepted_events, id)
+    pub fn get_order_taken(&self, id: &Uuid) -> Option<OrderTaken> {
+        self._get(&self.order_taken, id)
     }
 }
