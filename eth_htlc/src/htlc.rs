@@ -13,7 +13,7 @@ pub struct Htlc {
 impl Htlc {
     const TEMPLATE: &'static str = include_str!("../contract.asm.hex");
     const EXPIRY: &'static str = "20000002";
-    const REDEEM: &'static str = "3000000000000000000000000000000000000003";
+    const SUCCESS: &'static str = "3000000000000000000000000000000000000003";
     const REFUND: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
@@ -39,7 +39,10 @@ impl Htlc {
                 Self::EXPIRY,
                 format!("{:x}", self.expiry_timestamp).as_str(),
             )
-            .replace(Self::REDEEM, format!("{:x}", self.success_address).as_str())
+            .replace(
+                Self::SUCCESS,
+                format!("{:x}", self.success_address).as_str(),
+            )
             .replace(Self::REFUND, format!("{:x}", self.refund_address).as_str())
             .replace(
                 Self::SECRET_HASH,
