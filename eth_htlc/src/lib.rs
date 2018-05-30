@@ -1,5 +1,8 @@
 extern crate hex;
 extern crate web3;
+#[macro_use]
+extern crate log;
+extern crate chrono;
 
 mod htlc;
 

@@ -11,10 +11,7 @@
 	success
 	jumpi
 
-	timestamp
-	0x20000002
-
-	gt
+	gt(timestamp, 0x20000002)
 	refund
 	jumpi
 

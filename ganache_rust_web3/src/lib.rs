@@ -1,11 +1,12 @@
 extern crate web3;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 
 use web3::Transport;
 use web3::api::Namespace;
 use web3::helpers::CallResult;
-use web3::types::U256;
+use web3::types::{BlockId, BlockNumber, U256};
 
 #[derive(Debug, Clone)]
 pub struct Ganache<T: Transport> {
@@ -30,10 +31,11 @@ impl<T: Transport> Ganache<T> {
 
     // TODO: This returns some weird crap. Figure out how to hide from the caller.
     /// Jump forward in time. Takes one parameter, which is the amount of time to increase in seconds. Returns the total time adjustment, in seconds.
-    pub fn evm_increase_time(&self, seconds: U256) -> CallResult<String, T::Out> {
-        let seconds = web3::helpers::serialize(&seconds);
-
-        CallResult::new(self.transport.execute("evm_increaseTime", vec![seconds]))
+    pub fn evm_increase_time(&self, seconds: u64) -> CallResult<u64, T::Out> {
+        CallResult::new(
+            self.transport
+                .execute("evm_increaseTime", vec![serde_json::Value::from(seconds)]),
+        )
     }
 
     // TODO: This returns "0x0". Figure out how to swallow and hide from the caller.
@@ -99,12 +101,17 @@ mod tests {
         let (_eloop, transport) = transports::Http::new(&endpoint).unwrap();
         let web3 = web3::Web3::new(transport);
 
-        let result = web3.api::<Ganache<transports::Http>>()
-            .evm_increase_time(U256::from(60))
+        //        let increase = U256::from(1);
+        //
+        let _ = web3.api::<Ganache<transports::Http>>()
+            .evm_increase_time("0x0".to_string())
             .wait()
             .unwrap();
 
-        println!("{:?}", result);
+        let _ = web3.api::<Ganache<transports::Http>>()
+            .evm_mine()
+            .wait()
+            .unwrap();
     }
 
     #[test]

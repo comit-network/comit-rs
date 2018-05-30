@@ -1,13 +1,15 @@
 use Address;
 use SecretHash;
+use chrono;
 use hex;
 use std::time::Duration;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use web3;
+use web3::types::U256;
 
 pub struct Htlc {
-    expiry_timestamp: u32,
+    expiry_timestamp: SystemTime,
     refund_address: Address,
     success_address: Address,
     secret_hash: SecretHash,
@@ -50,12 +52,12 @@ impl IntoSecretHash for &'static str {
 }
 
 pub trait IntoExpiryTimestamp {
-    fn into_timestamp(self) -> u32;
+    fn into_timestamp(self) -> SystemTime;
 }
 
-impl IntoExpiryTimestamp for Duration {
-    fn into_timestamp(self) -> u32 {
-        self.as_secs() as u32
+impl IntoExpiryTimestamp for SystemTime {
+    fn into_timestamp(self) -> SystemTime {
+        self
     }
 }
 
@@ -67,19 +69,22 @@ impl ByteCode {
     }
 }
 
+#[derive(Clone)]
 pub struct EpochOffset(Duration);
 
 impl EpochOffset {
     pub fn hours(hours: u64) -> Self {
         EpochOffset(Duration::from_secs(60 * 60 * hours))
     }
+
+    pub fn to_u256(&self) -> U256 {
+        U256::from(self.0.as_secs())
+    }
 }
 
 impl IntoExpiryTimestamp for EpochOffset {
-    fn into_timestamp(self) -> u32 {
-        let unix_epoch_duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
-
-        (unix_epoch_duration + self.0).into_timestamp()
+    fn into_timestamp(self) -> SystemTime {
+        SystemTime::now() + self.0
     }
 }
 
@@ -102,21 +107,36 @@ impl Htlc {
         success_address: SuccessAddress,
         secret_hash: SecretHash,
     ) -> Self {
+        let expiry_timestamp = expiry_timestamp.into_timestamp();
+        let refund_address = refund_address.into_address();
+        let success_address = success_address.into_address();
+        let secret_hash = secret_hash.into_secret_hash();
+
+        debug!(
+            "Created HTLC with secret hash {} for address {}. At the earliest of {}, {} can reclaim the funds.",
+            secret_hash,
+            success_address,
+            chrono::DateTime::<chrono::Utc>::from(expiry_timestamp).to_rfc3339(),
+            refund_address
+        );
+
         Htlc {
-            expiry_timestamp: expiry_timestamp.into_timestamp(),
-            refund_address: refund_address.into_address(),
-            success_address: success_address.into_address(),
-            secret_hash: secret_hash.into_secret_hash(),
+            expiry_timestamp,
+            refund_address,
+            success_address,
+            secret_hash,
         }
     }
 
     pub fn compile_to_hex(&self) -> ByteCode {
+        let duration = self.expiry_timestamp
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
         let contract_code = Self::TEMPLATE
             .to_string()
-            .replace(
-                Self::EXPIRY,
-                format!("{:x}", self.expiry_timestamp).as_str(),
-            )
+            .replace(Self::EXPIRY, format!("{:x}", duration).as_str())
             .replace(
                 Self::SUCCESS,
                 format!("{:x}", self.success_address).as_str(),
