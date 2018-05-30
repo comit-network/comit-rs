@@ -180,7 +180,27 @@ mod tests {
     }
 
     #[test]
-    fn given_a_buy_offer_and_trade_should_respond_with_ok() {
+    fn given_an_offer_request_then_return_valid_offer_response() {
+        let url = TreasuryApiUrl("stub".to_string());
+        let event_store = EventStore::new();
+
+        let rocket = create_rocket_instance(url, event_store);
+        let mut client = rocket::local::Client::new(rocket).unwrap();
+
+        let mut response = request_offer(&mut client);
+        assert_eq!(response.status(), Status::Ok);
+
+        let offer_response =
+            serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap()).unwrap();
+        assert_eq!(
+            offer_response["symbol"], "ETH-BTC",
+            "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
+            offer_response
+        );
+    }
+
+    #[test]
+    fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_response() {
         let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
