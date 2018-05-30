@@ -1,5 +1,10 @@
 use Address;
 use SecretHash;
+use hex;
+use std::time::Duration;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
+use web3;
 
 pub struct Htlc {
     expiry_timestamp: u32,
@@ -10,6 +15,74 @@ pub struct Htlc {
 
 // TODO: Create IntoAddress and IntoSecretHash trait
 
+pub trait IntoAddress {
+    fn into_address(self) -> Address;
+}
+
+pub trait IntoSecretHash {
+    fn into_secret_hash(self) -> SecretHash;
+}
+
+impl IntoAddress for Address {
+    fn into_address(self) -> Address {
+        self
+    }
+}
+
+impl IntoSecretHash for SecretHash {
+    fn into_secret_hash(self) -> SecretHash {
+        self
+    }
+}
+
+impl IntoAddress for &'static str {
+    fn into_address(self) -> Address {
+        let hex = hex::decode(self).expect("Given string is not hex-encoded");
+        Address::from_slice(hex.as_ref())
+    }
+}
+
+impl IntoSecretHash for &'static str {
+    fn into_secret_hash(self) -> SecretHash {
+        let hex = hex::decode(self).expect("Given string is not hex-encoded");
+        SecretHash::from_slice(hex.as_ref())
+    }
+}
+
+pub trait IntoExpiryTimestamp {
+    fn into_timestamp(self) -> u32;
+}
+
+impl IntoExpiryTimestamp for Duration {
+    fn into_timestamp(self) -> u32 {
+        self.as_secs() as u32
+    }
+}
+
+pub struct ByteCode(String);
+
+impl ByteCode {
+    pub fn into_bytes(self) -> web3::types::Bytes {
+        web3::types::Bytes(hex::decode(self.0).unwrap())
+    }
+}
+
+pub struct EpochOffset(Duration);
+
+impl EpochOffset {
+    pub fn hours(hours: u64) -> Self {
+        EpochOffset(Duration::from_secs(60 * 60 * hours))
+    }
+}
+
+impl IntoExpiryTimestamp for EpochOffset {
+    fn into_timestamp(self) -> u32 {
+        let unix_epoch_duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+
+        (unix_epoch_duration + self.0).into_timestamp()
+    }
+}
+
 impl Htlc {
     const TEMPLATE: &'static str = include_str!("../contract.asm.hex");
     const EXPIRY: &'static str = "20000002";
@@ -18,21 +91,26 @@ impl Htlc {
     const SECRET_HASH: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
 
-    pub fn new(
-        expiry_timestamp: u32,
-        refund_address: Address,
-        success_address: Address,
+    pub fn new<
+        ExpiryTimestamp: IntoExpiryTimestamp,
+        RefundAddress: IntoAddress,
+        SuccessAddress: IntoAddress,
+        SecretHash: IntoSecretHash,
+    >(
+        expiry_timestamp: ExpiryTimestamp,
+        refund_address: RefundAddress,
+        success_address: SuccessAddress,
         secret_hash: SecretHash,
     ) -> Self {
         Htlc {
-            expiry_timestamp,
-            refund_address,
-            success_address,
-            secret_hash,
+            expiry_timestamp: expiry_timestamp.into_timestamp(),
+            refund_address: refund_address.into_address(),
+            success_address: success_address.into_address(),
+            secret_hash: secret_hash.into_secret_hash(),
         }
     }
 
-    pub fn compile_to_hex(&self) -> String {
+    pub fn compile_to_hex(&self) -> ByteCode {
         let contract_code = Self::TEMPLATE
             .to_string()
             .replace(
@@ -49,11 +127,13 @@ impl Htlc {
                 format!("{:x}", self.secret_hash).as_str(),
             );
 
-        format!(
+        let code = format!(
             "{}{}",
             self.generate_deploy_header(&contract_code),
             contract_code
-        )
+        );
+
+        ByteCode(code)
     }
 
     /// Don't touch this unless you know what you are doing!

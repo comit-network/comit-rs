@@ -1,3 +1,4 @@
+extern crate hex;
 extern crate web3;
 
 mod htlc;
