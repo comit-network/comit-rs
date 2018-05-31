@@ -72,6 +72,14 @@ impl OrderTaken {
     pub fn exchange_contract_time_lock(&self) -> SystemTime {
         self.exchange_contract_time_lock
     }
+
+    pub fn client_refund_address(&self) -> bitcoin_rpc::Address {
+        self.client_refund_address.clone()
+    }
+
+    pub fn contract_secret_lock(&self) -> eth_htlc::SecretHash {
+        self.contract_secret_lock
+    }
 }
 
 #[derive(Debug, PartialEq)]

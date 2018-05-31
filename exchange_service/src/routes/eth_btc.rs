@@ -117,7 +117,7 @@ pub fn post_buy_orders(
         }
     };
 
-    let offer = OrderTaken::new(
+    let order_taken = OrderTaken::new(
         uid,
         order_request_body.contract_secret_lock,
         order_request_body.client_contract_time_lock,
@@ -131,7 +131,19 @@ pub fn post_buy_orders(
         ),
     );
 
-    match event_store.store_order_taken(offer.clone()) {
+    let htlc = eth_htlc::Htlc::new(
+        order_taken.exchange_contract_time_lock(),
+        order_taken.exchange_refund_address(),
+        order_taken.client_refund_address(),
+        order_taken.contract_secret_lock(),
+    );
+
+    // get contract bytecode
+    // build creation transaction
+    // sign transaction
+    // send contract to blockchain
+
+    match event_store.store_order_taken(order_taken.clone()) {
         Ok(_) => (),
         Err(e) => {
             error!("{:?}", e);
