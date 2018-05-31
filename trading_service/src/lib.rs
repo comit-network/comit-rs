@@ -15,6 +15,10 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate uuid;
 
+extern crate crypto;
+extern crate rand;
+extern crate web3;
+
 #[macro_use]
 extern crate log;
 extern crate bitcoin;

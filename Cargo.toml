@@ -11,5 +11,6 @@ members = [
 	"bitcoin_rpc",
 	"bitcoin_wallet",
 	"eth_htlc",
-	"ganache_rust_web3"
+	"ganache_rust_web3",
+	"ethereum_wallet"
 ]

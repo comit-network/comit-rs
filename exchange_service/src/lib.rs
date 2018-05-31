@@ -8,6 +8,7 @@ extern crate rocket_contrib;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate eth_htlc;
 extern crate serde_json;
 extern crate uuid;
 

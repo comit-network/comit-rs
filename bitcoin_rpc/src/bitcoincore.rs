@@ -167,7 +167,7 @@ impl BitcoinCoreClient {
 
     // TODO: getblockchaininfo
 
-    pub fn get_block_count(&self) -> Result<RpcResponse<i32>, HTTPError> {
+    pub fn get_block_count(&self) -> Result<RpcResponse<BlockHeight>, HTTPError> {
         self.client.send(RpcRequest::new0(
             JsonRpcVersion::V1,
             "test",

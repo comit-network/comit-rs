@@ -4,6 +4,7 @@ use reqwest;
 use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
 use uuid::Uuid;
+use web3::types::Address;
 
 #[derive(Clone)]
 pub struct ExchangeApiUrl(pub String);
@@ -25,18 +26,18 @@ pub struct SecretHash(pub String);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
-    pub secret_hash: SecretHash,
+    pub contract_secret_lock: SecretHash,
     pub client_refund_address: bitcoin_rpc::Address,
-    pub client_success_address: EthAddress,
-    pub long_relative_timelock: BlockHeight,
+    pub client_success_address: Address,
+    pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderResponseBody {
     //Indicates the order was "taken"
     pub uid: Uuid,
-    pub exchange_refund_address: EthAddress,
-    pub short_relative_timelock: EthTimeDelta,
+    pub exchange_refund_address: Address,
+    pub exchange_contract_time_lock: u64,
     pub exchange_success_address: bitcoin_rpc::Address,
 }
 
@@ -50,7 +51,7 @@ pub trait ApiClient {
         &self,
         symbol: Symbol,
         uid: Uuid,
-        &OrderRequestBody,
+        trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error>;
 }
 

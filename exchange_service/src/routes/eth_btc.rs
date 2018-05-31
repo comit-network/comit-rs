@@ -1,18 +1,17 @@
 use bitcoin_rpc;
-use event_store::BtcBlockHeight;
-use event_store::EthAddress;
-use event_store::EthTimestamp;
+use eth_htlc;
+use eth_htlc::IntoAddress;
 use event_store::EventStore;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::OfferState;
 use event_store::OrderTaken;
-use event_store::SecretHash;
 use rocket::State;
 use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use rocket_factory::TreasuryApiUrl;
+use std::time::UNIX_EPOCH;
 use treasury_api_client::{create_client, ApiClient, Symbol};
 use uuid::Uuid;
 
@@ -65,27 +64,30 @@ fn post_buy_offers(
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
-    pub secret_hash: SecretHash,
+    pub contract_secret_lock: eth_htlc::SecretHash,
+    pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
+
     pub client_refund_address: bitcoin_rpc::Address,
-    pub client_success_address: EthAddress,
-    pub long_relative_timelock: BtcBlockHeight,
+    pub client_success_address: eth_htlc::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody {
-    pub uid: Uuid,
-    pub exchange_refund_address: EthAddress,
+    pub exchange_refund_address: eth_htlc::Address,
     pub exchange_success_address: bitcoin_rpc::Address,
-    pub short_relative_timelock: EthTimestamp,
+    pub exchange_contract_time_lock: u64,
 }
 
 impl From<OrderTaken> for OrderTakenResponseBody {
-    fn from(offer: OrderTaken) -> Self {
+    fn from(order_taken_event: OrderTaken) -> Self {
         OrderTakenResponseBody {
-            uid: offer.uid.clone(),
-            exchange_refund_address: offer.exchange_refund_address.clone(),
-            exchange_success_address: offer.exchange_success_address.clone(),
-            short_relative_timelock: offer.short_relative_timelock.clone(),
+            exchange_refund_address: order_taken_event.exchange_refund_address(),
+            exchange_success_address: order_taken_event.exchange_success_address(),
+            exchange_contract_time_lock: order_taken_event
+                .exchange_contract_time_lock()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
         }
     }
 }
@@ -115,27 +117,19 @@ pub fn post_buy_orders(
         }
     };
 
-    // TODO: need to lock on uid now.
-
-    // TODO: retrieve and use real address
-    // This should never be used. Private key is: '9774cd25996588ef4bace0984eac1a80a3897c0cd3eea9858a6063c74f59e08b'
-    let exchange_refund_address =
-        EthAddress("0x1084d2C416fcc39564a4700a9B231270d463C5eA".to_string());
-
-    let offer = OrderTaken {
+    let offer = OrderTaken::new(
         uid,
-        secret_hash: order_request_body.secret_hash,
-        client_refund_address: order_request_body.client_refund_address,
-        long_relative_timelock: order_request_body.long_relative_timelock,
-        short_relative_timelock: EthTimestamp(12), //TODO: this is obviously not "12" :)
-        client_success_address: order_request_body.client_success_address,
-        exchange_refund_address: exchange_refund_address.clone(),
+        order_request_body.contract_secret_lock,
+        order_request_body.client_contract_time_lock,
+        order_request_body.client_refund_address,
+        order_request_body.client_success_address,
+        "1084d2C416fcc39564a4700a9B231270d463C5eA".into_address(),
         // TODO: retrieve and use real address
         // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
-        exchange_success_address: bitcoin_rpc::Address::from(
+        bitcoin_rpc::Address::from(
             "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
         ),
-    };
+    );
 
     match event_store.store_order_taken(offer.clone()) {
         Ok(_) => (),
@@ -172,10 +166,10 @@ mod tests {
             .header(ContentType::JSON)
             .body(
                 r#"{
-                    "secret_hash": "MySecretHash",
+                    "contract_secret_lock": "0x68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
                     "client_refund_address": "ClientRefundAddressInBtc",
-                    "client_success_address": "0xClientSuccessAddressInEth",
-                    "long_relative_timelock": 24
+                    "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
+                    "client_contract_time_lock": 24
                   }"#,
             );
         request.dispatch()
@@ -229,14 +223,12 @@ mod tests {
             let mut response = request_order(&mut client, uid);
             assert_eq!(response.status(), Status::Ok);
 
-            let trade_response =
-                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
-                    .unwrap();
-            assert!(
-                (trade_response["short_relative_timelock"].as_i64().unwrap() > 0),
-                "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
-                trade_response
-            );
+            #[derive(Deserialize)]
+            struct Response {
+                exchange_contract_time_lock: i64,
+            }
+
+            serde_json::from_str::<Response>(&response.body_string().unwrap()).unwrap();
         }
     }
 
@@ -282,17 +274,8 @@ mod tests {
         };
 
         {
-            let mut response = request_order(&mut client, uid);
+            let response = request_order(&mut client, uid);
             assert_eq!(response.status(), Status::Ok);
-
-            let trade_response =
-                serde_json::from_str::<OrderTakenResponseBody>(&response.body_string().unwrap())
-                    .unwrap();
-            assert!(
-                (trade_response.short_relative_timelock > EthTimestamp(0)),
-                "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
-                trade_response
-            );
         }
 
         {

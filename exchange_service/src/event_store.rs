@@ -1,20 +1,13 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
+use eth_htlc;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
+use std::time::Duration;
+use std::time::SystemTime;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct SecretHash(pub String); // string is hexadecimal!
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct BtcBlockHeight(pub u32);
-// TODO: implement Eth Web3 :)
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct EthAddress(pub String);
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, PartialOrd)]
-pub struct EthTimestamp(pub u32);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferCreated {
@@ -27,14 +20,58 @@ pub struct OfferCreated {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTaken {
-    pub uid: Uuid,
-    pub secret_hash: SecretHash,
-    pub client_refund_address: bitcoin_rpc::Address,
-    pub long_relative_timelock: BtcBlockHeight,
-    pub short_relative_timelock: EthTimestamp,
-    pub client_success_address: EthAddress,
-    pub exchange_refund_address: EthAddress,
-    pub exchange_success_address: bitcoin_rpc::Address,
+    uid: Uuid,
+
+    contract_secret_lock: eth_htlc::SecretHash,
+    client_contract_time_lock: bitcoin_rpc::BlockHeight,
+    exchange_contract_time_lock: SystemTime,
+
+    client_refund_address: bitcoin_rpc::Address,
+    client_success_address: eth_htlc::Address,
+
+    exchange_refund_address: eth_htlc::Address,
+    exchange_success_address: bitcoin_rpc::Address,
+}
+
+impl OrderTaken {
+    pub fn new(
+        uid: Uuid,
+
+        contract_secret_lock: eth_htlc::SecretHash,
+        client_contract_time_lock: bitcoin_rpc::BlockHeight,
+
+        client_refund_address: bitcoin_rpc::Address,
+        client_success_address: eth_htlc::Address,
+        exchange_refund_address: eth_htlc::Address,
+        exchange_success_address: bitcoin_rpc::Address,
+    ) -> Self {
+        let twelve_hours = Duration::new(60 * 60 * 12, 0);
+
+        OrderTaken {
+            uid,
+
+            contract_secret_lock,
+            client_contract_time_lock,
+            exchange_contract_time_lock: SystemTime::now() + twelve_hours,
+
+            client_refund_address,
+            client_success_address,
+            exchange_refund_address,
+            exchange_success_address,
+        }
+    }
+
+    pub fn exchange_success_address(&self) -> bitcoin_rpc::Address {
+        self.exchange_success_address.clone()
+    }
+
+    pub fn exchange_refund_address(&self) -> eth_htlc::Address {
+        self.exchange_refund_address
+    }
+
+    pub fn exchange_contract_time_lock(&self) -> SystemTime {
+        self.exchange_contract_time_lock
+    }
 }
 
 #[derive(Debug, PartialEq)]
