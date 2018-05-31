@@ -6,10 +6,12 @@ use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
 use event_store::OrderTaken;
+use exchange_api_client;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::OfferResponseBody;
-use exchange_api_client::*;
+use exchange_api_client::OrderRequestBody;
+use exchange_api_client::create_client;
 use rand::OsRng;
 use rocket::State;
 use rocket::http::RawStr;
@@ -118,9 +120,9 @@ pub fn post_buy_orders(
 
     let res = exchange_client.create_trade(
         offer.symbol,
+        trade_id,
         &OrderRequestBody {
-            uid: trade_id,
-            secret_hash: secret.hash().clone(),
+            secret_hash: exchange_api_client::SecretHash(secret.hash().as_hex().clone()),
             client_refund_address: client_refund_address.clone(),
             client_success_address: client_success_address.clone(),
             long_relative_timelock: long_absolute_timelock.clone(),

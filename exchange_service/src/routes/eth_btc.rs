@@ -68,7 +68,7 @@ pub struct OrderRequestBody {
     pub secret_hash: SecretHash,
     pub client_refund_address: bitcoin_rpc::Address,
     pub client_success_address: EthAddress,
-    pub long_relative_time_lock: BtcBlockHeight,
+    pub long_relative_timelock: BtcBlockHeight,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -76,7 +76,7 @@ pub struct OrderTakenResponseBody {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,
     pub exchange_success_address: bitcoin_rpc::Address,
-    pub short_relative_time_lock: EthTimestamp,
+    pub short_relative_timelock: EthTimestamp,
 }
 
 impl From<OrderTaken> for OrderTakenResponseBody {
@@ -85,7 +85,7 @@ impl From<OrderTaken> for OrderTakenResponseBody {
             uid: offer.uid.clone(),
             exchange_refund_address: offer.exchange_refund_address.clone(),
             exchange_success_address: offer.exchange_success_address.clone(),
-            short_relative_time_lock: offer.short_relative_time_lock.clone(),
+            short_relative_timelock: offer.short_relative_timelock.clone(),
         }
     }
 }
@@ -126,13 +126,15 @@ pub fn post_buy_orders(
         uid,
         secret_hash: order_request_body.secret_hash,
         client_refund_address: order_request_body.client_refund_address,
-        long_relative_time_lock: order_request_body.long_relative_time_lock,
-        short_relative_time_lock: EthTimestamp(12), //TODO: this is obviously not "12" :)
+        long_relative_timelock: order_request_body.long_relative_timelock,
+        short_relative_timelock: EthTimestamp(12), //TODO: this is obviously not "12" :)
         client_success_address: order_request_body.client_success_address,
         exchange_refund_address: exchange_refund_address.clone(),
         // TODO: retrieve and use real address
-        // This should never be used. Private key is: 'cSVXkgbkkkjzXV2JMg1zWui4A4dCj55sp9hFoVSUQY9DVh9WWjuj'
-        exchange_success_address: bitcoin_rpc::Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
+        // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
+        exchange_success_address: bitcoin_rpc::Address::from(
+            "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
+        ),
     };
 
     match event_store.store_order_taken(offer.clone()) {
@@ -173,7 +175,7 @@ mod tests {
                     "secret_hash": "MySecretHash",
                     "client_refund_address": "ClientRefundAddressInBtc",
                     "client_success_address": "0xClientSuccessAddressInEth",
-                    "long_relative_time_lock": 24
+                    "long_relative_timelock": 24
                   }"#,
             );
         request.dispatch()
@@ -231,7 +233,7 @@ mod tests {
                 serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
                     .unwrap();
             assert!(
-                (trade_response["short_relative_time_lock"].as_i64().unwrap() > 0),
+                (trade_response["short_relative_timelock"].as_i64().unwrap() > 0),
                 "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
                 trade_response
             );
@@ -287,7 +289,7 @@ mod tests {
                 serde_json::from_str::<OrderTakenResponseBody>(&response.body_string().unwrap())
                     .unwrap();
             assert!(
-                (trade_response.short_relative_time_lock > EthTimestamp(0)),
+                (trade_response.short_relative_timelock > EthTimestamp(0)),
                 "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
                 trade_response
             );
