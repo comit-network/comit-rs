@@ -5,11 +5,16 @@ use rand::{OsRng, Rng};
 const SHA256_DIGEST_LENGTH: usize = 32;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct SecretHash(String); // String is hexadecimal!
+pub struct SecretHash(pub Vec<u8>);
 
 impl SecretHash {
-    pub fn as_hex(&self) -> &str {
-        self.0.as_str()
+    pub fn as_hex(&self) -> String {
+        let mut s = String::new();
+        for i in &self.0 {
+            // 02x -> always output 2 chars, left pad with zero if needed
+            s.push_str(&format!("{:02x}", i));
+        }
+        s
     }
 }
 
@@ -34,7 +39,11 @@ impl Secret {
             None => {
                 let mut sha = Sha256::new();
                 sha.input(self.secret.as_slice());
-                let hash = SecretHash(sha.result_str());
+
+                let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
+                sha.result(&mut result);
+                let hash = SecretHash(result.to_vec());
+
                 self.hash = Some(hash.clone());
                 self.hash()
             }
@@ -58,6 +67,7 @@ impl RandomnessSource for OsRng {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use hex;
     use std::vec::Vec;
 
     #[test]
@@ -77,8 +87,19 @@ mod tests {
         assert_eq!(
             *secret.hash(),
             SecretHash(
-                "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec".to_string()
+                hex::decode("68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec")
+                    .unwrap()
             )
+        );
+    }
+
+    #[test]
+    fn new_secret_hash_as_hex() {
+        let bytes: Vec<u8> = b"hello world, you are beautiful!!".to_vec();
+        let mut secret = Secret::new(bytes);
+        assert_eq!(
+            secret.hash().as_hex(),
+            "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
         );
     }
 }

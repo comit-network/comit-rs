@@ -15,7 +15,7 @@ impl ApiClient for FakeApiClient {
     fn create_offer(
         &self,
         symbol: Symbol,
-        amount: u32,
+        _amount: u32,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let offer = OfferResponseBody {
             uid: Uuid::new_v4(),
@@ -27,7 +27,7 @@ impl ApiClient for FakeApiClient {
 
     fn create_trade(
         &self,
-        symbol: Symbol,
+        _symbol: Symbol,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {
@@ -35,7 +35,7 @@ impl ApiClient for FakeApiClient {
             exchange_refund_address: EthAddress(
                 "0x34b19d15e793883d840c563d7dbc8a6723465146".to_string(),
             ),
-            exchange_success_address: Address::from("mtgyGsXBNG7Yta5rcMgWH4x9oGE5rm3ty9"),
+            exchange_success_address: Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
             short_relative_timelock: EthTimeDelta(43200),
         };
 

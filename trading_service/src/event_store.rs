@@ -1,10 +1,10 @@
 use bitcoin_rpc;
+use btc_htlc::BtcBlockHeight;
+use btc_htlc::BtcHtlc;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
 use std::sync::RwLock;
-use stub::BtcBlockHeight;
-use stub::BtcHtlc;
 use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
 use uuid::Uuid;

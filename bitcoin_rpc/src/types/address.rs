@@ -1,8 +1,8 @@
 use types::*;
 
-// TODO: Use a proper struct that represents the actual address format
+// TODO: Use bitcoin::util::address::Address
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Address(String);
+pub struct Address(pub String);
 
 from_str!(Address);
 

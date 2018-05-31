@@ -1,10 +1,12 @@
-use bitcoin::blockdata::script::{Builder, Script};
-use bitcoin::util;
-use bitcoin::util::address::Payload::WitnessProgram;
-use std::str::FromStr;
-// All opcodes
 use bitcoin::blockdata::opcodes::All::OP_NOP2 as OP_CHECKLOCKTIMEVERIFY;
 use bitcoin::blockdata::opcodes::All::*;
+use bitcoin::blockdata::script::{Builder, Script};
+use bitcoin::network::constants::Network::BitcoinCoreRegtest;
+use bitcoin::util::address::Address;
+use bitcoin::util::address::Payload::WitnessProgram;
+use bitcoin_rpc;
+use secret::SecretHash;
+use std::str::FromStr;
 
 // Create BTC HTLC
 // Returns P2WSH address
@@ -14,9 +16,53 @@ use bitcoin::blockdata::opcodes::All::*;
 // - BTC amount
 // - hashed secret
 
-//TODO: move to nice error handling
-pub fn get_pub_key_from_address(address: String) -> Option<Vec<u8>> {
-    let address = util::address::Address::from_str(address.as_str());
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct BtcBlockHeight(pub u32);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct BtcHtlc {
+    recipient_success_address: bitcoin_rpc::Address,
+    sender_refund_address: bitcoin_rpc::Address,
+    secret_hash: SecretHash,
+    timelock: BtcBlockHeight,
+    pub htlc_address: bitcoin_rpc::Address,
+}
+
+//TODO: implement proper error handling
+impl BtcHtlc {
+    pub fn new(
+        recipient_success_address: bitcoin_rpc::Address,
+        sender_refund_address: bitcoin_rpc::Address,
+        secret_hash: SecretHash,
+        timelock: BtcBlockHeight,
+    ) -> Option<BtcHtlc> {
+        let recipient_pubkey_hash = get_pub_key_from_address(&recipient_success_address.0).unwrap();
+        let sender_pubkey_hash = get_pub_key_from_address(&sender_refund_address.0).unwrap();
+
+        let script = create_htlc_redeem_script(
+            &recipient_pubkey_hash,
+            &sender_pubkey_hash,
+            &secret_hash.0,
+            &timelock,
+        );
+
+        let htlc_address = Address::p2wsh(&script, BitcoinCoreRegtest);
+        let htlc_address: String = htlc_address.to_string();
+        let htlc_address = bitcoin_rpc::Address::from(htlc_address.as_str());
+
+        Some(BtcHtlc {
+            recipient_success_address,
+            sender_refund_address,
+            secret_hash,
+            timelock,
+            htlc_address,
+        })
+    }
+}
+
+//TODO: implement proper error handling
+pub fn get_pub_key_from_address(address: &String) -> Option<Vec<u8>> {
+    let address = Address::from_str(address.as_str());
     let address = match address {
         Ok(a) => a,
         Err(e) => panic!("{:?}", e),
@@ -51,19 +97,8 @@ pub fn create_htlc_redeem_script(
     recipient_pubkey_hash: &Vec<u8>,
     sender_pubkey_hash: &Vec<u8>,
     secret_hash: &Vec<u8>,
-    redeem_block_height: i64,
+    redeem_block_height: &BtcBlockHeight,
 ) -> Script {
-    /*
-    OP_IF,
-    OP_SHA256, h, OP_EQUALVERIFY,
-    OP_DUP, OP_HASH160, recipientpubkey,
-    OP_ELSE,
-    redeemblocknum, OP_CHECKLOCKTIMEVERIFY, OP_DROP,
-    OP_DUP, OP_HASH160,senderpubkey,
-    OP_ENDIF,
-    OP_EQUALVERIFY, OP_CHECKSIG
-    */
-
     Builder::new()
         .push_opcode(OP_IF)
         .push_opcode(OP_SHA256)
@@ -73,7 +108,7 @@ pub fn create_htlc_redeem_script(
         .push_opcode(OP_HASH160)
         .push_slice(recipient_pubkey_hash)
         .push_opcode(OP_ELSE)
-        .push_int(redeem_block_height)
+        .push_int(i64::from(redeem_block_height.0))
         .push_opcode(OP_CHECKLOCKTIMEVERIFY)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)
@@ -88,14 +123,13 @@ pub fn create_htlc_redeem_script(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin;
     use bitcoin::network;
     use hex;
 
     #[test]
     fn given_an_address_return_pubkey_hash() {
         let address = String::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap");
-        let pubkey_hash = get_pub_key_from_address(address.unwrap()).unwrap();
+        let pubkey_hash = get_pub_key_from_address(&address.unwrap()).unwrap();
 
         assert_eq!(
             pubkey_hash,
@@ -136,10 +170,7 @@ mod tests {
         ];
         let script = create_simple_redeem_script(&pubkey_hash);
 
-        let address = bitcoin::util::address::Address::p2wsh(
-            &script,
-            network::constants::Network::BitcoinCoreRegtest,
-        );
+        let address = Address::p2wsh(&script, network::constants::Network::BitcoinCoreRegtest);
         assert_eq!(
             address.to_string(),
             "bcrt1q5072z6s48j5s8rkz2amujxplty8fn5tgletyam4hct7rgzf75j3sdvdcjs"
@@ -179,7 +210,7 @@ mod tests {
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash,
-            900,
+            &BtcBlockHeight(900),
         );
 
         assert_eq!(
@@ -211,13 +242,10 @@ mod tests {
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash,
-            900,
+            &BtcBlockHeight(900),
         );
 
-        let address = bitcoin::util::address::Address::p2wsh(
-            &script,
-            network::constants::Network::BitcoinCoreRegtest,
-        );
+        let address = Address::p2wsh(&script, network::constants::Network::BitcoinCoreRegtest);
         assert_eq!(
             address.to_string(),
             "bcrt1qu6rh5ectg6uezw76a4rssnedhzvrc23zc3elpt4plfwza0z0mr2qp8u39k"

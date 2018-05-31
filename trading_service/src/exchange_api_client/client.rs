@@ -1,7 +1,8 @@
 use bitcoin_rpc;
+use btc_htlc::BtcBlockHeight;
 use reqwest;
 use secret::SecretHash;
-use stub::{BtcBlockHeight, EthAddress, EthTimeDelta};
+use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
 use uuid::Uuid;
 
