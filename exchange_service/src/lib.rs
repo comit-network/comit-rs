@@ -14,7 +14,7 @@ extern crate uuid;
 #[macro_use]
 extern crate log;
 
+pub mod event_store;
 pub mod rocket_factory;
 pub mod routes;
 pub mod treasury_api_client;
-pub mod types;

@@ -1,5 +1,6 @@
+use super::{Rate, Symbol};
 use reqwest;
-use types::{Rate, Symbol, TreasuryApiUrl};
+use rocket_factory::TreasuryApiUrl;
 
 pub trait ApiClient {
     fn request_rate(&self, symbol: Symbol) -> Result<Rate, reqwest::Error>;
