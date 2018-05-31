@@ -15,8 +15,6 @@ pub struct Htlc {
     secret_hash: SecretHash,
 }
 
-// TODO: Create IntoAddress and IntoSecretHash trait
-
 pub trait IntoAddress {
     fn into_address(self) -> Address;
 }
@@ -203,21 +201,12 @@ mod tests {
     }
 
     #[test]
-    fn should_prepend_deploy_code_to_contract() {
+    fn should_generate_correct_deploy_header() {
         let epoch = SystemTime::now();
         let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
-        let htlc_hex = htlc.compile_to_hex();
+        let deploy_header =
+            htlc.generate_deploy_header("731000000000000000000000000000000000000001ff");
 
-        assert_eq!(&htlc_hex.0[0..24], "607C600C600039607C6000F3");
-    }
-
-    #[test]
-    fn deploy_code_length_should_be_12_opcodes() {
-        let epoch = SystemTime::now();
-        let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
-        let deploy_header = htlc.generate_deploy_header("");
-
-        // If this test fails, you need to rethink the deploy code. The deploy code needs to know about its number of opcodes, otherwise it cannot deploy the contract.
-        assert_eq!(deploy_header.len(), 24);
+        assert_eq!(&deploy_header, "6016600C60003960166000F3");
     }
 }
