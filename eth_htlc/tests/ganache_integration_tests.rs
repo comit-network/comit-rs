@@ -3,6 +3,8 @@ extern crate eth_htlc;
 extern crate ganache_rust_web3;
 extern crate hex;
 extern crate web3;
+#[macro_use]
+extern crate log;
 
 use web3::types::Bytes;
 use web3::types::U256;
