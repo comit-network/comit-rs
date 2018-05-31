@@ -1,6 +1,8 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
+extern crate bitcoin;
+extern crate bitcoin_rpc;
 extern crate rocket;
 extern crate trading_service;
 
