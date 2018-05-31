@@ -24,7 +24,7 @@ serde_derive = "1.0.51"
 serde_json = "1.0.17"
 
 bitcoin_rpc = { path = "../bitcoin_rpc" }
-bitcoin = { path = "../../rust-bitcoin" }
+bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 hex = "0.3.2"
 
 [dependencies.uuid]
