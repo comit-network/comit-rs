@@ -125,15 +125,48 @@ fn generate_segwit_redeem(
     Ok(transaction)
 }
 
+extern crate bitcoin_rpc;
+extern crate hex;
+
 #[cfg(test)]
 mod tests {
 
-    extern crate bitcoin_rpc;
-
     use super::*;
+    use bitcoin::util::privkey::Privkey;
+    use bitcoin_rpc;
+    use hex;
+    use std::env::var;
+    use std::str::FromStr;
 
     #[test]
     fn redeem_htlc() {
-        // TODO
+        let url = var("BITCOIN_RPC_URL").unwrap();
+        let username = var("BITCOIN_RPC_USERNAME").unwrap();
+        let password = var("BITCOIN_RPC_PASSWORD").unwrap();
+        let private_key =
+            Privkey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
+
+        let client =
+            bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str());
+
+        client.generate(432); //enable segwit
+        let txid: String = client
+            .send_to_address(
+                bitcoin_rpc::Address::from(
+                    "bcrt1qknf7h6xtuxa9s9yth5x8ejpxue745k85r7sxfz873nkqf7qr8d8qae4dce",
+                ),
+                1.0,
+            )
+            .unwrap()
+            .into_result()
+            .unwrap()
+            .into();
+
+        let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
+
+        let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
+
+        let txid = hex::decode(txid).unwrap();
+        //generate_p2wsh_htlc_redeem_tx()
     }
 }
