@@ -1,6 +1,9 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
+extern crate bitcoin;
+extern crate bitcoin_rpc;
+extern crate btc_htlc;
 extern crate rocket;
 extern crate trading_service;
 
@@ -10,5 +13,19 @@ use trading_service::rocket_factory::create_rocket_instance;
 
 fn main() {
     let exchange_api_url = ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap());
-    create_rocket_instance(exchange_api_url).launch();
+
+    let network = match var("BTC_NETWORK") {
+        Ok(value) => match value.as_str() {
+            "BTC_MAINNET" => panic!("You are not mainnet ready fool!"),
+            "BTC_TESTNET" => bitcoin::network::constants::Network::Testnet,
+            "BTCORE_REGTEST" => bitcoin::network::constants::Network::BitcoinCoreRegtest,
+            _ => panic!(
+                "Please set environment variable BTC_NETWORK to one of the following values:\n\
+                 - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
+            ),
+        },
+        Err(_) => bitcoin::network::constants::Network::BitcoinCoreRegtest,
+    };
+
+    create_rocket_instance(exchange_api_url, network).launch();
 }

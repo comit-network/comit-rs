@@ -16,14 +16,17 @@ log = "0.4.1"
 rand = "0.4.2"
 reqwest = "0.8.5"
 rocket = "0.3.10"
-rocket_codegen = "0.3.10"
+rocket_codegen = "=0.3.10"
 rocket_contrib = "0.3.10"
-rust-crypto = "0.2.36"
 serde = "1.0.51"
 serde_derive = "1.0.51"
 serde_json = "1.0.17"
 
 bitcoin_rpc = { path = "../bitcoin_rpc" }
+bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
+btc_htlc = { path = "../btc_htlc" }
+common_types = { path = "../common_types" }
+hex = "0.3.2"
 
 [dependencies.uuid]
 features = ["serde", "v4"]

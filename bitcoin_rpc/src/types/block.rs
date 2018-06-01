@@ -1,5 +1,18 @@
 use types::*;
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct BlockHeight(u32);
+
+impl BlockHeight {
+    pub fn new(h: u32) -> BlockHeight {
+        BlockHeight(h)
+    }
+
+    pub fn as_i64(&self) -> i64 {
+        i64::from(self.0)
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Block {
     pub hash: BlockHash,
@@ -25,7 +38,6 @@ pub struct Block {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use serde_json;
 
@@ -91,5 +103,4 @@ mod tests {
             }
         )
     }
-
 }

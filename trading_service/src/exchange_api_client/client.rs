@@ -1,7 +1,7 @@
 use bitcoin_rpc;
+use bitcoin_rpc::BlockHeight;
 use reqwest;
-use secret::SecretHash;
-use stub::{BtcBlockHeight, EthAddress, EthTimeDelta};
+use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
 use uuid::Uuid;
 
@@ -21,12 +21,14 @@ pub struct OfferResponseBody {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SecretHash(pub String);
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
-    pub uid: Uuid,
     pub secret_hash: SecretHash,
     pub client_refund_address: bitcoin_rpc::Address,
     pub client_success_address: EthAddress,
-    pub long_relative_timelock: BtcBlockHeight,
+    pub long_relative_timelock: BlockHeight,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,9 +46,10 @@ pub trait ApiClient {
         symbol: Symbol,
         amount: u32,
     ) -> Result<OfferResponseBody, reqwest::Error>;
-    fn create_trade(
+    fn create_order(
         &self,
         symbol: Symbol,
+        uid: Uuid,
         &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error>;
 }
@@ -72,18 +75,14 @@ impl ApiClient for DefaultApiClient {
             .and_then(|mut res| res.json::<OfferResponseBody>())
     }
 
-    fn create_trade(
+    fn create_order(
         &self,
         symbol: Symbol,
+        uid: Uuid,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         self.client
-            .post(
-                format!(
-                    "{}/trades/{}/{}/buy-orders",
-                    self.url.0, symbol, trade_request.uid
-                ).as_str(),
-            )
+            .post(format!("{}/trades/{}/{}/buy-orders", self.url.0, symbol, uid).as_str())
             .json(trade_request)
             .send()
             .and_then(|mut res| res.json::<OrderResponseBody>())

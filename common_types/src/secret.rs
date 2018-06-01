@@ -1,15 +1,17 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use hex;
 use rand::{OsRng, Rng};
+use std::fmt;
 
 const SHA256_DIGEST_LENGTH: usize = 32;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct SecretHash(String); // String is hexadecimal!
+pub struct SecretHash(pub Vec<u8>);
 
-impl SecretHash {
-    pub fn as_hex(&self) -> &str {
-        self.0.as_str()
+impl fmt::Display for SecretHash {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(hex::encode(&self.0).as_str())
     }
 }
 
@@ -34,7 +36,11 @@ impl Secret {
             None => {
                 let mut sha = Sha256::new();
                 sha.input(self.secret.as_slice());
-                let hash = SecretHash(sha.result_str());
+
+                let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
+                sha.result(&mut result);
+                let hash = SecretHash(result.to_vec());
+
                 self.hash = Some(hash.clone());
                 self.hash()
             }
@@ -71,14 +77,12 @@ mod tests {
     }
 
     #[test]
-    fn new_secret_hash() {
+    fn new_secret_hash_as_hex() {
         let bytes: Vec<u8> = b"hello world, you are beautiful!!".to_vec();
         let mut secret = Secret::new(bytes);
         assert_eq!(
-            *secret.hash(),
-            SecretHash(
-                "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec".to_string()
-            )
+            secret.hash().to_string(),
+            "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
         );
     }
 }

@@ -1,10 +1,10 @@
 use bitcoin_rpc;
+use bitcoin_rpc::BlockHeight;
+use btc_htlc::BtcHtlc;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
 use std::sync::RwLock;
-use stub::BtcBlockHeight;
-use stub::BtcHtlc;
 use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
 use uuid::Uuid;
@@ -36,10 +36,10 @@ pub struct OrderCreated {
     pub client_success_address: EthAddress,
     pub client_refund_address: bitcoin_rpc::Address,
     pub secret: Secret,
-    pub long_relative_timelock: BtcBlockHeight,
+    pub long_relative_timelock: BlockHeight,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct OrderTaken {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,

@@ -1,22 +1,27 @@
+use bitcoin;
+use bitcoin::network::constants::Network;
 use bitcoin_rpc;
+use bitcoin_rpc::BlockHeight;
+use btc_htlc::BtcHtlc;
 use event_store;
 use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
 use event_store::OrderTaken;
+use exchange_api_client;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::OfferResponseBody;
-use exchange_api_client::*;
+use exchange_api_client::OrderRequestBody;
+use exchange_api_client::create_client;
 use rand::OsRng;
 use rocket::State;
 use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use secret::Secret;
+use std::str::FromStr;
 use std::sync::Mutex;
-use stub::BtcBlockHeight;
-use stub::BtcHtlc;
 use stub::EthAddress;
 use symbol::Symbol;
 use uuid::Uuid;
@@ -30,6 +35,7 @@ pub struct BuyOfferRequestBody {
 pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
     url: State<ExchangeApiUrl>,
+    _network: State<Network>,
     event_store: State<EventStore>,
 ) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
@@ -58,14 +64,14 @@ pub struct BuyOrderRequestBody {
     client_refund_address: bitcoin_rpc::Address,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     uid: Uuid,
     address_to_fund: bitcoin_rpc::Address,
     //TODO: specify amount of BTC
 }
 
-const BTC_BLOCKS_IN_24H: BtcBlockHeight = BtcBlockHeight(24 * 60 / 10);
+const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
 
 impl From<event_store::Error> for BadRequest<String> {
     fn from(_: event_store::Error) -> Self {
@@ -79,6 +85,7 @@ pub fn post_buy_orders(
     trade_id: &RawStr,
     buy_order_request_body: Json<BuyOrderRequestBody>,
     url: State<ExchangeApiUrl>,
+    network: State<Network>,
     event_store: State<EventStore>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
@@ -101,28 +108,26 @@ pub fn post_buy_orders(
         Secret::generate(&mut *rng)
     };
 
-    let long_relative_timelock = BTC_BLOCKS_IN_24H;
-
     let order_created_event = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
         client_refund_address: client_refund_address.clone(),
-        long_relative_timelock: long_relative_timelock.clone(),
+        long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),
     };
 
     event_store.store_trade_created(order_created_event.clone())?;
 
-    let client = create_client(url.inner());
+    let exchange_client = create_client(url.inner());
 
-    let res = client.create_trade(
+    let res = exchange_client.create_order(
         offer.symbol,
+        trade_id,
         &OrderRequestBody {
-            uid: trade_id,
-            secret_hash: secret.hash().clone(),
+            secret_hash: exchange_api_client::SecretHash(secret.hash().to_string()),
             client_refund_address: client_refund_address.clone(),
             client_success_address: client_success_address.clone(),
-            long_relative_timelock: long_relative_timelock.clone(),
+            long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),
         },
     );
 
@@ -131,11 +136,22 @@ pub fn post_buy_orders(
         Err(_) => return Err(BadRequest(None)), //TODO: handle error properly
     };
 
-    let htlc = BtcHtlc::new(
-        order_response.exchange_success_address.clone(),
+    let exchange_success_address =
+        bitcoin::util::address::Address::from_str(
+            order_response.exchange_success_address.to_string().as_str(),
+        ).expect("Could not convert exchange success address to bitcoin::util::address::Address");
+
+    let client_refund_address =
+        bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
+            .expect("Could not convert client refund address to bitcoin::util::address::Address");
+
+    let htlc: BtcHtlc = BtcHtlc::new(
+        exchange_success_address,
         client_refund_address,
-        long_relative_timelock,
-    );
+        secret.hash().clone(),
+        i64::from(BTC_BLOCKS_IN_24H),
+        network.inner(),
+    ).unwrap();
 
     let order_taken_event = OrderTaken {
         uid: trade_id,
@@ -147,9 +163,11 @@ pub fn post_buy_orders(
 
     event_store.store_trade_accepted(order_taken_event)?;
 
+    let htlc_address = bitcoin_rpc::Address::from(htlc.htlc_address);
+
     Ok(Json(RequestToFund {
         uid: trade_id,
-        address_to_fund: htlc.address(),
+        address_to_fund: htlc_address,
     }))
 }
 
@@ -162,11 +180,25 @@ mod tests {
     use rocket_factory::create_rocket_instance;
     use serde_json;
 
+    // Secret: 12345678901234567890123456789012
+    // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
+
+    // Sender address: bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg
+    // Sender pubkey: 020c04eb8cb87485501e30b656f37439ea7866d7c58b3c38161e5793b68e712356
+    // Sender pubkey hash: 1925a274ac004373bb5429553bdb55c40e57b124
+
+    // Recipient address: bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap
+    // Recipient pubkey: 0298e113cc06bc862ac205f2c0f27ee8c0de98d0716537bbf74e2ea6f38a84d5dc
+    // Recipient pubkey hash: c021f17be99c6adfbcba5d38ee0d292c0399d2f5
+
+    // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
+    // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
+
     #[test]
     fn happy_path_sell_x_btc_for_eth() {
         let url = ExchangeApiUrl("stub".to_string());
 
-        let rocket = create_rocket_instance(url);
+        let rocket = create_rocket_instance(url, Network::BitcoinCoreRegtest);
         let client = rocket::local::Client::new(rocket).unwrap();
 
         let request = client
@@ -191,7 +223,7 @@ mod tests {
             .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
             .header(ContentType::JSON)
             // some random addresses I pulled off the internet
-            .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "18wFjPJZRsYCn1vixJ1SwibS1wGCqB1YhT" }"#);
+            .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg" }"#);
 
         let mut response = request.dispatch();
 
@@ -204,6 +236,12 @@ mod tests {
             funding_request.uid, uid,
             "UID for the funding request is the same as the offer response"
         );
-    }
 
+        assert!(
+            funding_request
+                .address_to_fund
+                .to_string()
+                .starts_with("bcrt1")
+        );
+    }
 }

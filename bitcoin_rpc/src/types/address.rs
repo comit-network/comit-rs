@@ -1,8 +1,22 @@
-use types::*;
-
-// TODO: Use a proper struct that represents the actual address format
+use bitcoin::util::address::Address as bitcoin_address;
+use std::fmt;
+// TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Address(String);
+
+impl From<bitcoin_address> for Address {
+    fn from(addr: bitcoin_address) -> Self {
+        Address::from(addr.to_string().as_str())
+    }
+}
+
+impl fmt::Display for Address {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.0.as_str())
+    }
+}
+
+use types::*;
 
 from_str!(Address);
 
