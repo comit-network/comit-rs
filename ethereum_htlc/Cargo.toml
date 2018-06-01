@@ -1,5 +1,5 @@
 [package]
-name = "eth_htlc"
+name = "ethereum_htlc"
 version = "0.1.0"
 authors = ["Thomas Eizinger <thomas@eizinger.io>"]
 

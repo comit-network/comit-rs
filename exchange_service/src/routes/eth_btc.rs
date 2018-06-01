@@ -1,6 +1,4 @@
 use bitcoin_rpc;
-use eth_htlc;
-use eth_htlc::IntoAddress;
 use event_store::EventStore;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
@@ -98,7 +96,6 @@ pub fn post_buy_orders(
     trade_id: &RawStr,
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
-    _treasury_api_url: State<TreasuryApiUrl>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
     // Receive trade information
     // - Hashed Secret
@@ -131,6 +128,25 @@ pub fn post_buy_orders(
         ),
     );
 
+    match event_store.store_order_taken(order_taken.clone()) {
+        Ok(_) => (),
+        Err(e) => {
+            error!("{:?}", e);
+            // TODO: create a to_string for e to return something nice.
+            return Err(BadRequest(Some(e.to_string())));
+        }
+    }
+
+    Ok(Json(offer.into()))
+}
+
+#[post("/trades/ETH-BTC/<trade_id>/buy_orders/fundings", format = "application/json")]
+pub fn post_buy_orders_fundings(
+    trade_id: &RawStr,
+    event_store: State<EventStore>,
+) -> Result<(), BadRequest<String>> {
+    // Notification about received funds
+
     let htlc = eth_htlc::Htlc::new(
         order_taken.exchange_contract_time_lock(),
         order_taken.exchange_refund_address(),
@@ -142,17 +158,6 @@ pub fn post_buy_orders(
     // build creation transaction
     // sign transaction
     // send contract to blockchain
-
-    match event_store.store_order_taken(order_taken.clone()) {
-        Ok(_) => (),
-        Err(e) => {
-            error!("{:?}", e);
-            // TODO: create a to_string for e to return something nice.
-            return Err(BadRequest(Some(e.to_string())));
-        }
-    }
-
-    Ok(Json(offer.into()))
 }
 
 #[cfg(test)]

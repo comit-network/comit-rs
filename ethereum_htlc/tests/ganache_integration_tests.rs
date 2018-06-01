@@ -1,5 +1,5 @@
 extern crate env_logger;
-extern crate eth_htlc;
+extern crate ethereum_htlc;
 extern crate ganache_rust_web3;
 extern crate hex;
 extern crate web3;

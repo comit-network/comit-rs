@@ -40,7 +40,6 @@ impl Wallet {
     }
 
     pub fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes {
-
         let hash: [u8; 32] = tx.hash(self.chain_id).into();
 
         let signature = match self.context
