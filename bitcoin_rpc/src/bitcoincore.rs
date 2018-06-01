@@ -195,10 +195,12 @@ impl BitcoinCoreClient {
     // TODO: getnetworkinfo
 
     pub fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
-        self.client.send(RpcRequest::new0(
+        self.client.send(RpcRequest::new2(
             JsonRpcVersion::V1,
             "test",
             "getnewaddress",
+            "",
+            "bech32",
         ))
     }
 
