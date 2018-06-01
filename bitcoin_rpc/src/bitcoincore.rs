@@ -317,7 +317,19 @@ impl BitcoinCoreClient {
         ))
     }
 
-    // TODO: sendtoaddress
+    pub fn send_to_address(
+        &self,
+        address: Address,
+        amount: f64,
+    ) -> Result<RpcResponse<TransactionId>, HTTPError> {
+        self.client.send(RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "sendtoaddress",
+            address,
+            amount,
+        ))
+    }
     // TODO: setaccount
     // TODO: setban
     // TODO: setgenerate
