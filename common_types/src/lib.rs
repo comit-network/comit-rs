@@ -1,4 +1,5 @@
 extern crate crypto;
+extern crate hex;
 extern crate rand;
 extern crate serde;
 #[macro_use]

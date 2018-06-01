@@ -124,7 +124,7 @@ pub fn post_buy_orders(
         offer.symbol,
         trade_id,
         &OrderRequestBody {
-            secret_hash: exchange_api_client::SecretHash(secret.hash().as_hex().clone()),
+            secret_hash: exchange_api_client::SecretHash(secret.hash().to_string()),
             client_refund_address: client_refund_address.clone(),
             client_success_address: client_success_address.clone(),
             long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),

@@ -1,20 +1,17 @@
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use hex;
 use rand::{OsRng, Rng};
+use std::fmt;
 
 const SHA256_DIGEST_LENGTH: usize = 32;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct SecretHash(pub Vec<u8>);
 
-impl SecretHash {
-    pub fn as_hex(&self) -> String {
-        let mut s = String::new();
-        for i in &self.0 {
-            // 02x -> always output 2 chars, left pad with zero if needed
-            s.push_str(&format!("{:02x}", i));
-        }
-        s
+impl fmt::Display for SecretHash {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(hex::encode(&self.0).as_str())
     }
 }
 
@@ -84,7 +81,7 @@ mod tests {
         let bytes: Vec<u8> = b"hello world, you are beautiful!!".to_vec();
         let mut secret = Secret::new(bytes);
         assert_eq!(
-            secret.hash().as_hex(),
+            secret.hash().to_string(),
             "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
         );
     }
