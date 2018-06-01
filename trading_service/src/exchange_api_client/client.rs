@@ -1,5 +1,5 @@
 use bitcoin_rpc;
-use btc_htlc::BtcBlockHeight;
+use bitcoin_rpc::BlockHeight;
 use reqwest;
 use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
@@ -28,7 +28,7 @@ pub struct OrderRequestBody {
     pub secret_hash: SecretHash,
     pub client_refund_address: bitcoin_rpc::Address,
     pub client_success_address: EthAddress,
-    pub long_relative_timelock: BtcBlockHeight,
+    pub long_relative_timelock: BlockHeight,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

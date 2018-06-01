@@ -1,5 +1,18 @@
 use types::*;
 
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
+pub struct BlockHeight(u32);
+
+impl BlockHeight {
+    pub fn new(h: u32) -> BlockHeight {
+        BlockHeight(h)
+    }
+
+    pub fn as_i64(&self) -> i64 {
+        i64::from(self.0)
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Block {
     pub hash: BlockHash,
@@ -7,7 +20,7 @@ pub struct Block {
     size: u32,
     strippedsize: u32,
     weight: u32,
-    height: u32,
+    height: BlockHeight,
     version: u32,
     #[serde(rename = "versionHex")]
     version_hex: String,
@@ -25,7 +38,6 @@ pub struct Block {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use serde_json;
 
@@ -65,7 +77,7 @@ mod tests {
                 size: 215,
                 strippedsize: 215,
                 weight: 860,
-                height: 1,
+                height: BlockHeight(1),
                 version: 1,
                 version_hex: "00000001".to_string(),
                 merkleroot: "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098"
@@ -91,5 +103,4 @@ mod tests {
             }
         )
     }
-
 }

@@ -28,7 +28,7 @@ impl ApiClient for FakeApiClient {
         &self,
         _symbol: Symbol,
         uid: Uuid,
-        trade_request: &OrderRequestBody,
+        _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {
             uid: uid,

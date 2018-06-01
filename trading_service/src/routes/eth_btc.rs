@@ -1,5 +1,5 @@
 use bitcoin_rpc;
-use btc_htlc::BtcBlockHeight;
+use bitcoin_rpc::BlockHeight;
 use btc_htlc::BtcHtlc;
 use event_store;
 use event_store::EventStore;
@@ -67,7 +67,7 @@ pub struct RequestToFund {
     //TODO: specify amount of BTC
 }
 
-const BTC_BLOCKS_IN_24H: BtcBlockHeight = BtcBlockHeight(24 * 60 / 10);
+const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
 
 impl From<event_store::Error> for BadRequest<String> {
     fn from(_: event_store::Error) -> Self {
@@ -103,15 +103,12 @@ pub fn post_buy_orders(
         Secret::generate(&mut *rng)
     };
 
-    //TODO: find out the timelock value!
-    let long_absolute_timelock = BtcBlockHeight(900);
-
     let order_created_event = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
         client_refund_address: client_refund_address.clone(),
-        long_relative_timelock: long_absolute_timelock.clone(),
+        long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),
     };
 
     event_store.store_trade_created(order_created_event.clone())?;
@@ -125,7 +122,7 @@ pub fn post_buy_orders(
             secret_hash: exchange_api_client::SecretHash(secret.hash().as_hex().clone()),
             client_refund_address: client_refund_address.clone(),
             client_success_address: client_success_address.clone(),
-            long_relative_timelock: long_absolute_timelock.clone(),
+            long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),
         },
     );
 
@@ -138,7 +135,7 @@ pub fn post_buy_orders(
         order_response.exchange_success_address.clone(),
         client_refund_address,
         secret.hash().clone(),
-        long_absolute_timelock,
+        BlockHeight::new(BTC_BLOCKS_IN_24H),
     ).unwrap();
 
     let order_taken_event = OrderTaken {

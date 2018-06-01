@@ -1,5 +1,5 @@
 use bitcoin_rpc;
-use btc_htlc::BtcBlockHeight;
+use bitcoin_rpc::BlockHeight;
 use btc_htlc::BtcHtlc;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
@@ -36,7 +36,7 @@ pub struct OrderCreated {
     pub client_success_address: EthAddress,
     pub client_refund_address: bitcoin_rpc::Address,
     pub secret: Secret,
-    pub long_relative_timelock: BtcBlockHeight,
+    pub long_relative_timelock: BlockHeight,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

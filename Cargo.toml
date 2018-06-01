@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
+    "btc_htlc",
 	"jsonrpc",
 	"trading_service",
 	"exchange_service",

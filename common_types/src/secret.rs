@@ -67,7 +67,6 @@ impl RandomnessSource for OsRng {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hex;
     use std::vec::Vec;
 
     #[test]
@@ -78,19 +77,6 @@ mod tests {
         let buf = rng.gen_random_bytes(32);
         assert_eq!(buf.len(), 32);
         assert_ne!(buf, empty_buf);
-    }
-
-    #[test]
-    fn new_secret_hash() {
-        let bytes: Vec<u8> = b"hello world, you are beautiful!!".to_vec();
-        let mut secret = Secret::new(bytes);
-        assert_eq!(
-            *secret.hash(),
-            SecretHash(
-                hex::decode("68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec")
-                    .unwrap()
-            )
-        );
     }
 
     #[test]
