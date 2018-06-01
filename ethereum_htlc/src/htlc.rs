@@ -15,50 +15,6 @@ pub struct Htlc {
     secret_hash: SecretHash,
 }
 
-pub trait IntoAddress {
-    fn into_address(self) -> Address;
-}
-
-pub trait IntoSecretHash {
-    fn into_secret_hash(self) -> SecretHash;
-}
-
-impl IntoAddress for Address {
-    fn into_address(self) -> Address {
-        self
-    }
-}
-
-impl IntoSecretHash for SecretHash {
-    fn into_secret_hash(self) -> SecretHash {
-        self
-    }
-}
-
-impl IntoAddress for &'static str {
-    fn into_address(self) -> Address {
-        let hex = hex::decode(self).expect("Given string is not hex-encoded");
-        Address::from_slice(hex.as_ref())
-    }
-}
-
-impl IntoSecretHash for &'static str {
-    fn into_secret_hash(self) -> SecretHash {
-        let hex = hex::decode(self).expect("Given string is not hex-encoded");
-        SecretHash::from_slice(hex.as_ref())
-    }
-}
-
-pub trait IntoExpiryTimestamp {
-    fn into_timestamp(self) -> SystemTime;
-}
-
-impl IntoExpiryTimestamp for SystemTime {
-    fn into_timestamp(self) -> SystemTime {
-        self
-    }
-}
-
 pub struct ByteCode(String);
 
 impl ByteCode {
@@ -80,8 +36,8 @@ impl EpochOffset {
     }
 }
 
-impl IntoExpiryTimestamp for EpochOffset {
-    fn into_timestamp(self) -> SystemTime {
+impl Into<SystemTime> for EpochOffset {
+    fn into(self) -> SystemTime {
         SystemTime::now() + self.0
     }
 }
@@ -95,23 +51,23 @@ impl Htlc {
         "1000000000000000000000000000000000000000000000000000000000000001";
 
     pub fn new<
-        ExpiryTimestamp: IntoExpiryTimestamp,
-        RefundAddress: IntoAddress,
-        SuccessAddress: IntoAddress,
-        SecretHash: IntoSecretHash,
+        ExpiryTimestamp: Into<SystemTime>,
+        RefundAddress: Into<Address>,
+        SuccessAddress: Into<Address>,
+        Hash: Into<SecretHash>,
     >(
         expiry_timestamp: ExpiryTimestamp,
         refund_address: RefundAddress,
         success_address: SuccessAddress,
-        secret_hash: SecretHash,
+        secret_hash: Hash,
     ) -> Self {
-        let expiry_timestamp = expiry_timestamp.into_timestamp();
-        let refund_address = refund_address.into_address();
-        let success_address = success_address.into_address();
-        let secret_hash = secret_hash.into_secret_hash();
+        let expiry_timestamp: SystemTime = expiry_timestamp.into();
+        let refund_address: Address = refund_address.into();
+        let success_address: Address = success_address.into();
+        let secret_hash = secret_hash.into();
 
         debug!(
-            "Created HTLC with secret hash {} for address {}. At the earliest of {}, {} can reclaim the funds.",
+            "Created HTLC with secret hash {:?} for address {}. At the earliest of {}, {} can reclaim the funds.",
             secret_hash,
             success_address,
             chrono::DateTime::<chrono::Utc>::from(expiry_timestamp).to_rfc3339(),

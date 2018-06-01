@@ -159,7 +159,7 @@ pub fn post_buy_orders_fundings(
     let htlc = ethereum_htlc::Htlc::new(
         event.exchange_contract_time_lock(),
         event.exchange_refund_address(),
-        event.client_refund_address(),
+        event.client_success_address(),
         event.contract_secret_lock(),
     );
 

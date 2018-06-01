@@ -97,6 +97,10 @@ impl OrderTaken {
         self.client_refund_address.clone()
     }
 
+    pub fn client_success_address(&self) -> Address {
+        self.client_success_address.clone()
+    }
+
     pub fn contract_secret_lock(&self) -> H256 {
         self.contract_secret_lock
     }
