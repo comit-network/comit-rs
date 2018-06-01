@@ -20,7 +20,7 @@ pub struct Block {
     size: u32,
     strippedsize: u32,
     weight: u32,
-    height: BlockHeight,
+    height: u32,
     version: u32,
     #[serde(rename = "versionHex")]
     version_hex: String,
@@ -77,7 +77,7 @@ mod tests {
                 size: 215,
                 strippedsize: 215,
                 weight: 860,
-                height: BlockHeight(1),
+                height: 1,
                 version: 1,
                 version_hex: "00000001".to_string(),
                 merkleroot: "0e3e2357e806b6cdb1f70b54c3a3a17b6714ee1f0e68bebb44a74b1efd512098"
