@@ -1,0 +1,11 @@
+[package]
+authors = ["LLFourn <lloyd.fourn@gmail.com>"]
+name = "bitcoin_wallet"
+version = "0.1.0"
+[dependencies]
+bitcoin = "0.13.0"
+lazy_static = "1.0.1"
+secp256k1 = "0.9.0"
+
+[dev-dependencies]
+bitcoin_rpc = { path = "../bitcoin_rpc"}
