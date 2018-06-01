@@ -46,7 +46,7 @@ pub trait ApiClient {
         symbol: Symbol,
         amount: u32,
     ) -> Result<OfferResponseBody, reqwest::Error>;
-    fn create_trade(
+    fn create_order(
         &self,
         symbol: Symbol,
         uid: Uuid,
@@ -75,7 +75,7 @@ impl ApiClient for DefaultApiClient {
             .and_then(|mut res| res.json::<OfferResponseBody>())
     }
 
-    fn create_trade(
+    fn create_order(
         &self,
         symbol: Symbol,
         uid: Uuid,

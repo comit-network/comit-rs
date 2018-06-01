@@ -24,7 +24,7 @@ impl ApiClient for FakeApiClient {
         Ok(offer)
     }
 
-    fn create_trade(
+    fn create_order(
         &self,
         _symbol: Symbol,
         uid: Uuid,

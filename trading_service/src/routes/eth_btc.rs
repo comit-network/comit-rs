@@ -120,7 +120,7 @@ pub fn post_buy_orders(
 
     let exchange_client = create_client(url.inner());
 
-    let res = exchange_client.create_trade(
+    let res = exchange_client.create_order(
         offer.symbol,
         trade_id,
         &OrderRequestBody {
