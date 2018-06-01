@@ -1,6 +1,5 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
-use eth_htlc;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -8,41 +7,62 @@ use std::time::Duration;
 use std::time::SystemTime;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
+use web3::types::{Address, H256};
+
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash, PartialEq)]
+pub struct TradeId(Uuid);
+
+impl TradeId {
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        TradeId(uuid)
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferCreated {
-    pub uid: Uuid,
-    pub symbol: Symbol,
-    pub amount: u32,
-    pub rate: f32,
+    uid: TradeId,
+    symbol: Symbol,
+    amount: u32,
+    rate: f32,
     // TODO: treasury_expiry_timestamp
+}
+
+impl OfferCreated {
+    pub fn new(symbol: Symbol, amount: u32, rate: f32) -> Self {
+        OfferCreated {
+            uid: TradeId(Uuid::new_v4()),
+            symbol,
+            amount,
+            rate,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTaken {
-    uid: Uuid,
+    uid: TradeId,
 
-    contract_secret_lock: eth_htlc::SecretHash,
+    contract_secret_lock: H256,
     client_contract_time_lock: bitcoin_rpc::BlockHeight,
     exchange_contract_time_lock: SystemTime,
 
     client_refund_address: bitcoin_rpc::Address,
-    client_success_address: eth_htlc::Address,
+    client_success_address: Address,
 
-    exchange_refund_address: eth_htlc::Address,
+    exchange_refund_address: Address,
     exchange_success_address: bitcoin_rpc::Address,
 }
 
 impl OrderTaken {
     pub fn new(
-        uid: Uuid,
+        uid: TradeId,
 
-        contract_secret_lock: eth_htlc::SecretHash,
+        contract_secret_lock: H256,
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_rpc::Address,
-        client_success_address: eth_htlc::Address,
-        exchange_refund_address: eth_htlc::Address,
+        client_success_address: Address,
+        exchange_refund_address: Address,
         exchange_success_address: bitcoin_rpc::Address,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
@@ -65,7 +85,7 @@ impl OrderTaken {
         self.exchange_success_address.clone()
     }
 
-    pub fn exchange_refund_address(&self) -> eth_htlc::Address {
+    pub fn exchange_refund_address(&self) -> Address {
         self.exchange_refund_address
     }
 
@@ -77,7 +97,7 @@ impl OrderTaken {
         self.client_refund_address.clone()
     }
 
-    pub fn contract_secret_lock(&self) -> eth_htlc::SecretHash {
+    pub fn contract_secret_lock(&self) -> H256 {
         self.contract_secret_lock
     }
 }
@@ -91,9 +111,9 @@ enum TradeState {
 }
 
 pub struct EventStore {
-    states: RwLock<HashMap<Uuid, TradeState>>,
-    offers: RwLock<HashMap<Uuid, OfferCreated>>,
-    order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
+    states: RwLock<HashMap<TradeId, TradeState>>,
+    offers: RwLock<HashMap<TradeId, OfferCreated>>,
+    order_taken: RwLock<HashMap<TradeId, OrderTaken>>,
 }
 
 #[derive(Debug)]
@@ -160,6 +180,12 @@ impl EventStore {
             order_taken.insert(uid, event.clone());
         }
         Ok(())
+    }
+
+    pub fn get_order_taken_event(&self, uid: &TradeId) -> Option<OrderTaken> {
+        let events = self.order_taken.read().unwrap();
+
+        events.get(uid).map(|event| event.clone())
     }
 
     /*pub fn get_trade(&self, id: &Uuid) -> Option<TradeState> {

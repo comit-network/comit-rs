@@ -1,17 +1,30 @@
 use bitcoin_rpc;
+use ethereum_htlc;
 use event_store::EventStore;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::OfferState;
 use event_store::OrderTaken;
+use event_store::TradeId;
 use rocket::State;
 use rocket::http::RawStr;
+use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use rocket_factory::TreasuryApiUrl;
 use std::time::UNIX_EPOCH;
 use treasury_api_client::{create_client, ApiClient, Symbol};
+use uuid;
 use uuid::Uuid;
+use web3::types::{Address as EthereumAddress, H256};
+
+impl<'a> FromParam<'a> for TradeId {
+    type Error = uuid::ParseError;
+
+    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
+        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
@@ -41,13 +54,7 @@ fn post_buy_offers(
         }
     };
 
-    let uid = Uuid::new_v4();
-    let offer_event = OfferCreated {
-        uid,
-        symbol: rate.symbol,
-        amount: offer_request_body.amount,
-        rate: rate.rate,
-    };
+    let offer_event = OfferCreated::new(rate.symbol, offer_request_body.amount, rate.rate);
 
     match event_store.store_offer(offer_event.clone()) {
         Ok(_) => (),
@@ -62,16 +69,16 @@ fn post_buy_offers(
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
-    pub contract_secret_lock: eth_htlc::SecretHash,
+    pub contract_secret_lock: H256,
     pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
     pub client_refund_address: bitcoin_rpc::Address,
-    pub client_success_address: eth_htlc::Address,
+    pub client_success_address: EthereumAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody {
-    pub exchange_refund_address: eth_htlc::Address,
+    pub exchange_refund_address: EthereumAddress,
     pub exchange_success_address: bitcoin_rpc::Address,
     pub exchange_contract_time_lock: u64,
 }
@@ -93,7 +100,7 @@ impl From<OrderTaken> for OrderTakenResponseBody {
 #[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
        data = "<order_request_body>")]
 pub fn post_buy_orders(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
@@ -106,21 +113,14 @@ pub fn post_buy_orders(
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
 
     let order_request_body: OrderRequestBody = order_request_body.into_inner();
-    let uid = match Uuid::parse_str(trade_id.as_str()) {
-        Ok(uid) => uid,
-        Err(e) => {
-            error!("{}", e);
-            return Err(BadRequest(Some(format!("Error when parsing uid: {}", e))));
-        }
-    };
 
     let order_taken = OrderTaken::new(
-        uid,
+        trade_id,
         order_request_body.contract_secret_lock,
         order_request_body.client_contract_time_lock,
         order_request_body.client_refund_address,
         order_request_body.client_success_address,
-        "1084d2C416fcc39564a4700a9B231270d463C5eA".into_address(),
+        "1084d2C416fcc39564a4700a9B231270d463C5eA".into(),
         // TODO: retrieve and use real address
         // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
         bitcoin_rpc::Address::from(
@@ -137,21 +137,30 @@ pub fn post_buy_orders(
         }
     }
 
-    Ok(Json(offer.into()))
+    Ok(Json(order_taken.into()))
 }
 
 #[post("/trades/ETH-BTC/<trade_id>/buy_orders/fundings", format = "application/json")]
 pub fn post_buy_orders_fundings(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     event_store: State<EventStore>,
 ) -> Result<(), BadRequest<String>> {
     // Notification about received funds
 
-    let htlc = eth_htlc::Htlc::new(
-        order_taken.exchange_contract_time_lock(),
-        order_taken.exchange_refund_address(),
-        order_taken.client_refund_address(),
-        order_taken.contract_secret_lock(),
+    let event = match event_store.get_order_taken_event(&trade_id) {
+        Some(event) => event,
+        None => {
+            return Err(BadRequest(Some(
+                "Trade is not the correct state".to_string(),
+            )))
+        }
+    };
+
+    let htlc = ethereum_htlc::Htlc::new(
+        event.exchange_contract_time_lock(),
+        event.exchange_refund_address(),
+        event.client_refund_address(),
+        event.contract_secret_lock(),
     );
 
     // get contract bytecode
