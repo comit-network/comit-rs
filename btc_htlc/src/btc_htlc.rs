@@ -4,10 +4,7 @@ use bitcoin::blockdata::script::{Builder, Script};
 use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin::util::address::Payload::WitnessProgram;
-use bitcoin_rpc;
-use bitcoin_rpc::BlockHeight;
 use secret::SecretHash;
-use std::str::FromStr;
 
 // Create BTC HTLC
 // Returns P2WSH address
@@ -17,41 +14,39 @@ use std::str::FromStr;
 // - BTC amount
 // - hashed secret
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct BtcHtlc {
-    recipient_success_address: bitcoin_rpc::Address,
-    sender_refund_address: bitcoin_rpc::Address,
+    recipient_success_address: Address,
+    sender_refund_address: Address,
     secret_hash: SecretHash,
-    relative_timelock: BlockHeight,
-    pub htlc_address: bitcoin_rpc::Address,
+    relative_timelock: i64,
+    pub htlc_address: Address,
 }
 
 //TODO: implement proper error handling
 impl BtcHtlc {
     pub fn new(
-        recipient_success_address: bitcoin_rpc::Address,
-        sender_refund_address: bitcoin_rpc::Address,
+        recipient_success_address: Address,
+        sender_refund_address: Address,
         secret_hash: SecretHash,
-        relative_timelock: BlockHeight,
+        relative_timelock: i64,
         network: &Network,
     ) -> Option<BtcHtlc> {
         // TODO: the recipient is the exchange_service -> we actually should get the exchange pubkey hash directly instead of an address
         // to be addressed with the final product. Get leave as it for MVP
-        let recipient_pubkey_hash = get_pubkey_hash_from_address(&recipient_success_address.0)
+        let recipient_pubkey_hash = get_pubkey_hash_from_address(recipient_success_address.clone())
             .expect("Could not extract pubkey hash from recipient_success_address");
-        let sender_pubkey_hash = get_pubkey_hash_from_address(&sender_refund_address.0)
+        let sender_pubkey_hash = get_pubkey_hash_from_address(sender_refund_address.clone())
             .expect("Could not extract pubkey hash from sender_refund_address");
 
         let script = create_htlc_redeem_script(
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash.0,
-            &relative_timelock,
+            relative_timelock,
         );
 
         let htlc_address = Address::p2wsh(&script, network.clone());
-        let htlc_address: String = htlc_address.to_string();
-        let htlc_address = bitcoin_rpc::Address::from(htlc_address.as_str());
 
         Some(BtcHtlc {
             recipient_success_address,
@@ -64,16 +59,8 @@ impl BtcHtlc {
 }
 
 //TODO: implement proper error handling
-pub fn get_pubkey_hash_from_address(address: &String) -> Option<Vec<u8>> {
-    let addr = Address::from_str(address.as_str());
-    let addr = match addr {
-        Ok(a) => a,
-        Err(e) => panic!(
-            "Could not create address out of {}; Error: {:?}",
-            address, e
-        ),
-    };
-    match addr.payload {
+pub fn get_pubkey_hash_from_address(address: Address) -> Option<Vec<u8>> {
+    match address.payload {
         WitnessProgram(witness) => Some(witness.program().to_vec()),
         _ => None,
     }
@@ -83,7 +70,7 @@ pub fn create_htlc_redeem_script(
     recipient_pubkey_hash: &Vec<u8>,
     sender_pubkey_hash: &Vec<u8>,
     secret_hash: &Vec<u8>,
-    redeem_block_height: &BlockHeight,
+    redeem_block_height: i64,
 ) -> Script {
     Builder::new()
         .push_opcode(OP_IF)
@@ -94,7 +81,7 @@ pub fn create_htlc_redeem_script(
         .push_opcode(OP_HASH160)
         .push_slice(recipient_pubkey_hash)
         .push_opcode(OP_ELSE)
-        .push_int(redeem_block_height.as_i64())
+        .push_int(redeem_block_height)
         .push_opcode(OP_CHECKSEQUENCEVERIFY)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)
@@ -109,13 +96,13 @@ pub fn create_htlc_redeem_script(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::network;
     use hex;
+    use std::str::FromStr;
 
     #[test]
     fn given_an_address_return_pubkey_hash() {
-        let address = String::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap");
-        let pubkey_hash = get_pubkey_hash_from_address(&address.unwrap()).unwrap();
+        let address = Address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").unwrap();
+        let pubkey_hash = get_pubkey_hash_from_address(address).unwrap();
 
         assert_eq!(
             pubkey_hash,
@@ -151,7 +138,7 @@ mod tests {
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash,
-            &BlockHeight::new(900),
+            900,
         );
 
         assert_eq!(
@@ -178,7 +165,7 @@ mod tests {
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash,
-            &BlockHeight::new(900),
+            900,
         );
 
         let address = Address::p2wsh(&script, Network::BitcoinCoreRegtest);

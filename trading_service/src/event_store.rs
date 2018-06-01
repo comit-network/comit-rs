@@ -39,7 +39,7 @@ pub struct OrderCreated {
     pub long_relative_timelock: BlockHeight,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct OrderTaken {
     pub uid: Uuid,
     pub exchange_refund_address: EthAddress,

@@ -1,3 +1,4 @@
+use bitcoin;
 use bitcoin::network::constants::Network;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
@@ -19,6 +20,7 @@ use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use secret::Secret;
+use std::str::FromStr;
 use std::sync::Mutex;
 use stub::EthAddress;
 use symbol::Symbol;
@@ -134,11 +136,20 @@ pub fn post_buy_orders(
         Err(_) => return Err(BadRequest(None)), //TODO: handle error properly
     };
 
+    let exchange_success_address =
+        bitcoin::util::address::Address::from_str(
+            order_response.exchange_success_address.to_string().as_str(),
+        ).expect("Could not convert exchange success address to bitcoin::util::address::Address");
+
+    let client_refund_address =
+        bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
+            .expect("Could not convert client refund address to bitcoin::util::address::Address");
+
     let htlc: BtcHtlc = BtcHtlc::new(
-        order_response.exchange_success_address.clone(),
+        exchange_success_address,
         client_refund_address,
         secret.hash().clone(),
-        BlockHeight::new(BTC_BLOCKS_IN_24H),
+        i64::from(BTC_BLOCKS_IN_24H),
         network.inner(),
     ).unwrap();
 
@@ -152,9 +163,11 @@ pub fn post_buy_orders(
 
     event_store.store_trade_accepted(order_taken_event)?;
 
+    let htlc_address = bitcoin_rpc::Address::from(htlc.htlc_address);
+
     Ok(Json(RequestToFund {
         uid: trade_id,
-        address_to_fund: htlc.htlc_address,
+        address_to_fund: htlc_address,
     }))
 }
 
@@ -224,7 +237,11 @@ mod tests {
             "UID for the funding request is the same as the offer response"
         );
 
-        assert!(funding_request.address_to_fund.0.starts_with("bcrt1"));
+        assert!(
+            funding_request
+                .address_to_fund
+                .to_string()
+                .starts_with("bcrt1")
+        );
     }
-
 }
