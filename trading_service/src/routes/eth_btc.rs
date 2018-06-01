@@ -1,3 +1,4 @@
+use bitcoin::network::constants::Network;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
 use btc_htlc::BtcHtlc;
@@ -32,6 +33,7 @@ pub struct BuyOfferRequestBody {
 pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
     url: State<ExchangeApiUrl>,
+    _network: State<Network>,
     event_store: State<EventStore>,
 ) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
@@ -81,6 +83,7 @@ pub fn post_buy_orders(
     trade_id: &RawStr,
     buy_order_request_body: Json<BuyOrderRequestBody>,
     url: State<ExchangeApiUrl>,
+    network: State<Network>,
     event_store: State<EventStore>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
@@ -136,6 +139,7 @@ pub fn post_buy_orders(
         client_refund_address,
         secret.hash().clone(),
         BlockHeight::new(BTC_BLOCKS_IN_24H),
+        network.inner(),
     ).unwrap();
 
     let order_taken_event = OrderTaken {
@@ -181,7 +185,7 @@ mod tests {
     fn happy_path_sell_x_btc_for_eth() {
         let url = ExchangeApiUrl("stub".to_string());
 
-        let rocket = create_rocket_instance(url);
+        let rocket = create_rocket_instance(url, Network::BitcoinCoreRegtest);
         let client = rocket::local::Client::new(rocket).unwrap();
 
         let request = client

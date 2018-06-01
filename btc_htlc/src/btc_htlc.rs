@@ -1,7 +1,7 @@
 use bitcoin::blockdata::opcodes::All::OP_NOP3 as OP_CHECKSEQUENCEVERIFY;
 use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::{Builder, Script};
-use bitcoin::network::constants::Network::BitcoinCoreRegtest;
+use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin::util::address::Payload::WitnessProgram;
 use bitcoin_rpc;
@@ -33,6 +33,7 @@ impl BtcHtlc {
         sender_refund_address: bitcoin_rpc::Address,
         secret_hash: SecretHash,
         relative_timelock: BlockHeight,
+        network: &Network,
     ) -> Option<BtcHtlc> {
         // TODO: the recipient is the exchange_service -> we actually should get the exchange pubkey hash directly instead of an address
         // to be addressed with the final product. Get leave as it for MVP
@@ -48,7 +49,7 @@ impl BtcHtlc {
             &relative_timelock,
         );
 
-        let htlc_address = Address::p2wsh(&script, BitcoinCoreRegtest);
+        let htlc_address = Address::p2wsh(&script, network.clone());
         let htlc_address: String = htlc_address.to_string();
         let htlc_address = bitcoin_rpc::Address::from(htlc_address.as_str());
 
@@ -180,7 +181,7 @@ mod tests {
             &BlockHeight::new(900),
         );
 
-        let address = Address::p2wsh(&script, network::constants::Network::BitcoinCoreRegtest);
+        let address = Address::p2wsh(&script, Network::BitcoinCoreRegtest);
         assert_eq!(
             address.to_string(),
             "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0"
