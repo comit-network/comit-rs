@@ -1,8 +1,8 @@
 use bitcoin;
 use bitcoin::network::constants::Network;
+use bitcoin_htlc::Htlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
-use btc_htlc::BtcHtlc;
 use event_store;
 use event_store::EventStore;
 use event_store::OfferCreated;
@@ -145,7 +145,7 @@ pub fn post_buy_orders(
         bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
             .expect("Could not convert client refund address to bitcoin::util::address::Address");
 
-    let htlc: BtcHtlc = BtcHtlc::new(
+    let htlc: Htlc = Htlc::new(
         exchange_success_address,
         client_refund_address,
         secret.hash().clone(),
@@ -163,7 +163,7 @@ pub fn post_buy_orders(
 
     event_store.store_trade_accepted(order_taken_event)?;
 
-    let htlc_address = bitcoin_rpc::Address::from(htlc.htlc_address);
+    let htlc_address = bitcoin_rpc::Address::from(htlc.get_htlc_address().clone());
 
     Ok(Json(RequestToFund {
         uid: trade_id,

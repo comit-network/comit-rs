@@ -1,5 +1,5 @@
 [package]
-name = "btc_htlc"
+name = "bitcoin_htlc"
 version = "0.1.0"
 
 authors = [
