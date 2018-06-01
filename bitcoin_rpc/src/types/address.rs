@@ -1,5 +1,7 @@
+use bitcoin;
 use bitcoin::util::address::Address as bitcoin_address;
 use std::fmt;
+use std::str::FromStr;
 // TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Address(String);
@@ -7,6 +9,12 @@ pub struct Address(String);
 impl From<bitcoin_address> for Address {
     fn from(addr: bitcoin_address) -> Self {
         Address::from(addr.to_string().as_str())
+    }
+}
+
+impl Address {
+    pub fn to_bitcoin_address(&self) -> Result<bitcoin_address, bitcoin::util::Error> {
+        bitcoin_address::from_str(self.0.as_str())
     }
 }
 
