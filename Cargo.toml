@@ -12,5 +12,5 @@ members = [
 	"bitcoin_wallet",
 	"eth_htlc",
 	"ganache_rust_web3",
-	"ethereum_wallet"
+	"ethereum_wallet",
 ]
