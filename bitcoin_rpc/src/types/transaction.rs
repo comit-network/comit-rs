@@ -4,6 +4,12 @@ use types::*;
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TransactionId(String);
 
+impl Into<String> for TransactionId {
+    fn into(self) -> String {
+        self.0
+    }
+}
+
 from_str!(TransactionId);
 
 /// Currently the internal representation is the serialized string
