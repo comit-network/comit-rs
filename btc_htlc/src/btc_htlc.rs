@@ -5,6 +5,7 @@ use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin::util::address::Payload::WitnessProgram;
 use secret::SecretHash;
+use std::fmt;
 
 // Create BTC HTLC
 // Returns P2WSH address
@@ -15,31 +16,43 @@ use secret::SecretHash;
 // - hashed secret
 
 #[derive(Clone, Debug)]
-pub struct BtcHtlc {
+pub struct Htlc {
     recipient_success_address: Address,
     sender_refund_address: Address,
     secret_hash: SecretHash,
     relative_timelock: i64,
-    pub htlc_address: Address,
+    htlc_address: Address,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    AddressIsNotBech32,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Error::AddressIsNotBech32 => write!(f, "address must be bech32"),
+        }
+    }
 }
 
 //TODO: implement proper error handling
-impl BtcHtlc {
+impl Htlc {
     pub fn new(
         recipient_success_address: Address,
         sender_refund_address: Address,
         secret_hash: SecretHash,
         relative_timelock: i64,
         network: &Network,
-    ) -> Option<BtcHtlc> {
+    ) -> Result<Htlc, Error> {
         // TODO: the recipient is the exchange_service -> we actually should get the exchange pubkey hash directly instead of an address
         // to be addressed with the final product. Get leave as it for MVP
-        let recipient_pubkey_hash = get_pubkey_hash_from_address(recipient_success_address.clone())
-            .expect("Could not extract pubkey hash from recipient_success_address");
-        let sender_pubkey_hash = get_pubkey_hash_from_address(sender_refund_address.clone())
-            .expect("Could not extract pubkey hash from sender_refund_address");
+        let recipient_pubkey_hash =
+            get_pubkey_hash_from_address(recipient_success_address.clone())?;
+        let sender_pubkey_hash = get_pubkey_hash_from_address(sender_refund_address.clone())?;
 
-        let script = create_htlc_redeem_script(
+        let script = create_htlc(
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash.0,
@@ -48,7 +61,7 @@ impl BtcHtlc {
 
         let htlc_address = Address::p2wsh(&script, network.clone());
 
-        Some(BtcHtlc {
+        Ok(Htlc {
             recipient_success_address,
             sender_refund_address,
             secret_hash,
@@ -56,17 +69,20 @@ impl BtcHtlc {
             htlc_address,
         })
     }
-}
 
-//TODO: implement proper error handling
-pub fn get_pubkey_hash_from_address(address: Address) -> Option<Vec<u8>> {
-    match address.payload {
-        WitnessProgram(witness) => Some(witness.program().to_vec()),
-        _ => None,
+    pub fn get_htlc_address(&self) -> &Address {
+        &self.htlc_address
     }
 }
 
-pub fn create_htlc_redeem_script(
+pub fn get_pubkey_hash_from_address(address: Address) -> Result<Vec<u8>, Error> {
+    match address.payload {
+        WitnessProgram(witness) => Ok(witness.program().to_vec()),
+        _ => Err(Error::AddressIsNotBech32),
+    }
+}
+
+pub fn create_htlc(
     recipient_pubkey_hash: &Vec<u8>,
     sender_pubkey_hash: &Vec<u8>,
     secret_hash: &Vec<u8>,
@@ -134,7 +150,7 @@ mod tests {
             "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
         ).unwrap();
 
-        let script = create_htlc_redeem_script(
+        let script = create_htlc(
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash,
@@ -161,7 +177,7 @@ mod tests {
             "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
         ).unwrap();
 
-        let script = create_htlc_redeem_script(
+        let script = create_htlc(
             &recipient_pubkey_hash,
             &sender_pubkey_hash,
             &secret_hash,

@@ -2,8 +2,8 @@
 #![plugin(rocket_codegen)]
 
 extern crate bitcoin;
+extern crate bitcoin_htlc;
 extern crate bitcoin_rpc;
-extern crate btc_htlc;
 extern crate rocket;
 extern crate trading_service;
 

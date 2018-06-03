@@ -1,6 +1,6 @@
+use bitcoin_htlc::Htlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
-use btc_htlc::BtcHtlc;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
@@ -46,7 +46,7 @@ pub struct OrderTaken {
     // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: bitcoin_rpc::Address,
     pub short_relative_timelock: EthTimeDelta,
-    pub htlc: BtcHtlc,
+    pub htlc: Htlc,
 }
 
 pub struct EventStore {
