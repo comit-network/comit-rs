@@ -8,6 +8,7 @@ use std::time::UNIX_EPOCH;
 use web3;
 use web3::types::U256;
 
+#[derive(Debug)]
 pub struct Htlc {
     expiry_timestamp: SystemTime,
     refund_address: Address,
