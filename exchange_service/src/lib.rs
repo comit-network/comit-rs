@@ -9,6 +9,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate ethereum_htlc;
+extern crate ethereum_wallet;
 extern crate serde_json;
 extern crate uuid;
 extern crate web3;

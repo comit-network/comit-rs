@@ -1,5 +1,6 @@
 use bitcoin_rpc;
 use ethereum_htlc;
+use ethereum_service;
 use event_store::EventStore;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
@@ -16,7 +17,7 @@ use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid;
 use uuid::Uuid;
-use web3::types::{Address as EthereumAddress, H256};
+use web3::types::{Address as EthereumAddress, H256, U256};
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -139,14 +140,24 @@ pub fn post_buy_orders(
     Ok(Json(order_taken.into()))
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy_orders/fundings", format = "application/json")]
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-fundings", format = "application/json")]
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
     event_store: State<EventStore>,
+    ethereum_service: State<ethereum_service::EthereumService>,
 ) -> Result<(), BadRequest<String>> {
     // Notification about received funds
 
-    let event = match event_store.get_order_taken_event(&trade_id) {
+    let order_taken = match event_store.get_order_taken_event(&trade_id) {
+        Some(event) => event,
+        None => {
+            return Err(BadRequest(Some(
+                "Trade is not the correct state".to_string(),
+            )))
+        }
+    };
+
+    let offer_created = match event_store.get_offer_created_event(&trade_id) {
         Some(event) => event,
         None => {
             return Err(BadRequest(Some(
@@ -156,23 +167,28 @@ pub fn post_buy_orders_fundings(
     };
 
     let htlc = ethereum_htlc::Htlc::new(
-        event.exchange_contract_time_lock(),
-        event.exchange_refund_address(),
-        event.client_success_address(),
-        event.contract_secret_lock(),
+        order_taken.exchange_contract_time_lock(),
+        order_taken.exchange_refund_address(),
+        order_taken.client_success_address(),
+        order_taken.contract_secret_lock(),
     );
 
-    Ok(())
+    let tx_id = match ethereum_service.deploy_htlc(htlc, U256::from(10)) {
+        Ok(tx_id) => tx_id,
+        Err(e) => return Err(BadRequest(Some("Failed to deploy htlc".to_string()))),
+    };
 
-    // get contract bytecode
-    // build creation transaction
-    // sign transaction
-    // send contract to blockchain
+    // TODO store event about deployed htlc
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethereum_service::BlockingEthereumApi;
+    use ethereum_wallet::fake::StaticFakeWallet;
+    use gas_price_service::StaticGasPriceService;
     use rocket;
     use rocket::http::{ContentType, Status};
     use rocket::local::{Client, LocalResponse};
@@ -180,6 +196,8 @@ mod tests {
     use serde_json;
     use std::sync::Arc;
     use treasury_api_client::FakeApiClient;
+    use web3;
+    use web3::types::Bytes;
 
     fn request_offer(client: &mut Client) -> LocalResponse {
         let request = client
@@ -204,12 +222,31 @@ mod tests {
         request.dispatch()
     }
 
+    struct StaticEthereumApi;
+
+    impl BlockingEthereumApi for StaticEthereumApi {
+        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
+            Ok(H256::new())
+        }
+    }
+
+    fn create_rocket_client() -> Client {
+        let rocket = create_rocket_instance(
+            Arc::new(FakeApiClient),
+            EventStore::new(),
+            Arc::new(ethereum_service::EthereumService::new(
+                Arc::new(StaticFakeWallet::account0()),
+                Arc::new(StaticGasPriceService::default()),
+                Arc::new(StaticEthereumApi),
+                0,
+            )),
+        );
+        rocket::local::Client::new(rocket).unwrap()
+    }
+
     #[test]
     fn given_an_offer_request_then_return_valid_offer_response() {
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let mut response = request_offer(&mut client);
         assert_eq!(response.status(), Status::Ok);
@@ -225,10 +262,7 @@ mod tests {
 
     #[test]
     fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_response() {
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let uid = {
             let mut response = request_offer(&mut client);
@@ -263,10 +297,7 @@ mod tests {
 
     #[test]
     fn given_a_order_request_without_offer_should_fail() {
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let uid = "d9ee2df7-c330-4893-8345-6ba171f96e8f";
 
@@ -278,10 +309,7 @@ mod tests {
 
     #[test]
     fn given_two_orders_request_with_same_uid_should_fail() {
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let uid = {
             let mut response = request_offer(&mut client);

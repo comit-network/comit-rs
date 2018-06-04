@@ -192,6 +192,12 @@ impl EventStore {
         Ok(())
     }
 
+    pub fn get_offer_created_event(&self, uid: &TradeId) -> Option<OfferCreated> {
+        let events = self.offers.read().unwrap();
+
+        events.get(uid).map(|event| event.clone())
+    }
+
     pub fn get_order_taken_event(&self, uid: &TradeId) -> Option<OrderTaken> {
         let events = self.order_taken.read().unwrap();
 
