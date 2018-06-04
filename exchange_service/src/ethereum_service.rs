@@ -118,19 +118,30 @@ mod tests {
     use std::time::SystemTime;
     use web3::types::Address;
 
-    struct FailingEthereumApi;
+    struct EthereumApiMock {
+        result: Result<H256, web3::Error>,
+    }
 
-    impl BlockingEthereumApi for FailingEthereumApi {
-        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
-            Err(web3::ErrorKind::Internal.into())
+    impl EthereumApiMock {
+        fn with_result(result: Result<H256, web3::Error>) -> Self {
+            EthereumApiMock { result }
         }
     }
+
+    impl BlockingEthereumApi for EthereumApiMock {
+        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
+            self.result.clone()
+        }
+    }
+
+    unsafe impl Send for EthereumApiMock {}
+    unsafe impl Sync for EthereumApiMock {}
 
     #[test]
     fn given_an_htlc_when_deployment_fails_nonce_is_not_updated() {
         let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
-        let ethereum_api = FailingEthereumApi {};
+        let ethereum_api = EthereumApiMock::with_result(Err(web3::ErrorKind::Internal.into()));
 
         let service = EthereumService::new(
             Arc::new(wallet),
@@ -154,6 +165,36 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(*nonce, U256::from(0))
+    }
+
+    #[test]
+    fn given_an_htlc_when_deployment_succeeds_nonce_should_be_updated() {
+        let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
+        let gas_price_service = gas_price_service::StaticGasPriceService::default();
+        let ethereum_api = EthereumApiMock::with_result(Ok(H256::new()));
+
+        let service = EthereumService::new(
+            Arc::new(wallet),
+            Arc::new(gas_price_service),
+            Arc::new(ethereum_api),
+            0,
+        );
+
+        let result = service.deploy_htlc(
+            Htlc::new(
+                SystemTime::now(),
+                Address::new(),
+                Address::new(),
+                SecretHash::new(),
+            ),
+            U256::from(10),
+        );
+
+        let lock = service.nonce.lock().unwrap();
+        let nonce = lock.deref();
+
+        assert!(result.is_ok());
+        assert_eq!(*nonce, U256::from(1))
     }
 
 }
