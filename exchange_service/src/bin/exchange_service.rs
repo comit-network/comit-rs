@@ -5,7 +5,6 @@ extern crate bitcoin_rpc;
 extern crate ethereum_wallet;
 extern crate exchange_service;
 extern crate hex;
-extern crate keccak;
 extern crate log;
 extern crate reqwest;
 extern crate rocket;
@@ -14,6 +13,7 @@ extern crate secp256k1;
 extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
+extern crate tiny_keccak;
 extern crate uuid;
 extern crate web3;
 
@@ -27,6 +27,8 @@ use hex::FromHex;
 use std::env::var;
 use std::str::FromStr;
 use std::sync::Arc;
+use web3::futures::Future;
+use web3::types::Address;
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
@@ -53,7 +55,7 @@ fn main() {
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
     let web3 = web3::api::Web3::new(transport);
 
-    let address = derive_address_from_private_key(private_key);
+    let address = derive_address_from_private_key(&private_key);
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
 
     let ethereum_service = EthereumService::new(
@@ -78,7 +80,7 @@ fn derive_address_from_private_key(private_key: &[u8]) -> web3::types::Address {
 
     let serialized = public_key.serialize();
 
-    let hash = keccak256(serialized);
+    let hash = tiny_keccak::keccak256(&serialized);
 
     let mut result = Address::default();
     result.copy_from_slice(&hash[12..]);
