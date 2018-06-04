@@ -147,8 +147,12 @@ mod tests {
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
-        let epoch = SystemTime::now();
-        let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
+        let htlc = Htlc::new(
+            SystemTime::now(),
+            Address::new(),
+            Address::new(),
+            SecretHash::new(),
+        );
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
             htlc_hex.0.len(),
@@ -159,8 +163,12 @@ mod tests {
 
     #[test]
     fn should_generate_correct_deploy_header() {
-        let epoch = SystemTime::now();
-        let htlc = Htlc::new(epoch, Address::new(), Address::new(), SecretHash::new());
+        let htlc = Htlc::new(
+            SystemTime::now(),
+            Address::new(),
+            Address::new(),
+            SecretHash::new(),
+        );
         let deploy_header =
             htlc.generate_deploy_header("731000000000000000000000000000000000000001ff");
 
