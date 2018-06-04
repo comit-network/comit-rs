@@ -121,7 +121,7 @@ fn generate_segwit_redeem(
                 let sighash_components = SighashComponents::new(&transaction);
                 let hash_to_sign =
                     sighash_components.sighash_all(&input, &prev_script, input_amount);
-                let message_to_sign = Message::from_slice(&hash_to_sign[..])?;
+                let message_to_sign = Message::from(hash_to_sign.data());
                 let signature = SECP.sign(&message_to_sign, &private_key)?;
                 let mut binary_signature = signature.serialize_der(&*SECP).to_vec();
                 binary_signature.push(1 as u8);
