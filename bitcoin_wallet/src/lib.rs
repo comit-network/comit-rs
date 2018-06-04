@@ -2,6 +2,7 @@ extern crate bitcoin;
 extern crate secp256k1;
 #[macro_use]
 extern crate lazy_static;
+extern crate common_types;
 extern crate hex;
 
 pub use bitcoin::blockdata::script::Script;
@@ -15,12 +16,10 @@ use bitcoin::blockdata::transaction::TxIn;
 use bitcoin::blockdata::transaction::TxOut;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::hash::HexError;
+use common_types::secret::Secret;
 use secp256k1::Message;
 use secp256k1::PublicKey;
 use secp256k1::SecretKey;
-
-#[derive(Debug)]
-pub struct Secret(pub [u8; 32]);
 
 lazy_static! {
     static ref SECP: Secp256k1 = Secp256k1::new();
@@ -74,7 +73,7 @@ fn generate_p2wsh_htlc_redeem_tx(
                 prev_script: htlc_script,
             },
             Witness::Data(public_key.serialize().to_vec()),
-            Witness::Data(secret.0.to_vec()),
+            Witness::Data(secret.raw_secret().to_vec()),
             Witness::Data(vec![1 as u8]),
             Witness::Data(htlc_script.clone().into_vec()),
         ],
@@ -209,7 +208,7 @@ mod tests {
             input_amount,
             input_amount - fee,
             &htlc_script,
-            &Secret(*b"hello world, you are beautiful!!"),
+            &Secret::from(*b"hello world, you are beautiful!!"),
             &private_key,
             &alice_addr,
         ).unwrap();
