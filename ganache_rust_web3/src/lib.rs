@@ -104,7 +104,7 @@ mod tests {
         //        let increase = U256::from(1);
         //
         let _ = web3.api::<Ganache<transports::Http>>()
-            .evm_increase_time("0x0".to_string())
+            .evm_increase_time(0)
             .wait()
             .unwrap();
 

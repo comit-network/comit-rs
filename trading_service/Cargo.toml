@@ -21,12 +21,13 @@ rocket_contrib = "=0.3.10"
 serde = "1.0.51"
 serde_derive = "1.0.51"
 serde_json = "1.0.17"
-
 bitcoin_rpc = { path = "../bitcoin_rpc" }
 bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 bitcoin_htlc = { path = "../btc_htlc" }
 common_types = { path = "../common_types" }
 hex = "0.3.2"
+web3 = "0.3.0"
+crypto = "0.0.2"
 
 [dependencies.uuid]
 features = ["serde", "v4"]

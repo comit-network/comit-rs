@@ -36,9 +36,6 @@ pub struct Block {
     nextblockhash: Option<BlockHash>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Copy, Clone)]
-pub struct BlockHeight(i32);
-
 #[cfg(test)]
 mod tests {
     use super::*;

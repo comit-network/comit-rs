@@ -124,9 +124,7 @@ pub fn post_buy_orders(
         "1084d2C416fcc39564a4700a9B231270d463C5eA".into(),
         // TODO: retrieve and use real address
         // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
-        bitcoin_rpc::Address::from(
-            "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-        ),
+        bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
     );
 
     match event_store.store_order_taken(order_taken.clone()) {
@@ -191,7 +189,7 @@ pub fn post_buy_orders_fundings(
 
     // TODO this error handling is shit, because should actually never happen. Figure out a way to make more concise
     match event_store.store_contract_deployed(ContractDeployed::new(trade_id, tx_id)) {
-        Ok() => {}
+        Ok(_) => {}
         Err(e) => {
             return Err(BadRequest(Some(
                 "HTLC as already been deployed".to_string(),

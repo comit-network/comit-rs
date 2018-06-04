@@ -22,9 +22,9 @@ use rocket_contrib::Json;
 use secret::Secret;
 use std::str::FromStr;
 use std::sync::Mutex;
-use stub::EthAddress;
 use symbol::Symbol;
 use uuid::Uuid;
+use web3::types::Address as EthAddress;
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -155,7 +155,7 @@ pub fn post_buy_orders(
 
     let order_taken_event = OrderTaken {
         uid: trade_id,
-        short_relative_timelock: order_response.short_relative_timelock,
+        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
         exchange_refund_address: order_response.exchange_refund_address,
         exchange_success_address: order_response.exchange_success_address,
         htlc: htlc.clone(),

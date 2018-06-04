@@ -1,7 +1,7 @@
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
 use reqwest;
-use stub::{EthAddress, EthTimeDelta};
+use secret::SecretHash;
 use symbol::Symbol;
 use uuid::Uuid;
 use web3::types::Address;
@@ -20,9 +20,6 @@ pub struct OfferResponseBody {
     pub symbol: Symbol,
     pub rate: f32,
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SecretHash(pub String);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {

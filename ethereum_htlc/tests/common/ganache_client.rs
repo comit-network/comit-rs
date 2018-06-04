@@ -1,5 +1,4 @@
-use eth_htlc;
-use eth_htlc::{EpochOffset, IntoAddress, IntoSecretHash};
+use ethereum_htlc;
 use ganache_rust_web3;
 use std::env::var;
 use web3;
@@ -48,7 +47,7 @@ impl GanacheClient {
             .unwrap();
     }
 
-    pub fn deploy(&self, from: Address, htlc: eth_htlc::Htlc, htlc_value: i32) -> Address {
+    pub fn deploy(&self, from: Address, htlc: ethereum_htlc::Htlc, htlc_value: i32) -> Address {
         let compiled_contract = htlc.compile_to_hex();
 
         let contract_tx_id = self.web3
@@ -59,7 +58,7 @@ impl GanacheClient {
                 gas: None,
                 gas_price: None,
                 value: Some(U256::from(htlc_value)),
-                data: Some(compiled_contract.into_bytes()),
+                data: Some(compiled_contract.into()),
                 nonce: None,
                 condition: None,
             })

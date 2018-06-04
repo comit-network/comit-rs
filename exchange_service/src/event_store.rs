@@ -164,6 +164,7 @@ impl EventStore {
             states: RwLock::new(HashMap::new()),
             offers: RwLock::new(HashMap::new()),
             order_taken: RwLock::new(HashMap::new()),
+            contract_deployed: RwLock::new(HashMap::new()),
         }
     }
 
