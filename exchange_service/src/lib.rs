@@ -16,6 +16,7 @@ extern crate web3;
 #[macro_use]
 extern crate log;
 
+pub mod ethereum_service;
 pub mod event_store;
 pub mod gas_price_service;
 pub mod rocket_factory;
