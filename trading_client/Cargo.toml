@@ -16,4 +16,5 @@ serde_derive = "1.0.51"
 reqwest = "0.8.5"
 lazy_static = "1.0.0"
 web3 = "0.3.0"
+uuid = { version = "0.6.3", features = ["serde", "v4"] }
 
