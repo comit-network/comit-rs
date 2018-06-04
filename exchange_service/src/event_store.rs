@@ -9,12 +9,18 @@ use treasury_api_client::Symbol;
 use uuid::Uuid;
 use web3::types::{Address, H256};
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
 
 impl TradeId {
     pub fn from_uuid(uuid: Uuid) -> Self {
         TradeId(uuid)
+    }
+}
+
+impl fmt::Display for TradeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0.fmt(f)
     }
 }
 

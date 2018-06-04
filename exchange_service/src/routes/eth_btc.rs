@@ -11,9 +11,9 @@ use rocket::http::RawStr;
 use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use rocket_factory::TreasuryApiUrl;
+use std::sync::Arc;
 use std::time::UNIX_EPOCH;
-use treasury_api_client::{create_client, ApiClient, Symbol};
+use treasury_api_client::{ApiClient, Symbol};
 use uuid;
 use uuid::Uuid;
 use web3::types::{Address as EthereumAddress, H256};
@@ -35,7 +35,7 @@ pub struct OfferRequestBody {
 fn post_buy_offers(
     offer_request_body: Json<OfferRequestBody>,
     event_store: State<EventStore>,
-    treasury_api_url: State<TreasuryApiUrl>,
+    treasury_api_client: State<Arc<ApiClient>>,
 ) -> Result<Json<OfferState>, BadRequest<String>> {
     // Request rate
     // Generate identifier
@@ -44,8 +44,7 @@ fn post_buy_offers(
 
     let offer_request_body = offer_request_body.into_inner();
 
-    let client = create_client(treasury_api_url.inner());
-    let res = client.request_rate(Symbol("ETH-BTC".to_string()));
+    let res = treasury_api_client.request_rate(Symbol("ETH-BTC".to_string()));
     let rate = match res {
         Ok(rate) => rate,
         Err(e) => {
@@ -163,6 +162,8 @@ pub fn post_buy_orders_fundings(
         event.contract_secret_lock(),
     );
 
+    Ok(())
+
     // get contract bytecode
     // build creation transaction
     // sign transaction
@@ -177,6 +178,8 @@ mod tests {
     use rocket::local::{Client, LocalResponse};
     use rocket_factory::create_rocket_instance;
     use serde_json;
+    use std::sync::Arc;
+    use treasury_api_client::FakeApiClient;
 
     fn request_offer(client: &mut Client) -> LocalResponse {
         let request = client
@@ -186,7 +189,7 @@ mod tests {
         request.dispatch()
     }
 
-    fn request_order(client: &mut Client, uid: Uuid) -> LocalResponse {
+    fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
         let request = client
             .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
             .header(ContentType::JSON)
@@ -203,10 +206,9 @@ mod tests {
 
     #[test]
     fn given_an_offer_request_then_return_valid_offer_response() {
-        let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
-        let rocket = create_rocket_instance(url, event_store);
+        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
         let mut client = rocket::local::Client::new(rocket).unwrap();
 
         let mut response = request_offer(&mut client);
@@ -223,10 +225,9 @@ mod tests {
 
     #[test]
     fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_response() {
-        let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
-        let rocket = create_rocket_instance(url, event_store);
+        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
         let mut client = rocket::local::Client::new(rocket).unwrap();
 
         let uid = {
@@ -242,11 +243,13 @@ mod tests {
                 offer_response
             );
 
-            Uuid::parse_str(offer_response["uid"].as_str().unwrap()).unwrap()
+            offer_response["uid"].as_str().unwrap().to_string()
         };
 
+        println!("{}", uid);
+
         {
-            let mut response = request_order(&mut client, uid);
+            let mut response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::Ok);
 
             #[derive(Deserialize)]
@@ -260,13 +263,12 @@ mod tests {
 
     #[test]
     fn given_a_order_request_without_offer_should_fail() {
-        let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
-        let rocket = create_rocket_instance(url, event_store);
+        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
         let mut client = rocket::local::Client::new(rocket).unwrap();
 
-        let uid = Uuid::new_v4();
+        let uid = "d9ee2df7-c330-4893-8345-6ba171f96e8f";
 
         {
             let response = request_order(&mut client, uid);
@@ -276,36 +278,29 @@ mod tests {
 
     #[test]
     fn given_two_orders_request_with_same_uid_should_fail() {
-        let url = TreasuryApiUrl("stub".to_string());
         let event_store = EventStore::new();
 
-        let rocket = create_rocket_instance(url, event_store);
+        let rocket = create_rocket_instance(Arc::new(FakeApiClient), event_store);
         let mut client = rocket::local::Client::new(rocket).unwrap();
 
         let uid = {
             let mut response = request_offer(&mut client);
             assert_eq!(response.status(), Status::Ok);
 
-            let offer_response =
-                serde_json::from_str::<OfferRequestResponse>(&response.body_string().unwrap())
+            let response =
+                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
                     .unwrap();
-            assert_eq!(
-                offer_response.symbol,
-                Symbol("ETH-BTC".to_string()),
-                "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
-                offer_response
-            );
 
-            offer_response.uid.clone()
+            response["uid"].as_str().unwrap().to_string()
         };
 
         {
-            let response = request_order(&mut client, uid);
+            let response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::Ok);
         }
 
         {
-            let response = request_order(&mut client, uid);
+            let response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::BadRequest);
         }
     }

@@ -1,8 +1,10 @@
 use super::{Rate, Symbol};
 use reqwest;
-use rocket_factory::TreasuryApiUrl;
 
-pub trait ApiClient {
+#[derive(Clone)]
+pub struct TreasuryApiUrl(pub String);
+
+pub trait ApiClient: Send + Sync {
     fn request_rate(&self, symbol: Symbol) -> Result<Rate, reqwest::Error>;
 }
 

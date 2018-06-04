@@ -1,8 +1,5 @@
 mod client;
-mod fake_client;
-
-pub use self::client::ApiClient;
-use rocket_factory::TreasuryApiUrl;
+pub use self::client::*;
 
 #[derive(Debug, Deserialize)]
 pub struct Rate {
@@ -13,16 +10,10 @@ pub struct Rate {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Symbol(pub String); // Expected format: ETH-BTC or LTC-BTC
 
-#[cfg(test)]
-pub fn create_client(_url: &TreasuryApiUrl) -> impl ApiClient {
-    fake_client::FakeApiClient {}
-}
+// Export classes for test
 
-#[cfg(not(test))]
-pub fn create_client(url: &TreasuryApiUrl) -> impl ApiClient {
-    use reqwest;
-    client::DefaultApiClient {
-        client: reqwest::Client::new(),
-        url: url.clone(),
-    }
-}
+#[cfg(test)]
+mod fake_client;
+
+#[cfg(test)]
+pub use self::fake_client::*;
