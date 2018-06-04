@@ -8,4 +8,6 @@ mod transaction;
 mod wallet;
 
 pub use transaction::Transaction;
-pub use wallet::{Error, Wallet};
+pub use wallet::{Error, InMemoryWallet, Wallet};
+
+pub mod fake;

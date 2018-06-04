@@ -34,7 +34,7 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
         let private_key = <[u8; 32]>::from_hex(
             "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
         ).unwrap();
-        Wallet::new(private_key, 1).unwrap()
+        InMemoryWallet::new(private_key, 1).unwrap()
     };
 
     let tx = Transaction::new_payment(

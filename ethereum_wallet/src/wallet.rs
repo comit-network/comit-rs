@@ -7,7 +7,11 @@ use secp256k1::Secp256k1;
 use secp256k1::SecretKey;
 use web3::types::Bytes;
 
-pub struct Wallet {
+pub trait Wallet: Send + Sync {
+    fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes;
+}
+
+pub struct InMemoryWallet {
     context: Secp256k1,
     private_key: SecretKey,
     chain_id: u8,
@@ -24,7 +28,7 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl Wallet {
+impl InMemoryWallet {
     pub fn new(private_key: [u8; 32], chain_id: u8) -> Result<Self, Error> {
         // TODO: Wrap / fork this library to make a more Rust-like interface
         // Idea: Encode the capabilities into generics so that an instance 'remembers' which capabilities it has and the compiler resolves the error handling for you.
@@ -32,14 +36,20 @@ impl Wallet {
 
         let private_key = SecretKey::from_slice(&context, &private_key)?;
 
-        Ok(Wallet {
+        Ok(InMemoryWallet {
             context,
             private_key,
             chain_id,
         })
     }
 
-    pub fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes {
+    fn chain_replay_protection_offset(&self) -> i32 {
+        35 + self.chain_id as i32 * 2
+    }
+}
+
+impl Wallet for InMemoryWallet {
+    fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes {
         let hash: [u8; 32] = tx.hash(self.chain_id).into();
 
         let signature = match self.context
@@ -65,9 +75,5 @@ impl Wallet {
         let bytes = stream.as_raw();
 
         Bytes(bytes.to_vec())
-    }
-
-    fn chain_replay_protection_offset(&self) -> i32 {
-        35 + self.chain_id as i32 * 2
     }
 }
