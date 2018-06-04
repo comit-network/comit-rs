@@ -112,6 +112,21 @@ impl OrderTaken {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ContractDeployed {
+    uid: TradeId,
+    transaction_id: H256,
+}
+
+impl ContractDeployed {
+    pub fn new(uid: TradeId, transaction_id: H256) -> Self {
+        ContractDeployed {
+            uid,
+            transaction_id,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 enum TradeState {
     // Offer has been requested and answered
@@ -124,6 +139,7 @@ pub struct EventStore {
     states: RwLock<HashMap<TradeId, TradeState>>,
     offers: RwLock<HashMap<TradeId, OfferCreated>>,
     order_taken: RwLock<HashMap<TradeId, OrderTaken>>,
+    contract_deployed: RwLock<HashMap<TradeId, ContractDeployed>>,
 }
 
 #[derive(Debug)]
@@ -192,6 +208,22 @@ impl EventStore {
         Ok(())
     }
 
+    pub fn store_contract_deployed(&self, event: ContractDeployed) -> Result<(), Error> {
+        let uid = event.uid.clone();
+
+        {
+            let mut events = self.contract_deployed.write().unwrap();
+
+            if events.get(&uid).is_some() {
+                return Err(Error::UnexpectedState);
+            }
+
+            events.insert(uid, event.clone());
+        }
+
+        Ok(())
+    }
+
     pub fn get_offer_created_event(&self, uid: &TradeId) -> Option<OfferCreated> {
         let events = self.offers.read().unwrap();
 
@@ -200,6 +232,12 @@ impl EventStore {
 
     pub fn get_order_taken_event(&self, uid: &TradeId) -> Option<OrderTaken> {
         let events = self.order_taken.read().unwrap();
+
+        events.get(uid).map(|event| event.clone())
+    }
+
+    pub fn get_contract_deployed_event(&self, uid: &TradeId) -> Option<ContractDeployed> {
+        let events = self.contract_deployed.read().unwrap();
 
         events.get(uid).map(|event| event.clone())
     }

@@ -1,6 +1,7 @@
 use bitcoin_rpc;
 use ethereum_htlc;
 use ethereum_service;
+use event_store::ContractDeployed;
 use event_store::EventStore;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
@@ -148,6 +149,12 @@ pub fn post_buy_orders_fundings(
 ) -> Result<(), BadRequest<String>> {
     // Notification about received funds
 
+    if event_store.get_contract_deployed_event(&trade_id).is_some() {
+        return Err(BadRequest(Some(
+            "HTLC for this Trade has already been deployed".to_string(),
+        )));
+    }
+
     let order_taken = match event_store.get_order_taken_event(&trade_id) {
         Some(event) => event,
         None => {
@@ -173,12 +180,24 @@ pub fn post_buy_orders_fundings(
         order_taken.contract_secret_lock(),
     );
 
-    let tx_id = match ethereum_service.deploy_htlc(htlc, U256::from(10)) {
+    let htlc_funding = U256::from(10); // TODO: get this from treasury service
+
+    // TODO fix race condition that can occur here
+
+    let tx_id = match ethereum_service.deploy_htlc(htlc, htlc_funding) {
         Ok(tx_id) => tx_id,
         Err(e) => return Err(BadRequest(Some("Failed to deploy htlc".to_string()))),
     };
 
-    // TODO store event about deployed htlc
+    // TODO this error handling is shit, because should actually never happen. Figure out a way to make more concise
+    match event_store.store_contract_deployed(ContractDeployed::new(trade_id, tx_id)) {
+        Ok() => {}
+        Err(e) => {
+            return Err(BadRequest(Some(
+                "HTLC as already been deployed".to_string(),
+            )))
+        }
+    };
 
     Ok(())
 }
