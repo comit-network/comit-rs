@@ -15,7 +15,7 @@ from_str!(TransactionId);
 /// Currently the internal representation is the serialized string
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
 /// We will need serializers and deserializers then.
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct SerializedRawTransaction(String);
 
 from_str!(SerializedRawTransaction);
