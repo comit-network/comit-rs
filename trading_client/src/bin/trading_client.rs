@@ -6,15 +6,11 @@ extern crate trading_client;
 extern crate uuid;
 
 use std::env::var;
-use std::str::FromStr;
 use structopt::StructOpt;
+use trading_client::redeem;
 use trading_client::types::Currency;
+use trading_client::types::TradingApiUrl;
 use uuid::Uuid;
-
-use trading_client::trading_service_api_client::create_client;
-
-#[macro_use]
-extern crate serde_derive;
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Trading Client", about = "CLI for the atomic swap trading service.")]
@@ -38,6 +34,8 @@ enum Opt {
         /// The trade id
         #[structopt(short = "u", long = "uid", name = "trade id")]
         uid: Uuid,
+        #[structopt(short = "c", long = "console", name = "web3 console format")]
+        console: bool,
     },
 }
 
@@ -58,11 +56,24 @@ impl<T, E> UnwrapOrExit<T, E> for Result<T, E> {
 }
 
 fn main() {
-    let opt = Opt::from_args();
-    println!("{:?}", opt);
+    let trading_api_url = TradingApiUrl(var("TRADING_SERVICE_URL").unwrap());
 
-    // self.client
-    //     .json(&request)
-    //     .send()
-    //     .and_then(|mut res| res.json::<RpcResponse<R>>())
+    let output = match Opt::from_args() {
+        Opt::Offer {
+            sell: _,
+            buy: _,
+            sell_amount: _,
+        } => unimplemented!(),
+        Opt::Redeem { uid, console } => redeem::run(trading_api_url, uid, output_type(console)),
+    };
+
+    println!("{}", output.unwrap())
+}
+
+fn output_type(console: bool) -> redeem::OutputType {
+    if console {
+        redeem::OutputType::CONSOLE
+    } else {
+        redeem::OutputType::URL
+    }
 }

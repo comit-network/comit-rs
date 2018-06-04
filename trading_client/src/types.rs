@@ -26,4 +26,4 @@ impl FromStr for Currency {
 }
 
 #[derive(Clone)]
-pub struct ExchangeApiUrl(pub String);
+pub struct TradingApiUrl(pub String);
