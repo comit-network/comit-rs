@@ -17,8 +17,8 @@ pub struct Htlc {
 
 pub struct ByteCode(String);
 
-impl ByteCode {
-    pub fn into_bytes(self) -> web3::types::Bytes {
+impl Into<web3::types::Bytes> for ByteCode {
+    fn into(self) -> web3::types::Bytes {
         web3::types::Bytes(hex::decode(self.0).unwrap())
     }
 }
