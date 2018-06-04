@@ -144,6 +144,16 @@ pub struct TransactionOutput {
     #[serde(rename = "scriptPubKey")]
     pub script_pub_key: ScriptPubKey,
 }
+
+impl TransactionOutput {
+    /// Convenience method for checking whether this output matches an address
+    pub fn matches_address(&self, address: &Address) -> bool {
+        let script_pub_key = &self.script_pub_key;
+        match script_pub_key.addresses {
+            Some(ref addresses) => addresses[0] == *address,
+            None => false,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
