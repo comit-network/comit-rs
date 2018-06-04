@@ -310,7 +310,7 @@ impl BitcoinCoreClient {
     pub fn send_raw_transaction(
         &self,
         tx_data: SerializedRawTransaction,
-    ) -> Result<RpcResponse<Transaction>, HTTPError> {
+    ) -> Result<RpcResponse<TransactionId>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
             "test",
