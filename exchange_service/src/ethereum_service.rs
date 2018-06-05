@@ -113,8 +113,9 @@ impl EthereumService {
 mod tests {
 
     use super::*;
-    use ethereum_htlc::SecretHash;
+    use common_types::secret::SecretHash;
     use std::ops::Deref;
+    use std::str::FromStr;
     use std::time::SystemTime;
     use web3::types::Address;
 
@@ -155,7 +156,7 @@ mod tests {
                 SystemTime::now(),
                 Address::new(),
                 Address::new(),
-                SecretHash::new(),
+                SecretHash::from_str("").unwrap(),
             ),
             U256::from(10),
         );
@@ -185,7 +186,7 @@ mod tests {
                 SystemTime::now(),
                 Address::new(),
                 Address::new(),
-                SecretHash::new(),
+                SecretHash::from_str("").unwrap(),
             ),
             U256::from(10),
         );

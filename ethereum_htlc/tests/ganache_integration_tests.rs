@@ -14,6 +14,7 @@ mod common;
 use common::GanacheClient;
 use common_types::secret::SecretHash;
 use ethereum_htlc::EpochOffset;
+use std::str::FromStr;
 use web3::types::Address;
 
 #[test]

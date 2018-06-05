@@ -2,6 +2,7 @@ use bitcoin_rpc;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
+use event_store;
 use event_store::ContractDeployed;
 use event_store::EventStore;
 use event_store::OfferCreated;
@@ -26,6 +27,13 @@ impl<'a> FromParam<'a> for TradeId {
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
         Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+    }
+}
+
+impl From<event_store::Error> for BadRequest<String> {
+    fn from(e: event_store::Error) -> Self {
+        error!("EventStore error: {:?}", e);
+        BadRequest(None)
     }
 }
 
@@ -218,7 +226,7 @@ mod tests {
     use std::sync::Arc;
     use treasury_api_client::FakeApiClient;
     use web3;
-    use web3::types::Bytes;
+    use web3::types::{Bytes, H256};
 
     fn request_offer(client: &mut Client) -> LocalResponse {
         let request = client
@@ -234,7 +242,7 @@ mod tests {
             .header(ContentType::JSON)
             .body(
                 r#"{
-                    "contract_secret_lock": "0x68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
+                    "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
                     "client_refund_address": "ClientRefundAddressInBtc",
                     "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
                     "client_contract_time_lock": 24

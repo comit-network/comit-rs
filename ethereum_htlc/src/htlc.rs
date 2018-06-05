@@ -144,6 +144,7 @@ impl Htlc {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
@@ -151,7 +152,9 @@ mod tests {
             SystemTime::now(),
             Address::new(),
             Address::new(),
-            SecretHash::new(),
+            SecretHash::from_str(
+                "1000000000000000000000000000000000000000000000000000000000000001",
+            ).unwrap(),
         );
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
@@ -167,7 +170,7 @@ mod tests {
             SystemTime::now(),
             Address::new(),
             Address::new(),
-            SecretHash::new(),
+            SecretHash::from_str("").unwrap(),
         );
         let deploy_header =
             htlc.generate_deploy_header("731000000000000000000000000000000000000001ff");
