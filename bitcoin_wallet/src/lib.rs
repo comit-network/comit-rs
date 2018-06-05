@@ -45,12 +45,6 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<HexError> for Error {
-    fn from(error: HexError) -> Self {
-        Error::BadHex(error)
-    }
-}
-
 fn generate_p2wsh_htlc_refund_tx(
     txid: &Txid,
     vout: u32,
@@ -174,7 +168,6 @@ mod tests {
     extern crate bitcoin_rpc;
 
     use self::bitcoin_htlc::Htlc;
-    use self::bitcoin_rpc::RpcError;
     use self::bitcoin_rpc::TransactionId;
     use self::bitcoin_rpc::TxOutConfirmations;
     use super::*;
@@ -196,25 +189,9 @@ mod tests {
     }
 
     fn private_key_to_address(privkey: &Privkey) -> Address {
-        let secp = Secp256k1::new();
-        let secret_pubkey = PublicKey::from_secret_key(&secp, privkey.secret_key()).unwrap();
+        let secret_pubkey = PublicKey::from_secret_key(&*SECP, privkey.secret_key()).unwrap();
         Address::p2wpkh(&secret_pubkey, Network::BitcoinCoreRegtest)
     }
-
-    //    fn fund_addr_with_nsequence(client: &bitcoin_rpc::BitcoinCoreClient, nsequence: u32, address : &Address, amount: u64) {
-    //        let vout = TxOut{
-    //            value: amount,
-    //            script_pubkey: &address.script_pubkey,
-    //
-    //        };
-    //
-    //        let mut transaction = Transaction {
-    //            version: 2,
-    //            lock_time: 0,
-    //            input: vec![input.clone()],
-    //            output: vec![output],
-    //        };
-    //    }
 
     fn fund_htlc(
         client: &bitcoin_rpc::BitcoinCoreClient,
@@ -358,12 +335,6 @@ mod tests {
 
     #[test]
     fn redeem_refund_htlc() {
-        //        address2=bcrt1qemetnsnkuf2nlp4vl7h2xwsukeh34z5tugwqc8
-        //        privateKey2=cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx
-        //        publicKey2=02e7ab81f151bd057ad30827653ede1734e80f4145b12a2b89038d42604d8c4d86
-        //        hashedPublicKey=$(bx bitcoin160 $publicKey2)
-        //        =cef2b9c276e2553f86acffaea33a1cb66f1a8a8b
-
         let client = create_client();
 
         let (txid, vout, input_amount, htlc_script, nsequence, _, _, private_key) =
