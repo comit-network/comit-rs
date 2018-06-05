@@ -19,8 +19,8 @@ use web3::types::H256;
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let _ = env_logger::try_init();
 
-    let refund_address: Address = "5C5472FeFf4c7526C1C89A9f29229C007c88Df72".into();
-    let success_address: Address = "73782035b894Ed39985fbF4062e695b8e524Ca4E".into();
+    let refund_address: Address = "147ba99ef89c152f8004e91999fee87bda6cbc3e".into();
+    let success_address: Address = "96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e".into();
 
     const SECRET: &[u8] = b"hello world, you are beautiful!!";
     let secret_hash: H256 =
@@ -67,8 +67,8 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let _ = env_logger::try_init();
 
-    let refund_address: Address = "c32bec6b4d0457a7cb3974ed23c6837d054ce0b2".into();
-    let success_address: Address = "2d59c93d4664ea878c2d862b7896caf2efbd67a6".into();
+    let refund_address: Address = "03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into();
+    let success_address: Address = "25818640c330b071acf5fc836fe0b762a769523d".into();
 
     let secret_hash: H256 =
         "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec".into();
@@ -109,8 +109,8 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
     let _ = env_logger::try_init();
 
-    let refund_address: Address = "97057571fb0cb8420aff01164ac342e3525ee274".into();
-    let success_address: Address = "f1fd72baa06a9806b75b7302460510586d6f54e8".into();
+    let refund_address: Address = "f507e0b7cb47e06bb725b605d463a56cef2c057d".into();
+    let success_address: Address = "70485b398676fa6c83fa600efd3e63a75e6ac5c2".into();
 
     let secret_hash: H256 =
         "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec".into();

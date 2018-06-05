@@ -11,7 +11,7 @@ use web3::futures::Future;
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
     // Arrange
 
-    let account: web3::types::Address = "5c5472feff4c7526c1c89a9f29229c007c88df72".into();
+    let account: web3::types::Address = "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into();
 
     let endpoint = var("GANACHE_ENDPOINT").unwrap_or("http://localhost:7545".to_string());
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
@@ -32,7 +32,7 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
 
     let wallet = {
         let private_key = <[u8; 32]>::from_hex(
-            "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
+            "a710faa76db883cd246112142b609bfe2f122b362b85719f47d91541e104b33d",
         ).unwrap();
         InMemoryWallet::new(private_key, 1).unwrap()
     };
