@@ -10,7 +10,7 @@ END(){
 
 trap 'END' EXIT;
 
-requires_bitcoin_rpc="bitcoin_rpc";
+requires_bitcoin_rpc="bitcoin_rpc bitcoin_wallet";
 
 bitcoin_rpc_integration_tests(){
     export BITCOIN_RPC_URL="http://localhost:18443"
