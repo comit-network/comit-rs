@@ -168,57 +168,12 @@ fn generate_segwit_redeem(
 mod tests {
     extern crate bitcoin_rpc;
 
-    use self::bitcoin_rpc::TxOutConfirmations;
     use self::bitcoin_rpc::RpcError;
+    use self::bitcoin_rpc::TxOutConfirmations;
     use super::*;
     use bitcoin::network::serialize::serialize_hex;
     use bitcoin::util::privkey::Privkey;
     use std::env::var;
-    #[test]
-    fn redeem_refund_htlc() {
-        //        address2=bcrt1qemetnsnkuf2nlp4vl7h2xwsukeh34z5tugwqc8
-        //        privateKey2=cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx
-        //        publicKey2=02e7ab81f151bd057ad30827653ede1734e80f4145b12a2b89038d42604d8c4d86
-        //        hashedPublicKey=$(bx bitcoin160 $publicKey2)
-        //        =cef2b9c276e2553f86acffaea33a1cb66f1a8a8b
-
-        let client = create_client();
-
-        let (txid, vout, input_amount, htlc_script, secret, _, private_key) = fund_htlc(&client);
-
-        let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
-        let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
-
-        let txid_hex: String = txid.into();
-        let txid = Txid::from_hex(txid_hex.as_str()).unwrap();
-
-        let fee = 1000;
-
-        let redeem_tx = generate_p2wsh_htlc_refund_tx(
-            &txid,
-            vout.n,
-            input_amount,
-            input_amount - fee,
-            &htlc_script,
-            &private_key,
-            &alice_addr,
-        ).unwrap();
-
-        let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
-
-        let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
-
-        let rpc_redeem_txid_error = client
-            .send_raw_transaction(raw_redeem_tx)
-            .unwrap()
-            .into_result();
-
-        assert!(rpc_redeem_txid_error.is_err());
-        let error = rpc_redeem_txid_error.unwrap_err();
-
-        assert_eq!(error.code, -26); ///RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by network rules
-        assert!(error.message.contains("Locktime"));
-    }
 
     use std::str::FromStr;
 
@@ -240,6 +195,7 @@ mod tests {
         bitcoin_rpc::TransactionOutput,
         u64,
         Script,
+        u32,
         Secret,
         PrivateKey,
         PrivateKey,
@@ -275,6 +231,8 @@ mod tests {
             .into_result()
             .unwrap();
 
+        println!("raw_htlc_txn: {:?}", raw_htlc_txn);
+
         let decoded_txn = client
             .decode_rawtransaction(raw_htlc_txn.clone())
             .unwrap()
@@ -287,11 +245,13 @@ mod tests {
             .find(|txout| txout.matches_address(&htlc_address))
             .unwrap();
 
+        let checksequence_argument = 0x10;
         (
             txid,
             vout.clone(),
             amount,
             htlc_script,
+            checksequence_argument,
             secret,
             secret_private_key,
             refund_private_key,
@@ -302,7 +262,7 @@ mod tests {
     fn redeem_htlc() {
         let client = create_client();
 
-        let (txid, vout, input_amount, htlc_script, secret, private_key, _) = fund_htlc(&client);
+        let (txid, vout, input_amount, htlc_script, _, secret, private_key, _) = fund_htlc(&client);
 
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
@@ -352,5 +312,64 @@ mod tests {
                 .is_some(),
             "utxo should exist after redeeming htlc"
         );
+    }
+
+    #[test]
+    fn redeem_refund_htlc() {
+        //        address2=bcrt1qemetnsnkuf2nlp4vl7h2xwsukeh34z5tugwqc8
+        //        privateKey2=cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx
+        //        publicKey2=02e7ab81f151bd057ad30827653ede1734e80f4145b12a2b89038d42604d8c4d86
+        //        hashedPublicKey=$(bx bitcoin160 $publicKey2)
+        //        =cef2b9c276e2553f86acffaea33a1cb66f1a8a8b
+
+        let client = create_client();
+
+        let (txid, vout, input_amount, htlc_script, csv_arg, secret, _, private_key) =
+            fund_htlc(&client);
+
+        let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
+        let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
+
+        let txid_hex: String = txid.into();
+        let txid = Txid::from_hex(txid_hex.as_str()).unwrap();
+
+        let fee = 1000;
+
+        let redeem_tx = generate_p2wsh_htlc_refund_tx(
+            &txid,
+            vout.n,
+            input_amount,
+            input_amount - fee,
+            &htlc_script,
+            &private_key,
+            &alice_addr,
+        ).unwrap();
+
+        println!("raw_redeem_txn: {:?}", serialize_hex(&redeem_tx).unwrap());
+
+        let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+
+        let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+
+        let rpc_redeem_txid_error = client
+            .send_raw_transaction(raw_redeem_tx.clone())
+            .unwrap()
+            .into_result();
+
+        assert!(rpc_redeem_txid_error.is_err());
+        let error = rpc_redeem_txid_error.unwrap_err();
+
+        assert_eq!(error.code, -26);
+        ///RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by network rules
+        assert!(error.message.contains("Locktime"));
+
+        client.generate(0x500).unwrap();
+        client.generate(0x501).unwrap();
+
+        let rpc_redeem_txid = client
+            .send_raw_transaction(raw_redeem_tx)
+            .unwrap()
+            .into_result()
+            .unwrap();
     }
 }
