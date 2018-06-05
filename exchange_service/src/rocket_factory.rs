@@ -11,8 +11,14 @@ pub fn create_rocket_instance(
     ethereum_service: Arc<EthereumService>,
 ) -> rocket::Rocket {
     rocket::ignite()
-        .mount("/", routes![routes::eth_btc::post_buy_offers])
-        .mount("/", routes![routes::eth_btc::post_buy_orders])
+        .mount(
+            "/",
+            routes![
+                routes::eth_btc::post_buy_offers,
+                routes::eth_btc::post_buy_orders,
+                routes::eth_btc::post_buy_orders_fundings
+            ],
+        )
         .manage(treasury_api_client)
         .manage(event_store)
         .manage(ethereum_service)
