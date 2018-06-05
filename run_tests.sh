@@ -12,7 +12,7 @@ trap 'END' EXIT;
 
 requires_bitcoin_rpc="bitcoin_rpc";
 
-bitcoin_rpc_tests(){
+bitcoin_rpc_integration_tests(){
     export BITCOIN_RPC_URL="http://localhost:18443"
     export BITCOIN_RPC_USERNAME="bitcoin"
     export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
@@ -30,9 +30,9 @@ bitcoin_rpc_tests(){
     $cmd;
 }
 
-main_tests(){
+unit_tests(){
     cargo test --all --exclude $requires_bitcoin_rpc;
 }
 
-main_tests;
-bitcoin_rpc_tests;
+unit_tests;
+bitcoin_rpc_integration_tests;
