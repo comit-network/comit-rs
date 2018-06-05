@@ -185,7 +185,10 @@ pub fn post_buy_orders_fundings(
 
     let tx_id = match ethereum_service.deploy_htlc(htlc, htlc_funding) {
         Ok(tx_id) => tx_id,
-        Err(e) => return Err(BadRequest(Some("Failed to deploy htlc".to_string()))),
+        Err(e) => {
+            error!("Failed to deploy HTLC. Error: {:?}", e);
+            return Err(BadRequest(None));
+        }
     };
 
     // TODO this error handling is shit, because should actually never happen. Figure out a way to make more concise
