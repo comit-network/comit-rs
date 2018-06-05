@@ -79,14 +79,13 @@ impl EthereumService {
             let mut lock = self.nonce.lock()?;
 
             let nonce = lock.deref_mut();
-            let next_nonce = *nonce + U256::from(1);
 
             let transaction = ethereum_wallet::Transaction::new_contract_deployment(
                 contract.compile_to_hex(),
                 100000, // TODO calculate exact gas needed for this transaction
                 gas_price,
                 funding,
-                next_nonce,
+                *nonce,
             );
 
             let signed_transaction = self.wallet.create_signed_raw_transaction(&transaction);
@@ -100,6 +99,7 @@ impl EthereumService {
 
             // If we get this far, everything worked.
             // Update the nonce and release the lock.
+            let next_nonce = *nonce + U256::from(1);
             *nonce = next_nonce;
 
             tx_id
