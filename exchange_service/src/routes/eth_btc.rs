@@ -221,6 +221,7 @@ mod tests {
     use rocket::http::{ContentType, Status};
     use rocket::local::{Client, LocalResponse};
     use rocket_factory::create_rocket_instance;
+    use serde::Deserialize;
     use serde_json;
     use std::sync::Arc;
     use treasury_api_client::FakeApiClient;
@@ -248,6 +249,35 @@ mod tests {
                   }"#,
             );
         request.dispatch()
+    }
+
+    fn notify_about_funding<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
+        let request = client
+            .post(format!("/trades/ETH-BTC/{}/buy-order-funding", uid).to_string())
+            .header(ContentType::JSON)
+            .body(
+                r#"{
+                    "transaction_id": "a02e9dc0ddc3d8200cc4be0e40a1573519a1a1e9b15e0c4c296fcaa65da80d43"
+                  }"#,
+            );
+        request.dispatch()
+    }
+
+    trait DeserializeAsJson {
+        fn body_json<T>(&mut self) -> T
+        where
+            for<'de> T: Deserialize<'de>;
+    }
+
+    impl<'r> DeserializeAsJson for LocalResponse<'r> {
+        fn body_json<T>(&mut self) -> T
+        where
+            for<'de> T: Deserialize<'de>,
+        {
+            let body = self.body().unwrap().into_inner();
+
+            serde_json::from_reader(body).unwrap()
+        }
     }
 
     struct StaticEthereumApi;
@@ -358,6 +388,31 @@ mod tests {
         {
             let response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::BadRequest);
+        }
+    }
+
+    #[test]
+    fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
+        let mut client = create_rocket_client();
+
+        let trade_id = {
+            let mut response = request_offer(&mut client);
+
+            assert_eq!(response.status(), Status::Ok);
+            response.body_json::<serde_json::Value>()["uid"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        };
+
+        {
+            let response = request_order(&mut client, &trade_id);
+            assert_eq!(response.status(), Status::Ok)
+        }
+
+        {
+            let response = notify_about_funding(&mut client, &trade_id);
+            assert_eq!(response.status(), Status::Ok)
         }
     }
 }
