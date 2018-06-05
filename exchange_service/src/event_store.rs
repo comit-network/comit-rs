@@ -1,5 +1,6 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
+use common_types::secret::SecretHash;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -7,7 +8,8 @@ use std::time::Duration;
 use std::time::SystemTime;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
-use web3::types::{Address, H256};
+use web3::types::Address;
+use web3::types::H256;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -48,7 +50,7 @@ impl OfferCreated {
 pub struct OrderTaken {
     uid: TradeId,
 
-    contract_secret_lock: H256,
+    contract_secret_lock: SecretHash,
     client_contract_time_lock: bitcoin_rpc::BlockHeight,
     exchange_contract_time_lock: SystemTime,
 
@@ -63,7 +65,7 @@ impl OrderTaken {
     pub fn new(
         uid: TradeId,
 
-        contract_secret_lock: H256,
+        contract_secret_lock: SecretHash,
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_rpc::Address,
@@ -107,8 +109,8 @@ impl OrderTaken {
         self.client_success_address.clone()
     }
 
-    pub fn contract_secret_lock(&self) -> H256 {
-        self.contract_secret_lock
+    pub fn contract_secret_lock(&self) -> &SecretHash {
+        &self.contract_secret_lock
     }
 }
 

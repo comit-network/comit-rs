@@ -1,6 +1,6 @@
 use Address;
-use SecretHash;
 use chrono;
+use common_types::secret::SecretHash;
 use hex;
 use std::time::Duration;
 use std::time::SystemTime;

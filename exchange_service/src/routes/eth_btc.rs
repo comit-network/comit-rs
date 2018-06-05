@@ -1,4 +1,5 @@
 use bitcoin_rpc;
+use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
 use event_store::ContractDeployed;
@@ -18,7 +19,7 @@ use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid;
 use uuid::Uuid;
-use web3::types::{Address as EthereumAddress, H256, U256};
+use web3::types::{Address as EthereumAddress, U256};
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -70,7 +71,7 @@ fn post_buy_offers(
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
-    pub contract_secret_lock: H256,
+    pub contract_secret_lock: SecretHash,
     pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
     pub client_refund_address: bitcoin_rpc::Address,
@@ -175,7 +176,7 @@ pub fn post_buy_orders_fundings(
         order_taken.exchange_contract_time_lock(),
         order_taken.exchange_refund_address(),
         order_taken.client_success_address(),
-        order_taken.contract_secret_lock(),
+        order_taken.contract_secret_lock().clone(),
     );
 
     let htlc_funding = U256::from(10); // TODO: get this from treasury service
