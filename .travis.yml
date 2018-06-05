@@ -13,8 +13,7 @@ before_script:
 script:
 - "./check-fmt.sh"
 - cargo build --verbose
-- cargo test --verbose --all --exclude bitcoin_rpc
-- cargo test --verbose --all --package bitcoin_rpc --jobs 1
+- ./run_tests.sh
 notifications:
   email: false
   slack:
