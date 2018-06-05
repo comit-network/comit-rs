@@ -31,8 +31,6 @@ pub struct OrderRequestBody {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderResponseBody {
-    //Indicates the order was "taken"
-    pub uid: Uuid,
     pub exchange_refund_address: Address,
     pub exchange_contract_time_lock: u64,
     pub exchange_success_address: bitcoin_rpc::Address,

@@ -30,7 +30,6 @@ impl ApiClient for FakeApiClient {
         _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {
-            uid: uid,
             exchange_refund_address: "34b19d15e793883d840c563d7dbc8a6723465146".into(),
             exchange_contract_time_lock: 43200,
             exchange_success_address: Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
