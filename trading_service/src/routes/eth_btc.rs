@@ -74,7 +74,7 @@ const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
 
 impl From<event_store::Error> for BadRequest<String> {
     fn from(e: event_store::Error) -> Self {
-        error!("EventStore error: {}", e);
+        error!("EventStore error: {:?}", e);
         BadRequest(None)
     }
 }
@@ -91,8 +91,8 @@ pub fn post_buy_orders(
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
     let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
         Ok(trade_id) => trade_id,
-        Err(_) => {
-            error!("Failed to parse {} as Uuid. Error: ", trade_id, e);
+        Err(e) => {
+            error!("Failed to parse {} as Uuid. Error: {:?}", trade_id, e);
             return Err(BadRequest(None));
         }
     };

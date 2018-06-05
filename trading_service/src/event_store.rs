@@ -63,6 +63,7 @@ enum TradeState {
     OrderTaken,
 }
 
+#[derive(Debug)]
 pub enum Error {
     IncorrectState,
 }
