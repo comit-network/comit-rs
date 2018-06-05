@@ -20,7 +20,7 @@ pub struct Htlc {
     recipient_success_address: Address,
     sender_refund_address: Address,
     secret_hash: SecretHash,
-    relative_timelock: i64,
+    relative_timelock: u32,
     script: Script,
     htlc_address: Address,
 }
@@ -44,7 +44,7 @@ impl Htlc {
         recipient_success_address: Address,
         sender_refund_address: Address,
         secret_hash: SecretHash,
-        relative_timelock: i64,
+        relative_timelock: u32,
         network: &Network,
     ) -> Result<Htlc, Error> {
         // TODO: the recipient is the exchange_service -> we actually should get the exchange pubkey hash directly instead of an address
@@ -92,7 +92,7 @@ pub fn create_htlc(
     recipient_pubkey_hash: &Vec<u8>,
     sender_pubkey_hash: &Vec<u8>,
     secret_hash: &Vec<u8>,
-    redeem_block_height: i64,
+    redeem_block_height: u32,
 ) -> Script {
     Builder::new()
         .push_opcode(OP_IF)
@@ -103,7 +103,7 @@ pub fn create_htlc(
         .push_opcode(OP_HASH160)
         .push_slice(recipient_pubkey_hash)
         .push_opcode(OP_ELSE)
-        .push_int(redeem_block_height)
+        .push_int(redeem_block_height as i64)
         .push_opcode(OP_CHECKSEQUENCEVERIFY)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)

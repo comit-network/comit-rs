@@ -200,7 +200,7 @@ mod tests {
         bitcoin_rpc::TransactionOutput,
         u64,
         Script,
-        i64,
+        u32,
         Secret,
         PrivateKey,
         PrivateKey,
@@ -351,7 +351,7 @@ mod tests {
         let redeem_tx = generate_p2wsh_htlc_refund_tx(
             &txid_sha256d,
             vout.n,
-            nsequence as u32,
+            nsequence,
             input_amount,
             input_amount - fee,
             &htlc_script,
@@ -375,7 +375,7 @@ mod tests {
         ///RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by network rules
         assert!(error.message.contains("non-BIP68-final"));
 
-        client.generate(nsequence as u32).unwrap();
+        client.generate(nsequence).unwrap();
 
         let _txn = client
             .get_transaction(&txid)

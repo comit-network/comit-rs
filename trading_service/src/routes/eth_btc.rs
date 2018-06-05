@@ -149,7 +149,7 @@ pub fn post_buy_orders(
         exchange_success_address,
         client_refund_address,
         secret.hash().clone(),
-        i64::from(BTC_BLOCKS_IN_24H),
+        BTC_BLOCKS_IN_24H,
         network.inner(),
     ).unwrap();
 
