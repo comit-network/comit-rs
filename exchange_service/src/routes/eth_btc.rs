@@ -144,7 +144,7 @@ pub fn post_buy_orders(
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
     event_store: State<EventStore>,
-    ethereum_service: State<ethereum_service::EthereumService>,
+    ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
     // Notification about received funds
 
