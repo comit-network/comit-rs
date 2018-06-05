@@ -140,7 +140,7 @@ pub fn post_buy_orders(
     Ok(Json(order_taken.into()))
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-order-fundings", format = "application/json")]
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-fundings")]
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
     event_store: State<EventStore>,
