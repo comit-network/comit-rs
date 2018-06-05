@@ -50,6 +50,35 @@ impl From<HexError> for Error {
     }
 }
 
+fn generate_p2wsh_htlc_refund_tx(
+    txid: &Txid,
+    vout: u32,
+    input_amount: u64,
+    output_amount: u64,
+    htlc_script: &Script,
+    private_key: &PrivateKey,
+    destination_addr: &Address,
+) -> Result<Transaction, Error> {
+    let public_key = PublicKey::from_secret_key(&*SECP, &private_key.secret_key())?;
+
+    generate_segwit_redeem(
+        txid,
+        vout,
+        input_amount,
+        output_amount,
+        vec![
+            Witness::Signature {
+                private_key: private_key.secret_key(),
+                prev_script: htlc_script,
+            },
+            Witness::Data(public_key.serialize().to_vec()),
+            Witness::Data(vec![0 as u8]),
+            Witness::Data(htlc_script.clone().into_vec()),
+        ],
+        destination_addr,
+    )
+}
+
 fn generate_p2wsh_htlc_redeem_tx(
     txid: &Txid,
     vout: u32,
@@ -145,31 +174,47 @@ mod tests {
     use std::env::var;
     use std::str::FromStr;
 
-    #[test]
-    fn redeem_htlc() {
+    fn create_client() -> bitcoin_rpc::BitcoinCoreClient {
         let url = var("BITCOIN_RPC_URL").unwrap();
         let username = var("BITCOIN_RPC_USERNAME").unwrap();
         let password = var("BITCOIN_RPC_PASSWORD").unwrap();
-        let input_amount = 100_000_001;
 
-        let private_key =
-            Privkey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
+        let client =
+            bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str());
+        client.generate(432).unwrap(); //enable segwit
+        client
+    }
+
+    fn fund_htlc(
+        client: &bitcoin_rpc::BitcoinCoreClient,
+    ) -> (
+        bitcoin_rpc::TransactionId,
+        bitcoin_rpc::TransactionOutput,
+        u64,
+        Script,
+        Secret,
+        PrivateKey,
+        PrivateKey,
+    ) {
+        let amount = 100_000_001;
 
         let htlc_address = bitcoin_rpc::Address::from(
             "bcrt1q8msll8hajpvw3ygt9gllx2pkpf0reuyps3x6xelrdk2uzyc77feqy84zm8",
         );
 
         let htlc_script = Script::from(hex::decode(
-                "63a82068d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec8876a9142e90d7ea212ad448ea0fa118c7975af9fca9a9956760b27576a914cef2b9c276e2553f86acffaea33a1cb66f1a8a8b6888ac"
+            "63a82068d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec8876a9142e90d7ea212ad448ea0fa118c7975af9fca9a9956760b27576a914cef2b9c276e2553f86acffaea33a1cb66f1a8a8b6888ac"
         ).unwrap());
 
-        let client =
-            bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str());
+        let secret_private_key =
+            Privkey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
+        let refund_private_key =
+            Privkey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
 
-        client.generate(432).unwrap(); //enable segwit
+        let secret = Secret::from(*b"hello world, you are beautiful!!");
 
         let txid = client
-            .send_to_address(htlc_address.clone(), (input_amount as f64) / 100_000_000.0)
+            .send_to_address(htlc_address.clone(), (amount as f64) / 100_000_000.0)
             .unwrap()
             .into_result()
             .unwrap();
@@ -188,11 +233,28 @@ mod tests {
             .into_result()
             .unwrap();
 
-        let tx_out = decoded_txn
+        let vout = decoded_txn
             .vout
             .iter()
             .find(|txout| txout.matches_address(&htlc_address))
             .unwrap();
+
+        (
+            txid,
+            vout.clone(),
+            amount,
+            htlc_script,
+            secret,
+            secret_private_key,
+            refund_private_key,
+        )
+    }
+
+    #[test]
+    fn redeem_htlc() {
+        let client = create_client();
+
+        let (txid, vout, input_amount, htlc_script, secret, private_key, _) = fund_htlc(&client);
 
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
@@ -204,11 +266,11 @@ mod tests {
 
         let redeem_tx = generate_p2wsh_htlc_redeem_tx(
             &txid,
-            tx_out.n,
+            vout.n,
             input_amount,
             input_amount - fee,
             &htlc_script,
-            &Secret::from(*b"hello world, you are beautiful!!"),
+            &secret,
             &private_key,
             &alice_addr,
         ).unwrap();
@@ -242,5 +304,48 @@ mod tests {
                 .is_some(),
             "utxo should exist after redeeming htlc"
         );
+    }
+
+    #[test]
+    fn redeem_refund_htlc() {
+        //        address2=bcrt1qemetnsnkuf2nlp4vl7h2xwsukeh34z5tugwqc8
+        //        privateKey2=cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx
+        //        publicKey2=02e7ab81f151bd057ad30827653ede1734e80f4145b12a2b89038d42604d8c4d86
+        //        hashedPublicKey=$(bx bitcoin160 $publicKey2)
+        //        =cef2b9c276e2553f86acffaea33a1cb66f1a8a8b
+
+        let client = create_client();
+
+        let (txid, vout, input_amount, htlc_script, secret, _, private_key) = fund_htlc(&client);
+
+        let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
+        let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
+
+        let txid_hex: String = txid.into();
+        let txid = Txid::from_hex(txid_hex.as_str()).unwrap();
+
+        let fee = 1000;
+
+        let redeem_tx = generate_p2wsh_htlc_refund_tx(
+            &txid,
+            vout.n,
+            input_amount,
+            input_amount - fee,
+            &htlc_script,
+            &private_key,
+            &alice_addr,
+        ).unwrap();
+
+        println!("{}", serialize_hex(&redeem_tx).unwrap());
+
+        let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+
+        let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+
+        let rpc_redeem_txid = client
+            .send_raw_transaction(raw_redeem_tx)
+            .unwrap()
+            .into_result()
+            .unwrap();
     }
 }
