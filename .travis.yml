@@ -1,5 +1,6 @@
 language: rust
 cache: cargo
+sudo: required
 env:
   global:
   - BITCOIN_RPC_URL="http://localhost:18443"
@@ -7,6 +8,8 @@ env:
   - BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 rust: nightly-2018-05-05
 install: true
+services:
+  - docker
 before_script:
 - "./setup.sh"
 script:
