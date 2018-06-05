@@ -13,3 +13,4 @@ mod types;
 pub use bitcoincore::*;
 pub use rustc_serialize::hex;
 pub use types::*;
+pub use jsonrpc::RpcError;
