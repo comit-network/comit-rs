@@ -74,7 +74,8 @@ pub struct RequestToFund {
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
 
 impl From<event_store::Error> for BadRequest<String> {
-    fn from(_: event_store::Error) -> Self {
+    fn from(e: event_store::Error) -> Self {
+        error!("EventStore error: {}", e);
         BadRequest(None)
     }
 }
@@ -91,12 +92,21 @@ pub fn post_buy_orders(
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
     let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
         Ok(trade_id) => trade_id,
-        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
+        Err(_) => {
+            error!("Failed to parse {} as Uuid. Error: ", trade_id, e);
+            return Err(BadRequest(None));
+        }
     };
 
     let offer = match event_store.get_offer_created(&trade_id) {
         Some(offer) => offer,
-        None => return Err(BadRequest(None)),
+        None => {
+            error!(
+                "Unable to retrieve offer for trade {} from store.",
+                trade_id
+            );
+            return Err(BadRequest(None));
+        }
     };
 
     let buy_order = buy_order_request_body.into_inner();
@@ -133,7 +143,10 @@ pub fn post_buy_orders(
 
     let order_response = match res {
         Ok(order_response) => order_response,
-        Err(_) => return Err(BadRequest(None)), //TODO: handle error properly
+        Err(e) => {
+            error!("Failed to create order on exchange. Error: {}", e);
+            return Err(BadRequest(None)); // TODO: return nice error message
+        }
     };
 
     let exchange_success_address =
