@@ -66,7 +66,6 @@ pub struct BuyOrderRequestBody {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    uid: Uuid,
     address_to_fund: bitcoin_rpc::Address,
     //TODO: specify amount of BTC
 }
@@ -179,7 +178,6 @@ pub fn post_buy_orders(
     let htlc_address = bitcoin_rpc::Address::from(htlc.get_htlc_address().clone());
 
     Ok(Json(RequestToFund {
-        uid: trade_id,
         address_to_fund: htlc_address,
     }))
 }
