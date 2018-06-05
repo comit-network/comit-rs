@@ -21,6 +21,7 @@ pub struct Htlc {
     sender_refund_address: Address,
     secret_hash: SecretHash,
     relative_timelock: i64,
+    script: Script,
     htlc_address: Address,
 }
 
@@ -66,8 +67,13 @@ impl Htlc {
             sender_refund_address,
             secret_hash,
             relative_timelock,
+            script,
             htlc_address,
         })
+    }
+
+    pub fn script(&self) -> &Script {
+        &self.script
     }
 
     pub fn get_htlc_address(&self) -> &Address {
