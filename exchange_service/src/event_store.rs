@@ -129,6 +129,21 @@ impl ContractDeployed {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TradeFunded {
+    uid: TradeId,
+    transaction_id: bitcoin_rpc::TransactionId,
+}
+
+impl TradeFunded {
+    pub fn new(uid: TradeId, transaction_id: bitcoin_rpc::TransactionId) -> Self {
+        TradeFunded {
+            uid,
+            transaction_id,
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 enum TradeState {
     // Offer has been requested and answered
@@ -142,6 +157,7 @@ pub struct EventStore {
     offers: RwLock<HashMap<TradeId, OfferCreated>>,
     order_taken: RwLock<HashMap<TradeId, OrderTaken>>,
     contract_deployed: RwLock<HashMap<TradeId, ContractDeployed>>,
+    trade_funded: RwLock<HashMap<TradeId, TradeFunded>>,
 }
 
 #[derive(Debug)]
@@ -167,6 +183,7 @@ impl EventStore {
             offers: RwLock::new(HashMap::new()),
             order_taken: RwLock::new(HashMap::new()),
             contract_deployed: RwLock::new(HashMap::new()),
+            trade_funded: RwLock::new(HashMap::new()),
         }
     }
 
@@ -227,6 +244,22 @@ impl EventStore {
         Ok(())
     }
 
+    pub fn store_trade_funded(&self, event: TradeFunded) -> Result<(), Error> {
+        let uid = event.uid.clone();
+
+        {
+            let mut events = self.trade_funded.write().unwrap();
+
+            if events.get(&uid).is_some() {
+                return Err(Error::UnexpectedState);
+            }
+
+            events.insert(uid, event.clone());
+        }
+
+        Ok(())
+    }
+
     pub fn get_offer_created_event(&self, uid: &TradeId) -> Option<OfferCreated> {
         let events = self.offers.read().unwrap();
 
@@ -241,6 +274,12 @@ impl EventStore {
 
     pub fn get_contract_deployed_event(&self, uid: &TradeId) -> Option<ContractDeployed> {
         let events = self.contract_deployed.read().unwrap();
+
+        events.get(uid).map(|event| event.clone())
+    }
+
+    pub fn get_trade_funded_event(&self, uid: &TradeId) -> Option<TradeFunded> {
+        let events = self.trade_funded.read().unwrap();
 
         events.get(uid).map(|event| event.clone())
     }

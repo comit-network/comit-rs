@@ -9,6 +9,7 @@ use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::OfferState;
 use event_store::OrderTaken;
+use event_store::TradeFunded;
 use event_store::TradeId;
 use rocket::State;
 use rocket::http::RawStr;
@@ -148,19 +149,24 @@ pub fn post_buy_orders(
     Ok(Json(order_taken.into()))
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-order-fundings")]
+#[derive(Deserialize)]
+pub struct BuyOrderFundingRequestBody {
+    transaction_id: bitcoin_rpc::TransactionId,
+}
+
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-funding", format = "application/json",
+       data = "<buy_order_funding_request_body>")]
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
+    buy_order_funding_request_body: Json<BuyOrderFundingRequestBody>,
     event_store: State<EventStore>,
     ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
-    // Notification about received funds
-
-    if event_store.get_contract_deployed_event(&trade_id).is_some() {
-        return Err(BadRequest(Some(
-            "HTLC for this Trade has already been deployed".to_string(),
-        )));
-    }
+    let trade_funded = TradeFunded::new(
+        trade_id,
+        buy_order_funding_request_body.transaction_id.clone(),
+    );
+    event_store.store_trade_funded(trade_funded)?;
 
     let order_taken = match event_store.get_order_taken_event(&trade_id) {
         Some(event) => event,
@@ -189,25 +195,18 @@ pub fn post_buy_orders_fundings(
 
     let htlc_funding = U256::from(10); // TODO: get this from treasury service
 
-    // TODO fix race condition that can occur here
-
     let tx_id = match ethereum_service.deploy_htlc(htlc, htlc_funding) {
         Ok(tx_id) => tx_id,
         Err(e) => {
+            // TODO: Should we rollback the TradeFunded event here?
+            // We didn't successfully transition from TradeFunded to ContractDeployed.
+
             error!("Failed to deploy HTLC. Error: {:?}", e);
             return Err(BadRequest(None));
         }
     };
 
-    // TODO this error handling is shit, because should actually never happen. Figure out a way to make more concise
-    match event_store.store_contract_deployed(ContractDeployed::new(trade_id, tx_id)) {
-        Ok(_) => {}
-        Err(e) => {
-            return Err(BadRequest(Some(
-                "HTLC as already been deployed".to_string(),
-            )))
-        }
-    };
+    event_store.store_contract_deployed(ContractDeployed::new(trade_id, tx_id))?;
 
     Ok(())
 }
