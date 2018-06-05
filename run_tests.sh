@@ -8,6 +8,14 @@ END(){
     fi
 }
 
+whoami;
+ls -l /var/run/;
+if test -w /var/run/docker.sock; then
+    echo "I can rw docker.sock"
+else
+    echo "I can't rw docker.sock";
+fi
+
 trap 'END' EXIT;
 
 requires_bitcoin_rpc="bitcoin_rpc";
