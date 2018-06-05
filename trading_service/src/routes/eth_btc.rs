@@ -243,11 +243,6 @@ mod tests {
         let funding_request =
             serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
 
-        assert_eq!(
-            funding_request.uid, uid,
-            "UID for the funding request is the same as the offer response"
-        );
-
         assert!(
             funding_request
                 .address_to_fund
