@@ -74,7 +74,7 @@ fn main() {
 
 // TODO move this somewhere else (maybe contribute to web3?)
 fn derive_address_from_private_key(private_key: &[u8]) -> web3::types::Address {
-    let secp256k1 = secp256k1::Secp256k1::without_caps();
+    let secp256k1 = secp256k1::Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(&secp256k1, private_key).unwrap();
     let public_key = secp256k1::PublicKey::from_secret_key(&secp256k1, &secret_key).unwrap();
 
