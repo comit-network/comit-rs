@@ -167,14 +167,16 @@ fn generate_segwit_redeem(
 #[cfg(test)]
 mod tests {
     extern crate bitcoin_rpc;
+    extern crate btc_htlc;
 
     use self::bitcoin_rpc::RpcError;
     use self::bitcoin_rpc::TxOutConfirmations;
+    use self::btc_htlc::BtcHtlc;
     use super::*;
+    use bitcoin::network::constants::Network;
     use bitcoin::network::serialize::serialize_hex;
     use bitcoin::util::privkey::Privkey;
     use std::env::var;
-
     use std::str::FromStr;
 
     fn create_client() -> bitcoin_rpc::BitcoinCoreClient {
@@ -186,6 +188,12 @@ mod tests {
             bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str());
         client.generate(432).unwrap(); //enable segwit
         client
+    }
+
+    fn private_key_to_address(privkey: &Privkey) -> Address {
+        let secp = Secp256k1::new();
+        let secret_pubkey = PublicKey::from_secret_key(&secp, privkey.secret_key()).unwrap();
+        Address::p2wpkh(&secret_pubkey, Network::BitcoinCoreRegtest)
     }
 
     fn fund_htlc(
@@ -200,30 +208,53 @@ mod tests {
         PrivateKey,
         PrivateKey,
     ) {
+        let success_privkey =
+            Privkey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
+        let success_address = private_key_to_address(&success_privkey);
+        let refund_privkey =
+            Privkey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
+        let mut secret = Secret::from(*b"hello world, you are beautiful!!");
+        let refund_address = private_key_to_address(&refund_privkey);
+        let sequence_lock = 0;
+
         let amount = 100_000_001;
 
-        let htlc_address = bitcoin_rpc::Address::from(
-            "bcrt1q8msll8hajpvw3ygt9gllx2pkpf0reuyps3x6xelrdk2uzyc77feqy84zm8",
-        );
+        let htlc = BtcHtlc::new(
+            success_address,
+            refund_address,
+            secret.hash().clone(),
+            sequence_lock,
+            &Network::BitcoinCoreRegtest,
+        ).unwrap();
 
-        let htlc_script = Script::from(hex::decode(
-            "63a82068d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec8876a9142e90d7ea212ad448ea0fa118c7975af9fca9a9956760b27576a914cef2b9c276e2553f86acffaea33a1cb66f1a8a8b6888ac"
-        ).unwrap());
+        //        let htlc_address = bitcoin_rpc::Address::from(
+        //            "bcrt1q8msll8hajpvw3ygt9gllx2pkpf0reuyps3x6xelrdk2uzyc77feqy84zm8",
+        //        );
+        //
+        //        let htlc_script = Script::from(hex::decode(
+        //            "63a82068d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec8876a9142e90d7ea212ad448ea0fa118c7975af9fca9a9956760b27576a914cef2b9c276e2553f86acffaea33a1cb66f1a8a8b6888ac"
+        //        ).unwrap());
 
-        let secret_private_key =
-            Privkey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-        let refund_private_key =
-            Privkey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
-
-        let secret = Secret::from(*b"hello world, you are beautiful!!");
+        let htlc_address = htlc.address();
+        let rpc_htlc_address = bitcoin_rpc::Address::from(htlc_address.clone());
+        let htlc_script = htlc.script();
+        println!("{:?}", htlc_script);
 
         let txid = client
-            .send_to_address(htlc_address.clone(), (amount as f64) / 100_000_000.0)
+            .send_to_address(rpc_htlc_address.clone(), (amount as f64) / 100_000_000.0)
             .unwrap()
             .into_result()
             .unwrap();
 
         client.generate(1).unwrap();
+
+        let _txn = client
+            .get_transaction(&txid)
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        println!("{:?}", _txn);
 
         let raw_htlc_txn = client
             .get_raw_transaction_serialized(&txid)
@@ -242,19 +273,18 @@ mod tests {
         let vout = decoded_txn
             .vout
             .iter()
-            .find(|txout| txout.matches_address(&htlc_address))
+            .find(|txout| txout.matches_address(&rpc_htlc_address))
             .unwrap();
 
-        let checksequence_argument = 0x10;
         (
             txid,
             vout.clone(),
             amount,
-            htlc_script,
-            checksequence_argument,
+            htlc_script.clone(),
+            sequence_lock,
             secret,
-            secret_private_key,
-            refund_private_key,
+            success_privkey,
+            refund_privkey,
         )
     }
 
@@ -330,13 +360,13 @@ mod tests {
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
 
-        let txid_hex: String = txid.into();
-        let txid = Txid::from_hex(txid_hex.as_str()).unwrap();
+        let txid_hex: String = txid.clone().into();
+        let txid_sha256d = Txid::from_hex(txid_hex.as_str()).unwrap();
 
         let fee = 1000;
 
         let redeem_tx = generate_p2wsh_htlc_refund_tx(
-            &txid,
+            &txid_sha256d,
             vout.n,
             input_amount,
             input_amount - fee,
@@ -363,8 +393,14 @@ mod tests {
         ///RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by network rules
         assert!(error.message.contains("Locktime"));
 
-        client.generate(0x500).unwrap();
-        client.generate(0x501).unwrap();
+        client.generate(91).unwrap();
+
+        let _txn = client
+            .get_transaction(&txid)
+            .unwrap()
+            .into_result()
+            .unwrap();
+        println!("{:?}", _txn);
 
         let rpc_redeem_txid = client
             .send_raw_transaction(raw_redeem_tx)
