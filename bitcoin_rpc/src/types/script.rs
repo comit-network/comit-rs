@@ -6,12 +6,12 @@ pub struct RedeemScript(String);
 from_str!(RedeemScript);
 
 // TODO: Maybe we can get rid of this with a custom (de)serializer that decodes the hex string into the ScriptPubKey struct. Let's leave it like this for now so we don't have a primitive there
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct EncodedScriptPubKey(String);
 
 from_str!(EncodedScriptPubKey);
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScriptPubKey {
     pub asm: String,
     pub hex: EncodedScriptPubKey,
@@ -22,7 +22,7 @@ pub struct ScriptPubKey {
     pub addresses: Option<Vec<Address>>,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub enum ScriptType {
     #[serde(rename = "pubkey")]
     PubKey,

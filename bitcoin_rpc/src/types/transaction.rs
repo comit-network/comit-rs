@@ -137,7 +137,7 @@ impl TransactionInput {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TransactionOutput {
     pub value: f64,
     pub n: u32,
