@@ -17,8 +17,10 @@ pub fn create_rocket_instance(
         .mount(
             "/",
             routes![
+                routes::eth_btc::get_redeem_orders,
                 routes::eth_btc::post_buy_offers,
-                routes::eth_btc::post_buy_orders
+                routes::eth_btc::post_buy_orders,
+                routes::chain_updates::post_update_eth_address,
             ],
         )
         .manage(exchange_api_url)

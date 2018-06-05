@@ -1,6 +1,7 @@
 use bitcoin;
 use bitcoin::network::constants::Network;
-use bitcoin_htlc::Htlc;
+use bitcoin_htlc;
+use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
 use event_store;
@@ -8,7 +9,6 @@ use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
 use event_store::OrderTaken;
-use exchange_api_client;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::OfferResponseBody;
@@ -157,7 +157,7 @@ pub fn post_buy_orders(
         bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
             .expect("Could not convert client refund address to bitcoin::util::address::Address");
 
-    let htlc: Htlc = Htlc::new(
+    let htlc: BtcHtlc = BtcHtlc::new(
         exchange_success_address,
         client_refund_address,
         secret.hash().clone(),
@@ -179,6 +179,44 @@ pub fn post_buy_orders(
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,
+    }))
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct RedeemDetails {
+    address: EthAddress,
+    data: bitcoin_htlc::secret::Secret,
+    gas: u32,
+}
+
+#[get("/trades/ETH-BTC/<trade_id>/redeem-orders", format = "application/json")]
+pub fn get_redeem_orders(
+    trade_id: &RawStr,
+    _url: State<ExchangeApiUrl>,
+    event_store: State<EventStore>,
+    _rng: State<Mutex<OsRng>>,
+) -> Result<Json<RedeemDetails>, BadRequest<String>> {
+    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
+        Ok(trade_id) => trade_id,
+        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
+    };
+
+    let address = match event_store.get_redeem_ready(&trade_id) {
+        Some(redeem) => redeem.address,
+        None => return Err(BadRequest(Some("Incorrect trade id".to_string()))),
+    };
+
+    // Should we create a "get_secret" method to retrieve the secret in the right event?
+    let secret = match event_store.get_order_created(&trade_id) {
+        Some(order_create) => order_create.secret,
+        None => return Err(BadRequest(Some("Incorrect trade id".to_string()))),
+    };
+
+    Ok(Json(RedeemDetails {
+        address: address,
+        data: secret,
+        // TODO: check how much gas we should tell the customer to pay
+        gas: 20000,
     }))
 }
 
@@ -248,6 +286,36 @@ mod tests {
                 .address_to_fund
                 .to_string()
                 .starts_with("bcrt1")
+        );
+
+        let request = client
+            .post("/chains/ETH/update-redeem-address")
+            .header(ContentType::JSON)
+            .body(format!(
+                r#"{{ "uid" : "{}", "address" : "00a329c0648769a73afac7f9381e08fb43dbea72" }}"#,
+                uid
+            ));
+
+        let mut response = request.dispatch();
+
+        assert_eq!(
+            response.status(),
+            Status::Ok,
+            "update-redeem-address call is successful"
+        );
+
+        let request = client.get(format!("/trades/ETH-BTC/{}/redeem-orders", uid).to_string());
+
+        let mut response = request.dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+
+        let redeem_details =
+            serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
+
+        assert_eq!(
+            redeem_details.gas, 20_000,
+            "gas is present in the redeem details"
         );
     }
 }

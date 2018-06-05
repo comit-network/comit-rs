@@ -49,10 +49,17 @@ pub struct OrderTaken {
     pub htlc: Htlc,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RedeemReady {
+    pub uid: Uuid,
+    pub address: EthAddress,
+}
+
 pub struct EventStore {
     offer_created: RwLock<HashMap<Uuid, OfferCreated>>,
     order_created: RwLock<HashMap<Uuid, OrderCreated>>,
     order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
+    redeem_ready: RwLock<HashMap<Uuid, RedeemReady>>,
 }
 
 #[derive(PartialEq)]
@@ -61,6 +68,7 @@ enum TradeState {
     OfferCreated,
     OrderCreated,
     OrderTaken,
+    RedeemReady,
 }
 
 #[derive(Debug)]
@@ -74,6 +82,7 @@ impl EventStore {
             offer_created: RwLock::new(HashMap::new()),
             order_created: RwLock::new(HashMap::new()),
             order_taken: RwLock::new(HashMap::new()),
+            redeem_ready: RwLock::new(HashMap::new()),
         }
     }
 
@@ -90,7 +99,11 @@ impl EventStore {
             return TradeState::OrderCreated;
         }
 
-        TradeState::OrderTaken
+        if self._get(&self.redeem_ready, id).is_none() {
+            return TradeState::OrderTaken;
+        }
+
+        TradeState::RedeemReady
     }
 
     fn _store<E: Clone>(
@@ -123,6 +136,11 @@ impl EventStore {
         self._store(&self.order_taken, TradeState::OrderCreated, uid, &event)
     }
 
+    pub fn store_redeem_ready(&self, event: RedeemReady) -> Result<(), Error> {
+        let uid = event.uid.clone();
+        self._store(&self.redeem_ready, TradeState::OrderTaken, uid, &event)
+    }
+
     fn _get<E: Clone>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: &Uuid) -> Option<E> {
         event_map.read().unwrap().get(id).map(Clone::clone)
     }
@@ -137,5 +155,9 @@ impl EventStore {
 
     pub fn get_order_taken(&self, id: &Uuid) -> Option<OrderTaken> {
         self._get(&self.order_taken, id)
+    }
+
+    pub fn get_redeem_ready(&self, id: &Uuid) -> Option<RedeemReady> {
+        self._get(&self.redeem_ready, id)
     }
 }

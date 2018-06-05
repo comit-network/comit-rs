@@ -4,7 +4,6 @@ use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResp
 use reqwest;
 use symbol::Symbol;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
