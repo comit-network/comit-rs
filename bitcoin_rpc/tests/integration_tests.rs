@@ -202,6 +202,8 @@ fn test_fund_raw_transaction() {
 
     let test_client = BitcoinCoreTestClient::new();
 
+    test_client.a_block();
+
     let alice = test_client.an_address();
 
     let mut outputs = HashMap::new();
