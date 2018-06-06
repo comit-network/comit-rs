@@ -28,6 +28,9 @@ bitcoin_rpc_integration_tests(){
     for package in $requires_bitcoin_rpc; do
         cmd="$cmd --package $package"
     done
+
+    echo "Executing ${cmd}"
+
     $cmd;
 }
 
@@ -45,6 +48,9 @@ ganache_integration_tests(){
     for package in $requires_ganache; do
         cmd="$cmd --package $package"
     done
+
+    echo "Executing ${cmd}"
+
     $cmd;
 }
 
@@ -55,6 +61,8 @@ unit_tests(){
     for package in $requires_bitcoin_rpc $requires_ganache; do
         cmd="$cmd --exclude $package"
     done
+
+    echo "Executing ${cmd}"
 
     $cmd
 }
