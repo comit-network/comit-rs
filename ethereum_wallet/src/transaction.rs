@@ -1,6 +1,5 @@
 use rlp::Encodable;
 use rlp::RlpStream;
-use secp256k1::SecretKey;
 use tiny_keccak::keccak256;
 use web3::types::Address;
 use web3::types::Bytes;

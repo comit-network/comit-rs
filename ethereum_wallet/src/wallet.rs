@@ -1,12 +1,9 @@
 use UnsignedTransaction;
-use rlp::Encodable;
-use rlp::RlpStream;
 use secp256k1;
 use secp256k1::ContextFlag;
 use secp256k1::Secp256k1;
 use secp256k1::SecretKey;
 use transaction::SignedTransaction;
-use web3::types::Bytes;
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;
