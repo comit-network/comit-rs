@@ -12,6 +12,12 @@ const SHA256_DIGEST_LENGTH: usize = 32;
 #[derive(Clone, Debug, PartialEq)]
 pub struct SecretHash(pub Vec<u8>);
 
+impl<'a> From<&'a SecretHash> for SecretHash {
+    fn from(s: &'a SecretHash) -> Self {
+        s.clone()
+    }
+}
+
 impl fmt::Display for SecretHash {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(&format!("{:x}", self))
