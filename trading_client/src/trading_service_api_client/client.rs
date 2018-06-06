@@ -1,5 +1,4 @@
 use reqwest;
-use std::fmt;
 use types::*;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;

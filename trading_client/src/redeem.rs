@@ -26,7 +26,7 @@ pub fn run(
     let address = redeem_details.address.to_string();
 
     match output_type {
-        URL => {
+        OutputType::URL => {
             // See https://eips.ethereum.org/EIPS/eip-681
             let mut url = String::new()
                 .add("ethereum:")
@@ -36,11 +36,12 @@ pub fn run(
                 .add("?value=0")
                 .add("&gas=").add(&redeem_details.gas.to_string()); //TODO double check whether we should be using gas, gasLimit or gasPrice
             return Ok(format!(
-                "Proceed with a payment of 0 ETH using the following link to unlock your ETH:\n{}",
-                url
+                "To redeem your ETH related to trade id: {}\n\
+                 Please proceed with a payment of 0 ETH using the following link:\n{}",
+                uid, url
             ));
         }
-        CONSOLE => unimplemented!(),
+        OutputType::CONSOLE => unimplemented!(),
     }
 }
 
