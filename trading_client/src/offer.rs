@@ -97,12 +97,11 @@ pub fn run(
             };
 
             return Ok(format!(
-                "Offer details:\n\
+                "Trade id: {}\n\
                  To buy {} {} against {}, the offered exchange rate is {} {}.\n\
-                 Offer id is: {}\n\
                  To accept the offer, run:\n\
                  trading_client accept --uid={}",
-                buy_amount, buy_curr, sell_curr, offer.rate, offer.symbol, offer.uid, offer.uid,
+                offer.uid, buy_amount, buy_curr, sell_curr, offer.rate, offer.symbol, offer.uid,
             ));
         }
     }
@@ -123,11 +122,10 @@ mod tests {
 
         assert_eq!(
             response,
-            "Offer details:
-To buy 12 ETH against BTC, the offered exchange rate is 0.6876231 ETH-BTC.
-Offer id is: a83aac12-0c78-417e-88e4-1a2948c6d538
-To accept the offer, run:
-trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
+            "Trade id: a83aac12-0c78-417e-88e4-1a2948c6d538\n\
+             To buy 12 ETH against BTC, the offered exchange rate is 0.6876231 ETH-BTC.\n\
+             To accept the offer, run:\n\
+             trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
         )
     }
 }

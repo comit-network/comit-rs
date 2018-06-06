@@ -23,7 +23,7 @@ pub fn run(
         Err(e) => return Err(format!("Error: {}; Redeem aborted", e)),
     };
 
-    let address = redeem_details.address.to_string();
+    let address = format!("{:x}", redeem_details.address);
 
     match output_type {
         OutputType::URL => {
@@ -36,8 +36,8 @@ pub fn run(
                 .add("?value=0")
                 .add("&gas=").add(&redeem_details.gas.to_string()); //TODO double check whether we should be using gas, gasLimit or gasPrice
             return Ok(format!(
-                "To redeem your ETH related to trade id: {}\n\
-                 Please proceed with a payment of 0 ETH using the following link:\n{}",
+                "Trade id: {}\n\
+                 To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n{}",
                 uid, url
             ));
         }
@@ -48,13 +48,21 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn redeem_with_valid_uid() {
         let trading_api_url = TradingApiUrl("stub".to_string());
 
-        let uid = Uuid::new_v4();
+        let uid = Uuid::from_str("27b36adf-eda3-4684-a21c-a08a84f36fb1").unwrap();
 
-        let redeem_details = run(trading_api_url, uid, OutputType::URL);
+        let redeem_details = run(trading_api_url, uid, OutputType::URL).unwrap();
+
+        assert_eq!(
+            redeem_details,
+            "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1\n\
+             To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n\
+             ethereum:0x00a329c0648769a73afac7f9381e08fb43dbea72?value=0&gas=20000"
+        )
     }
 }
