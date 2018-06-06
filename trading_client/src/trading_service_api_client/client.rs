@@ -67,7 +67,7 @@ impl ApiClient for DefaultApiClient {
 
     fn request_redeem_details(&self, uid: Uuid) -> Result<RedeemDetails, reqwest::Error> {
         let client = reqwest::Client::new();
-        client
+        client //TODO: use symbol
             .get(format!("{}/trades/ETH-BTC/{}/redeem-orders", self.url.0, uid).as_str())
             .send()
             .and_then(|mut res| res.json::<RedeemDetails>())

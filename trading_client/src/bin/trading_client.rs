@@ -7,6 +7,7 @@ extern crate uuid;
 
 use std::env::var;
 use structopt::StructOpt;
+use trading_client::offer;
 use trading_client::offer::Currency;
 use trading_client::redeem;
 use trading_client::types::TradingApiUrl;
@@ -60,10 +61,10 @@ fn main() {
 
     let output = match Opt::from_args() {
         Opt::Offer {
-            sell: _,
-            buy: _,
-            buy_amount: _,
-        } => unimplemented!(),
+            sell,
+            buy,
+            buy_amount,
+        } => offer::run(trading_api_url, sell, buy, buy_amount),
         Opt::Redeem { uid, console } => redeem::run(trading_api_url, uid, output_type(console)),
     };
 

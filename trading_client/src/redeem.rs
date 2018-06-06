@@ -34,7 +34,7 @@ pub fn run(
                 .add(&address)
                 //.push_str("@").push_str(chain_id) // TODO: Do we want it?
                 .add("?value=0")
-                .add("&gas=").add(&redeem_details.gas.to_string()); //TODO double check whether we should be using gas, gasLimit or gasPrice
+                .add("&gas=").add(&redeem_details.gas.to_string());
             return Ok(format!(
                 "Trade id: {}\n\
                  To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n{}",
