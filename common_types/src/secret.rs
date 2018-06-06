@@ -117,6 +117,43 @@ impl Secret {
     }
 }
 
+impl FromStr for Secret {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        hex::decode(s).map(Secret)
+    }
+}
+
+
+impl<'de> Deserialize<'de> for Secret {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+        where
+            D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = Secret;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("a hex encoded 32 byte value")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Secret, E>
+                where
+                    E: de::Error,
+            {
+                Secret::from_str(v).map_err(|_| {
+                    de::Error::invalid_value(de::Unexpected::Str(v), &"hex encoded bytes")
+                })
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
 pub trait RandomnessSource {
     fn gen_random_bytes(&mut self, nbytes: usize) -> Vec<u8>;
 }
