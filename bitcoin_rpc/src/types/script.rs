@@ -11,6 +11,12 @@ pub struct EncodedScriptPubKey(String);
 
 from_str!(EncodedScriptPubKey);
 
+impl AsRef<[u8]> for EncodedScriptPubKey {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScriptPubKey {
     pub asm: String,
