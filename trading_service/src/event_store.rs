@@ -50,7 +50,7 @@ pub struct OrderTaken {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RedeemReady {
+pub struct ContractDeployed {
     pub uid: Uuid,
     pub address: EthAddress,
 }
@@ -59,7 +59,7 @@ pub struct EventStore {
     offer_created: RwLock<HashMap<Uuid, OfferCreated>>,
     order_created: RwLock<HashMap<Uuid, OrderCreated>>,
     order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
-    redeem_ready: RwLock<HashMap<Uuid, RedeemReady>>,
+    redeem_ready: RwLock<HashMap<Uuid, ContractDeployed>>,
 }
 
 #[derive(PartialEq)]
@@ -136,7 +136,7 @@ impl EventStore {
         self._store(&self.order_taken, TradeState::OrderCreated, uid, &event)
     }
 
-    pub fn store_redeem_ready(&self, event: RedeemReady) -> Result<(), Error> {
+    pub fn store_redeem_ready(&self, event: ContractDeployed) -> Result<(), Error> {
         let uid = event.uid.clone();
         self._store(&self.redeem_ready, TradeState::OrderTaken, uid, &event)
     }
@@ -157,7 +157,7 @@ impl EventStore {
         self._get(&self.order_taken, id)
     }
 
-    pub fn get_redeem_ready(&self, id: &Uuid) -> Option<RedeemReady> {
+    pub fn get_redeem_ready(&self, id: &Uuid) -> Option<ContractDeployed> {
         self._get(&self.redeem_ready, id)
     }
 }

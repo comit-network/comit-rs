@@ -25,7 +25,7 @@ impl ApiClient for FakeApiClient {
     fn create_order(
         &self,
         _symbol: Symbol,
-        uid: Uuid,
+        _uid: Uuid,
         _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {

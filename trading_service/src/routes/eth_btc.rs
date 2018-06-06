@@ -5,6 +5,7 @@ use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
 use event_store;
+use event_store::ContractDeployed;
 use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
@@ -182,6 +183,32 @@ pub fn post_buy_orders(
     }))
 }
 
+#[derive(Deserialize)]
+pub struct ContractDeployedRequestBody {
+    pub contract_address: EthAddress,
+}
+
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed", format = "application/json",
+       data = "<contract_deployed_request_body>")]
+pub fn post_contract_deployed(
+    trade_id: &RawStr,
+    contract_deployed_request_body: Json<ContractDeployedRequestBody>,
+    event_store: State<EventStore>,
+) -> Result<(), BadRequest<String>> {
+    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
+        Ok(trade_id) => trade_id,
+        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
+    };
+
+    match event_store.store_redeem_ready(ContractDeployed {
+        uid: trade_id,
+        address: contract_deployed_request_body.contract_address,
+    }) {
+        Ok(_) => return Ok(()),
+        Err(_) => return Err(BadRequest(None)),
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 pub struct RedeemDetails {
     address: EthAddress,
@@ -213,7 +240,7 @@ pub fn get_redeem_orders(
     };
 
     Ok(Json(RedeemDetails {
-        address: address,
+        address,
         data: secret,
         // TODO: check how much gas we should tell the customer to pay
         gas: 20000,
@@ -269,7 +296,7 @@ mod tests {
         let uid = offer_response.uid;
 
         let request = client
-            .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
+            .post(format!("/trades/ETH-BTC/{}/buy-orders", uid))
             .header(ContentType::JSON)
             // some random addresses I pulled off the internet
             .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg" }"#);
@@ -289,14 +316,14 @@ mod tests {
         );
 
         let request = client
-            .post("/chains/ETH/update-redeem-address")
-            .header(ContentType::JSON)
-            .body(format!(
-                r#"{{ "uid" : "{}", "address" : "00a329c0648769a73afac7f9381e08fb43dbea72" }}"#,
+            .post(format!(
+                "/trades/ETH-BTC/{}/buy-order-contract-deployed",
                 uid
-            ));
+            ))
+            .header(ContentType::JSON)
+            .body(r#"{ "contract_address" : "0x00a329c0648769a73afac7f9381e08fb43dbea72" }"#);
 
-        let mut response = request.dispatch();
+        let response = request.dispatch();
 
         assert_eq!(
             response.status(),
