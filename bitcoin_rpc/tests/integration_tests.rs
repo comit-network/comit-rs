@@ -186,14 +186,7 @@ fn test_send_to_address() {
     test_client.a_block();
     let alice = test_client.an_address();
 
-    let tx_id = test_client
-        .client
-        .send_to_address(alice, 1.0)
-        .unwrap()
-        .into_result()
-        .unwrap();
-
-    assert_successful_result(|client| client.get_transaction(&tx_id))
+    assert_successful_result(|client| client.send_to_address(&alice, 1.0))
 }
 
 #[test]

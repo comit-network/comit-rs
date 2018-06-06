@@ -229,7 +229,7 @@ mod tests {
         let htlc_script = htlc.script();
 
         let txid = client
-            .send_to_address(rpc_htlc_address.clone(), (amount as f64) / 100_000_000.0)
+            .send_to_address(&rpc_htlc_address, (amount as f64) / 100_000_000.0)
             .unwrap()
             .into_result()
             .unwrap();
@@ -257,7 +257,10 @@ mod tests {
         let vout = decoded_txn
             .vout
             .iter()
-            .find(|txout| hex::decode(&txout.script_pub_key.hex).unwrap() == htlc_address.script_pubkey().into_vec() )
+            .find(|txout| {
+                hex::decode(&txout.script_pub_key.hex).unwrap()
+                    == htlc_address.script_pubkey().into_vec()
+            })
             .unwrap();
 
         (

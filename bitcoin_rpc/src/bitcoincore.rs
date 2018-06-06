@@ -321,7 +321,7 @@ impl BitcoinCoreClient {
 
     pub fn send_to_address(
         &self,
-        address: Address,
+        address: &Address,
         amount: f64,
     ) -> Result<RpcResponse<TransactionId>, HTTPError> {
         self.client.send(RpcRequest::new2(
