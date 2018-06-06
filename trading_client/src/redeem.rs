@@ -1,14 +1,25 @@
+use offer::Symbol;
 use std::fmt;
 use std::ops::Add;
 use trading_service_api_client::ApiClient;
+use trading_service_api_client::TradingApiUrl;
 use trading_service_api_client::create_client;
-use types::TradingApiUrl;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
 
-pub enum OutputType {
+pub enum RedeemOutput {
     URL,
     CONSOLE,
+}
+
+impl RedeemOutput {
+    pub fn new(console: bool) -> RedeemOutput {
+        if console {
+            RedeemOutput::CONSOLE
+        } else {
+            RedeemOutput::URL
+        }
+    }
 }
 
 pub struct EthereumPaymentURL(String);
@@ -36,12 +47,13 @@ impl EthereumPaymentURL {
 
 pub fn run(
     trading_api_url: TradingApiUrl,
+    symbol: Symbol,
     uid: Uuid,
-    output_type: OutputType,
+    output_type: RedeemOutput,
 ) -> Result<String, String> {
     let client = create_client(&trading_api_url);
 
-    let res = client.request_redeem_details(uid);
+    let res = client.request_redeem_details(symbol, uid);
 
     let redeem_details = match res {
         Ok(redeem_details) => redeem_details,
@@ -49,7 +61,7 @@ pub fn run(
     };
 
     match output_type {
-        OutputType::URL => {
+        RedeemOutput::URL => {
             // See https://eips.ethereum.org/EIPS/eip-681
             let mut url = EthereumPaymentURL::new(&redeem_details.address, redeem_details.gas);
             return Ok(format!(
@@ -58,7 +70,7 @@ pub fn run(
                 uid, url
             ));
         }
-        OutputType::CONSOLE => unimplemented!(),
+        RedeemOutput::CONSOLE => unimplemented!(),
     }
 }
 
@@ -72,8 +84,9 @@ mod tests {
         let trading_api_url = TradingApiUrl("stub".to_string());
 
         let uid = Uuid::from_str("27b36adf-eda3-4684-a21c-a08a84f36fb1").unwrap();
+        let symbol = Symbol::from_str("ETH-BTC").unwrap();
 
-        let redeem_details = run(trading_api_url, uid, OutputType::URL).unwrap();
+        let redeem_details = run(trading_api_url, symbol, uid, RedeemOutput::URL).unwrap();
 
         assert_eq!(
             redeem_details,

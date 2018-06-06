@@ -6,11 +6,13 @@ extern crate trading_client;
 extern crate uuid;
 
 use std::env::var;
+use std::string::String;
 use structopt::StructOpt;
 use trading_client::offer;
-use trading_client::offer::Currency;
+use trading_client::offer::Symbol;
 use trading_client::redeem;
-use trading_client::types::TradingApiUrl;
+use trading_client::redeem::RedeemOutput;
+use trading_client::trading_service_api_client::TradingApiUrl;
 use uuid::Uuid;
 
 #[derive(Debug, StructOpt)]
@@ -19,19 +21,26 @@ enum Opt {
     /// Request an offer
     #[structopt(name = "offer")]
     Offer {
-        /// The currency you want to sell.
-        #[structopt(short = "s", long = "sell", name = "currency to sell")]
-        sell: Currency,
-        /// The currency you want to buy.
-        #[structopt(short = "b", long = "buy", name = "currency to buy")]
-        buy: Currency,
-        /// The amount you want to buy.
-        #[structopt(short = "a", long = "buy-amount", name = "amount to buy (integer)")]
-        buy_amount: u32,
+        /// The symbol you want to trade (e.g. ETH-BTC)
+        #[structopt(short = "S", long = "symbol", name = "symbol to trade (e.g. ETH-BTC)")]
+        symbol: String,
+        /// Request a buy order
+        #[structopt(short = "b", long = "buy", name = "request for a buy order")]
+        buy: bool,
+        /// Request a sell order
+        #[structopt(short = "s", long = "sell", name = "request for a sell order")]
+        sell: bool,
+        /// The amount you want to exchange (buy for a buy order, sell for a sell order). Integer.
+        #[structopt(short = "a", long = "amount",
+                    name = "amount to exchange (buy for a buy order, sell for a sell order). Integer.")]
+        amount: u32,
     },
     /// Get details to proceed with redeem transaction
     #[structopt(name = "redeem")]
     Redeem {
+        /// The symbol you want to trade (e.g. ETH-BTC)
+        #[structopt(short = "S", long = "symbol", name = "symbol to trade (e.g. ETH-BTC)")]
+        symbol: String,
         /// The trade id
         #[structopt(short = "u", long = "uid", name = "trade id")]
         uid: Uuid,
@@ -61,20 +70,27 @@ fn main() {
 
     let output = match Opt::from_args() {
         Opt::Offer {
-            sell,
+            symbol,
             buy,
-            buy_amount,
-        } => offer::run(trading_api_url, sell, buy, buy_amount),
-        Opt::Redeem { uid, console } => redeem::run(trading_api_url, uid, output_type(console)),
+            sell,
+            amount,
+        } => offer::run(
+            trading_api_url,
+            Symbol::from(symbol),
+            offer::OrderType::new(buy, sell),
+            amount,
+        ),
+        Opt::Redeem {
+            symbol,
+            uid,
+            console,
+        } => redeem::run(
+            trading_api_url,
+            Symbol::from(symbol),
+            uid,
+            RedeemOutput::new(console),
+        ),
     };
 
     println!("{}", output.unwrap())
-}
-
-fn output_type(console: bool) -> redeem::OutputType {
-    if console {
-        redeem::OutputType::CONSOLE
-    } else {
-        redeem::OutputType::URL
-    }
 }

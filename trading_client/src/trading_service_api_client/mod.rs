@@ -1,6 +1,5 @@
 #[allow(unused_imports)]
 use reqwest;
-use types::TradingApiUrl;
 
 mod client;
 mod fake_client;
@@ -8,6 +7,7 @@ mod fake_client;
 pub use self::client::ApiClient;
 pub use self::client::BuyOfferRequestBody;
 pub use self::client::OfferResponseBody;
+pub use self::client::TradingApiUrl;
 
 #[cfg(test)]
 pub fn create_client(_url: &TradingApiUrl) -> impl ApiClient {

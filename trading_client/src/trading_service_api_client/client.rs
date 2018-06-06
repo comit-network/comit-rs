@@ -1,8 +1,10 @@
 use offer::Symbol;
 use reqwest;
-use types::*;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
+
+#[derive(Clone)]
+pub struct TradingApiUrl(pub String);
 
 #[derive(Deserialize, Serialize)]
 pub struct BuyOfferRequestBody {
@@ -45,16 +47,20 @@ pub struct DefaultApiClient {
 pub trait ApiClient {
     fn request_offer(
         &self,
-        symbol: Symbol,
+        symbol: &Symbol,
         offer_request: &BuyOfferRequestBody,
     ) -> Result<OfferResponseBody, reqwest::Error>;
-    fn request_redeem_details(&self, uid: Uuid) -> Result<RedeemDetails, reqwest::Error>;
+    fn request_redeem_details(
+        &self,
+        symbol: Symbol,
+        uid: Uuid,
+    ) -> Result<RedeemDetails, reqwest::Error>;
 }
 
 impl ApiClient for DefaultApiClient {
     fn request_offer(
         &self,
-        symbol: Symbol,
+        symbol: &Symbol,
         request: &BuyOfferRequestBody,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let client = reqwest::Client::new();
@@ -65,10 +71,14 @@ impl ApiClient for DefaultApiClient {
             .and_then(|mut res| res.json::<OfferResponseBody>())
     }
 
-    fn request_redeem_details(&self, uid: Uuid) -> Result<RedeemDetails, reqwest::Error> {
+    fn request_redeem_details(
+        &self,
+        symbol: Symbol,
+        uid: Uuid,
+    ) -> Result<RedeemDetails, reqwest::Error> {
         let client = reqwest::Client::new();
-        client //TODO: use symbol
-            .get(format!("{}/trades/ETH-BTC/{}/redeem-orders", self.url.0, uid).as_str())
+        client
+            .get(format!("{}/trades/{}/{}/redeem-orders", self.url.0, symbol, uid).as_str())
             .send()
             .and_then(|mut res| res.json::<RedeemDetails>())
     }
