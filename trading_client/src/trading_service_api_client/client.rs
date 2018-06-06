@@ -36,6 +36,7 @@ pub struct OfferResponseBodyOffer {
     uid: String,
 }
 
+#[allow(dead_code)]
 pub struct DefaultApiClient {
     pub url: TradingApiUrl,
     pub client: reqwest::Client,

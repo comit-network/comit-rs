@@ -7,7 +7,6 @@ use trading_service_api_client::client::RedeemDetails;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
 
-use offer::Currency;
 use offer::Symbol;
 
 #[allow(dead_code)]
@@ -17,12 +16,8 @@ impl ApiClient for FakeApiClient {
     fn request_offer(
         &self,
         symbol: Symbol,
-        offer_request: &BuyOfferRequestBody,
+        _offer_request: &BuyOfferRequestBody,
     ) -> Result<OfferResponseBody, reqwest::Error> {
-        let symbol = Symbol::new(
-            Currency::from_str("BTC").unwrap(),
-            Currency::from_str("ETH").unwrap(),
-        ).0;
         Ok(OfferResponseBody {
             uid: Uuid::from_str("a83aac12-0c78-417e-88e4-1a2948c6d538").unwrap(),
             symbol: symbol,
