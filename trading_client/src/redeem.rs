@@ -1,12 +1,37 @@
+use std::fmt;
 use std::ops::Add;
 use trading_service_api_client::ApiClient;
 use trading_service_api_client::create_client;
 use types::TradingApiUrl;
 use uuid::Uuid;
+use web3::types::Address as EthAddress;
 
 pub enum OutputType {
     URL,
     CONSOLE,
+}
+
+pub struct EthereumPaymentURL(String);
+
+impl fmt::Display for EthereumPaymentURL {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.0.as_str())
+    }
+}
+
+impl EthereumPaymentURL {
+    pub fn new(address: &EthAddress, gas: u32) -> EthereumPaymentURL {
+        let address = format!("{:x}", address);
+        EthereumPaymentURL(
+            String::new()
+            .add("ethereum:")
+            .add("0x") // We receive a non-prefixed address
+            .add(&address)
+            //.push_str("@").push_str(chain_id) // TODO: Do we want it?
+            .add("?value=0")
+            .add("&gas=").add(&gas.to_string()),
+        )
+    }
 }
 
 pub fn run(
@@ -23,18 +48,10 @@ pub fn run(
         Err(e) => return Err(format!("Error: {}; Redeem aborted", e)),
     };
 
-    let address = format!("{:x}", redeem_details.address);
-
     match output_type {
         OutputType::URL => {
             // See https://eips.ethereum.org/EIPS/eip-681
-            let mut url = String::new()
-                .add("ethereum:")
-                .add("0x") // We receive a non-prefixed address
-                .add(&address)
-                //.push_str("@").push_str(chain_id) // TODO: Do we want it?
-                .add("?value=0")
-                .add("&gas=").add(&redeem_details.gas.to_string());
+            let mut url = EthereumPaymentURL::new(&redeem_details.address, redeem_details.gas);
             return Ok(format!(
                 "Trade id: {}\n\
                  To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n{}",
