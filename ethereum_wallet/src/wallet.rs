@@ -1,14 +1,15 @@
-use Transaction;
+use UnsignedTransaction;
 use rlp::Encodable;
 use rlp::RlpStream;
 use secp256k1;
 use secp256k1::ContextFlag;
 use secp256k1::Secp256k1;
 use secp256k1::SecretKey;
+use transaction::SignedTransaction;
 use web3::types::Bytes;
 
 pub trait Wallet: Send + Sync {
-    fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes;
+    fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;
 }
 
 pub struct InMemoryWallet {
@@ -49,7 +50,7 @@ impl InMemoryWallet {
 }
 
 impl Wallet for InMemoryWallet {
-    fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes {
+    fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a> {
         let hash: [u8; 32] = tx.hash(self.chain_id).into();
 
         let signature = match self.context
@@ -59,21 +60,10 @@ impl Wallet for InMemoryWallet {
             Err(_e) => panic!("Bug! Secp256k1 instance was constructed with wrong capabilities."),
         };
 
-        let (rec_id, data) = signature.serialize_compact(&self.context);
+        let (rec_id, signature) = signature.serialize_compact(&self.context);
 
-        let r = &data[0..32];
-        let s = &data[32..64];
         let v = (rec_id.to_i32() + self.chain_replay_protection_offset()) as u8;
 
-        let mut stream = RlpStream::new();
-
-        tx.rlp_append(&mut stream);
-        stream.append(&v);
-        stream.append(&r);
-        stream.append(&s);
-
-        let bytes = stream.as_raw();
-
-        Bytes(bytes.to_vec())
+        SignedTransaction::new(tx, v, signature)
     }
 }

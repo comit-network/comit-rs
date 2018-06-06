@@ -1,15 +1,16 @@
 use InMemoryWallet;
-use Transaction;
+use UnsignedTransaction;
 use Wallet;
 use hex::FromHex;
+use transaction::SignedTransaction;
 use web3::types::Bytes;
 
 /// A wallet with static private-keys that can be used for testing purposes.
 pub struct StaticFakeWallet(InMemoryWallet);
 
 impl Wallet for StaticFakeWallet {
-    fn create_signed_raw_transaction(&self, tx: &Transaction) -> Bytes {
-        self.0.create_signed_raw_transaction(tx)
+    fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a> {
+        self.0.sign(tx)
     }
 }
 

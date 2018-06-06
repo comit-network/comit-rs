@@ -80,7 +80,7 @@ impl EthereumService {
 
             let nonce = lock.deref_mut();
 
-            let transaction = ethereum_wallet::Transaction::new_contract_deployment(
+            let transaction = ethereum_wallet::UnsignedTransaction::new_contract_deployment(
                 contract.compile_to_hex(),
                 100000, // TODO calculate exact gas needed for this transaction
                 gas_price,
@@ -88,9 +88,9 @@ impl EthereumService {
                 *nonce,
             );
 
-            let signed_transaction = self.wallet.create_signed_raw_transaction(&transaction);
+            let signed_transaction = self.wallet.sign(&transaction);
 
-            let tx_id = self.web3.send_raw_transaction(signed_transaction)?;
+            let tx_id = self.web3.send_raw_transaction(signed_transaction.into())?;
 
             debug!(
                 "Contract {:#?} was successfully deployed in transaction {}",

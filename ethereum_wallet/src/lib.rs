@@ -7,7 +7,7 @@ extern crate web3;
 mod transaction;
 mod wallet;
 
-pub use transaction::Transaction;
+pub use transaction::UnsignedTransaction;
 pub use wallet::{Error, InMemoryWallet, Wallet};
 
 pub mod fake;
