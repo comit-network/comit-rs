@@ -150,21 +150,21 @@ pub fn post_buy_orders(
 }
 
 #[derive(Deserialize)]
-pub struct BuyOrderFundingRequestBody {
+pub struct BuyOrderHtlcFundedNotification {
     transaction_id: bitcoin_rpc::TransactionId,
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-order-funding", format = "application/json",
-       data = "<buy_order_funding_request_body>")]
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded", format = "application/json",
+       data = "<buy_order_htlc_funded_notification>")]
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
-    buy_order_funding_request_body: Json<BuyOrderFundingRequestBody>,
+    buy_order_htlc_funded_notification: Json<BuyOrderHtlcFundedNotification>,
     event_store: State<EventStore>,
     ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
     let trade_funded = TradeFunded::new(
         trade_id,
-        buy_order_funding_request_body.transaction_id.clone(),
+        buy_order_htlc_funded_notification.transaction_id.clone(),
     );
     event_store.store_trade_funded(trade_funded)?;
 
@@ -253,7 +253,7 @@ mod tests {
 
     fn notify_about_funding<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
         let request = client
-            .post(format!("/trades/ETH-BTC/{}/buy-order-funding", uid).to_string())
+            .post(format!("/trades/ETH-BTC/{}/buy-order-htlc-funded", uid).to_string())
             .header(ContentType::JSON)
             .body(
                 r#"{
