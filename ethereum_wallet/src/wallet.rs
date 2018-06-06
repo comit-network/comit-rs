@@ -41,8 +41,9 @@ impl InMemoryWallet {
         })
     }
 
-    fn chain_replay_protection_offset(&self) -> i32 {
-        35 + self.chain_id as i32 * 2
+    // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md#specification
+    fn chain_replay_protection_offset(&self) -> u8 {
+        35 + self.chain_id * 2
     }
 }
 
@@ -59,7 +60,7 @@ impl Wallet for InMemoryWallet {
 
         let (rec_id, signature) = signature.serialize_compact(&self.context);
 
-        let v = (rec_id.to_i32() + self.chain_replay_protection_offset()) as u8;
+        let v = rec_id.to_i32() as u8 + self.chain_replay_protection_offset();
 
         SignedTransaction::new(tx, v, signature)
     }
