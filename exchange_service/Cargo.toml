@@ -1,7 +1,6 @@
 [package]
 name = "exchange_service"
 version = "0.1.0"
-
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
     "Philipp Hoenisch <philipp@coblox.tech>",

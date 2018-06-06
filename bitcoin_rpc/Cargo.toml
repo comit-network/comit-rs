@@ -1,7 +1,12 @@
 [package]
 name = "bitcoin_rpc"
 version = "0.1.0"
-authors = ["Thomas Eizinger <thomas@eizinger.io>"]
+authors = [
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+    "Franck Royer <franck@coblox.tech>",
+    "Lloyd Fournier <lloyd@coblox.tech>",
+]
 
 [dependencies]
 bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
