@@ -1,59 +1,133 @@
-use trading_service_api_client::ApiClient;
-use std::ops::Add;
-
-pub fn run(trading_api_url: TradingApiUrl, uid: Uuid, output_type: OutputType) -> Result<String, String> {
-
-    let client = create_client(&trading_api_url);
-
-    let res = client.request_redeem_details(uid);
-
-    let redeem_details = match res {
-        Ok(redeem_details) => redeem_details,
-        Err(e) => return Err(format!("Error: {}; Redeem aborted", e)),
-    };
-
-    let address = redeem_details.address.to_string();
-
-    match output_type {
-        URL => {
-            // See https://eips.ethereum.org/EIPS/eip-681
-            let mut url = String::new()
-                .add("ethereum:")
-                .add("0x") // We receive a non-prefixed address
-                .add(&address)
-                //.push_str("@").push_str(chain_id) // TODO: Do we want it?
-                .add("?value=0")
-                .add("&gas=").add(&redeem_details.gas.to_string()); //TODO double check whether we should be using gas, gasLimit or gasPrice
-            return Ok(format!(
-                "Proceed with a payment of 0 ETH using the following link to unlock your ETH:\n{}", url
-            ))
-        }
-    }
-
-}
+use std::fmt;
+use std::str::FromStr;
 use trading_service_api_client::create_client;
+use trading_service_api_client::{ApiClient, BuyOfferRequestBody};
 use types::TradingApiUrl;
 
-use uuid::Uuid;
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Currency(String);
 
-pub enum OutputType {
-    URL,
-    // console entry
+impl fmt::Display for Currency {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.0.as_str())
+    }
 }
 
+impl FromStr for Currency {
+    //TODO: find out the proper way
+    type Err = u32;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Currency(s.to_string()))
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Symbol(String);
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(self.0.as_str())
+    }
+}
+
+pub enum OrderType {
+    BUY,
+    SELL,
+}
+
+impl Symbol {
+    pub fn new(sell: Currency, buy: Currency) -> (Symbol, OrderType) {
+        //TODO: is there a smarter way to do that?
+
+        let usd = Currency::from_str("USD").unwrap();
+        let btc = Currency::from_str("BTC").unwrap();
+        let eth = Currency::from_str("ETH").unwrap();
+
+        let (symbol, order_type) = if sell == usd {
+            let symbol = Symbol(format!("{}-{}", buy, sell));
+            let order_type = OrderType::BUY;
+            (symbol, order_type)
+        } else if buy == usd {
+            let symbol = Symbol(format!("{}-{}", sell, buy));
+            let order_type = OrderType::SELL;
+            (symbol, order_type)
+        } else if sell == btc {
+            let symbol = Symbol(format!("{}-{}", buy, sell));
+            let order_type = OrderType::BUY;
+            (symbol, order_type)
+        } else if buy == btc {
+            let symbol = Symbol(format!("{}-{}", sell, buy));
+            let order_type = OrderType::SELL;
+            (symbol, order_type)
+        } else if sell == eth {
+            let symbol = Symbol(format!("{}-{}", buy, sell));
+            let order_type = OrderType::BUY;
+            (symbol, order_type)
+        } else if buy == eth {
+            let symbol = Symbol(format!("{}-{}", sell, buy));
+            let order_type = OrderType::SELL;
+            (symbol, order_type)
+        } else {
+            panic!("This combination of currencies is not supported.")
+        };
+        return (symbol, order_type);
+    }
+}
+
+pub fn run(
+    trading_api_url: TradingApiUrl,
+    sell_curr: Currency,
+    buy_curr: Currency,
+    buy_amount: u32,
+) -> Result<String, String> {
+    let offer_request_body = BuyOfferRequestBody::new(buy_amount);
+
+    let (symbol, order_type) = Symbol::new(sell_curr.clone(), buy_curr.clone());
+
+    match order_type {
+        OrderType::SELL => panic!("Only buy orders are currently supported"),
+        OrderType::BUY => {
+            let client = create_client(&trading_api_url);
+            let res = client.request_offer(symbol, &offer_request_body);
+
+            let offer = match res {
+                Ok(offer) => offer,
+                Err(e) => return Err(format!("Error: {}; offer aborted", e)),
+            };
+
+            return Ok(format!(
+                "Offer details:\n\
+                 To buy {} {} against {}, the offered exchange rate is {} {}.\n\
+                 Offer id is: {}\n\
+                 To accept the offer, run:\n\
+                 trading_client accept --uid={}",
+                buy_amount, buy_curr, sell_curr, offer.rate, offer.symbol, offer.uid, offer.uid,
+            ));
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn redeem_with_valid_uid () {
+    fn request_offer_with_supported_currency() {
         let trading_api_url = TradingApiUrl("stub".to_string());
 
-        let uid = Uuid::new_v4();
+        let eth_buy = Currency::from_str("ETH").unwrap();
+        let btc_sell = Currency::from_str("BTC").unwrap();
 
-        let redeem_details = run(trading_api_url, uid, OutputType::URL);
+        let response = run(trading_api_url, btc_sell, eth_buy, 12).unwrap();
 
-
+        assert_eq!(
+            response,
+            "Offer details:
+To buy 12 ETH against BTC, the offered exchange rate is 0.6876231 ETH-BTC.
+Offer id is: a83aac12-0c78-417e-88e4-1a2948c6d538
+To accept the offer, run:
+trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
+        )
     }
 }

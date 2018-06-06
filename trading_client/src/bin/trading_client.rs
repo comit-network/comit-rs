@@ -7,8 +7,8 @@ extern crate uuid;
 
 use std::env::var;
 use structopt::StructOpt;
+use trading_client::offer::Currency;
 use trading_client::redeem;
-use trading_client::types::Currency;
 use trading_client::types::TradingApiUrl;
 use uuid::Uuid;
 
@@ -24,9 +24,9 @@ enum Opt {
         /// The currency you want to buy.
         #[structopt(short = "b", long = "buy", name = "currency to buy")]
         buy: Currency,
-        /// The amount you want to sell.
-        #[structopt(short = "S", long = "sell-amount", name = "amount")]
-        sell_amount: u32,
+        /// The amount you want to buy.
+        #[structopt(short = "a", long = "buy-amount", name = "amount to buy (integer)")]
+        buy_amount: u32,
     },
     /// Get details to proceed with redeem transaction
     #[structopt(name = "redeem")]
@@ -62,7 +62,7 @@ fn main() {
         Opt::Offer {
             sell: _,
             buy: _,
-            sell_amount: _,
+            buy_amount: _,
         } => unimplemented!(),
         Opt::Redeem { uid, console } => redeem::run(trading_api_url, uid, output_type(console)),
     };
