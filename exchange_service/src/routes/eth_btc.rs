@@ -309,8 +309,8 @@ mod tests {
         let mut response = request_offer(&mut client);
         assert_eq!(response.status(), Status::Ok);
 
-        let offer_response =
-            serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap()).unwrap();
+        let offer_response = response.body_json::<serde_json::Value>();
+
         assert_eq!(
             offer_response["symbol"], "ETH-BTC",
             "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
@@ -326,9 +326,8 @@ mod tests {
             let mut response = request_offer(&mut client);
             assert_eq!(response.status(), Status::Ok);
 
-            let offer_response =
-                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
-                    .unwrap();
+            let offer_response = response.body_json::<serde_json::Value>();
+
             assert_eq!(
                 offer_response["symbol"], "ETH-BTC",
                 "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
