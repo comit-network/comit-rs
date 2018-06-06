@@ -17,25 +17,29 @@ impl fmt::Display for SecretHash {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Secret {
-    secret: Vec<u8>,
+    secret: [u8; SHA256_DIGEST_LENGTH],
     hash: Option<SecretHash>,
+}
+
+impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {
+    fn from(secret: [u8; SHA256_DIGEST_LENGTH]) -> Self {
+        Secret { secret, hash: None }
+    }
 }
 
 impl Secret {
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
-        let secret = rng.gen_random_bytes(SHA256_DIGEST_LENGTH);
-        Secret::new(secret)
-    }
-
-    pub fn new(secret: Vec<u8>) -> Secret {
-        Secret { secret, hash: None }
+        let random_bytes = rng.gen_random_bytes(SHA256_DIGEST_LENGTH);
+        let mut secret = [0; 32];
+        secret.copy_from_slice(&random_bytes[..]);
+        Secret::from(secret)
     }
 
     pub fn hash(&mut self) -> &SecretHash {
         match self.hash {
             None => {
                 let mut sha = Sha256::new();
-                sha.input(self.secret.as_slice());
+                sha.input(&self.secret);
 
                 let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
                 sha.result(&mut result);
@@ -46,6 +50,10 @@ impl Secret {
             }
             Some(ref hash) => hash,
         }
+    }
+
+    pub fn raw_secret(&self) -> &[u8; SHA256_DIGEST_LENGTH] {
+        &self.secret
     }
 }
 
@@ -78,8 +86,8 @@ mod tests {
 
     #[test]
     fn new_secret_hash_as_hex() {
-        let bytes: Vec<u8> = b"hello world, you are beautiful!!".to_vec();
-        let mut secret = Secret::new(bytes);
+        let bytes = b"hello world, you are beautiful!!";
+        let mut secret = Secret::from(*bytes);
         assert_eq!(
             secret.hash().to_string(),
             "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"

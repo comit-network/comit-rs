@@ -11,5 +11,6 @@ mod bitcoincore;
 mod types;
 
 pub use bitcoincore::*;
+pub use jsonrpc::RpcError;
 pub use rustc_serialize::hex;
 pub use types::*;

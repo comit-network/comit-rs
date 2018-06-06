@@ -4,12 +4,18 @@ use types::*;
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TransactionId(String);
 
+impl Into<String> for TransactionId {
+    fn into(self) -> String {
+        self.0
+    }
+}
+
 from_str!(TransactionId);
 
 /// Currently the internal representation is the serialized string
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
 /// We will need serializers and deserializers then.
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct SerializedRawTransaction(String);
 
 from_str!(SerializedRawTransaction);
@@ -56,14 +62,14 @@ pub struct Detail {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct DecodedRawTransaction {
-    txid: TransactionId,
-    hash: String,
-    size: u32,
-    vsize: u32,
-    version: u32,
-    locktime: u32,
-    vin: Vec<TransactionInput>,
-    vout: Vec<TransactionOutput>,
+    pub txid: TransactionId,
+    pub hash: String,
+    pub size: u32,
+    pub vsize: u32,
+    pub version: u32,
+    pub locktime: u32,
+    pub vin: Vec<TransactionInput>,
+    pub vout: Vec<TransactionOutput>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -131,28 +137,28 @@ impl TransactionInput {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct TransactionOutput {
-    value: f64,
-    n: u32,
+    pub value: f64,
+    pub n: u32,
     #[serde(rename = "scriptPubKey")]
-    script_pub_key: ScriptPubKey,
+    pub script_pub_key: ScriptPubKey,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct UnspentTransactionOutput {
-    txid: TransactionId,
-    vout: u32,
-    address: Option<Address>,
-    account: Option<String>,
+    pub txid: TransactionId,
+    pub vout: u32,
+    pub address: Option<Address>,
+    pub account: Option<String>,
     #[serde(rename = "scriptPubKey")]
-    script_pub_key: EncodedScriptPubKey,
-    redeem_script: Option<String>,
+    pub script_pub_key: EncodedScriptPubKey,
+    pub redeem_script: Option<String>,
     pub amount: f64,
-    confirmations: i32,
-    spendable: bool,
-    solvable: bool,
-    safe: Option<bool>,
+    pub confirmations: i32,
+    pub spendable: bool,
+    pub solvable: bool,
+    pub safe: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]

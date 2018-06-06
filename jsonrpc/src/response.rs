@@ -2,8 +2,8 @@ use std::result::Result as StdResult;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct RpcError {
-    code: i32,
-    message: String,
+    pub code: i32,
+    pub message: String,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -43,7 +43,6 @@ impl<R> RpcResponse<R> {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use serde_json::from_str;
     use spectral::assert_that;

@@ -129,7 +129,7 @@ impl BitcoinCoreClient {
 
     pub fn generate(
         &self,
-        number_of_blocks: i32,
+        number_of_blocks: u32,
     ) -> Result<RpcResponse<Vec<BlockHash>>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
@@ -195,10 +195,12 @@ impl BitcoinCoreClient {
     // TODO: getnetworkinfo
 
     pub fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
-        self.client.send(RpcRequest::new0(
+        self.client.send(RpcRequest::new2(
             JsonRpcVersion::V1,
             "test",
             "getnewaddress",
+            "",
+            "bech32",
         ))
     }
 
@@ -308,7 +310,7 @@ impl BitcoinCoreClient {
     pub fn send_raw_transaction(
         &self,
         tx_data: SerializedRawTransaction,
-    ) -> Result<RpcResponse<Transaction>, HTTPError> {
+    ) -> Result<RpcResponse<TransactionId>, HTTPError> {
         self.client.send(RpcRequest::new1(
             JsonRpcVersion::V1,
             "test",
@@ -317,7 +319,19 @@ impl BitcoinCoreClient {
         ))
     }
 
-    // TODO: sendtoaddress
+    pub fn send_to_address(
+        &self,
+        address: &Address,
+        amount: f64,
+    ) -> Result<RpcResponse<TransactionId>, HTTPError> {
+        self.client.send(RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "sendtoaddress",
+            address,
+            amount,
+        ))
+    }
     // TODO: setaccount
     // TODO: setban
     // TODO: setgenerate

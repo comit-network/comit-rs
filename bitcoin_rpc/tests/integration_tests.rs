@@ -179,10 +179,23 @@ fn test_sign_raw_transaction() {
 }
 
 #[test]
+fn test_send_to_address() {
+    setup();
+
+    let test_client = BitcoinCoreTestClient::new();
+    test_client.a_block();
+    let alice = test_client.an_address();
+
+    assert_successful_result(|client| client.send_to_address(&alice, 1.0))
+}
+
+#[test]
 fn test_fund_raw_transaction() {
     setup();
 
     let test_client = BitcoinCoreTestClient::new();
+
+    test_client.a_block();
 
     let alice = test_client.an_address();
 
