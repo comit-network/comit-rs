@@ -1,5 +1,5 @@
 [package]
-name = "bitcoin_htlc"
+name = "ganache_rust_web3"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,6 +9,7 @@ authors = [
 ]
 
 [dependencies]
-bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-common_types = { path = "../common_types" }
-hex = "0.3.2"
+web3 = "0.3.0"
+serde_derive = "1.0.63"
+serde = "1.0.64"
+serde_json = "1.0.19"

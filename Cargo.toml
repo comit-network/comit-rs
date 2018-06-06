@@ -9,5 +9,8 @@ members = [
 	"fake_treasury_service",
 	"common_types",
 	"bitcoin_rpc",
-	"bitcoin_wallet"
+	"bitcoin_wallet",
+	"ethereum_htlc",
+	"ganache_rust_web3",
+	"ethereum_wallet",
 ]

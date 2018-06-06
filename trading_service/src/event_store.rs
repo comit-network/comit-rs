@@ -5,9 +5,9 @@ use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
 use std::sync::RwLock;
-use stub::{EthAddress, EthTimeDelta};
 use symbol::Symbol;
 use uuid::Uuid;
+use web3::types::Address as EthAddress;
 
 //pub use self::OfferCreated as OfferCreatedState;
 
@@ -45,7 +45,7 @@ pub struct OrderTaken {
     pub exchange_refund_address: EthAddress,
     // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: bitcoin_rpc::Address,
-    pub short_relative_timelock: EthTimeDelta,
+    pub exchange_contract_time_lock: u64,
     pub htlc: Htlc,
 }
 
@@ -63,6 +63,7 @@ enum TradeState {
     OrderTaken,
 }
 
+#[derive(Debug)]
 pub enum Error {
     IncorrectState,
 }

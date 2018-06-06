@@ -1,5 +1,5 @@
 [package]
-name = "bitcoin_htlc"
+name = "ethereum_htlc"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,6 +9,13 @@ authors = [
 ]
 
 [dependencies]
-bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-common_types = { path = "../common_types" }
+web3 = "0.3.0"
 hex = "0.3.2"
+ganache_rust_web3 = { path = "../ganache_rust_web3" }
+common_types = { path = "../common_types" }
+log = "0.4.1"
+chrono = "0.4.2"
+env_logger = "0.5.10"
+
+[build-dependencies]
+regex = "1.0.0"

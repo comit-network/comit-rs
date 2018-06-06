@@ -1,7 +1,6 @@
 [package]
 name = "trading_client"
 version = "0.1.0"
-
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
     "Philipp Hoenisch <philipp@coblox.tech>",
@@ -16,4 +15,5 @@ serde_json = "1.0.17"
 serde_derive = "1.0.51"
 reqwest = "0.8.5"
 lazy_static = "1.0.0"
+web3 = "0.3.0"
 

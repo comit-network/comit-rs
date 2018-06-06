@@ -22,9 +22,9 @@ use rocket_contrib::Json;
 use secret::Secret;
 use std::str::FromStr;
 use std::sync::Mutex;
-use stub::EthAddress;
 use symbol::Symbol;
 use uuid::Uuid;
+use web3::types::Address as EthAddress;
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -66,7 +66,6 @@ pub struct BuyOrderRequestBody {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    uid: Uuid,
     address_to_fund: bitcoin_rpc::Address,
     //TODO: specify amount of BTC
 }
@@ -74,7 +73,8 @@ pub struct RequestToFund {
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
 
 impl From<event_store::Error> for BadRequest<String> {
-    fn from(_: event_store::Error) -> Self {
+    fn from(e: event_store::Error) -> Self {
+        error!("EventStore error: {:?}", e);
         BadRequest(None)
     }
 }
@@ -91,12 +91,21 @@ pub fn post_buy_orders(
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
     let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
         Ok(trade_id) => trade_id,
-        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
+        Err(e) => {
+            error!("Failed to parse {} as Uuid. Error: {:?}", trade_id, e);
+            return Err(BadRequest(None));
+        }
     };
 
     let offer = match event_store.get_offer_created(&trade_id) {
         Some(offer) => offer,
-        None => return Err(BadRequest(None)),
+        None => {
+            error!(
+                "Unable to retrieve offer for trade {} from store.",
+                trade_id
+            );
+            return Err(BadRequest(None));
+        }
     };
 
     let buy_order = buy_order_request_body.into_inner();
@@ -124,16 +133,19 @@ pub fn post_buy_orders(
         offer.symbol,
         trade_id,
         &OrderRequestBody {
-            secret_hash: exchange_api_client::SecretHash(secret.hash().to_string()),
+            contract_secret_lock: secret.hash().clone(),
             client_refund_address: client_refund_address.clone(),
             client_success_address: client_success_address.clone(),
-            long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),
+            client_contract_time_lock: BlockHeight::new(BTC_BLOCKS_IN_24H),
         },
     );
 
     let order_response = match res {
         Ok(order_response) => order_response,
-        Err(_) => return Err(BadRequest(None)), //TODO: handle error properly
+        Err(e) => {
+            error!("Failed to create order on exchange. Error: {}", e);
+            return Err(BadRequest(None)); // TODO: return nice error message
+        }
     };
 
     let exchange_success_address =
@@ -155,7 +167,7 @@ pub fn post_buy_orders(
 
     let order_taken_event = OrderTaken {
         uid: trade_id,
-        short_relative_timelock: order_response.short_relative_timelock,
+        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
         exchange_refund_address: order_response.exchange_refund_address,
         exchange_success_address: order_response.exchange_success_address,
         htlc: htlc.clone(),
@@ -166,7 +178,6 @@ pub fn post_buy_orders(
     let htlc_address = bitcoin_rpc::Address::from(htlc.get_htlc_address().clone());
 
     Ok(Json(RequestToFund {
-        uid: trade_id,
         address_to_fund: htlc_address,
     }))
 }
@@ -231,11 +242,6 @@ mod tests {
 
         let funding_request =
             serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
-
-        assert_eq!(
-            funding_request.uid, uid,
-            "UID for the funding request is the same as the offer response"
-        );
 
         assert!(
             funding_request

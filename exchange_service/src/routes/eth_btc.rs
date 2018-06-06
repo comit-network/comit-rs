@@ -1,20 +1,42 @@
 use bitcoin_rpc;
-use event_store::BtcBlockHeight;
-use event_store::EthAddress;
-use event_store::EthTimestamp;
+use common_types::secret::SecretHash;
+use ethereum_htlc;
+use ethereum_service;
+use event_store;
+use event_store::ContractDeployed;
 use event_store::EventStore;
 use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::OfferState;
 use event_store::OrderTaken;
-use event_store::SecretHash;
+use event_store::TradeFunded;
+use event_store::TradeId;
 use rocket::State;
 use rocket::http::RawStr;
+use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use rocket_factory::TreasuryApiUrl;
-use treasury_api_client::{create_client, ApiClient, Symbol};
+use std::sync::Arc;
+use std::time::UNIX_EPOCH;
+use treasury_api_client::{ApiClient, Symbol};
+use uuid;
 use uuid::Uuid;
+use web3::types::{Address as EthereumAddress, U256};
+
+impl<'a> FromParam<'a> for TradeId {
+    type Error = uuid::ParseError;
+
+    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
+        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+    }
+}
+
+impl From<event_store::Error> for BadRequest<String> {
+    fn from(e: event_store::Error) -> Self {
+        error!("EventStore error: {:?}", e);
+        BadRequest(None)
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
@@ -25,7 +47,7 @@ pub struct OfferRequestBody {
 fn post_buy_offers(
     offer_request_body: Json<OfferRequestBody>,
     event_store: State<EventStore>,
-    treasury_api_url: State<TreasuryApiUrl>,
+    treasury_api_client: State<Arc<ApiClient>>,
 ) -> Result<Json<OfferState>, BadRequest<String>> {
     // Request rate
     // Generate identifier
@@ -34,8 +56,7 @@ fn post_buy_offers(
 
     let offer_request_body = offer_request_body.into_inner();
 
-    let client = create_client(treasury_api_url.inner());
-    let res = client.request_rate(Symbol("ETH-BTC".to_string()));
+    let res = treasury_api_client.request_rate(Symbol("ETH-BTC".to_string()));
     let rate = match res {
         Ok(rate) => rate,
         Err(e) => {
@@ -44,13 +65,7 @@ fn post_buy_offers(
         }
     };
 
-    let uid = Uuid::new_v4();
-    let offer_event = OfferCreated {
-        uid,
-        symbol: rate.symbol,
-        amount: offer_request_body.amount,
-        rate: rate.rate,
-    };
+    let offer_event = OfferCreated::new(rate.symbol, offer_request_body.amount, rate.rate);
 
     match event_store.store_offer(offer_event.clone()) {
         Ok(_) => (),
@@ -65,27 +80,30 @@ fn post_buy_offers(
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
-    pub secret_hash: SecretHash,
+    pub contract_secret_lock: SecretHash,
+    pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
+
     pub client_refund_address: bitcoin_rpc::Address,
-    pub client_success_address: EthAddress,
-    pub long_relative_timelock: BtcBlockHeight,
+    pub client_success_address: EthereumAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody {
-    pub uid: Uuid,
-    pub exchange_refund_address: EthAddress,
+    pub exchange_refund_address: EthereumAddress,
     pub exchange_success_address: bitcoin_rpc::Address,
-    pub short_relative_timelock: EthTimestamp,
+    pub exchange_contract_time_lock: u64,
 }
 
 impl From<OrderTaken> for OrderTakenResponseBody {
-    fn from(offer: OrderTaken) -> Self {
+    fn from(order_taken_event: OrderTaken) -> Self {
         OrderTakenResponseBody {
-            uid: offer.uid.clone(),
-            exchange_refund_address: offer.exchange_refund_address.clone(),
-            exchange_success_address: offer.exchange_success_address.clone(),
-            short_relative_timelock: offer.short_relative_timelock.clone(),
+            exchange_refund_address: order_taken_event.exchange_refund_address(),
+            exchange_success_address: order_taken_event.exchange_success_address(),
+            exchange_contract_time_lock: order_taken_event
+                .exchange_contract_time_lock()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs(),
         }
     }
 }
@@ -93,10 +111,9 @@ impl From<OrderTaken> for OrderTakenResponseBody {
 #[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
        data = "<order_request_body>")]
 pub fn post_buy_orders(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
-    _treasury_api_url: State<TreasuryApiUrl>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
     // Receive trade information
     // - Hashed Secret
@@ -107,37 +124,20 @@ pub fn post_buy_orders(
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
 
     let order_request_body: OrderRequestBody = order_request_body.into_inner();
-    let uid = match Uuid::parse_str(trade_id.as_str()) {
-        Ok(uid) => uid,
-        Err(e) => {
-            error!("{}", e);
-            return Err(BadRequest(Some(format!("Error when parsing uid: {}", e))));
-        }
-    };
 
-    // TODO: need to lock on uid now.
-
-    // TODO: retrieve and use real address
-    // This should never be used. Private key is: '9774cd25996588ef4bace0984eac1a80a3897c0cd3eea9858a6063c74f59e08b'
-    let exchange_refund_address =
-        EthAddress("0x1084d2C416fcc39564a4700a9B231270d463C5eA".to_string());
-
-    let offer = OrderTaken {
-        uid,
-        secret_hash: order_request_body.secret_hash,
-        client_refund_address: order_request_body.client_refund_address,
-        long_relative_timelock: order_request_body.long_relative_timelock,
-        short_relative_timelock: EthTimestamp(12), //TODO: this is obviously not "12" :)
-        client_success_address: order_request_body.client_success_address,
-        exchange_refund_address: exchange_refund_address.clone(),
+    let order_taken = OrderTaken::new(
+        trade_id,
+        order_request_body.contract_secret_lock,
+        order_request_body.client_contract_time_lock,
+        order_request_body.client_refund_address,
+        order_request_body.client_success_address,
+        "1084d2C416fcc39564a4700a9B231270d463C5eA".into(),
         // TODO: retrieve and use real address
         // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
-        exchange_success_address: bitcoin_rpc::Address::from(
-            "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-        ),
-    };
+        bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
+    );
 
-    match event_store.store_order_taken(offer.clone()) {
+    match event_store.store_order_taken(order_taken.clone()) {
         Ok(_) => (),
         Err(e) => {
             error!("{:?}", e);
@@ -146,17 +146,87 @@ pub fn post_buy_orders(
         }
     }
 
-    Ok(Json(offer.into()))
+    Ok(Json(order_taken.into()))
+}
+
+#[derive(Deserialize)]
+pub struct BuyOrderHtlcFundedNotification {
+    transaction_id: bitcoin_rpc::TransactionId,
+}
+
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded", format = "application/json",
+       data = "<buy_order_htlc_funded_notification>")]
+pub fn post_buy_orders_fundings(
+    trade_id: TradeId,
+    buy_order_htlc_funded_notification: Json<BuyOrderHtlcFundedNotification>,
+    event_store: State<EventStore>,
+    ethereum_service: State<Arc<ethereum_service::EthereumService>>,
+) -> Result<(), BadRequest<String>> {
+    let trade_funded = TradeFunded::new(
+        trade_id,
+        buy_order_htlc_funded_notification.transaction_id.clone(),
+    );
+    event_store.store_trade_funded(trade_funded)?;
+
+    let order_taken = match event_store.get_order_taken_event(&trade_id) {
+        Some(event) => event,
+        None => {
+            return Err(BadRequest(Some(
+                "Trade is not the correct state".to_string(),
+            )))
+        }
+    };
+
+    let offer_created = match event_store.get_offer_created_event(&trade_id) {
+        Some(event) => event,
+        None => {
+            return Err(BadRequest(Some(
+                "Trade is not the correct state".to_string(),
+            )))
+        }
+    };
+
+    let htlc = ethereum_htlc::Htlc::new(
+        order_taken.exchange_contract_time_lock(),
+        order_taken.exchange_refund_address(),
+        order_taken.client_success_address(),
+        order_taken.contract_secret_lock().clone(),
+    );
+
+    let htlc_funding = U256::from(10); // TODO: get this from treasury service
+
+    let tx_id = match ethereum_service.deploy_htlc(htlc, htlc_funding) {
+        Ok(tx_id) => tx_id,
+        Err(e) => {
+            // TODO: Should we rollback the TradeFunded event here?
+            // We didn't successfully transition from TradeFunded to ContractDeployed.
+
+            error!("Failed to deploy HTLC. Error: {:?}", e);
+            return Err(BadRequest(None));
+        }
+    };
+
+    event_store.store_contract_deployed(ContractDeployed::new(trade_id, tx_id))?;
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ethereum_service::BlockingEthereumApi;
+    use ethereum_wallet::fake::StaticFakeWallet;
+    use gas_price_service::StaticGasPriceService;
     use rocket;
     use rocket::http::{ContentType, Status};
     use rocket::local::{Client, LocalResponse};
     use rocket_factory::create_rocket_instance;
+    use serde::Deserialize;
     use serde_json;
+    use std::sync::Arc;
+    use treasury_api_client::FakeApiClient;
+    use web3;
+    use web3::types::{Bytes, H256};
 
     fn request_offer(client: &mut Client) -> LocalResponse {
         let request = client
@@ -166,34 +236,81 @@ mod tests {
         request.dispatch()
     }
 
-    fn request_order(client: &mut Client, uid: Uuid) -> LocalResponse {
+    fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
         let request = client
             .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
             .header(ContentType::JSON)
             .body(
                 r#"{
-                    "secret_hash": "MySecretHash",
+                    "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
                     "client_refund_address": "ClientRefundAddressInBtc",
-                    "client_success_address": "0xClientSuccessAddressInEth",
-                    "long_relative_timelock": 24
+                    "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
+                    "client_contract_time_lock": 24
                   }"#,
             );
         request.dispatch()
     }
 
+    fn notify_about_funding<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
+        let request = client
+            .post(format!("/trades/ETH-BTC/{}/buy-order-htlc-funded", uid).to_string())
+            .header(ContentType::JSON)
+            .body(
+                r#"{
+                    "transaction_id": "a02e9dc0ddc3d8200cc4be0e40a1573519a1a1e9b15e0c4c296fcaa65da80d43"
+                  }"#,
+            );
+        request.dispatch()
+    }
+
+    trait DeserializeAsJson {
+        fn body_json<T>(&mut self) -> T
+        where
+            for<'de> T: Deserialize<'de>;
+    }
+
+    impl<'r> DeserializeAsJson for LocalResponse<'r> {
+        fn body_json<T>(&mut self) -> T
+        where
+            for<'de> T: Deserialize<'de>,
+        {
+            let body = self.body().unwrap().into_inner();
+
+            serde_json::from_reader(body).unwrap()
+        }
+    }
+
+    struct StaticEthereumApi;
+
+    impl BlockingEthereumApi for StaticEthereumApi {
+        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
+            Ok(H256::new())
+        }
+    }
+
+    fn create_rocket_client() -> Client {
+        let rocket = create_rocket_instance(
+            Arc::new(FakeApiClient),
+            EventStore::new(),
+            Arc::new(ethereum_service::EthereumService::new(
+                Arc::new(StaticFakeWallet::account0()),
+                Arc::new(StaticGasPriceService::default()),
+                Arc::new(StaticEthereumApi),
+                0,
+            )),
+        );
+        rocket::local::Client::new(rocket).unwrap()
+    }
+
     #[test]
     fn given_an_offer_request_then_return_valid_offer_response() {
-        let url = TreasuryApiUrl("stub".to_string());
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(url, event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let mut response = request_offer(&mut client);
         assert_eq!(response.status(), Status::Ok);
 
-        let offer_response =
-            serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap()).unwrap();
+        let offer_response = response.body_json::<serde_json::Value>();
+
         assert_eq!(
             offer_response["symbol"], "ETH-BTC",
             "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
@@ -203,52 +320,43 @@ mod tests {
 
     #[test]
     fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_response() {
-        let url = TreasuryApiUrl("stub".to_string());
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(url, event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let uid = {
             let mut response = request_offer(&mut client);
             assert_eq!(response.status(), Status::Ok);
 
-            let offer_response =
-                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
-                    .unwrap();
+            let offer_response = response.body_json::<serde_json::Value>();
+
             assert_eq!(
                 offer_response["symbol"], "ETH-BTC",
                 "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
                 offer_response
             );
 
-            Uuid::parse_str(offer_response["uid"].as_str().unwrap()).unwrap()
+            offer_response["uid"].as_str().unwrap().to_string()
         };
 
+        println!("{}", uid);
+
         {
-            let mut response = request_order(&mut client, uid);
+            let mut response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::Ok);
 
-            let trade_response =
-                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
-                    .unwrap();
-            assert!(
-                (trade_response["short_relative_timelock"].as_i64().unwrap() > 0),
-                "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
-                trade_response
-            );
+            #[derive(Deserialize)]
+            struct Response {
+                exchange_contract_time_lock: i64,
+            }
+
+            serde_json::from_str::<Response>(&response.body_string().unwrap()).unwrap();
         }
     }
 
     #[test]
     fn given_a_order_request_without_offer_should_fail() {
-        let url = TreasuryApiUrl("stub".to_string());
-        let event_store = EventStore::new();
+        let mut client = create_rocket_client();
 
-        let rocket = create_rocket_instance(url, event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
-
-        let uid = Uuid::new_v4();
+        let uid = "d9ee2df7-c330-4893-8345-6ba171f96e8f";
 
         {
             let response = request_order(&mut client, uid);
@@ -258,46 +366,52 @@ mod tests {
 
     #[test]
     fn given_two_orders_request_with_same_uid_should_fail() {
-        let url = TreasuryApiUrl("stub".to_string());
-        let event_store = EventStore::new();
-
-        let rocket = create_rocket_instance(url, event_store);
-        let mut client = rocket::local::Client::new(rocket).unwrap();
+        let mut client = create_rocket_client();
 
         let uid = {
             let mut response = request_offer(&mut client);
             assert_eq!(response.status(), Status::Ok);
 
-            let offer_response =
-                serde_json::from_str::<OfferRequestResponse>(&response.body_string().unwrap())
+            let response =
+                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
                     .unwrap();
-            assert_eq!(
-                offer_response.symbol,
-                Symbol("ETH-BTC".to_string()),
-                "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
-                offer_response
-            );
 
-            offer_response.uid.clone()
+            response["uid"].as_str().unwrap().to_string()
         };
 
         {
-            let mut response = request_order(&mut client, uid);
+            let response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::Ok);
-
-            let trade_response =
-                serde_json::from_str::<OrderTakenResponseBody>(&response.body_string().unwrap())
-                    .unwrap();
-            assert!(
-                (trade_response.short_relative_timelock > EthTimestamp(0)),
-                "Expected to receive a time-lock in response of trade_offer. Json Response:\n{:?}",
-                trade_response
-            );
         }
 
         {
-            let response = request_order(&mut client, uid);
+            let response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::BadRequest);
+        }
+    }
+
+    #[test]
+    fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
+        let mut client = create_rocket_client();
+
+        let trade_id = {
+            let mut response = request_offer(&mut client);
+
+            assert_eq!(response.status(), Status::Ok);
+            response.body_json::<serde_json::Value>()["uid"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        };
+
+        {
+            let response = request_order(&mut client, &trade_id);
+            assert_eq!(response.status(), Status::Ok)
+        }
+
+        {
+            let response = notify_about_funding(&mut client, &trade_id);
+            assert_eq!(response.status(), Status::Ok)
         }
     }
 }

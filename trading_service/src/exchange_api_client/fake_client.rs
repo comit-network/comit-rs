@@ -2,10 +2,9 @@ use super::client::ApiClient;
 use bitcoin_rpc::Address;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
 use reqwest;
-use stub::EthAddress;
-use stub::EthTimeDelta;
 use symbol::Symbol;
 use uuid::Uuid;
+use web3::types::Address as EthAddress;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
@@ -31,12 +30,9 @@ impl ApiClient for FakeApiClient {
         _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {
-            uid: uid,
-            exchange_refund_address: EthAddress(
-                "0x34b19d15e793883d840c563d7dbc8a6723465146".to_string(),
-            ),
+            exchange_refund_address: "34b19d15e793883d840c563d7dbc8a6723465146".into(),
+            exchange_contract_time_lock: 43200,
             exchange_success_address: Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
-            short_relative_timelock: EthTimeDelta(43200),
         };
 
         Ok(accept)
