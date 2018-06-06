@@ -32,7 +32,8 @@ use web3::types::Address;
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
-    let treasury_api_url = TreasuryApiUrl(var("TREASURY_SERVICE_URL").unwrap());
+    let treasury_api_url =
+        TreasuryApiUrl(var("TREASURY_SERVICE_URL").expect("Treasury api url not set"));
 
     let api_client = DefaultApiClient {
         client: reqwest::Client::new(),
@@ -41,8 +42,8 @@ fn main() {
 
     let event_store = EventStore::new();
 
-    let private_key = var("ETHEREUM_PRIVATE_KEY").unwrap();
-    let network_id = var("ETHEREUM_NETWORK_ID").unwrap();
+    let private_key = var("ETHEREUM_PRIVATE_KEY").expect("Private key not set");
+    let network_id = var("ETHEREUM_NETWORK_ID").expect("Ethereum network id not set");
 
     let private_key = <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
