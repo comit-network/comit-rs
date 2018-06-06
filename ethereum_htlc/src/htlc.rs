@@ -44,11 +44,11 @@ impl Into<SystemTime> for EpochOffset {
 }
 
 impl Htlc {
-    const TEMPLATE: &'static str = include_str!("../contract.asm.hex");
-    const EXPIRY: &'static str = "20000002";
-    const SUCCESS: &'static str = "3000000000000000000000000000000000000003";
-    const REFUND: &'static str = "4000000000000000000000000000000000000004";
-    const SECRET_HASH: &'static str =
+    const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../contract.asm.hex");
+    const EXPIRY_TIMESTAMP_PLACEHOLDER: &'static str = "20000002";
+    const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
+    const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
+    const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
 
     pub fn new<
@@ -84,43 +84,48 @@ impl Htlc {
     }
 
     pub fn compile_to_hex(&self) -> ByteCode {
-        let duration = self.expiry_timestamp
+        let expiry_timestamp = self.expiry_timestamp
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
-        let contract_code = Self::TEMPLATE
+        let expiry_timestamp = format!("{:x}", expiry_timestamp);
+        let success_address = format!("{:x}", self.success_address);
+        let refund_address = format!("{:x}", self.refund_address);
+        let secret_hash = format!("{:x}", self.secret_hash);
+
+        let contract_code = Self::CONTRACT_CODE_TEMPLATE
             .to_string()
-            .replace(Self::EXPIRY, format!("{:x}", duration).as_str())
-            .replace(
-                Self::SUCCESS,
-                format!("{:x}", self.success_address).as_str(),
-            )
-            .replace(Self::REFUND, format!("{:x}", self.refund_address).as_str())
-            .replace(
-                Self::SECRET_HASH,
-                format!("{:x}", self.secret_hash).as_str(),
-            );
+            .replace(Self::EXPIRY_TIMESTAMP_PLACEHOLDER, &expiry_timestamp)
+            .replace(Self::SUCCESS_ADDRESS_PLACEHOLDER, &success_address)
+            .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
+            .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash);
 
-        let code = format!(
-            "{}{}",
-            self.generate_deploy_header(&contract_code),
-            contract_code
-        );
+        let deploy_header = self.generate_deploy_header(&contract_code);
 
-        ByteCode(code)
+        debug!("Final contract code: {}", &contract_code);
+        debug!("Deploy header: {}", &deploy_header);
+
+        let deployable_contract = deploy_header + &contract_code;
+
+        debug!("Deployable contract: {}", &deployable_contract);
+
+        ByteCode(deployable_contract)
     }
 
     /// Don't touch this unless you know what you are doing!
     #[allow(non_snake_case)]
     fn generate_deploy_header(&self, code: &str) -> String {
+        // Necessary op codes
         let PUSH1 = "60";
+        let CODE_COPY = "39";
+        let RETURN = "F3";
+
+        // Variables
         let memory_start_address = "00";
         let deploy_code_length = "0C";
-        let CODE_COPY = "39";
         let code_length = format!("{:2X}", code.len() / 2);
         let code_length = code_length.as_str();
-        let RETURN = "F3";
 
         let op_codes = &[
             PUSH1,
@@ -159,9 +164,28 @@ mod tests {
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
             htlc_hex.0.len(),
-            Htlc::TEMPLATE.len() + 12 * 2,
+            Htlc::CONTRACT_CODE_TEMPLATE.len() + 12 * 2,
             "HTLC is the same length as template plus deploy code"
         );
+    }
+
+    #[test]
+    fn given_input_data_when_compiled_should_no_longer_contain_placeholders() {
+        let htlc = Htlc::new(
+            SystemTime::now(),
+            Address::new(),
+            Address::new(),
+            SecretHash::from_str(
+                "0000000000000000000000000000000000000000000000000000000000000000",
+            ).unwrap(),
+        );
+
+        let compiled_code = htlc.compile_to_hex().0;
+
+        assert!(!compiled_code.contains(Htlc::EXPIRY_TIMESTAMP_PLACEHOLDER));
+        assert!(!compiled_code.contains(Htlc::SUCCESS_ADDRESS_PLACEHOLDER));
+        assert!(!compiled_code.contains(Htlc::REFUND_ADDRESS_PLACEHOLDER));
+        assert!(!compiled_code.contains(Htlc::SECRET_HASH_PLACEHOLDER));
     }
 
     #[test]
