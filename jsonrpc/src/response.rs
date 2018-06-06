@@ -45,7 +45,6 @@ impl<R> RpcResponse<R> {
 mod tests {
     use super::*;
     use serde_json::from_str;
-    use spectral::assert_that;
 
     #[test]
     fn can_deserialize_successful_response_into_generic_type() {
