@@ -10,6 +10,8 @@ authors = [
 
 [dependencies]
 bitcoin_rpc = { path = "../bitcoin_rpc" }
+bitcoin_htlc = { path = "../btc_htlc" }
+bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 reqwest = "0.8.5"
 serde = "1.0.51"
 serde_derive = "1.0.51"

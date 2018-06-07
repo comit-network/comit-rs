@@ -10,6 +10,7 @@ pub use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::util::address::Address;
 pub use bitcoin::util::privkey::Privkey as PrivateKey;
+use bitcoin_rpc::BitcoinRpcApi;
 use secp256k1::Secp256k1;
 
 use bitcoin::blockdata::transaction::TxIn;
