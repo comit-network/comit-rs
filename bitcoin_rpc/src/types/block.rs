@@ -13,6 +13,12 @@ impl BlockHeight {
     }
 }
 
+impl Into<u32> for BlockHeight {
+    fn into(self) -> u32 {
+        self.0
+    }
+}
+
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct Block {
     pub hash: BlockHash,
