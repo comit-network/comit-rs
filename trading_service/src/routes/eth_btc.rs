@@ -62,6 +62,10 @@ pub fn post_buy_offers(
 #[derive(Deserialize)]
 pub struct BuyOrderRequestBody {
     client_success_address: EthAddress,
+    // TODO: this forces the trading-cli to have a dependency on bitcoin_rpc.
+    // I think we should avoid it and push for a dependency on rust-bitcoin instead
+    // However, rust-bitcoin addresses do not seem to deserialize:
+    // the trait `serde::Deserialize<'_>` is not implemented for `bitcoin::util::address::Address`
     client_refund_address: bitcoin_rpc::Address,
 }
 
