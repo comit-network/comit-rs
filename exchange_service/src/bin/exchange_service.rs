@@ -66,10 +66,19 @@ fn main() {
         nonce,
     );
 
+    let bitcoin_rpc_client = {
+        let url = var("BITCOIN_RPC_URL").expect("BITCOIN_RPC_URL not set");
+        let username = var("BITCOIN_RPC_USERNAME").expect("BITCOIN_RPC_USRNAME not set");
+        let password = var("BITCOIN_RPC_PASSWORD").expect("BITCOIN_RPC_PASSWORD not set");
+
+        bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
+    };
+
     create_rocket_instance(
         Arc::new(api_client),
         event_store,
         Arc::new(ethereum_service),
+        Arc::new(bitcoin_rpc_client),
     ).launch();
 }
 

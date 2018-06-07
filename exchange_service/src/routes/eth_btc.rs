@@ -298,6 +298,7 @@ mod tests {
                 Arc::new(StaticEthereumApi),
                 0,
             )),
+            Arc::new(bitcoin_rpc::BitcoinStubClient::new()),
         );
         rocket::local::Client::new(rocket).unwrap()
     }

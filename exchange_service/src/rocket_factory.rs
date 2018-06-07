@@ -1,3 +1,4 @@
+use bitcoin_rpc;
 use ethereum_service::EthereumService;
 use event_store::EventStore;
 use rocket;
@@ -9,6 +10,7 @@ pub fn create_rocket_instance(
     treasury_api_client: Arc<ApiClient>,
     event_store: EventStore,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
 ) -> rocket::Rocket {
     rocket::ignite()
         .mount(
@@ -22,4 +24,5 @@ pub fn create_rocket_instance(
         .manage(treasury_api_client)
         .manage(event_store)
         .manage(ethereum_service)
+        .manage(bitcoin_rpc_client)
 }
