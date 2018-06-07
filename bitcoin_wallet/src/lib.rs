@@ -2,13 +2,13 @@ extern crate bitcoin;
 extern crate secp256k1;
 #[macro_use]
 extern crate lazy_static;
+extern crate bitcoin_rpc;
 extern crate common_types;
 extern crate hex;
 
 pub use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::util::address::Address;
-use bitcoin::util::hash::Sha256dHash as Txid;
 use bitcoin::util::privkey::Privkey as PrivateKey;
 use secp256k1::Secp256k1;
 
@@ -16,6 +16,7 @@ use bitcoin::blockdata::transaction::TxIn;
 use bitcoin::blockdata::transaction::TxOut;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::hash::HexError;
+use bitcoin_rpc::TransactionId;
 use common_types::secret::Secret;
 use secp256k1::Message;
 use secp256k1::PublicKey;
@@ -46,7 +47,7 @@ impl From<secp256k1::Error> for Error {
 }
 
 fn generate_p2wsh_htlc_refund_tx(
-    txid: &Txid,
+    txid: &bitcoin_rpc::TransactionId,
     vout: u32,
     nsequence: u32,
     input_amount: u64,
@@ -77,7 +78,7 @@ fn generate_p2wsh_htlc_refund_tx(
 }
 
 fn generate_p2wsh_htlc_redeem_tx(
-    txid: &Txid,
+    txid: &TransactionId,
     vout: u32,
     input_amount: u64,
     output_amount: u64,
@@ -109,7 +110,7 @@ fn generate_p2wsh_htlc_redeem_tx(
 }
 
 fn generate_segwit_redeem(
-    txid: &Txid,
+    txid: &TransactionId,
     nsequence: u32,
     vout: u32,
     input_amount: u64,
@@ -118,7 +119,7 @@ fn generate_segwit_redeem(
     destination_address: &Address,
 ) -> Result<Transaction, Error> {
     let input = TxIn {
-        prev_hash: txid.clone(),
+        prev_hash: txid.clone().into(),
         prev_index: vout,
         script_sig: Script::new(),
         sequence: nsequence,
@@ -165,7 +166,6 @@ fn generate_segwit_redeem(
 #[cfg(test)]
 mod tests {
     extern crate bitcoin_htlc;
-    extern crate bitcoin_rpc;
 
     use self::bitcoin_htlc::Htlc;
     use self::bitcoin_rpc::TransactionId;
@@ -302,8 +302,6 @@ mod tests {
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
 
-        let txid_hex: String = txid.into();
-        let txid = Txid::from_hex(txid_hex.as_str()).unwrap();
 
         let fee = 1000;
 
@@ -346,13 +344,11 @@ mod tests {
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
 
-        let txid_hex: String = txid.clone().into();
-        let txid_sha256d = Txid::from_hex(txid_hex.as_str()).unwrap();
 
         let fee = 1000;
 
         let redeem_tx = generate_p2wsh_htlc_refund_tx(
-            &txid_sha256d,
+            &txid,
             vout.n,
             nsequence,
             input_amount,
