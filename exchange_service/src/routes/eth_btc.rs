@@ -42,7 +42,7 @@ impl From<event_store::Error> for BadRequest<String> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
-    pub amount: u32,
+    pub amount: EthQuantity,
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
