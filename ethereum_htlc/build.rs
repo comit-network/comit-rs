@@ -1,6 +1,7 @@
 extern crate regex;
 
 use regex::Regex;
+use std::env::var;
 use std::fs::File;
 use std::io::Write;
 use std::process::Command;
@@ -9,15 +10,24 @@ use std::process::Stdio;
 const CONTRACT: &str = include_str!("./contract.asm");
 
 fn main() -> std::io::Result<()> {
-    let mut solc = Command::new("docker")
-        .arg("run")
-        .arg("--rm")
-        .arg("-i")
-        .arg("ethereum/solc:0.4.24")
-        .arg("--assemble")
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()?;
+    let solc_bin = var("SOLC_BIN");
+
+    let mut solc = match solc_bin {
+        Ok(bin) => Command::new(bin)
+            .arg("--assemble")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()?,
+        Err(_) => Command::new("docker")
+            .arg("run")
+            .arg("--rm")
+            .arg("-i")
+            .arg("ethereum/solc:0.4.24")
+            .arg("--assemble")
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .spawn()?,
+    };
 
     solc.stdin.as_mut().unwrap().write_all(CONTRACT.as_bytes())?;
 
