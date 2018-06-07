@@ -1,6 +1,7 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
 use common_types::secret::SecretHash;
+use common_types::{BitcoinQuantity, EthQuantity};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -30,19 +31,30 @@ impl fmt::Display for TradeId {
 pub struct OfferCreated {
     uid: TradeId,
     symbol: Symbol,
-    amount: u32,
     rate: f32,
+    eth_amount: EthQuantity,
+    btc_amount: BitcoinQuantity,
     // TODO: treasury_expiry_timestamp
 }
 
 impl OfferCreated {
-    pub fn new(symbol: Symbol, amount: u32, rate: f32) -> Self {
+    pub fn new(
+        symbol: Symbol,
+        rate: f32,
+        eth_amount: EthQuantity,
+        btc_amount: BitcoinQuantity,
+    ) -> Self {
         OfferCreated {
             uid: TradeId(Uuid::new_v4()),
             symbol,
-            amount,
+            eth_amount,
+            btc_amount,
             rate,
         }
+    }
+
+    pub fn btc_amount(&self) -> BitcoinQuantity {
+        self.btc_amount
     }
 }
 

@@ -1,4 +1,6 @@
 use bitcoin_rpc;
+use common_types::BitcoinQuantity;
+use common_types::EthQuantity;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -65,7 +67,12 @@ fn post_buy_offers(
         }
     };
 
-    let offer_event = OfferCreated::new(rate.symbol, offer_request_body.amount, rate.rate);
+    let offer_event = OfferCreated::new(
+        rate.symbol,
+        rate.rate,
+        offer_request_body.amount,
+        BitcoinQuantity::from_bitcoin(1),
+    ); //TODO: Correctly calculate!
 
     match event_store.store_offer(offer_event.clone()) {
         Ok(_) => (),
