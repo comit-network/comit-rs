@@ -28,7 +28,7 @@ pub fn run(
          Please send {} {} to the following address to get your {}:\n\
          {}",
         uid,
-        "AMOUNT TO BE IMPLEMENTED",
+        request_to_fund.sell_amount,
         symbol.get_base_currency(),
         symbol.get_traded_currency(),
         request_to_fund.address_to_fund
@@ -58,7 +58,7 @@ mod tests {
             response,
             "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1
 You have accepted the order!
-Please send AMOUNT TO BE IMPLEMENTED BTC to the following address to get your ETH:
+Please send 1001 BTC to the following address to get your ETH:
 bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
         );
     }

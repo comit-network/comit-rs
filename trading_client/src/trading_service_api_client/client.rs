@@ -1,9 +1,29 @@
 use bitcoin_rpc;
 use offer::Symbol;
 use reqwest;
+use std::fmt;
 use std::str::FromStr;
+use uuid::ParseError;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct TradeId(Uuid);
+
+impl FromStr for TradeId {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        let uid = Uuid::from_str(s)?;
+        Ok(TradeId(uid))
+    }
+}
+
+impl fmt::Display for TradeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0.fmt(f)
+    }
+}
 
 #[derive(Clone)]
 pub struct TradingApiUrl(pub String);
@@ -27,9 +47,11 @@ impl BuyOfferRequestBody {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferResponseBody {
-    pub uid: Uuid,
+    pub uid: TradeId,
     pub symbol: Symbol,
+    pub amount: u32,
     pub rate: f32,
+    pub sell_amount: u32,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -64,7 +86,7 @@ impl BuyOrderRequestBody {
 #[derive(Deserialize, Debug, Serialize)]
 pub struct RequestToFund {
     pub address_to_fund: bitcoin_rpc::Address,
-    //TODO: specify amount of BTC
+    pub sell_amount: u32,
 }
 
 #[derive(Deserialize)]

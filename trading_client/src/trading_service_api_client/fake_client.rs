@@ -7,6 +7,7 @@ use trading_service_api_client::BuyOfferRequestBody;
 use trading_service_api_client::BuyOrderRequestBody;
 use trading_service_api_client::OfferResponseBody;
 use trading_service_api_client::RequestToFund;
+use trading_service_api_client::TradeId;
 use trading_service_api_client::client::RedeemDetails;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
@@ -22,9 +23,11 @@ impl ApiClient for FakeApiClient {
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let symbol: Symbol = symbol.clone();
         Ok(OfferResponseBody {
-            uid: Uuid::from_str("a83aac12-0c78-417e-88e4-1a2948c6d538").unwrap(),
+            uid: TradeId::from_str("a83aac12-0c78-417e-88e4-1a2948c6d538").unwrap(),
             symbol: symbol,
+            amount: 100,
             rate: 0.6876231,
+            sell_amount: 145,
         })
     }
     fn request_order(
@@ -37,6 +40,7 @@ impl ApiClient for FakeApiClient {
             address_to_fund: bitcoin_rpc::Address::from(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ),
+            sell_amount: 1001,
         })
     }
     fn request_redeem_details(

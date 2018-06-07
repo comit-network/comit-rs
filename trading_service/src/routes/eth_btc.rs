@@ -10,6 +10,7 @@ use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
 use event_store::OrderTaken;
+use event_store::TradeId;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::OfferResponseBody;
@@ -18,14 +19,24 @@ use exchange_api_client::create_client;
 use rand::OsRng;
 use rocket::State;
 use rocket::http::RawStr;
+use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use secret::Secret;
 use std::str::FromStr;
 use std::sync::Mutex;
 use symbol::Symbol;
+use uuid;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
+
+impl<'a> FromParam<'a> for TradeId {
+    type Error = uuid::ParseError;
+
+    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
+        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+    }
+}
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -72,7 +83,7 @@ pub struct BuyOrderRequestBody {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     address_to_fund: bitcoin_rpc::Address,
-    //TODO: specify amount of BTC
+    sell_amount: u32,
 }
 
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
@@ -87,21 +98,13 @@ impl From<event_store::Error> for BadRequest<String> {
 #[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
        data = "<buy_order_request_body>")]
 pub fn post_buy_orders(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     buy_order_request_body: Json<BuyOrderRequestBody>,
     url: State<ExchangeApiUrl>,
     network: State<Network>,
     event_store: State<EventStore>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
-    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
-        Ok(trade_id) => trade_id,
-        Err(e) => {
-            error!("Failed to parse {} as Uuid. Error: {:?}", trade_id, e);
-            return Err(BadRequest(None));
-        }
-    };
-
     let offer = event_store.get_offer_created(&trade_id)?;
 
     let buy_order = buy_order_request_body.into_inner();
@@ -171,10 +174,13 @@ pub fn post_buy_orders(
 
     event_store.store_trade_accepted(order_taken_event)?;
 
+    let offer = event_store.get_offer_created(&trade_id).unwrap();
+
     let htlc_address = bitcoin_rpc::Address::from(htlc.get_htlc_address().clone());
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,
+        sell_amount: offer.sell_amount,
     }))
 }
 

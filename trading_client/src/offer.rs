@@ -151,15 +151,17 @@ pub fn run(
 
             return Ok(format!(
                 "Trade id: {}\n\
-                 To buy {} {} against {}, the offered exchange rate is {} {}.\n\
+                 The offered exchange rate is {} {}\n\
+                 Sell {} {} for {} {}\n\
                  To accept the offer, run:\n\
                  trading_client accept --uid={}",
                 offer.uid,
-                amount,
-                symbol.get_traded_currency(),
-                symbol.get_base_currency(),
                 offer.rate,
-                offer.symbol,
+                symbol,
+                offer.sell_amount,
+                symbol.get_base_currency(),
+                offer.amount,
+                symbol.get_traded_currency(),
                 offer.uid,
             ));
         }
@@ -173,17 +175,16 @@ mod tests {
     #[test]
     fn request_offer_with_supported_currency() {
         let trading_api_url = TradingApiUrl("stub".to_string());
-
         let symbol = Symbol::from_str("ETH-BTC").unwrap();
-
         let response = run(trading_api_url, symbol, OrderType::BUY, 12).unwrap();
 
         assert_eq!(
             response,
-            "Trade id: a83aac12-0c78-417e-88e4-1a2948c6d538\n\
-             To buy 12 ETH against BTC, the offered exchange rate is 0.6876231 ETH-BTC.\n\
-             To accept the offer, run:\n\
-             trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
+            "Trade id: a83aac12-0c78-417e-88e4-1a2948c6d538
+The offered exchange rate is 0.6876231 ETH-BTC
+Sell 145 BTC for 100 ETH
+To accept the offer, run:
+trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
         )
     }
 }

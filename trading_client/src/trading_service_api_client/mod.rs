@@ -9,6 +9,7 @@ pub use self::client::BuyOfferRequestBody;
 pub use self::client::BuyOrderRequestBody;
 pub use self::client::OfferResponseBody;
 pub use self::client::RequestToFund;
+pub use self::client::TradeId;
 pub use self::client::TradingApiUrl;
 
 #[cfg(test)]
