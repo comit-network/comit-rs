@@ -1,5 +1,6 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
+use bitcoin_wallet;
 use common_types::secret::SecretHash;
 use common_types::{BitcoinQuantity, EthQuantity};
 use std::collections::HashMap;
@@ -9,7 +10,7 @@ use std::time::Duration;
 use std::time::SystemTime;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
-use web3::types::Address;
+use web3::types::Address as EthAddress;
 use web3::types::H256;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -58,7 +59,7 @@ impl OfferCreated {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone)]
 pub struct OrderTaken {
     uid: TradeId,
 
@@ -67,10 +68,11 @@ pub struct OrderTaken {
     exchange_contract_time_lock: SystemTime,
 
     client_refund_address: bitcoin_rpc::Address,
-    client_success_address: Address,
+    client_success_address: EthAddress,
 
-    exchange_refund_address: Address,
+    exchange_refund_address: EthAddress,
     exchange_success_address: bitcoin_rpc::Address,
+    exchange_success_private_key: bitcoin_wallet::PrivateKey,
 }
 
 impl OrderTaken {
@@ -81,9 +83,10 @@ impl OrderTaken {
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_rpc::Address,
-        client_success_address: Address,
-        exchange_refund_address: Address,
+        client_success_address: EthAddress,
+        exchange_refund_address: EthAddress,
         exchange_success_address: bitcoin_rpc::Address,
+        exchange_success_private_key: bitcoin_wallet::PrivateKey,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
 
@@ -98,6 +101,7 @@ impl OrderTaken {
             client_success_address,
             exchange_refund_address,
             exchange_success_address,
+            exchange_success_private_key,
         }
     }
 
@@ -105,7 +109,7 @@ impl OrderTaken {
         self.exchange_success_address.clone()
     }
 
-    pub fn exchange_refund_address(&self) -> Address {
+    pub fn exchange_refund_address(&self) -> EthAddress {
         self.exchange_refund_address
     }
 
@@ -117,12 +121,20 @@ impl OrderTaken {
         self.client_refund_address.clone()
     }
 
-    pub fn client_success_address(&self) -> Address {
+    pub fn client_success_address(&self) -> EthAddress {
         self.client_success_address.clone()
     }
 
     pub fn contract_secret_lock(&self) -> &SecretHash {
         &self.contract_secret_lock
+    }
+
+    pub fn client_contract_time_lock(&self) -> &bitcoin_rpc::BlockHeight {
+        &self.client_contract_time_lock
+    }
+
+    pub fn exchange_success_private_key(&self) -> &bitcoin_wallet::PrivateKey {
+        &self.exchange_success_private_key
     }
 }
 

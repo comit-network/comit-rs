@@ -140,8 +140,10 @@ pub fn post_buy_orders(
         order_request_body.client_success_address,
         "1084d2C416fcc39564a4700a9B231270d463C5eA".into(),
         // TODO: retrieve and use real address
-        // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
         bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
+        bitcoin_wallet::PrivateKey::from_str(
+            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
+        ).unwrap(),
     );
 
     match event_store.store_order_taken(order_taken.clone()) {
