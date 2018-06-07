@@ -17,6 +17,7 @@ use bitcoin::blockdata::transaction::TxOut;
 use bitcoin::util::bip143::SighashComponents;
 use bitcoin::util::hash::HexError;
 use bitcoin_rpc::TransactionId;
+use common_types::BitcoinQuantity;
 use common_types::secret::Secret;
 use secp256k1::Message;
 use secp256k1::PublicKey;
@@ -46,12 +47,12 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-fn generate_p2wsh_htlc_refund_tx(
+pub fn generate_p2wsh_htlc_refund_tx(
     txid: &bitcoin_rpc::TransactionId,
     vout: u32,
     nsequence: u32,
-    input_amount: u64,
-    output_amount: u64,
+    input_amount: BitcoinQuantity,
+    output_amount: BitcoinQuantity,
     htlc_script: &Script,
     private_key: &PrivateKey,
     destination_addr: &Address,
@@ -77,11 +78,11 @@ fn generate_p2wsh_htlc_refund_tx(
     )
 }
 
-fn generate_p2wsh_htlc_redeem_tx(
+pub fn generate_p2wsh_htlc_redeem_tx(
     txid: &TransactionId,
     vout: u32,
-    input_amount: u64,
-    output_amount: u64,
+    input_amount: BitcoinQuantity,
+    output_amount: BitcoinQuantity,
     htlc_script: &Script,
     secret: &Secret,
     private_key: &PrivateKey,
@@ -113,8 +114,8 @@ fn generate_segwit_redeem(
     txid: &TransactionId,
     nsequence: u32,
     vout: u32,
-    input_amount: u64,
-    output_amount: u64,
+    input_amount: BitcoinQuantity,
+    output_amount: BitcoinQuantity,
     input_witness: Vec<Witness>,
     destination_address: &Address,
 ) -> Result<Transaction, Error> {
@@ -127,7 +128,7 @@ fn generate_segwit_redeem(
     };
 
     let output = TxOut {
-        value: output_amount,
+        value: output_amount.satoshi(),
         script_pubkey: destination_address.script_pubkey(),
     };
 
@@ -149,7 +150,7 @@ fn generate_segwit_redeem(
             } => {
                 let sighash_components = SighashComponents::new(&transaction);
                 let hash_to_sign =
-                    sighash_components.sighash_all(&input, &prev_script, input_amount);
+                    sighash_components.sighash_all(&input, &prev_script, input_amount.satoshi());
                 let message_to_sign = Message::from(hash_to_sign.data());
                 let signature = SECP.sign(&message_to_sign, &private_key)?;
                 let mut binary_signature = signature.serialize_der(&*SECP).to_vec();
@@ -198,7 +199,7 @@ mod tests {
     ) -> (
         bitcoin_rpc::TransactionId,
         bitcoin_rpc::TransactionOutput,
-        u64,
+        BitcoinQuantity,
         Script,
         u32,
         Secret,
@@ -214,7 +215,7 @@ mod tests {
         let refund_address = private_key_to_address(&refund_privkey);
         let sequence_lock = 10;
 
-        let amount = 100_000_001;
+        let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
         let htlc = Htlc::new(
             success_address,
@@ -229,7 +230,7 @@ mod tests {
         let htlc_script = htlc.script();
 
         let txid = client
-            .send_to_address(&rpc_htlc_address, (amount as f64) / 100_000_000.0)
+            .send_to_address(&rpc_htlc_address, amount.bitcoin())
             .unwrap()
             .into_result()
             .unwrap();
@@ -302,14 +303,14 @@ mod tests {
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
 
-
-        let fee = 1000;
+        let fee = BitcoinQuantity::from_satoshi(1000);
+        let output_amount = input_amount.clone() - fee;
 
         let redeem_tx = generate_p2wsh_htlc_redeem_tx(
             &txid,
             vout.n,
             input_amount,
-            input_amount - fee,
+            output_amount,
             &htlc_script,
             &secret,
             &private_key,
@@ -344,15 +345,15 @@ mod tests {
         let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
         let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
 
-
-        let fee = 1000;
+        let fee = BitcoinQuantity::from_satoshi(1000);
+        let output_amount = input_amount.clone() - fee;
 
         let redeem_tx = generate_p2wsh_htlc_refund_tx(
             &txid,
             vout.n,
             nsequence,
             input_amount,
-            input_amount - fee,
+            output_amount,
             &htlc_script,
             &private_key,
             &alice_addr,
