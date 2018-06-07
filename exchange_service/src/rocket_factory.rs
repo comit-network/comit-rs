@@ -1,3 +1,4 @@
+use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use ethereum_service::EthereumService;
 use event_store::EventStore;
@@ -11,6 +12,7 @@ pub fn create_rocket_instance(
     event_store: EventStore,
     ethereum_service: Arc<EthereumService>,
     bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
+    network: Network,
 ) -> rocket::Rocket {
     rocket::ignite()
         .mount(
@@ -25,4 +27,5 @@ pub fn create_rocket_instance(
         .manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_rpc_client)
+        .manage(network)
 }

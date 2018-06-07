@@ -1,3 +1,4 @@
+use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_wallet;
 use common_types::BitcoinQuantity;
@@ -299,6 +300,7 @@ mod tests {
                 0,
             )),
             Arc::new(bitcoin_rpc::BitcoinStubClient::new()),
+            Network::BitcoinCoreRegtest,
         );
         rocket::local::Client::new(rocket).unwrap()
     }

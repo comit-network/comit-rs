@@ -1,6 +1,7 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
+extern crate bitcoin;
 extern crate bitcoin_rpc;
 extern crate ethereum_wallet;
 extern crate exchange_service;
@@ -74,11 +75,25 @@ fn main() {
         bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
     };
 
+    let network = match var("BTC_NETWORK") {
+        Ok(value) => match value.as_str() {
+            "BTC_MAINNET" => panic!("You are not mainnet ready fool!"),
+            "BTC_TESTNET" => bitcoin::network::constants::Network::Testnet,
+            "BTCORE_REGTEST" => bitcoin::network::constants::Network::BitcoinCoreRegtest,
+            _ => panic!(
+                "Please set environment variable BTC_NETWORK to one of the following values:\n\
+                 - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
+            ),
+        },
+        Err(_) => bitcoin::network::constants::Network::BitcoinCoreRegtest,
+    };
+
     create_rocket_instance(
         Arc::new(api_client),
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_rpc_client),
+        network,
     ).launch();
 }
 

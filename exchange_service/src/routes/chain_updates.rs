@@ -1,4 +1,5 @@
 use bitcoin_htlc;
+use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_wallet;
 use common_types::BitcoinQuantity;
@@ -21,6 +22,7 @@ pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<EventStore>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
+    network: State<Network>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
     let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
@@ -55,7 +57,7 @@ pub fn post_revealed_secret(
             .unwrap(),
         order_taken_event.contract_secret_lock().clone(),
         order_taken_event.client_contract_time_lock().clone().into(),
-        &bitcoin_htlc::Network::BitcoinCoreRegtest,
+        &network,
     ).unwrap()
         .script()
         .clone();
