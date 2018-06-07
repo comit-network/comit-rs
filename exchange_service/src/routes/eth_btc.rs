@@ -1,7 +1,7 @@
 use bitcoin_rpc;
 use bitcoin_wallet;
 use common_types::BitcoinQuantity;
-use common_types::EthQuantity;
+use common_types::EthereumQuantity;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -44,7 +44,7 @@ impl From<event_store::Error> for BadRequest<String> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
-    pub amount: EthQuantity,
+    pub amount: EthereumQuantity,
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]

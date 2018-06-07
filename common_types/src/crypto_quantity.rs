@@ -35,14 +35,14 @@ impl Sub for BitcoinQuantity {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct EthQuantity(u64);
+pub struct EthereumQuantity(u64);
 
-impl EthQuantity {
+impl EthereumQuantity {
     pub fn from_eth(eth: u64) -> Self {
-        EthQuantity(eth)
+        EthereumQuantity(eth)
     }
 
-    pub fn eth(&self) -> u64 {
+    pub fn ethereum(&self) -> u64 {
         self.0
     }
 }

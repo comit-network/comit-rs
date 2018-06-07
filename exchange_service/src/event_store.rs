@@ -2,7 +2,7 @@ pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
 use bitcoin_wallet;
 use common_types::secret::SecretHash;
-use common_types::{BitcoinQuantity, EthQuantity};
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -33,7 +33,7 @@ pub struct OfferCreated {
     uid: TradeId,
     symbol: Symbol,
     rate: f32,
-    eth_amount: EthQuantity,
+    eth_amount: EthereumQuantity,
     btc_amount: BitcoinQuantity,
     // TODO: treasury_expiry_timestamp
 }
@@ -42,7 +42,7 @@ impl OfferCreated {
     pub fn new(
         symbol: Symbol,
         rate: f32,
-        eth_amount: EthQuantity,
+        eth_amount: EthereumQuantity,
         btc_amount: BitcoinQuantity,
     ) -> Self {
         OfferCreated {
