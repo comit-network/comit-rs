@@ -338,8 +338,6 @@ mod tests {
             offer_response["uid"].as_str().unwrap().to_string()
         };
 
-        println!("{}", uid);
-
         {
             let mut response = request_order(&mut client, &uid);
             assert_eq!(response.status(), Status::Ok);
