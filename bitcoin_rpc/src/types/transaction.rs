@@ -12,6 +12,12 @@ use types::*;
 #[derive(Debug, PartialEq, Clone)]
 pub struct TransactionId(Sha256dHash);
 
+impl fmt::Display for TransactionId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.write_str(self.0.to_string().as_ref())
+    }
+}
+
 impl<'de> Deserialize<'de> for TransactionId {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where

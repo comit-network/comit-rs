@@ -29,7 +29,10 @@ pub fn post_revealed_secret(
 
     let mut secret: Secret = redeem_btc_notification_body.into_inner().secret;
 
-    if secret.hash() != order_taken_event.contract_secret_lock() {
+    let secret_hash = order_taken_event.contract_secret_lock();
+
+    if secret.hash() != secret_hash {
+        error!("Secret for trade {} can't be used to redeem htlc locked by {} because it didn't match {}", trade_id, secret_hash, secret.hash());
         return Err(BadRequest(Some(
             "the secret didn't match the hash".to_string(),
         )));
@@ -78,19 +81,21 @@ pub fn post_revealed_secret(
     let rpc_transaction =
         bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).unwrap();
 
+    info!(
+        "Attempting to redeem HTLC with txid {} for {}",
+        htlc_txid, trade_id
+    );
     //TODO: Store successful redeem in event
-    let _redeem_txid = rpc_client
+    let redeem_txid = rpc_client
         .send_raw_transaction(rpc_transaction)
         .unwrap()
         .into_result()
         .unwrap();
 
+    info!(
+        "HTLC for {} successfully redeemed with {}",
+        trade_id, redeem_txid
+    );
+
     Ok(())
-}
-
-#[cfg(test)]
-mod test {
-
-    #[test]
-    fn tmp() {}
 }
