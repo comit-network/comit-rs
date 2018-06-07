@@ -161,6 +161,7 @@ pub fn post_buy_orders(
 #[derive(Deserialize)]
 pub struct BuyOrderHtlcFundedNotification {
     transaction_id: bitcoin_rpc::TransactionId,
+    vout: u32,
 }
 
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded", format = "application/json",
@@ -174,6 +175,7 @@ pub fn post_buy_orders_fundings(
     let trade_funded = TradeFunded::new(
         trade_id,
         buy_order_htlc_funded_notification.transaction_id.clone(),
+        buy_order_htlc_funded_notification.vout,
     );
     event_store.store_trade_funded(trade_funded)?;
 
@@ -252,7 +254,8 @@ mod tests {
             .header(ContentType::JSON)
             .body(
                 r#"{
-                    "transaction_id": "a02e9dc0ddc3d8200cc4be0e40a1573519a1a1e9b15e0c4c296fcaa65da80d43"
+                    "transaction_id": "a02e9dc0ddc3d8200cc4be0e40a1573519a1a1e9b15e0c4c296fcaa65da80d43",
+                    "vout" : 0
                   }"#,
             );
         request.dispatch()

@@ -157,14 +157,24 @@ impl ContractDeployed {
 pub struct TradeFunded {
     uid: TradeId,
     transaction_id: bitcoin_rpc::TransactionId,
+    vout: u32,
 }
 
 impl TradeFunded {
-    pub fn new(uid: TradeId, transaction_id: bitcoin_rpc::TransactionId) -> Self {
+    pub fn new(uid: TradeId, transaction_id: bitcoin_rpc::TransactionId, vout: u32) -> Self {
         TradeFunded {
             uid,
             transaction_id,
+            vout,
         }
+    }
+
+    pub fn transaction_id(&self) -> &bitcoin_rpc::TransactionId {
+        &self.transaction_id
+    }
+
+    pub fn vout(&self) -> u32 {
+        self.vout
     }
 }
 
