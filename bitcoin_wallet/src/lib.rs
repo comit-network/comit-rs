@@ -9,7 +9,7 @@ extern crate hex;
 pub use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::util::address::Address;
-use bitcoin::util::privkey::Privkey as PrivateKey;
+pub use bitcoin::util::privkey::Privkey as PrivateKey;
 use secp256k1::Secp256k1;
 
 use bitcoin::blockdata::transaction::TxIn;
