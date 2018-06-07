@@ -1,4 +1,5 @@
 use bitcoin_rpc;
+use bitcoin_wallet;
 use common_types::BitcoinQuantity;
 use common_types::EthQuantity;
 use common_types::secret::SecretHash;
@@ -18,6 +19,7 @@ use rocket::http::RawStr;
 use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
