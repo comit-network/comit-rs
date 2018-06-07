@@ -1,7 +1,7 @@
 use bitcoin::blockdata::opcodes::All::OP_NOP3 as OP_CHECKSEQUENCEVERIFY;
 use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::{Builder, Script};
-use bitcoin::network::constants::Network;
+pub use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin::util::address::Payload::WitnessProgram;
 use secret::SecretHash;
