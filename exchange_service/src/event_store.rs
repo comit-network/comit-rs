@@ -284,28 +284,32 @@ impl EventStore {
         Ok(())
     }
 
-    pub fn get_offer_created_event(&self, uid: &TradeId) -> Option<OfferCreated> {
+    pub fn get_offer_created_event(&self, uid: &TradeId) -> Result<OfferCreated, Error> {
         let events = self.offers.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
-    pub fn get_order_taken_event(&self, uid: &TradeId) -> Option<OrderTaken> {
+    pub fn get_order_taken_event(&self, uid: &TradeId) -> Result<OrderTaken, Error> {
         let events = self.order_taken.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
-    pub fn get_contract_deployed_event(&self, uid: &TradeId) -> Option<ContractDeployed> {
+    pub fn get_contract_deployed_event(&self, uid: &TradeId) -> Result<ContractDeployed, Error> {
         let events = self.contract_deployed.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
-    pub fn get_trade_funded_event(&self, uid: &TradeId) -> Option<TradeFunded> {
+    pub fn get_trade_funded_event(&self, uid: &TradeId) -> Result<TradeFunded, Error> {
         let events = self.trade_funded.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
     /*pub fn get_trade(&self, id: &Uuid) -> Option<TradeState> {

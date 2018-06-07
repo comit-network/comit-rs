@@ -177,23 +177,9 @@ pub fn post_buy_orders_fundings(
     );
     event_store.store_trade_funded(trade_funded)?;
 
-    let order_taken = match event_store.get_order_taken_event(&trade_id) {
-        Some(event) => event,
-        None => {
-            return Err(BadRequest(Some(
-                "Trade is not the correct state".to_string(),
-            )))
-        }
-    };
+    let order_taken = event_store.get_order_taken_event(&trade_id)?;
 
-    let offer_created = match event_store.get_offer_created_event(&trade_id) {
-        Some(event) => event,
-        None => {
-            return Err(BadRequest(Some(
-                "Trade is not the correct state".to_string(),
-            )))
-        }
-    };
+    let offer_created = event_store.get_offer_created_event(&trade_id)?;
 
     let htlc = ethereum_htlc::Htlc::new(
         order_taken.exchange_contract_time_lock(),
