@@ -6,7 +6,9 @@ mod fake_client;
 
 pub use self::client::ApiClient;
 pub use self::client::BuyOfferRequestBody;
+pub use self::client::BuyOrderRequestBody;
 pub use self::client::OfferResponseBody;
+pub use self::client::RequestToFund;
 pub use self::client::TradingApiUrl;
 
 #[cfg(test)]
