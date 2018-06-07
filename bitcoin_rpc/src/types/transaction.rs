@@ -1,3 +1,6 @@
+use bitcoin;
+use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
+use bitcoin::network::serialize::serialize_hex;
 use bitcoin::util::hash::{HexError, Sha256dHash};
 use serde::de;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -63,6 +66,14 @@ impl FromStr for TransactionId {
 /// We will need serializers and deserializers then.
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct SerializedRawTransaction(String);
+
+impl SerializedRawTransaction {
+    pub fn from_bitcoin_transaction(
+        transaction: BitcoinTransaction,
+    ) -> Result<Self, bitcoin::util::Error> {
+        serialize_hex(&transaction).map(SerializedRawTransaction)
+    }
+}
 
 from_str!(SerializedRawTransaction);
 
