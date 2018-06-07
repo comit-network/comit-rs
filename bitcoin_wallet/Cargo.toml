@@ -12,4 +12,4 @@ common_types = { path = "../common_types" }
 [dev-dependencies.bitcoin_rpc]
 path = "../bitcoin_rpc"
 [dev-dependencies.bitcoin_htlc]
-path = "../btc_htlc"
+path = "../bitcoin_htlc"
