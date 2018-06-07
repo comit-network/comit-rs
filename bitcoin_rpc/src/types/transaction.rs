@@ -47,9 +47,9 @@ impl Serialize for TransactionId {
     }
 }
 
-impl Into<Sha256dHash> for TransactionId {
-    fn into(self) -> Sha256dHash {
-        self.0
+impl From<TransactionId> for Sha256dHash {
+    fn from(txid: TransactionId) -> Self {
+        txid.0
     }
 }
 

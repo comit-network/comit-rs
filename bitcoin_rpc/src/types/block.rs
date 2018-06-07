@@ -13,9 +13,9 @@ impl BlockHeight {
     }
 }
 
-impl Into<u32> for BlockHeight {
-    fn into(self) -> u32 {
-        self.0
+impl From<BlockHeight> for u32 {
+    fn from(block_height: BlockHeight) -> Self {
+        block_height.0
     }
 }
 
