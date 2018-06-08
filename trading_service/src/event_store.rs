@@ -1,22 +1,39 @@
 use bitcoin_htlc::Htlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::RwLock;
 use symbol::Symbol;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
 
-//pub use self::OfferCreated as OfferCreatedState;
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct TradeId(Uuid);
+
+impl TradeId {
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        TradeId(uuid)
+    }
+}
+
+impl fmt::Display for TradeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0.fmt(f)
+    }
+}
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferCreated {
-    pub uid: Uuid,
+    pub uid: TradeId,
     pub symbol: Symbol,
-    pub rate: f32, // Actually need to specify the exact amounts of each currency
+    pub rate: f32,
+    pub btc_amount: BitcoinQuantity,
+    pub eth_amount: EthereumQuantity,
 }
 
 impl From<OfferResponseBody> for OfferCreated {
@@ -25,6 +42,8 @@ impl From<OfferResponseBody> for OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
+            btc_amount: offer.btc_amount,
+            eth_amount: offer.eth_amount,
         }
     }
 }
@@ -32,7 +51,7 @@ impl From<OfferResponseBody> for OfferCreated {
 // State after client accepts trade offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderCreated {
-    pub uid: Uuid,
+    pub uid: TradeId,
     pub client_success_address: EthAddress,
     pub client_refund_address: bitcoin_rpc::Address,
     pub secret: Secret,
@@ -41,7 +60,7 @@ pub struct OrderCreated {
 
 #[derive(Clone, Debug)]
 pub struct OrderTaken {
-    pub uid: Uuid,
+    pub uid: TradeId,
     pub exchange_refund_address: EthAddress,
     // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: bitcoin_rpc::Address,
@@ -51,15 +70,15 @@ pub struct OrderTaken {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContractDeployed {
-    pub uid: Uuid,
+    pub uid: TradeId,
     pub address: EthAddress,
 }
 
 pub struct EventStore {
-    offer_created: RwLock<HashMap<Uuid, OfferCreated>>,
-    order_created: RwLock<HashMap<Uuid, OrderCreated>>,
-    order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
-    contract_deployed: RwLock<HashMap<Uuid, ContractDeployed>>,
+    offer_created: RwLock<HashMap<TradeId, OfferCreated>>,
+    order_created: RwLock<HashMap<TradeId, OrderCreated>>,
+    order_taken: RwLock<HashMap<TradeId, OrderTaken>>,
+    contract_deployed: RwLock<HashMap<TradeId, ContractDeployed>>,
 }
 
 #[derive(PartialEq)]
@@ -86,7 +105,7 @@ impl EventStore {
         }
     }
 
-    fn current_state(&self, id: &Uuid) -> TradeState {
+    fn current_state(&self, id: &TradeId) -> TradeState {
         if self._get(&self.offer_created, id).is_none() {
             return TradeState::NonExistent;
         }
@@ -108,9 +127,9 @@ impl EventStore {
 
     fn _store<E: Clone>(
         &self,
-        event_map: &RwLock<HashMap<Uuid, E>>,
+        event_map: &RwLock<HashMap<TradeId, E>>,
         required_state: TradeState,
-        id: Uuid,
+        id: TradeId,
         event: &E,
     ) -> Result<(), Error> {
         if self.current_state(&id) == required_state {
@@ -141,26 +160,26 @@ impl EventStore {
         self._store(&self.contract_deployed, TradeState::OrderTaken, uid, &event)
     }
 
-    fn _get<E: Clone>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: &Uuid) -> Option<E> {
+    fn _get<E: Clone>(&self, event_map: &RwLock<HashMap<TradeId, E>>, id: &TradeId) -> Option<E> {
         event_map.read().unwrap().get(id).map(Clone::clone)
     }
 
-    pub fn get_offer_created(&self, id: &Uuid) -> Result<OfferCreated, Error> {
+    pub fn get_offer_created(&self, id: &TradeId) -> Result<OfferCreated, Error> {
         self._get(&self.offer_created, id)
             .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 
-    pub fn get_order_created(&self, id: &Uuid) -> Result<OrderCreated, Error> {
+    pub fn get_order_created(&self, id: &TradeId) -> Result<OrderCreated, Error> {
         self._get(&self.order_created, id)
             .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 
-    pub fn get_order_taken(&self, id: &Uuid) -> Result<OrderTaken, Error> {
+    pub fn get_order_taken(&self, id: &TradeId) -> Result<OrderTaken, Error> {
         self._get(&self.order_taken, id)
             .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 
-    pub fn get_contract_deployed(&self, id: &Uuid) -> Result<ContractDeployed, Error> {
+    pub fn get_contract_deployed(&self, id: &TradeId) -> Result<ContractDeployed, Error> {
         self._get(&self.contract_deployed, id)
             .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }

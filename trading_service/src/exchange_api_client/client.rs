@@ -1,8 +1,9 @@
 use bitcoin_rpc;
+use common_types::{BitcoinQuantity, EthereumQuantity};
+use event_store::TradeId;
 use reqwest;
 use secret::SecretHash;
 use symbol::Symbol;
-use uuid::Uuid;
 use web3::types::Address;
 
 #[derive(Clone)]
@@ -15,9 +16,11 @@ struct OfferRequestBody {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {
-    pub uid: Uuid,
+    pub uid: TradeId,
     pub symbol: Symbol,
     pub rate: f32,
+    pub eth_amount: EthereumQuantity,
+    pub btc_amount: BitcoinQuantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -44,7 +47,7 @@ pub trait ApiClient {
     fn create_order(
         &self,
         symbol: Symbol,
-        uid: Uuid,
+        uid: TradeId,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error>;
 }
@@ -73,7 +76,7 @@ impl ApiClient for DefaultApiClient {
     fn create_order(
         &self,
         symbol: Symbol,
-        uid: Uuid,
+        uid: TradeId,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         self.client

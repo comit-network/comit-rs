@@ -184,7 +184,7 @@ pub fn post_buy_orders_fundings(
 
     let order_taken = event_store.get_order_taken_event(&trade_id)?;
 
-    let offer_created = event_store.get_offer_created_event(&trade_id)?;
+    //    let offer_created = event_store.get_offer_created_event(&trade_id)?;
 
     let htlc = ethereum_htlc::Htlc::new(
         order_taken.exchange_contract_time_lock(),

@@ -1,5 +1,7 @@
 use super::client::ApiClient;
 use bitcoin_rpc::Address;
+use common_types::{BitcoinQuantity, EthereumQuantity};
+use event_store::TradeId;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
 use reqwest;
 use symbol::Symbol;
@@ -15,9 +17,11 @@ impl ApiClient for FakeApiClient {
         _amount: u32,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let offer = OfferResponseBody {
-            uid: Uuid::new_v4(),
+            uid: TradeId::from_uuid(Uuid::new_v4()),
             symbol: symbol.clone(),
             rate: 0.42,
+            btc_amount: BitcoinQuantity::from_satoshi(24),
+            eth_amount: EthereumQuantity::from_eth(10),
         };
         Ok(offer)
     }
@@ -25,7 +29,7 @@ impl ApiClient for FakeApiClient {
     fn create_order(
         &self,
         _symbol: Symbol,
-        _uid: Uuid,
+        _uid: TradeId,
         _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {

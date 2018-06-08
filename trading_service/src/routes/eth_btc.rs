@@ -4,12 +4,14 @@ use bitcoin_htlc;
 use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use event_store;
 use event_store::ContractDeployed;
 use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
 use event_store::OrderTaken;
+use event_store::TradeId;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::OfferResponseBody;
@@ -18,14 +20,24 @@ use exchange_api_client::create_client;
 use rand::OsRng;
 use rocket::State;
 use rocket::http::RawStr;
+use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use secret::Secret;
 use std::str::FromStr;
 use std::sync::Mutex;
 use symbol::Symbol;
+use uuid;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
+
+impl<'a> FromParam<'a> for TradeId {
+    type Error = uuid::ParseError;
+
+    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
+        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+    }
+}
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -62,13 +74,18 @@ pub fn post_buy_offers(
 #[derive(Deserialize)]
 pub struct BuyOrderRequestBody {
     client_success_address: EthAddress,
+    // TODO: this forces the trading-cli to have a dependency on bitcoin_rpc.
+    // I think we should avoid it and push for a dependency on rust-bitcoin instead
+    // However, rust-bitcoin addresses do not seem to deserialize:
+    // the trait `serde::Deserialize<'_>` is not implemented for `bitcoin::util::address::Address`
     client_refund_address: bitcoin_rpc::Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     address_to_fund: bitcoin_rpc::Address,
-    //TODO: specify amount of BTC
+    btc_amount: BitcoinQuantity,
+    eth_amount: EthereumQuantity,
 }
 
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
@@ -83,21 +100,13 @@ impl From<event_store::Error> for BadRequest<String> {
 #[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
        data = "<buy_order_request_body>")]
 pub fn post_buy_orders(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     buy_order_request_body: Json<BuyOrderRequestBody>,
     url: State<ExchangeApiUrl>,
     network: State<Network>,
     event_store: State<EventStore>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
-    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
-        Ok(trade_id) => trade_id,
-        Err(e) => {
-            error!("Failed to parse {} as Uuid. Error: {:?}", trade_id, e);
-            return Err(BadRequest(None));
-        }
-    };
-
     let offer = event_store.get_offer_created(&trade_id)?;
 
     let buy_order = buy_order_request_body.into_inner();
@@ -167,10 +176,14 @@ pub fn post_buy_orders(
 
     event_store.store_trade_accepted(order_taken_event)?;
 
+    let offer = event_store.get_offer_created(&trade_id).unwrap();
+
     let htlc_address = bitcoin_rpc::Address::from(htlc.get_htlc_address().clone());
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,
+        eth_amount: offer.eth_amount,
+        btc_amount: offer.btc_amount,
     }))
 }
 
@@ -182,15 +195,10 @@ pub struct ContractDeployedRequestBody {
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed", format = "application/json",
        data = "<contract_deployed_request_body>")]
 pub fn post_contract_deployed(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     contract_deployed_request_body: Json<ContractDeployedRequestBody>,
     event_store: State<EventStore>,
 ) -> Result<(), BadRequest<String>> {
-    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
-        Ok(trade_id) => trade_id,
-        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
-    };
-
     event_store.store_contract_deployed(ContractDeployed {
         uid: trade_id,
         address: contract_deployed_request_body.contract_address,
@@ -208,15 +216,11 @@ pub struct RedeemDetails {
 
 #[get("/trades/ETH-BTC/<trade_id>/redeem-orders", format = "application/json")]
 pub fn get_redeem_orders(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     _url: State<ExchangeApiUrl>,
     event_store: State<EventStore>,
     _rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RedeemDetails>, BadRequest<String>> {
-    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
-        Ok(trade_id) => trade_id,
-        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
-    };
     let address = event_store.get_contract_deployed(&trade_id)?.address;
     let secret = event_store.get_order_created(&trade_id)?.secret;
 
