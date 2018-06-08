@@ -23,6 +23,7 @@ use common_types::secret::Secret;
 use secp256k1::Message;
 use secp256k1::PublicKey;
 use secp256k1::SecretKey;
+use std::fmt;
 
 lazy_static! {
     static ref SECP: Secp256k1 = Secp256k1::new();
@@ -39,7 +40,16 @@ enum Witness<'a> {
 #[derive(Debug)]
 pub enum Error {
     SECPError(secp256k1::Error),
-    BadHex(HexError),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Error::SECPError(error) => {
+                write!(f, "Something weird happened with SECP256k1 - {}", error)
+            }
+        }
+    }
 }
 
 impl From<secp256k1::Error> for Error {
