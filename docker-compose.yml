@@ -1,13 +1,13 @@
 version: '3'
 services:
   trading_service:
-    build: .
-    command: ./trading_service
+    build: ./trading_service
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - BTC_NETWORK=BTCORE_REGTEST
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=debug
+      - RUST_LOG=error,trading_service=debug
+      - RUST_BACKTRACE=1
     ports:
     - "8000:8000"
     depends_on:
@@ -15,7 +15,7 @@ services:
     - bitcoin
 
   exchange_service:
-    build: .
+    build: ./exchange_service
     command: bash -c 'sleep 5 && ./exchange_service'
     environment:
       - TREASURY_SERVICE_URL=http://treasury_service:8000
@@ -27,7 +27,8 @@ services:
       - BITCOIN_RPC_USERNAME=bitcoin
       - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
       - BTC_NETWORK=BTCORE_REGTEST
-      - RUST_LOG=debug
+      - RUST_LOG=error,exchange_service=debug
+      - RUST_BACKTRACE=1
     ports:
     - "8010:8000"
     depends_on:
@@ -35,8 +36,7 @@ services:
     - ethereum
 
   treasury_service:
-    build: .
-    command: ./fake_treasury_service
+    build: ./fake_treasury_service
     environment:
       - ROCKET_ADDRESS=0.0.0.0
     ports:
@@ -50,6 +50,8 @@ services:
 
   bitcoin:
     image: ruimarinho/bitcoin-core
+    logging:
+        driver: none
     command:
       -regtest
       -server

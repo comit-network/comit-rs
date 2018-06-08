@@ -11,5 +11,5 @@ ENV SOLC_BIN=solc
 WORKDIR /source
 COPY . /source
 RUN cargo fetch
-RUN cargo build --release
-WORKDIR /source/target/release
+RUN cargo build
+WORKDIR /source/target/debug
