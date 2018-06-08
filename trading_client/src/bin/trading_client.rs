@@ -8,6 +8,7 @@ extern crate trading_client;
 extern crate uuid;
 
 use std::env::var;
+use std::str::FromStr;
 use std::string::String;
 use structopt::StructOpt;
 use trading_client::offer;
@@ -93,7 +94,12 @@ fn main() {
             symbol,
             order_type,
             amount,
-        } => offer::run(trading_api_url, Symbol::from(symbol), order_type, amount),
+        } => offer::run(
+            trading_api_url,
+            Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
+            order_type,
+            amount,
+        ),
         Opt::Order {
             symbol,
             uid,
@@ -101,7 +107,7 @@ fn main() {
             refund_address,
         } => order::run(
             trading_api_url,
-            Symbol::from(symbol),
+            Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
             uid,
             success_address,
             refund_address,
@@ -112,7 +118,7 @@ fn main() {
             console,
         } => redeem::run(
             trading_api_url,
-            Symbol::from(symbol),
+            Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
             uid,
             RedeemOutput::new(console),
         ),
