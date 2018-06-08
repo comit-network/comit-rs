@@ -7,6 +7,7 @@ services:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - BTC_NETWORK=BTCORE_REGTEST
       - ROCKET_ADDRESS=0.0.0.0
+      - RUST_LOG=debug
     ports:
     - "8000:8000"
     depends_on:
@@ -26,6 +27,7 @@ services:
       - BITCOIN_RPC_USERNAME=bitcoin
       - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
       - BTC_NETWORK=BTCORE_REGTEST
+      - RUST_LOG=debug
     ports:
     - "8010:8000"
     depends_on:
