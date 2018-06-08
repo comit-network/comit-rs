@@ -31,7 +31,7 @@ impl fmt::Display for TradeId {
 pub struct OfferCreated {
     pub uid: TradeId,
     pub symbol: Symbol,
-    pub rate: f32,
+    pub rate: f64,
     pub btc_amount: BitcoinQuantity,
     pub eth_amount: EthereumQuantity,
 }

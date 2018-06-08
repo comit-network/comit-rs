@@ -34,7 +34,7 @@ impl fmt::Display for TradeId {
 pub struct OfferCreated {
     uid: TradeId,
     symbol: Symbol,
-    rate: f32,
+    rate: f64,
     eth_amount: EthereumQuantity,
     btc_amount: BitcoinQuantity,
     // TODO: treasury_expiry_timestamp
@@ -46,8 +46,8 @@ impl From<RateResponseBody> for OfferCreated {
             uid: TradeId(Uuid::new_v4()),
             symbol: Symbol(r.symbol),
             rate: r.rate,
-            eth_amount: EthereumQuantity::from_eth(r.buy_amount as u64),
-            btc_amount: BitcoinQuantity::from_bitcoin(r.sell_amount as u64),
+            eth_amount: EthereumQuantity::from_eth(r.buy_amount),
+            btc_amount: BitcoinQuantity::from_bitcoin(r.sell_amount),
         }
     }
 }
@@ -55,7 +55,7 @@ impl From<RateResponseBody> for OfferCreated {
 impl OfferCreated {
     pub fn new(
         symbol: Symbol,
-        rate: f32,
+        rate: f64,
         eth_amount: EthereumQuantity,
         btc_amount: BitcoinQuantity,
     ) -> Self {

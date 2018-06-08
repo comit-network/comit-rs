@@ -57,7 +57,7 @@ fn post_buy_offers(
 
     let res = treasury_api_client.request_rate(
         Symbol("ETH-BTC".to_string()),
-        offer_request_body.amount.ethereum() as u32,
+        offer_request_body.amount.ethereum(),
     );
     let rate_response_body = match res {
         Ok(rate) => rate,

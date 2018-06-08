@@ -10,10 +10,10 @@ impl ApiClient for FakeApiClient {
     fn request_rate(
         &self,
         symbol: Symbol,
-        buy_amount: u32,
+        buy_amount: u64,
     ) -> Result<RateResponseBody, reqwest::Error> {
         let rate = 0.7;
-        let sell_amount = (buy_amount as f32 * rate).round().abs() as u32;
+        let sell_amount = (buy_amount as f64 * rate).round().abs() as u64;
         Ok(RateResponseBody {
             symbol: symbol.to_string(),
             rate,

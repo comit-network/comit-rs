@@ -13,16 +13,16 @@ use rocket_contrib::Json;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateRequestBody {
     //TODO: make it work with float
-    buy_amount: u32, //ethereum
+    buy_amount: u64, //ethereum
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateResponseBody {
     symbol: String,
-    rate: f32,
-    sell_amount: u32,
+    rate: f64,
+    sell_amount: u64,
     //satoshis
-    buy_amount: u32, //ethereum
+    buy_amount: u64, //ethereum
 }
 
 #[post("/<symbol>", format = "application/json", data = "<rate_request_body>")]
@@ -34,7 +34,7 @@ pub fn post_rates(
     let rate_request_body: RateRequestBody = rate_request_body.into_inner();
     let rate = 0.7;
     let buy_amount = rate_request_body.buy_amount;
-    let sell_amount = (buy_amount as f32 * rate).round().abs() as u32;
+    let sell_amount = (buy_amount as f64 * rate).round().abs() as u64;
     Ok(Json(RateResponseBody {
         symbol,
         rate,

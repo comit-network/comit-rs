@@ -11,14 +11,14 @@ pub struct ExchangeApiUrl(pub String);
 
 #[derive(Serialize, Deserialize)]
 struct OfferRequestBody {
-    amount: u32,
+    amount: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {
     pub uid: TradeId,
     pub symbol: Symbol,
-    pub rate: f32,
+    pub rate: f64,
     pub eth_amount: EthereumQuantity,
     pub btc_amount: BitcoinQuantity,
 }
@@ -42,7 +42,7 @@ pub trait ApiClient {
     fn create_offer(
         &self,
         symbol: Symbol,
-        amount: u32,
+        amount: u64,
     ) -> Result<OfferResponseBody, reqwest::Error>;
     fn create_order(
         &self,
@@ -62,7 +62,7 @@ impl ApiClient for DefaultApiClient {
     fn create_offer(
         &self,
         symbol: Symbol,
-        amount: u32,
+        amount: u64,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let body = OfferRequestBody { amount };
 

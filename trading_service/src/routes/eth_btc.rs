@@ -41,7 +41,7 @@ impl<'a> FromParam<'a> for TradeId {
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
-    amount: u32,
+    amount: u64,
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
@@ -211,7 +211,7 @@ pub fn post_contract_deployed(
 pub struct RedeemDetails {
     address: EthAddress,
     data: bitcoin_htlc::secret::Secret,
-    gas: u32,
+    gas: u64,
 }
 
 #[get("/trades/ETH-BTC/<trade_id>/redeem-orders", format = "application/json")]

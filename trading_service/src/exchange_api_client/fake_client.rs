@@ -14,7 +14,7 @@ impl ApiClient for FakeApiClient {
     fn create_offer(
         &self,
         symbol: Symbol,
-        _amount: u32,
+        _amount: u64,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let offer = OfferResponseBody {
             uid: TradeId::from_uuid(Uuid::new_v4()),

@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Debug, Deserialize)]
 pub struct Rate {
     pub symbol: Symbol,
-    pub rate: f32,
+    pub rate: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
