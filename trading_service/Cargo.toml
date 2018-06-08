@@ -10,16 +10,16 @@ authors = [
 
 [dependencies]
 env_logger = "0.5.10"
-lazy_static = "1.0.0"
+lazy_static = "1.0.1"
 log = "0.4.1"
 rand = "0.4.2"
 reqwest = "0.8.5"
 rocket = "=0.3.10"
 rocket_codegen = "=0.3.10"
 rocket_contrib = "=0.3.10"
-serde = "1.0.51"
-serde_derive = "1.0.51"
-serde_json = "1.0.17"
+serde = "1.0.64"
+serde_derive = "1.0.63"
+serde_json = "1.0.19"
 bitcoin_rpc = { path = "../bitcoin_rpc" }
 bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 bitcoin_htlc = { path = "../bitcoin_htlc" }
