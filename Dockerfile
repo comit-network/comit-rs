@@ -12,7 +12,6 @@ WORKDIR /source
 COPY dependency_cache /source
 COPY Cargo.lock /source
 RUN cargo build --release
-RUN rm -rf src
 COPY . /source
 RUN cargo build --release
 WORKDIR /source/target/release
