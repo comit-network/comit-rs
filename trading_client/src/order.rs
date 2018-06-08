@@ -19,7 +19,7 @@ pub fn run(
 
     let request_to_fund = match res {
         Ok(request_to_fund) => request_to_fund,
-        Err(e) => return Err(format!("Error: {}; order aborted", e)),
+        Err(e) => return Err(format!("{:?}", e)),
     };
 
     Ok(format!(

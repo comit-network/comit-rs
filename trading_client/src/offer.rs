@@ -125,7 +125,7 @@ pub fn run(
 
             let offer = match res {
                 Ok(offer) => offer,
-                Err(e) => return Err(format!("Error: {}; offer aborted", e)),
+                Err(e) => return Err(format!("{:?}", e)),
             };
 
             return Ok(format!(

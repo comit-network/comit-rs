@@ -98,25 +98,32 @@ pub struct RedeemDetails {
     pub gas: u32,
 }
 
+#[derive(Debug)]
+pub enum TradingServiceError {
+    OfferAborted(reqwest::Error),
+    OrderAborted(reqwest::Error),
+    RedeemAborted(reqwest::Error),
+}
+
 pub trait ApiClient {
     fn request_offer(
         &self,
         symbol: &Symbol,
         offer_request: &BuyOfferRequestBody,
-    ) -> Result<OfferResponseBody, reqwest::Error>;
+    ) -> Result<OfferResponseBody, TradingServiceError>;
 
     fn request_order(
         &self,
         symbol: &Symbol,
         uid: Uuid,
         request: &BuyOrderRequestBody,
-    ) -> Result<RequestToFund, reqwest::Error>;
+    ) -> Result<RequestToFund, TradingServiceError>;
 
     fn request_redeem_details(
         &self,
         symbol: Symbol,
         uid: Uuid,
-    ) -> Result<RedeemDetails, reqwest::Error>;
+    ) -> Result<RedeemDetails, TradingServiceError>;
 }
 
 impl ApiClient for DefaultApiClient {
@@ -124,13 +131,14 @@ impl ApiClient for DefaultApiClient {
         &self,
         symbol: &Symbol,
         request: &BuyOfferRequestBody,
-    ) -> Result<OfferResponseBody, reqwest::Error> {
+    ) -> Result<OfferResponseBody, TradingServiceError> {
         let client = reqwest::Client::new();
         client
             .post(format!("{}/trades/{}/buy-offers", self.url.0, symbol).as_str())
             .json(request)
             .send()
             .and_then(|mut res| res.json::<OfferResponseBody>())
+            .map_err(|err| TradingServiceError::OfferAborted(err))
     }
 
     fn request_order(
@@ -138,25 +146,27 @@ impl ApiClient for DefaultApiClient {
         symbol: &Symbol,
         uid: Uuid,
         request: &BuyOrderRequestBody,
-    ) -> Result<RequestToFund, reqwest::Error> {
+    ) -> Result<RequestToFund, TradingServiceError> {
         let client = reqwest::Client::new();
         client
             .post(format!("{}/trades/{}/{}/buy-orders", self.url.0, symbol, uid).as_str())
             .json(request)
             .send()
             .and_then(|mut res| res.json::<RequestToFund>())
+            .map_err(|err| TradingServiceError::OrderAborted(err))
     }
 
     fn request_redeem_details(
         &self,
         symbol: Symbol,
         uid: Uuid,
-    ) -> Result<RedeemDetails, reqwest::Error> {
+    ) -> Result<RedeemDetails, TradingServiceError> {
         let client = reqwest::Client::new();
         client
             .get(format!("{}/trades/{}/{}/redeem-orders", self.url.0, symbol, uid).as_str())
             .send()
             .and_then(|mut res| res.json::<RedeemDetails>())
+            .map_err(|err| TradingServiceError::RedeemAborted(err))
     }
 }
 
