@@ -2,6 +2,7 @@ use offer::Symbol;
 use trading_service_api_client::ApiClient;
 use trading_service_api_client::BuyOrderRequestBody;
 use trading_service_api_client::TradingApiUrl;
+use trading_service_api_client::TradingServiceError;
 use trading_service_api_client::create_client;
 use uuid::Uuid;
 
@@ -11,16 +12,11 @@ pub fn run(
     uid: Uuid,
     success_address: String,
     refund_address: String,
-) -> Result<String, String> {
+) -> Result<String, TradingServiceError> {
     let order_request_body = BuyOrderRequestBody::new(success_address, refund_address);
 
     let client = create_client(&trading_api_url);
-    let res = client.request_order(&symbol, uid, &order_request_body);
-
-    let request_to_fund = match res {
-        Ok(request_to_fund) => request_to_fund,
-        Err(e) => return Err(format!("{:?}", e)),
-    };
+    let request_to_fund = client.request_order(&symbol, uid, &order_request_body)?;
 
     Ok(format!(
         "Trade id: {}\n\

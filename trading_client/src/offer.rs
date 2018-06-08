@@ -7,6 +7,7 @@ use std::str::FromStr;
 use trading_service_api_client::ApiClient;
 use trading_service_api_client::BuyOfferRequestBody;
 use trading_service_api_client::TradingApiUrl;
+use trading_service_api_client::TradingServiceError;
 use trading_service_api_client::create_client;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -107,19 +108,14 @@ pub fn run(
     symbol: Symbol,
     order_type: OrderType,
     amount: u32,
-) -> Result<String, String> {
+) -> Result<String, TradingServiceError> {
     let offer_request_body = BuyOfferRequestBody::new(amount);
 
     match order_type {
         OrderType::Sell => panic!("Only buy orders are currently supported"),
         OrderType::Buy => {
             let client = create_client(&trading_api_url);
-            let res = client.request_offer(&symbol, &offer_request_body);
-
-            let offer = match res {
-                Ok(offer) => offer,
-                Err(e) => return Err(format!("{:?}", e)),
-            };
+            let offer = client.request_offer(&symbol, &offer_request_body)?;
 
             return Ok(format!(
                 "Trade id: {}\n\

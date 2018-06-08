@@ -4,6 +4,7 @@ use std::fmt;
 use std::ops::Add;
 use trading_service_api_client::ApiClient;
 use trading_service_api_client::TradingApiUrl;
+use trading_service_api_client::TradingServiceError;
 use trading_service_api_client::create_client;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
@@ -57,15 +58,10 @@ pub fn run(
     symbol: Symbol,
     uid: Uuid,
     output_type: RedeemOutput,
-) -> Result<String, String> {
+) -> Result<String, TradingServiceError> {
     let client = create_client(&trading_api_url);
 
-    let res = client.request_redeem_details(symbol, uid);
-
-    let redeem_details = match res {
-        Ok(redeem_details) => redeem_details,
-        Err(e) => return Err(format!("{:?}", e)),
-    };
+    let redeem_details = client.request_redeem_details(symbol, uid)?;
 
     match output_type {
         RedeemOutput::URL => {
