@@ -3,8 +3,6 @@ use NewTransactionOutput;
 use bitcoincore::TxOutConfirmations;
 use jsonrpc::HTTPError;
 use jsonrpc::RpcResponse;
-use serde::de::DeserializeOwned;
-use std::collections::HashMap;
 use types::*;
 
 pub struct BitcoinStubClient {}
@@ -15,6 +13,7 @@ impl BitcoinStubClient {
     }
 }
 
+#[allow(unused_variables)]
 impl BitcoinRpcApi for BitcoinStubClient {
     fn add_multisig_address(
         &self,

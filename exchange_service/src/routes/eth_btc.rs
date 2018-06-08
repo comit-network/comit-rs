@@ -1,4 +1,3 @@
-use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_wallet;
 use common_types::BitcoinQuantity;
@@ -184,8 +183,6 @@ pub fn post_buy_orders_fundings(
 
     let order_taken = event_store.get_order_taken_event(&trade_id)?;
 
-    //    let offer_created = event_store.get_offer_created_event(&trade_id)?;
-
     let htlc = ethereum_htlc::Htlc::new(
         order_taken.exchange_contract_time_lock(),
         order_taken.exchange_refund_address(),
@@ -214,6 +211,7 @@ pub fn post_buy_orders_fundings(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin_htlc::Network;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_wallet::fake::StaticFakeWallet;
     use gas_price_service::StaticGasPriceService;
@@ -284,7 +282,7 @@ mod tests {
     struct StaticEthereumApi;
 
     impl BlockingEthereumApi for StaticEthereumApi {
-        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
+        fn send_raw_transaction(&self, _rlp: Bytes) -> Result<H256, web3::Error> {
             Ok(H256::new())
         }
     }
@@ -345,6 +343,7 @@ mod tests {
             assert_eq!(response.status(), Status::Ok);
 
             #[derive(Deserialize)]
+            #[allow(dead_code)]
             struct Response {
                 exchange_contract_time_lock: i64,
             }
