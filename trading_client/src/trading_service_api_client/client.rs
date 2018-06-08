@@ -1,5 +1,6 @@
 use bitcoin_rpc;
 use common_types;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use offer::Symbol;
 use reqwest;
 use std::fmt;
@@ -50,9 +51,10 @@ impl BuyOfferRequestBody {
 pub struct OfferResponseBody {
     pub uid: TradeId,
     pub symbol: Symbol,
-    pub amount: u32,
     pub rate: f32,
-    pub sell_amount: u32,
+    //TODO: trading-cli should be agnostic of the currencies
+    pub eth_amount: EthereumQuantity,
+    pub btc_amount: BitcoinQuantity,
 }
 
 #[derive(Deserialize, Serialize)]

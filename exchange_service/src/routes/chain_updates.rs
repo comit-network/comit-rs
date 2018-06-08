@@ -11,6 +11,8 @@ use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
 use std::sync::Arc;
 
+//TODO: move back to eth_btc.rs
+
 #[derive(Deserialize)]
 pub struct RedeemBTCNotificationBody {
     pub secret: Secret,

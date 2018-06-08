@@ -1,6 +1,7 @@
 use bitcoin_htlc::Htlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
@@ -30,8 +31,9 @@ impl fmt::Display for TradeId {
 pub struct OfferCreated {
     pub uid: TradeId,
     pub symbol: Symbol,
-    pub rate: f32, // Actually need to specify the exact amounts of each currency
-    pub sell_amount: u32,
+    pub rate: f32,
+    pub btc_amount: BitcoinQuantity,
+    pub eth_amount: EthereumQuantity,
 }
 
 impl From<OfferResponseBody> for OfferCreated {
@@ -40,7 +42,8 @@ impl From<OfferResponseBody> for OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            sell_amount: offer.sell_amount,
+            btc_amount: offer.btc_amount,
+            eth_amount: offer.eth_amount,
         }
     }
 }

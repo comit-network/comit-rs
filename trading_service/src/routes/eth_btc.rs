@@ -4,6 +4,7 @@ use bitcoin_htlc;
 use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use event_store;
 use event_store::ContractDeployed;
 use event_store::EventStore;
@@ -83,7 +84,8 @@ pub struct BuyOrderRequestBody {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     address_to_fund: bitcoin_rpc::Address,
-    sell_amount: u32,
+    btc_amount: BitcoinQuantity,
+    eth_amount: EthereumQuantity,
 }
 
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
@@ -180,7 +182,8 @@ pub fn post_buy_orders(
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,
-        sell_amount: offer.sell_amount,
+        eth_amount: offer.eth_amount,
+        btc_amount: offer.btc_amount,
     }))
 }
 

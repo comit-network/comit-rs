@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::{Add, Sub};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
@@ -34,6 +35,12 @@ impl Sub for BitcoinQuantity {
     }
 }
 
+impl fmt::Display for BitcoinQuantity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{} BTC", self.bitcoin())
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct EthereumQuantity(u64);
 
@@ -44,6 +51,12 @@ impl EthereumQuantity {
 
     pub fn ethereum(&self) -> u64 {
         self.0
+    }
+}
+
+impl fmt::Display for EthereumQuantity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{} ETH", self.ethereum())
     }
 }
 
@@ -58,5 +71,19 @@ mod test {
     #[test]
     fn a_bitcoin_is_a_hundred_million_sats() {
         assert_eq!(BitcoinQuantity::from_bitcoin(1).satoshi(), 100_000_000);
+    }
+
+    #[test]
+    fn display_bitcoin() {
+        assert_eq!(format!("{}", BitcoinQuantity::from_bitcoin(42)), "42 BTC");
+        assert_eq!(
+            format!("{}", BitcoinQuantity::from_satoshi(200_000_000)),
+            "2 BTC"
+        );
+    }
+
+    #[test]
+    fn display_ethereum() {
+        assert_eq!(format!("{}", EthereumQuantity::from_eth(9000)), "9000 ETH");
     }
 }

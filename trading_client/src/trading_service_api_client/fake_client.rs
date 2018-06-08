@@ -1,6 +1,7 @@
 use super::client::ApiClient;
 use bitcoin_rpc;
 use common_types;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use offer::Symbol;
 use reqwest;
 use std::str::FromStr;
@@ -25,10 +26,10 @@ impl ApiClient for FakeApiClient {
         let symbol: Symbol = symbol.clone();
         Ok(OfferResponseBody {
             uid: TradeId::from_str("a83aac12-0c78-417e-88e4-1a2948c6d538").unwrap(),
-            symbol: symbol,
-            amount: 100,
-            rate: 0.6876231,
-            sell_amount: 145,
+            symbol,
+            rate: 0.07,
+            btc_amount: BitcoinQuantity::from_bitcoin(7),
+            eth_amount: EthereumQuantity::from_eth(100),
         })
     }
     fn request_order(

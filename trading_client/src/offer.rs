@@ -152,17 +152,10 @@ pub fn run(
             return Ok(format!(
                 "Trade id: {}\n\
                  The offered exchange rate is {} {}\n\
-                 Sell {} {} for {} {}\n\
+                 Sell {} for {}\n\
                  To accept the offer, run:\n\
                  trading_client accept --uid={}",
-                offer.uid,
-                offer.rate,
-                symbol,
-                offer.sell_amount,
-                symbol.get_base_currency(),
-                offer.amount,
-                symbol.get_traded_currency(),
-                offer.uid,
+                offer.uid, offer.rate, symbol, offer.btc_amount, offer.eth_amount, offer.uid,
             ));
         }
     }
@@ -181,8 +174,8 @@ mod tests {
         assert_eq!(
             response,
             "Trade id: a83aac12-0c78-417e-88e4-1a2948c6d538
-The offered exchange rate is 0.6876231 ETH-BTC
-Sell 145 BTC for 100 ETH
+The offered exchange rate is 0.07 ETH-BTC
+Sell 7 BTC for 100 ETH
 To accept the offer, run:
 trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
         )

@@ -1,4 +1,5 @@
 use bitcoin_rpc;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use event_store::TradeId;
 use reqwest;
 use secret::SecretHash;
@@ -17,9 +18,9 @@ struct OfferRequestBody {
 pub struct OfferResponseBody {
     pub uid: TradeId,
     pub symbol: Symbol,
-    pub amount: u32,
     pub rate: f32,
-    pub sell_amount: u32,
+    pub eth_amount: EthereumQuantity,
+    pub btc_amount: BitcoinQuantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
