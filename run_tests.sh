@@ -16,6 +16,7 @@ export BITCOIN_RPC_URL="http://localhost:18443"
 export BITCOIN_RPC_USERNAME="bitcoin"
 export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 export GANACHE_ENDPOINT="http://localhost:8545"
+export ETHEREUM_NETWORK_ID=42
 
 bitcoin_docker_id="$(sh .docker/bitcoind-regtest)";
 ganache_docker_id="$(sh .docker/ganache)";
