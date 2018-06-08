@@ -122,7 +122,7 @@ pub fn run(
                  The offered exchange rate is {} {}\n\
                  Sell {} for {}\n\
                  To accept the offer, run:\n\
-                 trading_client accept --uid={}",
+                 trading_client order --symbol=ETH-BTC --uid={} --refund-address=<your BTC address> --success-address=<your ETH address>",
                 offer.uid, offer.rate, symbol, offer.btc_amount, offer.eth_amount, offer.uid,
             ));
         }
@@ -145,7 +145,7 @@ mod tests {
 The offered exchange rate is 0.07 ETH-BTC
 Sell 7 BTC for 100 ETH
 To accept the offer, run:
-trading_client accept --uid=a83aac12-0c78-417e-88e4-1a2948c6d538"
+trading_client order --symbol=ETH-BTC --uid=a83aac12-0c78-417e-88e4-1a2948c6d538 --refund-address=<your BTC address> --success-address=<your ETH address>"
         )
     }
 }
