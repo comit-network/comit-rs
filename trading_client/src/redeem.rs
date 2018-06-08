@@ -44,7 +44,7 @@ impl EthereumPaymentURL {
             .add("ethereum:")
             .add("0x") // We receive a non-prefixed address
             .add(&address)
-            //.push_str("@").push_str(chain_id) // TODO: Do we want it?
+            //.push_str("@").push_str(chain_id) // TODO: must be implemented
             .add("?value=0")
             .add("&gas=").add(&gas.to_string())
             .add("&bytes32=").add(format!("{:x}", secret).as_str()),
