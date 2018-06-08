@@ -85,10 +85,11 @@ impl BuyOrderRequestBody {
     }
 }
 
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     pub address_to_fund: bitcoin_rpc::Address,
-    pub sell_amount: u64,
+    pub btc_amount: BitcoinQuantity,
+    pub eth_amount: EthereumQuantity,
 }
 
 #[derive(Deserialize)]

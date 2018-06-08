@@ -42,7 +42,8 @@ impl ApiClient for FakeApiClient {
             address_to_fund: bitcoin_rpc::Address::from(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ),
-            sell_amount: 1001,
+            btc_amount: BitcoinQuantity::from_bitcoin(1001),
+            eth_amount: EthereumQuantity::from_eth(140),
         })
     }
     fn request_redeem_details(
