@@ -2,13 +2,13 @@ use bitcoin_rpc;
 use common_types;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use offer::Symbol;
+use regex::Regex;
 use reqwest;
 use std::fmt;
 use std::str::FromStr;
 use uuid::ParseError;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
-use regex::Regex;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -159,7 +159,6 @@ impl ApiClient for DefaultApiClient {
             .and_then(|mut res| res.json::<RedeemDetails>())
     }
 }
-
 
 #[cfg(test)]
 mod tests {

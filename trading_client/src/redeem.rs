@@ -76,7 +76,7 @@ pub fn run(
             );
             return Ok(format!(
                 "Trade id: {}\n\
-                 To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n{}",
+                 In order to complete the trade, please sign and send the following transaction:\n{}",
                 uid, url
             ));
         }
@@ -103,7 +103,7 @@ mod tests {
         assert_eq!(
             redeem_details,
             "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1\n\
-             To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n\
+             In order to complete the trade, please sign and send the following transaction:\n\
              ethereum:0x00a329c0648769a73afac7f9381e08fb43dbea72?value=0&gas=20000&bytes32=1234567890123456789012345678901212345678901234567890123456789012"
         )
     }
