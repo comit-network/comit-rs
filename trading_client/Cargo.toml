@@ -10,6 +10,7 @@ authors = [
 
 [dependencies]
 bitcoin_rpc = { path = "../bitcoin_rpc" }
+common_types = { path = "../common_types"}
 lazy_static = "1.0.0"
 reqwest = "0.8.5"
 serde = "1.0.51"

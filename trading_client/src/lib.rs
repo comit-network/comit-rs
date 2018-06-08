@@ -1,4 +1,5 @@
 extern crate bitcoin_rpc;
+extern crate common_types;
 extern crate reqwest;
 extern crate serde;
 #[macro_use]

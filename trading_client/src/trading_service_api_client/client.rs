@@ -1,4 +1,5 @@
 use bitcoin_rpc;
+use common_types;
 use offer::Symbol;
 use reqwest;
 use std::fmt;
@@ -91,8 +92,8 @@ pub struct RequestToFund {
 
 #[derive(Deserialize)]
 pub struct RedeemDetails {
-    pub uid: Uuid,
     pub address: EthAddress,
+    pub data: common_types::secret::Secret,
     pub gas: u32,
 }
 

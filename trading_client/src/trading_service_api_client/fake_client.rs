@@ -1,5 +1,6 @@
 use super::client::ApiClient;
 use bitcoin_rpc;
+use common_types;
 use offer::Symbol;
 use reqwest;
 use std::str::FromStr;
@@ -49,8 +50,10 @@ impl ApiClient for FakeApiClient {
         _uid: Uuid,
     ) -> Result<RedeemDetails, reqwest::Error> {
         Ok(RedeemDetails {
-            uid: Uuid::new_v4(),
             address: EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap(),
+            data: common_types::secret::Secret::from_str(
+                "1234567890123456789012345678901212345678901234567890123456789012",
+            ).unwrap(),
             gas: 20_000,
         })
     }

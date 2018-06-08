@@ -1,3 +1,4 @@
+use common_types;
 use offer::Symbol;
 use std::fmt;
 use std::ops::Add;
@@ -31,8 +32,13 @@ impl fmt::Display for EthereumPaymentURL {
 }
 
 impl EthereumPaymentURL {
-    pub fn new(address: &EthAddress, gas: u32) -> EthereumPaymentURL {
+    pub fn new(
+        address: &EthAddress,
+        gas: u32,
+        secret: common_types::secret::Secret,
+    ) -> EthereumPaymentURL {
         let address = format!("{:x}", address);
+        // See https://eips.ethereum.org/EIPS/eip-681
         EthereumPaymentURL(
             String::new()
             .add("ethereum:")
@@ -40,7 +46,8 @@ impl EthereumPaymentURL {
             .add(&address)
             //.push_str("@").push_str(chain_id) // TODO: Do we want it?
             .add("?value=0")
-            .add("&gas=").add(&gas.to_string()),
+            .add("&gas=").add(&gas.to_string())
+            .add("&bytes32=").add(format!("{:x}", secret).as_str()),
         )
     }
 }
@@ -62,8 +69,11 @@ pub fn run(
 
     match output_type {
         RedeemOutput::URL => {
-            // See https://eips.ethereum.org/EIPS/eip-681
-            let mut url = EthereumPaymentURL::new(&redeem_details.address, redeem_details.gas);
+            let mut url = EthereumPaymentURL::new(
+                &redeem_details.address,
+                redeem_details.gas,
+                redeem_details.data,
+            );
             return Ok(format!(
                 "Trade id: {}\n\
                  To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n{}",
@@ -88,11 +98,13 @@ mod tests {
 
         let redeem_details = run(trading_api_url, symbol, uid, RedeemOutput::URL).unwrap();
 
+        println!("{}", redeem_details);
+
         assert_eq!(
             redeem_details,
             "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1\n\
              To redeem your ETH, proceed with a payment of 0 ETH using the following link:\n\
-             ethereum:0x00a329c0648769a73afac7f9381e08fb43dbea72?value=0&gas=20000"
+             ethereum:0x00a329c0648769a73afac7f9381e08fb43dbea72?value=0&gas=20000&bytes32=1234567890123456789012345678901212345678901234567890123456789012"
         )
     }
 }
