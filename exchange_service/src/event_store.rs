@@ -1,6 +1,8 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
+use bitcoin_wallet;
 use common_types::secret::SecretHash;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -8,7 +10,7 @@ use std::time::Duration;
 use std::time::SystemTime;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
-use web3::types::Address;
+use web3::types::Address as EthAddress;
 use web3::types::H256;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -30,23 +32,34 @@ impl fmt::Display for TradeId {
 pub struct OfferCreated {
     uid: TradeId,
     symbol: Symbol,
-    amount: u32,
     rate: f32,
+    eth_amount: EthereumQuantity,
+    btc_amount: BitcoinQuantity,
     // TODO: treasury_expiry_timestamp
 }
 
 impl OfferCreated {
-    pub fn new(symbol: Symbol, amount: u32, rate: f32) -> Self {
+    pub fn new(
+        symbol: Symbol,
+        rate: f32,
+        eth_amount: EthereumQuantity,
+        btc_amount: BitcoinQuantity,
+    ) -> Self {
         OfferCreated {
             uid: TradeId(Uuid::new_v4()),
             symbol,
-            amount,
+            eth_amount,
+            btc_amount,
             rate,
         }
     }
+
+    pub fn btc_amount(&self) -> BitcoinQuantity {
+        self.btc_amount
+    }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Clone)]
 pub struct OrderTaken {
     uid: TradeId,
 
@@ -55,10 +68,11 @@ pub struct OrderTaken {
     exchange_contract_time_lock: SystemTime,
 
     client_refund_address: bitcoin_rpc::Address,
-    client_success_address: Address,
+    client_success_address: EthAddress,
 
-    exchange_refund_address: Address,
+    exchange_refund_address: EthAddress,
     exchange_success_address: bitcoin_rpc::Address,
+    exchange_success_private_key: bitcoin_wallet::PrivateKey,
 }
 
 impl OrderTaken {
@@ -69,9 +83,10 @@ impl OrderTaken {
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_rpc::Address,
-        client_success_address: Address,
-        exchange_refund_address: Address,
+        client_success_address: EthAddress,
+        exchange_refund_address: EthAddress,
         exchange_success_address: bitcoin_rpc::Address,
+        exchange_success_private_key: bitcoin_wallet::PrivateKey,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
 
@@ -86,6 +101,7 @@ impl OrderTaken {
             client_success_address,
             exchange_refund_address,
             exchange_success_address,
+            exchange_success_private_key,
         }
     }
 
@@ -93,7 +109,7 @@ impl OrderTaken {
         self.exchange_success_address.clone()
     }
 
-    pub fn exchange_refund_address(&self) -> Address {
+    pub fn exchange_refund_address(&self) -> EthAddress {
         self.exchange_refund_address
     }
 
@@ -105,12 +121,20 @@ impl OrderTaken {
         self.client_refund_address.clone()
     }
 
-    pub fn client_success_address(&self) -> Address {
+    pub fn client_success_address(&self) -> EthAddress {
         self.client_success_address.clone()
     }
 
     pub fn contract_secret_lock(&self) -> &SecretHash {
         &self.contract_secret_lock
+    }
+
+    pub fn client_contract_time_lock(&self) -> &bitcoin_rpc::BlockHeight {
+        &self.client_contract_time_lock
+    }
+
+    pub fn exchange_success_private_key(&self) -> &bitcoin_wallet::PrivateKey {
+        &self.exchange_success_private_key
     }
 }
 
@@ -133,14 +157,24 @@ impl ContractDeployed {
 pub struct TradeFunded {
     uid: TradeId,
     transaction_id: bitcoin_rpc::TransactionId,
+    vout: u32,
 }
 
 impl TradeFunded {
-    pub fn new(uid: TradeId, transaction_id: bitcoin_rpc::TransactionId) -> Self {
+    pub fn new(uid: TradeId, transaction_id: bitcoin_rpc::TransactionId, vout: u32) -> Self {
         TradeFunded {
             uid,
             transaction_id,
+            vout,
         }
+    }
+
+    pub fn transaction_id(&self) -> &bitcoin_rpc::TransactionId {
+        &self.transaction_id
+    }
+
+    pub fn vout(&self) -> u32 {
+        self.vout
     }
 }
 
@@ -260,28 +294,32 @@ impl EventStore {
         Ok(())
     }
 
-    pub fn get_offer_created_event(&self, uid: &TradeId) -> Option<OfferCreated> {
+    pub fn get_offer_created_event(&self, uid: &TradeId) -> Result<OfferCreated, Error> {
         let events = self.offers.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
-    pub fn get_order_taken_event(&self, uid: &TradeId) -> Option<OrderTaken> {
+    pub fn get_order_taken_event(&self, uid: &TradeId) -> Result<OrderTaken, Error> {
         let events = self.order_taken.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
-    pub fn get_contract_deployed_event(&self, uid: &TradeId) -> Option<ContractDeployed> {
+    pub fn get_contract_deployed_event(&self, uid: &TradeId) -> Result<ContractDeployed, Error> {
         let events = self.contract_deployed.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
-    pub fn get_trade_funded_event(&self, uid: &TradeId) -> Option<TradeFunded> {
+    pub fn get_trade_funded_event(&self, uid: &TradeId) -> Result<TradeFunded, Error> {
         let events = self.trade_funded.read().unwrap();
-
-        events.get(uid).map(|event| event.clone())
+        events
+            .get(uid)
+            .map_or(Err(Error::UnexpectedState), |event| Ok(event.clone()))
     }
 
     /*pub fn get_trade(&self, id: &Uuid) -> Option<TradeState> {

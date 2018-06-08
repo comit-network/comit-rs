@@ -75,7 +75,7 @@ impl FromStr for SecretHash {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct Secret {
     secret: [u8; SHA256_DIGEST_LENGTH],
     hash: Option<SecretHash>,
@@ -90,7 +90,7 @@ impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {
 impl Secret {
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
         let random_bytes = rng.gen_random_bytes(SHA256_DIGEST_LENGTH);
-        let mut secret = [0; 32];
+        let mut secret = [0; SHA256_DIGEST_LENGTH];
         secret.copy_from_slice(&random_bytes[..]);
         Secret::from(secret)
     }
@@ -114,6 +114,45 @@ impl Secret {
 
     pub fn raw_secret(&self) -> &[u8; SHA256_DIGEST_LENGTH] {
         &self.secret
+    }
+}
+
+impl FromStr for Secret {
+    type Err = hex::FromHexError;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        let vec = hex::decode(s)?;
+        let mut secret = [0; SHA256_DIGEST_LENGTH];
+        secret.copy_from_slice(&vec[..]);
+        Ok(Secret::from(secret))
+    }
+}
+
+impl<'de> Deserialize<'de> for Secret {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = Secret;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("a hex encoded 32 byte value")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Secret, E>
+            where
+                E: de::Error,
+            {
+                Secret::from_str(v).map_err(|_| {
+                    de::Error::invalid_value(de::Unexpected::Str(v), &"hex encoded bytes")
+                })
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
     }
 }
 

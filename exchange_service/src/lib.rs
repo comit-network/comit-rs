@@ -8,6 +8,9 @@ extern crate rocket_contrib;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate bitcoin;
+extern crate bitcoin_htlc;
+extern crate bitcoin_wallet;
 extern crate common_types;
 extern crate ethereum_htlc;
 extern crate ethereum_wallet;

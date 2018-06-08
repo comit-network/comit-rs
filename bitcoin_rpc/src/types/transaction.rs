@@ -1,22 +1,85 @@
+use bitcoin;
+use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
+use bitcoin::network::serialize::serialize_hex;
+use bitcoin::util::hash::{HexError, Sha256dHash};
+use serde::de;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::collections::HashMap;
+use std::fmt;
+use std::str::FromStr;
 use types::*;
 
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub struct TransactionId(String);
+#[derive(Debug, PartialEq, Clone)]
+pub struct TransactionId(Sha256dHash);
 
-impl Into<String> for TransactionId {
-    fn into(self) -> String {
-        self.0
+impl fmt::Display for TransactionId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.write_str(self.0.to_string().as_ref())
     }
 }
 
-from_str!(TransactionId);
+impl<'de> Deserialize<'de> for TransactionId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = TransactionId;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("a hex encoded 32 byte value")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<TransactionId, E>
+            where
+                E: de::Error,
+            {
+                TransactionId::from_str(v).map_err(|hexerr| E::custom(format!("{}", hexerr)))
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl Serialize for TransactionId {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.be_hex_string().as_str())
+    }
+}
+
+impl From<TransactionId> for Sha256dHash {
+    fn from(txid: TransactionId) -> Self {
+        txid.0
+    }
+}
+
+impl FromStr for TransactionId {
+    type Err = HexError;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        Sha256dHash::from_hex(s).map(TransactionId)
+    }
+}
 
 /// Currently the internal representation is the serialized string
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
 /// We will need serializers and deserializers then.
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct SerializedRawTransaction(String);
+
+impl SerializedRawTransaction {
+    pub fn from_bitcoin_transaction(
+        transaction: BitcoinTransaction,
+    ) -> Result<Self, bitcoin::util::Error> {
+        serialize_hex(&transaction).map(SerializedRawTransaction)
+    }
+}
 
 from_str!(SerializedRawTransaction);
 
@@ -312,7 +375,7 @@ mod tests {
         let tx: DecodedRawTransaction = serde_json::from_str(json).unwrap();
 
         assert_eq!(tx, DecodedRawTransaction {
-            txid: TransactionId::from("52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46"),
+            txid: TransactionId::from_str("52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46").unwrap(),
             hash: "52309405287e737cf412fc42883d65a392ab950869fae80b2a5f1e33326aca46".to_string(),
             size: 223,
             vsize: 223,
@@ -320,7 +383,7 @@ mod tests {
             locktime: 0,
             vin: vec![
                 TransactionInput {
-                    txid: Some(TransactionId::from("2ac0daff49a4ff82a35a4864797f99f23c396b0529c5ba1e04b3d7b97521feba")),
+                    txid: Some(TransactionId::from_str("2ac0daff49a4ff82a35a4864797f99f23c396b0529c5ba1e04b3d7b97521feba").unwrap()),
                     vout: Some(0),
                     script_sig: Some(ScriptSig {
                         asm: "3044022013d212c22f0b46bb33106d148493b9a9723adb2c3dd3a3ebe3a9c9e3b95d8cb00220461661710202fbab550f973068af45c294667fc4dc526627a7463eb23ab39e9b[ALL] 0479be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8".to_string(),
@@ -399,7 +462,7 @@ mod tests {
         let tx: VerboseRawTransaction = serde_json::from_str(json).unwrap();
 
         assert_eq!(tx, VerboseRawTransaction {
-            txid: TransactionId::from("96e038ae072e3328cc3fe7dfbac8748127a26335461f8b61bb2082a67c230e38"),
+            txid: TransactionId::from_str("96e038ae072e3328cc3fe7dfbac8748127a26335461f8b61bb2082a67c230e38").unwrap(),
             hash: "b1826b1f6514187abcfcb95cdc870d74125bebaa408e3bab015139990f4c1f5b".to_string(),
             size: 184,
             vsize: 157,
@@ -469,9 +532,9 @@ mod tests {
         assert_eq!(
             utxo,
             UnspentTransactionOutput {
-                txid: TransactionId::from(
+                txid: TransactionId::from_str(
                     "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a"
-                ),
+                ).unwrap(),
                 vout: 1,
                 address: Some(Address::from("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe")),
                 account: Some(String::from("test label")),

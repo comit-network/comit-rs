@@ -1,4 +1,8 @@
+use bitcoin_htlc::Network;
 use bitcoin_rpc;
+use bitcoin_wallet;
+use common_types::BitcoinQuantity;
+use common_types::EthereumQuantity;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -16,6 +20,7 @@ use rocket::http::RawStr;
 use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
@@ -40,7 +45,7 @@ impl From<event_store::Error> for BadRequest<String> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
-    pub amount: u32,
+    pub amount: EthereumQuantity,
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
@@ -65,7 +70,12 @@ fn post_buy_offers(
         }
     };
 
-    let offer_event = OfferCreated::new(rate.symbol, offer_request_body.amount, rate.rate);
+    let offer_event = OfferCreated::new(
+        rate.symbol,
+        rate.rate,
+        offer_request_body.amount,
+        BitcoinQuantity::from_bitcoin(1),
+    ); //TODO: Correctly calculate!
 
     match event_store.store_offer(offer_event.clone()) {
         Ok(_) => (),
@@ -133,8 +143,10 @@ pub fn post_buy_orders(
         order_request_body.client_success_address,
         "1084d2C416fcc39564a4700a9B231270d463C5eA".into(),
         // TODO: retrieve and use real address
-        // This should never be used. Private key is: 'cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8'
         bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
+        bitcoin_wallet::PrivateKey::from_str(
+            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
+        ).unwrap(),
     );
 
     match event_store.store_order_taken(order_taken.clone()) {
@@ -152,6 +164,7 @@ pub fn post_buy_orders(
 #[derive(Deserialize)]
 pub struct BuyOrderHtlcFundedNotification {
     transaction_id: bitcoin_rpc::TransactionId,
+    vout: u32,
 }
 
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded", format = "application/json",
@@ -165,26 +178,13 @@ pub fn post_buy_orders_fundings(
     let trade_funded = TradeFunded::new(
         trade_id,
         buy_order_htlc_funded_notification.transaction_id.clone(),
+        buy_order_htlc_funded_notification.vout,
     );
     event_store.store_trade_funded(trade_funded)?;
 
-    let order_taken = match event_store.get_order_taken_event(&trade_id) {
-        Some(event) => event,
-        None => {
-            return Err(BadRequest(Some(
-                "Trade is not the correct state".to_string(),
-            )))
-        }
-    };
+    let order_taken = event_store.get_order_taken_event(&trade_id)?;
 
-    let offer_created = match event_store.get_offer_created_event(&trade_id) {
-        Some(event) => event,
-        None => {
-            return Err(BadRequest(Some(
-                "Trade is not the correct state".to_string(),
-            )))
-        }
-    };
+    let offer_created = event_store.get_offer_created_event(&trade_id)?;
 
     let htlc = ethereum_htlc::Htlc::new(
         order_taken.exchange_contract_time_lock(),
@@ -257,7 +257,8 @@ mod tests {
             .header(ContentType::JSON)
             .body(
                 r#"{
-                    "transaction_id": "a02e9dc0ddc3d8200cc4be0e40a1573519a1a1e9b15e0c4c296fcaa65da80d43"
+                    "transaction_id": "a02e9dc0ddc3d8200cc4be0e40a1573519a1a1e9b15e0c4c296fcaa65da80d43",
+                    "vout" : 0
                   }"#,
             );
         request.dispatch()
@@ -298,6 +299,8 @@ mod tests {
                 Arc::new(StaticEthereumApi),
                 0,
             )),
+            Arc::new(bitcoin_rpc::BitcoinStubClient::new()),
+            Network::BitcoinCoreRegtest,
         );
         rocket::local::Client::new(rocket).unwrap()
     }
@@ -336,8 +339,6 @@ mod tests {
 
             offer_response["uid"].as_str().unwrap().to_string()
         };
-
-        println!("{}", uid);
 
         {
             let mut response = request_order(&mut client, &uid);
