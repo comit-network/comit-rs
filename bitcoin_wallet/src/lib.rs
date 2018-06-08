@@ -10,13 +10,11 @@ pub use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::util::address::Address;
 pub use bitcoin::util::privkey::Privkey as PrivateKey;
-use bitcoin_rpc::BitcoinRpcApi;
 use secp256k1::Secp256k1;
 
 use bitcoin::blockdata::transaction::TxIn;
 use bitcoin::blockdata::transaction::TxOut;
 use bitcoin::util::bip143::SighashComponents;
-use bitcoin::util::hash::HexError;
 use bitcoin_rpc::TransactionId;
 use common_types::BitcoinQuantity;
 use common_types::secret::Secret;
@@ -186,6 +184,7 @@ mod tests {
     use bitcoin::network::constants::Network;
     use bitcoin::network::serialize::serialize_hex;
     use bitcoin::util::privkey::Privkey;
+    use bitcoin_rpc::BitcoinRpcApi;
     use std::env::var;
     use std::str::FromStr;
 

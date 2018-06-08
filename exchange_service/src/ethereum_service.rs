@@ -130,7 +130,7 @@ mod tests {
     }
 
     impl BlockingEthereumApi for EthereumApiMock {
-        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
+        fn send_raw_transaction(&self, _rlp: Bytes) -> Result<H256, web3::Error> {
             self.result.clone()
         }
     }
