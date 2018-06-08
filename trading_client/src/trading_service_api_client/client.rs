@@ -8,6 +8,7 @@ use std::str::FromStr;
 use uuid::ParseError;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
+use regex::Regex;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -68,14 +69,12 @@ impl BuyOrderRequestBody {
         client_success_address: String,
         client_refund_address: String,
     ) -> BuyOrderRequestBody {
-        let mut client_success_address = client_success_address.clone();
-        if client_success_address.starts_with("0x") {
-            // Need to strip it out
-            client_success_address.remove(0);
-            client_success_address.remove(0);
-        };
+        let client_success_address = client_success_address.clone();
 
-        let client_success_address = EthAddress::from_str(client_success_address.as_str())
+        let re = Regex::new("^0x").unwrap();
+        let client_success_address = re.replace(&client_success_address.as_str(), "");
+
+        let client_success_address = EthAddress::from_str(&client_success_address)
             .expect("Could not convert the success address");
         let client_refund_address = bitcoin_rpc::Address::from(client_refund_address.as_str());
 
@@ -159,4 +158,32 @@ impl ApiClient for DefaultApiClient {
             .send()
             .and_then(|mut res| res.json::<RedeemDetails>())
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn given_an_hex_address_with_0x_should_remove_0x() {
+        let address = "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
+        let refund_address = "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg".to_string();
+        let order_request_body = BuyOrderRequestBody::new(address, refund_address);
+
+        let eth_address = EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap();
+        assert_eq!(order_request_body.client_success_address, eth_address)
+    }
+
+    #[test]
+    fn given_an_hex_address_without_0x_should_return_same_address() {
+        let address = "00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
+        let refund_address = "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg".to_string();
+        let order_request_body = BuyOrderRequestBody::new(address, refund_address);
+
+        let eth_address = EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap();
+        assert_eq!(order_request_body.client_success_address, eth_address)
+    }
+
 }
