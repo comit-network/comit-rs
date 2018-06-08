@@ -64,7 +64,7 @@ pub fn run(
 
     let redeem_details = match res {
         Ok(redeem_details) => redeem_details,
-        Err(e) => return Err(format!("Error: {}; Redeem aborted", e)),
+        Err(e) => return Err(format!("{:?}", e)),
     };
 
     match output_type {
