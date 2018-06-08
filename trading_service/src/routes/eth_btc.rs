@@ -192,15 +192,10 @@ pub struct ContractDeployedRequestBody {
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed", format = "application/json",
        data = "<contract_deployed_request_body>")]
 pub fn post_contract_deployed(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     contract_deployed_request_body: Json<ContractDeployedRequestBody>,
     event_store: State<EventStore>,
 ) -> Result<(), BadRequest<String>> {
-    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
-        Ok(trade_id) => trade_id,
-        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
-    };
-
     event_store.store_contract_deployed(ContractDeployed {
         uid: trade_id,
         address: contract_deployed_request_body.contract_address,
@@ -218,15 +213,11 @@ pub struct RedeemDetails {
 
 #[get("/trades/ETH-BTC/<trade_id>/redeem-orders", format = "application/json")]
 pub fn get_redeem_orders(
-    trade_id: &RawStr,
+    trade_id: TradeId,
     _url: State<ExchangeApiUrl>,
     event_store: State<EventStore>,
     _rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RedeemDetails>, BadRequest<String>> {
-    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
-        Ok(trade_id) => trade_id,
-        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
-    };
     let address = event_store.get_contract_deployed(&trade_id)?.address;
     let secret = event_store.get_order_created(&trade_id)?.secret;
 
