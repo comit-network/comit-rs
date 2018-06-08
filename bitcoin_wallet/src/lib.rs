@@ -15,7 +15,6 @@ use secp256k1::Secp256k1;
 use bitcoin::blockdata::transaction::TxIn;
 use bitcoin::blockdata::transaction::TxOut;
 use bitcoin::util::bip143::SighashComponents;
-use bitcoin::util::hash::HexError;
 use bitcoin_rpc::TransactionId;
 use common_types::BitcoinQuantity;
 use common_types::secret::Secret;
