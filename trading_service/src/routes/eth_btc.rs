@@ -1,14 +1,15 @@
 use bitcoin;
 use bitcoin::network::constants::Network;
-use bitcoin_htlc::Htlc;
+use bitcoin_htlc;
+use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
 use event_store;
+use event_store::ContractDeployed;
 use event_store::EventStore;
 use event_store::OfferCreated;
 use event_store::OrderCreated;
 use event_store::OrderTaken;
-use exchange_api_client;
 use exchange_api_client::ApiClient;
 use exchange_api_client::ExchangeApiUrl;
 use exchange_api_client::OfferResponseBody;
@@ -97,16 +98,7 @@ pub fn post_buy_orders(
         }
     };
 
-    let offer = match event_store.get_offer_created(&trade_id) {
-        Some(offer) => offer,
-        None => {
-            error!(
-                "Unable to retrieve offer for trade {} from store.",
-                trade_id
-            );
-            return Err(BadRequest(None));
-        }
-    };
+    let offer = event_store.get_offer_created(&trade_id)?;
 
     let buy_order = buy_order_request_body.into_inner();
     let client_success_address = buy_order.client_success_address;
@@ -157,7 +149,7 @@ pub fn post_buy_orders(
         bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
             .expect("Could not convert client refund address to bitcoin::util::address::Address");
 
-    let htlc: Htlc = Htlc::new(
+    let htlc: BtcHtlc = BtcHtlc::new(
         exchange_success_address,
         client_refund_address,
         secret.hash().clone(),
@@ -182,6 +174,60 @@ pub fn post_buy_orders(
     }))
 }
 
+#[derive(Deserialize)]
+pub struct ContractDeployedRequestBody {
+    pub contract_address: EthAddress,
+}
+
+#[post("/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed", format = "application/json",
+       data = "<contract_deployed_request_body>")]
+pub fn post_contract_deployed(
+    trade_id: &RawStr,
+    contract_deployed_request_body: Json<ContractDeployedRequestBody>,
+    event_store: State<EventStore>,
+) -> Result<(), BadRequest<String>> {
+    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
+        Ok(trade_id) => trade_id,
+        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
+    };
+
+    event_store.store_contract_deployed(ContractDeployed {
+        uid: trade_id,
+        address: contract_deployed_request_body.contract_address,
+    })?;
+
+    Ok(())
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RedeemDetails {
+    address: EthAddress,
+    data: bitcoin_htlc::secret::Secret,
+    gas: u32,
+}
+
+#[get("/trades/ETH-BTC/<trade_id>/redeem-orders", format = "application/json")]
+pub fn get_redeem_orders(
+    trade_id: &RawStr,
+    _url: State<ExchangeApiUrl>,
+    event_store: State<EventStore>,
+    _rng: State<Mutex<OsRng>>,
+) -> Result<Json<RedeemDetails>, BadRequest<String>> {
+    let trade_id = match Uuid::parse_str(trade_id.as_ref()) {
+        Ok(trade_id) => trade_id,
+        Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
+    };
+    let address = event_store.get_contract_deployed(&trade_id)?.address;
+    let secret = event_store.get_order_created(&trade_id)?.secret;
+
+    Ok(Json(RedeemDetails {
+        address,
+        data: secret,
+        // TODO: check how much gas we should tell the customer to pay
+        gas: 20000,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -203,8 +249,6 @@ mod tests {
     // Recipient pubkey hash: c021f17be99c6adfbcba5d38ee0d292c0399d2f5
 
     // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
-    // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
-
     #[test]
     fn happy_path_sell_x_btc_for_eth() {
         let url = ExchangeApiUrl("stub".to_string());
@@ -231,7 +275,7 @@ mod tests {
         let uid = offer_response.uid;
 
         let request = client
-            .post(format!("/trades/ETH-BTC/{}/buy-orders", uid).to_string())
+            .post(format!("/trades/ETH-BTC/{}/buy-orders", uid))
             .header(ContentType::JSON)
             // some random addresses I pulled off the internet
             .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg" }"#);
@@ -249,5 +293,32 @@ mod tests {
                 .to_string()
                 .starts_with("bcrt1")
         );
+
+        let request = client
+            .post(format!(
+                "/trades/ETH-BTC/{}/buy-order-contract-deployed",
+                uid
+            ))
+            .header(ContentType::JSON)
+            .body(r#"{ "contract_address" : "0x00a329c0648769a73afac7f9381e08fb43dbea72" }"#);
+
+        let response = request.dispatch();
+
+        assert_eq!(
+            response.status(),
+            Status::Ok,
+            "buy-order-contract-deployed call is successful"
+        );
+
+        let request = client.get(format!("/trades/ETH-BTC/{}/redeem-orders", uid).to_string());
+
+        let mut response = request.dispatch();
+
+        assert_eq!(response.status(), Status::Ok);
+
+        let _redeem_details =
+            serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
     }
+
+    // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
 }

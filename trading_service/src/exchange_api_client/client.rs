@@ -1,5 +1,4 @@
 use bitcoin_rpc;
-use bitcoin_rpc::BlockHeight;
 use reqwest;
 use secret::SecretHash;
 use symbol::Symbol;

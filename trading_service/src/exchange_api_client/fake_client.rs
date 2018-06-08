@@ -4,7 +4,6 @@ use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResp
 use reqwest;
 use symbol::Symbol;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
@@ -26,7 +25,7 @@ impl ApiClient for FakeApiClient {
     fn create_order(
         &self,
         _symbol: Symbol,
-        uid: Uuid,
+        _uid: Uuid,
         _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {
         let accept = OrderResponseBody {
