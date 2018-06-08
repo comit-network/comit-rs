@@ -98,16 +98,7 @@ pub fn post_buy_orders(
         }
     };
 
-    let offer = match event_store.get_offer_created(&trade_id) {
-        Some(offer) => offer,
-        None => {
-            error!(
-                "Unable to retrieve offer for trade {} from store.",
-                trade_id
-            );
-            return Err(BadRequest(None));
-        }
-    };
+    let offer = event_store.get_offer_created(&trade_id)?;
 
     let buy_order = buy_order_request_body.into_inner();
     let client_success_address = buy_order.client_success_address;
@@ -200,16 +191,15 @@ pub fn post_contract_deployed(
         Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
     };
 
-    match event_store.store_redeem_ready(ContractDeployed {
+    event_store.store_contract_deployed(ContractDeployed {
         uid: trade_id,
         address: contract_deployed_request_body.contract_address,
-    }) {
-        Ok(_) => return Ok(()),
-        Err(_) => return Err(BadRequest(None)),
-    }
+    })?;
+
+    Ok(())
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct RedeemDetails {
     address: EthAddress,
     data: bitcoin_htlc::secret::Secret,
@@ -227,17 +217,8 @@ pub fn get_redeem_orders(
         Ok(trade_id) => trade_id,
         Err(_) => return Err(BadRequest(Some("Invalid trade id".to_string()))),
     };
-
-    let address = match event_store.get_redeem_ready(&trade_id) {
-        Some(redeem) => redeem.address,
-        None => return Err(BadRequest(Some("Incorrect trade id".to_string()))),
-    };
-
-    // Should we create a "get_secret" method to retrieve the secret in the right event?
-    let secret = match event_store.get_order_created(&trade_id) {
-        Some(order_create) => order_create.secret,
-        None => return Err(BadRequest(Some("Incorrect trade id".to_string()))),
-    };
+    let address = event_store.get_contract_deployed(&trade_id)?.address;
+    let secret = event_store.get_order_created(&trade_id)?.secret;
 
     Ok(Json(RedeemDetails {
         address,
@@ -268,8 +249,6 @@ mod tests {
     // Recipient pubkey hash: c021f17be99c6adfbcba5d38ee0d292c0399d2f5
 
     // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
-    // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
-
     #[test]
     fn happy_path_sell_x_btc_for_eth() {
         let url = ExchangeApiUrl("stub".to_string());
@@ -328,7 +307,7 @@ mod tests {
         assert_eq!(
             response.status(),
             Status::Ok,
-            "update-redeem-address call is successful"
+            "buy-order-contract-deployed call is successful"
         );
 
         let request = client.get(format!("/trades/ETH-BTC/{}/redeem-orders", uid).to_string());
@@ -337,12 +316,9 @@ mod tests {
 
         assert_eq!(response.status(), Status::Ok);
 
-        let redeem_details =
+        let _redeem_details =
             serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
-
-        assert_eq!(
-            redeem_details.gas, 20_000,
-            "gas is present in the redeem details"
-        );
     }
+
+    // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
 }

@@ -59,7 +59,7 @@ pub struct EventStore {
     offer_created: RwLock<HashMap<Uuid, OfferCreated>>,
     order_created: RwLock<HashMap<Uuid, OrderCreated>>,
     order_taken: RwLock<HashMap<Uuid, OrderTaken>>,
-    redeem_ready: RwLock<HashMap<Uuid, ContractDeployed>>,
+    contract_deployed: RwLock<HashMap<Uuid, ContractDeployed>>,
 }
 
 #[derive(PartialEq)]
@@ -68,7 +68,7 @@ enum TradeState {
     OfferCreated,
     OrderCreated,
     OrderTaken,
-    RedeemReady,
+    ContractDeployed,
 }
 
 #[derive(Debug)]
@@ -82,7 +82,7 @@ impl EventStore {
             offer_created: RwLock::new(HashMap::new()),
             order_created: RwLock::new(HashMap::new()),
             order_taken: RwLock::new(HashMap::new()),
-            redeem_ready: RwLock::new(HashMap::new()),
+            contract_deployed: RwLock::new(HashMap::new()),
         }
     }
 
@@ -99,11 +99,11 @@ impl EventStore {
             return TradeState::OrderCreated;
         }
 
-        if self._get(&self.redeem_ready, id).is_none() {
+        if self._get(&self.contract_deployed, id).is_none() {
             return TradeState::OrderTaken;
         }
 
-        TradeState::RedeemReady
+        TradeState::ContractDeployed
     }
 
     fn _store<E: Clone>(
@@ -136,28 +136,32 @@ impl EventStore {
         self._store(&self.order_taken, TradeState::OrderCreated, uid, &event)
     }
 
-    pub fn store_redeem_ready(&self, event: ContractDeployed) -> Result<(), Error> {
+    pub fn store_contract_deployed(&self, event: ContractDeployed) -> Result<(), Error> {
         let uid = event.uid.clone();
-        self._store(&self.redeem_ready, TradeState::OrderTaken, uid, &event)
+        self._store(&self.contract_deployed, TradeState::OrderTaken, uid, &event)
     }
 
     fn _get<E: Clone>(&self, event_map: &RwLock<HashMap<Uuid, E>>, id: &Uuid) -> Option<E> {
         event_map.read().unwrap().get(id).map(Clone::clone)
     }
 
-    pub fn get_offer_created(&self, id: &Uuid) -> Option<OfferCreated> {
+    pub fn get_offer_created(&self, id: &Uuid) -> Result<OfferCreated, Error> {
         self._get(&self.offer_created, id)
+            .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 
-    pub fn get_order_created(&self, id: &Uuid) -> Option<OrderCreated> {
+    pub fn get_order_created(&self, id: &Uuid) -> Result<OrderCreated, Error> {
         self._get(&self.order_created, id)
+            .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 
-    pub fn get_order_taken(&self, id: &Uuid) -> Option<OrderTaken> {
+    pub fn get_order_taken(&self, id: &Uuid) -> Result<OrderTaken, Error> {
         self._get(&self.order_taken, id)
+            .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 
-    pub fn get_redeem_ready(&self, id: &Uuid) -> Option<ContractDeployed> {
-        self._get(&self.redeem_ready, id)
+    pub fn get_contract_deployed(&self, id: &Uuid) -> Result<ContractDeployed, Error> {
+        self._get(&self.contract_deployed, id)
+            .map_or(Err(Error::IncorrectState), |event| Ok(event.clone()))
     }
 }
