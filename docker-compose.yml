@@ -22,6 +22,10 @@ services:
       - ETHEREUM_NETWORK_ID=1
       - ETHEREUM_NODE_ENDPOINT=http://ethereum:8545
       - ROCKET_ADDRESS=0.0.0.0
+      - BITCOIN_RPC_URL=http://bitcoin:18443
+      - BITCOIN_RPC_USERNAME=bitcoin
+      - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
+      - BTC_NETWORK=BTCORE_REGTEST
     ports:
     - "8010:8000"
     depends_on:
