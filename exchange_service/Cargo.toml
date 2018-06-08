@@ -13,9 +13,9 @@ bitcoin_rpc = { path = "../bitcoin_rpc" }
 bitcoin_htlc = { path = "../bitcoin_htlc" }
 bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 reqwest = "0.8.5"
-serde = "1.0.51"
-serde_derive = "1.0.51"
-lazy_static = "1.0.0"
+serde = "1.0.64"
+serde_derive = "1.0.63"
+lazy_static = "1.0.1"
 uuid = { version = "0.6.3", features = ["serde", "v4"] }
 rocket = "=0.3.10"
 rocket_contrib = "=0.3.10"
@@ -24,7 +24,7 @@ rocket_codegen = "=0.3.10"
 common_types = { path = "../common_types" }
 bitcoin_wallet = { path = "../bitcoin_wallet" }
 http-api-problem = { version = "0.5.2", features = ["with_rocket"] }
-serde_json = "1.0.17"
+serde_json = "1.0.19"
 ethereum_htlc = { path = "../ethereum_htlc" }
 web3 = "0.3.0"
 ethereum_wallet = { path = "../ethereum_wallet" }
