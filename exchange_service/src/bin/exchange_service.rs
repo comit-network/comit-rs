@@ -1,8 +1,8 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
-
 extern crate bitcoin;
 extern crate bitcoin_rpc;
+extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate exchange_service;
 extern crate hex;
@@ -33,6 +33,7 @@ use web3::types::Address;
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
+    let _ = env_logger::init();
     let treasury_api_url =
         TreasuryApiUrl(var("TREASURY_SERVICE_URL").expect("Treasury api url not set"));
 

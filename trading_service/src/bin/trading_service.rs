@@ -4,6 +4,7 @@
 extern crate bitcoin;
 extern crate bitcoin_htlc;
 extern crate bitcoin_rpc;
+extern crate env_logger;
 extern crate rocket;
 extern crate trading_service;
 
@@ -12,6 +13,7 @@ use trading_service::exchange_api_client::ExchangeApiUrl;
 use trading_service::rocket_factory::create_rocket_instance;
 
 fn main() {
+    let _ = env_logger::init();
     let exchange_api_url = ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap());
 
     let network = match var("BTC_NETWORK") {

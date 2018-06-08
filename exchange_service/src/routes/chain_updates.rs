@@ -54,18 +54,27 @@ pub fn post_revealed_secret(
         .exchange_success_address()
         .to_bitcoin_address()
         .unwrap();
+
+    debug!("Exchange success address retrieved");
+
+    let client_refund_address = order_taken_event
+        .client_refund_address()
+        .to_bitcoin_address()
+        .unwrap();
+
+    debug!("Client refund address retrieved");
+
     let htlc_script = bitcoin_htlc::Htlc::new(
         exchange_success_address.clone(),
-        order_taken_event
-            .client_refund_address()
-            .to_bitcoin_address()
-            .unwrap(),
+        client_refund_address,
         order_taken_event.contract_secret_lock().clone(),
         order_taken_event.client_contract_time_lock().clone().into(),
         &network,
     ).unwrap()
         .script()
         .clone();
+
+    debug!("HTLC successfully generated");
 
     let redeem_tx = bitcoin_wallet::generate_p2wsh_htlc_redeem_tx(
         htlc_txid,
@@ -77,6 +86,8 @@ pub fn post_revealed_secret(
         &order_taken_event.exchange_success_private_key(),
         &exchange_success_address,
     ).unwrap();
+
+    debug!("Redeem transaction successfully generated");
 
     //TODO: Store above in event prior to doing rpc request
 
