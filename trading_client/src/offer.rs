@@ -61,13 +61,6 @@ impl FromStr for Symbol {
         Ok(Symbol { traded, base })
     }
 }
-
-impl From<String> for Symbol {
-    fn from(s: String) -> Self {
-        Self::from_str(s.as_str()).unwrap()
-    }
-}
-
 impl fmt::Display for Symbol {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{}-{}", self.traded, self.base)

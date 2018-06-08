@@ -98,8 +98,6 @@ mod tests {
 
         let redeem_details = run(trading_api_url, symbol, uid, RedeemOutput::URL).unwrap();
 
-        println!("{}", redeem_details);
-
         assert_eq!(
             redeem_details,
             "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1\n\

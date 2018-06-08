@@ -53,7 +53,7 @@ mod tests {
             "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string(),
             "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg".to_string(),
         ).unwrap();
-        println!("{}", response);
+
         assert_eq!(
             response,
             "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1
