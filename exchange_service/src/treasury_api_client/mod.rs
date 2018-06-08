@@ -1,5 +1,6 @@
 mod client;
 pub use self::client::*;
+use std::fmt;
 
 #[derive(Debug, Deserialize)]
 pub struct Rate {
@@ -9,6 +10,12 @@ pub struct Rate {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Symbol(pub String); // Expected format: ETH-BTC or LTC-BTC
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 // Export classes for test
 

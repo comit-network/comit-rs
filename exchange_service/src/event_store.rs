@@ -5,9 +5,11 @@ use common_types::secret::SecretHash;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
 use std::sync::RwLock;
 use std::time::Duration;
 use std::time::SystemTime;
+use treasury_api_client::RateResponseBody;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
 use web3::types::Address as EthAddress;
@@ -36,6 +38,18 @@ pub struct OfferCreated {
     eth_amount: EthereumQuantity,
     btc_amount: BitcoinQuantity,
     // TODO: treasury_expiry_timestamp
+}
+
+impl From<RateResponseBody> for OfferCreated {
+    fn from(r: RateResponseBody) -> Self {
+        OfferCreated {
+            uid: TradeId(Uuid::new_v4()),
+            symbol: Symbol(r.symbol),
+            rate: r.rate,
+            eth_amount: EthereumQuantity::from_eth(r.buy_amount as u64),
+            btc_amount: BitcoinQuantity::from_bitcoin(r.sell_amount as u64),
+        }
+    }
 }
 
 impl OfferCreated {
