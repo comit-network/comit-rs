@@ -9,9 +9,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly-2018-0
 ENV PATH=/root/.cargo/bin:$PATH
 ENV SOLC_BIN=solc
 WORKDIR /source
-COPY dependency_cache /source
-COPY Cargo.lock /source
-RUN cargo build --release
 COPY . /source
+RUN cargo fetch
 RUN cargo build --release
 WORKDIR /source/target/release
