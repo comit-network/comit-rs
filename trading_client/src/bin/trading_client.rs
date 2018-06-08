@@ -11,7 +11,7 @@ use std::env::var;
 use std::string::String;
 use structopt::StructOpt;
 use trading_client::offer;
-use trading_client::offer::Symbol;
+use trading_client::offer::{OrderType, Symbol};
 use trading_client::order;
 use trading_client::redeem;
 use trading_client::redeem::RedeemOutput;
@@ -27,12 +27,9 @@ enum Opt {
         /// The symbol you want to trade (e.g. ETH-BTC)
         #[structopt(short = "S", long = "symbol", name = "symbol to trade (e.g. ETH-BTC)")]
         symbol: String,
-        /// Request a buy order
-        #[structopt(short = "b", long = "buy", name = "request for a buy order")]
-        buy: bool,
-        /// Request a sell order
-        #[structopt(short = "s", long = "sell", name = "request for a sell order")]
-        sell: bool,
+        /// The type of trade
+        #[structopt(subcommand)]
+        order_type: OrderType,
         /// The amount you want to exchange (buy for a buy order, sell for a sell order). Integer.
         #[structopt(short = "a", long = "amount",
                     name = "amount to exchange (buy for a buy order, sell for a sell order). Integer.")]
@@ -87,20 +84,16 @@ impl<T, E> UnwrapOrExit<T, E> for Result<T, E> {
 }
 
 fn main() {
-    let trading_api_url = TradingApiUrl(var("TRADING_SERVICE_URL").unwrap());
+    let trading_api_url = TradingApiUrl(
+        var("TRADING_SERVICE_URL").expect("env variable TRADING_SERVICE_URL must be set"),
+    );
 
     let output = match Opt::from_args() {
         Opt::Offer {
             symbol,
-            buy,
-            sell,
+            order_type,
             amount,
-        } => offer::run(
-            trading_api_url,
-            Symbol::from(symbol),
-            offer::OrderType::new(buy, sell),
-            amount,
-        ),
+        } => offer::run(trading_api_url, Symbol::from(symbol), order_type, amount),
         Opt::Order {
             symbol,
             uid,

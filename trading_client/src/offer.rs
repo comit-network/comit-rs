@@ -18,12 +18,10 @@ impl fmt::Display for Currency {
     }
 }
 
-impl FromStr for Currency {
-    //TODO: find out the proper way
-    type Err = u32;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Currency(s.to_string()))
+impl From<String> for Currency {
+    //TODO: validate format
+    fn from(s: String) -> Self {
+        Currency(s)
     }
 }
 
@@ -31,6 +29,11 @@ impl FromStr for Currency {
 pub struct Symbol {
     traded: Currency,
     base: Currency,
+}
+
+#[derive(Debug)]
+pub enum ParseSymbolErr {
+    BadFormat,
 }
 
 impl Symbol {
@@ -43,14 +46,17 @@ impl Symbol {
 }
 
 impl FromStr for Symbol {
-    //TODO: find out the proper way
-    type Err = u32;
+    type Err = ParseSymbolErr;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let currencies: Vec<&str> = s.split("-").collect();
 
-        let traded = currencies[0].parse::<Currency>()?;
-        let base = currencies[1].parse::<Currency>()?;
+        if currencies.len() != 2 {
+            return Err(ParseSymbolErr::BadFormat);
+        }
+
+        let traded = Currency::from(currencies[0].to_string());
+        let base = Currency::from(currencies[1].to_string());
 
         Ok(Symbol { traded, base })
     }
@@ -90,44 +96,17 @@ impl<'de> Visitor<'de> for SymbolVisitor {
     where
         E: de::Error,
     {
-        let currencies: Vec<&str> = value.split("-").collect();
-
-        let traded = currencies[0].parse::<Currency>();
-        let traded = match traded {
-            //TODO: Talk to Thomas to do it properly
-            Err(_) => panic!("Could not convert received traded currency"),
-            Ok(traded) => traded,
-        };
-        let base = currencies[1].parse::<Currency>();
-        let base = match base {
-            //TODO: Talk to Thomas to do it properly
-            Err(_) => panic!("Could not convert received base currency"),
-            Ok(base) => base,
-        };
-
-        Ok(Symbol { traded, base })
+        Symbol::from_str(value)
+            .map_err(|error| E::custom(format!("Could not parse symbol: {:?}", error)))
     }
 }
 
+#[derive(Debug, StructOpt)]
 pub enum OrderType {
-    BUY,
-    SELL,
-}
-
-impl OrderType {
-    pub fn new(buy: bool, sell: bool) -> OrderType {
-        let order_buy = if buy && sell {
-            // TODO: learn how to implement exclusive parameters
-            panic!("An order is either `buy` or `sell`, it cannot be both");
-        } else if buy {
-            OrderType::BUY
-        } else if sell {
-            OrderType::SELL
-        } else {
-            OrderType::BUY // defaults to buy
-        };
-        order_buy
-    }
+    #[structopt(name = "buy")]
+    Buy,
+    #[structopt(name = "sell")]
+    Sell,
 }
 
 pub fn run(
@@ -139,8 +118,8 @@ pub fn run(
     let offer_request_body = BuyOfferRequestBody::new(amount);
 
     match order_type {
-        OrderType::SELL => panic!("Only buy orders are currently supported"),
-        OrderType::BUY => {
+        OrderType::Sell => panic!("Only buy orders are currently supported"),
+        OrderType::Buy => {
             let client = create_client(&trading_api_url);
             let res = client.request_offer(&symbol, &offer_request_body);
 
@@ -169,7 +148,7 @@ mod tests {
     fn request_offer_with_supported_currency() {
         let trading_api_url = TradingApiUrl("stub".to_string());
         let symbol = Symbol::from_str("ETH-BTC").unwrap();
-        let response = run(trading_api_url, symbol, OrderType::BUY, 12).unwrap();
+        let response = run(trading_api_url, symbol, OrderType::Buy, 12).unwrap();
 
         assert_eq!(
             response,
