@@ -6,9 +6,9 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate structopt;
+extern crate regex;
 extern crate uuid;
 extern crate web3;
-extern crate regex;
 
 pub mod offer;
 pub mod order;
