@@ -75,7 +75,7 @@ impl FromStr for SecretHash {
     }
 }
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Secret {
     secret: [u8; SHA256_DIGEST_LENGTH],
     hash: Option<SecretHash>,
@@ -117,6 +117,12 @@ impl Secret {
     }
 }
 
+impl fmt::LowerHex for Secret {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.write_str(hex::encode(&self.secret).as_str())
+    }
+}
+
 impl FromStr for Secret {
     type Err = hex::FromHexError;
 
@@ -153,6 +159,15 @@ impl<'de> Deserialize<'de> for Secret {
         }
 
         deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl Serialize for Secret {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{:x}", self))
     }
 }
 
