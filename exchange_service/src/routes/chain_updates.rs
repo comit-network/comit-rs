@@ -9,6 +9,7 @@ use event_store::TradeId;
 use rocket::State;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
+use std::fmt::Debug;
 use std::sync::Arc;
 
 //TODO: move back to eth_btc.rs
@@ -18,6 +19,12 @@ pub struct RedeemBTCNotificationBody {
     pub secret: Secret,
 }
 
+fn log_error<E: Debug>(msg: &'static str) -> impl Fn(E) -> BadRequest<String> {
+    move |e: E| {
+        error!("{}: {:?}", msg, e);
+        BadRequest(None)
+    }
+}
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-secret-revealed", format = "application/json",
        data = "<redeem_btc_notification_body>")]
 pub fn post_revealed_secret(
@@ -53,19 +60,28 @@ pub fn post_revealed_secret(
     let exchange_success_address = order_taken_event
         .exchange_success_address()
         .to_bitcoin_address()
-        .unwrap();
+        .map_err(log_error("Failed to convert exchange success address"))?;
+
+    debug!("Exchange success address retrieved");
+
+    let client_refund_address = order_taken_event
+        .client_refund_address()
+        .to_bitcoin_address()
+        .map_err(log_error("Failed to convert client refund address"))?;
+
+    debug!("Client refund address retrieved");
+
     let htlc_script = bitcoin_htlc::Htlc::new(
         exchange_success_address.clone(),
-        order_taken_event
-            .client_refund_address()
-            .to_bitcoin_address()
-            .unwrap(),
+        client_refund_address,
         order_taken_event.contract_secret_lock().clone(),
         order_taken_event.client_contract_time_lock().clone().into(),
         &network,
-    ).unwrap()
+    ).map_err(log_error("Failed to generate bitcoin HTLC"))?
         .script()
         .clone();
+
+    debug!("HTLC successfully generated");
 
     let redeem_tx = bitcoin_wallet::generate_p2wsh_htlc_redeem_tx(
         htlc_txid,
@@ -76,12 +92,18 @@ pub fn post_revealed_secret(
         &secret,
         &order_taken_event.exchange_success_private_key(),
         &exchange_success_address,
-    ).unwrap();
+    ).map_err(log_error(
+        "Unable to generate p2wsh htlc redeem transaction",
+    ))?;
+
+    debug!("Redeem transaction successfully generated");
 
     //TODO: Store above in event prior to doing rpc request
 
     let rpc_transaction =
-        bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).unwrap();
+        bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).map_err(
+            log_error("Failed to convert the transaction into a serialised raw transaction"),
+        )?;
 
     info!(
         "Attempting to redeem HTLC with txid {} for {}",
@@ -90,9 +112,9 @@ pub fn post_revealed_secret(
     //TODO: Store successful redeem in event
     let redeem_txid = rpc_client
         .send_raw_transaction(rpc_transaction)
-        .unwrap()
+        .map_err(log_error("Failed to send connect to bitcoin RPC"))?
         .into_result()
-        .unwrap();
+        .map_err(log_error("Failed to send raw transaction to bitcoin RPC"))?;
 
     info!(
         "HTLC for {} successfully redeemed with {}",
