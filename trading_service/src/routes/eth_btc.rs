@@ -214,7 +214,7 @@ pub struct RedeemDetails {
     gas: u64,
 }
 
-#[get("/trades/ETH-BTC/<trade_id>/redeem-orders", format = "application/json")]
+#[get("/trades/ETH-BTC/<trade_id>/redeem-orders")]
 pub fn get_redeem_orders(
     trade_id: TradeId,
     _url: State<ExchangeApiUrl>,

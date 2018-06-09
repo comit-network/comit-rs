@@ -11,7 +11,7 @@ authors = [
 [dependencies]
 rand = "0.4.2"
 rust-crypto = "0.2.36"
-serde = "1.0.51"
-serde_derive = "1.0.51"
-serde_json = "1.0.17"
+serde = "1.0.64"
+serde_derive = "1.0.63"
+serde_json = "1.0.19"
 hex = "0.3.2"
