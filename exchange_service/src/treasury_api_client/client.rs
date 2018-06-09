@@ -4,8 +4,26 @@ use reqwest;
 #[derive(Clone)]
 pub struct TreasuryApiUrl(pub String);
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RateRequestBody {
+    //TODO: make it work with float
+    buy_amount: u64, //ethereum
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RateResponseBody {
+    pub symbol: String,
+    pub rate: f64,
+    pub sell_amount: u64, //satoshis
+    pub buy_amount: u64,  //ethereum
+}
+
 pub trait ApiClient: Send + Sync {
-    fn request_rate(&self, symbol: Symbol) -> Result<Rate, reqwest::Error>;
+    fn request_rate(
+        &self,
+        symbol: Symbol,
+        buy_amount: u64,
+    ) -> Result<RateResponseBody, reqwest::Error>;
 }
 
 #[allow(dead_code)]
@@ -15,10 +33,17 @@ pub struct DefaultApiClient {
 }
 
 impl ApiClient for DefaultApiClient {
-    fn request_rate(&self, symbol: Symbol) -> Result<Rate, reqwest::Error> {
+    fn request_rate(
+        &self,
+        symbol: Symbol,
+        buy_amount: u64,
+    ) -> Result<RateResponseBody, reqwest::Error> {
+        let body = RateRequestBody { buy_amount };
+
         self.client
-            .get(format!("{}/rate/{}", self.url.0, symbol.0).as_str())
+            .post(format!("{}/rates/{}", self.url.0, symbol).as_str())
+            .json(&body)
             .send()
-            .and_then(|mut res| res.json::<Rate>())
+            .and_then(|mut res| res.json::<RateResponseBody>())
     }
 }

@@ -35,7 +35,7 @@ impl fmt::Display for EthereumPaymentURL {
 impl EthereumPaymentURL {
     pub fn new(
         address: &EthAddress,
-        gas: u32,
+        gas: u64,
         secret: common_types::secret::Secret,
     ) -> EthereumPaymentURL {
         let address = format!("{:x}", address);

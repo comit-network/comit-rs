@@ -39,11 +39,11 @@ pub struct DefaultApiClient {
 
 #[derive(Deserialize, Serialize)]
 pub struct BuyOfferRequestBody {
-    amount: u32,
+    amount: u64,
 }
 
 impl BuyOfferRequestBody {
-    pub fn new(amount: u32) -> BuyOfferRequestBody {
+    pub fn new(amount: u64) -> BuyOfferRequestBody {
         BuyOfferRequestBody { amount }
     }
 }
@@ -52,7 +52,7 @@ impl BuyOfferRequestBody {
 pub struct OfferResponseBody {
     pub uid: TradeId,
     pub symbol: Symbol,
-    pub rate: f32,
+    pub rate: f64,
     //TODO: trading-cli should be agnostic of the currencies
     pub eth_amount: EthereumQuantity,
     pub btc_amount: BitcoinQuantity,
@@ -85,17 +85,18 @@ impl BuyOrderRequestBody {
     }
 }
 
-#[derive(Deserialize, Debug, Serialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     pub address_to_fund: bitcoin_rpc::Address,
-    pub sell_amount: u32,
+    pub btc_amount: BitcoinQuantity,
+    pub eth_amount: EthereumQuantity,
 }
 
 #[derive(Deserialize)]
 pub struct RedeemDetails {
     pub address: EthAddress,
     pub data: common_types::secret::Secret,
-    pub gas: u32,
+    pub gas: u64,
 }
 
 #[derive(Debug)]

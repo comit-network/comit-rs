@@ -53,15 +53,13 @@ fn post_buy_offers(
     event_store: State<EventStore>,
     treasury_api_client: State<Arc<ApiClient>>,
 ) -> Result<Json<OfferState>, BadRequest<String>> {
-    // Request rate
-    // Generate identifier
-    // Store offer locally
-    // Return offers (rate + expiry timestamp + exchange success address)
+    let offer_request_body: OfferRequestBody = offer_request_body.into_inner();
 
-    let offer_request_body = offer_request_body.into_inner();
-
-    let res = treasury_api_client.request_rate(Symbol("ETH-BTC".to_string()));
-    let rate = match res {
+    let res = treasury_api_client.request_rate(
+        Symbol("ETH-BTC".to_string()),
+        offer_request_body.amount.ethereum(),
+    );
+    let rate_response_body = match res {
         Ok(rate) => rate,
         Err(e) => {
             error!("{:?}", e);
@@ -69,12 +67,7 @@ fn post_buy_offers(
         }
     };
 
-    let offer_event = OfferCreated::new(
-        rate.symbol,
-        rate.rate,
-        offer_request_body.amount,
-        BitcoinQuantity::from_bitcoin(1),
-    ); //TODO: Correctly calculate!
+    let offer_event = OfferCreated::from(rate_response_body);
 
     match event_store.store_offer(offer_event.clone()) {
         Ok(_) => (),

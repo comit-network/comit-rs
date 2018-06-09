@@ -21,13 +21,13 @@ pub fn run(
     Ok(format!(
         "Trade id: {}\n\
          You have accepted the order!\n\
-         Please send {} {} to the following address to get your {}:\n\
+         Please send {} to the following address to get your {}:\n\
          {}",
         uid,
-        request_to_fund.sell_amount,
-        symbol.get_base_currency(),
-        symbol.get_traded_currency(),
-        request_to_fund.address_to_fund
+        request_to_fund.btc_amount,
+        request_to_fund.eth_amount,
+        //TODO: make a payment address
+        request_to_fund.address_to_fund,
     ))
 }
 
@@ -54,7 +54,7 @@ mod tests {
             response,
             "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1
 You have accepted the order!
-Please send 1001 BTC to the following address to get your ETH:
+Please send 1001 BTC to the following address to get your 140 ETH:
 bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
         );
     }
