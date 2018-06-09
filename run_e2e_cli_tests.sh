@@ -28,7 +28,7 @@ export TRADING_SERVICE_URL=http://localhost:8000
 
 #### Start all services
 
-docker-compose up -d || echo "Run ./create_docker_base_image.sh"
+docker-compose up -d
 
 sleep_for=10
 echo "sleeping for ${sleep_for}s while all start";
