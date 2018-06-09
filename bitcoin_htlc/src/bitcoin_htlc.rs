@@ -3,9 +3,8 @@ use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::{Builder, Script};
 pub use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
-use bitcoin::util::address::Payload::WitnessProgram;
+use bitcoin_rpc::PubkeyHash;
 use secret::SecretHash;
-use std::fmt;
 
 // Create BTC HTLC
 // Returns P2WSH address
@@ -17,80 +16,53 @@ use std::fmt;
 
 #[derive(Clone, Debug)]
 pub struct Htlc {
-    recipient_success_address: Address,
-    sender_refund_address: Address,
+    recipient_success_pubkey_hash: PubkeyHash,
+    sender_refund_pubkey_hash: PubkeyHash,
     secret_hash: SecretHash,
     relative_timelock: u32,
     script: Script,
-    htlc_address: Address,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    AddressIsNotBech32,
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Error::AddressIsNotBech32 => write!(f, "address must be bech32"),
-        }
-    }
-}
-
-//TODO: implement proper error handling
 impl Htlc {
-    pub fn new(
-        recipient_success_address: Address,
-        sender_refund_address: Address,
+    pub fn new<
+        RecipientSuccessPubkeyHash: Into<PubkeyHash>,
+        SenderRefundPubkeyHash: Into<PubkeyHash>,
+    >(
+        recipient_success_pubkey_hash: RecipientSuccessPubkeyHash,
+        sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
         relative_timelock: u32,
-        network: &Network,
-    ) -> Result<Htlc, Error> {
-        // TODO: the recipient is the exchange_service -> we actually should get the exchange pubkey hash directly instead of an address
-        // to be addressed with the final product. Get leave as it for MVP
-        let recipient_pubkey_hash =
-            get_pubkey_hash_from_address(recipient_success_address.clone())?;
-        let sender_pubkey_hash = get_pubkey_hash_from_address(sender_refund_address.clone())?;
-
+    ) -> Htlc {
+        let recipient_success_pubkey_hash = recipient_success_pubkey_hash.into();
+        let sender_refund_pubkey_hash = sender_refund_pubkey_hash.into();
         let script = create_htlc(
-            &recipient_pubkey_hash,
-            &sender_pubkey_hash,
+            &recipient_success_pubkey_hash,
+            &sender_refund_pubkey_hash,
             &secret_hash.0,
             relative_timelock,
         );
 
-        let htlc_address = Address::p2wsh(&script, network.clone());
-
-        Ok(Htlc {
-            recipient_success_address,
-            sender_refund_address,
+        Htlc {
+            recipient_success_pubkey_hash,
+            sender_refund_pubkey_hash,
             secret_hash,
             relative_timelock,
             script,
-            htlc_address,
-        })
+        }
     }
 
     pub fn script(&self) -> &Script {
         &self.script
     }
 
-    pub fn get_htlc_address(&self) -> &Address {
-        &self.htlc_address
+    pub fn get_address(&self, network: Network) -> Address {
+        Address::p2wsh(&self.script, network)
     }
 }
 
-pub fn get_pubkey_hash_from_address(address: Address) -> Result<Vec<u8>, Error> {
-    match address.payload {
-        WitnessProgram(witness) => Ok(witness.program().to_vec()),
-        _ => Err(Error::AddressIsNotBech32),
-    }
-}
-
-pub fn create_htlc(
-    recipient_pubkey_hash: &Vec<u8>,
-    sender_pubkey_hash: &Vec<u8>,
+fn create_htlc(
+    recipient_pubkey_hash: &PubkeyHash,
+    sender_pubkey_hash: &PubkeyHash,
     secret_hash: &Vec<u8>,
     redeem_block_height: u32,
 ) -> Script {
@@ -101,14 +73,14 @@ pub fn create_htlc(
         .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_DUP)
         .push_opcode(OP_HASH160)
-        .push_slice(recipient_pubkey_hash)
+        .push_slice(recipient_pubkey_hash.as_ref())
         .push_opcode(OP_ELSE)
         .push_int(redeem_block_height as i64)
         .push_opcode(OP_CHECKSEQUENCEVERIFY)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)
         .push_opcode(OP_HASH160)
-        .push_slice(sender_pubkey_hash)
+        .push_slice(sender_pubkey_hash.as_ref())
         .push_opcode(OP_ENDIF)
         .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_CHECKSIG)
@@ -119,18 +91,6 @@ pub fn create_htlc(
 mod tests {
     use super::*;
     use hex;
-    use std::str::FromStr;
-
-    #[test]
-    fn given_an_address_return_pubkey_hash() {
-        let address = Address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").unwrap();
-        let pubkey_hash = get_pubkey_hash_from_address(address).unwrap();
-
-        assert_eq!(
-            pubkey_hash,
-            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap()
-        );
-    }
 
     // Secret: 12345678901234567890123456789012
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
@@ -149,22 +109,26 @@ mod tests {
     #[test]
     fn given_a_vec_u8_pubkey_hash_return_htlc_redeem_script() {
         let recipient_pubkey_hash: Vec<u8> =
-            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
+            hex::FromHex::from_hex(&"c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let sender_pubkey_hash: Vec<u8> =
-            hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
+            hex::FromHex::from_hex(&"1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
+
+        let recipient_pubkey_hash = PubkeyHash::new(recipient_pubkey_hash).unwrap();
+        let sender_pubkey_hash = PubkeyHash::new(sender_pubkey_hash).unwrap();
+
         let secret_hash: Vec<u8> = hex::decode(
             "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
         ).unwrap();
 
-        let script = create_htlc(
-            &recipient_pubkey_hash,
-            &sender_pubkey_hash,
-            &secret_hash,
+        let htlc = Htlc::new(
+            recipient_pubkey_hash,
+            sender_pubkey_hash,
+            SecretHash(secret_hash),
             900,
         );
 
         assert_eq!(
-            script.into_vec(),
+            htlc.script.into_vec(),
             hex::decode(
                 "63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f2345\
                  1af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f\
@@ -176,21 +140,26 @@ mod tests {
     #[test]
     fn given_an_htlc_redeem_script_return_p2wsh() {
         let recipient_pubkey_hash: Vec<u8> =
-            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
+            hex::FromHex::from_hex(&"c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let sender_pubkey_hash: Vec<u8> =
-            hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
+            hex::FromHex::from_hex(&"1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
+
+        let recipient_pubkey_hash = PubkeyHash::new(recipient_pubkey_hash).unwrap();
+        let sender_pubkey_hash = PubkeyHash::new(sender_pubkey_hash).unwrap();
+
         let secret_hash: Vec<u8> = hex::decode(
             "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
         ).unwrap();
 
-        let script = create_htlc(
-            &recipient_pubkey_hash,
-            &sender_pubkey_hash,
-            &secret_hash,
+        let htlc = Htlc::new(
+            recipient_pubkey_hash,
+            sender_pubkey_hash,
+            SecretHash(secret_hash),
             900,
         );
 
-        let address = Address::p2wsh(&script, Network::BitcoinCoreRegtest);
+        let address = htlc.get_address(Network::BitcoinCoreRegtest);
+
         assert_eq!(
             address.to_string(),
             "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0"

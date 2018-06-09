@@ -3,7 +3,9 @@ use bitcoin::network::constants::Network;
 use bitcoin_htlc;
 use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
+use bitcoin_rpc::Address;
 use bitcoin_rpc::BlockHeight;
+use bitcoin_rpc::PubkeyHash;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use event_store;
 use event_store::ContractDeployed;
@@ -158,13 +160,15 @@ pub fn post_buy_orders(
         bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
             .expect("Could not convert client refund address to bitcoin::util::address::Address");
 
+    let exchange_success_pubkey_hash = get_pubkey_hash(exchange_success_address)?;
+    let client_refund_pubkey_hash = get_pubkey_hash(client_refund_address)?;
+
     let htlc: BtcHtlc = BtcHtlc::new(
-        exchange_success_address,
-        client_refund_address,
+        exchange_success_pubkey_hash,
+        client_refund_pubkey_hash,
         secret.hash(),
         BTC_BLOCKS_IN_24H,
-        network.inner(),
-    ).unwrap();
+    );
 
     let order_taken_event = OrderTaken {
         uid: trade_id,
@@ -178,13 +182,26 @@ pub fn post_buy_orders(
 
     let offer = event_store.get_offer_created(&trade_id).unwrap();
 
-    let htlc_address = bitcoin_rpc::Address::from(htlc.get_htlc_address().clone());
+    let htlc_address = bitcoin_rpc::Address::from(htlc.get_address(network.clone()));
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,
         eth_amount: offer.eth_amount,
         btc_amount: offer.btc_amount,
     }))
+}
+
+fn get_pubkey_hash(
+    address: bitcoin::util::address::Address,
+) -> Result<PubkeyHash, BadRequest<String>> {
+    let address = Address::from(address).get_pubkey_hash();
+    return match address {
+        Ok(pubkey_hash) => Ok(pubkey_hash),
+        Err(error) => {
+            error!("Failed to create get pubkey hash: {}", error);
+            Err(BadRequest(None))
+        }
+    };
 }
 
 #[derive(Deserialize)]
