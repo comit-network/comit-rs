@@ -113,7 +113,7 @@ pub fn post_buy_orders(
     let client_success_address = buy_order.client_success_address;
     let client_refund_address = buy_order.client_refund_address;
 
-    let mut secret = {
+    let secret = {
         let mut rng = rng.lock().unwrap();
         Secret::generate(&mut *rng)
     };
@@ -134,7 +134,7 @@ pub fn post_buy_orders(
         offer.symbol,
         trade_id,
         &OrderRequestBody {
-            contract_secret_lock: secret.hash().clone(),
+            contract_secret_lock: secret.hash(),
             client_refund_address: client_refund_address.clone(),
             client_success_address: client_success_address.clone(),
             client_contract_time_lock: BlockHeight::new(BTC_BLOCKS_IN_24H),
@@ -161,7 +161,7 @@ pub fn post_buy_orders(
     let htlc: BtcHtlc = BtcHtlc::new(
         exchange_success_address,
         client_refund_address,
-        secret.hash().clone(),
+        secret.hash(),
         BTC_BLOCKS_IN_24H,
         network.inner(),
     ).unwrap();
