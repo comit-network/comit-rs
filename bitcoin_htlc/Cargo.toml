@@ -12,3 +12,4 @@ authors = [
 bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 common_types = { path = "../common_types" }
 hex = "0.3.2"
+bitcoin_rpc  = { path = "../bitcoin_rpc" }
