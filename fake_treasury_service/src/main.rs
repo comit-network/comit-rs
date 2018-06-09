@@ -32,7 +32,7 @@ pub fn post_rates(
 ) -> Result<Json<RateResponseBody>, BadRequest<String>> {
     let symbol = symbol.to_string();
     let rate_request_body: RateRequestBody = rate_request_body.into_inner();
-    let rate = 0.7;
+    let rate = 0.1;
     let buy_amount = rate_request_body.buy_amount;
     let sell_amount = (buy_amount as f64 * rate).round().abs() as u64;
     Ok(Json(RateResponseBody {
