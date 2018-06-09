@@ -38,12 +38,12 @@ export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b7871
 export TREASURY_SERVICE_URL=http://localhost:8000
 export EXCHANGE_SERVICE_URL=http://localhost:8001
 export TRADING_SERVICE_URL=http://localhost:8002
-
+#TODO: use docker compose
 ROCKET_PORT=8000 ./target/debug/fake_treasury_service &
 ROCKET_PORT=8001 ./target/debug/exchange_service &
 ROCKET_PORT=8002 ./target/debug/trading_service &
 
-sleep_for=5
+sleep_for=10
 echo "sleeping for ${sleep_for}s while all backend start";
 sleep $sleep_for;
 
@@ -53,6 +53,7 @@ sleep $sleep_for;
 export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
 cli="./target/debug/trading_client"
+curl="curl -s"
 
 symbol_param="--symbol=ETH-BTC"
 eth_amount=100
@@ -86,11 +87,11 @@ btc_amount=$(echo "$output" | grep "Please send" | sed -E 's/^Please send ([0-9]
 echo "--> BTC amount: ${btc_amount}"
 
 ## Generate funds and activate segwit
-curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+$curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
 "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL
 
 ## Bitcoin RPC call
-output=$(curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
 "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"sendtoaddress\", \"params\": [ \"${btc_htlc_address}\", ${btc_amount}]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 echo "--> ${output} <--"
 
@@ -99,18 +100,20 @@ htlc_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1
 echo "--> $htlc_funding_tx <--"
 
 ## Generate blocks to confirm the transaction
-curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+$curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
 "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL
 
 ## Get raw funding tx
-output=$(curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"getrawtransaction\", \"params\": [ \"${htlc_funding_tx}\" ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
+output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"getrawtransaction\", \"params\": [ \"${htlc_funding_tx}\" ]}" \
+-H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 raw_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
 echo "--> $raw_funding_tx <--"
 
 ## Decode raw funding tx
-output=$(curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
+output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}"\
+ -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 echo $output
 
 ## Getting the vout which pays the BTC HTLC
@@ -118,11 +121,11 @@ htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.script
 echo "--> $htlc_funding_tx_vout <--"
 
 ## Tell exchange service that BTC HTLC was funded
-curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" \
+$curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" \
 -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-htlc-funded && echo "--> Exchange-service poked successfully <--"
 
 ## Tell trading service that ETH deployed
-curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" \
+$curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" \
 -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-contract-deployed && echo "--> Trading-service poked successfully <--"
 
 ## Get redeem details
@@ -131,7 +134,7 @@ secret=$(echo "$output" | tail -n1 |sed -E 's/^ethereum:.*bytes32=(.+)$/\1/')
 echo "--> Secret: $secret <--"
 
 ## Save previous balance
-output=$(curl --data-binary "{\
+output=$($curl --data-binary "{\
   \"jsonrpc\":\"2.0\",\
   \"method\":\"eth_getBalance\",\
   \"params\":[\
@@ -148,7 +151,7 @@ old_balance=$((16#${old_balance#0x}))
 echo "--> Previous ETH balance of customer: $old_balance <--"
 
 ## Redeem the ETH
-curl --data-binary "{\
+$curl --data-binary "{\
   \"jsonrpc\":\"2.0\",\
   \"method\":\"eth_sendTransaction\",\
   \"params\":[\
@@ -163,10 +166,10 @@ curl --data-binary "{\
   ],\
   \"id\":1\
 }" \
--H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} > /dev/null && echo "\n--> ETH redeemed successfully <--"
+-H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} && echo "\n--> ETH redeemed successfully <--"
 
 ## Save new balance
-output=$(curl --data-binary "{\
+output=$($curl --data-binary "{\
   \"jsonrpc\":\"2.0\",\
   \"method\":\"eth_getBalance\",\
   \"params\":[\
@@ -190,3 +193,54 @@ else
     echo "## ETH was NOT redeemed##"
     exit 1
 fi
+
+#TODO: Watch p2wsh address
+
+# Save BTC unspent outputs before redeem
+output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+"{\
+  \"jsonrpc\":\"1.0\",\
+  \"id\":\"curltest\",\
+  \"method\":\"listunspent\",\
+  \"params\":\
+  [\
+    0,\
+    9999999,\
+    [\
+      \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\"\
+    ]\
+  ],\
+  \"id\":1\
+}" \
+-H 'content-type: text/plain;' $BITCOIN_RPC_URL)
+unspent=$(echo $output |jq .result)
+echo "--> Unspent: $unspent <--"
+
+# Poke exchange service to redeem BTC
+$curl --data-binary "{\"secret\": \"${secret}\"}" \
+-H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed \
+&& echo "--> Exchange-service poked successfully to redeem BTC <--"
+
+## Generate blocks to confirm the transaction
+$curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL 2> /dev/null
+
+# Check BTC unspent outputs after redeem
+output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+"{\
+  \"jsonrpc\":\"1.0\",\
+  \"id\":\"curltest\",\
+  \"method\":\"listunspent\",\
+  \"params\":\
+  [\
+    0,\
+    9999999,\
+    [\
+      \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\"\
+    ]\
+  ],\
+  \"id\":1\
+}" \
+-H 'content-type: text/plain;' $BITCOIN_RPC_URL)
+unspent=$(echo $output |jq .result)
+echo "--> Unspent: $unspent <--"
