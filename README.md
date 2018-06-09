@@ -10,10 +10,11 @@ The system consists of three parts:
 - `trading_service`
 - `treasury_service` (this project only provides a fake)
 
-## Building
+## Setup
 
 - Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
 - Run `setup.sh` to install the necessary toolchains
+- Install `docker` & `docker-compose`
 - Use cargo as you know it
 
 ## Testing
