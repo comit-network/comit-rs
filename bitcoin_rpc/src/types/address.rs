@@ -5,7 +5,7 @@ use bitcoin::util::address::Payload::WitnessProgram;
 use bitcoin::util::hash::Hash160;
 use std::fmt;
 use std::str::FromStr;
-use types::*;
+use types::ScriptType;
 
 // TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
