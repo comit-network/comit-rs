@@ -87,8 +87,6 @@ pub fn post_revealed_secret(
 
     debug!("HTLC successfully generated");
 
-    debug!("HTLC successfully generated");
-
     let redeem_tx = bitcoin_wallet::generate_p2wsh_htlc_redeem_tx(
         htlc_txid,
         vout,
