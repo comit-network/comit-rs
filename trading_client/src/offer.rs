@@ -118,7 +118,7 @@ pub fn run(
             let offer = client.request_offer(&symbol, &offer_request_body)?;
 
             return Ok(format!(
-                "Trade id: {}\n\
+                "#### Trade id: {} ####\n\
                  The offered exchange rate is {} {}\n\
                  Sell {} for {}\n\
                  To accept the offer, run:\n\
@@ -141,7 +141,7 @@ mod tests {
 
         assert_eq!(
             response,
-            "Trade id: a83aac12-0c78-417e-88e4-1a2948c6d538
+            "#### Trade id: a83aac12-0c78-417e-88e4-1a2948c6d538 ####
 The offered exchange rate is 0.07 ETH-BTC
 Sell 7 BTC for 100 ETH
 To accept the offer, run:
