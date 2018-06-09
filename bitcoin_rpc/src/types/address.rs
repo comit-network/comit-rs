@@ -105,6 +105,7 @@ pub struct PubkeyHash(Vec<u8>);
 impl PubkeyHash {
     pub fn new(vec: Vec<u8>) -> Result<PubkeyHash, ()> {
         if vec.len() != 20 {
+            error!("Invalid length of pubkey hash: {:?}", vec);
             return Err(());
         }
         Ok(PubkeyHash(vec))
