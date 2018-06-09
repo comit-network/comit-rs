@@ -36,12 +36,12 @@ pub fn post_revealed_secret(
 ) -> Result<(), BadRequest<String>> {
     let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
 
-    let mut secret: Secret = redeem_btc_notification_body.into_inner().secret;
+    let secret: Secret = redeem_btc_notification_body.into_inner().secret;
 
-    let secret_hash = order_taken_event.contract_secret_lock();
-
-    if secret.hash() != secret_hash {
-        error!("Secret for trade {} can't be used to redeem htlc locked by {} because it didn't match {}", trade_id, secret_hash, secret.hash());
+    let orig_secret_hash = order_taken_event.contract_secret_lock();
+    let given_secret_hash = secret.hash();
+    if given_secret_hash != *orig_secret_hash {
+        error!("Secret for trade {} can't be used to redeem htlc locked by {} because it didn't match {}", trade_id, orig_secret_hash, given_secret_hash);
         return Err(BadRequest(Some(
             "the secret didn't match the hash".to_string(),
         )));

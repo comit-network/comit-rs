@@ -5,7 +5,6 @@ use common_types::secret::SecretHash;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use std::collections::HashMap;
 use std::fmt;
-use std::str::FromStr;
 use std::sync::RwLock;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -70,6 +69,10 @@ impl OfferCreated {
 
     pub fn btc_amount(&self) -> BitcoinQuantity {
         self.btc_amount
+    }
+
+    pub fn eth_amount(&self) -> EthereumQuantity {
+        self.eth_amount
     }
 }
 

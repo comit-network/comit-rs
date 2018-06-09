@@ -230,7 +230,7 @@ mod tests {
         let htlc = Htlc::new(
             success_address,
             refund_address,
-            secret.hash().clone(),
+            secret.hash(),
             sequence_lock,
             &Network::BitcoinCoreRegtest,
         ).unwrap();

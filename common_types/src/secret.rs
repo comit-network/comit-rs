@@ -75,15 +75,12 @@ impl FromStr for SecretHash {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Secret {
-    secret: [u8; SHA256_DIGEST_LENGTH],
-    hash: Option<SecretHash>,
-}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Secret([u8; SHA256_DIGEST_LENGTH]);
 
 impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {
     fn from(secret: [u8; SHA256_DIGEST_LENGTH]) -> Self {
-        Secret { secret, hash: None }
+        Secret(secret)
     }
 }
 
@@ -95,39 +92,49 @@ impl Secret {
         Secret::from(secret)
     }
 
-    pub fn hash(&mut self) -> &SecretHash {
-        match self.hash {
-            None => {
-                let mut sha = Sha256::new();
-                sha.input(&self.secret);
+    pub fn hash(&self) -> SecretHash {
+        let mut sha = Sha256::new();
+        sha.input(&self.0);
 
-                let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
-                sha.result(&mut result);
-                let hash = SecretHash(result.to_vec());
-
-                self.hash = Some(hash.clone());
-                self.hash()
-            }
-            Some(ref hash) => hash,
-        }
+        let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
+        sha.result(&mut result);
+        SecretHash(result.to_vec())
     }
 
     pub fn raw_secret(&self) -> &[u8; SHA256_DIGEST_LENGTH] {
-        &self.secret
+        &self.0
     }
 }
 
 impl fmt::LowerHex for Secret {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        f.write_str(hex::encode(&self.secret).as_str())
+        f.write_str(hex::encode(&self.0).as_str())
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum SecretFromStringErr {
+    InvalidLength { expected: usize, got: usize },
+    FromHex(hex::FromHexError),
+}
+
+impl From<hex::FromHexError> for SecretFromStringErr {
+    fn from(err: hex::FromHexError) -> Self {
+        SecretFromStringErr::FromHex(err)
     }
 }
 
 impl FromStr for Secret {
-    type Err = hex::FromHexError;
+    type Err = SecretFromStringErr;
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         let vec = hex::decode(s)?;
+        if vec.len() != SHA256_DIGEST_LENGTH {
+            return Err(SecretFromStringErr::InvalidLength {
+                expected: SHA256_DIGEST_LENGTH,
+                got: vec.len(),
+            });
+        }
         let mut secret = [0; SHA256_DIGEST_LENGTH];
         secret.copy_from_slice(&vec[..]);
         Ok(Secret::from(secret))
@@ -187,6 +194,7 @@ impl RandomnessSource for OsRng {
 mod tests {
     use super::*;
     use std::vec::Vec;
+    extern crate serde_json;
 
     #[test]
     fn gen_random_bytes_not_zeros() {
@@ -205,6 +213,34 @@ mod tests {
         assert_eq!(
             secret.hash().to_string(),
             "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
+        );
+    }
+
+    #[test]
+    fn round_trip_secret_serialization() {
+        let mut rng = OsRng::new().unwrap();
+
+        let secret = Secret::generate(&mut rng);
+
+        let json_secret = serde_json::to_string(&secret).unwrap();
+        let deser_secret = serde_json::from_str::<Secret>(json_secret.as_str()).unwrap();
+
+        assert_eq!(deser_secret, secret);
+    }
+
+    #[test]
+    fn invalid_length_from_str() {
+        let result =
+            Secret::from_str("68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4c");
+
+        assert!(result.is_err());
+
+        assert_eq!(
+            result.unwrap_err(),
+            SecretFromStringErr::InvalidLength {
+                expected: 32,
+                got: 31
+            }
         );
     }
 }

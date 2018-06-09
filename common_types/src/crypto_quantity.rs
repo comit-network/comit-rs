@@ -1,5 +1,6 @@
 use std::fmt;
 use std::ops::{Add, Sub};
+use web3::types::U256;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct BitcoinQuantity(u64);
@@ -41,8 +42,12 @@ impl fmt::Display for BitcoinQuantity {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct EthereumQuantity(u64);
+
+lazy_static! {
+    static ref WEI_IN_ETHEREUM: U256 = U256::from((10 as u64).pow(18));
+}
 
 impl EthereumQuantity {
     pub fn from_eth(eth: u64) -> Self {
@@ -51,6 +56,10 @@ impl EthereumQuantity {
 
     pub fn ethereum(&self) -> u64 {
         self.0
+    }
+
+    pub fn wei(&self) -> U256 {
+        U256::from(self.0) * *WEI_IN_ETHEREUM
     }
 }
 
@@ -86,4 +95,13 @@ mod test {
     fn display_ethereum() {
         assert_eq!(format!("{}", EthereumQuantity::from_eth(9000)), "9000 ETH");
     }
+
+    #[test]
+    fn a_ethereum_is_a_quintillion_wei() {
+        assert_eq!(
+            EthereumQuantity::from_eth(2).wei(),
+            *WEI_IN_ETHEREUM * U256::from(2)
+        )
+    }
+
 }
