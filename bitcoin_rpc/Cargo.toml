@@ -16,6 +16,7 @@ serde_derive = "1.0.63"
 serde = "1.0.64"
 rustc-serialize = "0.3.24"
 log = "0.4"
+hex = "0.3.2"
 
 [dev-dependencies]
 env_logger = "0.5.9"
