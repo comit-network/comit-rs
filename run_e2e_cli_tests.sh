@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 set -ev;
 
 END(){
@@ -68,7 +68,7 @@ output=$($cmd)
 echo "--> $output"
 
 ## get UID
-uid=$(echo "$output" | head -n1 | grep "Trade id" |sed 's/^.* Trade id: \(.*\) .*$/\1/')
+uid=$(echo "$output" | head -n1 | grep "Trade id" |sed -E 's/^.* Trade id: (.+) .*$/\1/')
 echo "--> Trade id: ${uid}"
 
 ## Order
@@ -110,7 +110,8 @@ echo "--> $raw_funding_tx <--"
 
 ## Decode raw funding tx
 output=$(curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
+"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}"\
+ -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 echo $output
 
 ## Getting the vout which pays the BTC HTLC
