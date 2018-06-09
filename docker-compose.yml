@@ -1,0 +1,63 @@
+version: '3'
+services:
+  trading_service:
+    build: ./trading_service
+    environment:
+      - EXCHANGE_SERVICE_URL=http://exchange_service:8000
+      - BTC_NETWORK=BTCORE_REGTEST
+      - ROCKET_ADDRESS=0.0.0.0
+      - RUST_LOG=error,trading_service=debug
+      - RUST_BACKTRACE=1
+    ports:
+    - "8000:8000"
+    depends_on:
+    - exchange_service
+    - bitcoin
+
+  exchange_service:
+    build: ./exchange_service
+    command: bash -c 'sleep 5 && ./exchange_service'
+    environment:
+      - TREASURY_SERVICE_URL=http://treasury_service:8000
+      - ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
+      - ETHEREUM_NETWORK_ID=1
+      - ETHEREUM_NODE_ENDPOINT=http://ethereum:8545
+      - ROCKET_ADDRESS=0.0.0.0
+      - BITCOIN_RPC_URL=http://bitcoin:18443
+      - BITCOIN_RPC_USERNAME=bitcoin
+      - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
+      - BTC_NETWORK=BTCORE_REGTEST
+      - RUST_LOG=error,exchange_service=debug
+      - RUST_BACKTRACE=1
+    ports:
+    - "8010:8000"
+    depends_on:
+    - treasury_service
+    - ethereum
+
+  treasury_service:
+    build: ./fake_treasury_service
+    environment:
+      - ROCKET_ADDRESS=0.0.0.0
+    ports:
+    - "8020:8000"
+
+  ethereum:
+    image: trufflesuite/ganache-cli
+    command: -a 7 -m supersecure
+    ports:
+    - "8545:8545"
+
+  bitcoin:
+    image: ruimarinho/bitcoin-core
+    logging:
+        driver: none
+    command:
+      -regtest
+      -server
+      -printtoconsole
+      -rpcbind=0.0.0.0:18443
+      -rpcauth=bitcoin:cb77f0957de88ff388cf817ddbc7273$$9eaa166ace0d94a29c6eceb831a42458e93faeb79f895a7ee4ce03f4343f8f55
+      -rpcallowip=0.0.0.0/0
+    ports:
+      - "18443:18443"

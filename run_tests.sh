@@ -18,8 +18,8 @@ export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 export GANACHE_ENDPOINT="http://localhost:8545"
 export ETHEREUM_NETWORK_ID=42
 
-bitcoin_docker_id="$(sh .docker/bitcoind-regtest)";
-ganache_docker_id="$(sh .docker/ganache)";
+bitcoin_docker_id="$(sh .blockchain_nodes/bitcoind-regtest)";
+ganache_docker_id="$(sh .blockchain_nodes/ganache)";
 
 sleep_for=10
 echo "sleeping for $sleep_for while bitcoind and ganache start";
