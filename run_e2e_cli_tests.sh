@@ -178,13 +178,25 @@ echo $old_balance
 echo $new_balance
 if [ ${old_balance} -lt ${new_balance} ]
 then
-    echo "## ETH WAS REDEEMED ##"
+    echo "## ETH WAS redeemed ##"
 else
-    echo "## ETH was NOT redeemed##"
+    echo "## ETH was NOT redeemed ##"
     exit 1
 fi
 
-#TODO: Watch p2wsh address
+# Watch the pw2sh address
+$curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+"{\
+    \"jsonrpc\": \"1.0\",\
+    \"id\":\"curltest\",\
+    \"method\": \"importaddress\",\
+    \"params\":\
+        [\
+            \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\",\
+            \"htlc\"\
+        ]\
+}" \
+-H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null && echo "PW2SH address is now watched"
 
 # Save BTC unspent outputs before redeem
 output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -203,8 +215,9 @@ output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary 
   \"id\":1\
 }" \
 -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-unspent=$(echo $output |jq .result)
-echo "--> Unspent: $unspent <--"
+old_unspent=$(echo $output |jq .result)
+old_unspent_num=$(echo $output | jq '.result | length')
+echo -e "--> Total Unspent: $old_unspent_num <--"
 
 # Poke exchange service to redeem BTC
 $curl --data-binary "{\"secret\": \"${secret}\"}" \
@@ -232,5 +245,14 @@ output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary 
   \"id\":1\
 }" \
 -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-unspent=$(echo $output |jq .result)
-echo "--> Unspent: $unspent <--"
+new_unspent=$(echo $output |jq .result)
+new_unspent_num=$(echo $output | jq '.result | length')
+echo -e "--> Total Unspent: $new_unspent_num <--"
+
+if [ ${old_unspent_num} -lt ${new_unspent_num} ]
+then
+    echo "## BTC WAS redeemed ##"
+else
+    echo "## BTC was NOT redeemed ##"
+    exit 1
+fi
