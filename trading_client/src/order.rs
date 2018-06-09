@@ -19,15 +19,21 @@ pub fn run(
     let request_to_fund = client.request_order(&symbol, uid, &order_request_body)?;
 
     Ok(format!(
-        "Trade id: {}\n\
+        "#### Trade id: {} ####\n\
          You have accepted the order!\n\
          Please send {} to the following address to get your {}:\n\
-         {}",
+         {}\n\
+         Once you transaction has 6 confirmations, the {} contract will be deployed.\n\
+         You can then get your redeem details with:\n\
+         trading_client redeem --symbol={} --uid={}",
         uid,
         request_to_fund.btc_amount,
         request_to_fund.eth_amount,
         //TODO: make a payment address
         request_to_fund.address_to_fund,
+        symbol.get_traded_currency(),
+        symbol,
+        uid,
     ))
 }
 
@@ -52,10 +58,13 @@ mod tests {
 
         assert_eq!(
             response,
-            "Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1
+            "#### Trade id: 27b36adf-eda3-4684-a21c-a08a84f36fb1 ####
 You have accepted the order!
 Please send 1001 BTC to the following address to get your 140 ETH:
-bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
+bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap
+Once you transaction has 6 confirmations, the ETH contract will be deployed.
+You can then get your redeem details with:
+trading_client redeem --symbol=ETH-BTC --uid=27b36adf-eda3-4684-a21c-a08a84f36fb1"
         );
     }
 }
