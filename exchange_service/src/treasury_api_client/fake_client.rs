@@ -1,5 +1,5 @@
+use super::Symbol;
 use super::client::ApiClient;
-use super::{Rate, Symbol};
 use reqwest;
 use treasury_api_client::RateResponseBody;
 

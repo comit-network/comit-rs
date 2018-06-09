@@ -1,4 +1,4 @@
-use super::{Rate, Symbol};
+use super::Symbol;
 use reqwest;
 
 #[derive(Clone)]
@@ -38,11 +38,8 @@ impl ApiClient for DefaultApiClient {
         symbol: Symbol,
         buy_amount: u64,
     ) -> Result<RateResponseBody, reqwest::Error> {
-        let body = RateRequestBody { buy_amount };
-
         self.client
-            .post(format!("{}/rates/{}", self.url.0, symbol).as_str())
-            .json(&body)
+            .get(format!("{}/rates/{}?amount={}", self.url.0, symbol, buy_amount).as_str())
             .send()
             .and_then(|mut res| res.json::<RateResponseBody>())
     }
