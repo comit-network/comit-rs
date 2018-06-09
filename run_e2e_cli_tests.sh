@@ -2,19 +2,17 @@
 set -ev;
 
 END(){
-    if test "${bitcoin_docker_id}${ganache_docker_id}"; then
-        echo "KILLING docker containers $bitcoin_docker_id $ganache_docker_id";
-        docker rm -f $bitcoin_docker_id $ganache_docker_id;
+    if test "${docker_ids}"; then
+        echo "KILLING docker containers";
+        for id in ${docker_ids}
+            do docker rm -f ${id};
+        done
     fi
-
-    pkill fake_treasury_service
-    pkill exchange_service
-    pkill trading_service
-
 }
 
 trap 'END' EXIT;
 
+#### Env variable to run all services
 
 export RUST_TEST_THREADS=1;
 export BITCOIN_RPC_URL="http://localhost:18443"
@@ -22,33 +20,25 @@ export BITCOIN_RPC_USERNAME="bitcoin"
 export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 export ETHEREUM_NODE_ENDPOINT="http://localhost:8545"
 export ETHEREUM_NETWORK_ID=42
-
-bitcoin_docker_id="$(sh .blockchain_nodes/bitcoind-regtest)";
-ganache_docker_id="$(sh .blockchain_nodes/ganache)";
-
-sleep_for=10
-echo "sleeping for ${sleep_for}s while bitcoind and ganache start";
-sleep $sleep_for;
-
-#######
-# Start backends
-
 export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
 
-export TREASURY_SERVICE_URL=http://localhost:8000
-export EXCHANGE_SERVICE_URL=http://localhost:8001
-export TRADING_SERVICE_URL=http://localhost:8002
-#TODO: use docker compose
-ROCKET_PORT=8000 ./target/debug/fake_treasury_service &
-ROCKET_PORT=8001 ./target/debug/exchange_service &
-ROCKET_PORT=8002 ./target/debug/trading_service &
+export TREASURY_SERVICE_URL=http://localhost:8020
+export EXCHANGE_SERVICE_URL=http://localhost:8010
+export TRADING_SERVICE_URL=http://localhost:8000
+
+#### Start all services
+
+docker-compose up -d || echo "Run ./create_docker_base_image.sh"
 
 sleep_for=10
-echo "sleeping for ${sleep_for}s while all backend start";
+echo "sleeping for ${sleep_for}s while all start";
 sleep $sleep_for;
+
+docker_ids=$(docker-compose ps -q)
 
 ########
 
+#### Env variables to run the end-to-end test
 
 export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
@@ -61,6 +51,8 @@ client_refund_address="bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
 client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
 # For contract calling
 client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
+
+#### Start End to end test
 
 ## Offer
 cmd="$cli offer ${symbol_param} --amount=${eth_amount} buy"
@@ -88,7 +80,7 @@ echo "--> BTC amount: ${btc_amount}"
 
 ## Generate funds and activate segwit
 $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL
+"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
 
 ## Bitcoin RPC call
 output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -145,7 +137,6 @@ output=$($curl --data-binary "{\
 }" \
 -H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT})
 old_balance=$(echo $output|jq -r .result)
-echo "Output: $output"
 echo "--> Old ETH balance: $old_balance <--"
 old_balance=$((16#${old_balance#0x}))
 echo "--> Previous ETH balance of customer: $old_balance <--"
@@ -166,7 +157,7 @@ $curl --data-binary "{\
   ],\
   \"id\":1\
 }" \
--H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} && echo "\n--> ETH redeemed successfully <--"
+-H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} && echo -e "\n--> ETH redeemed successfully <--"
 
 ## Save new balance
 output=$($curl --data-binary "{\
@@ -179,7 +170,6 @@ output=$($curl --data-binary "{\
   \"id\":1\
 }" \
 -H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT})
-echo "Output: $output"
 new_balance=$(echo $output|jq -r .result)
 echo "--> New ETH balance: $new_balance <--"
 new_balance=$((16#${new_balance#0x}))
