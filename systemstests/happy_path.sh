@@ -102,7 +102,7 @@ function generate_blocks() {
 
     ## Generate blocks to confirm the transaction
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL
+    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
 
 }
 function fund_htlc() {
@@ -110,11 +110,11 @@ function fund_htlc() {
     ## Bitcoin RPC call
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"sendtoaddress\", \"params\": [ \"${btc_htlc_address}\", ${btc_amount}]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-    echo "--> ${output} <--"
+    # echo "--> ${output} <--"
 
     ## Get funding tx id
     htlc_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
-    echo "--> $htlc_funding_tx <--"
+    # echo "--> $htlc_funding_tx <--"
 
     generate_blocks;
 
@@ -123,17 +123,17 @@ function fund_htlc() {
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"getrawtransaction\", \"params\": [ \"${htlc_funding_tx}\" ]}" \
     -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
     raw_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
-    echo "--> $raw_funding_tx <--"
+    # echo "--> $raw_funding_tx <--"
 
     ## Decode raw funding tx
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}"\
      -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-    echo $output
+    # echo $output
 
     ## Getting the vout which pays the BTC HTLC
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
-    echo "--> $htlc_funding_tx_vout <--"
+    # echo "--> $htlc_funding_tx_vout <--"
 
 }
 
@@ -249,8 +249,7 @@ echo -e "--> Total Unspent: $old_unspent_num <--"
 
 # Poke exchange service to redeem BTC
 $curl --data-binary "{\"secret\": \"${secret}\"}" \
--H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed \
-&& echo "--> Exchange-service poked successfully to redeem BTC <--"
+-H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed
 
 generate_blocks;
 
