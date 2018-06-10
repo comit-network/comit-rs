@@ -33,7 +33,7 @@ pub fn get_rates(
 ) -> Result<Json<RateResponseBody>, BadRequest<String>> {
     let buy_amount = rate_request_params.amount;
     let symbol = symbol.to_string();
-    let rate = 0.07;
+    let rate = 0.1;
     let sell_amount = (buy_amount as f64 * rate).round().abs() as u64;
     return Ok(Json(RateResponseBody {
         symbol,
