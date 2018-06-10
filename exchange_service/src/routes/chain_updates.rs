@@ -96,10 +96,15 @@ pub fn post_revealed_secret(
         "Unable to generate p2wsh htlc redeem transaction",
     ))?;
 
-    debug!("Redeem transaction successfully generated");
-
-    //TODO: Store above in event prior to doing rpc request
-
+    debug!(
+        "Redeem {} (input: {}, vout: {}) to {} (output: {})",
+        htlc_txid,
+        input_amount,
+        vout,
+        redeem_tx.txid(),
+        output_amount
+    );
+    //TODO: Store above in event prior to doing rnpc request
     let rpc_transaction =
         bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).map_err(
             log_error("Failed to convert the transaction into a serialised raw transaction"),
