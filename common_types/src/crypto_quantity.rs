@@ -100,7 +100,7 @@ mod test {
     fn a_ethereum_is_a_quintillion_wei() {
         assert_eq!(
             EthereumQuantity::from_eth(2).wei(),
-            *WEI_IN_ETHEREUM * U256::from(2)
+            U256::from(2_000_000_000_000_000_000 as u64) // 2 quintillion
         )
     }
 
