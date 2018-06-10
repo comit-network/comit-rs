@@ -10,65 +10,76 @@ END(){
     fi
 }
 
+IS_INTERACTIVE=false
+
+if [ "$1" = "--interactive" ]
+then
+    IS_INTERACTIVE=true
+fi
+
 trap 'END' EXIT;
 
-#### Env variable to run all services
+function setup() {
 
-export RUST_TEST_THREADS=1;
-export BITCOIN_RPC_URL="http://localhost:18443"
-export BITCOIN_RPC_USERNAME="bitcoin"
-export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-export ETHEREUM_NODE_ENDPOINT="http://localhost:8545"
-export ETHEREUM_NETWORK_ID=42
-export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
+    #### Env variable to run all services
 
-export TREASURY_SERVICE_URL=http://localhost:8020
-export EXCHANGE_SERVICE_URL=http://localhost:8010
-export TRADING_SERVICE_URL=http://localhost:8000
+    export RUST_TEST_THREADS=1;
+    export BITCOIN_RPC_URL="http://localhost:18443"
+    export BITCOIN_RPC_USERNAME="bitcoin"
+    export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+    export ETHEREUM_NODE_ENDPOINT="http://localhost:8545"
+    export ETHEREUM_NETWORK_ID=42
+    export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
 
-#### Start all services
+    export TREASURY_SERVICE_URL=http://localhost:8020
+    export EXCHANGE_SERVICE_URL=http://localhost:8010
+    export TRADING_SERVICE_URL=http://localhost:8000
 
-docker-compose up -d
+    #### Start all services
 
-sleep_for=10
-echo "sleeping for ${sleep_for}s while all start";
-sleep $sleep_for;
+    docker-compose up -d
 
-docker_ids=$(docker-compose ps -q)
+    sleep_for=10
+    echo "sleeping for ${sleep_for}s while all start";
+    sleep $sleep_for;
 
-########
+    docker_ids=$(docker-compose ps -q)
 
-#### Env variables to run the end-to-end test
+    ########
 
-export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
+    #### Env variables to run the end-to-end test
 
-cli="./target/debug/trading_client"
-curl="curl -s"
+    export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
-symbol_param="--symbol=ETH-BTC"
-eth_amount=100
-client_refund_address="bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
-client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
-# For contract calling
-client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
+    cli="./target/debug/trading_client"
+    curl="curl -s"
 
-## Generate funds and activate segwit
-$curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-"{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
+    symbol_param="--symbol=ETH-BTC"
+    eth_amount=100
+    client_refund_address="bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
+    client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
+    # For contract calling
+    client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
 
-# Watch the pw2sh address
-$curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-"{\
-    \"jsonrpc\": \"1.0\",\
-    \"id\":\"curltest\",\
-    \"method\": \"importaddress\",\
-    \"params\":\
-        [\
-            \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\",\
-            \"htlc\"\
-        ]\
-}" \
--H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null && echo "PW2SH address is now watched"
+    ## Generate funds and activate segwit
+    $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
+
+    # Watch the pw2sh address
+    $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+    "{\
+        \"jsonrpc\": \"1.0\",\
+        \"id\":\"curltest\",\
+        \"method\": \"importaddress\",\
+        \"params\":\
+            [\
+                \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\",\
+                \"htlc\"\
+            ]\
+    }" \
+    -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null && echo "PW2SH address is now watched"
+
+}
 
 function new_offer() {
     ## Offer
@@ -209,13 +220,34 @@ function list_unspent_transactions() {
     echo $output
 }
 
+
+
 #### Start End to end test
 
+setup;
+
+$IS_INTERACTIVE && read;
+
 new_offer;
+
+$IS_INTERACTIVE && read;
+
 new_order;
+
+$IS_INTERACTIVE && read;
+
 fund_htlc;
+
+$IS_INTERACTIVE && read;
+
 notify_exchange_service_btc_htlc_funded;
+
+$IS_INTERACTIVE && read;
+
 notify_trading_service_eth_htlc_funded;
+
+$IS_INTERACTIVE && read;
+
 get_redeem_details;
 
 old_balance=$(get_eth_balance)
@@ -223,6 +255,9 @@ echo "--> Old ETH balance: $old_balance <--"
 
 old_balance=$((16#${old_balance#0x}))
 echo "--> Previous ETH balance of customer: $old_balance <--"
+
+
+$IS_INTERACTIVE && read;
 
 redeem_eth;
 
@@ -241,6 +276,9 @@ else
     echo "## ETH was NOT redeemed ##"
     exit 1
 fi
+
+
+$IS_INTERACTIVE && read;
 
 output=$(list_unspent_transactions)
 old_unspent=$(echo $output |jq .result)
