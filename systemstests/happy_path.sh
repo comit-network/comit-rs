@@ -3,23 +3,33 @@ set -e;
 
 END(){
     if test "${docker_ids}"; then
-        echo "KILLING docker containers";
+        echo "KILLING docker containers" > $OUTPUT;
         for id in ${docker_ids}
-            do docker rm -f ${id};
+            do docker rm -f ${id} 2> $OUTPUT 1> $OUTPUT;
         done
     fi
 }
 
 IS_INTERACTIVE=false
+DEBUG=${DEBUG:=false}
 
 if [ "$1" = "--interactive" ]
 then
     IS_INTERACTIVE=true
 fi
 
+OUTPUT=/dev/null
+
+if $DEBUG
+then
+    OUTPUT=/dev/stdout
+fi
+
 trap 'END' EXIT;
 
 function setup() {
+
+    echo "Starting up ...";
 
     #### Env variable to run all services
 
@@ -37,11 +47,9 @@ function setup() {
 
     #### Start all services
 
-    docker-compose up -d
+    docker-compose up -d 2> $OUTPUT 1> $OUTPUT
 
-    sleep_for=10
-    echo "sleeping for ${sleep_for}s while all start";
-    sleep $sleep_for;
+    sleep 5;
 
     docker_ids=$(docker-compose ps -q)
 
@@ -51,7 +59,8 @@ function setup() {
 
     export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
-    cli="./target/debug/trading_client"
+    cd "target/debug"
+    cli="./trading_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
@@ -63,7 +72,7 @@ function setup() {
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
+    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL  > $OUTPUT
 
     # Watch the pw2sh address
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -77,43 +86,44 @@ function setup() {
                 \"htlc\"\
             ]\
     }" \
-    -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null && echo "PW2SH address is now watched"
+    -H 'content-type: text/plain;' $BITCOIN_RPC_URL > $OUTPUT
 
+    echo "System is ready!"
 }
 
 function new_offer() {
     ## Offer
     cmd="$cli offer ${symbol_param} --amount=${eth_amount} buy"
-    echo "--> ${cmd}"
+    echo "${cmd}"
     output=$($cmd)
-    echo "--> $output"
+    echo "$output"
 
     ## get UID
     uid=$(echo "$output" | head -n1 | grep "Trade id" |sed 's/^.* Trade id: \(.*\) .*$/\1/')
-    echo "--> Trade id: ${uid}"
+    # echo "--> Trade id: ${uid}"
 }
 
 function new_order() {
 
     cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${client_refund_address} --success-address=${client_success_address}"
-    echo "--> ${cmd}"
+    echo "${cmd}"
     output=$($cmd)
-    echo "--> $output"
+    echo "$output"
 
     ## Get BTC HTLC address
     btc_htlc_address=$(echo "$output" | grep "^bcrt1")
-    echo "--> BTC HTLC: ${btc_htlc_address}"
+    # echo "--> BTC HTLC: ${btc_htlc_address}"
 
     ## Get BTC amount
     btc_amount=$(echo "$output" | grep "Please send" | sed -E 's/^Please send ([0-9]+) BTC.*$/\1/')
-    echo "--> BTC amount: ${btc_amount}"
+    # echo "--> BTC amount: ${btc_amount}"
 }
 
 function generate_blocks() {
 
     ## Generate blocks to confirm the transaction
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
+    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > $OUTPUT
 
 }
 function fund_htlc() {
@@ -146,22 +156,32 @@ function fund_htlc() {
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
     # echo "--> $htlc_funding_tx_vout <--"
 
+    echo "HTLC successfully funded - BTC payment was made."
 }
 
 function notify_exchange_service_btc_htlc_funded() {
-    $curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" \
-    -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-htlc-funded && echo "--> Exchange-service poked successfully <--"
+
+    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
+
+    echo $result > $OUTPUT
+
+    echo "Notified exchange about trader's BTC payment (Trader funded BTC HTLC)."
 }
 
 function notify_trading_service_eth_htlc_funded() {
-    $curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" \
-    -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-contract-deployed && echo "--> Trading-service poked successfully <--"
+
+    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
+
+    echo $result > $OUTPUT
+
+    echo "Notified trader about exchange's ETH payment. (Exchange funded ETH HTLC)."
 }
 
 function get_redeem_details() {
     output=$($cli redeem ${symbol_param} --uid=${uid})
     secret=$(echo "$output" | tail -n1 |sed -E 's/^ethereum:.*bytes32=(.+)$/\1/')
-    echo "--> Secret: $secret <--"
+
+    echo "Secret: $secret"
 }
 
 function get_eth_balance() {
@@ -196,7 +216,7 @@ function redeem_eth() {
       ],\
       \"id\":1\
     }" \
-    -H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} && echo -e "\n--> ETH redeemed successfully <--"
+    -H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} > $OUTPUT
 }
 
 function list_unspent_transactions() {
@@ -251,43 +271,39 @@ $IS_INTERACTIVE && read;
 get_redeem_details;
 
 old_balance=$(get_eth_balance)
-echo "--> Old ETH balance: $old_balance <--"
+echo "Previous ETH balance in HEX: $old_balance" > $OUTPUT
 
 old_balance=$((16#${old_balance#0x}))
-echo "--> Previous ETH balance of customer: $old_balance <--"
-
+echo "Previous ETH balance: $old_balance"
 
 $IS_INTERACTIVE && read;
 
 redeem_eth;
 
 new_balance=$(get_eth_balance)
-echo "--> New ETH balance: $new_balance <--"
+echo "New ETH balance in HEX: $new_balance" > $OUTPUT
 new_balance=$((16#${new_balance#0x}))
-echo "--> New ETH balance of customer: $new_balance <--"
-
-echo $old_balance
-echo $new_balance
+echo "New ETH balance: $new_balance"
 
 if [ ${old_balance} -lt ${new_balance} ]
 then
-    echo "## ETH WAS redeemed ##"
+    echo "## ETH WAS redeemed ##" > $OUTPUT
 else
-    echo "## ETH was NOT redeemed ##"
+    echo "## ETH was NOT redeemed ##" > $OUTPUT
     exit 1
 fi
-
 
 $IS_INTERACTIVE && read;
 
 output=$(list_unspent_transactions)
 old_unspent=$(echo $output |jq .result)
 old_unspent_num=$(echo $output | jq '.result | length')
-echo -e "--> Total Unspent: $old_unspent_num <--"
+echo -e "BTC: Total UTXOs: $old_unspent_num"
+
+$IS_INTERACTIVE && read;
 
 # Poke exchange service to redeem BTC
-$curl --data-binary "{\"secret\": \"${secret}\"}" \
--H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed
+$curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
 
 generate_blocks;
 
@@ -295,12 +311,12 @@ generate_blocks;
 output=$(list_unspent_transactions)
 new_unspent=$(echo $output |jq .result)
 new_unspent_num=$(echo $output | jq '.result | length')
-echo -e "--> Total Unspent: $new_unspent_num <--"
+echo -e "BTC: Total UTXOs: $new_unspent_num"
 
 if [ ${old_unspent_num} -lt ${new_unspent_num} ]
 then
-    echo "## BTC WAS redeemed ##"
+    echo "## BTC WAS redeemed ##" > $OUTPUT
 else
-    echo "## BTC was NOT redeemed ##"
+    echo "## BTC was NOT redeemed ##" $OUTPUT
     exit 1
 fi
