@@ -1,6 +1,5 @@
 use bitcoin_rpc;
 use bitcoin_wallet;
-use common_types::BitcoinQuantity;
 use common_types::EthereumQuantity;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
@@ -59,6 +58,7 @@ fn post_buy_offers(
         Symbol("ETH-BTC".to_string()),
         offer_request_body.amount.ethereum(),
     );
+
     let rate_response_body = match res {
         Ok(rate) => rate,
         Err(e) => {
