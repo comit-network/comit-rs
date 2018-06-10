@@ -283,8 +283,10 @@ get_redeem_details;
 old_balance=$(get_eth_balance)
 echo "Previous ETH balance in HEX: $old_balance" > $OUTPUT
 
-old_balance=$(wei_to_eth $(hex_to_dec $old_balance))
-echo "Previous ETH balance: $(wei_to_eth $old_balance)"
+old_balance=$(hex_to_dec $old_balance)
+old_balance=$(wei_to_eth $old_balance)
+
+echo "Previous ETH balance: $old_balance"
 
 $IS_INTERACTIVE && read;
 
@@ -292,7 +294,8 @@ redeem_eth;
 
 new_balance=$(get_eth_balance)
 echo "New ETH balance in HEX: $new_balance" > $OUTPUT
-new_balance=$(wei_to_eth $(hex_to_dec $new_balance))
+new_balance=$(hex_to_dec $new_balance)
+new_balance=$(wei_to_eth $new_balance)
 echo "New ETH balance:      $new_balance"
 
 if [ ${old_balance} -lt ${new_balance} ]
@@ -319,9 +322,11 @@ generate_blocks;
 
 # Check BTC unspent outputs after redeem
 output=$(list_unspent_transactions)
+
 new_unspent=$(echo $output |jq .result)
 new_unspent_num=$(echo $output | jq '.result | length')
 echo -e "BTC: Total UTXOs: $new_unspent_num"
+echo -e "BTC: Amount: $(echo $new_unspent | jq '.[0].amount')"
 
 if [ ${old_unspent_num} -lt ${new_unspent_num} ]
 then
