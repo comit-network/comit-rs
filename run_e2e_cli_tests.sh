@@ -36,6 +36,9 @@ sleep $sleep_for;
 
 docker_ids=$(docker-compose ps -q)
 
+#### Compile trading-cli
+cargo build --package trading_client --bin trading_client
+
 ########
 
 #### Env variables to run the end-to-end test
