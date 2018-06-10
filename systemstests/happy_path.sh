@@ -240,7 +240,17 @@ function list_unspent_transactions() {
     echo $output
 }
 
+function hex_to_dec() {
+    perl -Mbigint -E 'say hex(shift)' $1
+}
 
+function is_greater_than() {
+    perl -Mbigint -E 'exit !(((shift) - (shift)) > 0) ? 0 : 1' $1 $2
+}
+
+function wei_to_eth() {
+    perl -Mbigint -E 'say ((shift) / 1_000_000_000_000_000_000)' $1
+}
 
 #### Start End to end test
 
@@ -273,8 +283,8 @@ get_redeem_details;
 old_balance=$(get_eth_balance)
 echo "Previous ETH balance in HEX: $old_balance" > $OUTPUT
 
-old_balance=$((16#${old_balance#0x}))
-echo "Previous ETH balance: $old_balance"
+old_balance=$(wei_to_eth $(hex_to_dec $old_balance))
+echo "Previous ETH balance: $(wei_to_eth $old_balance)"
 
 $IS_INTERACTIVE && read;
 
@@ -282,7 +292,7 @@ redeem_eth;
 
 new_balance=$(get_eth_balance)
 echo "New ETH balance in HEX: $new_balance" > $OUTPUT
-new_balance=$((16#${new_balance#0x}))
+new_balance=$(wei_to_eth $(hex_to_dec $new_balance))
 echo "New ETH balance:      $new_balance"
 
 if [ ${old_balance} -lt ${new_balance} ]
