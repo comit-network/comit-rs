@@ -1,6 +1,8 @@
+use bitcoin;
 use bitcoin_htlc;
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
+use bitcoin_rpc::PubkeyHash;
 use bitcoin_wallet;
 use common_types::BitcoinQuantity;
 use common_types::secret::Secret;
@@ -57,29 +59,26 @@ pub fn post_revealed_secret(
     let fee = BitcoinQuantity::from_satoshi(1000);
     let output_amount = input_amount - fee;
 
-    let exchange_success_address = order_taken_event
-        .exchange_success_address()
-        .to_bitcoin_address()
-        .map_err(log_error("Failed to convert exchange success address"))?;
+    let exchange_success_address = order_taken_event.exchange_success_address();
+
+    let exchange_success_pubkey_hash = to_pubkey_hash(&exchange_success_address)?;
+    let exchange_success_address = to_bitcoin_address(&exchange_success_address)?;
 
     debug!("Exchange success address retrieved");
 
-    let client_refund_address = order_taken_event
-        .client_refund_address()
-        .to_bitcoin_address()
-        .map_err(log_error("Failed to convert client refund address"))?;
+    let client_refund_pubkey_hash = to_pubkey_hash(&order_taken_event.client_refund_address())?;
 
     debug!("Client refund address retrieved");
 
     let htlc_script = bitcoin_htlc::Htlc::new(
-        exchange_success_address.clone(),
-        client_refund_address,
+        exchange_success_pubkey_hash,
+        client_refund_pubkey_hash,
         order_taken_event.contract_secret_lock().clone(),
         order_taken_event.client_contract_time_lock().clone().into(),
-        &network,
-    ).map_err(log_error("Failed to generate bitcoin HTLC"))?
-        .script()
+    ).script()
         .clone();
+
+    debug!("HTLC successfully generated");
 
     debug!("HTLC successfully generated");
 
@@ -122,4 +121,29 @@ pub fn post_revealed_secret(
     );
 
     Ok(())
+}
+
+fn to_bitcoin_address(
+    exchange_success_address: &bitcoin_rpc::Address,
+) -> Result<bitcoin::util::address::Address, BadRequest<String>> {
+    match exchange_success_address.to_bitcoin_address() {
+        Ok(address) => Ok(address),
+        Err(error) => {
+            error!(
+                "Failed to get bitcoin address from: {}, {}",
+                exchange_success_address, error
+            );
+            return Err(BadRequest(None));
+        }
+    }
+}
+
+fn to_pubkey_hash(address: &bitcoin_rpc::Address) -> Result<PubkeyHash, BadRequest<String>> {
+    return match address.get_pubkey_hash() {
+        Ok(pubkey_hash) => Ok(pubkey_hash),
+        Err(error) => {
+            error!("Failed to create get pubkey hash: {}", error);
+            Err(BadRequest(None))
+        }
+    };
 }

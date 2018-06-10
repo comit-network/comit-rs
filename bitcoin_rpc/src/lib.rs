@@ -1,5 +1,6 @@
 extern crate bitcoin;
 extern crate jsonrpc;
+#[macro_use]
 extern crate log;
 extern crate rustc_serialize;
 extern crate serde;

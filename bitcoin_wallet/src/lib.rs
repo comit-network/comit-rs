@@ -178,11 +178,13 @@ mod tests {
     extern crate bitcoin_htlc;
 
     use self::bitcoin_htlc::Htlc;
+    use self::bitcoin_rpc::PubkeyHash;
     use self::bitcoin_rpc::TransactionId;
     use self::bitcoin_rpc::TxOutConfirmations;
     use super::*;
     use bitcoin::network::constants::Network;
     use bitcoin::network::serialize::serialize_hex;
+    use bitcoin::util::hash::Hash160;
     use bitcoin::util::privkey::Privkey;
     use bitcoin_rpc::BitcoinRpcApi;
     use std::env::var;
@@ -199,9 +201,12 @@ mod tests {
         client
     }
 
-    fn private_key_to_address(privkey: &Privkey) -> Address {
+    fn private_key_to_pubkey_hash(privkey: &Privkey) -> PubkeyHash {
         let secret_pubkey = PublicKey::from_secret_key(&*SECP, privkey.secret_key()).unwrap();
-        Address::p2wpkh(&secret_pubkey, Network::BitcoinCoreRegtest)
+        let pubkey_serialized = secret_pubkey.serialize();
+        let hash160 = Hash160::from_data(&pubkey_serialized);
+        let pubkey_hash = PubkeyHash::from(hash160);
+        pubkey_hash
     }
 
     fn fund_htlc(
@@ -218,24 +223,23 @@ mod tests {
     ) {
         let success_privkey =
             Privkey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-        let success_address = private_key_to_address(&success_privkey);
+        let success_pubkey_hash = private_key_to_pubkey_hash(&success_privkey);
         let refund_privkey =
             Privkey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
         let mut secret = Secret::from(*b"hello world, you are beautiful!!");
-        let refund_address = private_key_to_address(&refund_privkey);
+        let refund_pubkey_hash = private_key_to_pubkey_hash(&refund_privkey);
         let sequence_lock = 10;
 
         let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
         let htlc = Htlc::new(
-            success_address,
-            refund_address,
+            success_pubkey_hash,
+            refund_pubkey_hash,
             secret.hash().clone(),
             sequence_lock,
-            &Network::BitcoinCoreRegtest,
-        ).unwrap();
+        );
 
-        let htlc_address = htlc.get_htlc_address();
+        let htlc_address = htlc.get_address(Network::BitcoinCoreRegtest);
         let rpc_htlc_address = bitcoin_rpc::Address::from(htlc_address.clone());
         let htlc_script = htlc.script();
 
