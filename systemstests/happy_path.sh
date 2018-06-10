@@ -64,7 +64,7 @@ function setup() {
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
-    eth_amount=100
+    eth_amount=10
     client_refund_address="bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
     client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
     # For contract calling
@@ -174,7 +174,7 @@ function notify_trading_service_eth_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    echo "Notified trader about exchange's ETH payment. (Exchange funded ETH HTLC)."
+    echo "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
 }
 
 function get_redeem_details() {
@@ -283,7 +283,7 @@ redeem_eth;
 new_balance=$(get_eth_balance)
 echo "New ETH balance in HEX: $new_balance" > $OUTPUT
 new_balance=$((16#${new_balance#0x}))
-echo "New ETH balance: $new_balance"
+echo "New ETH balance:      $new_balance"
 
 if [ ${old_balance} -lt ${new_balance} ]
 then
