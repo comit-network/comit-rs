@@ -91,10 +91,18 @@ function setup() {
     echo "System is ready!"
 }
 
+function print_green() {
+    printf '\e[32m%s\e[0m\n' "$1"
+}
+
+function print_blue() {
+    printf '\e[34m%s\e[0m\n' "$1"
+}
+
 function new_offer() {
     ## Offer
     cmd="$cli offer ${symbol_param} --amount=${eth_amount} buy"
-    echo "${cmd}"
+    print_green "$cmd"
     output=$($cmd)
     echo "$output"
 
@@ -106,7 +114,7 @@ function new_offer() {
 function new_order() {
 
     cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${client_refund_address} --success-address=${client_success_address}"
-    echo "${cmd}"
+    print_green "$cmd"
     output=$($cmd)
     echo "$output"
 
@@ -165,7 +173,7 @@ function notify_exchange_service_btc_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    echo "Notified exchange about trader's BTC payment (Trader funded BTC HTLC)."
+    print_blue "Notified exchange about trader's BTC payment (Trader funded BTC HTLC)."
 }
 
 function notify_trading_service_eth_htlc_funded() {
@@ -174,11 +182,22 @@ function notify_trading_service_eth_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    echo "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
+    print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
 }
 
+function notify_exchange_service_eth_redeemed() {
+    $curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
+
+    print_blue "Notified exchange about revealed secret (Trader redeemed ETH funds)."
+}
 function get_redeem_details() {
-    output=$($cli redeem ${symbol_param} --uid=${uid})
+
+    cmd="$cli redeem ${symbol_param} --uid=${uid}"
+
+    print_green "$cmd"
+
+    output=$($cmd)
+
     secret=$(echo "$output" | tail -n1 |sed -E 's/^ethereum:.*bytes32=(.+)$/\1/')
 
     echo "Secret: $secret"
@@ -311,12 +330,12 @@ $IS_INTERACTIVE && read;
 output=$(list_unspent_transactions)
 old_unspent=$(echo $output |jq .result)
 old_unspent_num=$(echo $output | jq '.result | length')
-echo -e "BTC: Total UTXOs: $old_unspent_num"
+echo -e "BTC: Total UTXOs before redeem: $old_unspent_num"
 
 $IS_INTERACTIVE && read;
 
 # Poke exchange service to redeem BTC
-$curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
+notify_exchange_service_eth_redeemed;
 
 generate_blocks;
 
@@ -325,7 +344,7 @@ output=$(list_unspent_transactions)
 
 new_unspent=$(echo $output |jq .result)
 new_unspent_num=$(echo $output | jq '.result | length')
-echo -e "BTC: Total UTXOs: $new_unspent_num"
+echo -e "BTC: Total UTXOs after redeem: $new_unspent_num"
 echo -e "BTC: Amount: $(echo $new_unspent | jq '.[0].amount')"
 
 if [ ${old_unspent_num} -lt ${new_unspent_num} ]
