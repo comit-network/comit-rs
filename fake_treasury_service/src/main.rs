@@ -26,14 +26,14 @@ pub struct RateResponseBody {
     buy_amount: u64, //ethereum
 }
 
-#[get("/<symbol>?<rate_request_params>", format = "application/json")]
+#[get("/<symbol>?<rate_request_params>")]
 pub fn get_rates(
     symbol: &RawStr,
     rate_request_params: RateRequestParams,
 ) -> Result<Json<RateResponseBody>, BadRequest<String>> {
     let buy_amount = rate_request_params.amount;
     let symbol = symbol.to_string();
-    let rate = 0.7;
+    let rate = 0.07;
     let sell_amount = (buy_amount as f64 * rate).round().abs() as u64;
     return Ok(Json(RateResponseBody {
         symbol,

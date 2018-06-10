@@ -53,12 +53,12 @@ fn post_buy_offers(
     treasury_api_client: State<Arc<ApiClient>>,
 ) -> Result<Json<OfferState>, BadRequest<String>> {
     let offer_request_body: OfferRequestBody = offer_request_body.into_inner();
-    info!("In post_buy_offers: received: {:?}", offer_request_body);
+
     let res = treasury_api_client.request_rate(
         Symbol("ETH-BTC".to_string()),
         offer_request_body.amount.ethereum(),
     );
-    info!("Call do treasury done; response: {:?}", res);
+
     let rate_response_body = match res {
         Ok(rate) => rate,
         Err(e) => {
@@ -77,7 +77,6 @@ fn post_buy_offers(
         }
     }
 
-    info!("Returning {:?}", offer_event);
     Ok(Json(offer_event.clone())) // offer_event is the same than state.
 }
 
