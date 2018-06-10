@@ -70,6 +70,10 @@ impl OfferCreated {
     pub fn btc_amount(&self) -> BitcoinQuantity {
         self.btc_amount
     }
+
+    pub fn eth_amount(&self) -> EthereumQuantity {
+        self.eth_amount
+    }
 }
 
 #[derive(Clone)]

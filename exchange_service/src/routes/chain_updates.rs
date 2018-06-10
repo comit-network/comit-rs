@@ -36,12 +36,12 @@ pub fn post_revealed_secret(
 ) -> Result<(), BadRequest<String>> {
     let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
 
-    let mut secret: Secret = redeem_btc_notification_body.into_inner().secret;
+    let secret: Secret = redeem_btc_notification_body.into_inner().secret;
 
-    let secret_hash = order_taken_event.contract_secret_lock();
-
-    if secret.hash() != secret_hash {
-        error!("Secret for trade {} can't be used to redeem htlc locked by {} because it didn't match {}", trade_id, secret_hash, secret.hash());
+    let orig_secret_hash = order_taken_event.contract_secret_lock();
+    let given_secret_hash = secret.hash();
+    if given_secret_hash != *orig_secret_hash {
+        error!("Secret for trade {} can't be used to redeem htlc locked by {} because it didn't match {}", trade_id, orig_secret_hash, given_secret_hash);
         return Err(BadRequest(Some(
             "the secret didn't match the hash".to_string(),
         )));
@@ -96,10 +96,15 @@ pub fn post_revealed_secret(
         "Unable to generate p2wsh htlc redeem transaction",
     ))?;
 
-    debug!("Redeem transaction successfully generated");
-
-    //TODO: Store above in event prior to doing rpc request
-
+    debug!(
+        "Redeem {} (input: {}, vout: {}) to {} (output: {})",
+        htlc_txid,
+        input_amount,
+        vout,
+        redeem_tx.txid(),
+        output_amount
+    );
+    //TODO: Store above in event prior to doing rnpc request
     let rpc_transaction =
         bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).map_err(
             log_error("Failed to convert the transaction into a serialised raw transaction"),

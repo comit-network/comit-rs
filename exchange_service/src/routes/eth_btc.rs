@@ -133,7 +133,7 @@ pub fn post_buy_orders(
         order_request_body.client_contract_time_lock,
         order_request_body.client_refund_address,
         order_request_body.client_success_address,
-        "1084d2C416fcc39564a4700a9B231270d463C5eA".into(),
+        "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
         // TODO: retrieve and use real address
         bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
         bitcoin_wallet::PrivateKey::from_str(
@@ -183,7 +183,9 @@ pub fn post_buy_orders_fundings(
         order_taken.contract_secret_lock().clone(),
     );
 
-    let htlc_funding = U256::from(10); // TODO: get this from treasury service
+    let offer_created_event = event_store.get_offer_created_event(&trade_id)?;
+
+    let htlc_funding = offer_created_event.eth_amount().wei();
 
     let tx_id = match ethereum_service.deploy_htlc(htlc, htlc_funding) {
         Ok(tx_id) => tx_id,

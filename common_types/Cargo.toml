@@ -1,17 +1,13 @@
 [package]
+authors = ["Thomas Eizinger <thomas@coblox.tech>", "Philipp Hoenisch <philipp@coblox.tech>", "Franck Royer <franck@coblox.tech>", "Lloyd Fournier <lloyd@coblox.tech>"]
 name = "common_types"
 version = "0.1.0"
-authors = [
-    "Thomas Eizinger <thomas@coblox.tech>",
-    "Philipp Hoenisch <philipp@coblox.tech>",
-    "Franck Royer <franck@coblox.tech>",
-    "Lloyd Fournier <lloyd@coblox.tech>",
-]
-
 [dependencies]
+hex = "0.3.2"
+lazy_static = "1.0.1"
 rand = "0.4.2"
 rust-crypto = "0.2.36"
 serde = "1.0.64"
 serde_derive = "1.0.63"
 serde_json = "1.0.19"
-hex = "0.3.2"
+web3 = "0.3.0"
