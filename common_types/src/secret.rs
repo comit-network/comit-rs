@@ -217,6 +217,21 @@ mod tests {
     }
 
     #[test]
+    fn secret_hash_should_be_displayed_as_hex() {
+        let bytes = b"hello world, you are beautiful!!";
+        let mut secret = Secret::from(*bytes);
+
+        let hash = secret.hash();
+
+        let formatted_hash = format!("{}", hash);
+
+        assert_eq!(
+            formatted_hash,
+            "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
+        )
+    }
+
+    #[test]
     fn round_trip_secret_serialization() {
         let mut rng = OsRng::new().unwrap();
 
