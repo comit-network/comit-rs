@@ -14,7 +14,6 @@ trap 'END' EXIT;
 
 #### Env variable to run all services
 
-export RUST_TEST_THREADS=1;
 export BITCOIN_RPC_URL="http://localhost:18443"
 export BITCOIN_RPC_USERNAME="bitcoin"
 export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
@@ -35,6 +34,9 @@ echo "sleeping for ${sleep_for}s while all start";
 sleep $sleep_for;
 
 docker_ids=$(docker-compose ps -q)
+
+#### Compile trading-cli
+cargo build --package trading_client --bin trading_client
 
 ########
 
