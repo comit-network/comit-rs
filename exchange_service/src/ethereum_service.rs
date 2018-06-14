@@ -93,19 +93,24 @@ impl EthereumService {
             let tx_id = self.web3.send_raw_transaction(signed_transaction.into())?;
 
             debug!(
-                "Contract {:#?} was successfully deployed in transaction {}",
-                contract, tx_id
+                "Contract {:?} was successfully deployed in transaction {} with initial funding of {}",
+                contract, tx_id, funding
             );
 
             // If we get this far, everything worked.
             // Update the nonce and release the lock.
-            let next_nonce = *nonce + U256::from(1);
-            *nonce = next_nonce;
+            EthereumService::increment_nonce(nonce);
 
             tx_id
         };
 
         Ok(tx_id)
+    }
+
+    fn increment_nonce(nonce: &mut U256) {
+        let next_nonce = *nonce + U256::from(1);
+        debug!("Nonce was incremented from {} to {}", nonce, next_nonce);
+        *nonce = next_nonce;
     }
 }
 

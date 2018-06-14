@@ -41,13 +41,12 @@ pub struct OfferCreated {
 
 impl From<RateResponseBody> for OfferCreated {
     fn from(r: RateResponseBody) -> Self {
-        OfferCreated {
-            uid: TradeId(Uuid::new_v4()),
-            symbol: Symbol(r.symbol),
-            rate: r.rate,
-            eth_amount: EthereumQuantity::from_eth(r.buy_amount),
-            btc_amount: BitcoinQuantity::from_bitcoin(r.sell_amount),
-        }
+        OfferCreated::new(
+            Symbol(r.symbol),
+            r.rate,
+            EthereumQuantity::from_eth(r.buy_amount),
+            BitcoinQuantity::from_satoshi(r.sell_amount),
+        )
     }
 }
 

@@ -77,6 +77,8 @@ fn post_buy_offers(
         }
     }
 
+    info!("Created new offer: {:?}", offer_event);
+
     Ok(Json(offer_event.clone())) // offer_event is the same than state.
 }
 
