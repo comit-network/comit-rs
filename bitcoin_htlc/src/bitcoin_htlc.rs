@@ -55,7 +55,7 @@ impl Htlc {
         &self.script
     }
 
-    pub fn get_address(&self, network: Network) -> Address {
+    pub fn compute_address(&self, network: Network) -> Address {
         Address::p2wsh(&self.script, network)
     }
 }
@@ -158,7 +158,7 @@ mod tests {
             900,
         );
 
-        let address = htlc.get_address(Network::BitcoinCoreRegtest);
+        let address = htlc.compute_address(Network::BitcoinCoreRegtest);
 
         assert_eq!(
             address.to_string(),

@@ -239,7 +239,7 @@ mod tests {
             sequence_lock,
         );
 
-        let htlc_address = htlc.get_address(Network::BitcoinCoreRegtest);
+        let htlc_address = htlc.compute_address(Network::BitcoinCoreRegtest);
         let rpc_htlc_address = bitcoin_rpc::Address::from(htlc_address.clone());
         let htlc_script = htlc.script();
 

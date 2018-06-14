@@ -182,7 +182,7 @@ pub fn post_buy_orders(
 
     let offer = event_store.get_offer_created(&trade_id).unwrap();
 
-    let htlc_address = bitcoin_rpc::Address::from(htlc.get_address(network.clone()));
+    let htlc_address = bitcoin_rpc::Address::from(htlc.compute_address(network.clone()));
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,
