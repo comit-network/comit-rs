@@ -6,7 +6,7 @@ services:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - BTC_NETWORK=BTCORE_REGTEST
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=error,trading_service=debug
+      - RUST_LOG=info,trading_service=debug
       - RUST_BACKTRACE=1
     ports:
     - "8000:8000"
@@ -27,7 +27,7 @@ services:
       - BITCOIN_RPC_USERNAME=bitcoin
       - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
       - BTC_NETWORK=BTCORE_REGTEST
-      - RUST_LOG=error,exchange_service=debug
+      - RUST_LOG=info,exchange_service=debug
       - RUST_BACKTRACE=1
     ports:
     - "8010:8000"
@@ -39,6 +39,7 @@ services:
     build: ./fake_treasury_service
     environment:
       - ROCKET_ADDRESS=0.0.0.0
+      - RUST_LOG=info,fake_treasury_service=debug
     ports:
     - "8020:8000"
 
