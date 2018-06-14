@@ -45,7 +45,7 @@ impl From<RateResponseBody> for OfferCreated {
             Symbol(r.symbol),
             r.rate,
             EthereumQuantity::from_eth(r.buy_amount),
-            BitcoinQuantity::from_bitcoin(r.sell_amount),
+            BitcoinQuantity::from_satoshi(r.sell_amount),
         )
     }
 }
