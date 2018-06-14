@@ -109,9 +109,9 @@ mod tests {
     #[test]
     fn given_a_vec_u8_pubkey_hash_return_htlc_redeem_script() {
         let recipient_pubkey_hash: Vec<u8> =
-            hex::FromHex::from_hex(&"c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
+            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let sender_pubkey_hash: Vec<u8> =
-            hex::FromHex::from_hex(&"1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
+            hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
 
         let recipient_pubkey_hash = PubkeyHash::new(recipient_pubkey_hash).unwrap();
         let sender_pubkey_hash = PubkeyHash::new(sender_pubkey_hash).unwrap();
@@ -140,9 +140,9 @@ mod tests {
     #[test]
     fn given_an_htlc_redeem_script_return_p2wsh() {
         let recipient_pubkey_hash: Vec<u8> =
-            hex::FromHex::from_hex(&"c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
+            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let sender_pubkey_hash: Vec<u8> =
-            hex::FromHex::from_hex(&"1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
+            hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
 
         let recipient_pubkey_hash = PubkeyHash::new(recipient_pubkey_hash).unwrap();
         let sender_pubkey_hash = PubkeyHash::new(sender_pubkey_hash).unwrap();
