@@ -123,7 +123,7 @@ function new_order() {
     # echo "--> BTC HTLC: ${btc_htlc_address}"
 
     ## Get BTC amount
-    btc_amount=$(echo "$output" | grep "Please send" | sed -E 's/^Please send ([0-9]+) BTC.*$/\1/')
+    btc_amount=$(echo "$output" | grep "Please send" | sed -E 's/^Please send ([0-9\.]+) BTC.*$/\1/')
     # echo "--> BTC amount: ${btc_amount}"
 }
 
