@@ -139,11 +139,9 @@ function fund_htlc() {
     ## Bitcoin RPC call
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"sendtoaddress\", \"params\": [ \"${btc_htlc_address}\", ${btc_amount}]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-    # echo "--> ${output} <--"
 
     ## Get funding tx id
     htlc_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
-    # echo "--> $htlc_funding_tx <--"
 
     generate_blocks;
 
@@ -151,18 +149,16 @@ function fund_htlc() {
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"getrawtransaction\", \"params\": [ \"${htlc_funding_tx}\" ]}" \
     -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
+
     raw_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
-    # echo "--> $raw_funding_tx <--"
 
     ## Decode raw funding tx
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}"\
      -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-    # echo $output
 
     ## Getting the vout which pays the BTC HTLC
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
-    # echo "--> $htlc_funding_tx_vout <--"
 
     echo "HTLC successfully funded - BTC payment was made."
 }
