@@ -24,7 +24,7 @@ use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid;
 use uuid::Uuid;
-use web3::types::{Address as EthereumAddress, U256};
+use web3::types::Address as EthereumAddress;
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -136,10 +136,10 @@ pub fn post_buy_orders(
         order_request_body.client_refund_address,
         order_request_body.client_success_address,
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
-        // TODO: retrieve and use real address
-        bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
+        // TODO: TESTNET
+        bitcoin_rpc::Address::from("tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv"),
         bitcoin_wallet::PrivateKey::from_str(
-            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
+            "cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz",
         ).unwrap(),
     );
 
