@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn given_an_hex_address_with_0x_should_remove_0x() {
         let address = "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
-        let refund_address = "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg".to_string();
+        let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
         let order_request_body = BuyOrderRequestBody::new(address, refund_address);
 
         let eth_address = EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap();
@@ -189,7 +189,7 @@ mod tests {
     #[test]
     fn given_an_hex_address_without_0x_should_return_same_address() {
         let address = "00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
-        let refund_address = "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg".to_string();
+        let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
         let order_request_body = BuyOrderRequestBody::new(address, refund_address);
 
         let eth_address = EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap();
