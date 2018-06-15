@@ -1,7 +1,12 @@
 use bitcoin;
 use bitcoin::util::address::Address as bitcoin_address;
+use bitcoin::util::address::Payload::WitnessProgram;
+
+use bitcoin::util::hash::Hash160;
 use std::fmt;
 use std::str::FromStr;
+use types::ScriptType;
+
 // TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
 #[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Address(String);
@@ -16,6 +21,14 @@ impl Address {
     pub fn to_bitcoin_address(&self) -> Result<bitcoin_address, bitcoin::util::Error> {
         bitcoin_address::from_str(self.0.as_str())
     }
+
+    pub fn get_pubkey_hash(&self) -> Result<PubkeyHash, Error> {
+        let address = self.to_bitcoin_address()?;
+        match address.payload {
+            WitnessProgram(witness) => Ok(PubkeyHash(witness.program().to_vec())),
+            _ => Err(Error::AddressIsNotBech32),
+        }
+    }
 }
 
 impl fmt::Display for Address {
@@ -24,7 +37,26 @@ impl fmt::Display for Address {
     }
 }
 
-use types::*;
+#[derive(Debug)]
+pub enum Error {
+    AddressIsNotBech32,
+    BitcoinError(bitcoin::util::Error),
+}
+
+impl From<bitcoin::util::Error> for Error {
+    fn from(error: bitcoin::util::Error) -> Self {
+        Error::BitcoinError(error)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &Error::AddressIsNotBech32 => write!(f, "address must be bech32"),
+            &Error::BitcoinError(_) => write!(f, "address is not in bitcoin format"),
+        }
+    }
+}
 
 from_str!(Address);
 
@@ -57,7 +89,7 @@ pub struct AddressValidationResult {
     addresses: Option<Vec<Address>>,
     #[serde(rename = "sigsrequired")]
     sigs_required: Option<i32>,
-    pubkey: Option<String>,
+    pubkey: Option<String>, //TODO: use PubkeyHash here
     #[serde(rename = "iscompressed")]
     is_compressed: Option<bool>,
     account: Option<String>,
@@ -67,8 +99,35 @@ pub struct AddressValidationResult {
     hd_masterkey_id: Option<String>,
 }
 
+#[derive(Clone, Debug)]
+pub struct PubkeyHash(Vec<u8>);
+
+impl PubkeyHash {
+    pub fn new(vec: Vec<u8>) -> Result<PubkeyHash, ()> {
+        if vec.len() != 20 {
+            error!("Invalid length of pubkey hash: {:?}", vec);
+            return Err(());
+        }
+        Ok(PubkeyHash(vec))
+    }
+}
+
+impl From<Hash160> for PubkeyHash {
+    fn from(hash: Hash160) -> Self {
+        PubkeyHash(hash.data().to_vec())
+    }
+}
+
+impl AsRef<[u8]> for PubkeyHash {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    extern crate hex;
+
     use super::*;
     use serde_json;
 
@@ -179,5 +238,17 @@ mod tests {
             hd_key_path: None,
             hd_masterkey_id: None,
         })
+    }
+
+    #[test]
+    fn given_an_bitcoin_address_return_pubkey_hash() {
+        let address =
+            bitcoin_address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").unwrap();
+        let pubkey_hash = Address::from(address).get_pubkey_hash().unwrap();
+
+        assert_eq!(
+            pubkey_hash.0,
+            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap()
+        );
     }
 }
