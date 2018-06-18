@@ -2,6 +2,7 @@
 #![plugin(rocket_codegen)]
 extern crate bitcoin;
 extern crate bitcoin_rpc;
+extern crate bitcoin_wallet;
 extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate exchange_service;
@@ -18,6 +19,7 @@ extern crate tiny_keccak;
 extern crate uuid;
 extern crate web3;
 
+use bitcoin_wallet::PrivateKey;
 use ethereum_wallet::InMemoryWallet;
 use exchange_service::ethereum_service::EthereumService;
 use exchange_service::event_store::EventStore;
@@ -29,7 +31,8 @@ use std::env::var;
 use std::str::FromStr;
 use std::sync::Arc;
 use web3::futures::Future;
-use web3::types::Address;
+use web3::types::Address as EthereumAddress;
+
 fn var_or_exit(name: &str) -> String {
     match var(name) {
         Ok(value) => value,
@@ -76,6 +79,13 @@ fn main() {
         nonce,
     );
 
+    let exchange_refund_address =
+        EthereumAddress::from_str(var_or_exit("EXCHANGE_REFUND_ADDRESS").as_str())
+            .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address");
+
+    let exchange_success_private_key =
+        PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
+
     let bitcoin_rpc_client = {
         let url = var_or_exit("BITCOIN_RPC_URL");
         let username = var_or_exit("BITCOIN_RPC_USERNAME");
@@ -102,12 +112,14 @@ fn main() {
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_rpc_client),
+        exchange_refund_address,
+        exchange_success_private_key,
         network,
     ).launch();
 }
 
 // TODO move this somewhere else (maybe contribute to web3?)
-fn derive_address_from_private_key(private_key: &[u8]) -> web3::types::Address {
+fn derive_address_from_private_key(private_key: &[u8]) -> EthereumAddress {
     let secp256k1 = secp256k1::Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(&secp256k1, private_key).unwrap();
     let public_key = secp256k1::PublicKey::from_secret_key(&secp256k1, &secret_key).unwrap();
@@ -116,7 +128,7 @@ fn derive_address_from_private_key(private_key: &[u8]) -> web3::types::Address {
 
     let hash = tiny_keccak::keccak256(&serialized);
 
-    let mut result = Address::default();
+    let mut result = EthereumAddress::default();
     result.copy_from_slice(&hash[12..]);
     result
 }
