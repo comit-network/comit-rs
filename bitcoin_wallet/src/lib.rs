@@ -6,6 +6,7 @@ extern crate bitcoin_rpc;
 extern crate common_types;
 
 pub use bitcoin::blockdata::script::Script;
+pub use bitcoin::util::address::Address;
 use secp256k1::Secp256k1;
 
 lazy_static! {

@@ -81,8 +81,8 @@ pub struct OrderTaken {
     client_refund_address: bitcoin_rpc::Address,
     client_success_address: EthereumAddress,
 
-    exchange_success_address: bitcoin_rpc::Address,
     exchange_refund_address: EthereumAddress,
+    exchange_success_address: bitcoin_wallet::Address,
     exchange_success_private_key: bitcoin_wallet::PrivateKey,
 }
 
@@ -94,9 +94,9 @@ impl OrderTaken {
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_rpc::Address,
-        exchange_success_address: bitcoin_rpc::Address,
         client_success_address: EthereumAddress,
         exchange_refund_address: EthereumAddress,
+        exchange_success_address: bitcoin_wallet::Address,
         exchange_success_private_key: bitcoin_wallet::PrivateKey,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
@@ -116,7 +116,7 @@ impl OrderTaken {
         }
     }
 
-    pub fn exchange_success_address(&self) -> bitcoin_rpc::Address {
+    pub fn exchange_success_address(&self) -> bitcoin_wallet::Address {
         self.exchange_success_address.clone()
     }
 
