@@ -11,7 +11,7 @@ use std::time::SystemTime;
 use treasury_api_client::RateResponseBody;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
+use web3::types::Address as EthereumAddress;
 use web3::types::H256;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -79,10 +79,10 @@ pub struct OrderTaken {
     exchange_contract_time_lock: SystemTime,
 
     client_refund_address: bitcoin_rpc::Address,
-    client_success_address: EthAddress,
+    client_success_address: EthereumAddress,
 
-    exchange_refund_address: EthAddress,
     exchange_success_address: bitcoin_rpc::Address,
+    exchange_refund_address: EthereumAddress,
     exchange_success_private_key: bitcoin_wallet::PrivateKey,
 }
 
@@ -94,9 +94,9 @@ impl OrderTaken {
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_rpc::Address,
-        client_success_address: EthAddress,
-        exchange_refund_address: EthAddress,
         exchange_success_address: bitcoin_rpc::Address,
+        client_success_address: EthereumAddress,
+        exchange_refund_address: EthereumAddress,
         exchange_success_private_key: bitcoin_wallet::PrivateKey,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
@@ -120,7 +120,7 @@ impl OrderTaken {
         self.exchange_success_address.clone()
     }
 
-    pub fn exchange_refund_address(&self) -> EthAddress {
+    pub fn exchange_refund_address(&self) -> EthereumAddress {
         self.exchange_refund_address
     }
 
@@ -132,7 +132,7 @@ impl OrderTaken {
         self.client_refund_address.clone()
     }
 
-    pub fn client_success_address(&self) -> EthAddress {
+    pub fn client_success_address(&self) -> EthereumAddress {
         self.client_success_address.clone()
     }
 
