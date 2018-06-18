@@ -64,10 +64,6 @@ impl fmt::Display for BitcoinQuantity {
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct EthereumQuantity(U256);
 
-lazy_static! {
-    static ref WEI_IN_ETHEREUM: U256 = U256::from((10u64).pow(18));
-}
-
 impl CurrencyQuantity for EthereumQuantity {
     fn nominal_amount(&self) -> f64 {
         self.ethereum()
@@ -133,6 +129,10 @@ impl FromStr for EthereumQuantity {
 
 #[cfg(test)]
 mod test {
+    lazy_static! {
+        static ref WEI_IN_ETHEREUM: U256 = U256::from((10u64).pow(18));
+    }
+
     use super::*;
     #[test]
     fn hundred_million_sats_is_a_bitcoin() {
