@@ -79,12 +79,13 @@ impl CurrencyQuantity for EthereumQuantity {
 
 impl EthereumQuantity {
     fn extract_significand(decimal: Decimal) -> U256 {
-        // deserialises into 4 bytes of flags + 12 bytes of integer
         let ser = decimal.serialize();
+        let _flags = &ser[0..4];
+        let little_endian_int_data = &ser[4..16];
         let mut buf = [0u8; 32];
         // ignore first 4 bytes which contain meta info
-        buf[0..12].clone_from_slice(&ser[4..]);
-        buf.reverse(); // convert big endidan -- can probably redesigned to avoid this
+        buf[0..12].clone_from_slice(little_endian_int_data);
+        buf.reverse(); // convert big endian -- can probably redesigned to avoid this
         buf.into()
     }
 
