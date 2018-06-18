@@ -107,7 +107,7 @@ pub fn run(
     trading_api_url: TradingApiUrl,
     symbol: Symbol,
     order_type: OrderType,
-    amount: u64,
+    amount: f64,
 ) -> Result<String, TradingServiceError> {
     let offer_request_body = BuyOfferRequestBody::new(amount);
 

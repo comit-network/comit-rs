@@ -34,7 +34,7 @@ enum Opt {
         /// The amount you want to exchange (buy for a buy order, sell for a sell order). Integer.
         #[structopt(short = "a", long = "amount",
                     name = "amount to exchange (buy for a buy order, sell for a sell order). Integer.")]
-        amount: u64,
+        amount: f64,
     },
     /// Accept an order
     #[structopt(name = "order")]
