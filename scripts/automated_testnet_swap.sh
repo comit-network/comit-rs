@@ -44,10 +44,11 @@ function setup() {
     export EXCHANGE_SUCCESS_ADDRESS="tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv"
     export EXCHANGE_BTC_PRIVATE_KEY="cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz"
 
+    export BTC_NETWORK=BTC_TESTNET
 
-    export ETHEREUM_NODE_ENDPOINT="http://localhost:8545"
-    export ETHEREUM_NETWORK_ID=42
-    export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
+    export ETHEREUM_NODE_ENDPOINT="https://ropsten.infura.io/GyUAf9mmmFfRCuIl9cqe"
+    export ETHEREUM_NETWORK_ID=3
+    export ETHEREUM_PRIVATE_KEY="dd0d193e94ad1deb5a45214645ac3793b4f1283d74f354c7849225a43e9cadc5"
 
     export TREASURY_SERVICE_URL=http://localhost:8020
     export EXCHANGE_SERVICE_URL=http://localhost:8010
@@ -55,10 +56,9 @@ function setup() {
 
     #### Start all services
 
-    #docker-compose up -d treasury_service exchange_service trading_service ethereum 2> $OUTPUT 1> $OUTPUT
-    docker-compose up -d ethereum exchange_service treasury_service trading_service 2> $OUTPUT 1> $OUTPUT
+    #docker-compose up -d 2> $OUTPUT 1> $OUTPUT
 
-    sleep 5;
+    #sleep 5;
 
     docker_ids=$(docker-compose ps -q)
 
@@ -75,9 +75,9 @@ function setup() {
     symbol_param="--symbol=ETH-BTC"
     eth_amount=1
     client_refund_address="tb1qneq0jggmd0w63kl5adpwek6v44ajt9yqyuq8zw"
-    client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
+    client_success_address="0xa1a126D670dF6876E17068109f31cF94701b4f25"
     # For contract calling
-    client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
+    client_sender_address="0xa91Db146B2aC9Dc00846eE3f9c6e8b537Ce34D35"
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -194,7 +194,7 @@ function notify_trading_service_eth_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
+    print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC ${ETH_HTLC_ADDRESS})."
 }
 
 function notify_exchange_service_eth_redeemed() {
@@ -210,9 +210,11 @@ function get_redeem_details() {
 
     output=$($cmd)
 
+    echo "${output}"
+
     secret=$(echo "$output" | tail -n1 |sed -E 's/^ethereum:.*bytes32=(.+)$/\1/')
 
-    echo "Secret: $secret"
+    #echo "Secret: $secret"
 }
 
 function get_eth_balance() {
@@ -322,7 +324,9 @@ echo "Previous ETH balance: $old_balance"
 
 $IS_INTERACTIVE && read;
 
-redeem_eth;
+echo "Proceed with redeem"
+read
+#redeem_eth;
 
 new_balance=$(get_eth_balance)
 echo "New ETH balance in HEX: $new_balance" > $OUTPUT

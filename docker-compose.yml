@@ -1,5 +1,31 @@
 version: '3'
 services:
+  treasury_service:
+    build: ./fake_treasury_service
+    environment:
+      - ROCKET_ADDRESS=0.0.0.0
+      - RUST_LOG=info,fake_treasury_service=debug
+    ports:
+    - "8020:8000"
+  exchange_service:
+    build: ./exchange_service
+    environment:
+      - TREASURY_SERVICE_URL=http://treasury_service:8000
+      - ETHEREUM_PRIVATE_KEY=dd0d193e94ad1deb5a45214645ac3793b4f1283d74f354c7849225a43e9cadc5
+      - ETHEREUM_EXCHANGE_ADDRESS=33DcA4Dfe91388307CF415537D659Fef2d13B71a
+      - ETHEREUM_NETWORK_ID=3
+      - ETHEREUM_NODE_ENDPOINT=https://ropsten.infura.io/GyUAf9mmmFfRCuIl9cqe
+      - ROCKET_ADDRESS=0.0.0.0
+      - BITCOIN_RPC_URL=http://35.189.58.109:18443
+      - BITCOIN_RPC_USERNAME=bitcoin
+      - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
+      - BTC_NETWORK=BTC_TESTNET
+      - RUST_LOG=info,exchange_service=debug
+      - RUST_BACKTRACE=1
+    ports:
+    - "8010:8000"
+    depends_on:
+    - treasury_service
   trading_service:
     build: ./trading_service
     environment:
@@ -12,38 +38,3 @@ services:
     - "8000:8000"
     depends_on:
     - exchange_service
-
-  exchange_service:
-    build: ./exchange_service
-    command: bash -c 'sleep 5 && ./exchange_service'
-    environment:
-      - TREASURY_SERVICE_URL=http://treasury_service:8000
-      - ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
-      - ETHEREUM_NETWORK_ID=1
-      - ETHEREUM_NODE_ENDPOINT=http://ethereum:8545
-      - ROCKET_ADDRESS=0.0.0.0
-      - BITCOIN_RPC_URL=http://35.189.58.109:18443
-      - BITCOIN_RPC_USERNAME=bitcoin
-      - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
-      - BTC_NETWORK=BTC_TESTNET
-      - RUST_LOG=info,exchange_service=debug
-      - RUST_BACKTRACE=1
-    ports:
-    - "8010:8000"
-    depends_on:
-    - treasury_service
-    - ethereum
-
-  treasury_service:
-    build: ./fake_treasury_service
-    environment:
-      - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,fake_treasury_service=debug
-    ports:
-    - "8020:8000"
-
-  ethereum:
-    image: trufflesuite/ganache-cli
-    command: -a 7 -m supersecure
-    ports:
-    - "8545:8545"

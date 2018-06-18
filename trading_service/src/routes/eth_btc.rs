@@ -245,7 +245,7 @@ pub fn get_redeem_orders(
         address,
         data: secret,
         // TODO: check how much gas we should tell the customer to pay
-        gas: 20000,
+        gas: 35000,
     }))
 }
 
