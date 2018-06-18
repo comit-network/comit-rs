@@ -93,7 +93,7 @@ impl EthereumService {
             let tx_id = self.web3.send_raw_transaction(signed_transaction.into())?;
 
             debug!(
-                "Contract {:?} was successfully deployed in transaction {} with initial funding of {}",
+                "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
                 contract, tx_id, funding
             );
 

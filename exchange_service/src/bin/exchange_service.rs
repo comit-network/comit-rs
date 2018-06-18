@@ -56,10 +56,16 @@ fn main() {
     let endpoint = var("ETHEREUM_NODE_ENDPOINT").expect("Ethereum node endpoint is not set");
 
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
+
     let web3 = web3::api::Web3::new(transport);
 
-    let address = derive_address_from_private_key(&private_key);
+    // TODO: issue opened. The derive is incorrect
+    // let address = derive_address_from_private_key(&private_key);
+
+    let address = var("ETHEREUM_EXCHANGE_ADDRESS").expect("ETHEREUM_EXCHANGE_ADDRESS is not set");
+    let address = web3::types::Address::from_str(&address.as_str()).unwrap();
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
+    println!("Nonce: {}", nonce);
 
     let ethereum_service = EthereumService::new(
         Arc::new(wallet),
