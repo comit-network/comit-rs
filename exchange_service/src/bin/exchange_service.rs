@@ -30,12 +30,20 @@ use std::str::FromStr;
 use std::sync::Arc;
 use web3::futures::Future;
 use web3::types::Address;
+fn var_or_exit(name: &str) -> String {
+    match var(name) {
+        Ok(value) => value,
+        Err(_) => {
+            eprintln!("{} is not set but is required", name);
+            std::process::exit(1);
+        }
+    }
+}
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     let _ = env_logger::init();
-    let treasury_api_url =
-        TreasuryApiUrl(var("TREASURY_SERVICE_URL").expect("Treasury api url not set"));
+    let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
 
     let api_client = DefaultApiClient {
         client: reqwest::Client::new(),
@@ -44,8 +52,8 @@ fn main() {
 
     let event_store = EventStore::new();
 
-    let private_key = var("ETHEREUM_PRIVATE_KEY").expect("Private key not set");
-    let network_id = var("ETHEREUM_NETWORK_ID").expect("Ethereum network id not set");
+    let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
+    let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 
     let private_key = <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
@@ -53,7 +61,7 @@ fn main() {
     let wallet =
         InMemoryWallet::new(private_key, network_id).expect("Failed to create wallet instance");
 
-    let endpoint = var("ETHEREUM_NODE_ENDPOINT").expect("Ethereum node endpoint is not set");
+    let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
 
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
     let web3 = web3::api::Web3::new(transport);
@@ -69,9 +77,9 @@ fn main() {
     );
 
     let bitcoin_rpc_client = {
-        let url = var("BITCOIN_RPC_URL").expect("BITCOIN_RPC_URL not set");
-        let username = var("BITCOIN_RPC_USERNAME").expect("BITCOIN_RPC_USERNAME not set");
-        let password = var("BITCOIN_RPC_PASSWORD").expect("BITCOIN_RPC_PASSWORD not set");
+        let url = var_or_exit("BITCOIN_RPC_URL");
+        let username = var_or_exit("BITCOIN_RPC_USERNAME");
+        let password = var_or_exit("BITCOIN_RPC_PASSWORD");
 
         bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
     };
