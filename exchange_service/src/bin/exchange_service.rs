@@ -65,6 +65,9 @@ fn main() {
         InMemoryWallet::new(private_key, network_id).expect("Failed to create wallet instance");
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
+    let gas_price = var_or_exit("ETHEREUM_GAS_PRICE_IN_WEI")
+        .map(|gas| u64::from_str(gas.as_str()).unwrap())
+        .unwrap_or(2_000_000_000);
 
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
     let web3 = web3::api::Web3::new(transport);
@@ -74,7 +77,7 @@ fn main() {
 
     let ethereum_service = EthereumService::new(
         Arc::new(wallet),
-        Arc::new(StaticGasPriceService::default()),
+        Arc::new(StaticGasPriceService::new(gas_price)),
         Arc::new(web3),
         nonce,
     );
