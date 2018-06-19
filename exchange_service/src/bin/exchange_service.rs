@@ -73,7 +73,7 @@ fn main() {
 
     let web3 = web3::api::Web3::new(transport);
 
-    // TODO: issue opened. The derive is incorrect
+    // TODO: issue #103 opened. The derive is incorrect
     // let address = derive_address_from_private_key(&private_key);
 
     let address = var("ETHEREUM_EXCHANGE_ADDRESS").expect("ETHEREUM_EXCHANGE_ADDRESS is not set");
