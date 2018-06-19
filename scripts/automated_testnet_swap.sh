@@ -7,11 +7,13 @@ END(){
         for id in ${docker_ids}
             do docker rm -f ${id} 2> $OUTPUT 1> $OUTPUT;
         done
-    fi
+   fi
 }
 
 IS_INTERACTIVE=false
 DEBUG=${DEBUG:=false}
+
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
 
 if [ "$1" = "--interactive" ]
 then
@@ -35,24 +37,8 @@ function setup() {
 
     # Funding address is 2N1NCkJmrRUTjESogG4UKb8uuRogagjRaQt (cannot be bech32) 0.8046605
 
-    export BITCOIN_RPC_URL="http://35.189.58.109:18443"
-    export BITCOIN_RPC_USERNAME="bitcoin"
-    export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-    # TODO Testnet
-    # This is to manually watch the contract address to see the unspent output
-    export BITCOIN_CONTRACT_ADDRESS="tb1q48acaauny4em0qqt96f5uutcddh6elp9wgguyk3hes5a0v3gkjxsjxyudp"
-    export EXCHANGE_SUCCESS_ADDRESS="tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv"
-    export EXCHANGE_BTC_PRIVATE_KEY="cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz"
-
-    export BTC_NETWORK=BTC_TESTNET
-
-    export ETHEREUM_NODE_ENDPOINT="https://ropsten.infura.io/GyUAf9mmmFfRCuIl9cqe"
-    export ETHEREUM_NETWORK_ID=3
-    export ETHEREUM_PRIVATE_KEY="dd0d193e94ad1deb5a45214645ac3793b4f1283d74f354c7849225a43e9cadc5"
-
-    export TREASURY_SERVICE_URL=http://localhost:8020
-    export EXCHANGE_SERVICE_URL=http://localhost:8010
-    export TRADING_SERVICE_URL=http://localhost:8000
+    source $PROJECT_ROOT/scripts/common.env
+    source $PROJECT_ROOT/scripts/exchange.env
 
     #### Start all services
 
@@ -68,8 +54,8 @@ function setup() {
 
     export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
-    cd "target/debug"
-    cli="./trading_client"
+
+    cli="$PROJECT_ROOT/target/debug/trading_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
