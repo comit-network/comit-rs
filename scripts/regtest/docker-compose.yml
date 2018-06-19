@@ -19,7 +19,7 @@ services:
     build: ../../exchange_service
     command: bash -c 'sleep 5 && ./exchange_service'
     env_file:
-      - /Users/froyer/src/swap/scripts/regtest/regtest.env
+      - ./regtest.env
     environment:
       - BITCOIN_RPC_URL=http://bitcoin:18443
       - ETHEREUM_NODE_ENDPOINT=http://ethereum:8545

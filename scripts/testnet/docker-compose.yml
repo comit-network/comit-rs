@@ -1,43 +1,34 @@
 version: '3'
 services:
   treasury_service:
-    build: ./fake_treasury_service
+    build: ../../fake_treasury_service
     environment:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,fake_treasury_service=debug
+      - RATE=0.07543
     ports:
     - "8020:8000"
   exchange_service:
-    build: ./exchange_service
+    build: ../../exchange_service
+    env_file:
+      - ./testnet.env
     environment:
       - TREASURY_SERVICE_URL=http://treasury_service:8000
-      - ETHEREUM_PRIVATE_KEY=dd0d193e94ad1deb5a45214645ac3793b4f1283d74f354c7849225a43e9cadc5
-      - ETHEREUM_EXCHANGE_ADDRESS=33DcA4Dfe91388307CF415537D659Fef2d13B71a
-      - ETHEREUM_NETWORK_ID=3
-      - ETHEREUM_NODE_ENDPOINT=https://ropsten.infura.io/GyUAf9mmmFfRCuIl9cqe
       - ROCKET_ADDRESS=0.0.0.0
-      - BITCOIN_RPC_URL=http://35.189.58.109:18443
-      - BITCOIN_RPC_USERNAME=bitcoin
-      - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
-      - BTC_NETWORK=BTC_TESTNET
-      - EXCHANGE_SUCCESS_ADDRESS="tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv"
-      - EXCHANGE_SUCCESS_PRIVATE_KEY="cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz"
       - RUST_LOG=info,exchange_service=debug
       - RUST_BACKTRACE=1
-      - EXCHANGE_SUCCESS_PRIVATE_KEY=cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8
-      - EXCHANGE_REFUND_ADDRESS=e7b6bfabddfaeb2c016b334a5322e4327dc5e499
     ports:
     - "8010:8000"
     depends_on:
     - treasury_service
   trading_service:
-    build: ./trading_service
+    build: ../../trading_service
+    env_file:
+      - ./testnet.env
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
-      - BTC_NETWORK=BTC_TESTNET
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,trading_service=debug
       - RUST_BACKTRACE=1
-      - RATE=0.1
     ports:
-    - "8020:8000"
+    - "8000:8000"
