@@ -20,6 +20,8 @@ services:
       - BITCOIN_RPC_USERNAME=bitcoin
       - BITCOIN_RPC_PASSWORD=54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=
       - BTC_NETWORK=BTC_TESTNET
+      - EXCHANGE_SUCCESS_ADDRESS="tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv"
+      - EXCHANGE_SUCCESS_PRIVATE_KEY="cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz"
       - RUST_LOG=info,exchange_service=debug
       - RUST_BACKTRACE=1
       - EXCHANGE_SUCCESS_PRIVATE_KEY=cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8
