@@ -57,7 +57,7 @@ pub fn post_revealed_secret(
     let input_amount = offer_created_event.btc_amount();
     let fee = BitcoinQuantity::from_satoshi(1000);
     let output_amount = input_amount - fee;
-
+    
     let exchange_success_address = order_taken_event.exchange_success_address();
 
     let exchange_success_pubkey_hash: PubkeyHash =

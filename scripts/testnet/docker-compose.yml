@@ -38,7 +38,6 @@ services:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,trading_service=debug
       - RUST_BACKTRACE=1
+      - RATE=0.1
     ports:
-    - "8000:8000"
-    depends_on:
-    - exchange_service
+    - "8020:8000"

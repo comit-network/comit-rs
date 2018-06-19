@@ -64,10 +64,6 @@ impl fmt::Display for BitcoinQuantity {
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct EthereumQuantity(U256);
 
-lazy_static! {
-    static ref WEI_IN_ETHEREUM: U256 = U256::from((10 as u64).pow(18));
-}
-
 impl CurrencyQuantity for EthereumQuantity {
     fn nominal_amount(&self) -> f64 {
         self.ethereum()
@@ -79,17 +75,18 @@ impl CurrencyQuantity for EthereumQuantity {
 
 impl EthereumQuantity {
     fn extract_significand(decimal: Decimal) -> U256 {
-        // deserialises into 4 bytes of flags + 12 bytes of integer
         let ser = decimal.serialize();
+        let _flags = &ser[0..4];
+        let little_endian_int_data = &ser[4..16];
         let mut buf = [0u8; 32];
         // ignore first 4 bytes which contain meta info
-        buf[0..12].clone_from_slice(&ser[4..]);
-        buf.reverse(); // convert big endidan -- can probably redesigned to avoid this
+        buf[0..12].clone_from_slice(little_endian_int_data);
+        buf.reverse(); // convert big endian -- can probably redesigned to avoid this
         buf.into()
     }
 
     fn convert_significand_to_wei(significand: U256, scale: u32) -> U256 {
-        U256::from((10 as u64).pow(18 - scale)) * significand
+        U256::from(10u64.pow(18 - scale)) * significand
     }
 
     fn decimal_to_wei(decimal: Decimal) -> U256 {
@@ -132,6 +129,10 @@ impl FromStr for EthereumQuantity {
 
 #[cfg(test)]
 mod test {
+    lazy_static! {
+        static ref WEI_IN_ETHEREUM: U256 = U256::from((10u64).pow(18));
+    }
+
     use super::*;
     #[test]
     fn hundred_million_sats_is_a_bitcoin() {
@@ -172,7 +173,7 @@ mod test {
     fn a_ethereum_is_a_quintillion_wei() {
         assert_eq!(
             EthereumQuantity::from_eth(2.0).wei(),
-            U256::from(2_000_000_000_000_000_000 as u64) // 2 quintillion
+            U256::from(2_000_000_000_000_000_000u64) // 2 quintillion
         )
     }
 
@@ -180,7 +181,7 @@ mod test {
     fn from_eth_works_when_resulting_wei_cant_fit_in_u64() {
         assert_eq!(
             EthereumQuantity::from_eth(9001.0).wei(),
-            U256::from(9001 as u64) * *WEI_IN_ETHEREUM
+            U256::from(9001u64) * *WEI_IN_ETHEREUM
         )
     }
 
@@ -196,7 +197,7 @@ mod test {
     fn ethereum_quantity_from_str() {
         assert_eq!(
             EthereumQuantity::from_str("1.000_000_001").unwrap().wei(),
-            U256::from(1_000_000_001_000_000_000 as u64)
+            U256::from(1_000_000_001_000_000_000u64)
         )
     }
 
