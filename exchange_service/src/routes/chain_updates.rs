@@ -58,10 +58,8 @@ pub fn post_revealed_secret(
     let fee = BitcoinQuantity::from_satoshi(1000);
     let output_amount = input_amount - fee;
 
-    let exchange_success_pubkey_hash = order_taken_event
-        .exchange_success_address()
-        .get_pubkey_hash()
-        .unwrap();
+    let exchange_success_pubkey_hash: PubkeyHash =
+        order_taken_event.exchange_success_address().into();
 
     debug!("Exchange success address retrieved");
 
@@ -71,7 +69,7 @@ pub fn post_revealed_secret(
         .unwrap();
 
     let client_refund_pubkey_hash = order_taken_event
-        .exchange_success_address()
+        .client_refund_address()
         .get_pubkey_hash()
         .unwrap();
 

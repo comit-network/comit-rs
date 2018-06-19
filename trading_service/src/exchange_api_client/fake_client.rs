@@ -14,14 +14,14 @@ impl ApiClient for FakeApiClient {
     fn create_offer(
         &self,
         symbol: Symbol,
-        _amount: u64,
+        _amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let offer = OfferResponseBody {
             uid: TradeId::from_uuid(Uuid::new_v4()),
             symbol: symbol.clone(),
             rate: 0.42,
             btc_amount: BitcoinQuantity::from_satoshi(24),
-            eth_amount: EthereumQuantity::from_eth(10),
+            eth_amount: EthereumQuantity::from_eth(10.0),
         };
         Ok(offer)
     }

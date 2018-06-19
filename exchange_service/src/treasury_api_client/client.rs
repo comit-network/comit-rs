@@ -1,4 +1,5 @@
 use super::Symbol;
+use common_types::{BitcoinQuantity, EthereumQuantity};
 use reqwest;
 
 #[derive(Clone)]
@@ -6,23 +7,22 @@ pub struct TreasuryApiUrl(pub String);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateRequestBody {
-    //TODO: make it work with float
-    buy_amount: u64, //ethereum
+    buy_amount: f64, //ethereum
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateResponseBody {
     pub symbol: String,
     pub rate: f64,
-    pub sell_amount: u64, //satoshis
-    pub buy_amount: u64,  //ethereum
+    pub sell_amount: BitcoinQuantity,
+    pub buy_amount: EthereumQuantity,
 }
 
 pub trait ApiClient: Send + Sync {
     fn request_rate(
         &self,
         symbol: Symbol,
-        buy_amount: u64,
+        buy_amount: f64,
     ) -> Result<RateResponseBody, reqwest::Error>;
 }
 
@@ -36,7 +36,7 @@ impl ApiClient for DefaultApiClient {
     fn request_rate(
         &self,
         symbol: Symbol,
-        buy_amount: u64,
+        buy_amount: f64,
     ) -> Result<RateResponseBody, reqwest::Error> {
         self.client
             .get(format!("{}/rates/{}?amount={}", self.url.0, symbol, buy_amount).as_str())

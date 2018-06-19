@@ -4,6 +4,8 @@ extern crate rand;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate num;
+extern crate rust_decimal;
 extern crate web3;
 
 #[macro_use]

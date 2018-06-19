@@ -112,6 +112,18 @@ impl PubkeyHash {
     }
 }
 
+impl From<bitcoin_address> for PubkeyHash {
+    fn from(address: bitcoin_address) -> PubkeyHash {
+        match address.payload {
+            WitnessProgram(witness) => PubkeyHash(witness.program().to_vec()),
+            // TODO: from/into should never fail. Remove this panic by
+            // creating a PubkeyAddress type which is guaranteed to
+            // have a PubkeyHash inside it.
+            _ => panic!("Address {} isn't a pubkey address", address.to_string()),
+        }
+    }
+}
+
 impl From<Hash160> for PubkeyHash {
     fn from(hash: Hash160) -> Self {
         PubkeyHash(hash.data().to_vec())
