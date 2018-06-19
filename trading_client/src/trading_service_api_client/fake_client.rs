@@ -28,8 +28,8 @@ impl ApiClient for FakeApiClient {
             uid: TradeId::from_str("a83aac12-0c78-417e-88e4-1a2948c6d538").unwrap(),
             symbol,
             rate: 0.07,
-            btc_amount: BitcoinQuantity::from_bitcoin(7),
-            eth_amount: EthereumQuantity::from_eth(100),
+            btc_amount: BitcoinQuantity::from_bitcoin(7.0),
+            eth_amount: EthereumQuantity::from_eth(100.0),
         })
     }
     fn request_order(
@@ -42,8 +42,8 @@ impl ApiClient for FakeApiClient {
             address_to_fund: bitcoin_rpc::Address::from(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ),
-            btc_amount: BitcoinQuantity::from_bitcoin(1001),
-            eth_amount: EthereumQuantity::from_eth(140),
+            btc_amount: BitcoinQuantity::from_bitcoin(1001.0),
+            eth_amount: EthereumQuantity::from_eth(140.0),
         })
     }
     fn request_redeem_details(

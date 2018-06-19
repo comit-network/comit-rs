@@ -22,6 +22,8 @@ services:
       - BTC_NETWORK=BTC_TESTNET
       - RUST_LOG=info,exchange_service=debug
       - RUST_BACKTRACE=1
+      - EXCHANGE_SUCCESS_PRIVATE_KEY=cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8
+      - EXCHANGE_REFUND_ADDRESS=e7b6bfabddfaeb2c016b334a5322e4327dc5e499
     ports:
     - "8010:8000"
     depends_on:
