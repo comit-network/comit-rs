@@ -78,6 +78,8 @@ impl CurrencyQuantity for EthereumQuantity {
     }
 }
 
+const U64SIZE: usize = mem::size_of::<u64>();
+
 impl EthereumQuantity {
     fn bigdecimal_eth_to_u256_wei(decimal: BigDecimal) -> U256 {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
@@ -99,14 +101,16 @@ impl EthereumQuantity {
         EthereumQuantity(wei)
     }
 
-    fn _ethereum_bigdec(&self) -> BigDecimal {
-        let u64size = mem::size_of::<u64>();
-        let mut bs = [0u8; 8 * 4];
+    fn to_ethereum_bigdec(&self) -> BigDecimal {
+        let mut bs = [0u8; U64SIZE * 4];
+
+        let _u256 = self.0;
+        let four_u64s_little_endian = _u256.0;
 
         for index in 0..4 {
-            let _u64 = (self.0).0[index];
-            let start = index * u64size;
-            let end = (index + 1) * u64size;
+            let _u64 = four_u64s_little_endian[index];
+            let start = index * U64SIZE;
+            let end = (index + 1) * U64SIZE;
             bs[start..end]
                 .as_mut()
                 .write_u64::<LittleEndian>(_u64)
@@ -119,7 +123,7 @@ impl EthereumQuantity {
     }
 
     pub fn ethereum(&self) -> f64 {
-        self._ethereum_bigdec().to_f64().unwrap()
+        self.to_ethereum_bigdec().to_f64().unwrap()
     }
 
     pub fn wei(&self) -> U256 {
@@ -136,7 +140,7 @@ impl fmt::Display for EthereumQuantity {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
         // thing in all cases.
-        let fmt_dec = format!("{}", self._ethereum_bigdec());
+        let fmt_dec = format!("{}", self.to_ethereum_bigdec());
         let removed_trailing_zeros = TRAILING_ZEROS.replace(fmt_dec.as_str(), "");
         write!(f, "{} ETH", removed_trailing_zeros)
     }
@@ -225,7 +229,7 @@ mod test {
     }
 
     #[test]
-    fn ethereum_quantitiy_back_into_f64() {
+    fn ethereum_quantity_back_into_f64() {
         assert!(EthereumQuantity::from_eth(0.1234).ethereum() - 0.1234f64 < f64::EPSILON)
     }
 
