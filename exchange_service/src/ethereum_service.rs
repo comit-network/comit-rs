@@ -82,7 +82,7 @@ impl EthereumService {
 
             let transaction = ethereum_wallet::UnsignedTransaction::new_contract_deployment(
                 contract.compile_to_hex(),
-                100000, // TODO calculate exact gas needed for this transaction
+                86578, //TODO: calculate the gas consumption based on 32k + 200*bytes
                 gas_price,
                 funding,
                 *nonce,
