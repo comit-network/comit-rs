@@ -1,5 +1,7 @@
+use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_wallet;
+use bitcoin_wallet::ToP2wpkhAddress;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -99,7 +101,7 @@ impl From<OrderTaken> for OrderTakenResponseBody {
     fn from(order_taken_event: OrderTaken) -> Self {
         OrderTakenResponseBody {
             exchange_refund_address: order_taken_event.exchange_refund_address(),
-            exchange_success_address: order_taken_event.exchange_success_address(),
+            exchange_success_address: order_taken_event.exchange_success_address().into(),
             exchange_contract_time_lock: order_taken_event
                 .exchange_contract_time_lock()
                 .duration_since(UNIX_EPOCH)
@@ -115,6 +117,9 @@ pub fn post_buy_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
+    exchange_success_private_key: State<bitcoin_wallet::PrivateKey>,
+    exchange_refund_address: State<EthereumAddress>,
+    network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
     // Receive trade information
     // - Hashed Secret
@@ -132,12 +137,9 @@ pub fn post_buy_orders(
         order_request_body.client_contract_time_lock,
         order_request_body.client_refund_address,
         order_request_body.client_success_address,
-        "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
-        // TODO: retrieve and use real address
-        bitcoin_rpc::Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
-        bitcoin_wallet::PrivateKey::from_str(
-            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
-        ).unwrap(),
+        *exchange_refund_address,
+        exchange_success_private_key.to_p2wpkh_address(*network),
+        exchange_success_private_key.clone(),
     );
 
     match event_store.store_order_taken(order_taken.clone()) {
@@ -292,6 +294,10 @@ mod tests {
                 0,
             )),
             Arc::new(bitcoin_rpc::BitcoinStubClient::new()),
+            "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
+            bitcoin_wallet::PrivateKey::from_str(
+                "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
+            ).unwrap(),
             Network::BitcoinCoreRegtest,
         );
         rocket::local::Client::new(rocket).unwrap()

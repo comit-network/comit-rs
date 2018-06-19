@@ -2,6 +2,7 @@
 #![plugin(rocket_codegen)]
 extern crate bitcoin;
 extern crate bitcoin_rpc;
+extern crate bitcoin_wallet;
 extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate exchange_service;
@@ -18,6 +19,7 @@ extern crate tiny_keccak;
 extern crate uuid;
 extern crate web3;
 
+use bitcoin_wallet::PrivateKey;
 use ethereum_wallet::InMemoryWallet;
 use exchange_service::ethereum_service::EthereumService;
 use exchange_service::event_store::EventStore;
@@ -29,13 +31,22 @@ use std::env::var;
 use std::str::FromStr;
 use std::sync::Arc;
 use web3::futures::Future;
-use web3::types::Address;
+use web3::types::Address as EthereumAddress;
+
+fn var_or_exit(name: &str) -> String {
+    match var(name) {
+        Ok(value) => value,
+        Err(_) => {
+            eprintln!("{} is not set but is required", name);
+            std::process::exit(1);
+        }
+    }
+}
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     let _ = env_logger::init();
-    let treasury_api_url =
-        TreasuryApiUrl(var("TREASURY_SERVICE_URL").expect("Treasury api url not set"));
+    let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
 
     let api_client = DefaultApiClient {
         client: reqwest::Client::new(),
@@ -44,8 +55,8 @@ fn main() {
 
     let event_store = EventStore::new();
 
-    let private_key = var("ETHEREUM_PRIVATE_KEY").expect("Private key not set");
-    let network_id = var("ETHEREUM_NETWORK_ID").expect("Ethereum network id not set");
+    let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
+    let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 
     let private_key = <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
@@ -53,7 +64,7 @@ fn main() {
     let wallet =
         InMemoryWallet::new(private_key, network_id).expect("Failed to create wallet instance");
 
-    let endpoint = var("ETHEREUM_NODE_ENDPOINT").expect("Ethereum node endpoint is not set");
+    let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
 
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
     let web3 = web3::api::Web3::new(transport);
@@ -68,10 +79,17 @@ fn main() {
         nonce,
     );
 
+    let exchange_refund_address =
+        EthereumAddress::from_str(var_or_exit("EXCHANGE_REFUND_ADDRESS").as_str())
+            .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address");
+
+    let exchange_success_private_key =
+        PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
+
     let bitcoin_rpc_client = {
-        let url = var("BITCOIN_RPC_URL").expect("BITCOIN_RPC_URL not set");
-        let username = var("BITCOIN_RPC_USERNAME").expect("BITCOIN_RPC_USERNAME not set");
-        let password = var("BITCOIN_RPC_PASSWORD").expect("BITCOIN_RPC_PASSWORD not set");
+        let url = var_or_exit("BITCOIN_RPC_URL");
+        let username = var_or_exit("BITCOIN_RPC_USERNAME");
+        let password = var_or_exit("BITCOIN_RPC_PASSWORD");
 
         bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
     };
@@ -94,12 +112,14 @@ fn main() {
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_rpc_client),
+        exchange_refund_address,
+        exchange_success_private_key,
         network,
     ).launch();
 }
 
 // TODO move this somewhere else (maybe contribute to web3?)
-fn derive_address_from_private_key(private_key: &[u8]) -> web3::types::Address {
+fn derive_address_from_private_key(private_key: &[u8]) -> EthereumAddress {
     let secp256k1 = secp256k1::Secp256k1::new();
     let secret_key = secp256k1::SecretKey::from_slice(&secp256k1, private_key).unwrap();
     let public_key = secp256k1::PublicKey::from_secret_key(&secp256k1, &secret_key).unwrap();
@@ -108,7 +128,7 @@ fn derive_address_from_private_key(private_key: &[u8]) -> web3::types::Address {
 
     let hash = tiny_keccak::keccak256(&serialized);
 
-    let mut result = Address::default();
+    let mut result = EthereumAddress::default();
     result.copy_from_slice(&hash[12..]);
     result
 }
