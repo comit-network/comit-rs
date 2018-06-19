@@ -39,11 +39,11 @@ pub struct DefaultApiClient {
 
 #[derive(Deserialize, Serialize)]
 pub struct BuyOfferRequestBody {
-    amount: u64,
+    amount: f64,
 }
 
 impl BuyOfferRequestBody {
-    pub fn new(amount: u64) -> BuyOfferRequestBody {
+    pub fn new(amount: f64) -> BuyOfferRequestBody {
         BuyOfferRequestBody { amount }
     }
 }

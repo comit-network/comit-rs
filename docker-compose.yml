@@ -40,6 +40,7 @@ services:
     environment:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,fake_treasury_service=debug
+      - RATE=0.1
     ports:
     - "8020:8000"
 

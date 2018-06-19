@@ -1,6 +1,5 @@
 use bitcoin_rpc;
 use bitcoin_wallet;
-use common_types::EthereumQuantity;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -24,7 +23,7 @@ use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid;
 use uuid::Uuid;
-use web3::types::{Address as EthereumAddress, U256};
+use web3::types::Address as EthereumAddress;
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -43,7 +42,7 @@ impl From<event_store::Error> for BadRequest<String> {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OfferRequestBody {
-    pub amount: EthereumQuantity,
+    pub amount: f64,
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
@@ -54,10 +53,8 @@ fn post_buy_offers(
 ) -> Result<Json<OfferState>, BadRequest<String>> {
     let offer_request_body: OfferRequestBody = offer_request_body.into_inner();
 
-    let res = treasury_api_client.request_rate(
-        Symbol("ETH-BTC".to_string()),
-        offer_request_body.amount.ethereum(),
-    );
+    let res =
+        treasury_api_client.request_rate(Symbol("ETH-BTC".to_string()), offer_request_body.amount);
 
     let rate_response_body = match res {
         Ok(rate) => rate,

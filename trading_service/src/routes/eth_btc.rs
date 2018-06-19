@@ -43,7 +43,7 @@ impl<'a> FromParam<'a> for TradeId {
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
-    amount: u64,
+    amount: f64,
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
