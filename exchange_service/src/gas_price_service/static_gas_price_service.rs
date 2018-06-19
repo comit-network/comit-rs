@@ -15,3 +15,9 @@ impl GasPriceService for StaticGasPriceService {
         Ok(self.0)
     }
 }
+
+impl StaticGasPriceService {
+    pub fn new(gas: u64) -> Self {
+        StaticGasPriceService(U256::from(gas))
+    }
+}
