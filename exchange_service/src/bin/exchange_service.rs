@@ -65,7 +65,7 @@ fn main() {
         InMemoryWallet::new(private_key, network_id).expect("Failed to create wallet instance");
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
-    let gas_price = var_or_exit("ETHEREUM_GAS_PRICE_IN_WEI")
+    let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
         .map(|gas| u64::from_str(gas.as_str()).unwrap())
         .unwrap_or(2_000_000_000);
 
