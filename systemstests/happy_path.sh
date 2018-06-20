@@ -35,8 +35,8 @@ function setup() {
 
     #### Env variable to run all services
     source ${PROJECT_ROOT}/scripts/common.env
-    source ${PROJECT_ROOT}/scripts/regtest/.env
-    source "${SWAP_ENV}/regtest.env"
+    source ${PROJECT_ROOT}/scripts/regtest/network.env
+    source ${PROJECT_ROOT}/scripts/regtest/regtest.env
 
     #### Start all services
     cd $PROJECT_ROOT/scripts/regtest
@@ -57,10 +57,6 @@ function setup() {
 
     symbol_param="--symbol=ETH-BTC"
     eth_amount=10
-    client_refund_address="bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
-    client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
-    # For contract calling
-    client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \

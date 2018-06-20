@@ -11,7 +11,8 @@ services:
   exchange_service:
     build: ../../exchange_service
     env_file:
-      - ./testnet.env
+      - "$SWAP_ENV/testnet.env"
+      - ./.env
     environment:
       - TREASURY_SERVICE_URL=http://treasury_service:8000
       - ROCKET_ADDRESS=0.0.0.0
@@ -24,7 +25,8 @@ services:
   trading_service:
     build: ../../trading_service
     env_file:
-      - ./testnet.env
+      - "$SWAP_ENV/testnet.env"
+      - ./.env
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - ROCKET_ADDRESS=0.0.0.0

@@ -35,7 +35,8 @@ function setup() {
 
     #### Env variable to run all services
     source ${PROJECT_ROOT}/scripts/common.env
-    source ${PROJECT_ROOT}/scripts/testnet/testnet.env
+    source ${PROJECT_ROOT}/scripts/testnet/.env
+    source "${SWAP_ENV}/testnet.env"
 
     # Funding address is 2N1NCkJmrRUTjESogG4UKb8uuRogagjRaQt (cannot be bech32) 0.8046605
 
@@ -51,19 +52,14 @@ function setup() {
 
     #### Env variables to run the end-to-end test
 
-    #export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
+    # TODO: This is a manual step until we have the ETH watcher
     export ETH_HTLC_ADDRESS="0x0000000000000000000000000000000000000000"
-
 
     cli="$PROJECT_ROOT/target/debug/trading_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
     eth_amount=1
-    client_refund_address="tb1qneq0jggmd0w63kl5adpwek6v44ajt9yqyuq8zw"
-    client_success_address="0xa1a126D670dF6876E17068109f31cF94701b4f25"
-    # For contract calling
-    client_sender_address="0xa91Db146B2aC9Dc00846eE3f9c6e8b537Ce34D35"
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
