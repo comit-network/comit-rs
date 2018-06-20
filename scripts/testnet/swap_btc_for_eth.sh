@@ -35,7 +35,7 @@ function setup() {
 
     #### Env variable to run all services
     source ${PROJECT_ROOT}/scripts/common.env
-    source ${PROJECT_ROOT}/scripts/testnet/.env
+    source ${PROJECT_ROOT}/scripts/testnet/network.env
     source "${SWAP_ENV}/testnet.env"
 
     # Funding address is 2N1NCkJmrRUTjESogG4UKb8uuRogagjRaQt (cannot be bech32) 0.8046605
