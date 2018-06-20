@@ -119,7 +119,13 @@ fn main() {
         Err(_) => bitcoin::network::constants::Network::BitcoinCoreRegtest,
     };
 
-    let bitcoin_fee_service = StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(50));
+    let satoshi_per_kb = var_or_exit("BITCOIN_SATOSHI_PER_KB");
+    let satoshi_per_kb =
+        u64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into u64");
+
+    let rate_per_kb = BitcoinQuantity::from_satoshi(satoshi_per_kb);
+
+    let bitcoin_fee_service = StaticBitcoinFeeService::new(rate_per_kb);
 
     create_rocket_instance(
         Arc::new(api_client),

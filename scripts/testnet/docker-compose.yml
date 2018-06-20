@@ -18,6 +18,7 @@ services:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,exchange_service=debug
       - RUST_BACKTRACE=1
+      - BITCOIN_SATOSHI_PER_KB=50
     ports:
     - "8010:8000"
     depends_on:
