@@ -19,7 +19,6 @@ use rocket::http::RawStr;
 use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
@@ -207,7 +206,9 @@ pub fn post_buy_orders_fundings(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin_fee_service::StaticBitcoinFeeService;
     use bitcoin_htlc::Network;
+    use common_types::BitcoinQuantity;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_wallet::fake::StaticFakeWallet;
     use gas_price_service::StaticGasPriceService;
@@ -217,6 +218,7 @@ mod tests {
     use rocket_factory::create_rocket_instance;
     use serde::Deserialize;
     use serde_json;
+    use std::str::FromStr;
     use std::sync::Arc;
     use treasury_api_client::FakeApiClient;
     use web3;
@@ -299,6 +301,9 @@ mod tests {
                 "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
             ).unwrap(),
             Network::BitcoinCoreRegtest,
+            Arc::new(StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(
+                50,
+            ))),
         );
         rocket::local::Client::new(rocket).unwrap()
     }

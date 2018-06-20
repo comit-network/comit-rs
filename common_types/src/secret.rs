@@ -209,7 +209,7 @@ mod tests {
     #[test]
     fn new_secret_hash_as_hex() {
         let bytes = b"hello world, you are beautiful!!";
-        let mut secret = Secret::from(*bytes);
+        let secret = Secret::from(*bytes);
         assert_eq!(
             secret.hash().to_string(),
             "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn secret_hash_should_be_displayed_as_hex() {
         let bytes = b"hello world, you are beautiful!!";
-        let mut secret = Secret::from(*bytes);
+        let secret = Secret::from(*bytes);
 
         let hash = secret.hash();
 
