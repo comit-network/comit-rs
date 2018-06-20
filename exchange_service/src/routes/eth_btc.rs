@@ -19,7 +19,6 @@ use rocket::http::RawStr;
 use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
@@ -219,6 +218,7 @@ mod tests {
     use rocket_factory::create_rocket_instance;
     use serde::Deserialize;
     use serde_json;
+    use std::str::FromStr;
     use std::sync::Arc;
     use treasury_api_client::FakeApiClient;
     use web3;

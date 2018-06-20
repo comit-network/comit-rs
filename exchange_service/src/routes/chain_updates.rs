@@ -1,11 +1,9 @@
 use bitcoin_fee_service;
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc;
-use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_rpc::PubkeyHash;
 use bitcoin_wallet;
-use common_types::BitcoinQuantity;
 use common_types::secret::Secret;
 use event_store::EventStore;
 use event_store::TradeId;
@@ -47,7 +45,6 @@ pub fn post_revealed_secret(
     event_store: State<EventStore>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
     fee_service: State<Arc<BitcoinFeeService>>,
-    network: State<Network>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
     let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
