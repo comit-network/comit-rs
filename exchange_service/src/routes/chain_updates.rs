@@ -98,7 +98,7 @@ pub fn post_revealed_secret(
     let tx_weight = bitcoin_wallet::estimate_weight_of_redeem_tx_with_script(&htlc_script);
 
     let rate = fee_service.get_recommended_fee()?;
-    let fee = rate.estimate_fee(tx_weight);
+    let fee = rate.calculate_fee_for_tx_with_weight(tx_weight);
 
     let output_amount = input_amount - fee;
 

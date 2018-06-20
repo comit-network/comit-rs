@@ -14,7 +14,7 @@ pub enum Error {
 pub struct Rate(BitcoinQuantity);
 
 impl Rate {
-    pub fn estimate_fee(&self, tx_weight: Weight) -> BitcoinQuantity {
+    pub fn calculate_fee_for_tx_with_weight(&self, tx_weight: Weight) -> BitcoinQuantity {
         let fee_per_byte = self.0.satoshi();
         let virtual_bytes = tx_weight.to_virtual_bytes();
 
@@ -39,7 +39,7 @@ mod tests {
         let per_byte = BitcoinQuantity::from_satoshi(10);
         let rate = Rate(per_byte);
 
-        let fee = rate.estimate_fee(Weight::from(400_u64));
+        let fee = rate.calculate_fee_for_tx_with_weight(Weight::from(400_u64));
 
         assert_eq!(fee, BitcoinQuantity::from_satoshi(100));
     }
