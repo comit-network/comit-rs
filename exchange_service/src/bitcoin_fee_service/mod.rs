@@ -10,6 +10,7 @@ pub enum Error {
     Unavailable,
 }
 
+/// Represents the fee for bitcoin transaction in terms of amount per KB.
 #[derive(Copy, Clone)]
 pub struct Rate(BitcoinQuantity);
 
@@ -25,7 +26,6 @@ impl Rate {
 }
 
 pub trait BitcoinFeeService: Send + Sync {
-    /// Returns the currently recommended fee in bitcoin per satoshi
     fn get_recommended_fee(&self) -> Result<Rate, Error>;
 }
 
