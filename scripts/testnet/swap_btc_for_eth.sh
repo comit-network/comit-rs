@@ -10,15 +10,15 @@ END(){
     fi
 }
 
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
 IS_INTERACTIVE=false
 DEBUG=${DEBUG:=false}
+OUTPUT=/dev/null
 
 if [ "$1" = "--interactive" ]
 then
     IS_INTERACTIVE=true
 fi
-
-OUTPUT=/dev/null
 
 if $DEBUG
 then
@@ -27,36 +27,22 @@ fi
 
 trap 'END' EXIT;
 
+## Define functions from here
+
 function setup() {
 
     echo "Starting up ...";
 
     #### Env variable to run all services
+    source ${PROJECT_ROOT}/scripts/common.env
+    source ${PROJECT_ROOT}/scripts/testnet/network.env
+    source "${SWAP_ENV}/testnet.env"
 
     # Funding address is 2N1NCkJmrRUTjESogG4UKb8uuRogagjRaQt (cannot be bech32) 0.8046605
 
-    export BITCOIN_RPC_URL="http://35.189.58.109:18443"
-    export BITCOIN_RPC_USERNAME="bitcoin"
-    export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-    # TODO Testnet
-    # This is to manually watch the contract address to see the unspent output
-    export BITCOIN_CONTRACT_ADDRESS="tb1q48acaauny4em0qqt96f5uutcddh6elp9wgguyk3hes5a0v3gkjxsjxyudp"
-    export EXCHANGE_SUCCESS_ADDRESS="tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv"
-    export EXCHANGE_BTC_PRIVATE_KEY="cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz"
-
-
-    export ETHEREUM_NODE_ENDPOINT="http://localhost:8545"
-    export ETHEREUM_NETWORK_ID=42
-    export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
-
-    export TREASURY_SERVICE_URL=http://localhost:8020
-    export EXCHANGE_SERVICE_URL=http://localhost:8010
-    export TRADING_SERVICE_URL=http://localhost:8000
-
     #### Start all services
-
-    #docker-compose up -d treasury_service exchange_service trading_service ethereum 2> $OUTPUT 1> $OUTPUT
-    docker-compose up -d ethereum exchange_service treasury_service trading_service 2> $OUTPUT 1> $OUTPUT
+    cd $PROJECT_ROOT/scripts/testnet
+    docker-compose up -d 2> $OUTPUT 1> $OUTPUT
 
     sleep 5;
 
@@ -66,18 +52,14 @@ function setup() {
 
     #### Env variables to run the end-to-end test
 
-    export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
+    # TODO: This is a manual step until we have the ETH watcher
+    export ETH_HTLC_ADDRESS="0x0000000000000000000000000000000000000000"
 
-    cd "target/debug"
-    cli="./trading_client"
+    cli="$PROJECT_ROOT/target/debug/trading_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
     eth_amount=1
-    client_refund_address="tb1qneq0jggmd0w63kl5adpwek6v44ajt9yqyuq8zw"
-    client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
-    # For contract calling
-    client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -157,24 +139,19 @@ function fund_htlc() {
     ## Get funding tx id
     htlc_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
 
-#    generate_blocks;
-
     ## Get raw funding tx
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"getrawtransaction\", \"params\": [ \"${htlc_funding_tx}\" ]}" \
     -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
     raw_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
-    # echo "--> $raw_funding_tx <--"
 
     ## Decode raw funding tx
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}"\
      -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
-    # echo $output
 
     ## Getting the vout which pays the BTC HTLC
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
-    # echo "--> $htlc_funding_tx_vout <--"
 
     echo "HTLC successfully funded with ${btc_amount} BTC - BTC payment was made."
 }
@@ -194,7 +171,7 @@ function notify_trading_service_eth_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
+    print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC ${ETH_HTLC_ADDRESS})."
 }
 
 function notify_exchange_service_eth_redeemed() {
@@ -210,9 +187,11 @@ function get_redeem_details() {
 
     output=$($cmd)
 
+    echo "${output}"
+
     secret=$(echo "$output" | tail -n1 |sed -E 's/^ethereum:.*bytes32=(.+)$/\1/')
 
-    echo "Secret: $secret"
+    #echo "Secret: $secret"
 }
 
 function get_eth_balance() {
@@ -250,7 +229,6 @@ function redeem_eth() {
     -H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT} > $OUTPUT
 }
 
-#TODO TESTNET
 function list_unspent_transactions() {
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\
@@ -262,7 +240,7 @@ function list_unspent_transactions() {
         0,\
         9999999,\
         [\
-          \"tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv\"\
+          \"${EXCHANGE_SUCCESS_ADDRESS}\"\
         ]\
       ],\
       \"id\":1\
@@ -322,7 +300,11 @@ echo "Previous ETH balance: $old_balance"
 
 $IS_INTERACTIVE && read;
 
-redeem_eth;
+#TODO: automate it with the ETH chain watcher
+echo "Proceed with ETH redeem, then press ENTER"
+echo "To get the correct ETH contract address, check the exchange_service logs"
+echo "You will get the txid of the contract deployment, use it to get the contract address. e.g. https://ropsten.etherscan.io/"
+read
 
 new_balance=$(get_eth_balance)
 echo "New ETH balance in HEX: $new_balance" > $OUTPUT
@@ -349,8 +331,6 @@ $IS_INTERACTIVE && read;
 
 # Poke exchange service to redeem BTC
 notify_exchange_service_eth_redeemed;
-
-#generate_blocks;
 
 # Check BTC unspent outputs after redeem
 output=$(list_unspent_transactions)

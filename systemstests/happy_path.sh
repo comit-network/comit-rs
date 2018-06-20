@@ -10,15 +10,15 @@ END(){
     fi
 }
 
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
 IS_INTERACTIVE=false
 DEBUG=${DEBUG:=false}
+OUTPUT=/dev/null
 
 if [ "$1" = "--interactive" ]
 then
     IS_INTERACTIVE=true
 fi
-
-OUTPUT=/dev/null
 
 if $DEBUG
 then
@@ -27,26 +27,19 @@ fi
 
 trap 'END' EXIT;
 
+## Define functions from here
+
 function setup() {
 
     echo "Starting up ...";
 
     #### Env variable to run all services
-
-    export RUST_TEST_THREADS=1;
-    export BITCOIN_RPC_URL="http://localhost:18443"
-    export BITCOIN_RPC_USERNAME="bitcoin"
-    export BITCOIN_RPC_PASSWORD="54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-    export ETHEREUM_NODE_ENDPOINT="http://localhost:8545"
-    export ETHEREUM_NETWORK_ID=42
-    export ETHEREUM_PRIVATE_KEY=3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59
-
-    export TREASURY_SERVICE_URL=http://localhost:8020
-    export EXCHANGE_SERVICE_URL=http://localhost:8010
-    export TRADING_SERVICE_URL=http://localhost:8000
+    source ${PROJECT_ROOT}/scripts/common.env
+    source ${PROJECT_ROOT}/scripts/regtest/network.env
+    source ${PROJECT_ROOT}/scripts/regtest/regtest.env
 
     #### Start all services
-
+    cd $PROJECT_ROOT/scripts/regtest
     docker-compose up -d 2> $OUTPUT 1> $OUTPUT
 
     sleep 5;
@@ -59,16 +52,11 @@ function setup() {
 
     export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
-    cd "target/debug"
-    cli="./trading_client"
+    cli="$PROJECT_ROOT/target/debug/trading_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
     eth_amount=10
-    client_refund_address="bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
-    client_success_address="0x03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c"
-    # For contract calling
-    client_sender_address="0x96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e"
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -123,7 +111,7 @@ function new_order() {
     # echo "--> BTC HTLC: ${btc_htlc_address}"
 
     ## Get BTC amount
-    btc_amount=$(echo "$output" | grep "Please send" | sed -E 's/^Please send ([0-9\.]+) BTC.*$/\1/')
+    btc_amount=$(echo "$output" | grep "Please send" | sed -E 's/^Please send ([0-9.]+) BTC.*$/\1/')
     # echo "--> BTC amount: ${btc_amount}"
 }
 
