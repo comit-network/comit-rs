@@ -8,7 +8,7 @@ use regex::Regex;
 use std::f64;
 use std::fmt;
 use std::mem;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Sub};
 use std::str::FromStr;
 use web3::types::U256;
 

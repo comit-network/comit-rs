@@ -109,6 +109,7 @@ pub fn generate_p2wsh_htlc_redeem_tx(
 }
 
 // TODO: contribute this to rust_bitcoin so it is returned by Transaction::get_weight
+#[derive(Debug, PartialEq)]
 pub struct Weight(u64);
 
 impl Weight {
@@ -455,6 +456,6 @@ mod tests {
 
         let weight = estimate_weight_of_redeem_tx_with_script(&script);
 
-        assert_eq!(weight, 477);
+        assert_eq!(weight, Weight::from(477));
     }
 }
