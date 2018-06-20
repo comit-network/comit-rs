@@ -14,6 +14,7 @@ use secp256k1::Message;
 use secp256k1::PublicKey;
 use secp256k1::SecretKey;
 use std::fmt;
+use std::str::FromStr;
 
 enum Witness<'a> {
     Data(Vec<u8>),
@@ -105,6 +106,53 @@ pub fn generate_p2wsh_htlc_redeem_tx(
         ],
         destination_addr,
     )
+}
+
+// TODO: contribute this to rust_bitcoin so it is returned by Transaction::get_weight
+pub struct Weight(u64);
+
+impl Weight {
+    pub fn to_virtual_bytes(&self) -> u64 {
+        self.0 / 4
+    }
+}
+
+impl From<Weight> for u64 {
+    fn from(weight: Weight) -> u64 {
+        weight.0
+    }
+}
+
+impl From<u64> for Weight {
+    fn from(value: u64) -> Self {
+        Weight(value)
+    }
+}
+
+pub fn estimate_weight_of_redeem_tx_with_script(script: &Script) -> Weight {
+    let dummy_tx_id = TransactionId::from_str(
+        "0000000000000000000000000000000000000000000000000000000000000000",
+    ).unwrap();
+    let dummy_secret = Secret::from_str(
+        "0000000000000000000000000000000000000000000000000000000000000000",
+    ).unwrap();
+    let dummy_private_key =
+        PrivateKey::from_str("cVt4o7BGAig1UXywgGSmARhxMdzP5qvQsxKkSsc1XEkw3tDTQFpy").unwrap();
+    let dummy_destination_address =
+        Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
+
+    let transaction = generate_p2wsh_htlc_redeem_tx(
+        &dummy_tx_id,
+        0,
+        BitcoinQuantity::from_bitcoin(1.0),
+        BitcoinQuantity::from_bitcoin(1.0),
+        script,
+        &dummy_secret,
+        &dummy_private_key,
+        &dummy_destination_address,
+    );
+
+    Weight::from(transaction.unwrap().get_weight())
 }
 
 fn generate_segwit_redeem(
@@ -399,5 +447,14 @@ mod tests {
             check_utxo_at_address(&client, &alice_rpc_addr, &rpc_redeem_txid),
             "utxo should exist after refunding htlc"
         );
+    }
+
+    #[test]
+    fn given_a_script_should_estimate_weight_of_transaction() {
+        let script = Script::default();
+
+        let weight = estimate_weight_of_redeem_tx_with_script(&script);
+
+        assert_eq!(weight, 477);
     }
 }

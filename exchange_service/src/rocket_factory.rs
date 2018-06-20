@@ -1,3 +1,4 @@
+use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_wallet;
@@ -17,6 +18,7 @@ pub fn create_rocket_instance(
     exchange_refund_address: EthereumAddress,
     exchange_success_private_key: bitcoin_wallet::PrivateKey,
     network: Network,
+    bitcoin_fee_service: Arc<BitcoinFeeService>,
 ) -> rocket::Rocket {
     rocket::ignite()
         .mount(
@@ -35,4 +37,5 @@ pub fn create_rocket_instance(
         .manage(exchange_success_private_key)
         .manage(exchange_refund_address)
         .manage(network)
+        .manage(bitcoin_fee_service)
 }

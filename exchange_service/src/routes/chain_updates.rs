@@ -1,3 +1,5 @@
+use bitcoin_fee_service;
+use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc;
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
@@ -26,12 +28,25 @@ fn log_error<E: Debug>(msg: &'static str) -> impl Fn(E) -> BadRequest<String> {
         BadRequest(None)
     }
 }
+
+impl From<bitcoin_fee_service::Error> for BadRequest<String> {
+    fn from(e: bitcoin_fee_service::Error) -> Self {
+        match e {
+            bitcoin_fee_service::Error::Unavailable => {
+                error!("Unable to retrieve recommended fee. {:?}", e);
+                BadRequest(None)
+            }
+        }
+    }
+}
+
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-secret-revealed", format = "application/json",
        data = "<redeem_btc_notification_body>")]
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<EventStore>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
+    fee_service: State<Arc<BitcoinFeeService>>,
     network: State<Network>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
@@ -55,8 +70,6 @@ pub fn post_revealed_secret(
     let vout = trade_funded_event.vout();
     let offer_created_event = event_store.get_offer_created_event(&trade_id)?;
     let input_amount = offer_created_event.btc_amount();
-    let fee = BitcoinQuantity::from_satoshi(1000);
-    let output_amount = input_amount - fee;
 
     let exchange_success_address = order_taken_event.exchange_success_address();
 
@@ -81,6 +94,13 @@ pub fn post_revealed_secret(
         .clone();
 
     debug!("HTLC successfully generated");
+
+    let tx_weight = bitcoin_wallet::estimate_weight_of_redeem_tx_with_script(&htlc_script);
+
+    let rate = fee_service.get_recommended_fee()?;
+    let fee = rate.estimate_fee(tx_weight);
+
+    let output_amount = input_amount - fee;
 
     let redeem_tx = bitcoin_wallet::generate_p2wsh_htlc_redeem_tx(
         htlc_txid,

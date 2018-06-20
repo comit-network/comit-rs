@@ -3,6 +3,7 @@
 extern crate bitcoin;
 extern crate bitcoin_rpc;
 extern crate bitcoin_wallet;
+extern crate common_types;
 extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate exchange_service;
@@ -20,7 +21,9 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_wallet::PrivateKey;
+use common_types::BitcoinQuantity;
 use ethereum_wallet::InMemoryWallet;
+use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
 use exchange_service::ethereum_service::EthereumService;
 use exchange_service::event_store::EventStore;
 use exchange_service::gas_price_service::StaticGasPriceService;
@@ -116,6 +119,8 @@ fn main() {
         Err(_) => bitcoin::network::constants::Network::BitcoinCoreRegtest,
     };
 
+    let bitcoin_fee_service = StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(50));
+
     create_rocket_instance(
         Arc::new(api_client),
         event_store,
@@ -124,6 +129,7 @@ fn main() {
         exchange_refund_address,
         exchange_success_private_key,
         network,
+        Arc::new(bitcoin_fee_service),
     ).launch();
 }
 

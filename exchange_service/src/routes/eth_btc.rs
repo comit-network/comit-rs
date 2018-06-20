@@ -207,6 +207,7 @@ pub fn post_buy_orders_fundings(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin_fee_service::StaticBitcoinFeeService;
     use bitcoin_htlc::Network;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_wallet::fake::StaticFakeWallet;
@@ -299,6 +300,9 @@ mod tests {
                 "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
             ).unwrap(),
             Network::BitcoinCoreRegtest,
+            Arc::new(StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(
+                50,
+            ))),
         );
         rocket::local::Client::new(rocket).unwrap()
     }
