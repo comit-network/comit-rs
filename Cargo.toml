@@ -13,4 +13,5 @@ members = [
 	"ethereum_htlc",
 	"ganache_rust_web3",
 	"ethereum_wallet",
+        "key_gen"
 ]

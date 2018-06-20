@@ -38,4 +38,16 @@ mod tests {
         );
     }
 
+    #[test]
+    fn address_from_btc_address_generator_gives_same_asnwer() {
+        // https://kimbatt.github.io/btc-address-generator/
+        let privkey =
+            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+        let address = privkey.to_p2wpkh_address(Network::Bitcoin);
+
+        assert_eq!(
+            address,
+            Address::from_str("bc1qmxq0cu0jktxyy2tz3je7675eca0ydcevgqlpgh").unwrap()
+        );
+    }
 }
