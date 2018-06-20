@@ -3,7 +3,8 @@ services:
   trading_service:
     build: ../../trading_service
     env_file:
-      - /Users/froyer/src/swap/scripts/regtest/regtest.env
+      - "$SWAP_ENV/regtest.env"
+      - ./.env
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - ROCKET_ADDRESS=0.0.0.0
@@ -19,7 +20,8 @@ services:
     build: ../../exchange_service
     command: bash -c 'sleep 5 && ./exchange_service'
     env_file:
-      - ./regtest.env
+      - "$SWAP_ENV/regtest.env"
+      - ./.env
     environment:
       - BITCOIN_RPC_URL=http://bitcoin:18443
       - ETHEREUM_NODE_ENDPOINT=http://ethereum:8545

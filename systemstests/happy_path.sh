@@ -35,7 +35,8 @@ function setup() {
 
     #### Env variable to run all services
     source ${PROJECT_ROOT}/scripts/common.env
-    source ${PROJECT_ROOT}/scripts/regtest/regtest.env
+    source ${PROJECT_ROOT}/scripts/regtest/.env
+    source "${SWAP_ENV}/regtest.env"
 
     #### Start all services
     cd $PROJECT_ROOT/scripts/regtest
