@@ -245,7 +245,7 @@ pub fn get_redeem_orders(
         address,
         data: secret,
         // TODO: check how much gas we should tell the customer to pay
-        gas: 20000,
+        gas: 35000,
     }))
 }
 
@@ -274,7 +274,7 @@ mod tests {
     fn happy_path_sell_x_btc_for_eth() {
         let url = ExchangeApiUrl("stub".to_string());
 
-        let rocket = create_rocket_instance(url, Network::BitcoinCoreRegtest);
+        let rocket = create_rocket_instance(url, Network::Testnet);
         let client = rocket::local::Client::new(rocket).unwrap();
 
         let request = client
@@ -299,7 +299,7 @@ mod tests {
             .post(format!("/trades/ETH-BTC/{}/buy-orders", uid))
             .header(ContentType::JSON)
             // some random addresses I pulled off the internet
-            .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg" }"#);
+            .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
 
         let mut response = request.dispatch();
 
@@ -312,7 +312,7 @@ mod tests {
             funding_request
                 .address_to_fund
                 .to_string()
-                .starts_with("bcrt1")
+                .starts_with("tb1")
         );
 
         let request = client

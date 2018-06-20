@@ -58,15 +58,12 @@ pub fn post_revealed_secret(
     let fee = BitcoinQuantity::from_satoshi(1000);
     let output_amount = input_amount - fee;
 
+    let exchange_success_address = order_taken_event.exchange_success_address();
+
     let exchange_success_pubkey_hash: PubkeyHash =
         order_taken_event.exchange_success_address().into();
 
     debug!("Exchange success address retrieved");
-
-    let exchange_success_address = order_taken_event
-        .client_refund_address()
-        .to_bitcoin_address()
-        .unwrap();
 
     let client_refund_pubkey_hash = order_taken_event
         .client_refund_address()
@@ -111,7 +108,7 @@ pub fn post_revealed_secret(
         bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).map_err(
             log_error("Failed to convert the transaction into a serialised raw transaction"),
         )?;
-
+    debug!("RPC Transaction: {:?}", rpc_transaction);
     info!(
         "Attempting to redeem HTLC with txid {} for {}",
         htlc_txid, trade_id

@@ -53,7 +53,7 @@ mod tests {
             symbol,
             uid,
             "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string(),
-            "bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg".to_string(),
+            "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string(),
         ).unwrap();
 
         assert_eq!(
