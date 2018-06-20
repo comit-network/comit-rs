@@ -41,6 +41,6 @@ mod tests {
 
         let fee = rate.calculate_fee_for_tx_with_weight(Weight::from(400_u64));
 
-        assert_eq!(fee, BitcoinQuantity::from_satoshi(100));
+        assert_eq!(fee, BitcoinQuantity::from_satoshi(1000));
     }
 }

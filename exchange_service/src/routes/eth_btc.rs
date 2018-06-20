@@ -209,6 +209,7 @@ mod tests {
     use super::*;
     use bitcoin_fee_service::StaticBitcoinFeeService;
     use bitcoin_htlc::Network;
+    use common_types::BitcoinQuantity;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_wallet::fake::StaticFakeWallet;
     use gas_price_service::StaticGasPriceService;
