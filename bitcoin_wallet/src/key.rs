@@ -39,7 +39,7 @@ mod tests {
     }
 
     #[test]
-    fn address_from_btc_address_generator_gives_same_asnwer() {
+    fn generates_same_address_from_private_key_as_btc_address_generator() {
         // https://kimbatt.github.io/btc-address-generator/
         let privkey =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
