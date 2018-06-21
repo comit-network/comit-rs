@@ -1,9 +1,11 @@
 extern crate ethereum_wallet;
 extern crate hex;
+extern crate secp256k1;
 extern crate web3;
 
 use ethereum_wallet::*;
 use hex::FromHex;
+use secp256k1::{Secp256k1, SecretKey};
 use std::env::var;
 use std::str::FromStr;
 use web3::futures::Future;
@@ -35,10 +37,11 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
     };
 
     let wallet = {
-        let private_key = <[u8; 32]>::from_hex(
+        let private_key_data = &<[u8; 32]>::from_hex(
             "a710faa76db883cd246112142b609bfe2f122b362b85719f47d91541e104b33d",
         ).unwrap();
-        InMemoryWallet::new(private_key, network_id).unwrap()
+        let private_key = SecretKey::from_slice(&Secp256k1::new(), &private_key_data[..]).unwrap();
+        InMemoryWallet::new(private_key, network_id)
     };
 
     let tx = UnsignedTransaction::new_payment(
