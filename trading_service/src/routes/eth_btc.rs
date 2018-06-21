@@ -120,6 +120,8 @@ pub fn post_buy_orders(
         Secret::generate(&mut *rng)
     };
 
+    debug!("Secret: {:x}", secret);
+
     let order_created_event = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),

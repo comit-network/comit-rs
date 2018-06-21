@@ -11,7 +11,7 @@ authors = [
 [dependencies]
 env_logger = "0.5.10"
 lazy_static = "1.0.1"
-log = "0.4.1"
+log = "0.4.2"
 rand = "0.4.2"
 reqwest = "0.8.5"
 rocket = "=0.3.10"
