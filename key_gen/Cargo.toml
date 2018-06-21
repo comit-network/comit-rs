@@ -3,9 +3,9 @@ authors = ["LLFourn <lloyd.fourn@gmail.com>"]
 name = "key_gen"
 version = "0.1.0"
 [dependencies]
-rand = "0.3"
-secp256k1 = "0.9.0"
 bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-hex = "0.3.2"
 bitcoin_wallet = { path = "../bitcoin_wallet" }
 ethereum_wallet = { path = "../ethereum_wallet" }
+hex = "0.3.2"
+rand = "0.3"
+secp256k1 = "0.9.0"
