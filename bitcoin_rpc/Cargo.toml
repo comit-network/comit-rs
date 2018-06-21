@@ -9,7 +9,7 @@ authors = [
 ]
 
 [dependencies]
-bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
+bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 hex = "0.3.2"
 jsonrpc = { path = "../jsonrpc" }
 serde_json = "1.0.19"
