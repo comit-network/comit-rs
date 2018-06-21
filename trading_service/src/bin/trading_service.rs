@@ -18,7 +18,7 @@ fn main() {
 
     let network = match var("BTC_NETWORK") {
         Ok(value) => match value.as_str() {
-            "BTC_MAINNET" => panic!("You are not mainnet ready fool!"),
+            "BTC_MAINNET" => bitcoin::network::constants::Network::Bitcoin,
             "BTC_TESTNET" => bitcoin::network::constants::Network::Testnet,
             "BTCORE_REGTEST" => bitcoin::network::constants::Network::BitcoinCoreRegtest,
             _ => panic!(
