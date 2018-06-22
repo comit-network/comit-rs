@@ -43,7 +43,7 @@ pub struct Blockchain {
     bestblockhash: String,
     difficulty: f64,
     mediantime: u64,
-    verificationprogress: u32,
+    verificationprogress: f64,
     initialblockdownload: bool,
     chainwork: String,
     size_on_disk: u32,
