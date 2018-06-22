@@ -46,7 +46,7 @@ pub struct Blockchain {
     verificationprogress: f64,
     initialblockdownload: bool,
     chainwork: String,
-    size_on_disk: u32,
+    size_on_disk: u64,
     pruned: bool,
     pruneheight: Option<u64>,
     automatic_pruning: Option<bool>,
