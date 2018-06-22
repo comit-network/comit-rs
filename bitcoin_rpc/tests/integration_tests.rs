@@ -28,6 +28,12 @@ fn test_get_block_count() {
 }
 
 #[test]
+fn test_get_blockchain_info() {
+    setup();
+    assert_successful_result(BitcoinCoreClient::get_blockchain_info)
+}
+
+#[test]
 fn test_get_new_address() {
     setup();
     assert_successful_result(BitcoinCoreClient::get_new_address)

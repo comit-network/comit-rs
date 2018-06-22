@@ -66,6 +66,10 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
+    fn get_blockchain_info(&self) -> Result<RpcResponse<Blockchain>, HTTPError> {
+        unimplemented!()
+    }
+
     fn get_block_count(&self) -> Result<RpcResponse<BlockHeight>, HTTPError> {
         unimplemented!()
     }
