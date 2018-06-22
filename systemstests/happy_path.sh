@@ -60,9 +60,8 @@ function setup() {
 
     ## Generate funds and activate segwit
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL  > $OUTPUT
-
-    # Watch the pw2sh address
+    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL  > /dev/null
+    # Watch the btc exchange redeem address
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\
         \"jsonrpc\": \"1.0\",\
@@ -70,7 +69,7 @@ function setup() {
         \"method\": \"importaddress\",\
         \"params\":\
             [\
-                \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\",\
+                \"${BTC_EXCHANGE_REDEEM_ADDRESS}\",\
                 \"htlc\"\
             ]\
     }" \
@@ -119,7 +118,7 @@ function generate_blocks() {
 
     ## Generate blocks to confirm the transaction
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL > $OUTPUT
+    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 6 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL
 
 }
 function fund_htlc() {
@@ -131,7 +130,7 @@ function fund_htlc() {
     ## Get funding tx id
     htlc_funding_tx=$(echo $output | sed -E 's/^..result.:.([a-z0-9]+).,.error.*$/\1/')
 
-    generate_blocks;
+    generate_blocks 2>&1 /dev/null
 
     ## Get raw funding tx
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
@@ -233,14 +232,14 @@ function list_unspent_transactions() {
         0,\
         9999999,\
         [\
-          \"bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\"\
+          \"${BTC_EXCHANGE_REDEEM_ADDRESS}\"\
         ]\
       ],\
       \"id\":1\
     }" \
     -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 
-    echo $output
+    echo $output 
 }
 
 function hex_to_dec() {
@@ -313,6 +312,7 @@ $IS_INTERACTIVE && read;
 
 output=$(list_unspent_transactions)
 old_unspent=$(echo $output |jq .result)
+echo "BTC: Old Unspent: $old_unspent" > $OUTPUT
 old_unspent_num=$(echo $output | jq '.result | length')
 echo -e "BTC: Total UTXOs before redeem: $old_unspent_num"
 
@@ -321,12 +321,13 @@ $IS_INTERACTIVE && read;
 # Poke exchange service to redeem BTC
 notify_exchange_service_eth_redeemed;
 
-generate_blocks;
+generate_blocks 2>&1 /dev/null
 
 # Check BTC unspent outputs after redeem
 output=$(list_unspent_transactions)
 
 new_unspent=$(echo $output |jq .result)
+echo "BTC: New Unspent: $new_unspent" > $OUTPUT
 new_unspent_num=$(echo $output | jq '.result | length')
 echo -e "BTC: Total UTXOs after redeem: $new_unspent_num"
 echo -e "BTC: Amount: $(echo $new_unspent | jq '.[0].amount')"
@@ -335,6 +336,6 @@ if [ ${old_unspent_num} -lt ${new_unspent_num} ]
 then
     echo "## BTC WAS redeemed ##" > $OUTPUT
 else
-    echo "## BTC was NOT redeemed ##" $OUTPUT
+    echo "## BTC was NOT redeemed ##" > $OUTPUT
     exit 1
 fi

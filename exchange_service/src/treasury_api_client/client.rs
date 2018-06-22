@@ -2,7 +2,7 @@ use super::Symbol;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use reqwest;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TreasuryApiUrl(pub String);
 
 #[derive(Serialize, Deserialize, Debug)]

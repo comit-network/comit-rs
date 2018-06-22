@@ -1,10 +1,10 @@
 use bitcoin;
 use bitcoin::util::address::Address as bitcoin_address;
 use bitcoin::util::address::Payload::WitnessProgram;
-
 use bitcoin::util::hash::Hash160;
 use std::fmt;
 use std::str::FromStr;
+use std_hex;
 use types::ScriptType;
 
 // TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
@@ -133,6 +133,12 @@ impl From<Hash160> for PubkeyHash {
 impl AsRef<[u8]> for PubkeyHash {
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
+    }
+}
+
+impl fmt::LowerHex for PubkeyHash {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.write_str(std_hex::encode(&self.0).as_str())
     }
 }
 
