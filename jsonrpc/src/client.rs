@@ -28,6 +28,6 @@ impl RpcClient {
             .send()
             .and_then(|mut res| res.json::<RpcResponse<R>>())
 
-        // TODO: Maybe check if req.id == res.id. Should always hold since it is a sychnronous call.
+        // TODO: Maybe check if req.id == res.id. Should always hold since it is a synchronous call.
     }
 }
