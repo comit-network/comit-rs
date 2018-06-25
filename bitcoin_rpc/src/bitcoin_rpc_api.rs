@@ -63,7 +63,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     fn get_block(&self, header_hash: &BlockHash) -> Result<RpcResponse<Block>, HTTPError>;
 
-    // TODO: getblockchaininfo
+    fn get_blockchain_info(&self) -> Result<RpcResponse<Blockchain>, HTTPError>;
 
     fn get_block_count(&self) -> Result<RpcResponse<BlockHeight>, HTTPError>;
 
