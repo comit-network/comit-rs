@@ -120,6 +120,7 @@ pub fn post_buy_orders(
         Secret::generate(&mut *rng)
     };
 
+    //TODO: Remove before prod
     debug!("Secret: {:x}", secret);
 
     let order_created_event = OrderCreated {
