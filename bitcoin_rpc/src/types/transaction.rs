@@ -59,6 +59,12 @@ impl From<TransactionId> for Sha256dHash {
     }
 }
 
+impl Into<TransactionId> for Sha256dHash {
+    fn into(self) -> TransactionId {
+        TransactionId(self)
+    }
+}
+
 impl FromStr for TransactionId {
     type Err = HexError;
 

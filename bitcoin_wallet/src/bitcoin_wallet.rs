@@ -4,6 +4,7 @@ use bitcoin::blockdata::transaction::TxIn;
 use bitcoin::blockdata::transaction::TxOut;
 use bitcoin::util::address::Address;
 use bitcoin::util::bip143::SighashComponents;
+use bitcoin::util::hash::Hash160;
 use bitcoin_rpc;
 use bitcoin_rpc::TransactionId;
 use common_types::BitcoinQuantity;
@@ -103,6 +104,50 @@ pub fn generate_p2wsh_htlc_redeem_tx(
             Witness::Data(secret.raw_secret().to_vec()),
             Witness::Data(vec![1 as u8]),
             Witness::Data(htlc_script.clone().into_vec()),
+        ],
+        destination_addr,
+    )
+}
+
+pub fn generate_p2wpkh_redeem_tx(
+    txid: &TransactionId,
+    vout: u32,
+    input_amount: BitcoinQuantity,
+    output_amount: BitcoinQuantity,
+    private_key: &PrivateKey,
+    destination_addr: &Address,
+) -> Result<Transaction, Error> {
+    let public_key = PublicKey::from_secret_key(&*super::SECP, &private_key.secret_key())?;
+
+    // You'd think that the prev script would just be locking script from the
+    // previous transaction like in P2WSH but it's not. A locking
+    // script of:
+    // 00 14 <pubkey_hash>
+    // becomes
+    // 19 76 a9 14 <pubkey_hash> 88 ac
+    // here. There doesn't seem to be any explanation in the BIPs but I imagine
+    // it's because the above one is interpreted as the below one.
+    let mut prev_script = vec![0x76, 0xa9, 0x14];
+
+    let serialized_pubkey = public_key.serialize();
+    let public_key_hash = Hash160::from_data(&serialized_pubkey)[..].to_vec();
+
+    prev_script.append(&mut public_key_hash.clone());
+    prev_script.push(0x88);
+    prev_script.push(0xac);
+
+    generate_segwit_redeem(
+        txid,
+        0xFFFFFFFF,
+        vout,
+        input_amount,
+        output_amount,
+        vec![
+            Witness::Signature {
+                private_key: private_key.secret_key(),
+                prev_script: &Script::from(prev_script),
+            },
+            Witness::Data(serialized_pubkey.to_vec()),
         ],
         destination_addr,
     )
@@ -219,6 +264,7 @@ mod tests {
     use self::bitcoin_rpc::TransactionId;
     use self::bitcoin_rpc::TxOutConfirmations;
     use super::*;
+    use ToP2wpkhAddress;
     use bitcoin::network::constants::Network;
     use bitcoin::network::serialize::serialize_hex;
     use bitcoin::util::hash::Hash160;
@@ -246,6 +292,40 @@ mod tests {
         let hash160 = Hash160::from_data(&pubkey_serialized);
         let pubkey_hash = PubkeyHash::from(hash160);
         pubkey_hash
+    }
+
+    fn find_vout_for_address(
+        client: &bitcoin_rpc::BitcoinCoreClient,
+        txid: &TransactionId,
+        address: &Address,
+    ) -> bitcoin_rpc::TransactionOutput {
+        let _txn = client
+            .get_transaction(&txid)
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        let raw_txn = client
+            .get_raw_transaction_serialized(&txid)
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        let decoded_txn = client
+            .decode_rawtransaction(raw_txn.clone())
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        decoded_txn
+            .vout
+            .iter()
+            .find(|txout| {
+                hex::decode(&txout.script_pub_key.hex).unwrap()
+                    == address.script_pubkey().into_vec()
+            })
+            .unwrap()
+            .clone()
     }
 
     fn fund_htlc(
@@ -290,32 +370,7 @@ mod tests {
 
         client.generate(1).unwrap();
 
-        let _txn = client
-            .get_transaction(&txid)
-            .unwrap()
-            .into_result()
-            .unwrap();
-
-        let raw_htlc_txn = client
-            .get_raw_transaction_serialized(&txid)
-            .unwrap()
-            .into_result()
-            .unwrap();
-
-        let decoded_txn = client
-            .decode_rawtransaction(raw_htlc_txn.clone())
-            .unwrap()
-            .into_result()
-            .unwrap();
-
-        let vout = decoded_txn
-            .vout
-            .iter()
-            .find(|txout| {
-                hex::decode(&txout.script_pub_key.hex).unwrap()
-                    == htlc_address.script_pubkey().into_vec()
-            })
-            .unwrap();
+        let vout = find_vout_for_address(&client, &txid, &htlc_address);
 
         (
             txid,
@@ -451,11 +506,55 @@ mod tests {
     }
 
     #[test]
-    fn given_a_script_should_estimate_weight_of_transaction() {
-        let script = Script::default();
+    fn redeem_p2wpkh() {
+        let client = create_client();
 
-        let weight = estimate_weight_of_redeem_tx_with_script(&script);
+        let private_key =
+            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
 
-        assert_eq!(weight, Weight::from(477));
+        let address = private_key.to_p2wpkh_address(Network::BitcoinCoreRegtest);
+
+        let input_amount = BitcoinQuantity::from_bitcoin(1.0);
+        let fee = BitcoinQuantity::from_satoshi(1000);
+        let output_amount = input_amount - fee;
+
+        let txid = client
+            .send_to_address(&address.clone().into(), input_amount.bitcoin())
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        client.generate(1).unwrap();
+
+        let vout = find_vout_for_address(&client, &txid, &address);
+
+        let alice_rpc_addr = client.get_new_address().unwrap().into_result().unwrap();
+        let alice_addr = alice_rpc_addr.to_bitcoin_address().unwrap();
+
+        let redeem_tx = generate_p2wpkh_redeem_tx(
+            &txid,
+            vout.n,
+            input_amount,
+            output_amount,
+            &private_key,
+            &alice_addr,
+        ).unwrap();
+
+        let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+
+        let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+
+        let rpc_redeem_txid = client
+            .send_raw_transaction(raw_redeem_tx.clone())
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        client.generate(1).unwrap();
+
+        assert!(
+            check_utxo_at_address(&client, &alice_rpc_addr, &rpc_redeem_txid),
+            "utxo should exist after redeeming p2wpkhoutput"
+        );
     }
 }
