@@ -9,14 +9,14 @@ authors = [
 ]
 
 [dependencies]
-rocket = "=0.3.10"
-rocket_codegen = "=0.3.10"
-rocket_contrib = "=0.3.10"
-serde = "1.0.64"
-serde_derive = "1.0.63"
+rocket = "=0.3.14"
+rocket_codegen = "=0.3.14"
+rocket_contrib = "=0.3.14"
+serde = "1.0.66"
+serde_derive = "1.0.66"
 log = "0.4.2"
 common_types = { path = "../common_types" }
 
 [dev-dependencies]
 web3 = "0.3.0"
-serde_json = "1.0.19"
+serde_json = "1.0.22"

@@ -11,24 +11,24 @@ authors = [
 [dependencies]
 bitcoin_rpc = { path = "../bitcoin_rpc" }
 bitcoin_htlc = { path = "../bitcoin_htlc" }
-bitcoin = { git = "https://github.com/tenx-tech/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-reqwest = "0.8.5"
-serde = "1.0.64"
-serde_derive = "1.0.63"
+bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
+reqwest = "0.8.6"
+serde = "1.0.66"
+serde_derive = "1.0.66"
 lazy_static = "1.0.1"
-uuid = { version = "0.6.3", features = ["serde", "v4"] }
-rocket = "=0.3.10"
-rocket_contrib = "=0.3.10"
-log = "0.4.1"
-rocket_codegen = "=0.3.10"
+log = "0.4.2"
+uuid = { version = "0.6.5", features = ["serde", "v4"] }
+rocket = "=0.3.14"
+rocket_contrib = "=0.3.14"
+rocket_codegen = "=0.3.14"
 common_types = { path = "../common_types" }
 bitcoin_wallet = { path = "../bitcoin_wallet" }
-http-api-problem = { version = "0.5.2", features = ["with_rocket"] }
-serde_json = "1.0.19"
+http-api-problem = { version = "0.7.0", features = ["with_rocket"] }
+serde_json = "1.0.22"
 ethereum_htlc = { path = "../ethereum_htlc" }
 web3 = "0.3.0"
 ethereum_wallet = { path = "../ethereum_wallet" }
 hex = "0.3.2"
-secp256k1 = "0.9.0"
+secp256k1 = "0.9.2"
 tiny-keccak = "1.4.2"
 env_logger = "0.5.10"

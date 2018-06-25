@@ -2,6 +2,7 @@
 mod from_str;
 mod address;
 mod block;
+mod blockchain;
 mod keys;
 mod script;
 mod transaction;
@@ -17,7 +18,7 @@ pub struct Account(String);
 from_str!(Account);
 
 #[allow(non_camel_case_types)]
-// TODO: This enum is a bit werid. Clear it up once we have a better understanding of it
+// TODO: This enum is a bit weird. Clear it up once we have a better understanding of it
 #[derive(Deserialize, Serialize, Debug)]
 pub enum SigHashType {
     #[serde(rename = "ALL")]
@@ -36,6 +37,7 @@ pub enum SigHashType {
 
 pub use self::address::*;
 pub use self::block::*;
+pub use self::blockchain::*;
 pub use self::keys::*;
 pub use self::script::*;
 pub use self::transaction::*;

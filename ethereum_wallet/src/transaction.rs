@@ -145,6 +145,7 @@ mod tests {
     use super::*;
     use InMemoryWallet;
     use hex::FromHex;
+    use secp256k1::{Secp256k1, SecretKey};
     use wallet::Wallet;
 
     #[test]
@@ -193,11 +194,11 @@ mod tests {
 
     #[test]
     fn signed_transaction_should_have_correct_binary_representation() {
-        let private_key = <[u8; 32]>::from_hex(
+        let private_key_data = <[u8; 32]>::from_hex(
             "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
         ).unwrap();
-
-        let account0 = InMemoryWallet::new(private_key, 1).unwrap();
+        let private_key = SecretKey::from_slice(&Secp256k1::new(), &private_key_data).unwrap();
+        let account0 = InMemoryWallet::new(private_key, 1);
 
         let tx = UnsignedTransaction::new_payment(
             "147ba99ef89c152f8004e91999fee87bda6cbc3e",

@@ -8,6 +8,8 @@ mod transaction;
 mod wallet;
 
 pub use transaction::UnsignedTransaction;
-pub use wallet::{Error, InMemoryWallet, Wallet};
+pub use wallet::{InMemoryWallet, Wallet};
 
 pub mod fake;
+pub mod key;
+pub use key::*;

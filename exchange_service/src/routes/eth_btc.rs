@@ -300,6 +300,7 @@ mod tests {
             bitcoin_wallet::PrivateKey::from_str(
                 "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
             ).unwrap(),
+            bitcoin_wallet::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
             Network::BitcoinCoreRegtest,
             Arc::new(StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(
                 50,
