@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
+CARGO_BIN=$(which cargo) || true
 set -eu
 
-if [ -z "$(which cargo)" ] ; then
-    export PATH=$PATH:$HOME/.cargo/bin
+if [ -z "${CARGO_BIN}" ] ; then
+    CARGO_BIN=$HOME/.cargo/bin/cargo
 fi
 
-cargo +stable-2018-05-10 fmt -- --write-mode diff
+${CARGO_BIN} +stable-2018-05-10 fmt -- --write-mode diff
