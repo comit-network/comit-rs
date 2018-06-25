@@ -71,8 +71,7 @@ fn main() {
 
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
-    let wallet = InMemoryWallet::new(private_key_data, network_id)
-        .expect("Failed to create wallet instance");
+    let wallet = InMemoryWallet::new(private_key, network_id);
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
     let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
