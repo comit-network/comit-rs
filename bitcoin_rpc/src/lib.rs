@@ -1,4 +1,5 @@
 extern crate bitcoin;
+extern crate hex as std_hex;
 extern crate jsonrpc;
 #[macro_use]
 extern crate log;

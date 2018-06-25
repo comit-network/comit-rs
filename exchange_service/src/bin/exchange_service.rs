@@ -8,6 +8,7 @@ extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate exchange_service;
 extern crate hex;
+#[macro_use]
 extern crate log;
 extern crate reqwest;
 extern crate rocket;
@@ -20,6 +21,7 @@ extern crate tiny_keccak;
 extern crate uuid;
 extern crate web3;
 
+use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_wallet::PrivateKey;
 use common_types::BitcoinQuantity;
 use ethereum_wallet::InMemoryWallet;
@@ -38,20 +40,11 @@ use std::sync::Arc;
 use web3::futures::Future;
 use web3::types::Address as EthereumAddress;
 
-fn var_or_exit(name: &str) -> String {
-    match var(name) {
-        Ok(value) => value,
-        Err(_) => {
-            eprintln!("{} is not set but is required", name);
-            std::process::exit(1);
-        }
-    }
-}
-
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     let _ = env_logger::init();
     let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
+    info!("set TREASURY_SERVICE_URL={:?}", treasury_api_url);
 
     let api_client = DefaultApiClient {
         client: reqwest::Client::new(),
@@ -60,8 +53,11 @@ fn main() {
 
     let event_store = EventStore::new();
 
-    let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
+
+    let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
+
+    let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
 
     let private_key_data =
         <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
@@ -69,22 +65,23 @@ fn main() {
     let private_key = SecretKey::from_slice(&secp256k1::Secp256k1::new(), &private_key_data[..])
         .expect("Private key isn't valid");
 
-    let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
-
     let wallet = InMemoryWallet::new(private_key, network_id);
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
+    let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
+    let web3 = web3::api::Web3::new(transport);
+
     let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
         .map(|gas| u64::from_str(gas.as_str()).unwrap())
         .unwrap_or(2_000_000_000);
-
-    let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
-
-    let web3 = web3::api::Web3::new(transport);
+    info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", gas_price);
 
     let address = private_key.to_ethereum_address();
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
-    println!("Nonce: {}", nonce);
+    info!(
+        "ETH address derived from priv key: {}; AddressNonce: {}",
+        address, nonce
+    );
 
     let ethereum_service = EthereumService::new(
         Arc::new(wallet),
@@ -100,12 +97,29 @@ fn main() {
     let exchange_success_private_key =
         PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
 
+    let btc_exchange_redeem_address = bitcoin_wallet::Address::from_str(
+        var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
+    ).expect("BTC Exchange Redeem Address is Invalid");
+
     let bitcoin_rpc_client = {
         let url = var_or_exit("BITCOIN_RPC_URL");
         let username = var_or_exit("BITCOIN_RPC_USERNAME");
         let password = var_or_exit("BITCOIN_RPC_PASSWORD");
 
         bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
+    };
+
+    match bitcoin_rpc_client.get_blockchain_info() {
+        Ok(blockchain_info) => {
+            info!("Blockchain info:\n{:?}", blockchain_info);
+            match bitcoin_rpc_client.validate_address(&bitcoin_rpc::Address::from(
+                btc_exchange_redeem_address.clone(),
+            )) {
+                Ok(address_validation) => info!("Validation:\n{:?}", address_validation),
+                Err(e) => error!("Could not validate BTC_EXCHANGE_REDEEM_ADDRESS: {}", e),
+            };
+        }
+        Err(e) => error!("Could not connect to Bitcoin RPC:\n{}", e),
     };
 
     let network = match var("BTC_NETWORK") {
@@ -120,13 +134,13 @@ fn main() {
         },
         Err(_) => bitcoin::network::constants::Network::BitcoinCoreRegtest,
     };
+    info!("set BTC_NETWORK={}", network);
 
     let satoshi_per_kb = var_or_exit("BITCOIN_SATOSHI_PER_KB");
     let satoshi_per_kb =
         u64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into u64");
 
     let rate_per_kb = BitcoinQuantity::from_satoshi(satoshi_per_kb);
-
     let bitcoin_fee_service = StaticBitcoinFeeService::new(rate_per_kb);
 
     create_rocket_instance(
@@ -136,7 +150,21 @@ fn main() {
         Arc::new(bitcoin_rpc_client),
         exchange_refund_address,
         exchange_success_private_key,
+        btc_exchange_redeem_address,
         network,
         Arc::new(bitcoin_fee_service),
     ).launch();
+}
+
+fn var_or_exit(name: &str) -> String {
+    match var(name) {
+        Ok(value) => {
+            info!("Set {}={}", name, value);
+            value
+        }
+        Err(_) => {
+            eprintln!("{} is not set but is required", name);
+            std::process::exit(1);
+        }
+    }
 }

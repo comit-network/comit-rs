@@ -16,7 +16,7 @@ services:
     environment:
       - TREASURY_SERVICE_URL=http://treasury_service:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,exchange_service=debug
+      - RUST_LOG=info,exchange_service=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8010:8000"
@@ -30,7 +30,7 @@ services:
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,trading_service=debug
+      - RUST_LOG=info,trading_service=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8000:8000"

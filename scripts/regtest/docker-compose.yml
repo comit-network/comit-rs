@@ -8,7 +8,7 @@ services:
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,trading_service=debug
+      - RUST_LOG=info,trading_service=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8000:8000"
@@ -27,7 +27,7 @@ services:
       - ETHEREUM_NODE_ENDPOINT=http://ethereum:8545
       - TREASURY_SERVICE_URL=http://treasury_service:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,exchange_service=debug
+      - RUST_LOG=info,exchange_service=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
       - BITCOIN_SATOSHI_PER_KB=50
     ports:

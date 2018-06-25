@@ -45,8 +45,11 @@ pub fn post_revealed_secret(
     event_store: State<EventStore>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
     fee_service: State<Arc<BitcoinFeeService>>,
+    btc_exchange_redeem_address: State<bitcoin_wallet::Address>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
+    let btc_exchange_redeem_address = btc_exchange_redeem_address.inner();
+
     let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
 
     let secret: Secret = redeem_btc_notification_body.into_inner().secret;
@@ -70,17 +73,22 @@ pub fn post_revealed_secret(
 
     let exchange_success_address = order_taken_event.exchange_success_address();
 
-    let exchange_success_pubkey_hash: PubkeyHash =
-        order_taken_event.exchange_success_address().into();
+    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
 
-    debug!("Exchange success address retrieved");
+    debug!(
+        "Exchange success address retrieved: {:x}",
+        exchange_success_pubkey_hash
+    );
 
     let client_refund_pubkey_hash = order_taken_event
         .client_refund_address()
         .get_pubkey_hash()
         .unwrap();
 
-    debug!("Client refund address retrieved");
+    debug!(
+        "Client refund address retrieved: {:x}",
+        client_refund_pubkey_hash
+    );
 
     let htlc_script = bitcoin_htlc::Htlc::new(
         exchange_success_pubkey_hash,
@@ -107,7 +115,7 @@ pub fn post_revealed_secret(
         &htlc_script,
         &secret,
         &order_taken_event.exchange_success_private_key(),
-        &exchange_success_address,
+        btc_exchange_redeem_address,
     ).map_err(log_error(
         "Unable to generate p2wsh htlc redeem transaction",
     ))?;
