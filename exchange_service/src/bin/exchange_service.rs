@@ -125,10 +125,11 @@ fn main() {
 
         bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
     };
-    let blockchain_info = bitcoin_rpc_client
-        .get_blockchain_info()
-        .expect("Could not connect to Bitcoin RPC");
-    info!("Blockchain info:\n{:?}", blockchain_info);
+
+    match bitcoin_rpc_client.get_blockchain_info() {
+        Ok(blockchain_info) => info!("Blockchain info:\n{:?}", blockchain_info),
+        Err(e) => error!("Could not connect to Bitcoin RPC:\n{}", e),
+    };
 
     let btc_exchange_redeem_address = bitcoin_wallet::Address::from_str(
         var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
@@ -138,12 +139,12 @@ fn main() {
         btc_exchange_redeem_address.to_string()
     );
 
-    let address_validation = bitcoin_rpc_client
-        .validate_address(&bitcoin_rpc::Address::from(
-            btc_exchange_redeem_address.clone(),
-        ))
-        .expect("Could not validate BTC_EXCHANGE_REDEEM_ADDRESS");
-    info!("Validation:\n{:?}", address_validation);
+    match bitcoin_rpc_client.validate_address(&bitcoin_rpc::Address::from(
+        btc_exchange_redeem_address.clone(),
+    )) {
+        Ok(address_validation) => info!("Validation:\n{:?}", address_validation),
+        Err(e) => error!("Could not validate BTC_EXCHANGE_REDEEM_ADDRESS: {}", e),
+    };
 
     let network = match var("BTC_NETWORK") {
         Ok(value) => match value.as_str() {
