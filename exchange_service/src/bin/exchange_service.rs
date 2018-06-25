@@ -77,8 +77,7 @@ fn main() {
     let private_key = SecretKey::from_slice(&secp256k1::Secp256k1::new(), &private_key_data[..])
         .expect("Private key isn't valid");
 
-    let wallet = InMemoryWallet::new(private_key_data, network_id)
-        .expect("Failed to create wallet instance");
+    let wallet = InMemoryWallet::new(private_key, network_id);
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
     info!("set ETHEREUM_NODE_ENDPOINT={}", endpoint);

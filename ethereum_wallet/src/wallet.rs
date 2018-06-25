@@ -1,5 +1,4 @@
 use UnsignedTransaction;
-use secp256k1;
 use secp256k1::ContextFlag;
 use secp256k1::Secp256k1;
 use secp256k1::SecretKey;
@@ -15,30 +14,15 @@ pub struct InMemoryWallet {
     chain_id: u8,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    Crypto(secp256k1::Error),
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Error::Crypto(e)
-    }
-}
-
 impl InMemoryWallet {
-    pub fn new(private_key: [u8; 32], chain_id: u8) -> Result<Self, Error> {
-        // TODO: Wrap / fork this library to make a more Rust-like interface
-        // Idea: Encode the capabilities into generics so that an instance 'remembers' which capabilities it has and the compiler resolves the error handling for you.
+    pub fn new(private_key: SecretKey, chain_id: u8) -> Self {
         let context = Secp256k1::with_caps(ContextFlag::Full);
 
-        let private_key = SecretKey::from_slice(&context, &private_key)?;
-
-        Ok(InMemoryWallet {
+        InMemoryWallet {
             context,
             private_key,
             chain_id,
-        })
+        }
     }
 
     // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md#specification
