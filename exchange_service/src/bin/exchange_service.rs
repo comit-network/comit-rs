@@ -23,6 +23,7 @@ extern crate web3;
 use bitcoin_wallet::PrivateKey;
 use common_types::BitcoinQuantity;
 use ethereum_wallet::InMemoryWallet;
+use ethereum_wallet::ToEthereumAddress;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
 use exchange_service::ethereum_service::EthereumService;
 use exchange_service::event_store::EventStore;
@@ -30,6 +31,7 @@ use exchange_service::gas_price_service::StaticGasPriceService;
 use exchange_service::rocket_factory::create_rocket_instance;
 use exchange_service::treasury_api_client::{DefaultApiClient, TreasuryApiUrl};
 use hex::FromHex;
+use secp256k1::SecretKey;
 use std::env::var;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -61,11 +63,16 @@ fn main() {
     let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 
-    let private_key = <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
+    let private_key_data =
+        <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
+
+    let private_key = SecretKey::from_slice(&secp256k1::Secp256k1::new(), &private_key_data[..])
+        .expect("Private key isn't valid");
+
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
-    let wallet =
-        InMemoryWallet::new(private_key, network_id).expect("Failed to create wallet instance");
+    let wallet = InMemoryWallet::new(private_key_data, network_id)
+        .expect("Failed to create wallet instance");
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
     let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
@@ -76,11 +83,7 @@ fn main() {
 
     let web3 = web3::api::Web3::new(transport);
 
-    // TODO: issue #103 opened. The derive is incorrect
-    // let address = derive_address_from_private_key(&private_key);
-
-    let address = var("ETHEREUM_EXCHANGE_ADDRESS").expect("ETHEREUM_EXCHANGE_ADDRESS is not set");
-    let address = web3::types::Address::from_str(&address.as_str()).unwrap();
+    let address = private_key.to_ethereum_address();
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
     println!("Nonce: {}", nonce);
 
@@ -137,19 +140,4 @@ fn main() {
         network,
         Arc::new(bitcoin_fee_service),
     ).launch();
-}
-
-// TODO move this somewhere else (maybe contribute to web3?)
-fn derive_address_from_private_key(private_key: &[u8]) -> EthereumAddress {
-    let secp256k1 = secp256k1::Secp256k1::new();
-    let secret_key = secp256k1::SecretKey::from_slice(&secp256k1, private_key).unwrap();
-    let public_key = secp256k1::PublicKey::from_secret_key(&secp256k1, &secret_key).unwrap();
-
-    let serialized = public_key.serialize();
-
-    let hash = tiny_keccak::keccak256(&serialized);
-
-    let mut result = EthereumAddress::default();
-    result.copy_from_slice(&hash[12..]);
-    result
 }
