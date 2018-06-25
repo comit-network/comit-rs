@@ -15,5 +15,8 @@ lazy_static! {
 
 mod bitcoin_wallet;
 mod key;
+mod weight;
+
 pub use bitcoin_wallet::*;
 pub use key::*;
+pub use weight::*;
