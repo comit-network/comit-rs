@@ -102,7 +102,7 @@ pub fn generate_p2wsh_htlc_redeem_tx(
             },
             Witness::Data(public_key.serialize().to_vec()),
             Witness::Data(secret.raw_secret().to_vec()),
-            Witness::Data(vec![1 as u8]),
+            Witness::Data(vec![1u8]),
             Witness::Data(htlc_script.clone().into_vec()),
         ],
         destination_addr,
@@ -245,7 +245,8 @@ fn generate_segwit_redeem(
                 let message_to_sign = Message::from(hash_to_sign.data());
                 let signature = super::SECP.sign(&message_to_sign, &private_key)?;
                 let mut binary_signature = signature.serialize_der(&*super::SECP).to_vec();
-                binary_signature.push(1 as u8);
+                // Without this 1 at the end you get "Non-canonical DER Signature"
+                binary_signature.push(1u8);
                 witness_data.push(binary_signature);
             }
         }
