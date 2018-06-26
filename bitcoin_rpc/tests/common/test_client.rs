@@ -1,15 +1,12 @@
-use self::super::client_factory::create_client;
 use bitcoin_rpc::*;
 
-pub struct BitcoinCoreTestClient {
-    pub client: BitcoinCoreClient,
+pub struct BitcoinCoreTestClient<'a> {
+    pub client: &'a BitcoinCoreClient,
 }
 
-impl BitcoinCoreTestClient {
-    pub fn new() -> BitcoinCoreTestClient {
-        BitcoinCoreTestClient {
-            client: create_client(),
-        }
+impl<'a> BitcoinCoreTestClient<'a> {
+    pub fn new(client: &'a BitcoinCoreClient) -> BitcoinCoreTestClient {
+        BitcoinCoreTestClient { client }
     }
 
     pub fn a_utxo(&self) -> UnspentTransactionOutput {

@@ -130,6 +130,10 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
+    fn stop(&self) -> Result<RpcResponse<()>, HTTPError> {
+        unimplemented!()
+    }
+
     fn validate_address(
         &self,
         address: &Address,

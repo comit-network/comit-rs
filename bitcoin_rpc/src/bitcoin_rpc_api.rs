@@ -172,7 +172,7 @@ pub trait BitcoinRpcApi: Send + Sync {
         signature_hash_type: Option<SigHashType>,
     ) -> Result<RpcResponse<SigningResult>, HTTPError>;
 
-    // TODO: stop
+    fn stop(&self) -> Result<RpcResponse<()>, HTTPError>;
     // TODO: submitblock
 
     fn validate_address(

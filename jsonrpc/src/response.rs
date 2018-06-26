@@ -8,9 +8,9 @@ pub struct RpcError {
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct RpcResponse<R> {
-    id: String,
-    result: Option<R>,
-    error: Option<RpcError>,
+    pub id: String,
+    pub result: Option<R>,
+    pub error: Option<RpcError>,
 }
 
 impl<R> Into<StdResult<R, RpcError>> for RpcResponse<R> {

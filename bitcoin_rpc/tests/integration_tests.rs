@@ -2,6 +2,7 @@ extern crate bitcoin_rpc;
 extern crate jsonrpc;
 #[macro_use]
 extern crate log;
+extern crate testcontainers;
 
 mod common;
 
@@ -15,10 +16,14 @@ use std::collections::HashMap;
 fn test_add_multisig_address() {
     setup();
 
-    let alice = BitcoinCoreTestClient::new().an_address();
-    let bob = BitcoinCoreTestClient::new().an_address();
+    assert_successful_result(|client| {
+        let test_client = BitcoinCoreTestClient::new(client);
 
-    assert_successful_result(|client| client.add_multisig_address(1, vec![&alice, &bob]))
+        let alice = test_client.an_address();
+        let bob = test_client.an_address();
+
+        client.add_multisig_address(1, vec![&alice, &bob])
+    })
 }
 
 #[test]
@@ -49,9 +54,11 @@ fn test_generate() {
 fn test_getaccount() {
     setup();
 
-    let address = BitcoinCoreTestClient::new().an_address();
+    assert_successful_result(|client| {
+        let address = BitcoinCoreTestClient::new(client).an_address();
 
-    assert_successful_result(|client| client.get_account(&address))
+        client.get_account(&address)
+    })
 }
 
 #[test]
@@ -67,36 +74,44 @@ fn test_listunspent() {
 fn test_gettransaction() {
     setup();
 
-    let tx_id = BitcoinCoreTestClient::new().a_transaction_id();
+    assert_successful_result(|client| {
+        let tx_id = BitcoinCoreTestClient::new(client).a_transaction_id();
 
-    assert_successful_result(|client| client.get_transaction(&tx_id))
+        client.get_transaction(&tx_id)
+    })
 }
 
 #[test]
 fn test_getblock() {
     setup();
 
-    let block_hash = BitcoinCoreTestClient::new().a_block_hash();
+    assert_successful_result(|client| {
+        let block_hash = BitcoinCoreTestClient::new(client).a_block_hash();
 
-    assert_successful_result(|client| client.get_block(&block_hash))
+        client.get_block(&block_hash)
+    })
 }
 
 #[test]
 fn test_validate_address() {
     setup();
 
-    let address = BitcoinCoreTestClient::new().an_address();
+    assert_successful_result(|client| {
+        let address = BitcoinCoreTestClient::new(client).an_address();
 
-    assert_successful_result(|client| client.validate_address(&address))
+        client.validate_address(&address)
+    })
 }
 
 #[test]
 fn test_get_raw_transaction_serialized() {
     setup();
 
-    let tx_id = BitcoinCoreTestClient::new().a_transaction_id();
+    assert_successful_result(|client| {
+        let tx_id = BitcoinCoreTestClient::new(client).a_transaction_id();
 
-    assert_successful_result(|client| client.get_raw_transaction_serialized(&tx_id));
+        client.get_raw_transaction_serialized(&tx_id)
+    });
 }
 
 #[test]
@@ -121,60 +136,64 @@ fn test_decode_rawtransaction() {
 fn test_create_raw_transaction() {
     setup();
 
-    let test_client = BitcoinCoreTestClient::new();
+    assert_successful_result(|client| {
+        let test_client = BitcoinCoreTestClient::new(client);
 
-    let alice = test_client.an_address();
-    let _ = test_client.a_block();
+        let alice = test_client.an_address();
+        let _ = test_client.a_block();
 
-    let utxo = test_client.a_utxo();
+        let utxo = test_client.a_utxo();
 
-    let input = NewTransactionInput::from_utxo(&utxo);
-    let mut map = HashMap::new();
-    map.insert(alice, utxo.amount);
+        let input = NewTransactionInput::from_utxo(&utxo);
+        let mut map = HashMap::new();
+        map.insert(alice, utxo.amount);
 
-    assert_successful_result(|client| client.create_raw_transaction(vec![&input], &map))
+        client.create_raw_transaction(vec![&input], &map)
+    })
 }
 
 #[test]
 fn test_dump_privkey() {
     setup();
 
-    let test_client = BitcoinCoreTestClient::new();
+    assert_successful_result(|client| {
+        let test_client = BitcoinCoreTestClient::new(client);
 
-    let alice = test_client.an_address();
+        let alice = test_client.an_address();
 
-    assert_successful_result(|client| client.dump_privkey(&alice))
+        client.dump_privkey(&alice)
+    })
 }
 
 #[test]
 fn test_sign_raw_transaction() {
     setup();
 
-    let test_client = BitcoinCoreTestClient::new();
-
-    let alice = test_client.an_address();
-    let alice_private_key = test_client
-        .client
-        .dump_privkey(&alice)
-        .unwrap()
-        .into_result()
-        .unwrap();
-
-    let utxo = test_client.a_utxo();
-
-    let input = NewTransactionInput::from_utxo(&utxo);
-    let mut map = HashMap::new();
-    map.insert(alice, utxo.amount);
-
-    let tx = test_client
-        .client
-        .create_raw_transaction(vec![&input], &map)
-        .unwrap()
-        .into_result()
-        .unwrap();
-
     // Note: The signing actually fails but this way, we get to test the deserialization of the datastructures
     assert_successful_result(|client| {
+        let test_client = BitcoinCoreTestClient::new(client);
+
+        let alice = test_client.an_address();
+        let alice_private_key = test_client
+            .client
+            .dump_privkey(&alice)
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        let utxo = test_client.a_utxo();
+
+        let input = NewTransactionInput::from_utxo(&utxo);
+        let mut map = HashMap::new();
+        map.insert(alice, utxo.amount);
+
+        let tx = test_client
+            .client
+            .create_raw_transaction(vec![&input], &map)
+            .unwrap()
+            .into_result()
+            .unwrap();
+
         client.sign_raw_transaction(
             &tx,
             None,
@@ -188,33 +207,37 @@ fn test_sign_raw_transaction() {
 fn test_send_to_address() {
     setup();
 
-    let test_client = BitcoinCoreTestClient::new();
-    test_client.a_block();
-    let alice = test_client.an_address();
+    assert_successful_result(|client| {
+        let test_client = BitcoinCoreTestClient::new(client);
+        test_client.a_block();
+        let alice = test_client.an_address();
 
-    assert_successful_result(|client| client.send_to_address(&alice, 1.0))
+        client.send_to_address(&alice, 1.0)
+    })
 }
 
 #[test]
 fn test_fund_raw_transaction() {
     setup();
 
-    let test_client = BitcoinCoreTestClient::new();
+    assert_successful_result(|client| {
+        let test_client = BitcoinCoreTestClient::new(client);
 
-    test_client.a_block();
+        test_client.a_block();
 
-    let alice = test_client.an_address();
+        let alice = test_client.an_address();
 
-    let mut outputs = HashMap::new();
-    outputs.insert(alice, 10f64);
+        let mut outputs = HashMap::new();
+        outputs.insert(alice, 10f64);
 
-    let raw_tx = test_client
-        .client
-        .create_raw_transaction(Vec::new(), &outputs)
-        .unwrap()
-        .into_result()
-        .unwrap();
-    let options = FundingOptions::new();
+        let raw_tx = test_client
+            .client
+            .create_raw_transaction(Vec::new(), &outputs)
+            .unwrap()
+            .into_result()
+            .unwrap();
+        let options = FundingOptions::new();
 
-    assert_successful_result(|client| client.fund_raw_transaction(&raw_tx, &options))
+        client.fund_raw_transaction(&raw_tx, &options)
+    })
 }

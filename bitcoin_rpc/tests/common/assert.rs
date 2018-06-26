@@ -13,6 +13,8 @@ where
     let client = create_client();
     let result: Result<R, RpcError> = invocation(&client).unwrap().into();
 
+    let _ = client.stop();
+
     if result.is_err() {
         error!("{:?}", result.unwrap_err());
         panic!("Result should be successful")
