@@ -54,12 +54,6 @@ fn main() {
     let event_store = EventStore::new();
 
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
-    info!("set ETHEREUM_NETWORK_ID={}", network_id);
-
-    let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
-
-    let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
-    info!("set ETHEREUM_PRIVATE_KEY={}", private_key);
 
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
@@ -74,7 +68,6 @@ fn main() {
     let wallet = InMemoryWallet::new(private_key, network_id);
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
-
     let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
     let web3 = web3::api::Web3::new(transport);
 
@@ -100,14 +93,9 @@ fn main() {
     let exchange_refund_address =
         EthereumAddress::from_str(var_or_exit("EXCHANGE_REFUND_ADDRESS").as_str())
             .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address");
-    info!("set EXCHANGE_REFUND_ADDRESS={}", exchange_refund_address);
 
     let exchange_success_private_key =
         PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
-    info!(
-        "set EXCHANGE_SUCCESS_PRIVATE_KEY={}",
-        exchange_success_private_key.to_string()
-    );
 
     let btc_exchange_redeem_address = bitcoin_wallet::Address::from_str(
         var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
@@ -115,33 +103,11 @@ fn main() {
 
     let bitcoin_rpc_client = {
         let url = var_or_exit("BITCOIN_RPC_URL");
-        info!("set BITCOIN_RPC_URL={}", url);
         let username = var_or_exit("BITCOIN_RPC_USERNAME");
-        info!("set BITCOIN_RPC_USERNAME={}", username);
         let password = var_or_exit("BITCOIN_RPC_PASSWORD");
-        info!("set BITCOIN_RPC_PASSWORD={}", password);
 
         bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
     };
-    let blockchain_info = bitcoin_rpc_client
-        .get_blockchain_info()
-        .expect("Could not connect to Bitcoin RPC");
-    info!("Blockchain info:\n{:?}", blockchain_info);
-
-    let btc_exchange_redeem_address = bitcoin_wallet::Address::from_str(
-        var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
-    ).expect("BTC Exchange Redeem Address is Invalid");
-    info!(
-        "set BTC_EXCHANGE_REDEEM_ADDRESS={}",
-        btc_exchange_redeem_address.to_string()
-    );
-
-    let address_validation = bitcoin_rpc_client
-        .validate_address(&bitcoin_rpc::Address::from(
-            btc_exchange_redeem_address.clone(),
-        ))
-        .expect("Could not validate BTC_EXCHANGE_REDEEM_ADDRESS");
-    info!("Validation:\n{:?}", address_validation);
 
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
@@ -173,7 +139,6 @@ fn main() {
     let satoshi_per_kb = var_or_exit("BITCOIN_SATOSHI_PER_KB");
     let satoshi_per_kb =
         u64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into u64");
-    info!("set BITCOIN_SATOSHI_PER_KB={}", satoshi_per_kb);
 
     let rate_per_kb = BitcoinQuantity::from_satoshi(satoshi_per_kb);
     let bitcoin_fee_service = StaticBitcoinFeeService::new(rate_per_kb);
