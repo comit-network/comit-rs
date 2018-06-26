@@ -4,6 +4,8 @@ extern crate bitcoin;
 extern crate bitcoin_rpc;
 extern crate common_types;
 extern crate hex;
+#[macro_use]
+extern crate log;
 
 pub mod bitcoin_htlc;
 

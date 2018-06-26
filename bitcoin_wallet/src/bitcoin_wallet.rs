@@ -16,6 +16,7 @@ use secp256k1::PublicKey;
 use secp256k1::SecretKey;
 use std::fmt;
 use std::str::FromStr;
+use weight::Weight;
 
 enum Witness<'a> {
     Data(Vec<u8>),
@@ -151,28 +152,6 @@ pub fn generate_p2wpkh_redeem_tx(
         ],
         destination_addr,
     )
-}
-
-// TODO: contribute this to rust_bitcoin so it is returned by Transaction::get_weight
-#[derive(Debug, PartialEq)]
-pub struct Weight(u64);
-
-impl Weight {
-    pub fn to_virtual_bytes(&self) -> u64 {
-        self.0 / 4
-    }
-}
-
-impl From<Weight> for u64 {
-    fn from(weight: Weight) -> u64 {
-        weight.0
-    }
-}
-
-impl From<u64> for Weight {
-    fn from(value: u64) -> Self {
-        Weight(value)
-    }
 }
 
 pub fn estimate_weight_of_redeem_tx_with_script(script: &Script) -> Weight {

@@ -17,6 +17,7 @@ pub fn create_rocket_instance(
     bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
     exchange_refund_address: EthereumAddress,
     exchange_success_private_key: bitcoin_wallet::PrivateKey,
+    btc_exchange_redeem_address: bitcoin_wallet::Address,
     network: Network,
     bitcoin_fee_service: Arc<BitcoinFeeService>,
 ) -> rocket::Rocket {
@@ -36,6 +37,7 @@ pub fn create_rocket_instance(
         .manage(bitcoin_rpc_client)
         .manage(exchange_success_private_key)
         .manage(exchange_refund_address)
+        .manage(btc_exchange_redeem_address)
         .manage(network)
         .manage(bitcoin_fee_service)
 }

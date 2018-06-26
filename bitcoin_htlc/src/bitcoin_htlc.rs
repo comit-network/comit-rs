@@ -66,7 +66,7 @@ fn create_htlc(
     secret_hash: &Vec<u8>,
     redeem_block_height: u32,
 ) -> Script {
-    Builder::new()
+    let script = Builder::new()
         .push_opcode(OP_IF)
         .push_opcode(OP_SHA256)
         .push_slice(secret_hash)
@@ -84,7 +84,9 @@ fn create_htlc(
         .push_opcode(OP_ENDIF)
         .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_CHECKSIG)
-        .into_script()
+        .into_script();
+    debug!("BTC HTLC: {}", script);
+    script
 }
 
 #[cfg(test)]

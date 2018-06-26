@@ -5,7 +5,7 @@ RUN apt install curl build-essential libssl-dev pkg-config software-properties-c
 RUN add-apt-repository ppa:ethereum/ethereum
 RUN apt install solc -y
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly-2018-05-05-x86_64 -y
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain nightly-2018-06-24-x86_64 -y
 ENV PATH=/root/.cargo/bin:$PATH
 ENV SOLC_BIN=solc
 WORKDIR /source

@@ -5,6 +5,7 @@ extern crate bitcoin;
 extern crate bitcoin_htlc;
 extern crate bitcoin_rpc;
 extern crate env_logger;
+extern crate log;
 extern crate rocket;
 extern crate trading_service;
 
