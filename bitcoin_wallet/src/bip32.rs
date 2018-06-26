@@ -1,3 +1,5 @@
+use bitcoin::network::constants::Network;
+use bitcoin::util::address::Address;
 use bitcoin::util::bip32::ChildNumber;
 use bitcoin::util::bip32::Error;
 use bitcoin::util::bip32::ExtendedPubKey;
@@ -29,6 +31,18 @@ impl HdAddressGenerator {
             self.last_index += 1;
         }
         res
+    }
+
+    pub fn new_address(&mut self, network: Network) -> Result<Address, Error> {
+        let pubkey = self.new_pubkey();
+        match pubkey {
+            Err(e) => return Err(e),
+            Ok(pubkey) => {
+                // Using P2SH-WPKH (Legacy address wrapping SegWit)
+                // which is the most popular type of address at the moment
+                return Ok(Address::p2shwpkh(&pubkey.public_key, network));
+            }
+        }
     }
 }
 
