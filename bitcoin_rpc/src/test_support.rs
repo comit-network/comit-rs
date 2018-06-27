@@ -3,8 +3,8 @@ use bitcoincore::*;
 use jsonrpc::HTTPError;
 use jsonrpc::RpcResponse;
 use std::fmt::Debug;
-use testcontainers;
 use testcontainers::clients::DockerCli;
+use testcontainers::images::{Bitcoind, BitcoindImageArgs};
 use testcontainers::{Container, Docker, Image, RunArgs};
 use types::*;
 
@@ -17,7 +17,13 @@ pub struct BitcoinNode {
 impl BitcoinNode {
     pub fn new() -> Self {
         let docker = DockerCli {};
-        let bitcoind = testcontainers::images::Bitcoind::latest();
+
+        let args = BitcoindImageArgs {
+            rpc_auth: "bitcoin:cb77f0957de88ff388cf817ddbc7273$9eaa166ace0d94a29c6eceb831a42458e93faeb79f895a7ee4ce03f4343f8f55".to_string(),
+            ..BitcoindImageArgs::default()
+        };
+
+        let bitcoind = Bitcoind::latest().with_args(args);
 
         let container_id = docker.run_detached(
             &bitcoind,
