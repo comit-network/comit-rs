@@ -10,7 +10,7 @@ before_script:
 script:
 - "./check-fmt.sh"
 - cargo build --verbose
-- "./run_tests.sh"
+- cargo test --all -- --test-threads=20
 notifications:
   email: false
   slack:
