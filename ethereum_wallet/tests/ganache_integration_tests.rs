@@ -1,4 +1,5 @@
 extern crate ethereum_wallet;
+extern crate ganache_node;
 extern crate hex;
 extern crate secp256k1;
 extern crate web3;
@@ -19,8 +20,9 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
     let network_id = var("ETHEREUM_NETWORK_ID").expect("Ethereum network id not set");
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
-    let endpoint = var("GANACHE_ENDPOINT").unwrap_or("http://localhost:7545".to_string());
-    let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
+    let ganache_node = ganache_node::GanacheCliNode::new();
+    let web3 = ganache_node.get_client();
+
     let web3 = web3::api::Web3::new(transport);
 
     let get_nonce = || web3.eth().transaction_count(account, None).wait().unwrap();

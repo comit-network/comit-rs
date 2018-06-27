@@ -502,6 +502,7 @@ dependencies = [
  "chrono 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "common_types 0.1.0",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ganache_node 0.1.0",
  "ganache_rust_web3 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -513,6 +514,7 @@ dependencies = [
 name = "ethereum_wallet"
 version = "0.1.0"
 dependencies = [
+ "ganache_node 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1643,7 +1645,7 @@ dependencies = [
 [[package]]
 name = "testcontainers"
 version = "0.1.0"
-source = "git+https://github.com/CoBloX/testcontainers-rs#db43effe990e7cff8a35de49373fb9e17e632b98"
+source = "git+https://github.com/CoBloX/testcontainers-rs#a16916be0efcea44f8da721b5df0914ae8aa027b"
 dependencies = [
  "log 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.67 (registry+https://github.com/rust-lang/crates.io-index)",

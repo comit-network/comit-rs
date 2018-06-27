@@ -2,7 +2,7 @@ extern crate testcontainers;
 extern crate web3;
 
 use testcontainers::clients::DockerCli;
-use testcontainers::images::GanacheCli;
+use testcontainers::images::{GanacheCli, GanacheCliArgs};
 use testcontainers::{Container, Docker, Image, RunArgs};
 
 use web3::Web3;
@@ -19,7 +19,13 @@ impl GanacheCliNode {
     pub fn new() -> Self {
         let docker = DockerCli {};
 
-        let ganache_cli = GanacheCli::latest();
+        let args = GanacheCliArgs {
+            network_id: 42,
+            number_of_accounts: 7,
+            mnemonic: String::from("supersecure"),
+        };
+
+        let ganache_cli = GanacheCli::latest().with_args(args);
 
         let container_id = docker.run_detached(
             &ganache_cli,
@@ -53,6 +59,6 @@ impl GanacheCliNode {
 
 impl Drop for GanacheCliNode {
     fn drop(&mut self) {
-        self.docker.rm(&self.container_id);
+        // self.docker.rm(&self.container_id);
     }
 }
