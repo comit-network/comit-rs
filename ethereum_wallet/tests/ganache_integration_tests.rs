@@ -7,8 +7,6 @@ extern crate web3;
 use ethereum_wallet::*;
 use hex::FromHex;
 use secp256k1::{Secp256k1, SecretKey};
-use std::env::var;
-use std::str::FromStr;
 use web3::futures::Future;
 
 #[test]
@@ -19,8 +17,6 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
 
     let ganache_node = ganache_node::GanacheCliNode::new();
     let web3 = ganache_node.get_client();
-
-    let web3 = web3::api::Web3::new(transport);
 
     let get_nonce = || web3.eth().transaction_count(account, None).wait().unwrap();
     let get_balance = || web3.eth().balance(account, None).wait().unwrap();
