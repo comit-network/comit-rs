@@ -5,39 +5,69 @@ use jsonrpc::RpcError;
 use jsonrpc::RpcResponse;
 use std::fmt::Debug;
 use testcontainers;
+use testcontainers::clients::DockerCli;
 use testcontainers::{Container, Docker, Image, RunArgs};
 use types::*;
+
+pub struct BitcoinNode {
+    container_id: String,
+    docker: DockerCli,
+    client: BitcoinCoreClient,
+}
+
+impl BitcoinNode {
+    pub fn new() -> Self {
+        let docker = DockerCli {};
+        let bitcoind = testcontainers::images::Bitcoind::latest();
+
+        let container_id = docker.run_detached(
+            &bitcoind,
+            RunArgs {
+                ports: bitcoind.exposed_ports(),
+                rm: true,
+                ..RunArgs::default()
+            },
+        );
+        let info = docker.inspect(&container_id);
+
+        let external_port = info.ports().map_to_external_port(18443).unwrap();
+
+        let url = format!("http://localhost:{}", external_port);
+
+        let username = "bitcoin";
+        let password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=";
+
+        let client = BitcoinCoreClient::new(url.as_str(), username, password);
+
+        BitcoinNode {
+            container_id,
+            docker,
+            client,
+        }
+    }
+
+    pub fn perform_request<I, R>(&self, invocation: I) -> Result<R, RpcError>
+    where
+        I: Fn(&BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
+    {
+        invocation(&self.client).unwrap().into()
+    }
+}
+
+impl Drop for BitcoinNode {
+    fn drop(&mut self) {
+        self.docker.rm(&self.container_id);
+    }
+}
 
 pub fn assert_successful_result<R, I>(invocation: I)
 where
     R: Debug,
     I: Fn(&BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
 {
-    let docker = testcontainers::clients::DockerCli {};
-    let bitcoind = testcontainers::images::Bitcoind::latest();
+    let client = BitcoinNode::new();
 
-    let id = docker.run_detached(
-        &bitcoind,
-        RunArgs {
-            ports: bitcoind.exposed_ports(),
-            rm: true,
-            ..RunArgs::default()
-        },
-    );
-    let info = docker.inspect(&id);
-
-    let external_port = info.ports().map_to_external_port(18443).unwrap();
-
-    let url = format!("http://localhost:{}", external_port);
-
-    let username = "bitcoin";
-    let password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=";
-
-    let client = BitcoinCoreClient::new(url.as_str(), username, password);
-
-    let result: Result<R, RpcError> = invocation(&client).unwrap().into();
-
-    docker.rm(&id);
+    let result = client.perform_request(invocation);
 
     if result.is_err() {
         error!("{:?}", result.unwrap_err());
