@@ -20,4 +20,4 @@ log = "0.4.2"
 
 [dev-dependencies]
 env_logger = "0.5.10"
-testcontainers = { path = "/home/thomas/src/github.com/thomaseizinger/testcontainers-rs" }
+testcontainers = { git = "https://github.com/CoBloX/testcontainers-rs" }
