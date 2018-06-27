@@ -59,6 +59,6 @@ impl GanacheCliNode {
 
 impl Drop for GanacheCliNode {
     fn drop(&mut self) {
-        // self.docker.rm(&self.container_id);
+        self.docker.rm(&self.container_id);
     }
 }
