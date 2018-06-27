@@ -1,14 +1,11 @@
 extern crate bitcoin_rpc;
 extern crate jsonrpc;
-#[macro_use]
-extern crate log;
-extern crate testcontainers;
 
 mod common;
 
+use bitcoin_rpc::test_support::BitcoinCoreTestClient;
+use bitcoin_rpc::test_support::assert_successful_result;
 use bitcoin_rpc::*;
-use common::assert::assert_successful_result;
-use common::test_client::BitcoinCoreTestClient;
 use common::test_lifecycle::setup;
 use std::collections::HashMap;
 
