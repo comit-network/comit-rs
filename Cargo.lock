@@ -617,9 +617,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ganache_node"
+version = "0.1.0"
+dependencies = [
+ "testcontainers 0.1.0 (git+https://github.com/CoBloX/testcontainers-rs)",
+ "web3 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "ganache_rust_web3"
 version = "0.1.0"
 dependencies = [
+ "ganache_node 0.1.0",
  "serde 1.0.67 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.67 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
