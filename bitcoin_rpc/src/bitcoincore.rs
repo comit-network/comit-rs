@@ -8,14 +8,8 @@ use serde::de::DeserializeOwned;
 use types::Address;
 use types::*;
 
-struct RetryConfig {
-    max_retries: u32,
-    interval: u64,
-}
-
 pub struct BitcoinCoreClient {
     client: RpcClient,
-    retry_config: Option<RetryConfig>,
 }
 
 pub enum TxOutConfirmations {
@@ -39,13 +33,7 @@ impl BitcoinCoreClient {
 
         let rpc_client = RpcClient::new(client, url);
 
-        BitcoinCoreClient {
-            client: rpc_client,
-            retry_config: Some(RetryConfig {
-                max_retries: 10,
-                interval: 500,
-            }),
-        }
+        BitcoinCoreClient { client: rpc_client }
     }
 
     fn get_raw_transaction<R>(
@@ -304,27 +292,6 @@ impl BitcoinCoreClient {
         &self,
         request: &RpcRequest<P>,
     ) -> Result<RpcResponse<R>, HTTPError> {
-        if let Some(ref config) = self.retry_config {
-            for i in 0..config.max_retries {
-                let result = self.client.send::<R, P>(request);
-
-                match result {
-                    Ok(rpc_response) => match rpc_response.error {
-                        Some(ref rpc_error) if rpc_error.code == -28 => {
-                            info!("Bitcoind is still starting up. Request will be retried in {} milliseconds. ({}/{}) ", config.interval, i, config.max_retries);
-
-                            ::std::thread::sleep(::std::time::Duration::from_millis(
-                                config.interval,
-                            ));
-                            continue;
-                        }
-                        _ => return Ok(rpc_response),
-                    },
-                    Err(http_error) => return Err(http_error),
-                }
-            }
-        }
-
         self.client.send(request)
     }
 }
