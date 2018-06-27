@@ -17,9 +17,6 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
 
     let account: web3::types::Address = "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into();
 
-    let network_id = var("ETHEREUM_NETWORK_ID").expect("Ethereum network id not set");
-    let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
-
     let ganache_node = ganache_node::GanacheCliNode::new();
     let web3 = ganache_node.get_client();
 
@@ -43,7 +40,7 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
             "a710faa76db883cd246112142b609bfe2f122b362b85719f47d91541e104b33d",
         ).unwrap();
         let private_key = SecretKey::from_slice(&Secp256k1::new(), &private_key_data[..]).unwrap();
-        InMemoryWallet::new(private_key, network_id)
+        InMemoryWallet::new(private_key, 42) // 42 is used in GanacheCliNode
     };
 
     let tx = UnsignedTransaction::new_payment(
