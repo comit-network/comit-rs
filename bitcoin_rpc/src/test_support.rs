@@ -1,7 +1,6 @@
 use bitcoin_rpc_api::BitcoinRpcApi;
 use bitcoincore::*;
 use jsonrpc::HTTPError;
-use jsonrpc::RpcError;
 use jsonrpc::RpcResponse;
 use std::fmt::Debug;
 use testcontainers;
@@ -46,11 +45,8 @@ impl BitcoinNode {
         }
     }
 
-    pub fn perform_request<I, R>(&self, invocation: I) -> Result<R, RpcError>
-    where
-        I: Fn(&BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
-    {
-        invocation(&self.client).unwrap().into()
+    pub fn get_client(&self) -> &BitcoinCoreClient {
+        &self.client
     }
 }
 
@@ -65,9 +61,11 @@ where
     R: Debug,
     I: Fn(&BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
 {
-    let client = BitcoinNode::new();
+    let node = BitcoinNode::new();
 
-    let result = client.perform_request(invocation);
+    let client = node.get_client();
+
+    let result = invocation(client).unwrap().into_result();
 
     if result.is_err() {
         error!("{:?}", result.unwrap_err());
