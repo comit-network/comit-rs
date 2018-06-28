@@ -23,13 +23,14 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct IdBasedPrivKey {
-    secret_key: SecretKey,
-    source_id: Uuid,
+    pub secret_key: SecretKey,
+    pub source_id: Uuid,
 }
 
+#[derive(Clone)]
 pub struct IdBasedPubKey {
-    public_key: PublicKey,
-    source_id: Uuid,
+    pub public_key: PublicKey,
+    pub source_id: Uuid,
 }
 
 pub struct KeyStore {
@@ -43,8 +44,8 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    id_base_privkeys: HashMap<Uuid, IdBasedPrivKey>,
-    id_base_pubkeys: HashMap<Uuid, IdBasedPubKey>,
+    id_based_privkeys: HashMap<Uuid, IdBasedPrivKey>,
+    id_based_pubkeys: HashMap<Uuid, IdBasedPubKey>,
 }
 
 impl KeyStore {
@@ -66,8 +67,8 @@ impl KeyStore {
             id_based_root_privkey: htlc_root_privkey,
             internal_root_privkey: wallet_root_privkey,
             last_wallet_index: 0,
-            id_base_privkeys: HashMap::new(),
-            id_base_pubkeys: HashMap::new(),
+            id_based_privkeys: HashMap::new(),
+            id_based_pubkeys: HashMap::new(),
         }
     }
 
@@ -87,15 +88,17 @@ impl KeyStore {
     }
 
     pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
-        let id_based_privkey = match self.id_base_privkeys.get(id) {
+        let id_based_privkey = match self.id_based_privkeys.get(id) {
             None => {
                 let privkey = { self.new_id_based_privkey(id) };
                 privkey
             }
-            Some(privkey) => Ok(privkey.clone()),
+            Some(privkey) => {
+                return Ok(privkey.clone());
+            }
         }?;
 
-        self.id_base_privkeys
+        self.id_based_privkeys
             .insert(id.clone(), id_based_privkey.clone());
         Ok(id_based_privkey)
     }
@@ -120,6 +123,10 @@ impl KeyStore {
             secret_key,
             source_id: uid.clone(),
         })
+    }
+
+    pub fn get_id_based_pubkey(&mut self, id: &Uuid) -> Result<IdBasedPubKey, Error> {
+        unimplemented!()
     }
 }
 
