@@ -1,29 +1,41 @@
-use bitcoin::network::constants::Network;
-use bitcoin::util::address::Address;
 use bitcoin::util::bip32::ChildNumber;
 use bitcoin::util::bip32::Error;
 use bitcoin::util::bip32::ExtendedPrivKey;
 use bitcoin::util::bip32::ExtendedPubKey;
+use crypto::digest::Digest;
+use crypto::sha2::Sha256;
 use secp256k1::Secp256k1;
+use secp256k1::key::PublicKey;
+use secp256k1::key::SecretKey;
+// Not sure if I want this library to be aware of the Uuid concept
+use std::collections::HashMap;
+use uuid::Uuid;
+
+// TODO: Move in a constant mod
+/// The size (in bytes) of a secret key
+pub const SECRET_KEY_SIZE: usize = 32;
+
+pub const SHA256_DIGEST_LENGTH: usize = 32;
 
 lazy_static! {
     static ref SECP: Secp256k1 = Secp256k1::new();
 }
 
-enum Type {
-    AddressChain,
-    // Derived from an Extended Public Key
-    CustomKeys,
-    // non-Bip32
-    InternalChain, // Internal Chain as per bip32
+#[derive(Clone)]
+pub struct IdBasedPrivKey {
+    secret_key: SecretKey,
+    source_id: Uuid,
 }
 
-use self::Type::*;
+pub struct IdBasedPubKey {
+    public_key: PublicKey,
+    source_id: Uuid,
+}
 
 pub struct KeyStore {
     master_privkey: ExtendedPrivKey,
-    htlc_root_privkey: ExtendedPrivKey,
-    wallet_root_privkey: ExtendedPrivKey,
+    id_based_root_privkey: ExtendedPrivKey,
+    internal_root_privkey: ExtendedPrivKey,
     last_wallet_index: u32,
     // Do we want to remember already generated addresses or regenerate them?
     // Memory vs CPU -> could be a switch/option
@@ -31,6 +43,8 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
+    id_base_privkeys: HashMap<Uuid, IdBasedPrivKey>,
+    id_base_pubkeys: HashMap<Uuid, IdBasedPubKey>,
 }
 
 impl KeyStore {
@@ -49,14 +63,16 @@ impl KeyStore {
 
         KeyStore {
             master_privkey,
-            htlc_root_privkey,
-            wallet_root_privkey,
+            id_based_root_privkey: htlc_root_privkey,
+            internal_root_privkey: wallet_root_privkey,
             last_wallet_index: 0,
+            id_base_privkeys: HashMap::new(),
+            id_base_pubkeys: HashMap::new(),
         }
     }
 
-    pub fn get_new_wallet_privkey(&mut self) -> Result<ExtendedPrivKey, Error> {
-        let res = self.wallet_root_privkey
+    pub fn get_new_internal_privkey(&mut self) -> Result<ExtendedPrivKey, Error> {
+        let res = self.internal_root_privkey
             .ckd_priv(&SECP, ChildNumber::Hardened(self.last_wallet_index));
         if res.is_ok() {
             self.last_wallet_index += 1;
@@ -64,8 +80,8 @@ impl KeyStore {
         res
     }
 
-    pub fn get_wallet_pubkey(&self, index: u32) -> Result<ExtendedPubKey, Error> {
-        let priv_key = self.wallet_root_privkey
+    pub fn get_internal_pubkey(&self, index: u32) -> Result<ExtendedPubKey, Error> {
+        let priv_key = self.internal_root_privkey
             .ckd_priv(&SECP, ChildNumber::Hardened(index))?;
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
@@ -102,12 +118,47 @@ impl KeyStore {
             }
         }
         */
+
+    pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
+        let id_based_privkey = match self.id_base_privkeys.get(id) {
+            None => {
+                let privkey = { self.new_id_based_privkey(id) };
+                privkey
+            }
+            Some(privkey) => Ok(privkey.clone()),
+        }?;
+
+        self.id_base_privkeys
+            .insert(id.clone(), id_based_privkey.clone());
+        Ok(id_based_privkey)
+    }
+
+    fn new_id_based_privkey(&self, uid: &Uuid) -> Result<IdBasedPrivKey, Error> {
+        // SecretKey = SHA256(id_based_root_privkey + id)
+        let root_key = self.id_based_root_privkey.secret_key;
+        let root_key: &[u8] = &root_key[..];
+
+        let id = uid.as_bytes();
+        let input = ([root_key, id]).concat();
+
+        let mut sha = Sha256::new();
+        sha.input(&input[..]);
+
+        let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
+        sha.result(&mut result);
+
+        let secret_key = SecretKey::from_slice(&SECP, &result)?;
+
+        Ok(IdBasedPrivKey {
+            secret_key,
+            source_id: uid.clone(),
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use secp256k1::key::PublicKey;
     use std::str::FromStr;
 
     #[test]
@@ -118,9 +169,9 @@ mod tests {
 
         let mut keystore = KeyStore::new(master_priv_key);
 
-        let wallet_privkey0 = keystore.get_new_wallet_privkey().unwrap();
-        let wallet_privkey1 = keystore.get_new_wallet_privkey().unwrap();
-        let wallet_privkey2 = keystore.get_new_wallet_privkey().unwrap();
+        let wallet_privkey0 = keystore.get_new_internal_privkey().unwrap();
+        let wallet_privkey1 = keystore.get_new_internal_privkey().unwrap();
+        let wallet_privkey2 = keystore.get_new_internal_privkey().unwrap();
 
         assert_eq!(wallet_privkey0.child_number, ChildNumber::Hardened(0));
         assert_eq!(wallet_privkey1.child_number, ChildNumber::Hardened(1));
@@ -129,9 +180,9 @@ mod tests {
         assert_ne!(wallet_privkey1, wallet_privkey2);
         assert_ne!(wallet_privkey2, wallet_privkey0);
 
-        let wallet_pubkey0 = keystore.get_wallet_pubkey(0).unwrap();
-        let wallet_pubkey1 = keystore.get_wallet_pubkey(1).unwrap();
-        let wallet_pubkey2 = keystore.get_wallet_pubkey(2).unwrap();
+        let wallet_pubkey0 = keystore.get_internal_pubkey(0).unwrap();
+        let wallet_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
+        let wallet_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
 
         assert_eq!(wallet_pubkey0.child_number, ChildNumber::Hardened(0));
         assert_eq!(wallet_pubkey1.child_number, ChildNumber::Hardened(1));
