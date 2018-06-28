@@ -86,39 +86,6 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
 
-    /*
-    impl KeyStore {
-        pub fn new_from_pub(xpubkey: ExtendedPubKey) -> KeyStore {
-            KeyStore {
-                store_type: AddressChain,
-                master_pubkey: Some(xpubkey),
-                master_privkey: None,
-                last_chain_index: Some(0),
-            }
-        }
-
-        pub fn new_pubkey(&mut self) -> Result<ExtendedPubKey, Error> {
-            let res = self.xpubkey
-                .ckd_pub(&self.secp, ChildNumber::Normal(self.last_index));
-            if res.is_ok() {
-                self.last_index += 1;
-            }
-            res
-        }
-
-        pub fn new_address(&mut self, network: Network) -> Result<Address, Error> {
-            let pubkey = self.new_pubkey();
-            match pubkey {
-                Err(e) => return Err(e),
-                Ok(pubkey) => {
-                    // Using P2SH-WPKH (Legacy address wrapping SegWit)
-                    // which is the most popular type of address at the moment
-                    return Ok(Address::p2shwpkh(&pubkey.public_key, network));
-                }
-            }
-        }
-        */
-
     pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
         let id_based_privkey = match self.id_base_privkeys.get(id) {
             None => {
