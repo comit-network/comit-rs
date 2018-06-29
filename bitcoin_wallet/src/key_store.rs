@@ -68,22 +68,32 @@ pub struct KeyStore {
 
 impl KeyStore {
     pub fn new(master_privkey: ExtendedPrivKey) -> KeyStore {
+        // As per bip32 and bitcoind reference implementation we want to
+        // use the following child keys:
+        // m/'0/'0 for internal chain (ie, where the BTC is sent after redeem)
+        // m/'0/'2 for HTLC (ie, locking the money in HTLC
+        // At this stage we expect an extended master private key in the configuration (m)
+        // Then we just assume that we use account '0, hence we derive m/'0 and create
+        // our child keys from there.
+        // As per bip32 the first level, m/'0 is the "account" level. At the moment
+        // It is not commonly used. However we could see in the future that we get
+        // passed a key m/'i/ and then derive directly from it instead of using this
+        // temporary key.
         let temp_hardened_privkey = master_privkey
             .ckd_priv(&SECP, ChildNumber::Hardened(0))
             .expect("Could not derive m/'0");
-        // m/'0/'2
+
+        let internal_root_privkey = temp_hardened_privkey
+            .ckd_priv(&SECP, ChildNumber::Hardened(0))
+            .expect("Could not derive m/'0/'0");
         let htlc_root_privkey = temp_hardened_privkey
             .ckd_priv(&SECP, ChildNumber::Hardened(2))
             .expect("Could not derive m/'0/'2");
-        // m/'0/'0
-        let wallet_root_privkey = temp_hardened_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(0))
-            .expect("Could not derive m/'0/'0");
 
         KeyStore {
             master_privkey,
             id_based_root_privkey: htlc_root_privkey,
-            internal_root_privkey: wallet_root_privkey,
+            internal_root_privkey: internal_root_privkey,
             last_wallet_index: 0,
             id_based_keys: HashMap::new(),
         }
