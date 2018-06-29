@@ -158,60 +158,82 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn get_wallet_priv_and_pub_keys() {
+    fn get_internal_priv_and_pub_keys() {
         let master_priv_key = ExtendedPrivKey::from_str(
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
 
         let mut keystore = KeyStore::new(master_priv_key);
 
-        let wallet_privkey0 = keystore.get_new_internal_privkey().unwrap();
-        let wallet_privkey1 = keystore.get_new_internal_privkey().unwrap();
-        let wallet_privkey2 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey2 = keystore.get_new_internal_privkey().unwrap();
 
-        assert_eq!(wallet_privkey0.child_number, ChildNumber::Hardened(0));
-        assert_eq!(wallet_privkey1.child_number, ChildNumber::Hardened(1));
-        assert_eq!(wallet_privkey2.child_number, ChildNumber::Hardened(2));
-        assert_ne!(wallet_privkey0, wallet_privkey1);
-        assert_ne!(wallet_privkey1, wallet_privkey2);
-        assert_ne!(wallet_privkey2, wallet_privkey0);
+        assert_eq!(internal_privkey0.child_number, ChildNumber::Hardened(0));
+        assert_eq!(internal_privkey1.child_number, ChildNumber::Hardened(1));
+        assert_eq!(internal_privkey2.child_number, ChildNumber::Hardened(2));
+        assert_ne!(internal_privkey0, internal_privkey1);
+        assert_ne!(internal_privkey1, internal_privkey2);
+        assert_ne!(internal_privkey2, internal_privkey0);
 
-        let wallet_pubkey0 = keystore.get_internal_pubkey(0).unwrap();
-        let wallet_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
-        let wallet_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
+        let internal_pubkey0 = keystore.get_internal_pubkey(0).unwrap();
+        let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
+        let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
 
-        assert_eq!(wallet_pubkey0.child_number, ChildNumber::Hardened(0));
-        assert_eq!(wallet_pubkey1.child_number, ChildNumber::Hardened(1));
-        assert_eq!(wallet_pubkey2.child_number, ChildNumber::Hardened(2));
-        assert_ne!(wallet_pubkey0, wallet_pubkey1);
-        assert_ne!(wallet_pubkey1, wallet_pubkey2);
-        assert_ne!(wallet_pubkey2, wallet_pubkey0);
+        // All key pairs have been verified as valid using `ku -P` the bip32 python reference
+        println!("{}", internal_privkey0.to_string());
+        println!("{}", internal_privkey1.to_string());
+        println!("{}", internal_privkey2.to_string());
+        println!("{}", internal_pubkey0.to_string());
+        println!("{}", internal_pubkey1.to_string());
+        println!("{}", internal_pubkey2.to_string());
+
+        assert_eq!(internal_pubkey0.child_number, ChildNumber::Hardened(0));
+        assert_eq!(internal_pubkey1.child_number, ChildNumber::Hardened(1));
+        assert_eq!(internal_pubkey2.child_number, ChildNumber::Hardened(2));
+        assert_ne!(internal_pubkey0, internal_pubkey1);
+        assert_ne!(internal_pubkey1, internal_pubkey2);
+        assert_ne!(internal_pubkey2, internal_pubkey0);
 
         let pubkey_from_priv0 =
-            PublicKey::from_secret_key(&SECP, &wallet_privkey0.secret_key).unwrap();
+            PublicKey::from_secret_key(&SECP, &internal_privkey0.secret_key).unwrap();
         let pubkey_from_priv1 =
-            PublicKey::from_secret_key(&SECP, &wallet_privkey1.secret_key).unwrap();
+            PublicKey::from_secret_key(&SECP, &internal_privkey1.secret_key).unwrap();
         let pubkey_from_priv2 =
-            PublicKey::from_secret_key(&SECP, &wallet_privkey2.secret_key).unwrap();
-        let pub_key_from_ext0 = wallet_pubkey0.public_key;
-        let pub_key_from_ext1 = wallet_pubkey1.public_key;
-        let pub_key_from_ext2 = wallet_pubkey2.public_key;
+            PublicKey::from_secret_key(&SECP, &internal_privkey2.secret_key).unwrap();
+        let pub_key_from_ext0 = internal_pubkey0.public_key;
+        let pub_key_from_ext1 = internal_pubkey1.public_key;
+        let pub_key_from_ext2 = internal_pubkey2.public_key;
         assert_eq!(pubkey_from_priv0, pub_key_from_ext0);
         assert_eq!(pubkey_from_priv1, pub_key_from_ext1);
         assert_eq!(pubkey_from_priv2, pub_key_from_ext2);
     }
-    /*#[test]
-    fn given_bip32_vector1_m0h_pubkey_return_correct_m0h1_pubkey() {
-        // See https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki Test vector 1
-        // Chain m/0H
-        let pub_key = ExtendedPubKey::from_str("xpub68Gmy5EdvgibQVfPdqkBBCHxA5htiqg55crXYuXoQRKfDBFA1WEjWgP6LHhwBZeNK1VTsfTFUHCdrfp1bgwQ9xv5ski8PX9rL2dZXvgGDnw").unwrap();
-        // Chain m/0H/1
-        let expected_pubkey = ExtendedPubKey::from_str("xpub6ASuArnXKPbfEwhqN6e3mwBcDTgzisQN1wXN9BJcM47sSikHjJf3UFHKkNAWbWMiGj7Wf5uMash7SyYq527Hqck2AxYysAA7xmALppuCkwQ").unwrap();
 
-        let mut add_gen = KeyStore::new(pub_key);
-        // Chain m/0H/0 (discard)
-        let _ = add_gen.new_pubkey();
+    #[test]
+    fn generate_diff_id_based_keys() {
+        let master_priv_key = ExtendedPrivKey::from_str(
+            "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
+        ).unwrap();
 
-        assert_eq!(add_gen.new_pubkey(), Ok(expected_pubkey));
-    }*/
+        let mut keystore = KeyStore::new(master_priv_key);
+
+        let uid0 = Uuid::new_v4();
+        let uid1 = Uuid::new_v4();
+        let uid2 = Uuid::new_v4();
+
+        let privkey0 = keystore.get_id_based_privkey(&uid0).unwrap();
+        let privkey1 = keystore.get_id_based_privkey(&uid1).unwrap();
+        let privkey2 = keystore.get_id_based_privkey(&uid2).unwrap();
+        let pubkey0 = keystore.get_id_based_pubkey(&uid0).unwrap();
+        let pubkey1 = keystore.get_id_based_pubkey(&uid1).unwrap();
+        let pubkey2 = keystore.get_id_based_pubkey(&uid2).unwrap();
+
+        let pubkey_from_priv0 = PublicKey::from_secret_key(&SECP, &privkey0.secret_key).unwrap();
+        let pubkey_from_priv1 = PublicKey::from_secret_key(&SECP, &privkey1.secret_key).unwrap();
+        let pubkey_from_priv2 = PublicKey::from_secret_key(&SECP, &privkey2.secret_key).unwrap();
+
+        assert_eq!(pubkey_from_priv0, pubkey0.public_key);
+        assert_eq!(pubkey_from_priv1, pubkey1.public_key);
+        assert_eq!(pubkey_from_priv2, pubkey2.public_key);
+    }
 }
