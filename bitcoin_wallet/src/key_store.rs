@@ -33,6 +33,9 @@ pub struct IdBasedPubKey {
     pub source_id: Uuid,
 }
 
+#[derive(Clone)]
+struct IdBasedKeyPair(IdBasedPrivKey, IdBasedPubKey);
+
 pub struct KeyStore {
     master_privkey: ExtendedPrivKey,
     id_based_root_privkey: ExtendedPrivKey,
@@ -44,8 +47,7 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    id_based_privkeys: HashMap<Uuid, IdBasedPrivKey>,
-    id_based_pubkeys: HashMap<Uuid, IdBasedPubKey>,
+    id_based_keys: HashMap<Uuid, IdBasedKeyPair>, // Better generate Public Key from SecretKey on the fly or storing them?
 }
 
 impl KeyStore {
@@ -67,8 +69,7 @@ impl KeyStore {
             id_based_root_privkey: htlc_root_privkey,
             internal_root_privkey: wallet_root_privkey,
             last_wallet_index: 0,
-            id_based_privkeys: HashMap::new(),
-            id_based_pubkeys: HashMap::new(),
+            id_based_keys: HashMap::new(),
         }
     }
 
@@ -87,25 +88,34 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
 
-    pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
-        let id_based_privkey = match self.id_based_privkeys.get(id) {
+    fn get_id_based_keypair(&mut self, id: &Uuid) -> Result<IdBasedKeyPair, Error> {
+        let id_based_root_privkey = &self.id_based_root_privkey;
+        // I don't like this bool but I don't like any other way I tried either
+        let mut needs_insert = false;
+        let id_based_keypair = match self.id_based_keys.get(id) {
             None => {
-                let privkey = { self.new_id_based_privkey(id) };
-                privkey
+                needs_insert = true;
+                let key_pair = Self::new_id_based_keys(id_based_root_privkey, id);
+                key_pair
             }
-            Some(privkey) => {
-                return Ok(privkey.clone());
+            Some(key_pair) => {
+                return Ok(key_pair.clone());
             }
         }?;
 
-        self.id_based_privkeys
-            .insert(id.clone(), id_based_privkey.clone());
-        Ok(id_based_privkey)
+        if needs_insert {
+            self.id_based_keys
+                .insert(id.clone(), id_based_keypair.clone());
+        }
+        Ok(id_based_keypair)
     }
 
-    fn new_id_based_privkey(&self, uid: &Uuid) -> Result<IdBasedPrivKey, Error> {
+    fn new_id_based_keys(
+        id_based_root_privkey: &ExtendedPrivKey,
+        uid: &Uuid,
+    ) -> Result<IdBasedKeyPair, Error> {
         // SecretKey = SHA256(id_based_root_privkey + id)
-        let root_key = self.id_based_root_privkey.secret_key;
+        let root_key = id_based_root_privkey.secret_key;
         let root_key: &[u8] = &root_key[..];
 
         let id = uid.as_bytes();
@@ -118,15 +128,27 @@ impl KeyStore {
         sha.result(&mut result);
 
         let secret_key = SecretKey::from_slice(&SECP, &result)?;
+        let public_key = PublicKey::from_secret_key(&SECP, &secret_key)?;
+        Ok(IdBasedKeyPair(
+            IdBasedPrivKey {
+                secret_key,
+                source_id: uid.clone(),
+            },
+            IdBasedPubKey {
+                public_key,
+                source_id: uid.clone(),
+            },
+        ))
+    }
 
-        Ok(IdBasedPrivKey {
-            secret_key,
-            source_id: uid.clone(),
-        })
+    pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
+        let key_pair = self.get_id_based_keypair(id)?;
+        Ok(key_pair.0)
     }
 
     pub fn get_id_based_pubkey(&mut self, id: &Uuid) -> Result<IdBasedPubKey, Error> {
-        unimplemented!()
+        let key_pair = self.get_id_based_keypair(id)?;
+        Ok(key_pair.1)
     }
 }
 
