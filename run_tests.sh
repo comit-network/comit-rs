@@ -1,8 +1,14 @@
 #!/bin/sh
 set -ev;
 
+function print_blue() {
+    printf '\e[34m%s\e[0m\n' "$1"
+}
+
 END(){
     if test "${bitcoin_docker_id}${ganache_docker_id}"; then
+        print_blue "Logs for container ganache: $ganache_docker_id:"
+        docker logs "${ganache_docker_id}"
         echo "KILLING docker containers $bitcoin_docker_id $ganache_docker_id";
         docker rm -f $bitcoin_docker_id $ganache_docker_id;
     fi
