@@ -34,7 +34,23 @@ pub struct IdBasedPubKey {
 }
 
 #[derive(Clone)]
-struct IdBasedKeyPair(IdBasedPrivKey, IdBasedPubKey);
+pub struct KeyPair(SecretKey, PublicKey);
+
+#[derive(Clone)]
+pub struct IdBasedKeyPair {
+    pub uid: Uuid,
+    keys: KeyPair,
+}
+
+impl IdBasedKeyPair {
+    fn get_secret_key(&self) -> &SecretKey {
+        &self.keys.0
+    }
+
+    fn get_public_key(&self) -> &PublicKey {
+        &self.keys.1
+    }
+}
 
 pub struct KeyStore {
     master_privkey: ExtendedPrivKey,
@@ -129,26 +145,26 @@ impl KeyStore {
 
         let secret_key = SecretKey::from_slice(&SECP, &result)?;
         let public_key = PublicKey::from_secret_key(&SECP, &secret_key)?;
-        Ok(IdBasedKeyPair(
-            IdBasedPrivKey {
-                secret_key,
-                source_id: uid.clone(),
-            },
-            IdBasedPubKey {
-                public_key,
-                source_id: uid.clone(),
-            },
-        ))
+        Ok(IdBasedKeyPair {
+            uid: uid.clone(),
+            keys: KeyPair(secret_key, public_key),
+        })
     }
 
     pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
         let key_pair = self.get_id_based_keypair(id)?;
-        Ok(key_pair.0)
+        Ok(IdBasedPrivKey {
+            secret_key: key_pair.get_secret_key().clone(),
+            source_id: id.clone(),
+        })
     }
 
     pub fn get_id_based_pubkey(&mut self, id: &Uuid) -> Result<IdBasedPubKey, Error> {
         let key_pair = self.get_id_based_keypair(id)?;
-        Ok(key_pair.1)
+        Ok(IdBasedPubKey {
+            public_key: key_pair.get_public_key().clone(),
+            source_id: id.clone(),
+        })
     }
 }
 
