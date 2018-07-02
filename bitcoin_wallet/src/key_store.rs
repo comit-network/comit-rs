@@ -12,9 +12,7 @@ use secp256k1::key::SecretKey;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-lazy_static! {
-    static ref SECP: Secp256k1 = Secp256k1::new();
-}
+use super::SECP;
 
 #[derive(Clone)]
 pub struct IdBasedPrivKey {
