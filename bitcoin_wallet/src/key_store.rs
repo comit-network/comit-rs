@@ -36,11 +36,11 @@ pub struct IdBasedKeyPair {
 }
 
 impl IdBasedKeyPair {
-    fn get_secret_key(&self) -> &SecretKey {
+    fn secret_key(&self) -> &SecretKey {
         &self.keys.0
     }
 
-    fn get_public_key(&self) -> &PublicKey {
+    fn public_key(&self) -> &PublicKey {
         &self.keys.1
     }
 }
@@ -138,7 +138,7 @@ impl KeyStore {
     pub fn get_transient_privkey(&mut self, id: &Uuid) -> IdBasedPrivKey {
         let key_pair = self.get_transient_keypair(id);
         IdBasedPrivKey {
-            secret_key: key_pair.get_secret_key().clone(),
+            secret_key: key_pair.secret_key().clone(),
             source_id: id.clone(),
         }
     }
@@ -146,7 +146,7 @@ impl KeyStore {
     pub fn get_transient_pubkey(&mut self, id: &Uuid) -> IdBasedPubKey {
         let key_pair = self.get_transient_keypair(id);
         IdBasedPubKey {
-            public_key: key_pair.get_public_key().clone(),
+            public_key: key_pair.public_key().clone(),
             source_id: id.clone(),
         }
     }
