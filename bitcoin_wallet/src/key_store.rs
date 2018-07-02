@@ -4,18 +4,13 @@ use bitcoin::util::bip32::ExtendedPrivKey;
 use bitcoin::util::bip32::ExtendedPubKey;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
+use secp256k1;
 use secp256k1::Secp256k1;
 use secp256k1::key::PublicKey;
 use secp256k1::key::SecretKey;
 // Not sure if I want this library to be aware of the Uuid concept
 use std::collections::HashMap;
 use uuid::Uuid;
-
-// TODO: Move in a constant mod
-/// The size (in bytes) of a secret key
-pub const SECRET_KEY_SIZE: usize = 32;
-
-pub const SHA256_DIGEST_LENGTH: usize = 32;
 
 lazy_static! {
     static ref SECP: Secp256k1 = Secp256k1::new();
@@ -54,7 +49,7 @@ impl IdBasedKeyPair {
 
 pub struct KeyStore {
     master_privkey: ExtendedPrivKey,
-    id_based_root_privkey: ExtendedPrivKey,
+    transient_root_privkey: ExtendedPrivKey,
     internal_root_privkey: ExtendedPrivKey,
     last_wallet_index: u32,
     // Do we want to remember already generated addresses or regenerate them?
@@ -63,40 +58,33 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    id_based_keys: HashMap<Uuid, IdBasedKeyPair>, // Better generate Public Key from SecretKey on the fly or storing them?
+    transient_keys: HashMap<Uuid, IdBasedKeyPair>, // Better generate Public Key from SecretKey on the fly or storing them?
 }
 
 impl KeyStore {
-    pub fn new(master_privkey: ExtendedPrivKey) -> KeyStore {
-        // As per bip32 and bitcoind reference implementation we want to
-        // use the following child keys:
-        // m/0'/0' for internal chain (ie, where the BTC is sent after redeem)
-        // m/0'/2' for HTLC (ie, locking the money in HTLC
+    pub fn new(master_privkey: ExtendedPrivKey) -> Result<KeyStore, Error> {
+        // As per bip32 and bitcoind reference implementation
+        //
+        // We use the following child keys:
+        // m/0'/0' for bip32 internal chain (ie, where the BTC is sent after redeem, bitcoind-like)
+        // m/0'/2' for HTLC (ie, locking the money in HTLC). 2 is an arbitrary value I chose
+        // (1' being reserved for the bip32 external chain)
         // At this stage we expect an extended master private key in the configuration (m)
-        // Then we just assume that we use account 0', hence we derive m/0' and create
-        // our child keys from there.
-        // As per bip32 the first level, m/0' is the "account" level. At the moment
-        // It is not commonly used. However we could see in the future that we get
-        // passed a key m/i'/ and then derive directly from it instead of using this
-        // temporary key.
-        let temp_hardened_privkey = master_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(0))
-            .expect("Could not derive m/0'");
+        // Then we just assume that we use account 0' (like bitcoind), hence we derive m/0'
+        // and create our child keys from there.
 
-        let internal_root_privkey = temp_hardened_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(0))
-            .expect("Could not derive m/0'/0'");
-        let htlc_root_privkey = temp_hardened_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(2))
-            .expect("Could not derive m/0'/2'");
+        let account_0_privkey = master_privkey.ckd_priv(&SECP, ChildNumber::Hardened(0))?;
 
-        KeyStore {
+        let internal_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Hardened(0))?;
+        let transient_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Hardened(2))?;
+
+        Ok(KeyStore {
             master_privkey,
-            id_based_root_privkey: htlc_root_privkey,
+            transient_root_privkey: transient_root_privkey,
             internal_root_privkey: internal_root_privkey,
             last_wallet_index: 0,
-            id_based_keys: HashMap::new(),
-        }
+            transient_keys: HashMap::new(),
+        })
     }
 
     pub fn get_new_internal_privkey(&mut self) -> Result<ExtendedPrivKey, Error> {
@@ -114,14 +102,14 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
 
-    fn get_id_based_keypair(&mut self, id: &Uuid) -> Result<IdBasedKeyPair, Error> {
-        let id_based_root_privkey = &self.id_based_root_privkey;
+    fn get_transient_keypair(&mut self, id: &Uuid) -> Result<IdBasedKeyPair, Error> {
+        let transient_root_privkey = &self.transient_root_privkey;
         // I don't like this bool but I don't like any other way I tried either
         let mut needs_insert = false;
-        let id_based_keypair = match self.id_based_keys.get(id) {
+        let transient_keypair = match self.transient_keys.get(id) {
             None => {
                 needs_insert = true;
-                let key_pair = Self::new_id_based_keys(id_based_root_privkey, id);
+                let key_pair = Self::new_transient_keys(transient_root_privkey, id);
                 key_pair
             }
             Some(key_pair) => {
@@ -130,27 +118,25 @@ impl KeyStore {
         }?;
 
         if needs_insert {
-            self.id_based_keys
-                .insert(id.clone(), id_based_keypair.clone());
+            self.transient_keys
+                .insert(id.clone(), transient_keypair.clone());
         }
-        Ok(id_based_keypair)
+        Ok(transient_keypair)
     }
 
-    fn new_id_based_keys(
-        id_based_root_privkey: &ExtendedPrivKey,
+    fn new_transient_keys(
+        transient_root_privkey: &ExtendedPrivKey,
         uid: &Uuid,
     ) -> Result<IdBasedKeyPair, Error> {
-        // SecretKey = SHA256(id_based_root_privkey + id)
-        let root_key = id_based_root_privkey.secret_key;
-        let root_key: &[u8] = &root_key[..];
-
-        let id = uid.as_bytes();
-        let input = ([root_key, id]).concat();
+        // SecretKey = SHA256(transient_root_privkey + id)
+        let root_key = transient_root_privkey.secret_key;
 
         let mut sha = Sha256::new();
-        sha.input(&input[..]);
+        sha.input(&root_key[..]);
+        sha.input(&uid.as_bytes()[..]);
 
-        let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
+        let mut result: [u8; secp256k1::constants::SECRET_KEY_SIZE] =
+            [0; secp256k1::constants::SECRET_KEY_SIZE];
         sha.result(&mut result);
 
         let secret_key = SecretKey::from_slice(&SECP, &result)?;
@@ -161,16 +147,16 @@ impl KeyStore {
         })
     }
 
-    pub fn get_id_based_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
-        let key_pair = self.get_id_based_keypair(id)?;
+    pub fn get_transient_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
+        let key_pair = self.get_transient_keypair(id)?;
         Ok(IdBasedPrivKey {
             secret_key: key_pair.get_secret_key().clone(),
             source_id: id.clone(),
         })
     }
 
-    pub fn get_id_based_pubkey(&mut self, id: &Uuid) -> Result<IdBasedPubKey, Error> {
-        let key_pair = self.get_id_based_keypair(id)?;
+    pub fn get_transient_pubkey(&mut self, id: &Uuid) -> Result<IdBasedPubKey, Error> {
+        let key_pair = self.get_transient_keypair(id)?;
         Ok(IdBasedPubKey {
             public_key: key_pair.get_public_key().clone(),
             source_id: id.clone(),
@@ -189,7 +175,7 @@ mod tests {
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
 
-        let mut keystore = KeyStore::new(master_priv_key);
+        let mut keystore = KeyStore::new(master_priv_key).unwrap();
 
         let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
         let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
@@ -236,23 +222,23 @@ mod tests {
     }
 
     #[test]
-    fn generate_diff_id_based_keys() {
+    fn generate_diff_transient_keys() {
         let master_priv_key = ExtendedPrivKey::from_str(
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
 
-        let mut keystore = KeyStore::new(master_priv_key);
+        let mut keystore = KeyStore::new(master_priv_key).unwrap();
 
         let uid0 = Uuid::new_v4();
         let uid1 = Uuid::new_v4();
         let uid2 = Uuid::new_v4();
 
-        let privkey0 = keystore.get_id_based_privkey(&uid0).unwrap();
-        let privkey1 = keystore.get_id_based_privkey(&uid1).unwrap();
-        let privkey2 = keystore.get_id_based_privkey(&uid2).unwrap();
-        let pubkey0 = keystore.get_id_based_pubkey(&uid0).unwrap();
-        let pubkey1 = keystore.get_id_based_pubkey(&uid1).unwrap();
-        let pubkey2 = keystore.get_id_based_pubkey(&uid2).unwrap();
+        let privkey0 = keystore.get_transient_privkey(&uid0).unwrap();
+        let privkey1 = keystore.get_transient_privkey(&uid1).unwrap();
+        let privkey2 = keystore.get_transient_privkey(&uid2).unwrap();
+        let pubkey0 = keystore.get_transient_pubkey(&uid0).unwrap();
+        let pubkey1 = keystore.get_transient_pubkey(&uid1).unwrap();
+        let pubkey2 = keystore.get_transient_pubkey(&uid2).unwrap();
 
         let pubkey_from_priv0 = PublicKey::from_secret_key(&SECP, &privkey0.secret_key).unwrap();
         let pubkey_from_priv1 = PublicKey::from_secret_key(&SECP, &privkey1.secret_key).unwrap();
