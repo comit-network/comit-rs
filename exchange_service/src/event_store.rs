@@ -78,7 +78,7 @@ pub struct OrderTaken {
     client_contract_time_lock: bitcoin_rpc::BlockHeight,
     exchange_contract_time_lock: SystemTime,
 
-    client_refund_address: bitcoin_rpc::Address,
+    client_refund_address: bitcoin_wallet::Address,
     client_success_address: EthereumAddress,
 
     exchange_refund_address: EthereumAddress,
@@ -93,7 +93,7 @@ impl OrderTaken {
         contract_secret_lock: SecretHash,
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
-        client_refund_address: bitcoin_rpc::Address,
+        client_refund_address: bitcoin_wallet::Address,
         client_success_address: EthereumAddress,
         exchange_refund_address: EthereumAddress,
         exchange_success_address: bitcoin_wallet::Address,
@@ -107,7 +107,6 @@ impl OrderTaken {
             contract_secret_lock,
             client_contract_time_lock,
             exchange_contract_time_lock: SystemTime::now() + twelve_hours,
-
             client_refund_address,
             client_success_address,
             exchange_refund_address,
@@ -128,7 +127,7 @@ impl OrderTaken {
         self.exchange_contract_time_lock
     }
 
-    pub fn client_refund_address(&self) -> bitcoin_rpc::Address {
+    pub fn client_refund_address(&self) -> bitcoin_wallet::Address {
         self.client_refund_address.clone()
     }
 
