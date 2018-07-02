@@ -102,32 +102,20 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
 
-    fn get_transient_keypair(&mut self, id: &Uuid) -> Result<IdBasedKeyPair, Error> {
+    fn get_transient_keypair(&mut self, id: &Uuid) -> IdBasedKeyPair {
         let transient_root_privkey = &self.transient_root_privkey;
-        // I don't like this bool but I don't like any other way I tried either
-        let mut needs_insert = false;
-        let transient_keypair = match self.transient_keys.get(id) {
-            None => {
-                needs_insert = true;
-                let key_pair = Self::new_transient_keys(transient_root_privkey, id);
-                key_pair
-            }
-            Some(key_pair) => {
-                return Ok(key_pair.clone());
-            }
-        }?;
 
-        if needs_insert {
-            self.transient_keys
-                .insert(id.clone(), transient_keypair.clone());
+        if let Some(key_pair) = self.transient_keys.get(id) {
+            return key_pair.clone();
         }
-        Ok(transient_keypair)
+
+        let transient_keypair = Self::new_transient_keys(transient_root_privkey, id);
+        self.transient_keys
+            .insert(id.clone(), transient_keypair.clone());
+        transient_keypair
     }
 
-    fn new_transient_keys(
-        transient_root_privkey: &ExtendedPrivKey,
-        uid: &Uuid,
-    ) -> Result<IdBasedKeyPair, Error> {
+    fn new_transient_keys(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> IdBasedKeyPair {
         // SecretKey = SHA256(transient_root_privkey + id)
         let root_key = transient_root_privkey.secret_key;
 
@@ -139,28 +127,30 @@ impl KeyStore {
             [0; secp256k1::constants::SECRET_KEY_SIZE];
         sha.result(&mut result);
 
-        let secret_key = SecretKey::from_slice(&SECP, &result)?;
-        let public_key = PublicKey::from_secret_key(&SECP, &secret_key)?;
-        Ok(IdBasedKeyPair {
+        // This returns a result as it can fail if the slice is empty which is very unlikely hence the expect.
+        let secret_key = SecretKey::from_slice(&SECP, &result).expect("This should never fail");
+        let public_key =
+            PublicKey::from_secret_key(&SECP, &secret_key).expect("This should never fail");
+        IdBasedKeyPair {
             uid: uid.clone(),
             keys: KeyPair(secret_key, public_key),
-        })
+        }
     }
 
-    pub fn get_transient_privkey(&mut self, id: &Uuid) -> Result<IdBasedPrivKey, Error> {
-        let key_pair = self.get_transient_keypair(id)?;
-        Ok(IdBasedPrivKey {
+    pub fn get_transient_privkey(&mut self, id: &Uuid) -> IdBasedPrivKey {
+        let key_pair = self.get_transient_keypair(id);
+        IdBasedPrivKey {
             secret_key: key_pair.get_secret_key().clone(),
             source_id: id.clone(),
-        })
+        }
     }
 
-    pub fn get_transient_pubkey(&mut self, id: &Uuid) -> Result<IdBasedPubKey, Error> {
-        let key_pair = self.get_transient_keypair(id)?;
-        Ok(IdBasedPubKey {
+    pub fn get_transient_pubkey(&mut self, id: &Uuid) -> IdBasedPubKey {
+        let key_pair = self.get_transient_keypair(id);
+        IdBasedPubKey {
             public_key: key_pair.get_public_key().clone(),
             source_id: id.clone(),
-        })
+        }
     }
 }
 
@@ -233,12 +223,12 @@ mod tests {
         let uid1 = Uuid::new_v4();
         let uid2 = Uuid::new_v4();
 
-        let privkey0 = keystore.get_transient_privkey(&uid0).unwrap();
-        let privkey1 = keystore.get_transient_privkey(&uid1).unwrap();
-        let privkey2 = keystore.get_transient_privkey(&uid2).unwrap();
-        let pubkey0 = keystore.get_transient_pubkey(&uid0).unwrap();
-        let pubkey1 = keystore.get_transient_pubkey(&uid1).unwrap();
-        let pubkey2 = keystore.get_transient_pubkey(&uid2).unwrap();
+        let privkey0 = keystore.get_transient_privkey(&uid0);
+        let privkey1 = keystore.get_transient_privkey(&uid1);
+        let privkey2 = keystore.get_transient_privkey(&uid2);
+        let pubkey0 = keystore.get_transient_pubkey(&uid0);
+        let pubkey1 = keystore.get_transient_pubkey(&uid1);
+        let pubkey2 = keystore.get_transient_pubkey(&uid2);
 
         let pubkey_from_priv0 = PublicKey::from_secret_key(&SECP, &privkey0.secret_key).unwrap();
         let pubkey_from_priv1 = PublicKey::from_secret_key(&SECP, &privkey1.secret_key).unwrap();
