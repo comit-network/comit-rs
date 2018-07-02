@@ -58,17 +58,15 @@ impl<T: Transport> Namespace<T> for Ganache<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env::var;
-    use web3;
     use web3::futures::Future;
     use web3::transports;
 
+    extern crate ganache_node;
+
     #[test]
     fn test_evm_snapshot() {
-        let endpoint = var("GANACHE_ENDPOINT").unwrap();
-
-        let (_eloop, transport) = transports::Http::new(&endpoint).unwrap();
-        let web3 = web3::Web3::new(transport);
+        let node = ganache_node::GanacheCliNode::new();
+        let web3 = node.get_client();
 
         let _ = web3.api::<Ganache<transports::Http>>()
             .evm_snapshot()
@@ -78,10 +76,8 @@ mod tests {
 
     #[test]
     fn test_evm_revert() {
-        let endpoint = var("GANACHE_ENDPOINT").unwrap();
-
-        let (_eloop, transport) = transports::Http::new(&endpoint).unwrap();
-        let web3 = web3::Web3::new(transport);
+        let node = ganache_node::GanacheCliNode::new();
+        let web3 = node.get_client();
 
         let snapshot_id = web3.api::<Ganache<transports::Http>>()
             .evm_snapshot()
@@ -96,10 +92,8 @@ mod tests {
 
     #[test]
     fn test_evm_increase_time() {
-        let endpoint = var("GANACHE_ENDPOINT").unwrap();
-
-        let (_eloop, transport) = transports::Http::new(&endpoint).unwrap();
-        let web3 = web3::Web3::new(transport);
+        let node = ganache_node::GanacheCliNode::new();
+        let web3 = node.get_client();
 
         //        let increase = U256::from(1);
         //
@@ -116,10 +110,8 @@ mod tests {
 
     #[test]
     fn test_evm_mine() {
-        let endpoint = var("GANACHE_ENDPOINT").unwrap();
-
-        let (_eloop, transport) = transports::Http::new(&endpoint).unwrap();
-        let web3 = web3::Web3::new(transport);
+        let node = ganache_node::GanacheCliNode::new();
+        let web3 = node.get_client();
 
         let result = web3.api::<Ganache<transports::Http>>()
             .evm_mine()
