@@ -21,14 +21,6 @@ impl Address {
     pub fn to_bitcoin_address(&self) -> Result<bitcoin_address, bitcoin::util::Error> {
         bitcoin_address::from_str(self.0.as_str())
     }
-
-    pub fn get_pubkey_hash(&self) -> Result<PubkeyHash, Error> {
-        let address = self.to_bitcoin_address()?;
-        match address.payload {
-            WitnessProgram(witness) => Ok(PubkeyHash(witness.program().to_vec())),
-            _ => Err(Error::AddressIsNotBech32),
-        }
-    }
 }
 
 impl fmt::Display for Address {
@@ -262,7 +254,7 @@ mod tests {
     fn given_an_bitcoin_address_return_pubkey_hash() {
         let address =
             bitcoin_address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").unwrap();
-        let pubkey_hash = Address::from(address).get_pubkey_hash().unwrap();
+        let pubkey_hash: PubkeyHash = address.into();
 
         assert_eq!(
             pubkey_hash.0,

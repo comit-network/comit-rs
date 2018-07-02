@@ -80,10 +80,7 @@ pub fn post_revealed_secret(
         exchange_success_pubkey_hash
     );
 
-    let client_refund_pubkey_hash = order_taken_event
-        .client_refund_address()
-        .get_pubkey_hash()
-        .unwrap();
+    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address().into();
 
     debug!(
         "Client refund address retrieved: {:x}",
