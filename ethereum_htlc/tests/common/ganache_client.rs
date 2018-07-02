@@ -1,37 +1,32 @@
 use ethereum_htlc;
+use ganache_node::GanacheCliNode;
 use ganache_rust_web3;
-use std::env::var;
 use web3;
 use web3::futures::Future;
-use web3::transports::EventLoopHandle;
 use web3::types::Address;
 use web3::types::Bytes;
 use web3::types::TransactionRequest;
 use web3::types::U256;
 
 pub struct GanacheClient {
-    _event_loop: EventLoopHandle,
-    web3: web3::Web3<web3::transports::Http>,
+    ganache_node: GanacheCliNode,
     snapshot_id: Option<ganache_rust_web3::SnapshotId>,
 }
 
 impl GanacheClient {
     pub fn new() -> Self {
-        let endpoint = var("GANACHE_ENDPOINT").unwrap();
-
-        let (event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
-        let web3 = web3::Web3::new(transport);
+        let ganache_node = GanacheCliNode::new();
 
         GanacheClient {
-            _event_loop: event_loop,
-            web3,
+            ganache_node,
             snapshot_id: None,
         }
     }
 
     pub fn take_snapshot(&mut self) {
         self.snapshot_id = Some(
-            self.web3
+            self.ganache_node
+                .get_client()
                 .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
                 .evm_snapshot()
                 .wait()
@@ -40,7 +35,8 @@ impl GanacheClient {
     }
 
     pub fn restore_snapshot(&self) {
-        self.web3
+        self.ganache_node
+            .get_client()
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
             .evm_revert(self.snapshot_id.as_ref().unwrap())
             .wait()
@@ -50,7 +46,8 @@ impl GanacheClient {
     pub fn deploy(&self, from: Address, htlc: ethereum_htlc::Htlc, htlc_value: i32) -> Address {
         let compiled_contract = htlc.compile_to_hex();
 
-        let contract_tx_id = self.web3
+        let contract_tx_id = self.ganache_node
+            .get_client()
             .eth()
             .send_transaction(TransactionRequest {
                 from: from,
@@ -65,7 +62,8 @@ impl GanacheClient {
             .wait()
             .unwrap();
 
-        let receipt = self.web3
+        let receipt = self.ganache_node
+            .get_client()
             .eth()
             .transaction_receipt(contract_tx_id)
             .wait()
@@ -78,7 +76,8 @@ impl GanacheClient {
     }
 
     pub fn send_data(&self, from: Address, to: Address, data: Option<Bytes>) -> U256 {
-        let result_tx = self.web3
+        let result_tx = self.ganache_node
+            .get_client()
             .eth()
             .send_transaction(TransactionRequest {
                 from: from,
@@ -93,7 +92,8 @@ impl GanacheClient {
             .wait()
             .unwrap();
 
-        let receipt = self.web3
+        let receipt = self.ganache_node
+            .get_client()
             .eth()
             .transaction_receipt(result_tx)
             .wait()
@@ -104,7 +104,8 @@ impl GanacheClient {
     }
 
     pub fn activate_flux_compensator(&self, hours: u64) {
-        let _ = self.web3
+        let _ = self.ganache_node
+            .get_client()
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
             .evm_increase_time(60 * 60 * hours)
             .wait()
@@ -112,6 +113,11 @@ impl GanacheClient {
     }
 
     pub fn get_balance(&self, address: Address) -> U256 {
-        self.web3.eth().balance(address, None).wait().unwrap()
+        self.ganache_node
+            .get_client()
+            .eth()
+            .balance(address, None)
+            .wait()
+            .unwrap()
     }
 }

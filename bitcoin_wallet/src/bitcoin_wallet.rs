@@ -250,20 +250,10 @@ mod tests {
     use bitcoin::util::hash::Hash160;
     use bitcoin::util::privkey::Privkey;
     use bitcoin_rpc::BitcoinRpcApi;
-    use std::env::var;
+    use bitcoin_rpc::test_support::BitcoinNode;
     use std::str::FromStr;
+
     extern crate hex;
-
-    fn create_client() -> bitcoin_rpc::BitcoinCoreClient {
-        let url = var("BITCOIN_RPC_URL").unwrap();
-        let username = var("BITCOIN_RPC_USERNAME").unwrap();
-        let password = var("BITCOIN_RPC_PASSWORD").unwrap();
-
-        let client =
-            bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str());
-        client.generate(432).unwrap(); //enable segwit
-        client
-    }
 
     fn private_key_to_pubkey_hash(privkey: &Privkey) -> PubkeyHash {
         let secret_pubkey =
@@ -384,7 +374,9 @@ mod tests {
 
     #[test]
     fn redeem_htlc() {
-        let client = create_client();
+        let bitcoin_node = BitcoinNode::new();
+        let client = bitcoin_node.get_client();
+        let _ = client.generate(432);
 
         let (txid, vout, input_amount, htlc_script, _, secret, private_key, _) = fund_htlc(&client);
 
@@ -425,7 +417,9 @@ mod tests {
 
     #[test]
     fn redeem_refund_htlc() {
-        let client = create_client();
+        let bitcoin_node = BitcoinNode::new();
+        let client = bitcoin_node.get_client();
+        let _ = client.generate(432);
 
         let (txid, vout, input_amount, htlc_script, nsequence, _, _, private_key) =
             fund_htlc(&client);
