@@ -1,0 +1,8 @@
+[package]
+name = "ganache_node"
+version = "0.1.0"
+authors = ["Thomas Eizinger <thomas@eizinger.io>"]
+
+[dependencies]
+testcontainers = { git = "https://github.com/CoBloX/testcontainers-rs" }
+web3 = "0.3.0"
