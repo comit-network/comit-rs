@@ -1,37 +1,56 @@
+use super::SECP;
+use bitcoin::util::bip32;
 use bitcoin::util::bip32::ChildNumber;
-use bitcoin::util::bip32::Error;
 use bitcoin::util::bip32::ExtendedPrivKey;
 use bitcoin::util::bip32::ExtendedPubKey;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use secp256k1;
-use secp256k1::Secp256k1;
 use secp256k1::key::PublicKey;
 use secp256k1::key::SecretKey;
-// Not sure if I want this library to be aware of the Uuid concept
 use std::collections::HashMap;
+use std::ops::DerefMut;
+use std::sync::Mutex;
+use std::sync::MutexGuard;
+use std::sync::PoisonError;
 use uuid::Uuid;
 
-use super::SECP;
+#[derive(Debug)]
+pub enum Error {
+    Bip32Error(bip32::Error),
+    IndexLockError,
+}
+
+impl From<bip32::Error> for Error {
+    fn from(e: bip32::Error) -> Self {
+        Error::Bip32Error(e)
+    }
+}
+
+impl<'a> From<PoisonError<MutexGuard<'a, u32>>> for Error {
+    fn from(_e: PoisonError<MutexGuard<'a, u32>>) -> Self {
+        Error::IndexLockError
+    }
+}
 
 #[derive(Clone)]
 pub struct IdBasedPrivKey {
-    pub secret_key: SecretKey,
-    pub source_id: Uuid,
+    secret_key: SecretKey,
+    source_id: Uuid,
 }
 
 #[derive(Clone)]
 pub struct IdBasedPubKey {
-    pub public_key: PublicKey,
-    pub source_id: Uuid,
+    public_key: PublicKey,
+    source_id: Uuid,
 }
 
 #[derive(Clone)]
 pub struct KeyPair(SecretKey, PublicKey);
 
 #[derive(Clone)]
-pub struct IdBasedKeyPair {
-    pub uid: Uuid,
+struct IdBasedKeyPair {
+    uid: Uuid,
     keys: KeyPair,
 }
 
@@ -49,7 +68,7 @@ pub struct KeyStore {
     master_privkey: ExtendedPrivKey,
     transient_root_privkey: ExtendedPrivKey,
     internal_root_privkey: ExtendedPrivKey,
-    last_wallet_index: u32,
+    last_internal_index: Mutex<u32>,
     // Do we want to remember already generated addresses or regenerate them?
     // Memory vs CPU -> could be a switch/option
     // Common practice for wallets is to pre-generate some addresses, hence:
@@ -80,18 +99,21 @@ impl KeyStore {
             master_privkey,
             transient_root_privkey: transient_root_privkey,
             internal_root_privkey: internal_root_privkey,
-            last_wallet_index: 0,
+            last_internal_index: Mutex::new(0),
             transient_keys: HashMap::new(),
         })
     }
 
     pub fn get_new_internal_privkey(&mut self) -> Result<ExtendedPrivKey, Error> {
+        let mut lock = self.last_internal_index.lock()?;
+        let index = lock.deref_mut();
+
         let res = self.internal_root_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(self.last_wallet_index));
-        if res.is_ok() {
-            self.last_wallet_index += 1;
-        }
-        res
+            .ckd_priv(&SECP, ChildNumber::Hardened(*index))?;
+
+        // If we reach here, res is Ok
+        *index += 1;
+        Ok(res)
     }
 
     pub fn get_internal_pubkey(&self, index: u32) -> Result<ExtendedPubKey, Error> {
@@ -101,29 +123,33 @@ impl KeyStore {
     }
 
     fn get_transient_keypair(&mut self, id: &Uuid) -> IdBasedKeyPair {
-        let transient_root_privkey = &self.transient_root_privkey;
-
         if let Some(key_pair) = self.transient_keys.get(id) {
             return key_pair.clone();
         }
 
-        let transient_keypair = Self::new_transient_keys(transient_root_privkey, id);
+        let transient_keypair = Self::new_transient_keys(&self.transient_root_privkey, id);
         self.transient_keys
             .insert(id.clone(), transient_keypair.clone());
         transient_keypair
     }
 
+    fn new_secret_from_concat(data1: &[u8], data2: &[u8], secret: &mut [u8]) {
+        let mut sha = Sha256::new();
+        sha.input(data1);
+        sha.input(data2);
+        sha.result(secret);
+    }
+
     fn new_transient_keys(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> IdBasedKeyPair {
         // SecretKey = SHA256(transient_root_privkey + id)
-        let root_key = transient_root_privkey.secret_key;
-
-        let mut sha = Sha256::new();
-        sha.input(&root_key[..]);
-        sha.input(&uid.as_bytes()[..]);
-
         let mut result: [u8; secp256k1::constants::SECRET_KEY_SIZE] =
             [0; secp256k1::constants::SECRET_KEY_SIZE];
-        sha.result(&mut result);
+
+        Self::new_secret_from_concat(
+            &transient_root_privkey.secret_key[..],
+            &uid.as_bytes()[..],
+            &mut result,
+        );
 
         // This returns a result as it can fail if the slice is empty which is very unlikely hence the expect.
         let secret_key = SecretKey::from_slice(&SECP, &result).expect("This should never fail");
