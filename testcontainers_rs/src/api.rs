@@ -22,9 +22,6 @@ where
     fn args(&self) -> Self::Args;
     fn with_args(self, arguments: Self::Args) -> Self;
     fn new(tag: &str) -> Self;
-    fn latest() -> Self {
-        Self::new("latest")
-    }
 }
 
 pub trait Container {
