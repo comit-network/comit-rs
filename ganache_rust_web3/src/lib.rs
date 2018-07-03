@@ -64,6 +64,7 @@ mod tests {
     extern crate ganache_node;
 
     #[test]
+    #[ignore]
     fn test_evm_snapshot() {
         let node = ganache_node::GanacheCliNode::new();
         let web3 = node.get_client();
@@ -75,6 +76,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_evm_revert() {
         let node = ganache_node::GanacheCliNode::new();
         let web3 = node.get_client();
@@ -91,6 +93,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_evm_increase_time() {
         let node = ganache_node::GanacheCliNode::new();
         let web3 = node.get_client();
@@ -109,6 +112,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_evm_mine() {
         let node = ganache_node::GanacheCliNode::new();
         let web3 = node.get_client();
