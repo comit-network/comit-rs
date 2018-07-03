@@ -10,6 +10,7 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bitcoin;
 extern crate bitcoin_htlc;
+extern crate bitcoin_types;
 extern crate bitcoin_wallet;
 extern crate common_types;
 extern crate ethereum_htlc;

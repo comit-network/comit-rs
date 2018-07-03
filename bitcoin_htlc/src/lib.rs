@@ -2,6 +2,7 @@
 
 extern crate bitcoin;
 extern crate bitcoin_rpc;
+extern crate bitcoin_types;
 extern crate common_types;
 extern crate hex;
 #[macro_use]
