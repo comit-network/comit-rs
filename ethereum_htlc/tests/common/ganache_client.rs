@@ -24,6 +24,7 @@ impl GanacheClient {
     }
 
     pub fn take_snapshot(&mut self) {
+        println!("take_snapshot; {}", self.ganache_node);
         self.snapshot_id = Some(
             self.ganache_node
                 .get_client()
@@ -35,6 +36,7 @@ impl GanacheClient {
     }
 
     pub fn restore_snapshot(&self) {
+        println!("restore_snapshot; {}", self.ganache_node);
         self.ganache_node
             .get_client()
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
@@ -44,6 +46,7 @@ impl GanacheClient {
     }
 
     pub fn deploy(&self, from: Address, htlc: ethereum_htlc::Htlc, htlc_value: i32) -> Address {
+        println!("deploy; {}", self.ganache_node);
         let compiled_contract = htlc.compile_to_hex();
 
         let contract_tx_id = self.ganache_node
@@ -76,6 +79,7 @@ impl GanacheClient {
     }
 
     pub fn send_data(&self, from: Address, to: Address, data: Option<Bytes>) -> U256 {
+        println!("send_data; {}", self.ganache_node);
         let result_tx = self.ganache_node
             .get_client()
             .eth()
@@ -104,6 +108,7 @@ impl GanacheClient {
     }
 
     pub fn activate_flux_compensator(&self, hours: u64) {
+        println!("activate_flux_compensator; {}", self.ganache_node);
         let _ = self.ganache_node
             .get_client()
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
@@ -113,6 +118,7 @@ impl GanacheClient {
     }
 
     pub fn get_balance(&self, address: Address) -> U256 {
+        println!("get_balance; {}", self.ganache_node);
         self.ganache_node
             .get_client()
             .eth()
