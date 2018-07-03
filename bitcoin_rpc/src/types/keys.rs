@@ -10,9 +10,9 @@ use std::str::FromStr;
 #[derive(PartialEq)]
 pub struct PrivateKey(Privkey);
 
-impl Into<Result<Privkey, ()>> for PrivateKey {
-    fn into(self) -> Result<Privkey, ()> {
-        Ok(self.0)
+impl Into<Privkey> for PrivateKey {
+    fn into(self) -> Privkey {
+        self.0
     }
 }
 
@@ -71,9 +71,9 @@ mod tests {
         let se_private_key = serde_json::to_string(&private_key).unwrap();
         let de_private_key = serde_json::from_str::<PrivateKey>(se_private_key.as_str()).unwrap();
 
-        assert_eq!(
-            private_key.into().secret_key(),
-            de_private_key.into().secret_key()
-        );
+        let priv_key: Privkey = private_key.into();
+        let de_priv_key: Privkey = de_private_key.into();
+
+        assert_eq!(priv_key.secret_key(), de_priv_key.secret_key());
     }
 }
