@@ -1,10 +1,7 @@
 use bitcoin;
 use bitcoin::util::address::Address as bitcoin_address;
-use bitcoin::util::address::Payload::WitnessProgram;
-use bitcoin::util::hash::Hash160;
 use std::fmt;
 use std::str::FromStr;
-use std_hex;
 use types::ScriptType;
 
 // TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
@@ -20,14 +17,6 @@ impl From<bitcoin_address> for Address {
 impl Address {
     pub fn to_bitcoin_address(&self) -> Result<bitcoin_address, bitcoin::util::Error> {
         bitcoin_address::from_str(self.0.as_str())
-    }
-
-    pub fn get_pubkey_hash(&self) -> Result<PubkeyHash, Error> {
-        let address = self.to_bitcoin_address()?;
-        match address.payload {
-            WitnessProgram(witness) => Ok(PubkeyHash(witness.program().to_vec())),
-            _ => Err(Error::AddressIsNotBech32),
-        }
     }
 }
 
@@ -97,49 +86,6 @@ pub struct AddressValidationResult {
     hd_key_path: Option<String>,
     #[serde(rename = "hdmasterkeyid")]
     hd_masterkey_id: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct PubkeyHash(Vec<u8>);
-
-impl PubkeyHash {
-    pub fn new(vec: Vec<u8>) -> Result<PubkeyHash, ()> {
-        if vec.len() != 20 {
-            error!("Invalid length of pubkey hash: {:?}", vec);
-            return Err(());
-        }
-        Ok(PubkeyHash(vec))
-    }
-}
-
-impl From<bitcoin_address> for PubkeyHash {
-    fn from(address: bitcoin_address) -> PubkeyHash {
-        match address.payload {
-            WitnessProgram(witness) => PubkeyHash(witness.program().to_vec()),
-            // TODO: from/into should never fail. Remove this panic by
-            // creating a PubkeyAddress type which is guaranteed to
-            // have a PubkeyHash inside it.
-            _ => panic!("Address {} isn't a pubkey address", address.to_string()),
-        }
-    }
-}
-
-impl From<Hash160> for PubkeyHash {
-    fn from(hash: Hash160) -> Self {
-        PubkeyHash(hash.data().to_vec())
-    }
-}
-
-impl AsRef<[u8]> for PubkeyHash {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-impl fmt::LowerHex for PubkeyHash {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        f.write_str(std_hex::encode(&self.0).as_str())
-    }
 }
 
 #[cfg(test)]
@@ -256,17 +202,5 @@ mod tests {
             hd_key_path: None,
             hd_masterkey_id: None,
         })
-    }
-
-    #[test]
-    fn given_an_bitcoin_address_return_pubkey_hash() {
-        let address =
-            bitcoin_address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").unwrap();
-        let pubkey_hash = Address::from(address).get_pubkey_hash().unwrap();
-
-        assert_eq!(
-            pubkey_hash.0,
-            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap()
-        );
     }
 }
