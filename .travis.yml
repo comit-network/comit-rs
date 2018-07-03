@@ -18,7 +18,7 @@ before_script:
 - "./setup.sh"
 script:
 - "./check-fmt.sh"
-- cargo build --verbose
+- cargo build --all
 - cargo test --all
 notifications:
   email: false
