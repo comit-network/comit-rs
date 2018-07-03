@@ -8,7 +8,13 @@ use std::fmt as std_fmt;
 use std::str::FromStr;
 
 #[derive(PartialEq)]
-pub struct PrivateKey(pub Privkey);
+pub struct PrivateKey(Privkey);
+
+impl Into<Result<Privkey, ()>> for PrivateKey {
+    fn into(self) -> Result<Privkey, ()> {
+        Ok(self.0)
+    }
+}
 
 impl Serialize for PrivateKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -65,6 +71,9 @@ mod tests {
         let se_private_key = serde_json::to_string(&private_key).unwrap();
         let de_private_key = serde_json::from_str::<PrivateKey>(se_private_key.as_str()).unwrap();
 
-        assert_eq!(private_key.0.secret_key(), de_private_key.0.secret_key());
+        assert_eq!(
+            private_key.into().secret_key(),
+            de_private_key.into().secret_key()
+        );
     }
 }
