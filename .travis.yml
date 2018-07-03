@@ -1,8 +1,5 @@
 language: rust
-cache:
-  - $HOME/.cargo
-  - $HOME/.rustup
-  - $TRAVIS_BUILD_DIR/target
+cache: cargo
 sudo: required
 rust: nightly-2018-06-24
 install: true
