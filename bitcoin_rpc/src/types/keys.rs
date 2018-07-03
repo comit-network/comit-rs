@@ -48,22 +48,13 @@ impl<'de> Deserialize<'de> for PrivateKey {
 
 impl std_fmt::Debug for PrivateKey {
     fn fmt(&self, f: &mut std_fmt::Formatter) -> std_fmt::Result {
-        write!(f, "PrivateKey {{ {} }}", self.0.to_string())
+        write!(f, "PrivateKey {{ #REDACTED# }}")
     }
 }
 
 mod tests {
     use super::*;
     use serde_json;
-
-    #[test]
-    fn debug_private_key() {
-        let private_key = PrivateKey(
-            Privkey::from_str("cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz").unwrap(),
-        );
-
-        println!("{:?}", private_key);
-    }
 
     #[test]
     fn serialize_private_key() {
