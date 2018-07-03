@@ -10,6 +10,7 @@ use secp256k1::{Secp256k1, SecretKey};
 use web3::futures::Future;
 
 #[test]
+#[ignore]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
     // Arrange
 

@@ -45,7 +45,8 @@ The following variables are also needed to run automated tests:
 
 ## Testing
 
-- `run_tests.sh` runs the whole test suite including integration tests. 
+- `cargo test --all` runs all the rust tests
+- `cargo test -- --ignored` runs the tests that need Docker to spin up bitcoind and ganache
 
 ## Running
 

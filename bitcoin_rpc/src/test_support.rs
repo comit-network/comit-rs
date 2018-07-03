@@ -3,6 +3,7 @@ use bitcoincore::*;
 use jsonrpc::HTTPError;
 use jsonrpc::RpcResponse;
 use std::fmt::Debug;
+use std::{thread, time};
 use testcontainers::clients::DockerCli;
 use testcontainers::images::{Bitcoind, BitcoindImageArgs};
 use testcontainers::{Container, Docker, Image, RunArgs};
@@ -67,6 +68,10 @@ where
     R: Debug,
     I: Fn(&BitcoinCoreClient) -> Result<RpcResponse<R>, HTTPError>,
 {
+    // Bitcoind is dodgy, let's wait 100ms between 2 tests
+    let wait_time = time::Duration::from_millis(100);
+    thread::sleep(wait_time);
+
     let node = BitcoinNode::new();
 
     let client = node.get_client();

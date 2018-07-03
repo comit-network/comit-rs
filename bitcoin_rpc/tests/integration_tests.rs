@@ -10,6 +10,7 @@ use common::test_lifecycle::setup;
 use std::collections::HashMap;
 
 #[test]
+#[ignore]
 fn test_add_multisig_address() {
     setup();
 
@@ -24,30 +25,35 @@ fn test_add_multisig_address() {
 }
 
 #[test]
+#[ignore]
 fn test_get_block_count() {
     setup();
     assert_successful_result(BitcoinCoreClient::get_block_count)
 }
 
 #[test]
+#[ignore]
 fn test_get_blockchain_info() {
     setup();
     assert_successful_result(BitcoinCoreClient::get_blockchain_info)
 }
 
 #[test]
+#[ignore]
 fn test_get_new_address() {
     setup();
     assert_successful_result(BitcoinCoreClient::get_new_address)
 }
 
 #[test]
+#[ignore]
 fn test_generate() {
     setup();
     assert_successful_result(|client| client.generate(1))
 }
 
 #[test]
+#[ignore]
 fn test_getaccount() {
     setup();
 
@@ -59,6 +65,7 @@ fn test_getaccount() {
 }
 
 #[test]
+#[ignore]
 fn test_listunspent() {
     setup();
     assert_successful_result(|client| {
@@ -68,6 +75,7 @@ fn test_listunspent() {
 }
 
 #[test]
+#[ignore]
 fn test_gettransaction() {
     setup();
 
@@ -79,6 +87,7 @@ fn test_gettransaction() {
 }
 
 #[test]
+#[ignore]
 fn test_getblock() {
     setup();
 
@@ -90,6 +99,7 @@ fn test_getblock() {
 }
 
 #[test]
+#[ignore]
 fn test_validate_address() {
     setup();
 
@@ -101,6 +111,7 @@ fn test_validate_address() {
 }
 
 #[test]
+#[ignore]
 fn test_get_raw_transaction_serialized() {
     setup();
 
@@ -112,6 +123,7 @@ fn test_get_raw_transaction_serialized() {
 }
 
 #[test]
+#[ignore]
 fn test_decode_script() {
     setup();
 
@@ -121,6 +133,7 @@ fn test_decode_script() {
 }
 
 #[test]
+#[ignore]
 fn test_decode_rawtransaction() {
     setup();
 
@@ -130,6 +143,7 @@ fn test_decode_rawtransaction() {
 }
 
 #[test]
+#[ignore]
 fn test_create_raw_transaction() {
     setup();
 
@@ -150,6 +164,7 @@ fn test_create_raw_transaction() {
 }
 
 #[test]
+#[ignore]
 fn test_dump_privkey() {
     setup();
 
@@ -163,6 +178,7 @@ fn test_dump_privkey() {
 }
 
 #[test]
+#[ignore]
 fn test_sign_raw_transaction() {
     setup();
 
@@ -201,6 +217,7 @@ fn test_sign_raw_transaction() {
 }
 
 #[test]
+#[ignore]
 fn test_send_to_address() {
     setup();
 
@@ -214,6 +231,7 @@ fn test_send_to_address() {
 }
 
 #[test]
+#[ignore]
 fn test_fund_raw_transaction() {
     setup();
 
