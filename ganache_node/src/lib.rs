@@ -40,7 +40,7 @@ impl GanacheCliNode {
         let external_port = info.ports().map_to_external_port(8545).unwrap();
 
         let url = format!("http://localhost:{}", external_port);
-
+        println!("Ganache URL is {}", url);
         let (_event_loop_handle, transport) = Http::new(&url).unwrap();
         let web3 = web3::Web3::new(transport);
 
