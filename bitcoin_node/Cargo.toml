@@ -1,0 +1,8 @@
+[package]
+name = "bitcoin_node"
+version = "0.1.0"
+authors = ["Thomas Eizinger <thomas@tenx.tech>"]
+
+[dependencies]
+bitcoin_rpc = { path = "../bitcoin_rpc" }
+testcontainers = { git = "https://github.com/CoBloX/testcontainers-rs" }

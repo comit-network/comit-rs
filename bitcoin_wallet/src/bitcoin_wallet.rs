@@ -192,8 +192,10 @@ fn generate_segwit_redeem(
 #[cfg(test)]
 mod tests {
     extern crate bitcoin_htlc;
+    extern crate bitcoin_node;
 
     use self::bitcoin_htlc::Htlc;
+    use self::bitcoin_node::BitcoinNode;
     use self::bitcoin_rpc::PubkeyHash;
     use self::bitcoin_rpc::TransactionId;
     use self::bitcoin_rpc::TxOutConfirmations;
@@ -203,7 +205,6 @@ mod tests {
     use bitcoin::util::hash::Hash160;
     use bitcoin::util::privkey::Privkey;
     use bitcoin_rpc::BitcoinRpcApi;
-    use bitcoin_rpc::test_support::BitcoinNode;
     use std::str::FromStr;
 
     extern crate hex;
