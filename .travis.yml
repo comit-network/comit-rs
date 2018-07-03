@@ -5,6 +5,11 @@ rust: nightly-2018-06-24
 install: true
 services:
   - docker
+env:
+  global:
+    - RUST_LOG=testcontainers=debug
+    - RUST_BACKTRACE=full
+    - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
 before_script:
 - "./setup.sh"
 script:
