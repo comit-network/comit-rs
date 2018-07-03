@@ -630,6 +630,7 @@ dependencies = [
 name = "ganache_rust_web3"
 version = "0.1.0"
 dependencies = [
+ "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ganache_node 0.1.0",
  "serde 1.0.69 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.69 (registry+https://github.com/rust-lang/crates.io-index)",
