@@ -183,13 +183,17 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
-    #[test]
-    fn get_internal_priv_and_pub_keys() {
+    fn setup_keystore() -> KeyStore {
         let master_priv_key = ExtendedPrivKey::from_str(
-            "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
+        "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
 
-        let mut keystore = KeyStore::new(master_priv_key).unwrap();
+        KeyStore::new(master_priv_key).unwrap()
+    }
+
+    #[test]
+    fn internal_priv_and_pub_keys_sequential_generation() {
+        let mut keystore = setup_keystore();
 
         let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
         let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
@@ -201,18 +205,18 @@ mod tests {
         assert_ne!(internal_privkey0, internal_privkey1);
         assert_ne!(internal_privkey1, internal_privkey2);
         assert_ne!(internal_privkey2, internal_privkey0);
+    }
 
+    #[test]
+    fn internal_key_generation_child_numbers_are_correct() {
+        let mut keystore = setup_keystore();
+
+        let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey2 = keystore.get_new_internal_privkey().unwrap();
         let internal_pubkey0 = keystore.get_internal_pubkey(0).unwrap();
         let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
         let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
-
-        // All key pairs have been verified as valid using `ku -P` the bip32 python reference
-        println!("{}", internal_privkey0.to_string());
-        println!("{}", internal_privkey1.to_string());
-        println!("{}", internal_privkey2.to_string());
-        println!("{}", internal_pubkey0.to_string());
-        println!("{}", internal_pubkey1.to_string());
-        println!("{}", internal_pubkey2.to_string());
 
         assert_eq!(internal_pubkey0.child_number, ChildNumber::Hardened(0));
         assert_eq!(internal_pubkey1.child_number, ChildNumber::Hardened(1));
@@ -220,6 +224,18 @@ mod tests {
         assert_ne!(internal_pubkey0, internal_pubkey1);
         assert_ne!(internal_pubkey1, internal_pubkey2);
         assert_ne!(internal_pubkey2, internal_pubkey0);
+    }
+
+    #[test]
+    fn internal_key_generation_pub_keys_match() {
+        let mut keystore = setup_keystore();
+
+        let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
+        let internal_privkey2 = keystore.get_new_internal_privkey().unwrap();
+        let internal_pubkey0 = keystore.get_internal_pubkey(0).unwrap();
+        let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
+        let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
 
         let pubkey_from_priv0 =
             PublicKey::from_secret_key(&SECP, &internal_privkey0.secret_key).unwrap();
