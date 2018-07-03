@@ -58,7 +58,7 @@ impl Image for GanacheCli {
     fn wait_until_ready<D: Docker>(&self, id: &str, docker: &D) {
         let logs = docker.logs(id);
 
-        logs.wait_for_messages(&["Listening on localhost:"]);
+        logs.wait_for_message("Listening on localhost:");
     }
 
     fn args(&self) -> <Self as Image>::Args {

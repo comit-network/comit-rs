@@ -100,7 +100,7 @@ impl Image for Bitcoind {
     fn wait_until_ready<D: Docker>(&self, id: &str, docker: &D) {
         let logs = docker.logs(id);
 
-        logs.wait_for_messages(&["init message: Done loading", "Flushed wallet.dat"]);
+        logs.wait_for_message("Flushed wallet.dat");
 
         let additional_sleep_period =
             var("BITCOIND_ADDITIONAL_SLEEP_PERIOD").map(|value| value.parse());
