@@ -37,8 +37,10 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 
     let mut client = GanacheClient::new();
 
+    println!("Starting the snapshot");
     client.take_snapshot();
 
+    println!("Starting the deploy");
     let contract_address = client.deploy(refund_address, htlc, 10);
 
     let refund_balance_before_htlc = client.get_balance(refund_address);
