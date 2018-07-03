@@ -20,6 +20,7 @@ use web3::types::Address;
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
 
 #[test]
+#[ignore]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let _ = env_logger::try_init();
 
@@ -66,6 +67,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 }
 
 #[test]
+#[ignore]
 fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let _ = env_logger::try_init();
 
@@ -107,6 +109,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 }
 
 #[test]
+#[ignore]
 fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
     let _ = env_logger::try_init();
 
