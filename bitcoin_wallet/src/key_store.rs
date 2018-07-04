@@ -197,9 +197,6 @@ mod tests {
     fn internal_key_generation_child_numbers_are_correct() {
         let keystore = setup_keystore();
 
-        let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
-        let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
-        let internal_privkey2 = keystore.get_new_internal_privkey().unwrap();
         let internal_pubkey0 = keystore.get_internal_pubkey(0).unwrap();
         let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
         let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
