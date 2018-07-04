@@ -1,7 +1,7 @@
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
+use bitcoin_support::{ToP2wpkhAddress, ToPublicKey};
 use bitcoin_wallet;
-use bitcoin_wallet::ToP2wpkhAddress;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -137,7 +137,9 @@ pub fn post_buy_orders(
         order_request_body.client_refund_address,
         order_request_body.client_success_address,
         *exchange_refund_address,
-        exchange_success_private_key.to_p2wpkh_address(*network),
+        exchange_success_private_key
+            .to_public_key()
+            .to_p2wpkh_address(*network),
         exchange_success_private_key.clone(),
     );
 

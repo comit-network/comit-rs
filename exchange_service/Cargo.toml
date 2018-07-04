@@ -23,6 +23,7 @@ rocket_contrib = "=0.3.14"
 rocket_codegen = "=0.3.14"
 common_types = { path = "../common_types" }
 bitcoin_wallet = { path = "../bitcoin_wallet" }
+bitcoin_support  = { path = "../bitcoin_support" }
 http-api-problem = { version = "0.7.0", features = ["with_rocket"] }
 serde_json = "1.0.22"
 ethereum_htlc = { path = "../ethereum_htlc" }
