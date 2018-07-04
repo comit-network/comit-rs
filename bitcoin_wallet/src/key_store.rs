@@ -104,7 +104,7 @@ impl KeyStore {
         })
     }
 
-    pub fn get_new_internal_privkey(&mut self) -> Result<ExtendedPrivKey, Error> {
+    pub fn get_new_internal_privkey(&self) -> Result<ExtendedPrivKey, Error> {
         let mut lock = self.last_internal_index.lock()?;
         let index = lock.deref_mut();
 
