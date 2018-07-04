@@ -25,7 +25,7 @@ impl GanacheCliNode {
             mnemonic: String::from("supersecure"),
         };
 
-        let ganache_cli = GanacheCli::latest().with_args(args);
+        let ganache_cli = GanacheCli::new("v6.1.3").with_args(args);
 
         let container_id = docker.run_detached(
             &ganache_cli,
