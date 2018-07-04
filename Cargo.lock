@@ -137,7 +137,7 @@ name = "bitcoin_node"
 version = "0.1.0"
 dependencies = [
  "bitcoin_rpc 0.1.0",
- "testcontainers 0.1.0 (git+https://github.com/CoBloX/testcontainers-rs)",
+ "testcontainers 0.1.0",
 ]
 
 [[package]]
@@ -154,7 +154,6 @@ dependencies = [
  "serde 1.0.69 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.69 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0",
 ]
 
 [[package]]

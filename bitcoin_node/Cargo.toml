@@ -5,4 +5,4 @@ authors = ["Thomas Eizinger <thomas@tenx.tech>"]
 
 [dependencies]
 bitcoin_rpc = { path = "../bitcoin_rpc" }
-testcontainers = { git = "https://github.com/CoBloX/testcontainers-rs" }
+testcontainers = { path = "../testcontainers_rs" }
