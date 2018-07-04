@@ -140,7 +140,7 @@ impl KeyStore {
         sha.result(secret);
     }
 
-    fn new_transient_keys(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> IdBasedKeyPair {
+    fn new_transient_secret_key(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> SecretKey {
         // SecretKey = SHA256(transient_root_privkey + id)
         let mut result: [u8; secp256k1::constants::SECRET_KEY_SIZE] =
             [0; secp256k1::constants::SECRET_KEY_SIZE];
@@ -150,9 +150,12 @@ impl KeyStore {
             &uid.as_bytes()[..],
             &mut result,
         );
-
         // This returns a result as it can fail if the slice is empty which is very unlikely hence the expect.
-        let secret_key = SecretKey::from_slice(&SECP, &result).expect("This should never fail");
+        SecretKey::from_slice(&SECP, &result).expect("This should never fail")
+    }
+
+    fn new_transient_keys(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> IdBasedKeyPair {
+        let secret_key = Self::new_transient_secret_key(transient_root_privkey, uid);
         let public_key =
             PublicKey::from_secret_key(&SECP, &secret_key).expect("This should never fail");
         IdBasedKeyPair {
