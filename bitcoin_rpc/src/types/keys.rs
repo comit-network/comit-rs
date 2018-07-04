@@ -8,15 +8,15 @@ use std::fmt as std_fmt;
 use std::str::FromStr;
 
 #[derive(PartialEq)]
-pub struct PrivateKey(Privkey);
+pub struct RpcPrivateKey(Privkey);
 
-impl Into<Privkey> for PrivateKey {
+impl Into<Privkey> for RpcPrivateKey {
     fn into(self) -> Privkey {
         self.0
     }
 }
 
-impl Serialize for PrivateKey {
+impl Serialize for RpcPrivateKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -25,7 +25,7 @@ impl Serialize for PrivateKey {
     }
 }
 
-impl<'de> Deserialize<'de> for PrivateKey {
+impl<'de> Deserialize<'de> for RpcPrivateKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
@@ -33,18 +33,18 @@ impl<'de> Deserialize<'de> for PrivateKey {
         struct Visitor;
 
         impl<'vde> de::Visitor<'vde> for Visitor {
-            type Value = PrivateKey;
+            type Value = RpcPrivateKey;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 formatter.write_str("a Wallet-Import-Format encoded value")
             }
 
-            fn visit_str<E>(self, v: &str) -> Result<PrivateKey, E>
+            fn visit_str<E>(self, v: &str) -> Result<RpcPrivateKey, E>
             where
                 E: de::Error,
             {
                 let privkey = Privkey::from_str(v).map_err(|err| E::custom(format!("{}", err)))?;
-                Ok(PrivateKey(privkey))
+                Ok(RpcPrivateKey(privkey))
             }
         }
 
@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for PrivateKey {
     }
 }
 
-impl std_fmt::Debug for PrivateKey {
+impl std_fmt::Debug for RpcPrivateKey {
     fn fmt(&self, f: &mut std_fmt::Formatter) -> std_fmt::Result {
         write!(f, "PrivateKey {{ #REDACTED# }}")
     }
@@ -64,12 +64,13 @@ mod tests {
 
     #[test]
     fn serialize_private_key() {
-        let private_key = PrivateKey(
+        let private_key = RpcPrivateKey(
             Privkey::from_str("cQ1DDxScq1rsYDdCUBywawwNVWTMwnLzCKCwGndC6MgdNtKPQ5Hz").unwrap(),
         );
 
         let se_private_key = serde_json::to_string(&private_key).unwrap();
-        let de_private_key = serde_json::from_str::<PrivateKey>(se_private_key.as_str()).unwrap();
+        let de_private_key =
+            serde_json::from_str::<RpcPrivateKey>(se_private_key.as_str()).unwrap();
 
         let priv_key: Privkey = private_key.into();
         let de_priv_key: Privkey = de_private_key.into();
