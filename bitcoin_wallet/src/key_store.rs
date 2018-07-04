@@ -127,7 +127,7 @@ impl KeyStore {
             return key_pair.clone();
         }
 
-        let transient_keypair = Self::new_transient_keys(&self.transient_root_privkey, id);
+        let transient_keypair = Self::new_transient_keypair(&self.transient_root_privkey, id);
         self.transient_keys
             .insert(id.clone(), transient_keypair.clone());
         transient_keypair
@@ -154,7 +154,10 @@ impl KeyStore {
         SecretKey::from_slice(&SECP, &result).expect("This should never fail")
     }
 
-    fn new_transient_keys(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> IdBasedKeyPair {
+    fn new_transient_keypair(
+        transient_root_privkey: &ExtendedPrivKey,
+        uid: &Uuid,
+    ) -> IdBasedKeyPair {
         let secret_key = Self::new_transient_secret_key(transient_root_privkey, uid);
         let public_key =
             PublicKey::from_secret_key(&SECP, &secret_key).expect("This should never fail");
