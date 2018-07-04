@@ -8,6 +8,6 @@ rustup toolchain install ${RUSTFMT_RUST_VERSION}
 
 rustup component add rustfmt-preview --toolchain=${RUSTFMT_RUST_VERSION}
 
-rustup override set ${PROJECT_RUST_VERSION}
+echo ${PROJECT_RUST_VERSION} > rust-toolchain
 
 ln -sf $(pwd)/check-fmt.sh .git/hooks/pre-commit
