@@ -14,5 +14,6 @@ members = [
 	"ganache_rust_web3",
 	"ethereum_wallet",
     "key_gen",
-    "ganache_node"
+    "ganache_node",
+    "testcontainers_rs"
 ]
