@@ -239,7 +239,7 @@ mod tests {
             .body(
                 r#"{
                     "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
-                    "client_refund_address": "ClientRefundAddressInBtc",
+                    "client_refund_address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
                     "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
                     "client_contract_time_lock": 24
                   }"#,
