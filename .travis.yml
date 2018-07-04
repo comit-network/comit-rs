@@ -1,15 +1,26 @@
 language: rust
-cache: cargo
+cache:
+  cargo: true
+  directories:
+    - $HOME/.rustup
+  timeout: 300
 sudo: required
 rust: nightly-2018-06-24
 install: true
 services:
   - docker
+env:
+  global:
+    - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
+    - RUST_BACKTRACE=full
+    - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
 before_script:
+- docker pull trufflesuite/ganache-cli:v6.1.3
+- docker pull ruimarinho/bitcoin-core:0.16.0
 - "./setup.sh"
 script:
 - "./check-fmt.sh"
-- cargo build --verbose
+- cargo build --all
 - cargo test --all
 notifications:
   email: false

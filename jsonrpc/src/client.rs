@@ -17,14 +17,14 @@ impl RpcClient {
         }
     }
 
-    pub fn send<R, T>(&self, request: RpcRequest<T>) -> Result<RpcResponse<R>, Error>
+    pub fn send<R, T>(&self, request: &RpcRequest<T>) -> Result<RpcResponse<R>, Error>
     where
         T: Serialize,
         R: DeserializeOwned,
     {
         self.client
             .post(self.url.as_str())
-            .json(&request)
+            .json(request)
             .send()
             .and_then(|mut res| res.json::<RpcResponse<R>>())
 

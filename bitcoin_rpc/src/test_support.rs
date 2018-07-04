@@ -23,7 +23,7 @@ impl BitcoinNode {
             ..BitcoindImageArgs::default()
         };
 
-        let bitcoind = Bitcoind::latest().with_args(args);
+        let bitcoind = Bitcoind::new("0.16.0").with_args(args);
 
         let container_id = docker.run_detached(
             &bitcoind,
