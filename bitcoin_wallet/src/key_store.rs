@@ -34,33 +34,25 @@ impl<'a> From<PoisonError<MutexGuard<'a, u32>>> for Error {
 }
 
 #[derive(Clone)]
-pub struct IdBasedPrivKey {
+pub struct KeyPair {
     secret_key: SecretKey,
-    source_id: Uuid,
-}
-
-#[derive(Clone)]
-pub struct IdBasedPubKey {
     public_key: PublicKey,
-    source_id: Uuid,
 }
 
-#[derive(Clone)]
-pub struct KeyPair(SecretKey, PublicKey);
-
-#[derive(Clone)]
-struct IdBasedKeyPair {
-    uid: Uuid,
-    keys: KeyPair,
-}
-
-impl IdBasedKeyPair {
-    fn secret_key(&self) -> &SecretKey {
-        &self.keys.0
+impl KeyPair {
+    pub fn new(secret_key: SecretKey, public_key: PublicKey) -> KeyPair {
+        KeyPair {
+            secret_key,
+            public_key,
+        }
     }
 
-    fn public_key(&self) -> &PublicKey {
-        &self.keys.1
+    pub fn secret_key(&self) -> &SecretKey {
+        &self.secret_key
+    }
+
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
     }
 }
 
@@ -75,7 +67,7 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    transient_keys: HashMap<Uuid, IdBasedKeyPair>, // Better generate Public Key from SecretKey on the fly or storing them?
+    transient_keys: HashMap<Uuid, KeyPair>, // Better generate Public Key from SecretKey on the fly or storing them?
 }
 
 impl KeyStore {
@@ -122,7 +114,7 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
 
-    fn get_transient_keypair(&mut self, id: &Uuid) -> IdBasedKeyPair {
+    fn get_transient_keypair(&mut self, id: &Uuid) -> KeyPair {
         if let Some(key_pair) = self.transient_keys.get(id) {
             return key_pair.clone();
         }
@@ -154,33 +146,21 @@ impl KeyStore {
         SecretKey::from_slice(&SECP, &result).expect("This should never fail")
     }
 
-    fn new_transient_keypair(
-        transient_root_privkey: &ExtendedPrivKey,
-        uid: &Uuid,
-    ) -> IdBasedKeyPair {
+    fn new_transient_keypair(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> KeyPair {
         let secret_key = Self::new_transient_secret_key(transient_root_privkey, uid);
         let public_key =
             PublicKey::from_secret_key(&SECP, &secret_key).expect("This should never fail");
-        IdBasedKeyPair {
-            uid: uid.clone(),
-            keys: KeyPair(secret_key, public_key),
-        }
+        KeyPair::new(secret_key, public_key)
     }
 
-    pub fn get_transient_privkey(&mut self, id: &Uuid) -> IdBasedPrivKey {
+    pub fn get_transient_privkey(&mut self, id: &Uuid) -> SecretKey {
         let key_pair = self.get_transient_keypair(id);
-        IdBasedPrivKey {
-            secret_key: key_pair.secret_key().clone(),
-            source_id: id.clone(),
-        }
+        key_pair.secret_key().clone()
     }
 
-    pub fn get_transient_pubkey(&mut self, id: &Uuid) -> IdBasedPubKey {
+    pub fn get_transient_pubkey(&mut self, id: &Uuid) -> PublicKey {
         let key_pair = self.get_transient_keypair(id);
-        IdBasedPubKey {
-            public_key: key_pair.public_key().clone(),
-            source_id: id.clone(),
-        }
+        key_pair.public_key().clone()
     }
 }
 
@@ -199,7 +179,7 @@ mod tests {
 
     #[test]
     fn internal_priv_and_pub_keys_sequential_generation() {
-        let mut keystore = setup_keystore();
+        let keystore = setup_keystore();
 
         let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
         let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
@@ -215,7 +195,7 @@ mod tests {
 
     #[test]
     fn internal_key_generation_child_numbers_are_correct() {
-        let mut keystore = setup_keystore();
+        let keystore = setup_keystore();
 
         let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
         let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
@@ -234,7 +214,7 @@ mod tests {
 
     #[test]
     fn internal_key_generation_pub_keys_match() {
-        let mut keystore = setup_keystore();
+        let keystore = setup_keystore();
 
         let internal_privkey0 = keystore.get_new_internal_privkey().unwrap();
         let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
@@ -276,12 +256,12 @@ mod tests {
         let pubkey1 = keystore.get_transient_pubkey(&uid1);
         let pubkey2 = keystore.get_transient_pubkey(&uid2);
 
-        let pubkey_from_priv0 = PublicKey::from_secret_key(&SECP, &privkey0.secret_key).unwrap();
-        let pubkey_from_priv1 = PublicKey::from_secret_key(&SECP, &privkey1.secret_key).unwrap();
-        let pubkey_from_priv2 = PublicKey::from_secret_key(&SECP, &privkey2.secret_key).unwrap();
+        let pubkey_from_priv0 = PublicKey::from_secret_key(&SECP, &privkey0).unwrap();
+        let pubkey_from_priv1 = PublicKey::from_secret_key(&SECP, &privkey1).unwrap();
+        let pubkey_from_priv2 = PublicKey::from_secret_key(&SECP, &privkey2).unwrap();
 
-        assert_eq!(pubkey_from_priv0, pubkey0.public_key);
-        assert_eq!(pubkey_from_priv1, pubkey1.public_key);
-        assert_eq!(pubkey_from_priv2, pubkey2.public_key);
+        assert_eq!(pubkey_from_priv0, pubkey0);
+        assert_eq!(pubkey_from_priv1, pubkey1);
+        assert_eq!(pubkey_from_priv2, pubkey2);
     }
 }
