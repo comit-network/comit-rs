@@ -16,5 +16,6 @@ members = [
 	"ethereum_wallet",
     "key_gen",
     "ganache_node",
-    "testcontainers_rs"
+    "bitcoin_node",
+    "testcontainers_rs",
 ]
