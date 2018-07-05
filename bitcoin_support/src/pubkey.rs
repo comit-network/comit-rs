@@ -12,6 +12,8 @@ pub trait ToPublicKey {
 
 impl ToPublicKey for SecretKey {
     fn to_public_key(&self) -> PublicKey {
+        // Safe to unwrap: Once Thomas' changes are into the main
+        // library this unwrap will go away
         PublicKey::from_secret_key(&*super::SECP, &self).unwrap()
     }
 }
