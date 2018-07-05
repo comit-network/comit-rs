@@ -15,6 +15,7 @@ extern crate bitcoin_wallet;
 extern crate common_types;
 extern crate ethereum_htlc;
 extern crate ethereum_wallet;
+extern crate secp256k1_support;
 extern crate serde_json;
 extern crate uuid;
 extern crate web3;

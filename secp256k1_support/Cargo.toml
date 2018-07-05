@@ -1,5 +1,5 @@
 [package]
-name = "bitcoin_support"
+name = "secp256k1_support"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,8 +9,7 @@ authors = [
 ]
 
 [dependencies]
-bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-secp256k1_support = { path = "../secp256k1_support" }
+secp256k1 = "0.9.0"
 lazy_static = "1.0.1"
 
 [dev-dependencies]
