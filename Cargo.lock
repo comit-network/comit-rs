@@ -127,6 +127,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
  "bitcoin_rpc 0.1.0",
+ "bitcoin_support 0.1.0",
  "common_types 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -157,6 +158,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitcoin_support"
+version = "0.1.0"
+dependencies = [
+ "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "bitcoin_wallet"
 version = "0.1.0"
 dependencies = [
@@ -164,6 +175,7 @@ dependencies = [
  "bitcoin_htlc 0.1.0",
  "bitcoin_node 0.1.0",
  "bitcoin_rpc 0.1.0",
+ "bitcoin_support 0.1.0",
  "common_types 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -540,6 +552,7 @@ dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
  "bitcoin_htlc 0.1.0",
  "bitcoin_rpc 0.1.0",
+ "bitcoin_support 0.1.0",
  "bitcoin_wallet 0.1.0",
  "common_types 0.1.0",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -819,6 +832,7 @@ name = "key_gen"
 version = "0.1.0"
 dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
+ "bitcoin_support 0.1.0",
  "bitcoin_wallet 0.1.0",
  "ethereum_wallet 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1927,6 +1941,7 @@ dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
  "bitcoin_htlc 0.1.0",
  "bitcoin_rpc 0.1.0",
+ "bitcoin_support 0.1.0",
  "common_types 0.1.0",
  "crypto 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",

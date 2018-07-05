@@ -1,4 +1,5 @@
 extern crate bitcoin;
+extern crate bitcoin_support;
 extern crate bitcoin_wallet;
 extern crate ethereum_wallet;
 extern crate hex;
@@ -6,7 +7,8 @@ extern crate rand;
 extern crate secp256k1;
 
 use bitcoin::network::constants::Network;
-use bitcoin_wallet::{PrivateKey, ToP2wpkhAddress};
+use bitcoin_support::ToP2wpkhAddress;
+use bitcoin_wallet::PrivateKey;
 use ethereum_wallet::ToEthereumAddress;
 use rand::OsRng;
 use secp256k1::Secp256k1;
