@@ -14,10 +14,6 @@ mod bitcoincore;
 mod stub_rpc_client;
 mod types;
 
-// TODO Figure out, if we can somehow not ship this by default.
-extern crate testcontainers;
-pub mod test_support;
-
 pub use bitcoin_rpc_api::*;
 pub use bitcoincore::*;
 pub use jsonrpc::RpcError;
