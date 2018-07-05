@@ -23,6 +23,7 @@ serde_json = "1.0.22"
 bitcoin_rpc = { path = "../bitcoin_rpc" }
 bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 bitcoin_htlc = { path = "../bitcoin_htlc" }
+bitcoin_support = { path = "../bitcoin_support" }
 common_types = { path = "../common_types" }
 hex = "0.3.2"
 web3 = "0.3.0"

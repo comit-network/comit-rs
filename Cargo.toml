@@ -10,6 +10,7 @@ members = [
 	"common_types",
 	"bitcoin_rpc",
 	"bitcoin_wallet",
+        "bitcoin_support",
 	"ethereum_htlc",
 	"ganache_rust_web3",
 	"ethereum_wallet",

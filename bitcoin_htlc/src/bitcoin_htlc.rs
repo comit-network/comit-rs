@@ -3,7 +3,7 @@ use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::{Builder, Script};
 pub use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
-use bitcoin_rpc::PubkeyHash;
+use bitcoin_support::PubkeyHash;
 use secret::SecretHash;
 
 // Create BTC HTLC
@@ -115,8 +115,8 @@ mod tests {
         let sender_pubkey_hash: Vec<u8> =
             hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
 
-        let recipient_pubkey_hash = PubkeyHash::new(recipient_pubkey_hash).unwrap();
-        let sender_pubkey_hash = PubkeyHash::new(sender_pubkey_hash).unwrap();
+        let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
+        let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
 
         let secret_hash: Vec<u8> = hex::decode(
             "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
@@ -146,8 +146,8 @@ mod tests {
         let sender_pubkey_hash: Vec<u8> =
             hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
 
-        let recipient_pubkey_hash = PubkeyHash::new(recipient_pubkey_hash).unwrap();
-        let sender_pubkey_hash = PubkeyHash::new(sender_pubkey_hash).unwrap();
+        let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
+        let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
 
         let secret_hash: Vec<u8> = hex::decode(
             "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",

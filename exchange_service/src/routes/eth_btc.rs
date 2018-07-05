@@ -1,7 +1,7 @@
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
+use bitcoin_support::{ToP2wpkhAddress, ToPublicKey};
 use bitcoin_wallet;
-use bitcoin_wallet::ToP2wpkhAddress;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -130,14 +130,31 @@ pub fn post_buy_orders(
 
     let order_request_body: OrderRequestBody = order_request_body.into_inner();
 
+    let client_refund_address = match order_request_body
+        .client_refund_address
+        .to_bitcoin_address()
+    {
+        Ok(address) => address,
+        Err(_) => {
+            return Err(BadRequest(Some(
+                format!(
+                    "Invalid refund address: {}",
+                    order_request_body.client_refund_address
+                ).to_string(),
+            )))
+        }
+    };
+
     let order_taken = OrderTaken::new(
         trade_id,
         order_request_body.contract_secret_lock,
         order_request_body.client_contract_time_lock,
-        order_request_body.client_refund_address,
+        client_refund_address,
         order_request_body.client_success_address,
         *exchange_refund_address,
-        exchange_success_private_key.to_p2wpkh_address(*network),
+        exchange_success_private_key
+            .to_public_key()
+            .to_p2wpkh_address(*network),
         exchange_success_private_key.clone(),
     );
 
@@ -239,7 +256,7 @@ mod tests {
             .body(
                 r#"{
                     "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
-                    "client_refund_address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
+                    "client_refund_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
                     "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
                     "client_contract_time_lock": 24
                   }"#,
