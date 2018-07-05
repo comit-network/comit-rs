@@ -403,7 +403,7 @@ mod tests {
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKeyHash,
                         addresses: Some(vec![
-                            Address::from("1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z")
+                            Address::from_str("1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z").unwrap()
                         ]),
                     },
                 }
@@ -487,7 +487,7 @@ mod tests {
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKey,
                         addresses: Some(vec![
-                            Address::from("my9XdXbMLZm3v8uqGLuPRKatWjnpXw2boX")
+                            Address::from_str("my9XdXbMLZm3v8uqGLuPRKatWjnpXw2boX").unwrap()
                         ]),
                     },
                 },
@@ -536,7 +536,7 @@ mod tests {
                     "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a"
                 ).unwrap(),
                 vout: 1,
-                address: Some(Address::from("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe")),
+                address: Some(Address::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap()),
                 account: Some(String::from("test label")),
                 script_pub_key: EncodedScriptPubKey::from(
                     "76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac"
@@ -555,7 +555,7 @@ mod tests {
     fn new_transaction_output_should_serialize_to_object() {
         let mut output: NewTransactionOutput = HashMap::new();
         output.insert(
-            Address::from("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe"),
+            Address::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap(),
             10.12345,
         );
 
