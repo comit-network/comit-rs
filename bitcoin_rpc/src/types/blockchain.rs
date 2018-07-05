@@ -1,22 +1,27 @@
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+use bitcoin::network::constants::Network;
+use serde::Deserializer;
+use serde::de;
+use serde::export::fmt;
+
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct SoftFork {
     id: String,
     version: u32,
     reject: Reject,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Reject {
     status: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Bip9SoftFork {
     csv: Bip9SoftForkDetails,
     segwit: Bip9SoftForkDetails,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Bip9SoftForkDetails {
     status: String,
     bit: Option<u32>,
@@ -36,9 +41,10 @@ pub struct Bip9SoftForkDetails {
     */
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct RpcBlockchainInfo {
-    chain: String,
+    #[serde(deserialize_with = "network_deserialize")]
+    chain: Network,
     blocks: u64,
     headers: u64,
     bestblockhash: String,
@@ -55,6 +61,35 @@ pub struct RpcBlockchainInfo {
     softforks: Vec<SoftFork>,
     bip9_softforks: Bip9SoftFork,
     warnings: String,
+}
+
+fn network_deserialize<'de, D>(deserializer: D) -> Result<Network, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = Network;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("Bitcoin network: `main`, `test` or `regtest`")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Network, E>
+        where
+            E: de::Error,
+        {
+            match value {
+                "test" => Ok(Network::Testnet),
+                "regtest" => Ok(Network::BitcoinCoreRegtest),
+                "main" => Ok(Network::Bitcoin),
+                _ => Err(E::custom(format!("Unexpect value for Network: {}", value))),
+            }
+        }
+    }
+
+    deserializer.deserialize_str(Visitor)
 }
 
 #[cfg(test)]
@@ -120,7 +155,7 @@ mod tests {
         assert_eq!(
             blockchain,
             RpcBlockchainInfo {
-                chain: String::from("regtest"),
+                chain: Network::BitcoinCoreRegtest,
                 blocks: 0,
                 headers: 0,
                 bestblockhash: String::from(
