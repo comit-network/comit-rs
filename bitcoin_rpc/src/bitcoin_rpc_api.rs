@@ -36,7 +36,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     // TODO: disconnectnode
 
-    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<PrivateKey>, HTTPError>;
+    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<RpcPrivateKey>, HTTPError>;
 
     // TODO: dumpwallet
     // TODO: encryptwallet
@@ -168,7 +168,7 @@ pub trait BitcoinRpcApi: Send + Sync {
         &self,
         tx: &SerializedRawTransaction,
         dependencies: Option<Vec<&TransactionOutputDetail>>,
-        private_keys: Option<Vec<&PrivateKey>>,
+        private_keys: Option<Vec<&RpcPrivateKey>>,
         signature_hash_type: Option<SigHashType>,
     ) -> Result<RpcResponse<SigningResult>, HTTPError>;
 
