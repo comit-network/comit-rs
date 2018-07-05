@@ -39,9 +39,9 @@ impl ApiClient for FakeApiClient {
         _request: &BuyOrderRequestBody,
     ) -> Result<RequestToFund, TradingServiceError> {
         Ok(RequestToFund {
-            address_to_fund: bitcoin_rpc::Address::from(
+            address_to_fund: bitcoin_rpc::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-            ),
+            ).unwrap(),
             btc_amount: BitcoinQuantity::from_bitcoin(1001.0),
             eth_amount: EthereumQuantity::from_eth(140.0),
         })

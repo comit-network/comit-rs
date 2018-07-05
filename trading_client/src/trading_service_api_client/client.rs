@@ -76,7 +76,8 @@ impl BuyOrderRequestBody {
 
         let client_success_address = EthAddress::from_str(&client_success_address)
             .expect("Could not convert the success address");
-        let client_refund_address = bitcoin_rpc::Address::from(client_refund_address.as_str());
+        let client_refund_address = bitcoin_rpc::Address::from_str(client_refund_address.as_str())
+            .expect("Could not convert the Bitcoin refund address");
 
         BuyOrderRequestBody {
             client_success_address,
