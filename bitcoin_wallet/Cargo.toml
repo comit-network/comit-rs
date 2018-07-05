@@ -14,3 +14,6 @@ rust-crypto = "0.2.36"
 
 [dev-dependencies.bitcoin_htlc]
 path = "../bitcoin_htlc"
+
+[dev-dependencies.bitcoin_node]
+path = "../bitcoin_node"
