@@ -118,7 +118,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         ))
     }
 
-    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<RpcPrivateKey>, HTTPError> {
+    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<PrivateKey>, HTTPError> {
         self.send(&RpcRequest::new1(
             JsonRpcVersion::V1,
             "test",
@@ -268,7 +268,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         &self,
         tx: &SerializedRawTransaction,
         dependencies: Option<Vec<&TransactionOutputDetail>>,
-        private_keys: Option<Vec<&RpcPrivateKey>>,
+        private_keys: Option<Vec<&PrivateKey>>,
         signature_hash_type: Option<SigHashType>,
     ) -> Result<RpcResponse<SigningResult>, HTTPError> {
         self.send(&RpcRequest::new4(
