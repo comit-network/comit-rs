@@ -85,14 +85,14 @@ pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
     pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
-    pub client_refund_address: bitcoin_rpc::Address,
+    pub client_refund_address: bitcoin_rpc::RpcAddress,
     pub client_success_address: EthereumAddress,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody {
     pub exchange_refund_address: EthereumAddress,
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: bitcoin_rpc::RpcAddress,
     pub exchange_contract_time_lock: u64,
 }
 

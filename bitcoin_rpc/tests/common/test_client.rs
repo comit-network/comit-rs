@@ -31,7 +31,7 @@ impl<'a> BitcoinCoreTestClient<'a> {
         self.a_block().hash
     }
 
-    pub fn an_address(&self) -> Address {
+    pub fn an_address(&self) -> RpcAddress {
         self.client
             .get_new_address()
             .unwrap()

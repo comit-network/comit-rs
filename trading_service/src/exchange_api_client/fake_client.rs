@@ -1,5 +1,5 @@
 use super::client::ApiClient;
-use bitcoin_rpc::Address;
+use bitcoin_rpc::RpcAddress;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use event_store::TradeId;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
@@ -36,7 +36,7 @@ impl ApiClient for FakeApiClient {
         let accept = OrderResponseBody {
             exchange_refund_address: "34b19d15e793883d840c563d7dbc8a6723465146".into(),
             exchange_contract_time_lock: 43200,
-            exchange_success_address: Address::from_str(
+            exchange_success_address: RpcAddress::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ).unwrap(),
         };

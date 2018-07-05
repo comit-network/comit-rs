@@ -25,7 +25,7 @@ pub struct ScriptPubKey {
     pub req_sigs: Option<u32>,
     #[serde(rename = "type")]
     pub script_type: ScriptType,
-    pub addresses: Option<Vec<Address>>,
+    pub addresses: Option<Vec<RpcAddress>>,
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
@@ -54,8 +54,8 @@ pub struct DecodedScript {
     script_type: Option<ScriptType>,
     #[serde(rename = "reqSigs")]
     req_sigs: Option<u32>,
-    addresses: Option<Vec<Address>>,
-    p2sh: Address,
+    addresses: Option<Vec<RpcAddress>>,
+    p2sh: RpcAddress,
 }
 
 #[cfg(test)]
@@ -87,11 +87,11 @@ mod tests {
             script_type: Some(ScriptType::MultiSig),
             req_sigs: Some(2),
             addresses: Some(vec![
-                Address::from_str("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ").unwrap(),
-                Address::from_str("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94").unwrap(),
-                Address::from_str("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG").unwrap(),
+                RpcAddress::from_str("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ").unwrap(),
+                RpcAddress::from_str("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94").unwrap(),
+                RpcAddress::from_str("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG").unwrap(),
             ]),
-            p2sh: Address::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap(),
+            p2sh: RpcAddress::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap(),
         })
     }
 

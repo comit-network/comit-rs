@@ -5,7 +5,7 @@ use jsonrpc::header::{Authorization, Basic, Headers};
 use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
-use types::Address;
+use types::RpcAddress;
 use types::*;
 
 struct RetryConfig {
@@ -72,7 +72,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
     fn add_multisig_address(
         &self,
         number_of_required_signatures: u32,
-        participants: Vec<&Address>,
+        participants: Vec<&RpcAddress>,
     ) -> Result<RpcResponse<MultiSigAddress>, HTTPError> {
         self.send(&RpcRequest::new2(
             JsonRpcVersion::V1,
@@ -118,7 +118,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         ))
     }
 
-    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<PrivateKey>, HTTPError> {
+    fn dump_privkey(&self, address: &RpcAddress) -> Result<RpcResponse<RpcPrivateKey>, HTTPError> {
         self.send(&RpcRequest::new1(
             JsonRpcVersion::V1,
             "test",
@@ -150,7 +150,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         ))
     }
 
-    fn get_account(&self, address: &Address) -> Result<RpcResponse<Account>, HTTPError> {
+    fn get_account(&self, address: &RpcAddress) -> Result<RpcResponse<Account>, HTTPError> {
         self.send(&RpcRequest::new1(
             JsonRpcVersion::V1,
             "test",
@@ -184,7 +184,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         ))
     }
 
-    fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
+    fn get_new_address(&self) -> Result<RpcResponse<RpcAddress>, HTTPError> {
         self.send(&RpcRequest::new2(
             JsonRpcVersion::V1,
             "test",
@@ -221,7 +221,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         &self,
         min_confirmations: TxOutConfirmations,
         max_confirmations: Option<u32>,
-        recipients: Option<Vec<Address>>,
+        recipients: Option<Vec<RpcAddress>>,
     ) -> Result<RpcResponse<Vec<UnspentTransactionOutput>>, HTTPError> {
         let min_confirmations = match min_confirmations {
             TxOutConfirmations::Unconfirmed => 0,
@@ -252,7 +252,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
 
     fn send_to_address(
         &self,
-        address: &Address,
+        address: &RpcAddress,
         amount: f64,
     ) -> Result<RpcResponse<TransactionId>, HTTPError> {
         self.send(&RpcRequest::new2(
@@ -268,7 +268,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         &self,
         tx: &SerializedRawTransaction,
         dependencies: Option<Vec<&TransactionOutputDetail>>,
-        private_keys: Option<Vec<&PrivateKey>>,
+        private_keys: Option<Vec<&RpcPrivateKey>>,
         signature_hash_type: Option<SigHashType>,
     ) -> Result<RpcResponse<SigningResult>, HTTPError> {
         self.send(&RpcRequest::new4(
@@ -284,7 +284,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
 
     fn validate_address(
         &self,
-        address: &Address,
+        address: &RpcAddress,
     ) -> Result<RpcResponse<AddressValidationResult>, HTTPError> {
         self.send(&RpcRequest::new1(
             JsonRpcVersion::V1,

@@ -9,7 +9,7 @@ pub trait BitcoinRpcApi: Send + Sync {
     fn add_multisig_address(
         &self,
         number_of_required_signatures: u32,
-        participants: Vec<&Address>,
+        participants: Vec<&RpcAddress>,
     ) -> Result<RpcResponse<MultiSigAddress>, HTTPError>;
 
     // TODO: abandontransaction
@@ -36,7 +36,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     // TODO: disconnectnode
 
-    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<PrivateKey>, HTTPError>;
+    fn dump_privkey(&self, address: &RpcAddress) -> Result<RpcResponse<RpcPrivateKey>, HTTPError>;
 
     // TODO: dumpwallet
     // TODO: encryptwallet
@@ -54,7 +54,7 @@ pub trait BitcoinRpcApi: Send + Sync {
     // TODO: generatetoaddress
     // TODO: getaccountaddress
 
-    fn get_account(&self, address: &Address) -> Result<RpcResponse<Account>, HTTPError>;
+    fn get_account(&self, address: &RpcAddress) -> Result<RpcResponse<Account>, HTTPError>;
 
     // TODO: getaddednodeinfo
     // TODO: getaddressesbyaccount
@@ -86,7 +86,7 @@ pub trait BitcoinRpcApi: Send + Sync {
     // TODO: getnetworkhashesps
     // TODO: getnetworkinfo
 
-    fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError>;
+    fn get_new_address(&self) -> Result<RpcResponse<RpcAddress>, HTTPError>;
 
     // TODO: getpeerinfo
     // TODO: getrawchangeaddress
@@ -133,7 +133,7 @@ pub trait BitcoinRpcApi: Send + Sync {
         &self,
         min_confirmations: TxOutConfirmations,
         max_confirmations: Option<u32>,
-        recipients: Option<Vec<Address>>,
+        recipients: Option<Vec<RpcAddress>>,
     ) -> Result<RpcResponse<Vec<UnspentTransactionOutput>>, HTTPError>;
 
     // TODO: lockunspent
@@ -153,7 +153,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     fn send_to_address(
         &self,
-        address: &Address,
+        address: &RpcAddress,
         amount: f64,
     ) -> Result<RpcResponse<TransactionId>, HTTPError>;
     // TODO: setaccount
@@ -168,7 +168,7 @@ pub trait BitcoinRpcApi: Send + Sync {
         &self,
         tx: &SerializedRawTransaction,
         dependencies: Option<Vec<&TransactionOutputDetail>>,
-        private_keys: Option<Vec<&PrivateKey>>,
+        private_keys: Option<Vec<&RpcPrivateKey>>,
         signature_hash_type: Option<SigHashType>,
     ) -> Result<RpcResponse<SigningResult>, HTTPError>;
 
@@ -177,7 +177,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     fn validate_address(
         &self,
-        address: &Address,
+        address: &RpcAddress,
     ) -> Result<RpcResponse<AddressValidationResult>, HTTPError>;
 
     // TODO: verifychain

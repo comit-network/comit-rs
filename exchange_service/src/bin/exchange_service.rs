@@ -112,7 +112,7 @@ fn main() {
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
             info!("Blockchain info:\n{:?}", blockchain_info);
-            match bitcoin_rpc_client.validate_address(&bitcoin_rpc::Address::from(
+            match bitcoin_rpc_client.validate_address(&bitcoin_rpc::RpcAddress::from(
                 btc_exchange_redeem_address.clone(),
             )) {
                 Ok(address_validation) => info!("Validation:\n{:?}", address_validation),

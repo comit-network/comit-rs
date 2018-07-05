@@ -1,5 +1,5 @@
 use bitcoin;
-use bitcoin::util::address::Address as BitcoinAddress;
+use bitcoin::util::address::Address;
 use serde::Deserialize;
 use serde::Deserializer;
 use serde::Serialize;
@@ -13,42 +13,42 @@ use std::str::FromStr;
 use types::ScriptType;
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Address(BitcoinAddress);
+pub struct RpcAddress(Address);
 
 // These (Eq, Hash, Serialize, Deserialize) work on the assumption that there is NO mix of Networks
 // (testnet, regtest) in the program.
 // Meaning that when executed, either all addresses are testnet or all addresses are regtest.
 // From the moment the program expect to connect to several bitcoind which are connected to
 // different nets, then all hell breaks loose.
-impl Eq for Address {}
+impl Eq for RpcAddress {}
 
-impl Hash for Address {
+impl Hash for RpcAddress {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.to_string().hash(state);
     }
 }
 
-impl FromStr for Address {
+impl FromStr for RpcAddress {
     type Err = bitcoin::util::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        BitcoinAddress::from_str(s).and_then(|address| Ok(Address(address)))
+        Address::from_str(s).and_then(|address| Ok(RpcAddress(address)))
     }
 }
 
-impl From<BitcoinAddress> for Address {
-    fn from(address: BitcoinAddress) -> Self {
-        Address(address)
+impl From<Address> for RpcAddress {
+    fn from(address: Address) -> Self {
+        RpcAddress(address)
     }
 }
 
-impl Into<BitcoinAddress> for Address {
-    fn into(self) -> BitcoinAddress {
+impl Into<Address> for RpcAddress {
+    fn into(self) -> Address {
         self.0
     }
 }
 
-impl Serialize for Address {
+impl Serialize for RpcAddress {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -63,7 +63,7 @@ impl Serialize for Address {
 // Specific to regtest and pass this deserializer in client_rpc (which knows the network)
 // For now, regtest addresses are deserialized as testnet but it is not problematic
 
-impl<'de> Deserialize<'de> for Address {
+impl<'de> Deserialize<'de> for RpcAddress {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
@@ -71,19 +71,18 @@ impl<'de> Deserialize<'de> for Address {
         struct Visitor;
 
         impl<'vde> de::Visitor<'vde> for Visitor {
-            type Value = Address;
+            type Value = RpcAddress;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 formatter.write_str("a Bitcoin address")
             }
 
-            fn visit_str<E>(self, v: &str) -> Result<Address, E>
+            fn visit_str<E>(self, v: &str) -> Result<RpcAddress, E>
             where
                 E: de::Error,
             {
-                let address =
-                    BitcoinAddress::from_str(v).map_err(|err| E::custom(format!("{}", err)))?;
-                Ok(Address(address))
+                let address = Address::from_str(v).map_err(|err| E::custom(format!("{}", err)))?;
+                Ok(RpcAddress(address))
             }
         }
 
@@ -91,18 +90,18 @@ impl<'de> Deserialize<'de> for Address {
     }
 }
 
-impl Address {
-    pub fn to_address(&self) -> BitcoinAddress {
+impl RpcAddress {
+    pub fn to_address(&self) -> Address {
         self.0.clone()
     }
 
     // TODO: trash this method in favor of to_address
-    pub fn to_bitcoin_address(&self) -> Result<BitcoinAddress, bitcoin::util::Error> {
+    pub fn to_bitcoin_address(&self) -> Result<Address, bitcoin::util::Error> {
         Ok(self.0.clone())
     }
 }
 
-impl fmt::Display for Address {
+impl fmt::Display for RpcAddress {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(self.0.to_string().as_str())
     }
@@ -131,7 +130,7 @@ impl fmt::Display for Error {
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct MultiSigAddress {
-    address: Address,
+    address: RpcAddress,
     #[serde(rename = "redeemScript")]
     redeem_script: String,
 }
@@ -142,7 +141,7 @@ pub struct MultiSigAddress {
 pub struct AddressValidationResult {
     #[serde(rename = "isvalid")]
     is_valid: bool,
-    address: Option<Address>,
+    address: Option<RpcAddress>,
     #[serde(rename = "scriptPubKey")]
     script_pub_key: Option<String>,
     #[serde(rename = "ismine")]
@@ -155,7 +154,7 @@ pub struct AddressValidationResult {
     script_type: Option<ScriptType>,
     #[serde(rename = "hex")]
     redeem_script: Option<String>,
-    addresses: Option<Vec<Address>>,
+    addresses: Option<Vec<RpcAddress>>,
     #[serde(rename = "sigsrequired")]
     sigs_required: Option<i32>,
     pubkey: Option<String>, //TODO: use PubkeyHash here
@@ -179,7 +178,7 @@ mod tests {
     fn can_deserialize_mainnet_p2pkh_address() {
         #[derive(Deserialize, Serialize, Debug, PartialEq)]
         struct TestStruct {
-            address: Address,
+            address: RpcAddress,
         }
 
         let address = r#"{"address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa"}"#;
@@ -189,7 +188,7 @@ mod tests {
         assert_eq!(
             test_struct,
             TestStruct {
-                address: Address::from_str("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap(),
+                address: RpcAddress::from_str("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap(),
             }
         )
     }
@@ -198,7 +197,7 @@ mod tests {
     fn can_deserialize_testnet_p2pkh_address() {
         #[derive(Deserialize, Serialize, Debug, PartialEq)]
         struct TestStruct {
-            address: Address,
+            address: RpcAddress,
         }
 
         let address = r#"{"address": "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn"}"#;
@@ -208,7 +207,7 @@ mod tests {
         assert_eq!(
             test_struct,
             TestStruct {
-                address: Address::from_str("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn").unwrap(),
+                address: RpcAddress::from_str("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn").unwrap(),
             }
         )
     }
@@ -217,7 +216,7 @@ mod tests {
     fn can_deserialize_mainnet_p2sh_address() {
         #[derive(Deserialize, Serialize, Debug, PartialEq)]
         struct TestStruct {
-            address: Address,
+            address: RpcAddress,
         }
 
         let address = r#"{"address": "3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX"}"#;
@@ -227,7 +226,7 @@ mod tests {
         assert_eq!(
             test_struct,
             TestStruct {
-                address: Address::from_str("3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX").unwrap(),
+                address: RpcAddress::from_str("3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX").unwrap(),
             }
         )
     }
@@ -236,7 +235,7 @@ mod tests {
     fn can_deserialize_testnet_p2sh_address() {
         #[derive(Deserialize, Serialize, Debug, PartialEq)]
         struct TestStruct {
-            address: Address,
+            address: RpcAddress,
         }
 
         let address = r#"{"address": "2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc"}"#;
@@ -246,7 +245,7 @@ mod tests {
         assert_eq!(
             test_struct,
             TestStruct {
-                address: Address::from_str("2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc").unwrap(),
+                address: RpcAddress::from_str("2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc").unwrap(),
             }
         )
     }
@@ -273,7 +272,7 @@ mod tests {
             result,
             AddressValidationResult {
                 is_valid: true,
-                address: Some(Address::from_str("17fshh33qUze2yifiJ2sXgijSMzJ2KNEwu").unwrap()),
+                address: Some(RpcAddress::from_str("17fshh33qUze2yifiJ2sXgijSMzJ2KNEwu").unwrap()),
                 script_pub_key: Some(String::from(
                     "76a914492ae280d70af33acf0ae7cd329b961e65e9cbd888ac"
                 )),
@@ -320,7 +319,7 @@ mod tests {
 
         assert_eq!(result, AddressValidationResult {
             is_valid: true,
-            address: Some(Address::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap()),
+            address: Some(RpcAddress::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap()),
             script_pub_key: None,
             is_mine: Some(true),
             is_watch_only: Some(false),
@@ -328,9 +327,9 @@ mod tests {
             script_type: Some(ScriptType::MultiSig),
             redeem_script: Some(String::from("522103ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf2102ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f21022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d553ae")),
             addresses: Some(vec![
-                Address::from_str("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ").unwrap(),
-                Address::from_str("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94").unwrap(),
-                Address::from_str("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG").unwrap(),
+                RpcAddress::from_str("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ").unwrap(),
+                RpcAddress::from_str("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94").unwrap(),
+                RpcAddress::from_str("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG").unwrap(),
             ]),
             sigs_required: Some(2),
             pubkey: None,
@@ -343,18 +342,18 @@ mod tests {
 
     #[test]
     fn can_serialize_mainnet_p2pkh_address() {
-        let address = Address::from_str("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap();
+        let address = RpcAddress::from_str("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap();
         let json_addr = serde_json::to_string(&address).unwrap();
-        let de_addr: Address = serde_json::from_str(&json_addr).unwrap();
+        let de_addr: RpcAddress = serde_json::from_str(&json_addr).unwrap();
 
         assert_eq!(address, de_addr);
     }
 
     #[test]
     fn can_serialize_testnet_p2pkh_address() {
-        let address = Address::from_str("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn").unwrap();
+        let address = RpcAddress::from_str("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn").unwrap();
         let json_addr = serde_json::to_string(&address).unwrap();
-        let de_addr: Address = serde_json::from_str(&json_addr).unwrap();
+        let de_addr: RpcAddress = serde_json::from_str(&json_addr).unwrap();
 
         assert_eq!(address, de_addr);
     }

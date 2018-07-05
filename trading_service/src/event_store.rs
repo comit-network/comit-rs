@@ -53,7 +53,7 @@ impl From<OfferResponseBody> for OfferCreated {
 pub struct OrderCreated {
     pub uid: TradeId,
     pub client_success_address: EthAddress,
-    pub client_refund_address: bitcoin_rpc::Address,
+    pub client_refund_address: bitcoin_rpc::RpcAddress,
     pub secret: Secret,
     pub long_relative_timelock: BlockHeight,
 }
@@ -63,7 +63,7 @@ pub struct OrderTaken {
     pub uid: TradeId,
     pub exchange_refund_address: EthAddress,
     // This is embedded in the HTLC but we keep it here as well for completeness
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: bitcoin_rpc::RpcAddress,
     pub exchange_contract_time_lock: u64,
     pub htlc: Htlc,
 }
