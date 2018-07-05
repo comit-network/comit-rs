@@ -249,7 +249,7 @@ mod tests {
         );
 
         let htlc_address = htlc.compute_address(Network::BitcoinCoreRegtest);
-        let rpc_htlc_address = bitcoin_rpc::Address::from(htlc_address.clone());
+        let rpc_htlc_address = bitcoin_rpc::RpcAddress::from(htlc_address.clone());
         let htlc_script = htlc.script();
 
         let txid = client
@@ -301,7 +301,7 @@ mod tests {
 
     fn check_utxo_at_address(
         client: &bitcoin_rpc::BitcoinCoreClient,
-        address: &bitcoin_rpc::Address,
+        address: &bitcoin_rpc::RpcAddress,
         txid: &TransactionId,
     ) -> bool {
         let unspent = client

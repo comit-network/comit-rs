@@ -112,7 +112,7 @@ pub struct Transaction {
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Detail {
     account: String,
-    address: Option<Address>,
+    address: Option<RpcAddress>,
     /// send|receive|immature|generate|orphan TODO: Create enum if needed
     category: String,
     amount: f64,
@@ -212,7 +212,7 @@ pub struct TransactionOutput {
 pub struct UnspentTransactionOutput {
     pub txid: TransactionId,
     pub vout: u32,
-    pub address: Option<Address>,
+    pub address: Option<RpcAddress>,
     pub account: Option<String>,
     #[serde(rename = "scriptPubKey")]
     pub script_pub_key: EncodedScriptPubKey,
@@ -241,7 +241,7 @@ impl NewTransactionInput {
     }
 }
 
-pub type NewTransactionOutput = HashMap<Address, f64>;
+pub type NewTransactionOutput = HashMap<RpcAddress, f64>;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct TransactionOutputDetail {
@@ -274,7 +274,7 @@ pub struct SigningResult {
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct FundingOptions {
     #[serde(rename = "changeAddress", skip_serializing_if = "Option::is_none")]
-    change_address: Option<Address>,
+    change_address: Option<RpcAddress>,
     #[serde(rename = "changePosition", skip_serializing_if = "Option::is_none")]
     change_position: Option<u32>,
     #[serde(rename = "includeWatching", skip_serializing_if = "Option::is_none")]
@@ -302,7 +302,7 @@ impl FundingOptions {
         }
     }
 
-    pub fn with_change_address(self, address: &Address) -> Self {
+    pub fn with_change_address(self, address: &RpcAddress) -> Self {
         FundingOptions {
             change_address: Some(address.clone()),
             ..self
@@ -403,7 +403,7 @@ mod tests {
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKeyHash,
                         addresses: Some(vec![
-                            Address::from_str("1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z").unwrap()
+                            RpcAddress::from_str("1A6Ei5cRfDJ8jjhwxfzLJph8B9ZEthR9Z").unwrap()
                         ]),
                     },
                 }
@@ -487,7 +487,7 @@ mod tests {
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKey,
                         addresses: Some(vec![
-                            Address::from_str("my9XdXbMLZm3v8uqGLuPRKatWjnpXw2boX").unwrap()
+                            RpcAddress::from_str("my9XdXbMLZm3v8uqGLuPRKatWjnpXw2boX").unwrap()
                         ]),
                     },
                 },
@@ -536,7 +536,7 @@ mod tests {
                     "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a"
                 ).unwrap(),
                 vout: 1,
-                address: Some(Address::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap()),
+                address: Some(RpcAddress::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap()),
                 account: Some(String::from("test label")),
                 script_pub_key: EncodedScriptPubKey::from(
                     "76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac"
@@ -555,7 +555,7 @@ mod tests {
     fn new_transaction_output_should_serialize_to_object() {
         let mut output: NewTransactionOutput = HashMap::new();
         output.insert(
-            Address::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap(),
+            RpcAddress::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap(),
             10.12345,
         );
 

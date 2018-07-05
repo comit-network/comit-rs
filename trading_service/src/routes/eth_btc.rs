@@ -79,12 +79,12 @@ pub struct BuyOrderRequestBody {
     // I think we should avoid it and push for a dependency on rust-bitcoin instead
     // However, rust-bitcoin addresses do not seem to deserialize:
     // the trait `serde::Deserialize<'_>` is not implemented for `bitcoin::util::address::Address`
-    client_refund_address: bitcoin_rpc::Address,
+    client_refund_address: bitcoin_rpc::RpcAddress,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    address_to_fund: bitcoin_rpc::Address,
+    address_to_fund: bitcoin_rpc::RpcAddress,
     btc_amount: BitcoinQuantity,
     eth_amount: EthereumQuantity,
 }
@@ -184,7 +184,7 @@ pub fn post_buy_orders(
 
     let offer = event_store.get_offer_created(&trade_id).unwrap();
 
-    let htlc_address = bitcoin_rpc::Address::from(htlc.compute_address(network.clone()));
+    let htlc_address = bitcoin_rpc::RpcAddress::from(htlc.compute_address(network.clone()));
 
     Ok(Json(RequestToFund {
         address_to_fund: htlc_address,

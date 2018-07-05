@@ -18,7 +18,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
     fn add_multisig_address(
         &self,
         number_of_required_signatures: u32,
-        participants: Vec<&Address>,
+        participants: Vec<&RpcAddress>,
     ) -> Result<RpcResponse<MultiSigAddress>, HTTPError> {
         unimplemented!()
     }
@@ -42,7 +42,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
-    fn dump_privkey(&self, address: &Address) -> Result<RpcResponse<RpcPrivateKey>, HTTPError> {
+    fn dump_privkey(&self, address: &RpcAddress) -> Result<RpcResponse<RpcPrivateKey>, HTTPError> {
         unimplemented!()
     }
 
@@ -58,7 +58,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
-    fn get_account(&self, address: &Address) -> Result<RpcResponse<Account>, HTTPError> {
+    fn get_account(&self, address: &RpcAddress) -> Result<RpcResponse<Account>, HTTPError> {
         unimplemented!()
     }
 
@@ -74,7 +74,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
-    fn get_new_address(&self) -> Result<RpcResponse<Address>, HTTPError> {
+    fn get_new_address(&self) -> Result<RpcResponse<RpcAddress>, HTTPError> {
         unimplemented!()
     }
 
@@ -100,7 +100,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
         &self,
         min_confirmations: TxOutConfirmations,
         max_confirmations: Option<u32>,
-        recipients: Option<Vec<Address>>,
+        recipients: Option<Vec<RpcAddress>>,
     ) -> Result<RpcResponse<Vec<UnspentTransactionOutput>>, HTTPError> {
         unimplemented!()
     }
@@ -114,7 +114,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
 
     fn send_to_address(
         &self,
-        address: &Address,
+        address: &RpcAddress,
         amount: f64,
     ) -> Result<RpcResponse<TransactionId>, HTTPError> {
         unimplemented!()
@@ -132,7 +132,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
 
     fn validate_address(
         &self,
-        address: &Address,
+        address: &RpcAddress,
     ) -> Result<RpcResponse<AddressValidationResult>, HTTPError> {
         unimplemented!()
     }

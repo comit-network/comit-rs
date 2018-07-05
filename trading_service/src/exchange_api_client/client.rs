@@ -26,7 +26,7 @@ pub struct OfferResponseBody {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: bitcoin_rpc::Address,
+    pub client_refund_address: bitcoin_rpc::RpcAddress,
     pub client_success_address: Address,
     pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 }
@@ -35,7 +35,7 @@ pub struct OrderRequestBody {
 pub struct OrderResponseBody {
     pub exchange_refund_address: Address,
     pub exchange_contract_time_lock: u64,
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: bitcoin_rpc::RpcAddress,
 }
 
 pub trait ApiClient {
