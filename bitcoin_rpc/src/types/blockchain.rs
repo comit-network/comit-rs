@@ -42,7 +42,7 @@ pub struct Bip9SoftForkDetails {
 }
 
 #[derive(Deserialize, Debug, PartialEq)]
-pub struct RpcBlockchainInfo {
+pub struct BlockchainInfo {
     #[serde(deserialize_with = "network_deserialize")]
     chain: Network,
     blocks: u64,
@@ -151,11 +151,11 @@ mod tests {
         },
         "warnings": ""
 }"#;
-        let blockchain: RpcBlockchainInfo = serde_json::from_str(json).unwrap();
+        let blockchain: BlockchainInfo = serde_json::from_str(json).unwrap();
 
         assert_eq!(
             blockchain,
-            RpcBlockchainInfo {
+            BlockchainInfo {
                 chain: Network::BitcoinCoreRegtest,
                 blocks: 0,
                 headers: 0,

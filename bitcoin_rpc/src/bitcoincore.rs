@@ -168,7 +168,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         ))
     }
 
-    fn get_blockchain_info(&self) -> Result<RpcResponse<RpcBlockchainInfo>, HTTPError> {
+    fn get_blockchain_info(&self) -> Result<RpcResponse<BlockchainInfo>, HTTPError> {
         self.send(&RpcRequest::new0(
             JsonRpcVersion::V1,
             "test",

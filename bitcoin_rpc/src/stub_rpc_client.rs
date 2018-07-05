@@ -66,7 +66,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
-    fn get_blockchain_info(&self) -> Result<RpcResponse<RpcBlockchainInfo>, HTTPError> {
+    fn get_blockchain_info(&self) -> Result<RpcResponse<BlockchainInfo>, HTTPError> {
         unimplemented!()
     }
 
