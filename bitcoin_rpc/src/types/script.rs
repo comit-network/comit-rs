@@ -63,6 +63,7 @@ mod tests {
 
     use super::*;
     use serde_json;
+    use std::str::FromStr;
 
     #[test]
     fn can_deserialize_decoded_script_type() {
@@ -86,11 +87,11 @@ mod tests {
             script_type: Some(ScriptType::MultiSig),
             req_sigs: Some(2),
             addresses: Some(vec![
-                Address::from("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ"),
-                Address::from("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94"),
-                Address::from("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG"),
+                Address::from_str("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ").unwrap(),
+                Address::from_str("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94").unwrap(),
+                Address::from_str("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG").unwrap(),
             ]),
-            p2sh: Address::from("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq"),
+            p2sh: Address::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap(),
         })
     }
 

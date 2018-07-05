@@ -4,6 +4,7 @@ use common_types::{BitcoinQuantity, EthereumQuantity};
 use event_store::TradeId;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
 use reqwest;
+use std::str::FromStr;
 use symbol::Symbol;
 use uuid::Uuid;
 
@@ -35,7 +36,9 @@ impl ApiClient for FakeApiClient {
         let accept = OrderResponseBody {
             exchange_refund_address: "34b19d15e793883d840c563d7dbc8a6723465146".into(),
             exchange_contract_time_lock: 43200,
-            exchange_success_address: Address::from("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"),
+            exchange_success_address: Address::from_str(
+                "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
+            ).unwrap(),
         };
 
         Ok(accept)

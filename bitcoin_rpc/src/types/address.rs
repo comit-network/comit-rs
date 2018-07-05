@@ -1,28 +1,110 @@
 use bitcoin;
-use bitcoin::util::address::Address as bitcoin_address;
+use bitcoin::util::address::Address as BitcoinAddress;
+use serde::Deserialize;
+use serde::Deserializer;
+use serde::Serialize;
+use serde::Serializer;
+use serde::de;
+use std::convert::Into;
 use std::fmt;
+use std::hash::Hash;
+use std::hash::Hasher;
 use std::str::FromStr;
 use types::ScriptType;
 
-// TODO: to use bitcoin::util::address::Address, need to upgrade serde in rust-bitcoin
-#[derive(Deserialize, Serialize, Debug, PartialEq, Eq, Hash, Clone)]
-pub struct Address(String);
+#[derive(Debug, PartialEq, Clone)]
+pub struct Address(BitcoinAddress);
 
-impl From<bitcoin_address> for Address {
-    fn from(addr: bitcoin_address) -> Self {
-        Address::from(addr.to_string().as_str())
+// These (Eq, Hash, Serialize, Deserialize) work on the assumption that there is NO mix of Networks
+// (testnet, regtest) in the program.
+// Meaning that when executed, either all addresses are testnet or all addresses are regtest.
+// From the moment the program expect to connect to several bitcoind which are connected to
+// different nets, then all hell breaks loose.
+impl Eq for Address {}
+
+impl Hash for Address {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.to_string().hash(state);
+    }
+}
+
+impl FromStr for Address {
+    type Err = bitcoin::util::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        BitcoinAddress::from_str(s).and_then(|address| Ok(Address(address)))
+    }
+}
+
+impl From<BitcoinAddress> for Address {
+    fn from(address: BitcoinAddress) -> Self {
+        Address(address)
+    }
+}
+
+impl Into<BitcoinAddress> for Address {
+    fn into(self) -> BitcoinAddress {
+        self.0
+    }
+}
+
+impl Serialize for Address {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.to_string().as_str())
+    }
+}
+
+// TODO: this always assumes Mainnet or Testnet
+//
+// One proposal to properly deserialize Regtest addresses is to implement a deserialiser
+// Specific to regtest and pass this deserializer in client_rpc (which knows the network)
+// For now, regtest addresses are deserialized as testnet but it is not problematic
+
+impl<'de> Deserialize<'de> for Address {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = Address;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("a Bitcoin address")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Address, E>
+            where
+                E: de::Error,
+            {
+                let address =
+                    BitcoinAddress::from_str(v).map_err(|err| E::custom(format!("{}", err)))?;
+                Ok(Address(address))
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
     }
 }
 
 impl Address {
-    pub fn to_bitcoin_address(&self) -> Result<bitcoin_address, bitcoin::util::Error> {
-        bitcoin_address::from_str(self.0.as_str())
+    pub fn to_address(&self) -> BitcoinAddress {
+        self.0.clone()
+    }
+
+    // TODO: trash this method in favor of to_address
+    pub fn to_bitcoin_address(&self) -> Result<BitcoinAddress, bitcoin::util::Error> {
+        Ok(self.0.clone())
     }
 }
 
 impl fmt::Display for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(self.0.as_str())
+        fmt.write_str(self.0.to_string().as_str())
     }
 }
 
@@ -46,8 +128,6 @@ impl fmt::Display for Error {
         }
     }
 }
-
-from_str!(Address);
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
 pub struct MultiSigAddress {
@@ -96,7 +176,7 @@ mod tests {
     use serde_json;
 
     #[test]
-    fn can_deserialize_address() {
+    fn can_deserialize_mainnet_p2pkh_address() {
         #[derive(Deserialize, Serialize, Debug, PartialEq)]
         struct TestStruct {
             address: Address,
@@ -109,7 +189,64 @@ mod tests {
         assert_eq!(
             test_struct,
             TestStruct {
-                address: Address("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".to_string()),
+                address: Address::from_str("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap(),
+            }
+        )
+    }
+
+    #[test]
+    fn can_deserialize_testnet_p2pkh_address() {
+        #[derive(Deserialize, Serialize, Debug, PartialEq)]
+        struct TestStruct {
+            address: Address,
+        }
+
+        let address = r#"{"address": "mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn"}"#;
+
+        let test_struct: TestStruct = serde_json::from_str(address).unwrap();
+
+        assert_eq!(
+            test_struct,
+            TestStruct {
+                address: Address::from_str("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn").unwrap(),
+            }
+        )
+    }
+
+    #[test]
+    fn can_deserialize_mainnet_p2sh_address() {
+        #[derive(Deserialize, Serialize, Debug, PartialEq)]
+        struct TestStruct {
+            address: Address,
+        }
+
+        let address = r#"{"address": "3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX"}"#;
+
+        let test_struct: TestStruct = serde_json::from_str(address).unwrap();
+
+        assert_eq!(
+            test_struct,
+            TestStruct {
+                address: Address::from_str("3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX").unwrap(),
+            }
+        )
+    }
+
+    #[test]
+    fn can_deserialize_testnet_p2sh_address() {
+        #[derive(Deserialize, Serialize, Debug, PartialEq)]
+        struct TestStruct {
+            address: Address,
+        }
+
+        let address = r#"{"address": "2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc"}"#;
+
+        let test_struct: TestStruct = serde_json::from_str(address).unwrap();
+
+        assert_eq!(
+            test_struct,
+            TestStruct {
+                address: Address::from_str("2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc").unwrap(),
             }
         )
     }
@@ -136,7 +273,7 @@ mod tests {
             result,
             AddressValidationResult {
                 is_valid: true,
-                address: Some(Address::from("17fshh33qUze2yifiJ2sXgijSMzJ2KNEwu")),
+                address: Some(Address::from_str("17fshh33qUze2yifiJ2sXgijSMzJ2KNEwu").unwrap()),
                 script_pub_key: Some(String::from(
                     "76a914492ae280d70af33acf0ae7cd329b961e65e9cbd888ac"
                 )),
@@ -183,7 +320,7 @@ mod tests {
 
         assert_eq!(result, AddressValidationResult {
             is_valid: true,
-            address: Some(Address::from("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq")),
+            address: Some(Address::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap()),
             script_pub_key: None,
             is_mine: Some(true),
             is_watch_only: Some(false),
@@ -191,9 +328,9 @@ mod tests {
             script_type: Some(ScriptType::MultiSig),
             redeem_script: Some(String::from("522103ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf2102ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f21022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d553ae")),
             addresses: Some(vec![
-                Address::from("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ"),
-                Address::from("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94"),
-                Address::from("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG"),
+                Address::from_str("mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ").unwrap(),
+                Address::from_str("mo1vzGwCzWqteip29vGWWW6MsEBREuzW94").unwrap(),
+                Address::from_str("mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG").unwrap(),
             ]),
             sigs_required: Some(2),
             pubkey: None,
@@ -203,4 +340,23 @@ mod tests {
             hd_masterkey_id: None,
         })
     }
+
+    #[test]
+    fn can_serialize_mainnet_p2pkh_address() {
+        let address = Address::from_str("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa").unwrap();
+        let json_addr = serde_json::to_string(&address).unwrap();
+        let de_addr: Address = serde_json::from_str(&json_addr).unwrap();
+
+        assert_eq!(address, de_addr);
+    }
+
+    #[test]
+    fn can_serialize_testnet_p2pkh_address() {
+        let address = Address::from_str("mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn").unwrap();
+        let json_addr = serde_json::to_string(&address).unwrap();
+        let de_addr: Address = serde_json::from_str(&json_addr).unwrap();
+
+        assert_eq!(address, de_addr);
+    }
+
 }
