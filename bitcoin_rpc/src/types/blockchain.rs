@@ -48,6 +48,7 @@ pub struct RpcBlockchainInfo {
     blocks: u64,
     headers: u64,
     bestblockhash: String,
+    //TODO: Cannot trust serde - it is not able to deserialise “4.656542373906925e-10"
     difficulty: f64,
     mediantime: u64,
     verificationprogress: f64,
