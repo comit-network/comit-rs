@@ -196,7 +196,6 @@ mod tests {
     extern crate bitcoin_support;
     use self::bitcoin_htlc::Htlc;
     use self::bitcoin_node::BitcoinNode;
-    use self::bitcoin_rpc::PubkeyHash;
     use self::bitcoin_rpc::TransactionId;
     use self::bitcoin_rpc::TxOutConfirmations;
     use self::bitcoin_support::PubkeyHash;
