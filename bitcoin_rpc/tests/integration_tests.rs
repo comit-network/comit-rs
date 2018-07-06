@@ -233,10 +233,10 @@ fn test_fund_raw_transaction() {
 
         let raw_tx = test_client
             .client
-            .create_raw_transaction(Vec::new(), &outputs)
-            .unwrap()
-            .into_result()
-            .unwrap();
+            .create_raw_transaction(Vec::new(), &outputs);
+        let raw_tx = raw_tx.unwrap();
+        let raw_tx = raw_tx.into_result();
+        let raw_tx = raw_tx.unwrap();
         let options = FundingOptions::new();
 
         client.fund_raw_transaction(&raw_tx, &options)

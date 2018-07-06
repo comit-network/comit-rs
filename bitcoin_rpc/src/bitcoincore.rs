@@ -5,6 +5,7 @@ use jsonrpc::header::{Authorization, Basic, Headers};
 use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
+use std::fmt::Debug;
 use types::Address;
 use types::*;
 
@@ -48,7 +49,7 @@ impl BitcoinCoreClient {
         }
     }
 
-    fn get_raw_transaction<R>(
+    fn get_raw_transaction<R: Debug>(
         &self,
         tx: &TransactionId,
         verbose: bool,
@@ -296,7 +297,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
 }
 
 impl BitcoinCoreClient {
-    fn send<R: DeserializeOwned, P: Serialize>(
+    fn send<R: DeserializeOwned + Debug, P: Serialize + Debug>(
         &self,
         request: &RpcRequest<P>,
     ) -> Result<RpcResponse<R>, HTTPError> {
@@ -320,7 +321,6 @@ impl BitcoinCoreClient {
                 }
             }
         }
-
         self.client.send(request)
     }
 }
