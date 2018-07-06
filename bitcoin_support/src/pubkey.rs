@@ -2,27 +2,8 @@ use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin::util::address::Payload;
 use bitcoin::util::hash::Hash160;
-use bitcoin::util::privkey::Privkey;
-use secp256k1::{PublicKey, SecretKey};
+use secp256k1_support::PublicKey;
 use std::fmt;
-
-pub trait ToPublicKey {
-    fn to_public_key(&self) -> PublicKey;
-}
-
-impl ToPublicKey for SecretKey {
-    fn to_public_key(&self) -> PublicKey {
-        // Safe to unwrap: Once Thomas' changes are into the main
-        // library this unwrap will go away
-        PublicKey::from_secret_key(&*super::SECP, &self).unwrap()
-    }
-}
-
-impl ToPublicKey for Privkey {
-    fn to_public_key(&self) -> PublicKey {
-        self.secret_key().to_public_key()
-    }
-}
 
 pub trait ToP2wpkhAddress {
     fn to_p2wpkh_address(&self, Network) -> Address;
@@ -89,7 +70,8 @@ impl fmt::LowerHex for PubkeyHash {
 mod test {
     extern crate hex;
     use super::*;
-    use secp256k1::SecretKey;
+    use bitcoin::util::privkey::Privkey as PrivateKey;
+    use secp256k1_support::ToPublicKey;
     use std::str::FromStr;
 
     #[test]
@@ -105,18 +87,13 @@ mod test {
 
     #[test]
     fn correct_pubkeyhash_from_private_key() {
-        // taken from https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-        let secret_key = SecretKey::from_slice(
-            &*super::super::SECP,
-            &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                .unwrap()[..],
-        ).unwrap();
-
-        let pubkey_hash: PubkeyHash = secret_key.to_public_key().into();
+        let private_key =
+            PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
+        let pubkey_hash: PubkeyHash = private_key.secret_key().to_public_key().into();
 
         assert_eq!(
             pubkey_hash,
-            PubkeyHash::from(&hex::decode("f54a5851e9372b87810a8e60cdd2e7cfd80b6e31").unwrap()[..])
+            PubkeyHash::from(&hex::decode("8bc513e458372a3b3bb05818d09550295ce15949").unwrap()[..])
         )
     }
 
@@ -136,34 +113,16 @@ mod test {
     fn generates_same_address_from_private_key_as_btc_address_generator() {
         // https://kimbatt.github.io/btc-address-generator/
         let privkey =
-            Privkey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-        let address = privkey.to_public_key().to_p2wpkh_address(Network::Bitcoin);
+            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+        let address = privkey
+            .secret_key()
+            .to_public_key()
+            .to_p2wpkh_address(Network::Bitcoin);
 
         assert_eq!(
             address,
             Address::from_str("bc1qmxq0cu0jktxyy2tz3je7675eca0ydcevgqlpgh").unwrap()
         );
-    }
-
-    #[test]
-    fn correct_public_key_from_private_key() {
-        // taken from: https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-        let secret_key = SecretKey::from_slice(
-            &*super::super::SECP,
-            &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                .unwrap()[..],
-        ).unwrap();
-
-        let public_key = secret_key.to_public_key();
-
-        assert_eq!(
-            public_key,
-            PublicKey::from_slice(
-                &*super::super::SECP,
-                &hex::decode("0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352")
-                    .unwrap()[..]
-            ).unwrap()
-        )
     }
 
 }
