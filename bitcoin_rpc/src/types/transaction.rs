@@ -1,6 +1,6 @@
 use bitcoin;
 use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
-use bitcoin::network::serialize::serialize_hex;
+use bitcoin::network::serialize as bitcoin_serialize;
 use bitcoin::util::hash::{HexError, Sha256dHash};
 use serde::de;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -70,18 +70,68 @@ impl FromStr for TransactionId {
 /// Currently the internal representation is the serialized string
 /// We might want to have a more sophisticated struct that can de- and encode the tx later on.
 /// We will need serializers and deserializers then.
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub struct SerializedRawTransaction(String);
+#[derive(Debug, PartialEq, Clone)]
+pub struct SerializedRawTransaction(BitcoinTransaction);
+
+impl Serialize for SerializedRawTransaction {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::Error;
+        let hex = bitcoin_serialize::serialize_hex(&self.0)
+            .map_err(|err| Error::custom(format!("{}", err)))?;
+        serializer.serialize_str(hex.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for SerializedRawTransaction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = SerializedRawTransaction;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("A raw transaction in hex")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<SerializedRawTransaction, E>
+            where
+                E: de::Error,
+            {
+                let hex_tx =
+                    bitcoin::util::misc::hex_bytes(v).map_err(|err| E::custom(format!("{}", err)))?;
+                let tx: BitcoinTransaction = bitcoin_serialize::deserialize(&hex_tx)
+                    .map_err(|err| E::custom(format!("{}", err)))?;
+                Ok(SerializedRawTransaction(tx))
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
 
 impl SerializedRawTransaction {
     pub fn from_bitcoin_transaction(
         transaction: BitcoinTransaction,
     ) -> Result<Self, bitcoin::util::Error> {
-        serialize_hex(&transaction).map(SerializedRawTransaction)
+        Ok(SerializedRawTransaction(transaction))
     }
 }
 
-from_str!(SerializedRawTransaction);
+impl FromStr for SerializedRawTransaction {
+    type Err = bitcoin::util::Error;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        let hex_tx = bitcoin::util::misc::hex_bytes(s)?;
+        let tx: BitcoinTransaction = bitcoin_serialize::deserialize(&hex_tx)?;
+        Ok(SerializedRawTransaction(tx))
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {
@@ -503,7 +553,7 @@ mod tests {
                     },
                 }
             ],
-            hex: SerializedRawTransaction::from("020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0603142d010101ffffffff0200000000000000002321039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000"),
+            hex: SerializedRawTransaction::from_str("020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0603142d010101ffffffff0200000000000000002321039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000").unwrap(),
             blockhash: BlockHash::from("796d7a2dbb1213b65dc2f7170575755efdfae8340b2183e971ed5a89113bbedf"),
             confirmations: 9,
             time: 1525393130,
