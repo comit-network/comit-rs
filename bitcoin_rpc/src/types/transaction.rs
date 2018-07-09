@@ -462,6 +462,16 @@ mod tests {
     }
 
     #[test]
+    fn should_deserialize_serialized_raw_transaction() {
+        let json = r#""02000000000100ca9a3b00000000160014716f8e8fa281cb42bb6900ce35b73a13fa3e66e000000000""#;
+
+        let tx: SerializedRawTransaction = serde_json::from_str(json).unwrap();
+
+        assert_eq!(tx, SerializedRawTransaction::from_str(
+            "02000000000100ca9a3b00000000160014716f8e8fa281cb42bb6900ce35b73a13fa3e66e000000000").unwrap());
+    }
+
+    #[test]
     fn should_deserialize_verbose_raw_transaction() {
         let json = r#"
         {
