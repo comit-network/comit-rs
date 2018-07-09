@@ -70,7 +70,7 @@ impl fmt::LowerHex for PubkeyHash {
 mod test {
     extern crate hex;
     use super::*;
-    pub use bitcoin::util::privkey::Privkey as PrivateKey;
+    use bitcoin::util::privkey::Privkey as PrivateKey;
     use secp256k1_support::ToPublicKey;
     use std::str::FromStr;
 

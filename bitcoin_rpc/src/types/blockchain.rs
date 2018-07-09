@@ -1,27 +1,33 @@
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+use bitcoin::network::constants::Network;
+use serde::Deserializer;
+use serde::de;
+use serde::export::fmt;
+
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct SoftFork {
     id: String,
     version: u32,
     reject: Reject,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Reject {
     status: bool,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Bip9SoftFork {
     csv: Bip9SoftForkDetails,
     segwit: Bip9SoftForkDetails,
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Bip9SoftForkDetails {
     status: String,
     bit: Option<u32>,
     #[serde(rename = "startTime")]
-    start_time: i64, // In regtest, startTime is -1
+    // In regtest, startTime is -1
+    start_time: i64,
     timeout: u64,
     since: u64,
     // TODO: implement before new BIP9
@@ -35,12 +41,14 @@ pub struct Bip9SoftForkDetails {
     */
 }
 
-#[derive(Deserialize, Serialize, Debug, PartialEq)]
-pub struct Blockchain {
-    chain: String,
+#[derive(Deserialize, Debug, PartialEq)]
+pub struct BlockchainInfo {
+    #[serde(deserialize_with = "network_deserialize")]
+    chain: Network,
     blocks: u64,
     headers: u64,
     bestblockhash: String,
+    //TODO: Cannot trust serde - it is not able to deserialise “4.656542373906925e-10"
     difficulty: f64,
     mediantime: u64,
     verificationprogress: f64,
@@ -54,4 +62,153 @@ pub struct Blockchain {
     softforks: Vec<SoftFork>,
     bip9_softforks: Bip9SoftFork,
     warnings: String,
+}
+
+fn network_deserialize<'de, D>(deserializer: D) -> Result<Network, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = Network;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("Bitcoin network: `main`, `test` or `regtest`")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Network, E>
+        where
+            E: de::Error,
+        {
+            match value {
+                "test" => Ok(Network::Testnet),
+                "regtest" => Ok(Network::BitcoinCoreRegtest),
+                "main" => Ok(Network::Bitcoin),
+                _ => Err(E::custom(format!("Unexpect value for Network: {}", value))),
+            }
+        }
+    }
+
+    deserializer.deserialize_str(Visitor)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json;
+
+    #[test]
+    fn can_deserialize_blockchain_response() {
+        let json = r#"{
+        "chain": "regtest",
+        "blocks": 0,
+        "headers": 0,
+        "bestblockhash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206",
+        "difficulty": 4.65654237390692e-10,
+        "mediantime": 1296688602,
+        "verificationprogress": 1,
+        "initialblockdownload": true,
+        "chainwork": "0000000000000000000000000000000000000000000000000000000000000002",
+        "size_on_disk": 293,
+        "pruned": false,
+        "softforks": [
+            {
+                "id": "bip34",
+                "version": 2,
+                "reject": {
+                    "status": false
+                }
+            },
+            {
+                "id": "bip66",
+                "version": 3,
+                "reject": {
+                    "status": false
+                }
+            },
+            {
+                "id": "bip65",
+                "version": 4,
+                "reject": {
+                    "status": false
+                }
+            }
+        ],
+        "bip9_softforks": {
+            "csv": {
+                "status": "defined",
+                "startTime": 0,
+                "timeout": 9223372036854775807,
+                "since": 0
+            },
+            "segwit": {
+                "status": "active",
+                "startTime": -1,
+                "timeout": 9223372036854775807,
+                "since": 0
+            }
+        },
+        "warnings": ""
+}"#;
+        let blockchain: BlockchainInfo = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            blockchain,
+            BlockchainInfo {
+                chain: Network::BitcoinCoreRegtest,
+                blocks: 0,
+                headers: 0,
+                bestblockhash: String::from(
+                    "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+                ),
+                difficulty: 4.65654237390692e-10,
+                mediantime: 1296688602,
+                verificationprogress: 1.0,
+                initialblockdownload: true,
+                chainwork: String::from(
+                    "0000000000000000000000000000000000000000000000000000000000000002"
+                ),
+                size_on_disk: 293,
+                pruned: false,
+                pruneheight: None,
+                automatic_pruning: None,
+                prune_target_size: None,
+                softforks: vec![
+                    SoftFork {
+                        id: String::from("bip34"),
+                        version: 2,
+                        reject: Reject { status: false },
+                    },
+                    SoftFork {
+                        id: String::from("bip66"),
+                        version: 3,
+                        reject: Reject { status: false },
+                    },
+                    SoftFork {
+                        id: String::from("bip65"),
+                        version: 4,
+                        reject: Reject { status: false },
+                    },
+                ],
+                bip9_softforks: Bip9SoftFork {
+                    csv: Bip9SoftForkDetails {
+                        status: String::from("defined"),
+                        bit: None,
+                        start_time: 0,
+                        timeout: 9223372036854775807,
+                        since: 0,
+                    },
+                    segwit: Bip9SoftForkDetails {
+                        status: String::from("active"),
+                        bit: None,
+                        start_time: -1,
+                        timeout: 9223372036854775807,
+                        since: 0,
+                    },
+                },
+                warnings: String::new(),
+            },
+        )
+    }
 }
