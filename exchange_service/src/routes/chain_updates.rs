@@ -3,7 +3,7 @@ use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc;
 use bitcoin_rpc;
 use bitcoin_support::PubkeyHash;
-use bitcoin_wallet;
+use bitcoin_support;
 use common_types::secret::Secret;
 use event_store::EventStore;
 use event_store::TradeId;
@@ -45,7 +45,7 @@ pub fn post_revealed_secret(
     event_store: State<EventStore>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
     fee_service: State<Arc<BitcoinFeeService>>,
-    btc_exchange_redeem_address: State<bitcoin_wallet::Address>,
+    btc_exchange_redeem_address: State<bitcoin_support::Address>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
     let btc_exchange_redeem_address = btc_exchange_redeem_address.inner();

@@ -1,7 +1,7 @@
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_support::ToP2wpkhAddress;
-use bitcoin_wallet;
+use bitcoin_support;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -117,7 +117,7 @@ pub fn post_buy_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
-    exchange_success_private_key: State<bitcoin_wallet::PrivateKey>,
+    exchange_success_private_key: State<bitcoin_support::PrivateKey>,
     exchange_refund_address: State<EthereumAddress>,
     network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
@@ -316,10 +316,10 @@ mod tests {
             )),
             Arc::new(bitcoin_rpc::BitcoinStubClient::new()),
             "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
-            bitcoin_wallet::PrivateKey::from_str(
+            bitcoin_support::PrivateKey::from_str(
                 "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
             ).unwrap(),
-            bitcoin_wallet::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
+            bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
             Network::BitcoinCoreRegtest,
             Arc::new(StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(
                 50,

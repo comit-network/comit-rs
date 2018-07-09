@@ -1,7 +1,7 @@
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
-use bitcoin_wallet;
+use bitcoin_support;
 use ethereum_service::EthereumService;
 use event_store::EventStore;
 use rocket;
@@ -16,8 +16,8 @@ pub fn create_rocket_instance(
     ethereum_service: Arc<EthereumService>,
     bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
     exchange_refund_address: EthereumAddress,
-    exchange_success_private_key: bitcoin_wallet::PrivateKey,
-    btc_exchange_redeem_address: bitcoin_wallet::Address,
+    exchange_success_private_key: bitcoin_support::PrivateKey,
+    btc_exchange_redeem_address: bitcoin_support::Address,
     network: Network,
     bitcoin_fee_service: Arc<BitcoinFeeService>,
 ) -> rocket::Rocket {
