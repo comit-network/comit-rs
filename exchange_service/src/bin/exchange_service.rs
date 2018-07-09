@@ -3,7 +3,6 @@
 extern crate bitcoin;
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
-extern crate bitcoin_wallet;
 extern crate common_types;
 extern crate env_logger;
 extern crate ethereum_wallet;
@@ -23,8 +22,7 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc::BitcoinRpcApi;
-use bitcoin_support::BitcoinQuantity;
-use bitcoin_wallet::PrivateKey;
+use bitcoin_support::{BitcoinQuantity, PrivateKey};
 use ethereum_wallet::InMemoryWallet;
 use ethereum_wallet::ToEthereumAddress;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
@@ -98,7 +96,7 @@ fn main() {
     let exchange_success_private_key =
         PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
 
-    let btc_exchange_redeem_address = bitcoin_wallet::Address::from_str(
+    let btc_exchange_redeem_address = bitcoin_support::Address::from_str(
         var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
     ).expect("BTC Exchange Redeem Address is Invalid");
 

@@ -4,7 +4,9 @@ use bitcoin::blockdata::script::{Builder, Script};
 pub use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin_support::PubkeyHash;
-use secret::SecretHash;
+use secp256k1_support::SecretKey;
+use secret::{Secret, SecretHash};
+use witness::*;
 
 // Create BTC HTLC
 // Returns P2WSH address
@@ -57,6 +59,37 @@ impl Htlc {
 
     pub fn compute_address(&self, network: Network) -> Address {
         Address::p2wsh(&self.script, network)
+    }
+
+    pub fn witness_with_secret(
+        &self,
+        secret_key: SecretKey,
+        secret: Secret,
+    ) -> Result<WitnessHtlcSecret, InvalidWitness> {
+        let witness_method = WitnessHtlcSecret {
+            script: self.script.clone(),
+            secret_key,
+            secret,
+        };
+
+        witness_method
+            .validate(&self.secret_hash, &self.recipient_success_pubkey_hash)
+            .and(Ok(witness_method))
+    }
+
+    pub fn witness_after_timeout(
+        &self,
+        secret_key: SecretKey,
+    ) -> Result<WitnessHtlcTimeout, InvalidWitness> {
+        let witness_method = WitnessHtlcTimeout {
+            script: self.script.clone(),
+            sequence: self.relative_timelock,
+            secret_key,
+        };
+
+        witness_method
+            .validate(&self.sender_refund_pubkey_hash)
+            .and(Ok(witness_method))
     }
 }
 

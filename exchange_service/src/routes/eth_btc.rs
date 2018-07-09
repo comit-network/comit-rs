@@ -1,7 +1,7 @@
 use bitcoin_htlc::Network;
 use bitcoin_rpc;
-use bitcoin_support::ToP2wpkhAddress;
 use bitcoin_support;
+use bitcoin_support::ToP2wpkhAddress;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;

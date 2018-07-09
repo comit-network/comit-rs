@@ -13,10 +13,6 @@ lazy_static! {
     static ref SECP: Secp256k1 = Secp256k1::new();
 }
 
-mod bitcoin_wallet;
 mod key_store;
-mod weight;
 
-pub use bitcoin_wallet::*;
 pub use key_store::*;
-pub use weight::*;
