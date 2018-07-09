@@ -179,7 +179,7 @@ mod test {
     use witness::WitnessP2pkh;
 
     #[test]
-    fn estimate_weight() {
+    fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() {
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
         let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl").unwrap();
@@ -189,7 +189,7 @@ mod test {
             inputs: vec![
                 PrimedInput::new(
                     txid,
-                    0,
+                    1, // First number I found that gave me a 71 byte signature
                     BitcoinQuantity::from_bitcoin(1.0),
                     WitnessP2pkh(private_key.secret_key().clone()),
                 ),
@@ -197,6 +197,7 @@ mod test {
             output_address: dst_addr,
             locktime: 0,
         };
+        let input_value = primed_txn.input_value();
 
         let rate = BitcoinQuantity::from_satoshi(42);
 
@@ -204,7 +205,9 @@ mod test {
         let transaction = primed_txn.sign_with_rate(rate);
 
         let actual_weight: Weight = transaction.get_weight().into();
+        let fee = input_value.satoshi() - transaction.output[0].value;
 
-        assert_eq!(estimated_weight, actual_weight);
+        assert_eq!(estimated_weight, actual_weight, "weight is correct");
+        assert_eq!(fee, 4620, "actual fee paid is correct");
     }
 }

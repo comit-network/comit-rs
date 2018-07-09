@@ -6,7 +6,7 @@ pub struct Weight(u64);
 
 impl Weight {
     pub fn to_virtual_bytes(&self) -> u64 {
-        self.0 / 4
+        ((self.0 as f64) / 4.0).ceil() as u64
     }
 
     pub fn calculate_fee(&self, fee_per_byte: BitcoinQuantity) -> BitcoinQuantity {
