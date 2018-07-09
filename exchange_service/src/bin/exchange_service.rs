@@ -2,6 +2,7 @@
 #![plugin(rocket_codegen)]
 extern crate bitcoin;
 extern crate bitcoin_rpc;
+extern crate bitcoin_support;
 extern crate bitcoin_wallet;
 extern crate common_types;
 extern crate env_logger;
@@ -22,8 +23,8 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc::BitcoinRpcApi;
+use bitcoin_support::BitcoinQuantity;
 use bitcoin_wallet::PrivateKey;
-use common_types::BitcoinQuantity;
 use ethereum_wallet::InMemoryWallet;
 use ethereum_wallet::ToEthereumAddress;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;

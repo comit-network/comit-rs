@@ -1,5 +1,5 @@
 use bitcoin_wallet::Weight;
-use common_types::BitcoinQuantity;
+use bitcoin_support::BitcoinQuantity;
 
 mod static_bitcoin_fee_service;
 

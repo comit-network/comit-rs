@@ -1,5 +1,5 @@
 use bitcoin_fee_service::{BitcoinFeeService, Error, Rate};
-use common_types::BitcoinQuantity;
+use bitcoin_support::BitcoinQuantity;
 
 pub struct StaticBitcoinFeeService(Rate);
 
