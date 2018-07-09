@@ -3,6 +3,7 @@ extern crate hex as std_hex;
 extern crate jsonrpc;
 #[macro_use]
 extern crate log;
+extern crate regex;
 extern crate rustc_serialize;
 extern crate serde;
 #[macro_use]

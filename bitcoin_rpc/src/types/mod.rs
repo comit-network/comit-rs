@@ -4,7 +4,6 @@ mod address;
 mod block;
 mod blockchain;
 mod keys;
-mod opcodes;
 mod script;
 mod transaction;
 
@@ -40,6 +39,5 @@ pub use self::address::*;
 pub use self::block::*;
 pub use self::blockchain::*;
 pub use self::keys::*;
-pub use self::opcodes::*;
 pub use self::script::*;
 pub use self::transaction::*;

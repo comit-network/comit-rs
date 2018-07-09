@@ -2,20 +2,46 @@ use bitcoin::blockdata::opcodes::All;
 use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::Builder;
 use bitcoin::blockdata::script::Script;
+use regex::Regex;
+use std_hex;
+use std::num;
 
 #[derive(Debug)]
 pub enum Error {
     UnknownOpCode,
+    IntConversionFail(num::ParseIntError),
+    HexConversionFail(std_hex::FromHexError),
 }
 
 pub fn script_from_str(str: &str) -> Result<Script, Error> {
     let iter = str.split(" ");
     let mut script = Builder::new();
     for s in iter {
-        let op = opcode_from_str(s)?;
-        script = script.push_opcode(op);
+        script = push_from_str(script, &s)?;
     }
     Ok(script.into_script())
+}
+
+pub fn push_from_str(builder: Builder, s: &str) -> Result<Builder, Error> {
+    let op_re = Regex::new(r"^OP_.+$").unwrap();
+    if op_re.is_match(s) {
+        let builder = builder.push_opcode(opcode_from_str(s)?);
+        return Ok(builder);
+    }
+
+    let int_re = Regex::new(r"^[0-9]+$").unwrap();
+    if int_re.is_match(s) {
+        let int = s.parse::<i64>().map_err(|err| Error::IntConversionFail(err))?; // happens if bigger than i64
+        let builder = builder.push_int(int);
+        return Ok(builder);
+    }
+    let hex_re = Regex::new(r"^[A-Fa-f0-9]+$").unwrap();
+    if hex_re.is_match(s) {
+        let hex = std_hex::decode(s).map_err(|err| Error::HexConversionFail(err))?;
+        let builder = builder.push_slice(hex.as_ref());
+        return Ok(builder);
+    }
+    Ok(builder)
 }
 
 pub fn opcode_from_str(s: &str) -> Result<All, Error> {
@@ -84,7 +110,7 @@ pub fn opcode_from_str(s: &str) -> Result<All, Error> {
         "OP_RETURN" => Ok(OP_RETURN),
         // 0x6b Puts the input onto the top of the alt stack. Removes it from the main stack.
         "OP_TOALTSTACK" => Ok(OP_TOALTSTACK),
-        _ => Err(Error::UnknownOpCode), /*
+        /*
         0x6b,
         /// Pop one element from the alt stack onto the main stack
         OP_FROMALTSTACK =
@@ -287,9 +313,17 @@ pub fn opcode_from_str(s: &str) -> Result<All, Error> {
         OP_CHECKSIGVERIFY =
         0xad,
         /// Pop N, N pubkeys, M, M signatures, a dummy (due to bug in reference code), and verify that all M signatures are valid.
-    /// Push 1 for "all valid", 0 otherwise
-        OP_CHECKMULTISIG =
-        0xae,
+        */
+    // 0xae Compares the first signature against each public key until it finds an ECDSA match.
+        // Starting with the subsequent public key, it compares the second signature against each
+        // remaining public key until it finds an ECDSA match. The process is repeated until all
+        // signatures have been checked or not enough public keys remain to produce a successful result.
+        // All signatures need to match a public key. Because public keys are not checked again if
+        // they fail any signature comparison, signatures must be placed in the scriptSig using the
+        // same order as their corresponding public keys were placed in the scriptPubKey or redeemScript.
+        // If all signatures are valid, 1 is returned, 0 otherwise. Due to a bug, one extra unused value is removed from the stack.
+        "OP_CHECKMULTISIG" => Ok(OP_CHECKMULTISIG),
+        /*
         /// Like the above but return success/failure
         OP_CHECKMULTISIGVERIFY =
         0xaf,
@@ -323,6 +357,7 @@ pub fn opcode_from_str(s: &str) -> Result<All, Error> {
         /// Does nothing
         OP_NOP10 =
         0xb9,*/
+        _ => Err(Error::UnknownOpCode),
     }
 }
 
@@ -339,7 +374,7 @@ mod tests {
     }
 
     #[test]
-    fn test_script_from_str() {
+    fn test_simple_script_from_str() {
         let str = "OP_0 OP_1NEGATE OP_TRUE";
         let script = script_from_str(&str).unwrap();
 
@@ -349,6 +384,24 @@ mod tests {
                 .push_opcode(OP_PUSHBYTES_0)
                 .push_opcode(OP_PUSHNUM_NEG1)
                 .push_opcode(OP_PUSHNUM_1)
+                .into_script()
+        )
+    }
+
+    #[test]
+    fn test_multisig_script_from_str() {
+        let str = "2 03ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf 02ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f 022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d5 3 OP_CHECKMULTISIG";
+        let script = script_from_str(&str).unwrap();
+
+        assert_eq!(
+        script,
+            Builder::new()
+                .push_opcode(OP_PUSHNUM_2)
+                .push_slice(std_hex::decode("03ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf").unwrap().as_ref())
+                .push_slice(std_hex::decode("02ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f").unwrap().as_ref())
+                .push_slice(std_hex::decode("022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d5").unwrap().as_ref())
+                .push_opcode(OP_PUSHNUM_3)
+                .push_opcode(OP_CHECKMULTISIG)
                 .into_script()
         )
     }
