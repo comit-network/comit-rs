@@ -115,6 +115,12 @@ impl<'de> Deserialize<'de> for SerializedRawTransaction {
     }
 }
 
+impl Into<BitcoinTransaction> for SerializedRawTransaction {
+    fn into(self) -> BitcoinTransaction {
+        self.0
+    }
+}
+
 impl SerializedRawTransaction {
     pub fn from_bitcoin_transaction(
         transaction: BitcoinTransaction,
@@ -463,12 +469,17 @@ mod tests {
 
     #[test]
     fn should_deserialize_serialized_raw_transaction() {
-        let json = r#""02000000000100ca9a3b00000000160014716f8e8fa281cb42bb6900ce35b73a13fa3e66e000000000""#;
+        let json = r#""0200000000010144af9381cd3cb3d14d549b27c8d8a4c87d1d58e501df656342363886277f62e10000000000feffffff02aba9ac0300000000160014908abcc05defb6ba5630268b395b1fab19ad50d760566c0000000000220020c39353c0df01296ab055e83b701715b765636cf91c795deb7573e4b055ada53302473044022010d3b0f0e48977b5c7af7f6a0839a8ed24cd760c4e95668ed7b3275fca727360022007a27825d82a1e69bff2e8cbf195aa4280c214f1cf7650afb6fa2eb49a9765040121036bc4598b0de6ac9c560f1322ce86a0bf27e934837ac86196337db06002c3a352f83a1400""#;
 
         let tx: SerializedRawTransaction = serde_json::from_str(json).unwrap();
 
         assert_eq!(tx, SerializedRawTransaction::from_str(
-            "02000000000100ca9a3b00000000160014716f8e8fa281cb42bb6900ce35b73a13fa3e66e000000000").unwrap());
+            "0200000000010144af9381cd3cb3d14d549b27c8d8a4c87d1d58e501df656342363886277f62e10000000000feffffff02aba9ac0300000000160014908abcc05defb6ba5630268b395b1fab19ad50d760566c0000000000220020c39353c0df01296ab055e83b701715b765636cf91c795deb7573e4b055ada53302473044022010d3b0f0e48977b5c7af7f6a0839a8ed24cd760c4e95668ed7b3275fca727360022007a27825d82a1e69bff2e8cbf195aa4280c214f1cf7650afb6fa2eb49a9765040121036bc4598b0de6ac9c560f1322ce86a0bf27e934837ac86196337db06002c3a352f83a1400").unwrap());
+        let bitcoin_tx: BitcoinTransaction = tx.into();
+        let expected_txid = Sha256dHash::from_hex(
+            "85a42342de714d4fa39af1fa503b9363df8a31450ff22869b300f686737370e4",
+        ).unwrap();
+        assert_eq!(bitcoin_tx.txid(), expected_txid);
     }
 
     #[test]
