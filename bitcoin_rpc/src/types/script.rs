@@ -61,14 +61,6 @@ pub struct DecodedScript {
     p2sh: Address,
 }
 
-impl TryInto<BitcoinScript> for DecodedScript {
-    type Error = script_util::Error;
-
-    fn try_into(self) -> Result<BitcoinScript, Self::Error> {
-        script_util::script_from_str(self.asm.as_ref())
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -105,52 +97,6 @@ mod tests {
             ]),
             p2sh: Address::from_str("2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq").unwrap(),
         })
-    }
-
-    #[test]
-    fn can_convert_to_bitcoin_script() {
-        let json = r#"
-        {
-            "asm" : "2 03ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf 02ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f 022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d5 3 OP_CHECKMULTISIG",
-            "reqSigs" : 2,
-            "type" : "multisig",
-            "addresses" : [
-                "mjbLRSidW1MY8oubvs4SMEnHNFXxCcoehQ",
-                "mo1vzGwCzWqteip29vGWWW6MsEBREuzW94",
-                "mt17cV37fBqZsnMmrHnGCm9pM28R1kQdMG"
-            ],
-            "p2sh" : "2MyVxxgNBk5zHRPRY2iVjGRJHYZEp1pMCSq"
-        }"#;
-
-        let script: DecodedScript = serde_json::from_str(json).unwrap();
-        let bitcoin_script: BitcoinScript = script.try_into().unwrap();
-
-        assert_eq!(
-            bitcoin_script,
-            Builder::new()
-                .push_opcode(OP_PUSHNUM_2)
-                .push_slice(
-                    std_hex::decode(
-                        "03ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf"
-                    ).unwrap()
-                        .as_ref()
-                )
-                .push_slice(
-                    std_hex::decode(
-                        "02ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f"
-                    ).unwrap()
-                        .as_ref()
-                )
-                .push_slice(
-                    std_hex::decode(
-                        "022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d5"
-                    ).unwrap()
-                        .as_ref()
-                )
-                .push_opcode(OP_PUSHNUM_3)
-                .push_opcode(OP_CHECKMULTISIG)
-                .into_script()
-        )
     }
 
 }

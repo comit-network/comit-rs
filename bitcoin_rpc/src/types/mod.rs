@@ -5,7 +5,6 @@ mod block;
 mod blockchain;
 mod keys;
 mod script;
-mod script_util;
 mod transaction;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -41,5 +40,4 @@ pub use self::block::*;
 pub use self::blockchain::*;
 pub use self::keys::*;
 pub use self::script::*;
-pub use self::script_util::*;
 pub use self::transaction::*;
