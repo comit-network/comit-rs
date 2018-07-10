@@ -1,4 +1,5 @@
 use bitcoin;
+use bitcoin::blockdata::script::Script as BitcoinScript;
 use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
 use bitcoin::network::serialize::serialize_hex;
 use bitcoin::util::hash::{HexError, Sha256dHash};
@@ -215,7 +216,7 @@ pub struct UnspentTransactionOutput {
     pub address: Option<Address>,
     pub account: Option<String>,
     #[serde(rename = "scriptPubKey")]
-    pub script_pub_key: EncodedScriptPubKey,
+    pub script_pub_key: BitcoinScript,
     pub redeem_script: Option<String>,
     pub amount: f64,
     pub confirmations: i32,
@@ -248,7 +249,7 @@ pub struct TransactionOutputDetail {
     txid: TransactionId,
     vout: u32,
     #[serde(rename = "scriptPubKey")]
-    script_pub_key: EncodedScriptPubKey,
+    script_pub_key: BitcoinScript,
     #[serde(rename = "redeemScript")]
     redeem_script: Option<RedeemScript>,
 }

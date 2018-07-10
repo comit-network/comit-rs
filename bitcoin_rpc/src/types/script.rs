@@ -1,5 +1,9 @@
 use bitcoin::blockdata::script::Script as BitcoinScript;
-use std::convert::TryInto;
+use serde::Deserializer;
+use serde::Serializer;
+use serde::de;
+use serde::export::fmt;
+use std_hex;
 use types::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -7,28 +11,50 @@ pub struct RedeemScript(String);
 
 from_str!(RedeemScript);
 
-// TODO: Maybe we can get rid of this with a custom (de)serializer that decodes the hex string
-// into the ScriptPubKey struct. Let's leave it like this for now so we don't have a primitive there
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub struct EncodedScriptPubKey(String);
-
-from_str!(EncodedScriptPubKey);
-
-impl AsRef<[u8]> for EncodedScriptPubKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScriptPubKey {
     pub asm: String,
-    pub hex: EncodedScriptPubKey,
+    #[serde(deserialize_with = "script_deserialize")]
+    #[serde(serialize_with = "script_serialize")]
+    pub hex: BitcoinScript,
     #[serde(rename = "reqSigs")]
     pub req_sigs: Option<u32>,
     #[serde(rename = "type")]
     pub script_type: ScriptType,
     pub addresses: Option<Vec<Address>>,
+}
+
+fn script_deserialize<'de, D>(deserializer: D) -> Result<BitcoinScript, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = BitcoinScript;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("Bitcoin network: `main`, `test` or `regtest`")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<BitcoinScript, E>
+        where
+            E: de::Error,
+        {
+            let hex = std_hex::decode(value)
+                .map_err(|err| E::custom(format!("Could not decode hex: {}", err)))?;
+            Ok(BitcoinScript::from(hex))
+        }
+    }
+
+    deserializer.deserialize_str(Visitor)
+}
+
+fn script_serialize<S>(script: &BitcoinScript, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(format!("{:x}", script).as_str())
 }
 
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
