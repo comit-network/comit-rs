@@ -1,3 +1,5 @@
+#![feature(try_from)]
+
 extern crate bitcoin;
 extern crate hex as std_hex;
 extern crate jsonrpc;

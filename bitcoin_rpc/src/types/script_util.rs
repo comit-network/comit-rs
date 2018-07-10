@@ -3,8 +3,8 @@ use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::Builder;
 use bitcoin::blockdata::script::Script;
 use regex::Regex;
-use std_hex;
 use std::num;
+use std_hex;
 
 #[derive(Debug)]
 pub enum Error {
@@ -31,7 +31,8 @@ pub fn push_from_str(builder: Builder, s: &str) -> Result<Builder, Error> {
 
     let int_re = Regex::new(r"^[0-9]+$").unwrap();
     if int_re.is_match(s) {
-        let int = s.parse::<i64>().map_err(|err| Error::IntConversionFail(err))?; // happens if bigger than i64
+        let int = s.parse::<i64>()
+            .map_err(|err| Error::IntConversionFail(err))?; // happens if bigger than i64
         let builder = builder.push_int(int);
         return Ok(builder);
     }
@@ -314,7 +315,7 @@ pub fn opcode_from_str(s: &str) -> Result<All, Error> {
         0xad,
         /// Pop N, N pubkeys, M, M signatures, a dummy (due to bug in reference code), and verify that all M signatures are valid.
         */
-    // 0xae Compares the first signature against each public key until it finds an ECDSA match.
+        // 0xae Compares the first signature against each public key until it finds an ECDSA match.
         // Starting with the subsequent public key, it compares the second signature against each
         // remaining public key until it finds an ECDSA match. The process is repeated until all
         // signatures have been checked or not enough public keys remain to produce a successful result.
@@ -394,12 +395,27 @@ mod tests {
         let script = script_from_str(&str).unwrap();
 
         assert_eq!(
-        script,
+            script,
             Builder::new()
                 .push_opcode(OP_PUSHNUM_2)
-                .push_slice(std_hex::decode("03ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf").unwrap().as_ref())
-                .push_slice(std_hex::decode("02ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f").unwrap().as_ref())
-                .push_slice(std_hex::decode("022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d5").unwrap().as_ref())
+                .push_slice(
+                    std_hex::decode(
+                        "03ede722780d27b05f0b1169efc90fa15a601a32fc6c3295114500c586831b6aaf"
+                    ).unwrap()
+                        .as_ref()
+                )
+                .push_slice(
+                    std_hex::decode(
+                        "02ecd2d250a76d204011de6bc365a56033b9b3a149f679bc17205555d3c2b2854f"
+                    ).unwrap()
+                        .as_ref()
+                )
+                .push_slice(
+                    std_hex::decode(
+                        "022d609d2f0d359e5bc0e5d0ea20ff9f5d3396cb5b1906aa9c56a0e7b5edc0c5d5"
+                    ).unwrap()
+                        .as_ref()
+                )
                 .push_opcode(OP_PUSHNUM_3)
                 .push_opcode(OP_CHECKMULTISIG)
                 .into_script()
