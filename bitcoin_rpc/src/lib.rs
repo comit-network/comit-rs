@@ -12,8 +12,8 @@ extern crate serde_json;
 
 mod bitcoin_rpc_api;
 mod bitcoincore;
+pub mod regtest_helpers;
 mod stub_rpc_client;
-mod test_utilities;
 mod types;
 
 pub use bitcoin_rpc_api::*;
@@ -21,5 +21,4 @@ pub use bitcoincore::*;
 pub use jsonrpc::RpcError;
 pub use rustc_serialize::hex;
 pub use stub_rpc_client::*;
-pub use test_utilities::*;
 pub use types::*;

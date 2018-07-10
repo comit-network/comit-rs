@@ -51,8 +51,6 @@ impl WitnessMethod for WitnessP2pkh {
 #[cfg(test)]
 mod test {
     use bitcoin_support::PrivateKey;
-    use bitcoin_support::Transaction;
-    use bitcoin_support::serialize::deserialize;
     use std::str::FromStr;
     extern crate hex;
     use super::*;

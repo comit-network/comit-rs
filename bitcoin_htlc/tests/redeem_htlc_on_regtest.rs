@@ -8,13 +8,12 @@ extern crate common_types;
 extern crate hex;
 extern crate secp256k1_support;
 
-use bitcoin::network::constants::Network;
-use bitcoin::network::serialize::serialize_hex;
-use bitcoin::util::privkey::Privkey as PrivateKey;
 use bitcoin_htlc::Htlc;
 use bitcoin_node::BitcoinNode;
-use bitcoin_rpc::{BitcoinRpcApi, TestUtility};
-use bitcoin_support::{Address, PubkeyHash};
+use bitcoin_rpc::BitcoinRpcApi;
+use bitcoin_rpc::regtest_helpers::*;
+use bitcoin_support::serialize::serialize_hex;
+use bitcoin_support::{Address, Network, PrivateKey, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::BitcoinQuantity;
 use common_types::secret::Secret;

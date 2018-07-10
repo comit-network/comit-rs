@@ -1,11 +1,12 @@
 // Place for putting common queries needed in tests
 use BitcoinRpcApi;
 use bitcoin::util::address::Address as BitcoinAddress;
+use bitcoin_support::{BitcoinQuantity, Network, Sha256dHash, ToP2wpkhAddress};
 use bitcoincore::TxOutConfirmations;
 use std_hex;
 use types::{TransactionId, TransactionOutput, UnspentTransactionOutput};
 
-pub trait TestUtility {
+pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(
         &self,
         txid: &TransactionId,
@@ -18,9 +19,14 @@ pub trait TestUtility {
     ) -> TransactionOutput;
 
     fn enable_segwit(&self);
+    fn create_p2wpkh_vout_at<D: ToP2wpkhAddress>(
+        &self,
+        dest: D,
+        value: BitcoinQuantity,
+    ) -> (Sha256dHash, TransactionOutput);
 }
 
-impl<Rpc: BitcoinRpcApi> TestUtility for Rpc {
+impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
     fn enable_segwit(&self) {
         self.generate(432).unwrap();
     }
@@ -65,5 +71,24 @@ impl<Rpc: BitcoinRpcApi> TestUtility for Rpc {
             })
             .unwrap()
             .clone()
+    }
+
+    fn create_p2wpkh_vout_at<D: ToP2wpkhAddress>(
+        &self,
+        dest: D,
+        value: BitcoinQuantity,
+    ) -> (Sha256dHash, TransactionOutput) {
+        let address = dest.to_p2wpkh_address(Network::BitcoinCoreRegtest);
+
+        let txid = self.send_to_address(&address.clone().into(), value.bitcoin())
+            .unwrap()
+            .into_result()
+            .unwrap();
+
+        self.generate(1).unwrap();
+
+        let vout = self.find_vout_for_address(&txid, &address);
+
+        (txid.into(), vout)
     }
 }
