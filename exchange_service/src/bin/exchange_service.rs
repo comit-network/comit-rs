@@ -22,7 +22,7 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc::BitcoinRpcApi;
-use bitcoin_support::{BitcoinQuantity, PrivateKey};
+use bitcoin_support::PrivateKey;
 use ethereum_wallet::InMemoryWallet;
 use ethereum_wallet::ToEthereumAddress;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
@@ -137,10 +137,8 @@ fn main() {
 
     let satoshi_per_kb = var_or_exit("BITCOIN_SATOSHI_PER_KB");
     let satoshi_per_kb =
-        u64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into u64");
-
-    let rate_per_kb = BitcoinQuantity::from_satoshi(satoshi_per_kb);
-    let bitcoin_fee_service = StaticBitcoinFeeService::new(rate_per_kb);
+        f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
+    let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
 
     create_rocket_instance(
         Arc::new(api_client),

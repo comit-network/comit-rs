@@ -227,7 +227,6 @@ mod tests {
     use super::*;
     use bitcoin_fee_service::StaticBitcoinFeeService;
     use bitcoin_htlc::Network;
-    use bitcoin_support::BitcoinQuantity;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_wallet::fake::StaticFakeWallet;
     use gas_price_service::StaticGasPriceService;
@@ -321,9 +320,7 @@ mod tests {
             ).unwrap(),
             bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
             Network::BitcoinCoreRegtest,
-            Arc::new(StaticBitcoinFeeService::new(BitcoinQuantity::from_satoshi(
-                50,
-            ))),
+            Arc::new(StaticBitcoinFeeService::new(50.0)),
         );
         rocket::local::Client::new(rocket).unwrap()
     }

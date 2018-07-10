@@ -1,5 +1,3 @@
-use bitcoin_support::BitcoinQuantity;
-
 mod static_bitcoin_fee_service;
 
 pub use self::static_bitcoin_fee_service::StaticBitcoinFeeService;
@@ -10,5 +8,5 @@ pub enum Error {
 }
 
 pub trait BitcoinFeeService: Send + Sync {
-    fn get_recommended_fee(&self) -> Result<BitcoinQuantity, Error>;
+    fn get_recommended_fee(&self) -> Result<f64, Error>;
 }

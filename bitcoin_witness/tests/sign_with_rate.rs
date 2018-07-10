@@ -35,7 +35,7 @@ fn sign_with_rate() {
         .unwrap()
         .into();
 
-    let rate = BitcoinQuantity::from_satoshi(42);
+    let rate = 42.0;
 
     let primed_tx = PrimedTransaction {
         inputs: vec![
