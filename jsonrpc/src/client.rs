@@ -23,13 +23,13 @@ impl RpcClient {
         T: Serialize,
         R: DeserializeOwned,
     {
-        println!("Request: {:?}", request);
+        debug!("Request: {:?}", request);
         let res = self.client
             .post(self.url.as_str())
             .json(request)
             .send()
             .and_then(|mut res| res.json::<RpcResponse<R>>());
-        println!("Response: {:?}", res);
+        debug!("Response: {:?}", res);
         res
 
         // TODO: Maybe check if req.id == res.id. Should always hold since it is a synchronous call.
