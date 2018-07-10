@@ -27,6 +27,13 @@ pub trait BitcoinRpcApi: Send + Sync {
         output: &NewTransactionOutput,
     ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError>;
 
+    //TODO: would a trait inside a trait be better?
+    fn create_unfunded_raw_transaction(
+        &self,
+        inputs: Vec<&NewTransactionInput>,
+        output: &NewTransactionOutput,
+    ) -> Result<RpcResponse<SerializedUnfundedRawTransaction>, HTTPError>;
+
     fn decode_rawtransaction(
         &self,
         tx: SerializedRawTransaction,
@@ -45,7 +52,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     fn fund_raw_transaction(
         &self,
-        tx: &SerializedRawTransaction,
+        tx: &SerializedUnfundedRawTransaction,
         options: &FundingOptions,
     ) -> Result<RpcResponse<FundingResult>, HTTPError>;
 

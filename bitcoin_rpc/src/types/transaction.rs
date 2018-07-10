@@ -67,9 +67,6 @@ impl FromStr for TransactionId {
     }
 }
 
-/// Currently the internal representation is the serialized string
-/// We might want to have a more sophisticated struct that can de- and encode the tx later on.
-/// We will need serializers and deserializers then.
 #[derive(Debug, PartialEq, Clone)]
 pub struct SerializedRawTransaction(BitcoinTransaction);
 
@@ -138,6 +135,11 @@ impl FromStr for SerializedRawTransaction {
         Ok(SerializedRawTransaction(tx))
     }
 }
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub struct SerializedUnfundedRawTransaction(String);
+
+from_str!(SerializedUnfundedRawTransaction);
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {

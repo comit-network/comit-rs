@@ -31,6 +31,14 @@ impl BitcoinRpcApi for BitcoinStubClient {
         unimplemented!()
     }
 
+    fn create_unfunded_raw_transaction(
+        &self,
+        inputs: Vec<&NewTransactionInput>,
+        output: &NewTransactionOutput,
+    ) -> Result<RpcResponse<SerializedUnfundedRawTransaction>, HTTPError> {
+        unimplemented!()
+    }
+
     fn decode_rawtransaction(
         &self,
         tx: SerializedRawTransaction,
@@ -48,7 +56,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
 
     fn fund_raw_transaction(
         &self,
-        tx: &SerializedRawTransaction,
+        tx: &SerializedUnfundedRawTransaction,
         options: &FundingOptions,
     ) -> Result<RpcResponse<FundingResult>, HTTPError> {
         unimplemented!()

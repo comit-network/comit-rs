@@ -89,6 +89,21 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         inputs: Vec<&NewTransactionInput>,
         output: &NewTransactionOutput,
     ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError> {
+        //TODO: Should we add a check for inputs to cleanly exist?
+        self.send(&RpcRequest::new2(
+            JsonRpcVersion::V1,
+            "test",
+            "createrawtransaction",
+            inputs,
+            output,
+        ))
+    }
+
+    fn create_unfunded_raw_transaction(
+        &self,
+        inputs: Vec<&NewTransactionInput>,
+        output: &NewTransactionOutput,
+    ) -> Result<RpcResponse<SerializedUnfundedRawTransaction>, HTTPError> {
         self.send(&RpcRequest::new2(
             JsonRpcVersion::V1,
             "test",
@@ -130,7 +145,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
 
     fn fund_raw_transaction(
         &self,
-        tx: &SerializedRawTransaction,
+        tx: &SerializedUnfundedRawTransaction,
         options: &FundingOptions,
     ) -> Result<RpcResponse<FundingResult>, HTTPError> {
         self.send(&RpcRequest::new2(
