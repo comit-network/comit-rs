@@ -216,8 +216,7 @@ pub struct UnspentTransactionOutput {
     pub address: Option<Address>,
     pub account: Option<String>,
     #[serde(rename = "scriptPubKey")]
-    #[serde(deserialize_with = "script_serde::deserialize")]
-    #[serde(serialize_with = "script_serde::serialize")]
+    #[serde(with = "script_serde")]
     pub script_pub_key: BitcoinScript,
     pub redeem_script: Option<String>,
     pub amount: f64,
@@ -250,8 +249,7 @@ pub type NewTransactionOutput = HashMap<Address, f64>;
 pub struct TransactionOutputDetail {
     txid: TransactionId,
     vout: u32,
-    #[serde(deserialize_with = "script_serde::deserialize")]
-    #[serde(serialize_with = "script_serde::serialize")]
+    #[serde(with = "script_serde")]
     #[serde(rename = "scriptPubKey")]
     script_pub_key: BitcoinScript,
     #[serde(rename = "redeemScript")]
