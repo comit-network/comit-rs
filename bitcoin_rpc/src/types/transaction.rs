@@ -116,11 +116,9 @@ impl From<SerializedRawTransaction> for BitcoinTransaction {
     }
 }
 
-impl SerializedRawTransaction {
-    pub fn from_bitcoin_transaction(
-        transaction: BitcoinTransaction,
-    ) -> Result<Self, bitcoin::util::Error> {
-        Ok(SerializedRawTransaction(transaction))
+impl From<BitcoinTransaction> for SerializedRawTransaction {
+    fn from(tx: BitcoinTransaction) -> Self {
+        SerializedRawTransaction(tx)
     }
 }
 
