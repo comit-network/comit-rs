@@ -3,11 +3,11 @@ pub use secp256k1::SecretKey;
 pub use secp256k1::Signature;
 
 pub trait SignMessage {
-    fn sign_secp256k1_ecdsa(&self, message: Message) -> Signature;
+    fn sign_ecdsa(&self, message: Message) -> Signature;
 }
 
 impl SignMessage for SecretKey {
-    fn sign_secp256k1_ecdsa(&self, message: Message) -> Signature {
+    fn sign_ecdsa(&self, message: Message) -> Signature {
         super::SECP.sign(&message, &self).unwrap()
     }
 }
