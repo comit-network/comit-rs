@@ -1,4 +1,4 @@
-use bitcoin::blockdata::script::Script as BitcoinScript;
+use bitcoin::blockdata::script::Script;
 use types::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -10,7 +10,7 @@ from_str!(RedeemScript);
 pub struct ScriptPubKey {
     pub asm: String,
     #[serde(with = "script_serde")]
-    pub hex: BitcoinScript,
+    pub hex: Script,
     #[serde(rename = "reqSigs")]
     pub req_sigs: Option<u32>,
     #[serde(rename = "type")]
