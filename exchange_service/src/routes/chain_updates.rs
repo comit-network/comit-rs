@@ -92,7 +92,7 @@ pub fn post_revealed_secret(
         }
     };
 
-    let signable_txn = PrimedTransaction {
+    let primed_txn = PrimedTransaction {
         inputs: vec![
             PrimedInput::new(
                 htlc_txid.clone().into(),
@@ -105,10 +105,10 @@ pub fn post_revealed_secret(
         locktime: 0,
     };
 
-    let input_value = signable_txn.input_value();
+    let input_value = primed_txn.input_value();
 
     let rate = fee_service.get_recommended_fee()?;
-    let redeem_tx = signable_txn.sign_with_rate(rate);
+    let redeem_tx = primed_txn.sign_with_rate(rate);
 
     debug!(
         "Redeem {} (input: {}, vout: {}) to {} (output: {})",

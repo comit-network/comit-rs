@@ -98,7 +98,7 @@ impl PrimedTransaction {
 
                         // TODO: remove unwrap once we have
                         // incorporated Thomas' improvements to SECP
-                        let signature = secret_key.sign_secp256k1_ecdsa(message_to_sign);
+                        let signature = secret_key.sign_ecdsa(message_to_sign);
 
                         let mut serialized_signature = signature.serialize_signature_der();
                         // Without this 1 at the end you get "Non-canonical DER Signature"
