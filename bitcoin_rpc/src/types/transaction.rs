@@ -112,9 +112,9 @@ impl<'de> Deserialize<'de> for SerializedRawTransaction {
     }
 }
 
-impl Into<BitcoinTransaction> for SerializedRawTransaction {
-    fn into(self) -> BitcoinTransaction {
-        self.0
+impl From<SerializedRawTransaction> for BitcoinTransaction {
+    fn from(serialized_tx: SerializedRawTransaction) -> Self {
+        serialized_tx.0
     }
 }
 
