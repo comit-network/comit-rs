@@ -281,10 +281,7 @@ mod tests {
         let vout = decoded_txn
             .vout
             .iter()
-            .find(|txout| {
-                hex::decode(&txout.script_pub_key.hex).unwrap()
-                    == htlc_address.script_pubkey().into_vec()
-            })
+            .find(|txout| txout.script_pub_key.hex == htlc_address.script_pubkey())
             .unwrap();
 
         (
