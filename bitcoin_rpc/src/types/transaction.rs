@@ -249,8 +249,7 @@ pub type NewTransactionOutput = HashMap<Address, f64>;
 pub struct TransactionOutputDetail {
     txid: TransactionId,
     vout: u32,
-    #[serde(with = "script_serde")]
-    #[serde(rename = "scriptPubKey")]
+    #[serde(rename = "scriptPubKey", with = "script_serde")]
     script_pub_key: BitcoinScript,
     #[serde(rename = "redeemScript")]
     redeem_script: Option<RedeemScript>,
