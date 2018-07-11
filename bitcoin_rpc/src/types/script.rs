@@ -1,3 +1,4 @@
+use bitcoin::blockdata::script::Script;
 use types::*;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]
@@ -5,22 +6,11 @@ pub struct RedeemScript(String);
 
 from_str!(RedeemScript);
 
-// TODO: Maybe we can get rid of this with a custom (de)serializer that decodes the hex string into the ScriptPubKey struct. Let's leave it like this for now so we don't have a primitive there
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub struct EncodedScriptPubKey(String);
-
-from_str!(EncodedScriptPubKey);
-
-impl AsRef<[u8]> for EncodedScriptPubKey {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_bytes()
-    }
-}
-
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScriptPubKey {
     pub asm: String,
-    pub hex: EncodedScriptPubKey,
+    #[serde(with = "script_serde")]
+    pub hex: Script,
     #[serde(rename = "reqSigs")]
     pub req_sigs: Option<u32>,
     #[serde(rename = "type")]
