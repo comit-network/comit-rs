@@ -1,5 +1,5 @@
 use bitcoin;
-use bitcoin::blockdata::script::Script as BitcoinScript;
+use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
 use bitcoin::network::serialize::serialize_hex;
 use bitcoin::util::hash::{HexError, Sha256dHash};
@@ -217,7 +217,7 @@ pub struct UnspentTransactionOutput {
     pub account: Option<String>,
     #[serde(rename = "scriptPubKey")]
     #[serde(with = "script_serde")]
-    pub script_pub_key: BitcoinScript,
+    pub script_pub_key: Script,
     pub redeem_script: Option<String>,
     pub amount: f64,
     pub confirmations: i32,
@@ -250,7 +250,7 @@ pub struct TransactionOutputDetail {
     txid: TransactionId,
     vout: u32,
     #[serde(rename = "scriptPubKey", with = "script_serde")]
-    script_pub_key: BitcoinScript,
+    script_pub_key: Script,
     #[serde(rename = "redeemScript")]
     redeem_script: Option<RedeemScript>,
 }
@@ -326,7 +326,7 @@ pub struct FundingResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::blockdata::script::Script as BitcoinScript;
+    use bitcoin::blockdata::script::Script;
     use serde_json;
     use std_hex;
 
@@ -403,7 +403,7 @@ mod tests {
                     n: 0,
                     script_pub_key: ScriptPubKey {
                         asm: "OP_DUP OP_HASH160 01b81d5fa1e55e069e3cc2db9c19e2e80358f306 OP_EQUALVERIFY OP_CHECKSIG".to_string(),
-                        hex: BitcoinScript::from(std_hex::decode("76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac").unwrap()),
+                        hex: Script::from(std_hex::decode("76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac").unwrap()),
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKeyHash,
                         addresses: Some(vec![
@@ -487,7 +487,7 @@ mod tests {
                     n: 0,
                     script_pub_key: ScriptPubKey {
                         asm: "039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1 OP_CHECKSIG".to_string(),
-                        hex: BitcoinScript::from(std_hex::decode("21039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac").unwrap()),
+                        hex: Script::from(std_hex::decode("21039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac").unwrap()),
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKey,
                         addresses: Some(vec![
@@ -500,7 +500,7 @@ mod tests {
                     n: 1,
                     script_pub_key: ScriptPubKey {
                         asm: "OP_RETURN aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9".to_string(),
-                        hex: BitcoinScript::from(std_hex::decode("6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9").unwrap()),
+                        hex: Script::from(std_hex::decode("6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9").unwrap()),
                         req_sigs: None,
                         script_type: ScriptType::NullData,
                         addresses: None,
@@ -542,7 +542,7 @@ mod tests {
                 vout: 1,
                 address: Some(Address::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap()),
                 account: Some(String::from("test label")),
-                script_pub_key: BitcoinScript::from(
+                script_pub_key: Script::from(
                     std_hex::decode("76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac").unwrap()
                 ),
                 redeem_script: None,
