@@ -35,7 +35,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
         &self,
         inputs: Vec<&NewTransactionInput>,
         output: &NewTransactionOutput,
-    ) -> Result<RpcResponse<SerializedUnfundedRawTransaction>, HTTPError> {
+    ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError> {
         unimplemented!()
     }
 
@@ -56,7 +56,7 @@ impl BitcoinRpcApi for BitcoinStubClient {
 
     fn fund_raw_transaction(
         &self,
-        tx: &SerializedUnfundedRawTransaction,
+        tx: &SerializedRawTransaction,
         options: &FundingOptions,
     ) -> Result<RpcResponse<FundingResult>, HTTPError> {
         unimplemented!()

@@ -103,7 +103,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
         &self,
         inputs: Vec<&NewTransactionInput>,
         output: &NewTransactionOutput,
-    ) -> Result<RpcResponse<SerializedUnfundedRawTransaction>, HTTPError> {
+    ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError> {
         self.send(&RpcRequest::new2(
             JsonRpcVersion::V1,
             "test",
@@ -145,7 +145,7 @@ impl BitcoinRpcApi for BitcoinCoreClient {
 
     fn fund_raw_transaction(
         &self,
-        tx: &SerializedUnfundedRawTransaction,
+        tx: &SerializedRawTransaction,
         options: &FundingOptions,
     ) -> Result<RpcResponse<FundingResult>, HTTPError> {
         self.send(&RpcRequest::new2(

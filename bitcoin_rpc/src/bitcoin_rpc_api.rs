@@ -32,7 +32,7 @@ pub trait BitcoinRpcApi: Send + Sync {
         &self,
         inputs: Vec<&NewTransactionInput>,
         output: &NewTransactionOutput,
-    ) -> Result<RpcResponse<SerializedUnfundedRawTransaction>, HTTPError>;
+    ) -> Result<RpcResponse<SerializedRawTransaction>, HTTPError>;
 
     fn decode_rawtransaction(
         &self,
@@ -52,7 +52,7 @@ pub trait BitcoinRpcApi: Send + Sync {
 
     fn fund_raw_transaction(
         &self,
-        tx: &SerializedUnfundedRawTransaction,
+        tx: &SerializedRawTransaction,
         options: &FundingOptions,
     ) -> Result<RpcResponse<FundingResult>, HTTPError>;
 

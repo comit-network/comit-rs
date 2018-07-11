@@ -386,9 +386,7 @@ mod tests {
 
         let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-        // TODO: I am sure Lloyd will fix this wild unwrap
-        let raw_redeem_tx =
-            bitcoin_rpc::SerializedRawTransaction::from_str(redeem_tx_hex.as_str()).unwrap();
+        let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
 
         let rpc_redeem_txid_error = client
             .send_raw_transaction(raw_redeem_tx.clone())
