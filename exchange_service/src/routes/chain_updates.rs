@@ -105,7 +105,7 @@ pub fn post_revealed_secret(
         locktime: 0,
     };
 
-    let input_value = primed_txn.input_value();
+    let total_input_value = primed_txn.total_input_value();
 
     let rate = fee_service.get_recommended_fee()?;
     let redeem_tx = primed_txn.sign_with_rate(rate);
@@ -113,7 +113,7 @@ pub fn post_revealed_secret(
     debug!(
         "Redeem {} (input: {}, vout: {}) to {} (output: {})",
         htlc_txid,
-        input_value,
+        total_input_value,
         vout,
         redeem_tx.txid(),
         redeem_tx.output[0].value

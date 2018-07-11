@@ -129,7 +129,7 @@ impl PrimedTransaction {
         let weight: Weight = transaction.get_weight().into();
         let fee = weight.calculate_fee(fee_per_byte);
 
-        transaction.output[0].value = (self.input_value() - fee).satoshi();
+        transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
         self._sign(&mut transaction);
         transaction
@@ -138,13 +138,13 @@ impl PrimedTransaction {
     pub fn sign_with_fee(self, fee: BitcoinQuantity) -> Transaction {
         let mut transaction = self._dummy_transaction();
 
-        transaction.output[0].value = (self.input_value() - fee).satoshi();
+        transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
         self._sign(&mut transaction);
         transaction
     }
 
-    pub fn input_value(&self) -> BitcoinQuantity {
+    pub fn total_input_value(&self) -> BitcoinQuantity {
         BitcoinQuantity::from_satoshi(
             self.inputs
                 .iter()
@@ -197,7 +197,7 @@ mod test {
             output_address: dst_addr,
             locktime: 0,
         };
-        let input_value = primed_txn.input_value();
+        let total_input_value = primed_txn.total_input_value();
 
         let rate = 42.0;
 
@@ -205,7 +205,7 @@ mod test {
         let transaction = primed_txn.sign_with_rate(rate);
 
         let actual_weight: Weight = transaction.get_weight().into();
-        let fee = input_value.satoshi() - transaction.output[0].value;
+        let fee = total_input_value.satoshi() - transaction.output[0].value;
 
         assert_eq!(estimated_weight, actual_weight, "weight is correct");
         assert_eq!(fee, 4589, "actual fee paid is correct");
