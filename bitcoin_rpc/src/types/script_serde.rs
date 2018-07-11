@@ -15,7 +15,7 @@ where
         type Value = BitcoinScript;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("Bitcoin network: `main`, `test` or `regtest`")
+            formatter.write_str("Bitcoin script in hex format")
         }
 
         fn visit_str<E>(self, value: &str) -> Result<BitcoinScript, E>
