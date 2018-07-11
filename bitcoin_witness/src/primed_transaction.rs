@@ -175,8 +175,8 @@ impl PrimedTransaction {
 mod test {
     use super::*;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
+    use p2wpkh::WitnessP2pkh;
     use std::str::FromStr;
-    use witness::WitnessP2pkh;
 
     #[test]
     fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() {

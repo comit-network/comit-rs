@@ -10,8 +10,10 @@ pub const SEQUENCE_ALLOW_NTIMELOCK_NO_RBF: u32 = 0xFFFFFFFE;
 #[allow(dead_code)]
 pub const SEQUENCE_DISALLOW_NTIMELOCK_NO_RBF: u32 = 0xFFFFFFFF;
 
+mod p2wpkh;
 mod primed_transaction;
 mod witness;
 
+pub use p2wpkh::*;
 pub use primed_transaction::*;
 pub use witness::*;
