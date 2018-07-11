@@ -100,11 +100,9 @@ impl<'de> Deserialize<'de> for SerializedRawTransaction {
             where
                 E: de::Error,
             {
-                let hex_tx =
-                    bitcoin::util::misc::hex_bytes(v).map_err(|err| E::custom(format!("{}", err)))?;
-                let tx: BitcoinTransaction = bitcoin_serialize::deserialize(&hex_tx)
+                let tx = SerializedRawTransaction::from_str(v)
                     .map_err(|err| E::custom(format!("{}", err)))?;
-                Ok(SerializedRawTransaction(tx))
+                Ok(tx)
             }
         }
 
