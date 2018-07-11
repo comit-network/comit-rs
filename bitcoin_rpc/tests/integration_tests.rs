@@ -232,7 +232,7 @@ fn test_fund_raw_transaction() {
 
         let raw_tx = test_client
             .client
-            .create_unfunded_raw_transaction(Vec::new(), &outputs)
+            .create_raw_transaction(Vec::new(), &outputs)
             .unwrap()
             .into_result()
             .unwrap();
