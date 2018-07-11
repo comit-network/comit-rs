@@ -10,8 +10,16 @@ pub enum Witness {
     PrevScript,
 }
 
-pub trait WitnessMethod {
-    fn into_witness(self) -> Vec<Witness>;
-    fn sequence(&self) -> u32;
-    fn prev_script(&self) -> Script;
+/// In order to properly describe how to unlock an output you need
+/// to know several things:
+/// * The witness data (which produces the unlocking script)
+/// * The sequence number (which has to match the `prev_script` in the case of
+///   CHECKSEQUENCEVERIFY)
+/// * The `prev_script` of the output you're unlocking
+/// This trait may add more things to this list (such as the locktime
+/// the transaction should use). The point of this trait is
+pub struct UnlockParameters {
+    pub witness: Vec<Witness>,
+    pub sequence: u32,
+    pub prev_script: Script,
 }

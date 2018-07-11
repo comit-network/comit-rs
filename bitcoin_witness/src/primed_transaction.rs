@@ -1,57 +1,56 @@
 use bitcoin_support::{Address, BitcoinQuantity, Script, Sha256dHash, SighashComponents,
                       Transaction, TxIn, TxOut, Weight};
 use secp256k1_support::{DerSerializableSignature, Message, SignMessage};
-use witness::{Witness, WitnessMethod};
+use witness::{UnlockParameters, Witness};
 
 pub struct PrimedInput {
-    pub sequence: u32,
-    pub witness: Vec<Witness>,
-    pub value: BitcoinQuantity,
-    pub vout: u32,
-    pub txid: Sha256dHash,
-    pub prev_script: Script,
+    input_parameters: UnlockParameters,
+    value: BitcoinQuantity,
+    vout: u32,
+    txid: Sha256dHash,
 }
 
 impl PrimedInput {
-    pub fn new<W: WitnessMethod>(
+    pub fn new(
         txid: Sha256dHash,
         vout: u32,
         value: BitcoinQuantity,
-        witness_method: W,
+        input_parameters: UnlockParameters,
     ) -> PrimedInput {
         PrimedInput {
-            sequence: witness_method.sequence(),
-            prev_script: witness_method.prev_script(),
-            witness: witness_method.into_witness(),
+            input_parameters,
             value,
             vout,
             txid,
         }
     }
 
-    fn to_txin(&self) -> TxIn {
+    fn encode_witness_for_txin(&self, witness: &Witness) -> Vec<u8> {
+        match witness {
+            Witness::Data(data) => data.clone(),
+            // We can't sign it yet so we put a placeholder
+            // value of the most likely signature length
+            Witness::Signature(_) => vec![0u8; 71],
+            Witness::PublicKey(public_key) => public_key.serialize().to_vec(),
+            Witness::Bool(_bool) => if *_bool {
+                vec![1u8]
+            } else {
+                vec![]
+            },
+            Witness::PrevScript => self.input_parameters.prev_script.clone().into_vec(),
+        }
+    }
+
+    fn to_txin_without_signature(&self) -> TxIn {
         TxIn {
             prev_hash: self.txid,
             prev_index: self.vout,
             script_sig: Script::new(),
-            sequence: self.sequence,
-            // We can't calculate actual witness data yet but we need
-            // to put things that are (roughly) the same size in there
-            // so we can calculate the (roughly) correct weight prior
-            // to signing
-            witness: self.witness
+            sequence: self.input_parameters.sequence,
+            witness: self.input_parameters
+                .witness
                 .iter()
-                .map(|witness| match witness {
-                    Witness::Data(data) => vec![0; data.len()],
-                    Witness::Signature(_) => vec![0; 71],
-                    Witness::PublicKey(_) => vec![0; 33],
-                    Witness::Bool(_bool) => if *_bool {
-                        vec![1]
-                    } else {
-                        vec![]
-                    },
-                    Witness::PrevScript => vec![0; self.prev_script.len()],
-                })
+                .map(|witness| self.encode_witness_for_txin(witness))
                 .collect(),
         }
     }
@@ -65,66 +64,31 @@ pub struct PrimedTransaction {
 }
 
 impl PrimedTransaction {
-    fn _encode_witness(
-        primed_input: PrimedInput,
-        transaction: &Transaction,
-        index: usize,
-    ) -> Vec<Vec<u8>> {
-        let (witnesses, value, prev_script) = (
-            primed_input.witness,
-            primed_input.value,
-            primed_input.prev_script,
-        );
-
-        witnesses
-            .into_iter()
-            .map(|witness| {
-                match witness {
-                    Witness::Bool(_bool) => if _bool {
-                        vec![1u8]
-                    } else {
-                        vec![]
-                    },
-                    Witness::PrevScript => prev_script.clone().into_vec(),
-                    Witness::Data(data) => data,
-                    Witness::Signature(secret_key) => {
-                        let sighash_components = SighashComponents::new(transaction);
-                        let hash_to_sign = sighash_components.sighash_all(
-                            &transaction.input[index],
-                            &prev_script,
-                            value.satoshi(),
-                        );
-                        let message_to_sign = Message::from(hash_to_sign.data());
-
-                        // TODO: remove unwrap once we have
-                        // incorporated Thomas' improvements to SECP
-                        let signature = secret_key.sign_ecdsa(message_to_sign);
-
-                        let mut serialized_signature = signature.serialize_signature_der();
-                        // Without this 1 at the end you get "Non-canonical DER Signature"
-                        serialized_signature.push(1u8);
-                        serialized_signature
-                    }
-                    Witness::PublicKey(public_key) => public_key.serialize().to_vec(),
-                }
-            })
-            .collect()
-    }
-
     fn _sign(self, transaction: &mut Transaction) {
-        let witness_by_input: Vec<Vec<Vec<u8>>> = self.inputs
-            .into_iter()
-            .enumerate()
-            .map(|(i, primed_input)| Self::_encode_witness(primed_input, &transaction, i))
-            .collect();
+        for (i, primed_input) in self.inputs.into_iter().enumerate() {
+            let input_parameters = primed_input.input_parameters;
+            for (j, witness) in input_parameters.witness.iter().enumerate() {
+                if let Witness::Signature(secret_key) = witness {
+                    let sighash_components = SighashComponents::new(transaction);
+                    let hash_to_sign = sighash_components.sighash_all(
+                        &transaction.input[i],
+                        &input_parameters.prev_script,
+                        primed_input.value.satoshi(),
+                    );
+                    let message_to_sign = Message::from(hash_to_sign.data());
+                    let signature = secret_key.sign_ecdsa(message_to_sign);
 
-        for (i, witness) in witness_by_input.into_iter().enumerate() {
-            transaction.input[i].witness = witness;
+                    let mut serialized_signature = signature.serialize_signature_der();
+                    // Without this 1 at the end you get "Non-canonical DER Signature"
+                    serialized_signature.push(1u8);
+                    transaction.input[i].witness[j] = serialized_signature;
+                }
+            }
         }
     }
 
     pub fn sign_with_rate(self, fee_per_byte: f64) -> Transaction {
-        let mut transaction = self._dummy_transaction();
+        let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight: Weight = transaction.get_weight().into();
         let fee = weight.calculate_fee(fee_per_byte);
@@ -136,7 +100,7 @@ impl PrimedTransaction {
     }
 
     pub fn sign_with_fee(self, fee: BitcoinQuantity) -> Transaction {
-        let mut transaction = self._dummy_transaction();
+        let mut transaction = self._transaction_without_signatures_or_output_values();
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
@@ -152,7 +116,7 @@ impl PrimedTransaction {
         )
     }
 
-    fn _dummy_transaction(&self) -> Transaction {
+    fn _transaction_without_signatures_or_output_values(&self) -> Transaction {
         let output = TxOut {
             value: 0,
             script_pubkey: self.output_address.script_pubkey(),
@@ -161,13 +125,18 @@ impl PrimedTransaction {
         Transaction {
             version: 2,
             lock_time: self.locktime,
-            input: self.inputs.iter().map(PrimedInput::to_txin).collect(),
+            input: self.inputs
+                .iter()
+                .map(PrimedInput::to_txin_without_signature)
+                .collect(),
             output: vec![output],
         }
     }
 
     pub fn estimate_weight(&self) -> Weight {
-        self._dummy_transaction().get_weight().into()
+        self._transaction_without_signatures_or_output_values()
+            .get_weight()
+            .into()
     }
 }
 
@@ -175,7 +144,7 @@ impl PrimedTransaction {
 mod test {
     use super::*;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use p2wpkh::WitnessP2pkh;
+    use p2wpkh::UnlockP2wpkh;
     use std::str::FromStr;
 
     #[test]
@@ -191,7 +160,7 @@ mod test {
                     txid,
                     1, // First number I found that gave me a 71 byte signature
                     BitcoinQuantity::from_bitcoin(1.0),
-                    WitnessP2pkh(private_key.secret_key().clone()),
+                    private_key.secret_key().p2wpkh_unlock_parameters(),
                 ),
             ],
             output_address: dst_addr,

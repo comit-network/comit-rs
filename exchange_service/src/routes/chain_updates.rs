@@ -1,7 +1,7 @@
 use bitcoin_fee_service;
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc;
-use bitcoin_htlc::InvalidWitness;
+use bitcoin_htlc::UnlockingError;
 use bitcoin_rpc;
 use bitcoin_support;
 use bitcoin_support::PubkeyHash;
@@ -79,11 +79,11 @@ pub fn post_revealed_secret(
         );
         match res {
             Err(e) => match e {
-                InvalidWitness::WrongSecret { .. } => {
+                UnlockingError::WrongSecret { .. } => {
                     error!("Poked with wrong secret: {:?}", e);
                     return Err(BadRequest(Some(format!("{:?}", e).to_string())));
                 }
-                InvalidWitness::WrongSecretKey { .. } => {
+                UnlockingError::WrongSecretKey { .. } => {
                     error!("exchange_success_public_key_hash was inconsistent with exchange_success_private_key");
                     return Err(BadRequest(None));
                 }

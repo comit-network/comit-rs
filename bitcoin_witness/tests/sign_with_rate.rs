@@ -11,7 +11,7 @@ use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_rpc::regtest_helpers::*;
 use bitcoin_support::serialize::serialize_hex;
 use bitcoin_support::{Address, BitcoinQuantity, PrivateKey};
-use bitcoin_witness::{PrimedInput, PrimedTransaction, WitnessP2pkh};
+use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::ToPublicKey;
 
 use std::str::FromStr;
@@ -43,7 +43,7 @@ fn sign_with_rate() {
                 txid.into(),
                 vout.n,
                 input_amount,
-                WitnessP2pkh(private_key.secret_key().clone()),
+                private_key.secret_key().p2wpkh_unlock_parameters(),
             ),
         ],
         output_address: alice_addr.clone(),

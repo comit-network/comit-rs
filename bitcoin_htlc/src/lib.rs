@@ -12,8 +12,6 @@ extern crate secp256k1_support;
 extern crate log;
 
 pub mod bitcoin_htlc;
-mod witness;
 
 pub use bitcoin_htlc::*;
 pub use common_types::secret;
-pub use witness::*;

@@ -4,9 +4,21 @@ use bitcoin::blockdata::script::{Builder, Script};
 pub use bitcoin::network::constants::Network;
 use bitcoin::util::address::Address;
 use bitcoin_support::PubkeyHash;
-use secp256k1_support::SecretKey;
+use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
+use secp256k1_support::{SecretKey, ToPublicKey};
 use secret::{Secret, SecretHash};
-use witness::*;
+
+#[derive(Debug)]
+pub enum UnlockingError {
+    WrongSecret {
+        got: SecretHash,
+        expected: SecretHash,
+    },
+    WrongSecretKey {
+        got: PubkeyHash,
+        expected: PubkeyHash,
+    },
+}
 
 // Create BTC HTLC
 // Returns P2WSH address
@@ -65,31 +77,34 @@ impl Htlc {
         &self,
         secret_key: SecretKey,
         secret: Secret,
-    ) -> Result<WitnessHtlcSecret, InvalidWitness> {
-        let witness_method = WitnessHtlcSecret {
-            script: self.script.clone(),
-            secret_key,
-            secret,
-        };
-
-        witness_method
-            .validate(&self.secret_hash, &self.recipient_success_pubkey_hash)
-            .and(Ok(witness_method))
+    ) -> Result<UnlockParameters, UnlockingError> {
+        Ok(UnlockParameters {
+            witness: vec![
+                Witness::Signature(secret_key),
+                Witness::PublicKey(secret_key.to_public_key()),
+                Witness::Data(secret.raw_secret().to_vec()),
+                Witness::Bool(true),
+                Witness::PrevScript,
+            ],
+            sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
+            prev_script: self.script.clone(),
+        })
     }
 
     pub fn witness_after_timeout(
         &self,
         secret_key: SecretKey,
-    ) -> Result<WitnessHtlcTimeout, InvalidWitness> {
-        let witness_method = WitnessHtlcTimeout {
-            script: self.script.clone(),
+    ) -> Result<UnlockParameters, UnlockingError> {
+        Ok(UnlockParameters {
+            witness: vec![
+                Witness::Signature(secret_key),
+                Witness::PublicKey(secret_key.to_public_key()),
+                Witness::Bool(false),
+                Witness::PrevScript,
+            ],
             sequence: self.relative_timelock,
-            secret_key,
-        };
-
-        witness_method
-            .validate(&self.sender_refund_pubkey_hash)
-            .and(Ok(witness_method))
+            prev_script: self.script.clone(),
+        })
     }
 }
 
