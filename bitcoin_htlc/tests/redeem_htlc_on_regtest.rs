@@ -164,6 +164,7 @@ fn redeem_refund_htlc() {
         .unwrap()
         .into_result();
 
+    // It should fail because it's too early
     assert!(rpc_redeem_txid_error.is_err());
     let error = rpc_redeem_txid_error.unwrap_err();
 
