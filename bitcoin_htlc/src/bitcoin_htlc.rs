@@ -73,12 +73,35 @@ impl Htlc {
         Address::p2wsh(&self.script, network)
     }
 
-    pub fn witness_with_secret(
+    pub fn can_be_unlocked_with(
         &self,
-        secret_key: SecretKey,
-        secret: Secret,
-    ) -> Result<UnlockParameters, UnlockingError> {
-        Ok(UnlockParameters {
+        got_secret: &Secret,
+        got_secret_key: &SecretKey,
+    ) -> Result<(), UnlockingError> {
+        let got_pubkey_hash: PubkeyHash = got_secret_key.to_public_key().into();
+        let got_secret_hash = got_secret.hash();
+        let expected_pubkey_hash = &self.recipient_success_pubkey_hash;
+        let expected_secret_hash = &self.secret_hash;
+
+        if *expected_secret_hash != got_secret_hash {
+            return Err(UnlockingError::WrongSecret {
+                got: got_secret_hash,
+                expected: expected_secret_hash.clone(),
+            });
+        }
+
+        if *expected_pubkey_hash != got_pubkey_hash {
+            return Err(UnlockingError::WrongSecretKey {
+                got: got_pubkey_hash,
+                expected: expected_pubkey_hash.clone(),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn unlock_with_secret(&self, secret_key: SecretKey, secret: Secret) -> UnlockParameters {
+        UnlockParameters {
             witness: vec![
                 Witness::Signature(secret_key),
                 Witness::PublicKey(secret_key.to_public_key()),
@@ -88,14 +111,11 @@ impl Htlc {
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             prev_script: self.script.clone(),
-        })
+        }
     }
 
-    pub fn witness_after_timeout(
-        &self,
-        secret_key: SecretKey,
-    ) -> Result<UnlockParameters, UnlockingError> {
-        Ok(UnlockParameters {
+    pub fn unlock_after_timeout(&self, secret_key: SecretKey) -> UnlockParameters {
+        UnlockParameters {
             witness: vec![
                 Witness::Signature(secret_key),
                 Witness::PublicKey(secret_key.to_public_key()),
@@ -104,7 +124,7 @@ impl Htlc {
             ],
             sequence: self.relative_timelock,
             prev_script: self.script.clone(),
-        })
+        }
     }
 }
 

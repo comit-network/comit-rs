@@ -81,6 +81,12 @@ fn redeem_htlc_with_secret() {
     client.generate(432).unwrap();
 
     let (txid, vout, input_amount, htlc, _, secret, private_key, _) = fund_htlc(&client);
+    let secret_key = private_key.secret_key();
+
+    assert!(
+        htlc.can_be_unlocked_with(&secret, &secret_key).is_ok(),
+        "Should be unlockable with the given secret and secret_key"
+    );
 
     let alice_addr: Address = client
         .get_new_address()
@@ -97,8 +103,7 @@ fn redeem_htlc_with_secret() {
                 txid.into(),
                 vout.n,
                 input_amount,
-                htlc.witness_with_secret(private_key.secret_key().clone(), secret)
-                    .unwrap(),
+                htlc.unlock_with_secret(private_key.secret_key().clone(), secret),
             ),
         ],
         output_address: alice_addr.clone(),
@@ -147,8 +152,7 @@ fn redeem_refund_htlc() {
                 txid.clone().into(),
                 vout.n,
                 input_amount,
-                htlc.witness_after_timeout(private_key.secret_key().clone())
-                    .unwrap(),
+                htlc.unlock_after_timeout(private_key.secret_key().clone()),
             ),
         ],
         output_address: alice_addr.clone(),
