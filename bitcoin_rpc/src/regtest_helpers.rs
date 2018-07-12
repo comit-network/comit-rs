@@ -3,7 +3,6 @@ use BitcoinRpcApi;
 use bitcoin::util::address::Address as BitcoinAddress;
 use bitcoin_support::{BitcoinQuantity, Network, Sha256dHash, ToP2wpkhAddress};
 use bitcoincore::TxOutConfirmations;
-use std_hex;
 use types::{TransactionId, TransactionOutput, UnspentTransactionOutput};
 
 pub trait RegtestHelperClient {
@@ -65,10 +64,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         decoded_txn
             .vout
             .iter()
-            .find(|txout| {
-                std_hex::decode(&txout.script_pub_key.hex).unwrap()
-                    == address.script_pubkey().into_vec()
-            })
+            .find(|txout| txout.script_pub_key.hex == address.script_pubkey())
             .unwrap()
             .clone()
     }

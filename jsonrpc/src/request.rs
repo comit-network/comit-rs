@@ -1,7 +1,7 @@
 use serde::Serialize;
 use version::JsonRpcVersion;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 pub struct RpcRequest<P>
 where
     P: Serialize,

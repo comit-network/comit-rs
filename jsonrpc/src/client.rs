@@ -3,6 +3,7 @@ use reqwest::{Client as HTTPClient, Error};
 use response::RpcResponse;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use std::fmt::Debug;
 
 pub struct RpcClient {
     client: HTTPClient,
@@ -17,16 +18,19 @@ impl RpcClient {
         }
     }
 
-    pub fn send<R, T>(&self, request: &RpcRequest<T>) -> Result<RpcResponse<R>, Error>
+    pub fn send<R: Debug, T: Debug>(&self, request: &RpcRequest<T>) -> Result<RpcResponse<R>, Error>
     where
         T: Serialize,
         R: DeserializeOwned,
     {
-        self.client
+        debug!("Request: {:?}", request);
+        let res = self.client
             .post(self.url.as_str())
             .json(request)
             .send()
-            .and_then(|mut res| res.json::<RpcResponse<R>>())
+            .and_then(|mut res| res.json::<RpcResponse<R>>());
+        debug!("Response: {:?}", res);
+        res
 
         // TODO: Maybe check if req.id == res.id. Should always hold since it is a synchronous call.
     }

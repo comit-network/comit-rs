@@ -114,10 +114,7 @@ pub fn post_revealed_secret(
         redeem_tx.output[0].value
     );
     //TODO: Store above in event prior to doing rnpc request
-    let rpc_transaction =
-        bitcoin_rpc::SerializedRawTransaction::from_bitcoin_transaction(redeem_tx).map_err(
-            log_error("Failed to convert the transaction into a serialised raw transaction"),
-        )?;
+    let rpc_transaction = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx);
     debug!("RPC Transaction: {:?}", rpc_transaction);
     info!(
         "Attempting to redeem HTLC with txid {} for {}",

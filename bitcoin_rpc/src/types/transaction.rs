@@ -1,6 +1,7 @@
 use bitcoin;
+use bitcoin::blockdata::script::Script;
 use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
-use bitcoin::network::serialize::serialize_hex;
+use bitcoin::network::serialize as bitcoin_serialize;
 use bitcoin::util::hash::{HexError, Sha256dHash};
 use serde::de;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -67,21 +68,97 @@ impl FromStr for TransactionId {
     }
 }
 
-/// Currently the internal representation is the serialized string
-/// We might want to have a more sophisticated struct that can de- and encode the tx later on.
-/// We will need serializers and deserializers then.
-#[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
-pub struct SerializedRawTransaction(String);
+#[derive(Debug, PartialEq, Clone)]
+//TODO: can be used once https://github.com/rust-bitcoin/rust-bitcoin/issues/104 is fixed
+pub struct TransactionWrapper(BitcoinTransaction);
 
-impl SerializedRawTransaction {
-    pub fn from_bitcoin_transaction(
-        transaction: BitcoinTransaction,
-    ) -> Result<Self, bitcoin::util::Error> {
-        serialize_hex(&transaction).map(SerializedRawTransaction)
+impl Serialize for TransactionWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::Error;
+        let hex = bitcoin_serialize::serialize_hex(&self.0)
+            .map_err(|err| Error::custom(format!("{}", err)))?;
+        serializer.serialize_str(hex.as_str())
     }
 }
 
+impl<'de> Deserialize<'de> for TransactionWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = TransactionWrapper;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("A raw transaction in hex")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<TransactionWrapper, E>
+            where
+                E: de::Error,
+            {
+                let tx =
+                    TransactionWrapper::from_str(v).map_err(|err| E::custom(format!("{}", err)))?;
+                Ok(tx)
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl From<TransactionWrapper> for BitcoinTransaction {
+    fn from(tx_wrapper: TransactionWrapper) -> Self {
+        tx_wrapper.0
+    }
+}
+
+impl From<BitcoinTransaction> for TransactionWrapper {
+    fn from(tx: BitcoinTransaction) -> Self {
+        TransactionWrapper(tx)
+    }
+}
+
+impl FromStr for TransactionWrapper {
+    type Err = bitcoin::util::Error;
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        let hex_tx = bitcoin::util::misc::hex_bytes(s)?;
+        let tx: BitcoinTransaction = bitcoin_serialize::deserialize(&hex_tx)?;
+        Ok(TransactionWrapper(tx))
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub struct SerializedRawTransaction(String);
+
 from_str!(SerializedRawTransaction);
+
+impl From<SerializedRawTransaction> for BitcoinTransaction {
+    fn from(serialized_tx: SerializedRawTransaction) -> Self {
+        //TODO: expect can be removed once https://github.com/rust-bitcoin/rust-bitcoin/issues/104 is fixed
+        let wrapper = TransactionWrapper::from_str(serialized_tx.0.as_str()).expect(
+            "Conversion to bitcoin[..]::Transaction failed, does your transaction have inputs?",
+        );
+        let bitcoin_tx: BitcoinTransaction = wrapper.into();
+        bitcoin_tx
+    }
+}
+
+impl From<BitcoinTransaction> for SerializedRawTransaction {
+    fn from(tx: BitcoinTransaction) -> Self {
+        //TODO: expect can be removed once https://github.com/rust-bitcoin/rust-bitcoin/issues/104 is fixed
+        SerializedRawTransaction(
+            bitcoin_serialize::serialize_hex(&tx)
+                .expect("Conversion from bitcoin[..]::Transaction to hex failed"),
+        )
+    }
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Transaction {
@@ -215,7 +292,8 @@ pub struct UnspentTransactionOutput {
     pub address: Option<Address>,
     pub account: Option<String>,
     #[serde(rename = "scriptPubKey")]
-    pub script_pub_key: EncodedScriptPubKey,
+    #[serde(with = "script_serde")]
+    pub script_pub_key: Script,
     pub redeem_script: Option<String>,
     pub amount: f64,
     pub confirmations: i32,
@@ -247,8 +325,8 @@ pub type NewTransactionOutput = HashMap<Address, f64>;
 pub struct TransactionOutputDetail {
     txid: TransactionId,
     vout: u32,
-    #[serde(rename = "scriptPubKey")]
-    script_pub_key: EncodedScriptPubKey,
+    #[serde(rename = "scriptPubKey", with = "script_serde")]
+    script_pub_key: Script,
     #[serde(rename = "redeemScript")]
     redeem_script: Option<RedeemScript>,
 }
@@ -324,7 +402,9 @@ pub struct FundingResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin::blockdata::script::Script;
     use serde_json;
+    use std_hex;
 
     #[test]
     fn should_deserialize_transaction() {
@@ -399,7 +479,7 @@ mod tests {
                     n: 0,
                     script_pub_key: ScriptPubKey {
                         asm: "OP_DUP OP_HASH160 01b81d5fa1e55e069e3cc2db9c19e2e80358f306 OP_EQUALVERIFY OP_CHECKSIG".to_string(),
-                        hex: EncodedScriptPubKey::from("76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac"),
+                        hex: Script::from(std_hex::decode("76a91401b81d5fa1e55e069e3cc2db9c19e2e80358f30688ac").unwrap()),
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKeyHash,
                         addresses: Some(vec![
@@ -409,6 +489,21 @@ mod tests {
                 }
             ],
         })
+    }
+
+    #[test]
+    fn should_deserialize_serialized_raw_transaction() {
+        let json = r#""0200000000010144af9381cd3cb3d14d549b27c8d8a4c87d1d58e501df656342363886277f62e10000000000feffffff02aba9ac0300000000160014908abcc05defb6ba5630268b395b1fab19ad50d760566c0000000000220020c39353c0df01296ab055e83b701715b765636cf91c795deb7573e4b055ada53302473044022010d3b0f0e48977b5c7af7f6a0839a8ed24cd760c4e95668ed7b3275fca727360022007a27825d82a1e69bff2e8cbf195aa4280c214f1cf7650afb6fa2eb49a9765040121036bc4598b0de6ac9c560f1322ce86a0bf27e934837ac86196337db06002c3a352f83a1400""#;
+
+        let tx: SerializedRawTransaction = serde_json::from_str(json).unwrap();
+
+        assert_eq!(tx, SerializedRawTransaction::from(
+            "0200000000010144af9381cd3cb3d14d549b27c8d8a4c87d1d58e501df656342363886277f62e10000000000feffffff02aba9ac0300000000160014908abcc05defb6ba5630268b395b1fab19ad50d760566c0000000000220020c39353c0df01296ab055e83b701715b765636cf91c795deb7573e4b055ada53302473044022010d3b0f0e48977b5c7af7f6a0839a8ed24cd760c4e95668ed7b3275fca727360022007a27825d82a1e69bff2e8cbf195aa4280c214f1cf7650afb6fa2eb49a9765040121036bc4598b0de6ac9c560f1322ce86a0bf27e934837ac86196337db06002c3a352f83a1400"));
+        let bitcoin_tx: BitcoinTransaction = tx.into();
+        let expected_txid = Sha256dHash::from_hex(
+            "85a42342de714d4fa39af1fa503b9363df8a31450ff22869b300f686737370e4",
+        ).unwrap();
+        assert_eq!(bitcoin_tx.txid(), expected_txid);
     }
 
     #[test]
@@ -483,7 +578,7 @@ mod tests {
                     n: 0,
                     script_pub_key: ScriptPubKey {
                         asm: "039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1 OP_CHECKSIG".to_string(),
-                        hex: EncodedScriptPubKey::from("21039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac"),
+                        hex: Script::from(std_hex::decode("21039b0e80cdda15ac2164392dfaf4f3eb36dd914dcb1c405eec3dd8c9ebf6c13fc1ac").unwrap()),
                         req_sigs: Some(1),
                         script_type: ScriptType::PubKey,
                         addresses: Some(vec![
@@ -496,7 +591,7 @@ mod tests {
                     n: 1,
                     script_pub_key: ScriptPubKey {
                         asm: "OP_RETURN aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9".to_string(),
-                        hex: EncodedScriptPubKey::from("6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9"),
+                        hex: Script::from(std_hex::decode("6a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf9").unwrap()),
                         req_sigs: None,
                         script_type: ScriptType::NullData,
                         addresses: None,
@@ -538,8 +633,8 @@ mod tests {
                 vout: 1,
                 address: Some(Address::from_str("mgnucj8nYqdrPFh2JfZSB1NmUThUGnmsqe").unwrap()),
                 account: Some(String::from("test label")),
-                script_pub_key: EncodedScriptPubKey::from(
-                    "76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac"
+                script_pub_key: Script::from(
+                    std_hex::decode("76a9140dfc8bafc8419853b34d5e072ad37d1a5159f58488ac").unwrap()
                 ),
                 redeem_script: None,
                 amount: 0.0001,
