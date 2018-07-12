@@ -16,8 +16,8 @@ pub enum Witness {
 /// * The sequence number (which has to match the `prev_script` in the case of
 ///   CHECKSEQUENCEVERIFY)
 /// * The `prev_script` of the output you're unlocking
-/// This trait may add more things to this list (such as the locktime
-/// the transaction should use). The point of this trait is
+/// This trait may add more things to this list in the future (such as
+/// the locktime the transaction must use to pass CHECKLOCKTIMEVERIFY).
 pub struct UnlockParameters {
     pub witness: Vec<Witness>,
     pub sequence: u32,
