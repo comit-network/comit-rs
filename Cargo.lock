@@ -543,11 +543,18 @@ dependencies = [
  "chrono 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "common_types 0.1.0",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum_support 0.1.0",
  "ganache_node 0.1.0",
  "ganache_rust_web3 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "ethereum_support"
+version = "0.1.0"
+dependencies = [
  "web3 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

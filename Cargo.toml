@@ -18,4 +18,5 @@ members = [
     "ganache_node",
     "bitcoin_node",
     "testcontainers_rs",
+    "ethereum_support"
 ]
