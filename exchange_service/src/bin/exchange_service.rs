@@ -5,6 +5,7 @@ extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate common_types;
 extern crate env_logger;
+extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate exchange_service;
 extern crate hex;
@@ -19,12 +20,14 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate tiny_keccak;
 extern crate uuid;
-extern crate web3;
 
 use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_support::PrivateKey;
+use bitcoin_wallet::PrivateKey;
+use common_types::BitcoinQuantity;
+use ethereum_support::Address as EthereumAddress;
+use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
-use ethereum_wallet::ToEthereumAddress;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
 use exchange_service::ethereum_service::EthereumService;
 use exchange_service::event_store::EventStore;
@@ -36,8 +39,6 @@ use secp256k1::SecretKey;
 use std::env::var;
 use std::str::FromStr;
 use std::sync::Arc;
-use web3::futures::Future;
-use web3::types::Address as EthereumAddress;
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
@@ -67,8 +68,8 @@ fn main() {
     let wallet = InMemoryWallet::new(private_key, network_id);
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
-    let (_event_loop, transport) = web3::transports::Http::new(&endpoint).unwrap();
-    let web3 = web3::api::Web3::new(transport);
+
+    let web3 = Web3Client::new(endpoint);
 
     let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
         .map(|gas| u64::from_str(gas.as_str()).unwrap())

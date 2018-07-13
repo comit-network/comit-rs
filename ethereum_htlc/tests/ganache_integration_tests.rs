@@ -1,21 +1,18 @@
 extern crate env_logger;
 extern crate ethereum_htlc;
+extern crate ethereum_support;
 extern crate ganache_node;
 extern crate ganache_rust_web3;
 extern crate hex;
-extern crate web3;
 #[macro_use]
 extern crate log;
 extern crate common_types;
-
-use web3::types::Bytes;
-use web3::types::U256;
 
 mod common;
 use common::GanacheClient;
 use common_types::secret::Secret;
 use ethereum_htlc::EpochOffset;
-use web3::types::Address;
+use ethereum_support::*;
 
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
 

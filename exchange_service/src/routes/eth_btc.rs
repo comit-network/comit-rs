@@ -5,6 +5,7 @@ use bitcoin_support::ToP2wpkhAddress;
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
+use ethereum_support;
 use event_store;
 use event_store::ContractDeployed;
 use event_store::EventStore;
@@ -25,7 +26,6 @@ use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid;
 use uuid::Uuid;
-use web3::types::Address as EthereumAddress;
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -87,12 +87,12 @@ pub struct OrderRequestBody {
     pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
     pub client_refund_address: bitcoin_rpc::Address,
-    pub client_success_address: EthereumAddress,
+    pub client_success_address: ethereum_support::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody {
-    pub exchange_refund_address: EthereumAddress,
+    pub exchange_refund_address: ethereum_support::Address,
     pub exchange_success_address: bitcoin_rpc::Address,
     pub exchange_contract_time_lock: u64,
 }
@@ -118,7 +118,7 @@ pub fn post_buy_orders(
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
     exchange_success_private_key: State<bitcoin_support::PrivateKey>,
-    exchange_refund_address: State<EthereumAddress>,
+    exchange_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
     // Receive trade information
@@ -228,6 +228,7 @@ mod tests {
     use bitcoin_fee_service::StaticBitcoinFeeService;
     use bitcoin_htlc::Network;
     use ethereum_service::BlockingEthereumApi;
+    use ethereum_support::*;
     use ethereum_wallet::fake::StaticFakeWallet;
     use gas_price_service::StaticGasPriceService;
     use rocket;
@@ -239,8 +240,6 @@ mod tests {
     use std::str::FromStr;
     use std::sync::Arc;
     use treasury_api_client::FakeApiClient;
-    use web3;
-    use web3::types::{Bytes, H256};
 
     fn request_offer(client: &mut Client) -> LocalResponse {
         let request = client

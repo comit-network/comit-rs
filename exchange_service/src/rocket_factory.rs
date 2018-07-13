@@ -3,19 +3,19 @@ use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_support;
 use ethereum_service::EthereumService;
+use ethereum_support;
 use event_store::EventStore;
 use rocket;
 use routes;
 use std::sync::Arc;
 use treasury_api_client::ApiClient;
-use web3::types::Address as EthereumAddress;
 
 pub fn create_rocket_instance(
     treasury_api_client: Arc<ApiClient>,
     event_store: EventStore,
     ethereum_service: Arc<EthereumService>,
     bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
-    exchange_refund_address: EthereumAddress,
+    exchange_refund_address: ethereum_support::Address,
     exchange_success_private_key: bitcoin_support::PrivateKey,
     btc_exchange_redeem_address: bitcoin_support::Address,
     network: Network,

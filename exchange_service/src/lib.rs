@@ -14,11 +14,11 @@ extern crate bitcoin_support;
 extern crate bitcoin_witness;
 extern crate common_types;
 extern crate ethereum_htlc;
+extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate secp256k1_support;
 extern crate serde_json;
 extern crate uuid;
-extern crate web3;
 
 #[macro_use]
 extern crate log;

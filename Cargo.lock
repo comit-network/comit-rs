@@ -555,6 +555,10 @@ dependencies = [
 name = "ethereum_support"
 version = "0.1.0"
 dependencies = [
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1_support 0.1.0",
+ "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "web3 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -562,12 +566,12 @@ dependencies = [
 name = "ethereum_wallet"
 version = "0.1.0"
 dependencies = [
+ "ethereum_support 0.1.0",
  "ganache_node 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -582,6 +586,7 @@ dependencies = [
  "common_types 0.1.0",
  "env_logger 0.5.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum_htlc 0.1.0",
+ "ethereum_support 0.1.0",
  "ethereum_wallet 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -598,7 +603,6 @@ dependencies = [
  "serde_json 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -861,6 +865,8 @@ version = "0.1.0"
 dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
  "bitcoin_support 0.1.0",
+ "bitcoin_wallet 0.1.0",
+ "ethereum_support 0.1.0",
  "ethereum_wallet 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",

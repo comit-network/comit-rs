@@ -1,19 +1,19 @@
+extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate ganache_node;
 extern crate hex;
 extern crate secp256k1;
-extern crate web3;
 
+use ethereum_support::*;
 use ethereum_wallet::*;
 use hex::FromHex;
 use secp256k1::{Secp256k1, SecretKey};
-use web3::futures::Future;
 
 #[test]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
     // Arrange
 
-    let account: web3::types::Address = "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into();
+    let account = Address::from("e7b6bfabddfaeb2c016b334a5322e4327dc5e499");
 
     let ganache_node = ganache_node::GanacheCliNode::new();
     let web3 = ganache_node.get_client();
