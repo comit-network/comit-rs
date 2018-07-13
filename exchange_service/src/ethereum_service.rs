@@ -1,4 +1,5 @@
 use ethereum_htlc::Htlc;
+use ethereum_support::*;
 use ethereum_wallet;
 use gas_price_service;
 use gas_price_service::GasPriceService;
@@ -7,11 +8,6 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::MutexGuard;
 use std::sync::PoisonError;
-use web3;
-use web3::futures::Future;
-use web3::types::Bytes;
-use web3::types::H256;
-use web3::types::U256;
 
 #[derive(Debug)]
 pub enum Error {
@@ -42,7 +38,7 @@ pub trait BlockingEthereumApi: Send + Sync {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error>;
 }
 
-impl BlockingEthereumApi for web3::Web3<web3::transports::Http> {
+impl BlockingEthereumApi for Web3Client {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
         let result = self.eth().send_raw_transaction(rlp).wait();
 
@@ -119,10 +115,10 @@ mod tests {
 
     use super::*;
     use common_types::secret::SecretHash;
+    use ethereum_support;
     use std::ops::Deref;
     use std::str::FromStr;
     use std::time::SystemTime;
-    use web3::types::Address;
 
     struct EthereumApiMock {
         result: Result<H256, web3::Error>,
@@ -140,6 +136,8 @@ mod tests {
         }
     }
 
+    // This is a test where we know that the instance is always accessed only from one thread.
+    // Thus it is safe although the mock takes a mutable reference.
     unsafe impl Send for EthereumApiMock {}
     unsafe impl Sync for EthereumApiMock {}
 
@@ -159,8 +157,8 @@ mod tests {
         let result = service.deploy_htlc(
             Htlc::new(
                 SystemTime::now(),
-                Address::new(),
-                Address::new(),
+                ethereum_support::Address::new(),
+                ethereum_support::Address::new(),
                 SecretHash::from_str("").unwrap(),
             ),
             U256::from(10),
@@ -189,8 +187,8 @@ mod tests {
         let result = service.deploy_htlc(
             Htlc::new(
                 SystemTime::now(),
-                Address::new(),
-                Address::new(),
+                ethereum_support::Address::new(),
+                ethereum_support::Address::new(),
                 SecretHash::from_str("").unwrap(),
             ),
             U256::from(10),

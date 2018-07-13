@@ -6,9 +6,10 @@ extern crate serde;
 extern crate serde_derive;
 #[macro_use]
 extern crate structopt;
+extern crate bitcoin_support;
+extern crate ethereum_support;
 extern crate regex;
 extern crate uuid;
-extern crate web3;
 
 pub mod offer;
 pub mod order;

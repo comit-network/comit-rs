@@ -13,11 +13,10 @@ extern crate rocket;
 extern crate rocket_contrib;
 #[macro_use]
 extern crate serde_derive;
+extern crate crypto;
+extern crate ethereum_support;
 extern crate serde_json;
 extern crate uuid;
-
-extern crate crypto;
-extern crate web3;
 
 #[macro_use]
 extern crate log;
@@ -29,7 +28,6 @@ pub mod exchange_api_client;
 pub mod event_store;
 pub mod rocket_factory;
 pub mod routes;
-pub mod stub;
 pub mod symbol;
 
 pub use common_types::secret;

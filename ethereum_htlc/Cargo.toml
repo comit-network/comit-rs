@@ -9,7 +9,7 @@ authors = [
 ]
 
 [dependencies]
-web3 = "0.3.0"
+ethereum_support = { path = "../ethereum_support" }
 hex = "0.3.2"
 ganache_rust_web3 = { path = "../ganache_rust_web3" }
 common_types = { path = "../common_types" }

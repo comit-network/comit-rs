@@ -1,6 +1,7 @@
 use super::client::ApiClient;
 use bitcoin_rpc::Address;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::EthereumQuantity;
 use event_store::TradeId;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
 use reqwest;

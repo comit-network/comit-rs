@@ -1,7 +1,9 @@
 use bitcoin_htlc::Htlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support;
+use ethereum_support::EthereumQuantity;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::collections::HashMap;
@@ -9,7 +11,6 @@ use std::fmt;
 use std::sync::RwLock;
 use symbol::Symbol;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -52,7 +53,7 @@ impl From<OfferResponseBody> for OfferCreated {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderCreated {
     pub uid: TradeId,
-    pub client_success_address: EthAddress,
+    pub client_success_address: ethereum_support::Address,
     pub client_refund_address: bitcoin_rpc::Address,
     pub secret: Secret,
     pub long_relative_timelock: BlockHeight,
@@ -61,7 +62,7 @@ pub struct OrderCreated {
 #[derive(Clone, Debug)]
 pub struct OrderTaken {
     pub uid: TradeId,
-    pub exchange_refund_address: EthAddress,
+    pub exchange_refund_address: ethereum_support::Address,
     // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: bitcoin_rpc::Address,
     pub exchange_contract_time_lock: u64,
@@ -71,7 +72,7 @@ pub struct OrderTaken {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContractDeployed {
     pub uid: TradeId,
-    pub address: EthAddress,
+    pub address: ethereum_support::Address,
 }
 
 pub struct EventStore {
