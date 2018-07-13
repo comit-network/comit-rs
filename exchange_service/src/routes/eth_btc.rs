@@ -1,7 +1,6 @@
-use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_support;
-use bitcoin_support::ToP2wpkhAddress;
+use bitcoin_support::{Network, ToP2wpkhAddress};
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
@@ -226,7 +225,6 @@ pub fn post_buy_orders_fundings(
 mod tests {
     use super::*;
     use bitcoin_fee_service::StaticBitcoinFeeService;
-    use bitcoin_htlc::Network;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_support::*;
     use ethereum_wallet::fake::StaticFakeWallet;

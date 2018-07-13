@@ -1,7 +1,7 @@
 use bitcoin_fee_service::BitcoinFeeService;
-use bitcoin_htlc::Network;
 use bitcoin_rpc;
 use bitcoin_support;
+use bitcoin_support::Network;
 use ethereum_service::EthereumService;
 use ethereum_support;
 use event_store::EventStore;
