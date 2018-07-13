@@ -1,6 +1,6 @@
 use super::Symbol;
 use super::client::ApiClient;
-use common_types::BitcoinQuantity;
+use bitcoin_support::BitcoinQuantity;
 use common_types::EthereumQuantity;
 use reqwest;
 use treasury_api_client::RateResponseBody;

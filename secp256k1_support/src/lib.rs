@@ -4,6 +4,8 @@ extern crate lazy_static;
 
 use secp256k1::Secp256k1;
 pub use secp256k1::{PublicKey, SecretKey};
+mod signature;
+pub use signature::*;
 
 lazy_static! {
     static ref SECP: Secp256k1 = Secp256k1::new();

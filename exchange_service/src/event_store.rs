@@ -1,6 +1,6 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
-use bitcoin_wallet;
+use bitcoin_support;
 use common_types::secret::SecretHash;
 use common_types::{BitcoinQuantity, EthereumQuantity};
 use std::collections::HashMap;
@@ -78,12 +78,12 @@ pub struct OrderTaken {
     client_contract_time_lock: bitcoin_rpc::BlockHeight,
     exchange_contract_time_lock: SystemTime,
 
-    client_refund_address: bitcoin_wallet::Address,
+    client_refund_address: bitcoin_support::Address,
     client_success_address: EthereumAddress,
 
     exchange_refund_address: EthereumAddress,
-    exchange_success_address: bitcoin_wallet::Address,
-    exchange_success_private_key: bitcoin_wallet::PrivateKey,
+    exchange_success_address: bitcoin_support::Address,
+    exchange_success_private_key: bitcoin_support::PrivateKey,
 }
 
 impl OrderTaken {
@@ -93,11 +93,11 @@ impl OrderTaken {
         contract_secret_lock: SecretHash,
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
-        client_refund_address: bitcoin_wallet::Address,
+        client_refund_address: bitcoin_support::Address,
         client_success_address: EthereumAddress,
         exchange_refund_address: EthereumAddress,
-        exchange_success_address: bitcoin_wallet::Address,
-        exchange_success_private_key: bitcoin_wallet::PrivateKey,
+        exchange_success_address: bitcoin_support::Address,
+        exchange_success_private_key: bitcoin_support::PrivateKey,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
 
@@ -116,7 +116,7 @@ impl OrderTaken {
         }
     }
 
-    pub fn exchange_success_address(&self) -> bitcoin_wallet::Address {
+    pub fn exchange_success_address(&self) -> bitcoin_support::Address {
         self.exchange_success_address.clone()
     }
 
@@ -128,7 +128,7 @@ impl OrderTaken {
         self.exchange_contract_time_lock
     }
 
-    pub fn client_refund_address(&self) -> bitcoin_wallet::Address {
+    pub fn client_refund_address(&self) -> bitcoin_support::Address {
         self.client_refund_address.clone()
     }
 
@@ -144,7 +144,7 @@ impl OrderTaken {
         &self.client_contract_time_lock
     }
 
-    pub fn exchange_success_private_key(&self) -> &bitcoin_wallet::PrivateKey {
+    pub fn exchange_success_private_key(&self) -> &bitcoin_support::PrivateKey {
         &self.exchange_success_private_key
     }
 }

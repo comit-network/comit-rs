@@ -2,7 +2,7 @@
 #![plugin(rocket_codegen)]
 extern crate bitcoin;
 extern crate bitcoin_rpc;
-extern crate bitcoin_wallet;
+extern crate bitcoin_support;
 extern crate common_types;
 extern crate env_logger;
 extern crate ethereum_wallet;
@@ -22,8 +22,7 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc::BitcoinRpcApi;
-use bitcoin_wallet::PrivateKey;
-use common_types::BitcoinQuantity;
+use bitcoin_support::PrivateKey;
 use ethereum_wallet::InMemoryWallet;
 use ethereum_wallet::ToEthereumAddress;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
@@ -97,7 +96,7 @@ fn main() {
     let exchange_success_private_key =
         PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
 
-    let btc_exchange_redeem_address = bitcoin_wallet::Address::from_str(
+    let btc_exchange_redeem_address = bitcoin_support::Address::from_str(
         var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
     ).expect("BTC Exchange Redeem Address is Invalid");
 
@@ -138,10 +137,8 @@ fn main() {
 
     let satoshi_per_kb = var_or_exit("BITCOIN_SATOSHI_PER_KB");
     let satoshi_per_kb =
-        u64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into u64");
-
-    let rate_per_kb = BitcoinQuantity::from_satoshi(satoshi_per_kb);
-    let bitcoin_fee_service = StaticBitcoinFeeService::new(rate_per_kb);
+        f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
+    let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
 
     create_rocket_instance(
         Arc::new(api_client),

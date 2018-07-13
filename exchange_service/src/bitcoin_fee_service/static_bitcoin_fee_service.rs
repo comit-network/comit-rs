@@ -1,16 +1,15 @@
-use bitcoin_fee_service::{BitcoinFeeService, Error, Rate};
-use common_types::BitcoinQuantity;
+use bitcoin_fee_service::{BitcoinFeeService, Error};
 
-pub struct StaticBitcoinFeeService(Rate);
+pub struct StaticBitcoinFeeService(f64);
 
 impl BitcoinFeeService for StaticBitcoinFeeService {
-    fn get_recommended_fee(&self) -> Result<Rate, Error> {
+    fn get_recommended_fee(&self) -> Result<f64, Error> {
         Ok(self.0)
     }
 }
 
 impl StaticBitcoinFeeService {
-    pub fn new(per_byte: BitcoinQuantity) -> Self {
-        StaticBitcoinFeeService(Rate(per_byte))
+    pub fn new(satoshi_per_byte: f64) -> Self {
+        StaticBitcoinFeeService(satoshi_per_byte)
     }
 }

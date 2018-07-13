@@ -4,7 +4,6 @@ name = "key_gen"
 version = "0.1.0"
 [dependencies]
 bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-bitcoin_wallet = { path = "../bitcoin_wallet" }
 ethereum_wallet = { path = "../ethereum_wallet" }
 bitcoin_support  = { path = "../bitcoin_support" }
 hex = "0.3.2"

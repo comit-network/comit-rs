@@ -11,7 +11,7 @@ extern crate serde_derive;
 extern crate bitcoin;
 extern crate bitcoin_htlc;
 extern crate bitcoin_support;
-extern crate bitcoin_wallet;
+extern crate bitcoin_witness;
 extern crate common_types;
 extern crate ethereum_htlc;
 extern crate ethereum_wallet;

@@ -1,9 +1,11 @@
 use bitcoin_fee_service;
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc;
+use bitcoin_htlc::UnlockingError;
 use bitcoin_rpc;
+use bitcoin_support;
 use bitcoin_support::PubkeyHash;
-use bitcoin_wallet;
+use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
 use event_store::EventStore;
 use event_store::TradeId;
@@ -45,85 +47,71 @@ pub fn post_revealed_secret(
     event_store: State<EventStore>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
     fee_service: State<Arc<BitcoinFeeService>>,
-    btc_exchange_redeem_address: State<bitcoin_wallet::Address>,
+    btc_exchange_redeem_address: State<bitcoin_support::Address>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
-    let btc_exchange_redeem_address = btc_exchange_redeem_address.inner();
-
     let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
-
-    let secret: Secret = redeem_btc_notification_body.into_inner().secret;
-
-    let orig_secret_hash = order_taken_event.contract_secret_lock();
-    let given_secret_hash = secret.hash();
-    if given_secret_hash != *orig_secret_hash {
-        error!("Secret for trade {} can't be used to redeem htlc locked by {} because it didn't match {}", trade_id, orig_secret_hash, given_secret_hash);
-        return Err(BadRequest(Some(
-            "the secret didn't match the hash".to_string(),
-        )));
-    }
-
+    let offer_created_event = event_store.get_offer_created_event(&trade_id)?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
     let trade_funded_event = event_store.get_trade_funded_event(&trade_id)?;
-
+    let btc_exchange_redeem_address = btc_exchange_redeem_address.inner();
+    let secret: Secret = redeem_btc_notification_body.into_inner().secret;
+    let exchange_success_address = order_taken_event.exchange_success_address();
+    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
+    let exchange_success_secret_key = order_taken_event
+        .exchange_success_private_key()
+        .secret_key()
+        .clone();
+    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address().into();
     let htlc_txid = trade_funded_event.transaction_id();
     let vout = trade_funded_event.vout();
-    let offer_created_event = event_store.get_offer_created_event(&trade_id)?;
-    let input_amount = offer_created_event.btc_amount();
 
-    let exchange_success_address = order_taken_event.exchange_success_address();
-
-    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
-
-    debug!(
-        "Exchange success address retrieved: {:x}",
-        exchange_success_pubkey_hash
-    );
-
-    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address().into();
-
-    debug!(
-        "Client refund address retrieved: {:x}",
-        client_refund_pubkey_hash
-    );
-
-    let htlc_script = bitcoin_htlc::Htlc::new(
+    let htlc = bitcoin_htlc::Htlc::new(
         exchange_success_pubkey_hash,
         client_refund_pubkey_hash,
         order_taken_event.contract_secret_lock().clone(),
         order_taken_event.client_contract_time_lock().clone().into(),
-    ).script()
-        .clone();
+    );
 
-    debug!("HTLC successfully generated");
+    htlc.can_be_unlocked_with(&secret, &exchange_success_secret_key)
+        .map_err(|e| match e {
+            UnlockingError::WrongSecret { .. } => {
+                error!("Poked with wrong secret: {:?}", e);
+                BadRequest(Some(format!("{:?}", e).to_string()))
+            }
+            UnlockingError::WrongSecretKey { .. } => {
+                error!("exchange_success_public_key_hash was inconsistent with exchange_success_private_key");
+                BadRequest(None)
+            }
+        })?;
 
-    let tx_weight = bitcoin_wallet::estimate_weight_of_redeem_tx_with_script(&htlc_script);
+    let unlocking_parameters = htlc.unlock_with_secret(exchange_success_secret_key, secret);
+
+    let primed_txn = PrimedTransaction {
+        inputs: vec![
+            PrimedInput::new(
+                htlc_txid.clone().into(),
+                vout,
+                offer_created_event.btc_amount(),
+                unlocking_parameters,
+            ),
+        ],
+        output_address: btc_exchange_redeem_address.clone(),
+        locktime: 0,
+    };
+
+    let total_input_value = primed_txn.total_input_value();
 
     let rate = fee_service.get_recommended_fee()?;
-    let fee = rate.calculate_fee_for_tx_with_weight(tx_weight);
-
-    let output_amount = input_amount - fee;
-
-    let redeem_tx = bitcoin_wallet::generate_p2wsh_htlc_redeem_tx(
-        htlc_txid,
-        vout,
-        input_amount,
-        output_amount,
-        &htlc_script,
-        &secret,
-        &order_taken_event.exchange_success_private_key(),
-        btc_exchange_redeem_address,
-    ).map_err(log_error(
-        "Unable to generate p2wsh htlc redeem transaction",
-    ))?;
+    let redeem_tx = primed_txn.sign_with_rate(rate);
 
     debug!(
         "Redeem {} (input: {}, vout: {}) to {} (output: {})",
         htlc_txid,
-        input_amount,
+        total_input_value,
         vout,
         redeem_tx.txid(),
-        output_amount
+        redeem_tx.output[0].value
     );
     //TODO: Store above in event prior to doing rnpc request
     let rpc_transaction = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx);
