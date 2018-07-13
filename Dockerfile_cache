@@ -1,0 +1,8 @@
+# This Dockerfile is here to ease development times
+FROM tenx-tech/swap:latest
+
+WORKDIR /source
+COPY . /source
+RUN cargo fetch
+RUN cargo build
+WORKDIR /source/target/debug

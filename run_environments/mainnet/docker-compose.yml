@@ -1,7 +1,7 @@
 version: '3'
 services:
   treasury_service:
-    build: ../../fake_treasury_service
+    build: ../../
     environment:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,fake_treasury_service=debug
@@ -9,7 +9,7 @@ services:
     ports:
     - "8020:8000"
   exchange_service:
-    build: ../../exchange_service
+    build: ../../
     env_file:
       - "$SWAP_ENV/mainnet.env"
       - ./network.env
@@ -23,7 +23,7 @@ services:
     depends_on:
     - treasury_service
   trading_service:
-    build: ../../trading_service
+    build: ../../
     env_file:
       - "$SWAP_ENV/mainnet.env"
       - ./network.env
