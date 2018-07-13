@@ -21,3 +21,4 @@ web3 = "0.3.0"
 bitcoin_rpc = { path = "../bitcoin_rpc" }
 common_types = { path = "../common_types"}
 ethereum_support = { path = "../ethereum_support" }
+bitcoin_support = { path = "../bitcoin_support" }

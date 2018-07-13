@@ -23,9 +23,6 @@ extern crate uuid;
 
 use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_support::PrivateKey;
-use bitcoin_wallet::PrivateKey;
-use common_types::BitcoinQuantity;
-use ethereum_support::Address as EthereumAddress;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
@@ -91,7 +88,7 @@ fn main() {
     );
 
     let exchange_refund_address =
-        EthereumAddress::from_str(var_or_exit("EXCHANGE_REFUND_ADDRESS").as_str())
+        ethereum_support::Address::from_str(var_or_exit("EXCHANGE_REFUND_ADDRESS").as_str())
             .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address");
 
     let exchange_success_private_key =

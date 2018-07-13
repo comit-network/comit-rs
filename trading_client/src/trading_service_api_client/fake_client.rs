@@ -1,7 +1,7 @@
 use super::client::ApiClient;
 use bitcoin_rpc;
+use bitcoin_support::BitcoinQuantity;
 use common_types;
-use common_types::BitcoinQuantity;
 use ethereum_support;
 use ethereum_support::EthereumQuantity;
 use offer::Symbol;

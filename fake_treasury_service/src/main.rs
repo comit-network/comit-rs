@@ -8,10 +8,10 @@ extern crate rocket_contrib;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
-extern crate common_types;
+extern crate bitcoin_support;
 extern crate ethereum_support;
 
-use common_types::BitcoinQuantity;
+use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
 use rocket::State;
 use rocket::http::RawStr;

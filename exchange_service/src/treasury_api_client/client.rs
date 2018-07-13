@@ -1,5 +1,5 @@
 use super::Symbol;
-use common_types::BitcoinQuantity;
+use bitcoin_support::*;
 use ethereum_support::*;
 use reqwest;
 

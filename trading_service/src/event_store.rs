@@ -1,7 +1,7 @@
 use bitcoin_htlc::Htlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
-use common_types::BitcoinQuantity;
+use bitcoin_support::BitcoinQuantity;
 use ethereum_support;
 use ethereum_support::EthereumQuantity;
 use exchange_api_client::OfferResponseBody;

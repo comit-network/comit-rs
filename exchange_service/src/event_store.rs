@@ -1,7 +1,7 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
 use bitcoin_support;
-use common_types::BitcoinQuantity;
+use bitcoin_support::BitcoinQuantity;
 use common_types::secret::SecretHash;
 use ethereum_support;
 use ethereum_support::*;
