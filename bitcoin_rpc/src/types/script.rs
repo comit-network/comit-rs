@@ -9,7 +9,7 @@ from_str!(RedeemScript);
 #[derive(Deserialize, Serialize, Debug, PartialEq, Clone)]
 pub struct ScriptPubKey {
     pub asm: String,
-    #[serde(with = "script_serde")]
+    #[serde(with = "self::serde::script")]
     pub hex: Script,
     #[serde(rename = "reqSigs")]
     pub req_sigs: Option<u32>,
