@@ -6,6 +6,7 @@ use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
 use bitcoin_support::PubkeyHash;
 use common_types::{BitcoinQuantity, EthereumQuantity};
+use ethereum_support;
 use event_store;
 use event_store::ContractDeployed;
 use event_store::EventStore;
@@ -30,7 +31,6 @@ use std::sync::Mutex;
 use symbol::Symbol;
 use uuid;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -74,7 +74,7 @@ pub fn post_buy_offers(
 
 #[derive(Deserialize)]
 pub struct BuyOrderRequestBody {
-    client_success_address: EthAddress,
+    client_success_address: ethereum_support::Address,
     // TODO: this forces the trading-cli to have a dependency on bitcoin_rpc.
     // I think we should avoid it and push for a dependency on rust-bitcoin instead
     // However, rust-bitcoin addresses do not seem to deserialize:
@@ -195,7 +195,7 @@ pub fn post_buy_orders(
 
 #[derive(Deserialize)]
 pub struct ContractDeployedRequestBody {
-    pub contract_address: EthAddress,
+    pub contract_address: ethereum_support::Address,
 }
 
 #[post("/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed", format = "application/json",
@@ -215,7 +215,7 @@ pub fn post_contract_deployed(
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct RedeemDetails {
-    address: EthAddress,
+    address: ethereum_support::Address,
     data: bitcoin_htlc::secret::Secret,
     gas: u64,
 }
