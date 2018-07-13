@@ -1,7 +1,9 @@
 use super::client::ApiClient;
 use bitcoin_rpc;
 use common_types;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use common_types::BitcoinQuantity;
+use ethereum_support;
+use ethereum_support::EthereumQuantity;
 use offer::Symbol;
 use std::str::FromStr;
 use trading_service_api_client::BuyOfferRequestBody;
@@ -12,7 +14,6 @@ use trading_service_api_client::TradeId;
 use trading_service_api_client::client::RedeemDetails;
 use trading_service_api_client::client::TradingServiceError;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
@@ -52,7 +53,9 @@ impl ApiClient for FakeApiClient {
         _uid: Uuid,
     ) -> Result<RedeemDetails, TradingServiceError> {
         Ok(RedeemDetails {
-            address: EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap(),
+            address: ethereum_support::Address::from_str(
+                "00a329c0648769a73afac7f9381e08fb43dbea72",
+            ).unwrap(),
             data: common_types::secret::Secret::from_str(
                 "1234567890123456789012345678901212345678901234567890123456789012",
             ).unwrap(),

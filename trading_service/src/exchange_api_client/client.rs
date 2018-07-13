@@ -1,6 +1,7 @@
 use bitcoin_rpc;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use common_types::BitcoinQuantity;
 use ethereum_support;
+use ethereum_support::EthereumQuantity;
 use event_store::TradeId;
 use reqwest;
 use secret::SecretHash;

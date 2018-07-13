@@ -1,8 +1,8 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
 use bitcoin_support;
+use common_types::BitcoinQuantity;
 use common_types::secret::SecretHash;
-use common_types::{BitcoinQuantity, EthereumQuantity};
 use ethereum_support;
 use ethereum_support::*;
 use std::collections::HashMap;

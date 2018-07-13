@@ -9,7 +9,10 @@ extern crate serde_derive;
 #[macro_use]
 extern crate log;
 extern crate common_types;
-use common_types::{BitcoinQuantity, CurrencyQuantity, EthereumQuantity};
+extern crate ethereum_support;
+
+use common_types::BitcoinQuantity;
+use ethereum_support::EthereumQuantity;
 use rocket::State;
 use rocket::http::RawStr;
 use rocket::response::status::BadRequest;
@@ -43,7 +46,7 @@ pub fn get_rates(
     let buy_amount_eth = rate_request_params.amount;
     let symbol = symbol.to_string();
     let sell_amount = calculate_sell_amount(buy_amount_eth, *rate);
-    let buy_amount = EthereumQuantity::from_nominal_amount(buy_amount_eth);
+    let buy_amount = EthereumQuantity::from_eth(buy_amount_eth);
     info!(
         "Rate for {} is {}: {}:{}",
         symbol, *rate, buy_amount, sell_amount
@@ -68,7 +71,6 @@ fn main() {
 
 #[cfg(test)]
 mod test {
-    extern crate ethereum_support;
     extern crate serde_json;
     use self::ethereum_support::*;
     use super::*;

@@ -1,5 +1,6 @@
 use super::Symbol;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use common_types::BitcoinQuantity;
+use ethereum_support::*;
 use reqwest;
 
 #[derive(Clone, Debug)]

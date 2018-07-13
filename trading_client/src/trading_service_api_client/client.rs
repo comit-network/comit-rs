@@ -1,6 +1,8 @@
 use bitcoin_rpc;
 use common_types;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use common_types::BitcoinQuantity;
+use ethereum_support;
+use ethereum_support::EthereumQuantity;
 use offer::Symbol;
 use regex::Regex;
 use reqwest;
@@ -8,7 +10,6 @@ use std::fmt;
 use std::str::FromStr;
 use uuid::ParseError;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -60,7 +61,7 @@ pub struct OfferResponseBody {
 
 #[derive(Deserialize, Serialize)]
 pub struct BuyOrderRequestBody {
-    client_success_address: EthAddress,
+    client_success_address: ethereum_support::Address,
     client_refund_address: bitcoin_rpc::Address,
 }
 
@@ -74,7 +75,7 @@ impl BuyOrderRequestBody {
         let re = Regex::new("^0x").unwrap();
         let client_success_address = re.replace(&client_success_address.as_str(), "");
 
-        let client_success_address = EthAddress::from_str(&client_success_address)
+        let client_success_address = ethereum_support::Address::from_str(&client_success_address)
             .expect("Could not convert the success address");
         let client_refund_address = bitcoin_rpc::Address::from_str(client_refund_address.as_str())
             .expect("Could not convert the Bitcoin refund address");
@@ -95,7 +96,7 @@ pub struct RequestToFund {
 
 #[derive(Deserialize)]
 pub struct RedeemDetails {
-    pub address: EthAddress,
+    pub address: ethereum_support::Address,
     pub data: common_types::secret::Secret,
     pub gas: u64,
 }
@@ -183,7 +184,9 @@ mod tests {
         let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
         let order_request_body = BuyOrderRequestBody::new(address, refund_address);
 
-        let eth_address = EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap();
+        let eth_address = ethereum_support::Address::from_str(
+            "00a329c0648769a73afac7f9381e08fb43dbea72",
+        ).unwrap();
         assert_eq!(order_request_body.client_success_address, eth_address)
     }
 
@@ -193,7 +196,9 @@ mod tests {
         let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
         let order_request_body = BuyOrderRequestBody::new(address, refund_address);
 
-        let eth_address = EthAddress::from_str("00a329c0648769a73afac7f9381e08fb43dbea72").unwrap();
+        let eth_address = ethereum_support::Address::from_str(
+            "00a329c0648769a73afac7f9381e08fb43dbea72",
+        ).unwrap();
         assert_eq!(order_request_body.client_success_address, eth_address)
     }
 
