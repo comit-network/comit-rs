@@ -1,4 +1,3 @@
-extern crate bitcoin;
 extern crate bitcoin_support;
 extern crate secp256k1_support;
 
