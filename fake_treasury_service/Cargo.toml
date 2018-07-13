@@ -19,5 +19,5 @@ common_types = { path = "../common_types" }
 bitcoin_support = { path = "../bitcoin_support" }
 
 [dev-dependencies]
-web3 = "0.3.0"
+ethereum_support = { path = "../ethereum_support" }
 serde_json = "1.0.22"

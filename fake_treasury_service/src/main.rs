@@ -68,9 +68,9 @@ fn main() {
 
 #[cfg(test)]
 mod test {
+    extern crate ethereum_support;
     extern crate serde_json;
-    extern crate web3;
-    use self::web3::types::U256;
+    use self::ethereum_support::*;
     use super::*;
     use rocket::http::*;
 
