@@ -1,6 +1,5 @@
-use bigdecimal;
-use bigdecimal::BigDecimal;
-use bitcoin_support::BitcoinQuantity;
+use U256;
+use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use byteorder::{LittleEndian, WriteBytesExt};
 use num::FromPrimitive;
 use num::ToPrimitive;
@@ -10,33 +9,9 @@ use std::f64;
 use std::fmt;
 use std::mem;
 use std::str::FromStr;
-use web3::types::U256;
-
-pub trait CurrencyQuantity {
-    fn nominal_amount(&self) -> f64;
-    fn from_nominal_amount(nominal_amount: f64) -> Self;
-}
-
-impl CurrencyQuantity for BitcoinQuantity {
-    fn nominal_amount(&self) -> f64 {
-        self.bitcoin()
-    }
-    fn from_nominal_amount(bitcoin: f64) -> Self {
-        Self::from_bitcoin(bitcoin)
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct EthereumQuantity(U256);
-
-impl CurrencyQuantity for EthereumQuantity {
-    fn nominal_amount(&self) -> f64 {
-        self.ethereum()
-    }
-    fn from_nominal_amount(ethereum: f64) -> Self {
-        Self::from_eth(ethereum)
-    }
-}
 
 const U64SIZE: usize = mem::size_of::<u64>();
 
@@ -107,7 +82,7 @@ impl fmt::Display for EthereumQuantity {
 }
 
 impl FromStr for EthereumQuantity {
-    type Err = bigdecimal::ParseBigDecimalError;
+    type Err = ParseBigDecimalError;
     fn from_str(string: &str) -> Result<EthereumQuantity, Self::Err> {
         let dec = BigDecimal::from_str(string)?;
         Ok(EthereumQuantity(Self::bigdecimal_eth_to_u256_wei(dec)))
@@ -116,18 +91,11 @@ impl FromStr for EthereumQuantity {
 
 #[cfg(test)]
 mod test {
-    lazy_static! {
-        static ref WEI_IN_ETHEREUM: U256 = U256::from((10u64).pow(18));
-    }
 
     use super::*;
 
-    #[test]
-    fn bitcoin_from_nominal_amount_is_the_same_as_from_botcoin() {
-        assert_eq!(
-            BitcoinQuantity::from_bitcoin(1.0),
-            BitcoinQuantity::from_nominal_amount(1.0)
-        );
+    lazy_static! {
+        static ref WEI_IN_ETHEREUM: U256 = U256::from((10u64).pow(18));
     }
 
     #[test]
@@ -203,5 +171,4 @@ mod test {
             "100 ETH"
         )
     }
-
 }

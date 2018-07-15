@@ -1,5 +1,5 @@
 [package]
-name = "ethereum_wallet"
+name = "bitcoin_rpc_helpers"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,12 +9,5 @@ authors = [
 ]
 
 [dependencies]
-ethereum_support = { path = "../ethereum_support" }
-secp256k1 = "0.9.0"
-hex = "0.3.2"
-rlp = "0.2.2"
-tiny-keccak = "1.4.2"
-
-[dev-dependencies]
-hex = "0.3.1"
-ganache_node = { path = "../ganache_node" }
+bitcoin_support = { path = "../bitcoin_support" }
+bitcoin_rpc     = { path = "../bitcoin_rpc" }

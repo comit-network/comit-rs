@@ -1,4 +1,5 @@
 use common_types;
+use ethereum_support;
 use offer::Symbol;
 use std::fmt;
 use std::ops::Add;
@@ -7,7 +8,6 @@ use trading_service_api_client::TradingApiUrl;
 use trading_service_api_client::TradingServiceError;
 use trading_service_api_client::create_client;
 use uuid::Uuid;
-use web3::types::Address as EthAddress;
 
 pub enum RedeemOutput {
     URL,
@@ -34,7 +34,7 @@ impl fmt::Display for EthereumPaymentURL {
 
 impl EthereumPaymentURL {
     pub fn new(
-        address: &EthAddress,
+        address: &ethereum_support::Address,
         gas: u64,
         secret: common_types::secret::Secret,
     ) -> EthereumPaymentURL {

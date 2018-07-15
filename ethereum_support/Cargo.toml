@@ -1,5 +1,5 @@
 [package]
-name = "bitcoin_witness"
+name = "ethereum_support"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,12 +9,17 @@ authors = [
 ]
 
 [dependencies]
-bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
+web3 = "0.3.0"
 secp256k1_support = { path = "../secp256k1_support" }
-bitcoin_support = { path = "../bitcoin_support" }
+tiny-keccak = "1.4.2"
+serde = "1.0.70"
+serde_derive = "1.0.70"
+bigdecimal = "0.0.12"
+byteorder = "1.2.3"
+num = "0.1.42"
+lazy_static = "1.0.1"
+regex = "1.0.0"
 
 [dev-dependencies]
-bitcoin_node = { path = "../bitcoin_node" }
-bitcoin_rpc  = { path = "../bitcoin_rpc" }
 hex = "0.3.2"
-bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }
+secp256k1 = "0.9.2"

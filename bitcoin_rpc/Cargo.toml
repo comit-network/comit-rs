@@ -17,7 +17,6 @@ serde_derive = "1.0.66"
 serde = "1.0.66"
 rustc-serialize = "0.3.24"
 log = "0.4.2"
-bitcoin_support = { path = "../bitcoin_support" }
 
 [dev-dependencies]
 env_logger = "0.5.10"

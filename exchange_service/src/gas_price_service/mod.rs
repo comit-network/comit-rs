@@ -1,4 +1,4 @@
-use web3::types::U256;
+use ethereum_support::U256;
 
 #[derive(Debug)]
 pub enum Error {

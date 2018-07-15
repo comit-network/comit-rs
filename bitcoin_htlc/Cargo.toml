@@ -20,3 +20,4 @@ log = "0.4.2"
 
 [dev-dependencies]
 bitcoin_node    = { path = "../bitcoin_node" }
+bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }

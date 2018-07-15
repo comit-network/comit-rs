@@ -1,8 +1,10 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
 use bitcoin_support;
+use bitcoin_support::BitcoinQuantity;
 use common_types::secret::SecretHash;
-use common_types::{BitcoinQuantity, EthereumQuantity};
+use ethereum_support;
+use ethereum_support::*;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -11,8 +13,6 @@ use std::time::SystemTime;
 use treasury_api_client::RateResponseBody;
 use treasury_api_client::Symbol;
 use uuid::Uuid;
-use web3::types::Address as EthereumAddress;
-use web3::types::H256;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -79,9 +79,9 @@ pub struct OrderTaken {
     exchange_contract_time_lock: SystemTime,
 
     client_refund_address: bitcoin_support::Address,
-    client_success_address: EthereumAddress,
+    client_success_address: ethereum_support::Address,
 
-    exchange_refund_address: EthereumAddress,
+    exchange_refund_address: ethereum_support::Address,
     exchange_success_address: bitcoin_support::Address,
     exchange_success_private_key: bitcoin_support::PrivateKey,
 }
@@ -94,8 +94,8 @@ impl OrderTaken {
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
 
         client_refund_address: bitcoin_support::Address,
-        client_success_address: EthereumAddress,
-        exchange_refund_address: EthereumAddress,
+        client_success_address: ethereum_support::Address,
+        exchange_refund_address: ethereum_support::Address,
         exchange_success_address: bitcoin_support::Address,
         exchange_success_private_key: bitcoin_support::PrivateKey,
     ) -> Self {
@@ -120,7 +120,7 @@ impl OrderTaken {
         self.exchange_success_address.clone()
     }
 
-    pub fn exchange_refund_address(&self) -> EthereumAddress {
+    pub fn exchange_refund_address(&self) -> ethereum_support::Address {
         self.exchange_refund_address
     }
 
@@ -132,7 +132,7 @@ impl OrderTaken {
         self.client_refund_address.clone()
     }
 
-    pub fn client_success_address(&self) -> EthereumAddress {
+    pub fn client_success_address(&self) -> ethereum_support::Address {
         self.client_success_address.clone()
     }
 

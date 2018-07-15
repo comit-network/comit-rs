@@ -1,12 +1,10 @@
-use Address;
 use chrono;
 use common_types::secret::SecretHash;
+use ethereum_support::{Address, Bytes, U256};
 use hex;
 use std::time::Duration;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
-use web3;
-use web3::types::U256;
 
 #[derive(Debug)]
 pub struct Htlc {
@@ -18,9 +16,9 @@ pub struct Htlc {
 
 pub struct ByteCode(String);
 
-impl Into<web3::types::Bytes> for ByteCode {
-    fn into(self) -> web3::types::Bytes {
-        web3::types::Bytes(hex::decode(self.0).unwrap())
+impl Into<Bytes> for ByteCode {
+    fn into(self) -> Bytes {
+        Bytes(hex::decode(self.0).unwrap())
     }
 }
 

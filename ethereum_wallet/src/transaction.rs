@@ -1,10 +1,7 @@
+use ethereum_support::{Address, Bytes, H256, U256};
 use rlp::Encodable;
 use rlp::RlpStream;
 use tiny_keccak::keccak256;
-use web3::types::Address;
-use web3::types::Bytes;
-use web3::types::H256;
-use web3::types::U256;
 
 pub struct UnsignedTransaction {
     nonce: U256,

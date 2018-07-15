@@ -1,12 +1,7 @@
 use ethereum_htlc;
+use ethereum_support::*;
 use ganache_node::GanacheCliNode;
 use ganache_rust_web3;
-use web3;
-use web3::futures::Future;
-use web3::types::Address;
-use web3::types::Bytes;
-use web3::types::TransactionRequest;
-use web3::types::U256;
 
 pub struct GanacheClient {
     ganache_node: GanacheCliNode,
