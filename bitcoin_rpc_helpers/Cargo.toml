@@ -1,5 +1,5 @@
 [package]
-name = "bitcoin_witness"
+name = "bitcoin_rpc_helpers"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,11 +9,5 @@ authors = [
 ]
 
 [dependencies]
-secp256k1_support = { path = "../secp256k1_support" }
 bitcoin_support = { path = "../bitcoin_support" }
-
-[dev-dependencies]
-bitcoin_node = { path = "../bitcoin_node" }
-bitcoin_rpc  = { path = "../bitcoin_rpc" }
-hex = "0.3.2"
-bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }
+bitcoin_rpc     = { path = "../bitcoin_rpc" }

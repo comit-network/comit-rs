@@ -1,5 +1,4 @@
 extern crate bitcoin;
-extern crate bitcoin_support;
 extern crate hex as std_hex;
 extern crate jsonrpc;
 #[macro_use]
@@ -12,7 +11,6 @@ extern crate serde_json;
 
 mod bitcoin_rpc_api;
 mod bitcoincore;
-pub mod regtest_helpers;
 mod stub_rpc_client;
 mod types;
 

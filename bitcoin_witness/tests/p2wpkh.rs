@@ -1,5 +1,6 @@
 extern crate bitcoin_node;
 extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
 extern crate hex;
@@ -7,7 +8,7 @@ extern crate secp256k1_support;
 
 use bitcoin_node::BitcoinNode;
 use bitcoin_rpc::BitcoinRpcApi;
-use bitcoin_rpc::regtest_helpers::*;
+use bitcoin_rpc_helpers::RegtestHelperClient;
 use bitcoin_support::serialize::serialize_hex;
 use bitcoin_support::{Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
