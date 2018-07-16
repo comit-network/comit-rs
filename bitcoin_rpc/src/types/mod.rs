@@ -5,7 +5,7 @@ mod block;
 mod blockchain;
 mod keys;
 mod script;
-mod script_serde;
+mod serde;
 mod transaction;
 
 #[derive(Deserialize, Serialize, Debug, PartialEq)]

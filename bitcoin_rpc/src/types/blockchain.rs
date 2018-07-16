@@ -1,7 +1,5 @@
 use bitcoin::network::constants::Network;
-use serde::Deserializer;
-use serde::de;
-use serde::export::fmt;
+use types::*;
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct SoftFork {
@@ -43,7 +41,7 @@ pub struct Bip9SoftForkDetails {
 
 #[derive(Deserialize, Debug, PartialEq)]
 pub struct BlockchainInfo {
-    #[serde(deserialize_with = "network_deserialize")]
+    #[serde(with = "self::serde::network")]
     chain: Network,
     blocks: u64,
     headers: u64,
@@ -63,36 +61,6 @@ pub struct BlockchainInfo {
     bip9_softforks: Bip9SoftFork,
     warnings: String,
 }
-
-fn network_deserialize<'de, D>(deserializer: D) -> Result<Network, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    struct Visitor;
-
-    impl<'de> de::Visitor<'de> for Visitor {
-        type Value = Network;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("Bitcoin network: `main`, `test` or `regtest`")
-        }
-
-        fn visit_str<E>(self, value: &str) -> Result<Network, E>
-        where
-            E: de::Error,
-        {
-            match value {
-                "test" => Ok(Network::Testnet),
-                "regtest" => Ok(Network::BitcoinCoreRegtest),
-                "main" => Ok(Network::Bitcoin),
-                _ => Err(E::custom(format!("Unexpect value for Network: {}", value))),
-            }
-        }
-    }
-
-    deserializer.deserialize_str(Visitor)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
