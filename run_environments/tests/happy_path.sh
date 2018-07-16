@@ -36,7 +36,7 @@ function setup() {
     docker-compose up -d ethereum bitcoin 2> $OUTPUT > $OUTPUT
     sleep 5;
     docker-compose up -d 2> $OUTPUT > $OUTPUT
-    docker-compose logs -f 2> $OUTPUT > $OUTPUT &
+    test "$DOCKER_LOGS" && docker-compose logs -f &
     sleep 3;
     ########
 
