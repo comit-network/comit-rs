@@ -1,6 +1,5 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
-extern crate bitcoin;
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate common_types;
@@ -22,7 +21,7 @@ extern crate tiny_keccak;
 extern crate uuid;
 
 use bitcoin_rpc::BitcoinRpcApi;
-use bitcoin_support::PrivateKey;
+use bitcoin_support::{Network, PrivateKey};
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
@@ -121,15 +120,15 @@ fn main() {
 
     let network = match var("BTC_NETWORK") {
         Ok(value) => match value.as_str() {
-            "BTC_MAINNET" => bitcoin::network::constants::Network::Bitcoin,
-            "BTC_TESTNET" => bitcoin::network::constants::Network::Testnet,
-            "BTCORE_REGTEST" => bitcoin::network::constants::Network::BitcoinCoreRegtest,
+            "BTC_MAINNET" => Network::Bitcoin,
+            "BTC_TESTNET" => Network::Testnet,
+            "BTCORE_REGTEST" => Network::BitcoinCoreRegtest,
             _ => panic!(
                 "Please set environment variable BTC_NETWORK to one of the following values:\n\
                  - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
             ),
         },
-        Err(_) => bitcoin::network::constants::Network::BitcoinCoreRegtest,
+        Err(_) => Network::BitcoinCoreRegtest,
     };
     info!("set BTC_NETWORK={}", network);
 

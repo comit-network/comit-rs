@@ -1,4 +1,3 @@
-extern crate bitcoin;
 extern crate bitcoin_node;
 extern crate bitcoin_rpc;
 extern crate bitcoin_rpc_helpers;
