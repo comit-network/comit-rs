@@ -18,7 +18,7 @@ lazy_static = "1.0.1"
 regex = "1.0.0"
 uuid = { version = "0.6.3", features = ["serde", "v4"] }
 web3 = "0.3.0"
-bitcoin_rpc = { path = "../bitcoin_rpc" }
+bitcoin_rpc = { path = "../../vendor/bitcoin_rpc" }
 common_types = { path = "../common_types"}
-ethereum_support = { path = "../ethereum_support" }
-bitcoin_support = { path = "../bitcoin_support" }
+ethereum_support = { path = "../../vendor/ethereum_support" }
+bitcoin_support = { path = "../../vendor/bitcoin_support" }

@@ -4,11 +4,15 @@ Trustless, easy trading through atomic swaps.
 
 ## Structure
 
-The system consists of three parts:
+The repository contains two main folders: `vendor` and `application`.
 
-- `exchange_service`
-- `trading_service`
-- `treasury_service` (this project only provides a fake)
+### Vendor
+
+Contains crates that provides some kind of general functionality that is not specific to the domain of atomic swaps. Crates defined in here MUST NOT depend on crates in `application`. They may be separated out of the repository at some point (and possibly released on crates.io).
+
+### Application
+
+Contains crates specific to our application. Can depend on stuff in `vendor`.
 
 ## Setup
 

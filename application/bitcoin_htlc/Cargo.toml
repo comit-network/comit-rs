@@ -10,14 +10,14 @@ authors = [
 
 [dependencies]
 bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-bitcoin_rpc  = { path = "../bitcoin_rpc" }
+bitcoin_rpc  = { path = "../../vendor/bitcoin_rpc" }
 common_types = { path = "../common_types" }
-bitcoin_support = { path = "../bitcoin_support" }
-bitcoin_witness = { path = "../bitcoin_witness" }
-secp256k1_support = { path = "../secp256k1_support" }
+bitcoin_support = { path = "../../vendor/bitcoin_support" }
+bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
+secp256k1_support = { path = "../../vendor/secp256k1_support" }
 hex = "0.3.2"
 log = "0.4.2"
 
 [dev-dependencies]
-bitcoin_node    = { path = "../bitcoin_node" }
-bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }
+bitcoin_node    = { path = "../../vendor/bitcoin_node" }
+bitcoin_rpc_helpers = { path = "../../vendor/bitcoin_rpc_helpers" }
