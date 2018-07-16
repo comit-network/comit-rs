@@ -55,7 +55,7 @@ function setup() {
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL  > /dev/null
     # Watch the btc exchange redeem address
-    debug "Adding BITC_EXCHANGE_REDEEM_ADDRESS to wallet";
+    debug "Adding BTC_EXCHANGE_REDEEM_ADDRESS to wallet";
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\
         \"jsonrpc\": \"1.0\",\
