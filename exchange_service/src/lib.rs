@@ -8,7 +8,6 @@ extern crate rocket_contrib;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate bitcoin;
 extern crate bitcoin_htlc;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;

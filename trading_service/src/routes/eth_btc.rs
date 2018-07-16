@@ -1,10 +1,9 @@
-use bitcoin;
-use bitcoin::network::constants::Network;
 use bitcoin_htlc;
 use bitcoin_htlc::Htlc as BtcHtlc;
 use bitcoin_rpc;
 use bitcoin_rpc::BlockHeight;
-use bitcoin_support::*;
+use bitcoin_support;
+use bitcoin_support::{BitcoinQuantity, Network, PubkeyHash};
 use ethereum_support;
 use ethereum_support::EthereumQuantity;
 use event_store;
@@ -154,12 +153,12 @@ pub fn post_buy_orders(
     };
 
     let exchange_success_address =
-        bitcoin::util::address::Address::from_str(
+        bitcoin_support::Address::from_str(
             order_response.exchange_success_address.to_string().as_str(),
         ).expect("Could not convert exchange success address to bitcoin::util::address::Address");
 
     let client_refund_address =
-        bitcoin::util::address::Address::from_str(client_refund_address.to_string().as_str())
+        bitcoin_support::Address::from_str(client_refund_address.to_string().as_str())
             .expect("Could not convert client refund address to bitcoin::util::address::Address");
 
     let exchange_success_pubkey_hash = PubkeyHash::from(exchange_success_address);

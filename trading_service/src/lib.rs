@@ -20,7 +20,6 @@ extern crate uuid;
 
 #[macro_use]
 extern crate log;
-extern crate bitcoin;
 extern crate serde;
 
 pub mod exchange_api_client;
