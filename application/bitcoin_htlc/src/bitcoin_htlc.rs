@@ -3,7 +3,7 @@ use bitcoin::blockdata::opcodes::All::*;
 use bitcoin::blockdata::script::Builder;
 use bitcoin_support::{Address, Network, PubkeyHash, Script};
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
-use secp256k1_support::{SecretKey, ToPublicKey};
+use secp256k1_support::KeyPair;
 use secret::{Secret, SecretHash};
 
 #[derive(Debug)]
@@ -12,7 +12,8 @@ pub enum UnlockingError {
         got: SecretHash,
         expected: SecretHash,
     },
-    WrongSecretKey {
+    WrongKeyPair {
+        keypair: KeyPair,
         got: PubkeyHash,
         expected: PubkeyHash,
     },
@@ -74,9 +75,9 @@ impl Htlc {
     pub fn can_be_unlocked_with(
         &self,
         got_secret: &Secret,
-        got_secret_key: &SecretKey,
+        got_keypair: &KeyPair,
     ) -> Result<(), UnlockingError> {
-        let got_pubkey_hash: PubkeyHash = got_secret_key.to_public_key().into();
+        let got_pubkey_hash: PubkeyHash = got_keypair.public_key().clone().into();
         let got_secret_hash = got_secret.hash();
         let expected_pubkey_hash = &self.recipient_success_pubkey_hash;
         let expected_secret_hash = &self.secret_hash;
@@ -89,7 +90,8 @@ impl Htlc {
         }
 
         if *expected_pubkey_hash != got_pubkey_hash {
-            return Err(UnlockingError::WrongSecretKey {
+            return Err(UnlockingError::WrongKeyPair {
+                keypair: got_keypair.clone(),
                 got: got_pubkey_hash,
                 expected: expected_pubkey_hash.clone(),
             });
@@ -98,11 +100,12 @@ impl Htlc {
         Ok(())
     }
 
-    pub fn unlock_with_secret(&self, secret_key: SecretKey, secret: Secret) -> UnlockParameters {
+    pub fn unlock_with_secret(&self, keypair: KeyPair, secret: Secret) -> UnlockParameters {
+        let public_key = keypair.public_key().clone();
         UnlockParameters {
             witness: vec![
-                Witness::Signature(secret_key),
-                Witness::PublicKey(secret_key.to_public_key()),
+                Witness::Signature(keypair),
+                Witness::PublicKey(public_key),
                 Witness::Data(secret.raw_secret().to_vec()),
                 Witness::Bool(true),
                 Witness::PrevScript,
@@ -112,11 +115,12 @@ impl Htlc {
         }
     }
 
-    pub fn unlock_after_timeout(&self, secret_key: SecretKey) -> UnlockParameters {
+    pub fn unlock_after_timeout(&self, keypair: KeyPair) -> UnlockParameters {
+        let public_key = keypair.public_key().clone();
         UnlockParameters {
             witness: vec![
-                Witness::Signature(secret_key),
-                Witness::PublicKey(secret_key.to_public_key()),
+                Witness::Signature(keypair),
+                Witness::PublicKey(public_key),
                 Witness::Bool(false),
                 Witness::PrevScript,
             ],

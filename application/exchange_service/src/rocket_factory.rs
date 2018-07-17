@@ -7,6 +7,7 @@ use ethereum_support;
 use event_store::EventStore;
 use rocket;
 use routes;
+use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use treasury_api_client::ApiClient;
 
@@ -16,7 +17,7 @@ pub fn create_rocket_instance(
     ethereum_service: Arc<EthereumService>,
     bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
     exchange_refund_address: ethereum_support::Address,
-    exchange_success_private_key: bitcoin_support::PrivateKey,
+    exchange_success_keypair: KeyPair,
     btc_exchange_redeem_address: bitcoin_support::Address,
     network: Network,
     bitcoin_fee_service: Arc<BitcoinFeeService>,
@@ -35,7 +36,7 @@ pub fn create_rocket_instance(
         .manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_rpc_client)
-        .manage(exchange_success_private_key)
+        .manage(exchange_success_keypair)
         .manage(exchange_refund_address)
         .manage(btc_exchange_redeem_address)
         .manage(network)
