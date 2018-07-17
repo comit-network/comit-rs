@@ -11,4 +11,4 @@ A human readable summary of the feature request request.
 * Add a list of questions which need to be answered in combination to this ticket.
 
 **Definition of Done:**
-* A bullet point list which helps to identify the completion of this ticket
+* Add a list of tasks which needs to be fulfilled. This will help to identify the completion of this ticket.
