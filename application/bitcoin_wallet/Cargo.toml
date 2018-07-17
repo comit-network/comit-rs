@@ -8,11 +8,11 @@ lazy_static = "1.0.1"
 secp256k1 = "0.9.0"
 bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 common_types = { path = "../common_types" }
-bitcoin_rpc  = { path = "../bitcoin_rpc" }
+bitcoin_rpc  = { path = "../../vendor/bitcoin_rpc" }
 uuid = { version = "0.6.5", features = ["v4"] }
 rust-crypto = "0.2.36"
 
 [dev-dependencies]
 bitcoin_htlc =  { path = "../bitcoin_htlc" }
-bitcoin_node = { path = "../bitcoin_node" }
+bitcoin_node = { path = "../../vendor/bitcoin_node" }
 

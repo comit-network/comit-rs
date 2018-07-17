@@ -20,10 +20,10 @@ rocket_contrib = "=0.3.14"
 serde = "1.0.66"
 serde_derive = "1.0.66"
 serde_json = "1.0.22"
-bitcoin_rpc = { path = "../bitcoin_rpc" }
+bitcoin_rpc = { path = "../../vendor/bitcoin_rpc" }
 bitcoin_htlc = { path = "../bitcoin_htlc" }
-bitcoin_support = { path = "../bitcoin_support" }
-ethereum_support = { path = "../ethereum_support" }
+bitcoin_support = { path = "../../vendor/bitcoin_support" }
+ethereum_support = { path = "../../vendor/ethereum_support" }
 common_types = { path = "../common_types" }
 hex = "0.3.2"
 crypto = "0.0.2"
