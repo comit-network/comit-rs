@@ -13,8 +13,9 @@ use bitcoin_htlc::Htlc;
 use bitcoin_node::BitcoinNode;
 use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_rpc_helpers::RegtestHelperClient;
-use bitcoin_support::serialize::serialize_hex;
-use bitcoin_support::{Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash};
+use bitcoin_support::{
+    serialize::serialize_hex, Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash,
+};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
 use secp256k1_support::KeyPair;
@@ -99,14 +100,12 @@ fn redeem_htlc_with_secret() {
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
-        inputs: vec![
-            PrimedInput::new(
-                txid.into(),
-                vout.n,
-                input_amount,
-                htlc.unlock_with_secret(keypair, secret),
-            ),
-        ],
+        inputs: vec![PrimedInput::new(
+            txid.into(),
+            vout.n,
+            input_amount,
+            htlc.unlock_with_secret(keypair, secret),
+        )],
         output_address: alice_addr.clone(),
         locktime: 0,
     }.sign_with_fee(fee);
@@ -148,14 +147,12 @@ fn redeem_refund_htlc() {
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
-        inputs: vec![
-            PrimedInput::new(
-                txid.clone().into(),
-                vout.n,
-                input_amount,
-                htlc.unlock_after_timeout(keypair),
-            ),
-        ],
+        inputs: vec![PrimedInput::new(
+            txid.clone().into(),
+            vout.n,
+            input_amount,
+            htlc.unlock_after_timeout(keypair),
+        )],
         output_address: alice_addr.clone(),
         locktime: 0,
     }.sign_with_fee(fee);

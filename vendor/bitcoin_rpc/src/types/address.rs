@@ -1,15 +1,11 @@
-use bitcoin;
-use bitcoin::util::address::Address as BitcoinAddress;
-use serde::Deserialize;
-use serde::Deserializer;
-use serde::Serialize;
-use serde::Serializer;
-use serde::de;
-use std::convert::Into;
-use std::fmt;
-use std::hash::Hash;
-use std::hash::Hasher;
-use std::str::FromStr;
+use bitcoin::{self, util::address::Address as BitcoinAddress};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    convert::Into,
+    fmt,
+    hash::{Hash, Hasher},
+    str::FromStr,
+};
 use types::ScriptType;
 
 #[derive(Debug, PartialEq, Clone)]

@@ -1,15 +1,12 @@
 use bitcoin_rpc;
 use bitcoin_support::BitcoinQuantity;
 use common_types;
-use ethereum_support;
-use ethereum_support::EthereumQuantity;
+use ethereum_support::{self, EthereumQuantity};
 use offer::Symbol;
 use regex::Regex;
 use reqwest;
-use std::fmt;
-use std::str::FromStr;
-use uuid::ParseError;
-use uuid::Uuid;
+use std::{fmt, str::FromStr};
+use uuid::{ParseError, Uuid};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);

@@ -36,9 +36,4 @@ pub enum SigHashType {
     Single_AnyoneCanPay,
 }
 
-pub use self::address::*;
-pub use self::block::*;
-pub use self::blockchain::*;
-pub use self::keys::*;
-pub use self::script::*;
-pub use self::transaction::*;
+pub use self::{address::*, block::*, blockchain::*, keys::*, script::*, transaction::*};

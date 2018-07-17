@@ -1,6 +1,7 @@
-use bitcoin::blockdata::opcodes::All::OP_NOP3 as OP_CHECKSEQUENCEVERIFY;
-use bitcoin::blockdata::opcodes::All::*;
-use bitcoin::blockdata::script::Builder;
+use bitcoin::blockdata::{
+    opcodes::All::{OP_NOP3 as OP_CHECKSEQUENCEVERIFY, *},
+    script::Builder,
+};
 use bitcoin_support::{Address, Network, PubkeyHash, Script};
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use secp256k1_support::KeyPair;

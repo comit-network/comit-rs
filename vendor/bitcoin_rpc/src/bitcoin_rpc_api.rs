@@ -1,6 +1,5 @@
 use bitcoincore::TxOutConfirmations;
-use jsonrpc::HTTPError;
-use jsonrpc::RpcResponse;
+use jsonrpc::{HTTPError, RpcResponse};
 use types::*;
 
 pub trait BitcoinRpcApi: Send + Sync {

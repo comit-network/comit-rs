@@ -67,10 +67,10 @@ mod test {
     #[test]
     fn correct_keypair_from_secret_key_slice() {
         // taken from: https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-        let keypair = KeyPair::from_secret_key_slice(&hex::decode(
-            "18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725",
-        ).unwrap())
-            .unwrap();
+        let keypair = KeyPair::from_secret_key_slice(
+            &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
+                .unwrap(),
+        ).unwrap();
 
         assert_eq!(
             *keypair.public_key(),

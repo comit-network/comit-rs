@@ -1,6 +1,5 @@
 use bitcoin::network::constants::Network;
-use serde::Deserializer;
-use serde::de;
+use serde::{de, Deserializer};
 use std::fmt;
 
 pub(crate) fn deserialize<'de, D>(deserializer: D) -> Result<Network, D::Error>

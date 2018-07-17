@@ -1,6 +1,8 @@
 use std::ops::Deref;
-use web3_crate::api::Web3;
-use web3_crate::transports::{EventLoopHandle, Http};
+use web3_crate::{
+    api::Web3,
+    transports::{EventLoopHandle, Http},
+};
 
 pub struct Web3Client {
     _event_loop: EventLoopHandle,

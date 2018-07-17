@@ -9,8 +9,7 @@ extern crate secp256k1_support;
 use bitcoin_node::BitcoinNode;
 use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_rpc_helpers::RegtestHelperClient;
-use bitcoin_support::serialize::serialize_hex;
-use bitcoin_support::{Address, BitcoinQuantity, PrivateKey};
+use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
@@ -37,14 +36,12 @@ fn redeem_single_p2wpkh() {
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
-        inputs: vec![
-            PrimedInput::new(
-                txid.into(),
-                vout.n,
-                input_amount,
-                keypair.p2wpkh_unlock_parameters(),
-            ),
-        ],
+        inputs: vec![PrimedInput::new(
+            txid.into(),
+            vout.n,
+            input_amount,
+            keypair.p2wpkh_unlock_parameters(),
+        )],
         output_address: alice_addr.clone(),
         locktime: 0,
     }.sign_with_fee(fee);

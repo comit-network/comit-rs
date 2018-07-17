@@ -1,5 +1,6 @@
 use secp256k1_support::{KeyPair, RecoverableSignature};
-use {SignedTransaction, UnsignedTransaction};
+use SignedTransaction;
+use UnsignedTransaction;
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;

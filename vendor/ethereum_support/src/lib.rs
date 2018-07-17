@@ -25,8 +25,7 @@ pub use web3_client::*;
 pub use web3_crate::futures::Future;
 
 pub mod web3 {
-    pub use web3_crate::error::Error;
-    pub use web3_crate::error::ErrorKind;
+    pub use web3_crate::error::{Error, ErrorKind};
 
     pub mod transports {
         pub use web3_crate::transports::Http;

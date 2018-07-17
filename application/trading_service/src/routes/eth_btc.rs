@@ -1,35 +1,20 @@
-use bitcoin_htlc;
-use bitcoin_htlc::Htlc as BtcHtlc;
-use bitcoin_rpc;
-use bitcoin_rpc::BlockHeight;
-use bitcoin_support;
-use bitcoin_support::{BitcoinQuantity, Network, PubkeyHash};
-use ethereum_support;
-use ethereum_support::EthereumQuantity;
-use event_store;
-use event_store::ContractDeployed;
-use event_store::EventStore;
-use event_store::OfferCreated;
-use event_store::OrderCreated;
-use event_store::OrderTaken;
-use event_store::TradeId;
-use exchange_api_client::ApiClient;
-use exchange_api_client::ExchangeApiUrl;
-use exchange_api_client::OfferResponseBody;
-use exchange_api_client::OrderRequestBody;
-use exchange_api_client::create_client;
+use bitcoin_htlc::{self, Htlc as BtcHtlc};
+use bitcoin_rpc::{self, BlockHeight};
+use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
+use ethereum_support::{self, EthereumQuantity};
+use event_store::{
+    self, ContractDeployed, EventStore, OfferCreated, OrderCreated, OrderTaken, TradeId,
+};
+use exchange_api_client::{
+    create_client, ApiClient, ExchangeApiUrl, OfferResponseBody, OrderRequestBody,
+};
 use rand::OsRng;
-use rocket::State;
-use rocket::http::RawStr;
-use rocket::request::FromParam;
-use rocket::response::status::BadRequest;
+use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
-use std::str::FromStr;
-use std::sync::Mutex;
+use std::{str::FromStr, sync::Mutex};
 use symbol::Symbol;
-use uuid;
-use uuid::Uuid;
+use uuid::{self, Uuid};
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -97,8 +82,11 @@ impl From<event_store::Error> for BadRequest<String> {
     }
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
-       data = "<buy_order_request_body>")]
+#[post(
+    "/trades/ETH-BTC/<trade_id>/buy-orders",
+    format = "application/json",
+    data = "<buy_order_request_body>"
+)]
 pub fn post_buy_orders(
     trade_id: TradeId,
     buy_order_request_body: Json<BuyOrderRequestBody>,
@@ -197,8 +185,11 @@ pub struct ContractDeployedRequestBody {
     pub contract_address: ethereum_support::Address,
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed", format = "application/json",
-       data = "<contract_deployed_request_body>")]
+#[post(
+    "/trades/ETH-BTC/<trade_id>/buy-order-contract-deployed",
+    format = "application/json",
+    data = "<contract_deployed_request_body>"
+)]
 pub fn post_contract_deployed(
     trade_id: TradeId,
     contract_deployed_request_body: Json<ContractDeployedRequestBody>,
@@ -241,8 +232,7 @@ pub fn get_redeem_orders(
 mod tests {
     use super::*;
     use exchange_api_client::ExchangeApiUrl;
-    use rocket;
-    use rocket::http::*;
+    use rocket::{self, http::*};
     use rocket_factory::create_rocket_instance;
     use serde_json;
 

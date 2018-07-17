@@ -1,13 +1,11 @@
-use BitcoinRpcApi;
-use jsonrpc::HTTPClient;
-use jsonrpc::HTTPError;
-use jsonrpc::header::{Authorization, Basic, Headers};
-use jsonrpc::{JsonRpcVersion, RpcClient, RpcRequest, RpcResponse};
-use serde::de::DeserializeOwned;
-use serde::ser::Serialize;
+use jsonrpc::{
+    header::{Authorization, Basic, Headers},
+    HTTPClient, HTTPError, JsonRpcVersion, RpcClient, RpcRequest, RpcResponse,
+};
+use serde::{de::DeserializeOwned, ser::Serialize};
 use std::fmt::Debug;
-use types::Address;
-use types::*;
+use types::{Address, *};
+use BitcoinRpcApi;
 
 struct RetryConfig {
     max_retries: u32,

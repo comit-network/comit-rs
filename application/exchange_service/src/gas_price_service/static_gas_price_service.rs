@@ -1,6 +1,5 @@
 use ethereum_support::U256;
-use gas_price_service::Error;
-use gas_price_service::GasPriceService;
+use gas_price_service::{Error, GasPriceService};
 
 pub struct StaticGasPriceService(U256);
 

@@ -1,14 +1,12 @@
-use U256;
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use byteorder::{LittleEndian, WriteBytesExt};
-use num::FromPrimitive;
-use num::ToPrimitive;
-use num::bigint::{BigInt, Sign};
+use num::{
+    bigint::{BigInt, Sign},
+    FromPrimitive, ToPrimitive,
+};
 use regex::Regex;
-use std::f64;
-use std::fmt;
-use std::mem;
-use std::str::FromStr;
+use std::{f64, fmt, mem, str::FromStr};
+use U256;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Copy)]
 pub struct EthereumQuantity(U256);

@@ -7,16 +7,14 @@ extern crate structopt;
 extern crate trading_client;
 extern crate uuid;
 
-use std::env::var;
-use std::str::FromStr;
-use std::string::String;
+use std::{env::var, str::FromStr, string::String};
 use structopt::StructOpt;
-use trading_client::offer;
-use trading_client::offer::{OrderType, Symbol};
-use trading_client::order;
-use trading_client::redeem;
-use trading_client::redeem::RedeemOutput;
-use trading_client::trading_service_api_client::TradingApiUrl;
+use trading_client::{
+    offer::{self, OrderType, Symbol},
+    order,
+    redeem::{self, RedeemOutput},
+    trading_service_api_client::TradingApiUrl,
+};
 use uuid::Uuid;
 
 #[derive(Debug, StructOpt)]
@@ -32,8 +30,11 @@ enum Opt {
         #[structopt(subcommand)]
         order_type: OrderType,
         /// The amount you want to exchange (buy for a buy order, sell for a sell order). Integer.
-        #[structopt(short = "a", long = "amount",
-                    name = "amount to exchange (buy for a buy order, sell for a sell order). Integer.")]
+        #[structopt(
+            short = "a",
+            long = "amount",
+            name = "amount to exchange (buy for a buy order, sell for a sell order). Integer."
+        )]
         amount: f64,
     },
     /// Accept an order
@@ -46,12 +47,16 @@ enum Opt {
         #[structopt(short = "u", long = "uid", name = "trade id")]
         uid: Uuid,
         /// The address to receive the traded currency
-        #[structopt(short = "d", long = "success-address",
-                    name = "address to receive the traded currency")]
+        #[structopt(
+            short = "d", long = "success-address", name = "address to receive the traded currency"
+        )]
         success_address: String,
         /// The address to receive a refund in the original currency in case the trade is cancelled
-        #[structopt(short = "r", long = "refund-address",
-                    name = "address to receive your refund in case of cancellation")]
+        #[structopt(
+            short = "r",
+            long = "refund-address",
+            name = "address to receive your refund in case of cancellation"
+        )]
         refund_address: String,
     },
     /// Get details to proceed with redeem transaction

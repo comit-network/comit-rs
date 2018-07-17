@@ -4,14 +4,10 @@ use reqwest;
 mod client;
 mod fake_client;
 
-pub use self::client::ApiClient;
-pub use self::client::BuyOfferRequestBody;
-pub use self::client::BuyOrderRequestBody;
-pub use self::client::OfferResponseBody;
-pub use self::client::RequestToFund;
-pub use self::client::TradeId;
-pub use self::client::TradingApiUrl;
-pub use self::client::TradingServiceError;
+pub use self::client::{
+    ApiClient, BuyOfferRequestBody, BuyOrderRequestBody, OfferResponseBody, RequestToFund, TradeId,
+    TradingApiUrl, TradingServiceError,
+};
 
 #[cfg(test)]
 pub fn create_client(_url: &TradingApiUrl) -> impl ApiClient {

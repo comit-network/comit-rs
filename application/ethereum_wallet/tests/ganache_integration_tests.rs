@@ -22,7 +22,8 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
     let get_balance = || web3.eth().balance(account, None).wait().unwrap();
     let send_transaction = |transaction| {
         let txid = web3.eth().send_raw_transaction(transaction).wait().unwrap();
-        let receipt = web3.eth()
+        let receipt = web3
+            .eth()
             .transaction_receipt(txid)
             .wait()
             .unwrap()

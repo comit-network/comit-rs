@@ -1,13 +1,11 @@
 use ethereum_htlc::Htlc;
 use ethereum_support::*;
 use ethereum_wallet;
-use gas_price_service;
-use gas_price_service::GasPriceService;
-use std::ops::DerefMut;
-use std::sync::Arc;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
-use std::sync::PoisonError;
+use gas_price_service::{self, GasPriceService};
+use std::{
+    ops::DerefMut,
+    sync::{Arc, Mutex, MutexGuard, PoisonError},
+};
 
 #[derive(Debug)]
 pub enum Error {
@@ -116,9 +114,7 @@ mod tests {
     use super::*;
     use common_types::secret::SecretHash;
     use ethereum_support;
-    use std::ops::Deref;
-    use std::str::FromStr;
-    use std::time::SystemTime;
+    use std::{ops::Deref, str::FromStr, time::SystemTime};
 
     struct EthereumApiMock {
         result: Result<H256, web3::Error>,

@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-use std::io::Read;
-use std::str::FromStr;
+use std::{collections::HashMap, io::Read, str::FromStr};
 
 pub trait Docker {
     fn run_detached<I: Image>(&self, image: &I, run_args: RunArgs) -> String;

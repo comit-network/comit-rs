@@ -1,5 +1,7 @@
-use bitcoin_support::{Address, BitcoinQuantity, Script, Sha256dHash, SighashComponents,
-                      Transaction, TxIn, TxOut, Weight};
+use bitcoin_support::{
+    Address, BitcoinQuantity, Script, Sha256dHash, SighashComponents, Transaction, TxIn, TxOut,
+    Weight,
+};
 use secp256k1_support::{DerSerializableSignature, Message};
 use witness::{UnlockParameters, Witness};
 
@@ -47,7 +49,8 @@ impl PrimedInput {
             prev_index: self.vout,
             script_sig: Script::new(),
             sequence: self.input_parameters.sequence,
-            witness: self.input_parameters
+            witness: self
+                .input_parameters
                 .witness
                 .iter()
                 .map(|witness| self.encode_witness_for_txin(witness))
@@ -125,7 +128,8 @@ impl PrimedTransaction {
         Transaction {
             version: 2,
             lock_time: self.locktime,
-            input: self.inputs
+            input: self
+                .inputs
                 .iter()
                 .map(PrimedInput::to_txin_without_signature)
                 .collect(),
@@ -157,14 +161,12 @@ mod test {
         let txid = Sha256dHash::default();
 
         let primed_txn = PrimedTransaction {
-            inputs: vec![
-                PrimedInput::new(
-                    txid,
-                    1, // First number I found that gave me a 71 byte signature
-                    BitcoinQuantity::from_bitcoin(1.0),
-                    keypair.p2wpkh_unlock_parameters(),
-                ),
-            ],
+            inputs: vec![PrimedInput::new(
+                txid,
+                1, // First number I found that gave me a 71 byte signature
+                BitcoinQuantity::from_bitcoin(1.0),
+                keypair.p2wpkh_unlock_parameters(),
+            )],
             output_address: dst_addr,
             locktime: 0,
         };

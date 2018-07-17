@@ -1,8 +1,7 @@
 use request::RpcRequest;
 use reqwest::{Client as HTTPClient, Error};
 use response::RpcResponse;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
 pub struct RpcClient {
@@ -24,7 +23,8 @@ impl RpcClient {
         R: DeserializeOwned,
     {
         debug!("Request: {:?}", request);
-        let res = self.client
+        let res = self
+            .client
             .post(self.url.as_str())
             .json(request)
             .send()

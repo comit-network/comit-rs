@@ -1,13 +1,11 @@
-use bitcoin;
-use bitcoin::blockdata::script::Script;
-use bitcoin::blockdata::transaction::Transaction as BitcoinTransaction;
-use bitcoin::network::serialize as bitcoin_serialize;
-use bitcoin::util::hash::{HexError, Sha256dHash};
-use serde::de;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::collections::HashMap;
-use std::fmt;
-use std::str::FromStr;
+use bitcoin::{
+    self,
+    blockdata::{script::Script, transaction::Transaction as BitcoinTransaction},
+    network::serialize as bitcoin_serialize,
+    util::hash::{HexError, Sha256dHash},
+};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{collections::HashMap, fmt, str::FromStr};
 use types::*;
 
 #[derive(Debug, PartialEq, Clone)]

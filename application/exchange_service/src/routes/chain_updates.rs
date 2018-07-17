@@ -1,19 +1,13 @@
-use bitcoin_fee_service;
-use bitcoin_fee_service::BitcoinFeeService;
-use bitcoin_htlc;
-use bitcoin_htlc::UnlockingError;
+use bitcoin_fee_service::{self, BitcoinFeeService};
+use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc;
-use bitcoin_support;
-use bitcoin_support::PubkeyHash;
+use bitcoin_support::{self, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
-use event_store::EventStore;
-use event_store::TradeId;
-use rocket::State;
-use rocket::response::status::BadRequest;
+use event_store::{EventStore, TradeId};
+use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
-use std::fmt::Debug;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 //TODO: move back to eth_btc.rs
 
@@ -40,8 +34,11 @@ impl From<bitcoin_fee_service::Error> for BadRequest<String> {
     }
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-order-secret-revealed", format = "application/json",
-       data = "<redeem_btc_notification_body>")]
+#[post(
+    "/trades/ETH-BTC/<trade_id>/buy-order-secret-revealed",
+    format = "application/json",
+    data = "<redeem_btc_notification_body>"
+)]
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<EventStore>,
@@ -86,14 +83,12 @@ pub fn post_revealed_secret(
     let unlocking_parameters = htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
 
     let primed_txn = PrimedTransaction {
-        inputs: vec![
-            PrimedInput::new(
-                htlc_txid.clone().into(),
-                vout,
-                offer_created_event.btc_amount(),
-                unlocking_parameters,
-            ),
-        ],
+        inputs: vec![PrimedInput::new(
+            htlc_txid.clone().into(),
+            vout,
+            offer_created_event.btc_amount(),
+            unlocking_parameters,
+        )],
         output_address: btc_exchange_redeem_address.clone(),
         locktime: 0,
     };

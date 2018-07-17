@@ -1,9 +1,10 @@
-use InMemoryWallet;
-use Wallet;
 use hex::FromHex;
 
 use secp256k1_support::KeyPair;
-use {SignedTransaction, UnsignedTransaction};
+use InMemoryWallet;
+use SignedTransaction;
+use UnsignedTransaction;
+use Wallet;
 
 /// A wallet with static private-keys that can be used for testing purposes.
 pub struct StaticFakeWallet(InMemoryWallet);

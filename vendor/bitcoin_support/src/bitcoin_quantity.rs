@@ -1,5 +1,7 @@
-use std::fmt;
-use std::ops::{Add, Sub};
+use std::{
+    fmt,
+    ops::{Add, Sub},
+};
 
 #[derive(Serialize, PartialEq, Deserialize, Clone, Debug, Copy)]
 pub struct BitcoinQuantity(u64);

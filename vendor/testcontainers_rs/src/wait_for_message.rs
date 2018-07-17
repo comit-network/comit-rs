@@ -1,6 +1,4 @@
-use std::io::BufRead;
-use std::io::BufReader;
-use std::io::Read;
+use std::io::{BufRead, BufReader, Read};
 
 #[derive(PartialEq, Debug)]
 pub enum WaitResult {

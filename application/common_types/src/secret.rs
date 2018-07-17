@@ -1,11 +1,8 @@
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
+use crypto::{digest::Digest, sha2::Sha256};
 use hex;
 use rand::{OsRng, Rng};
-use serde::de;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
-use std::str::FromStr;
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use std::{fmt, str::FromStr};
 
 const SHA256_DIGEST_LENGTH: usize = 32;
 

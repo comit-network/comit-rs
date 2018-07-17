@@ -3,9 +3,11 @@ extern crate testcontainers;
 
 use bitcoin_rpc::*;
 use std::env::var;
-use testcontainers::clients::DockerCli;
-use testcontainers::images::{Bitcoind, BitcoindImageArgs};
-use testcontainers::*;
+use testcontainers::{
+    clients::DockerCli,
+    images::{Bitcoind, BitcoindImageArgs},
+    *,
+};
 
 pub struct BitcoinNode {
     container_id: String,
