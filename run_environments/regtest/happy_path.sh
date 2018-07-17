@@ -2,30 +2,23 @@
 set -e;
 
 END(){
-    if test "${docker_ids}"; then
-        echo "KILLING docker containers" > $OUTPUT;
-        for id in ${docker_ids}
-            do docker rm -f ${id} 2> $OUTPUT 1> $OUTPUT;
-        done
-    fi
+    echo "KILLING docker containers" > $OUTPUT;
+    docker-compose rm -sfv
 }
 
+trap 'END' EXIT;
+
 PROJECT_ROOT=$(git rev-parse --show-toplevel)
-IS_INTERACTIVE=false
-DEBUG=${DEBUG:=false}
 OUTPUT=/dev/null
 
 if [ "$1" = "--interactive" ]
 then
-    IS_INTERACTIVE=true
+    IS_INTERACTIVE=1
 fi
 
-if $DEBUG
-then
+if test "$DEBUG"; then
     OUTPUT=/dev/stdout
 fi
-
-trap 'END' EXIT;
 
 ## Define functions from here
 
@@ -34,18 +27,17 @@ function setup() {
     echo "Starting up ...";
 
     #### Env variable to run all services
-    source ${PROJECT_ROOT}/scripts/common.env
-    source ${PROJECT_ROOT}/scripts/regtest/network.env
-    source ${PROJECT_ROOT}/scripts/regtest/regtest.env
+    source ${PROJECT_ROOT}/run_environments/common.env
+    source ${PROJECT_ROOT}/run_environments/regtest/network.env
+    source ${PROJECT_ROOT}/run_environments/regtest/regtest.env
 
     #### Start all services
-    cd $PROJECT_ROOT/scripts/regtest
-    docker-compose up -d 2> $OUTPUT 1> $OUTPUT
-
+    cd $PROJECT_ROOT/run_environments/regtest
+    docker-compose up -d ethereum bitcoin 2> $OUTPUT > $OUTPUT
     sleep 5;
-
-    docker_ids=$(docker-compose ps -q)
-
+    docker-compose up -d 2> $OUTPUT > $OUTPUT
+    test "$DOCKER_LOGS" && docker-compose logs -f &
+    sleep 3;
     ########
 
     #### Env variables to run the end-to-end test
@@ -59,9 +51,11 @@ function setup() {
     eth_amount=10
 
     ## Generate funds and activate segwit
+    debug "Generating enough blocks to activate segwit";
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL  > /dev/null
     # Watch the btc exchange redeem address
+    debug "Adding BTC_EXCHANGE_REDEEM_ADDRESS to wallet";
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\
         \"jsonrpc\": \"1.0\",\
@@ -73,9 +67,17 @@ function setup() {
                 \"htlc\"\
             ]\
     }" \
-    -H 'content-type: text/plain;' $BITCOIN_RPC_URL > $OUTPUT
+    -H 'content-type: text/plain;' $BITCOIN_RPC_URL > /dev/null
 
     echo "System is ready!"
+}
+
+function debug() {
+    printf '%s\n' "$*" > $OUTPUT;
+}
+
+function step() {
+    { test "$IS_INTERACTIVE" && read; } || true;
 }
 
 function print_green() {
@@ -169,7 +171,7 @@ function notify_trading_service_eth_htlc_funded() {
 }
 
 function notify_exchange_service_eth_redeemed() {
-    $curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
+    $curl -v --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed 2> $OUTPUT
 
     print_blue "Notified exchange about revealed secret (Trader redeemed ETH funds)."
 }
@@ -239,7 +241,7 @@ function list_unspent_transactions() {
     }" \
     -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 
-    echo $output 
+    echo $output
 }
 
 function hex_to_dec() {
@@ -258,27 +260,27 @@ function wei_to_eth() {
 
 setup;
 
-$IS_INTERACTIVE && read;
+step;
 
 new_offer;
 
-$IS_INTERACTIVE && read;
+step;
 
 new_order;
 
-$IS_INTERACTIVE && read;
+step;
 
 fund_htlc;
 
-$IS_INTERACTIVE && read;
+step;
 
 notify_exchange_service_btc_htlc_funded;
 
-$IS_INTERACTIVE && read;
+step;
 
 notify_trading_service_eth_htlc_funded;
 
-$IS_INTERACTIVE && read;
+step;
 
 get_redeem_details;
 
@@ -290,7 +292,7 @@ old_balance=$(wei_to_eth $old_balance)
 
 echo "Previous ETH balance: $old_balance"
 
-$IS_INTERACTIVE && read;
+step;
 
 redeem_eth;
 
@@ -308,15 +310,15 @@ else
     exit 1
 fi
 
-$IS_INTERACTIVE && read;
+step;
 
 output=$(list_unspent_transactions)
 old_unspent=$(echo $output |jq .result)
 echo "BTC: Old Unspent: $old_unspent" > $OUTPUT
 old_unspent_num=$(echo $output | jq '.result | length')
-echo -e "BTC: Total UTXOs before redeem: $old_unspent_num"
+echo "BTC: Total UTXOs before redeem: $old_unspent_num"
 
-$IS_INTERACTIVE && read;
+step;
 
 # Poke exchange service to redeem BTC
 notify_exchange_service_eth_redeemed;
@@ -329,8 +331,8 @@ output=$(list_unspent_transactions)
 new_unspent=$(echo $output |jq .result)
 echo "BTC: New Unspent: $new_unspent" > $OUTPUT
 new_unspent_num=$(echo $output | jq '.result | length')
-echo -e "BTC: Total UTXOs after redeem: $new_unspent_num"
-echo -e "BTC: Amount: $(echo $new_unspent | jq '.[0].amount')"
+echo "BTC: Total UTXOs after redeem: $new_unspent_num"
+echo "BTC: Amount: $(echo $new_unspent | jq '.[0].amount')"
 
 if [ ${old_unspent_num} -lt ${new_unspent_num} ]
 then

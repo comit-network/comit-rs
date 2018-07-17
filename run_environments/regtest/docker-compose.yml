@@ -1,7 +1,9 @@
 version: '3'
 services:
   trading_service:
-    build: ../../trading_service
+    build:
+      context: ../..
+      dockerfile: Dockerfile_cache
     env_file:
       - ./regtest.env
       - ./network.env
@@ -15,9 +17,12 @@ services:
     depends_on:
     - exchange_service
     - bitcoin
+    command: ./trading_service
 
   exchange_service:
-    build: ../../exchange_service
+    build:
+      context: ../..
+      dockerfile: Dockerfile_cache
     command: bash -c 'sleep 5 && ./exchange_service'
     env_file:
       - ./regtest.env
@@ -35,15 +40,19 @@ services:
     depends_on:
     - treasury_service
     - ethereum
+    command: ./exchange_service
 
   treasury_service:
-    build: ../../fake_treasury_service
+    build:
+      context: ../..
+      dockerfile: Dockerfile_cache
     environment:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,fake_treasury_service=debug
       - RATE=0.1
     ports:
     - "8020:8000"
+    command: ./fake_treasury_service
 
   ethereum:
     image: trufflesuite/ganache-cli
