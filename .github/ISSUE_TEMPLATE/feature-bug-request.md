@@ -1,11 +1,11 @@
 ---
-name: Feature/Bug Request
+name: Feature Request
 about: Suggest an idea for this project
 
 ---
 
 **Summary** 
-A human readable summary of the feature request/bug report. 
+A human readable summary of the feature request request. 
 
 **Open questions:**
 * Add a list of questions which need to be answered in combination to this ticket.
