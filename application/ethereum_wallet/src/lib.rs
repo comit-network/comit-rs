@@ -1,7 +1,7 @@
 extern crate ethereum_support;
 extern crate hex;
 extern crate rlp;
-extern crate secp256k1;
+extern crate secp256k1_support;
 extern crate tiny_keccak;
 
 mod transaction;
