@@ -2,19 +2,22 @@ language: rust
 cache:
   cargo: true
   directories:
-    - $HOME/.rustup
+  - "$HOME/.rustup"
+  - "$HOME/google-cloud-sdk/"
   timeout: 300
 sudo: required
 rust: nightly-2018-06-24
+before_install:
+- openssl aes-256-cbc -K $encrypted_13ab58161701_key -iv $encrypted_13ab58161701_iv -in .travis/gcloud-authentication.json.enc -out .travis/gcloud-authentication.json -d
 install: true
 services:
-  - docker
+- docker
 env:
   global:
-    - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
-    - RUST_BACKTRACE=full
-    - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
-    - KEEP_CONTAINERS_AFTER_TEST=true
+  - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
+  - RUST_BACKTRACE=full
+  - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
+  - KEEP_CONTAINERS_AFTER_TEST=true
 before_script:
 - docker pull trufflesuite/ganache-cli:v6.1.3
 - docker pull ruimarinho/bitcoin-core:0.16.0
@@ -24,12 +27,13 @@ script:
 - cargo build --all
 - cargo test --all
 after_script:
-- expr $TRAVIS_TEST_RESULT > /dev/null || for i in $(docker ps -aq); do echo "------------------ Logs for docker container $i ------------------"; docker logs $i; echo "------------------------------------------------------------------"; done
+# - expr $TRAVIS_TEST_RESULT > /dev/null || .travis/upload-container-logs-to-gcs.sh
+- .travis/upload-container-logs-to-gcs.sh
 notifications:
   email: false
   slack:
     rooms:
-      - tenx-company:buMm6Pg6Sbhljx2HRLwNC44z#coblox-swap-bots
+    - tenx-company:buMm6Pg6Sbhljx2HRLwNC44z#coblox-swap-bots
     on_success: always
     on_failure: always
     on_pull_requests: true
