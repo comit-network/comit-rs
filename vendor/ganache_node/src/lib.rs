@@ -60,7 +60,8 @@ impl GanacheCliNode {
 impl Drop for GanacheCliNode {
     fn drop(&mut self) {
         let keep_container = var("KEEP_CONTAINERS_AFTER_TEST")
-            .and_then(bool::from_str)
+            .ok()
+            .and_then(|var| var.parse().ok())
             .unwrap_or(false);
 
         match keep_container {
