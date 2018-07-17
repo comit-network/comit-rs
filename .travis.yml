@@ -14,6 +14,7 @@ env:
     - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
     - RUST_BACKTRACE=full
     - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
+    - KEEP_CONTAINERS_AFTER_TEST=true
 before_script:
 - docker pull trufflesuite/ganache-cli:v6.1.3
 - docker pull ruimarinho/bitcoin-core:0.16.0
@@ -22,6 +23,8 @@ script:
 - "./check-fmt.sh"
 - cargo build --all
 - cargo test --all
+after_script:
+- expr $TRAVIS_TEST_RESULT > /dev/null || for i in $(docker ps -aq); do echo "------------------ Logs for docker container $i ------------------"; docker logs $i; echo "------------------------------------------------------------------"; done
 notifications:
   email: false
   slack:

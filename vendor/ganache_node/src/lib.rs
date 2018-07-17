@@ -5,6 +5,7 @@ use testcontainers::clients::DockerCli;
 use testcontainers::images::{GanacheCli, GanacheCliArgs};
 use testcontainers::{Container, Docker, Image, RunArgs};
 
+use std::env::var;
 use web3::Web3;
 use web3::transports::{EventLoopHandle, Http};
 
@@ -31,7 +32,6 @@ impl GanacheCliNode {
             &ganache_cli,
             RunArgs {
                 ports: ganache_cli.exposed_ports(),
-                rm: true,
                 ..RunArgs::default()
             },
         );
@@ -59,6 +59,13 @@ impl GanacheCliNode {
 
 impl Drop for GanacheCliNode {
     fn drop(&mut self) {
-        self.docker.rm(&self.container_id);
+        let keep_container = var("KEEP_CONTAINERS_AFTER_TEST")
+            .and_then(bool::from_str)
+            .unwrap_or(false);
+
+        match keep_container {
+            true => self.docker.stop(&self.container_id),
+            false => self.docker.rm(&self.container_id),
+        }
     }
 }

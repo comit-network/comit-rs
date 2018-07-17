@@ -2,6 +2,7 @@ extern crate bitcoin_rpc;
 extern crate testcontainers;
 
 use bitcoin_rpc::*;
+use std::env::var;
 use testcontainers::clients::DockerCli;
 use testcontainers::images::{Bitcoind, BitcoindImageArgs};
 use testcontainers::*;
@@ -27,7 +28,6 @@ impl BitcoinNode {
             &bitcoind,
             RunArgs {
                 ports: bitcoind.exposed_ports(),
-                rm: true,
                 ..RunArgs::default()
             },
         );
@@ -56,6 +56,13 @@ impl BitcoinNode {
 
 impl Drop for BitcoinNode {
     fn drop(&mut self) {
-        self.docker.rm(&self.container_id);
+        let keep_container = var("KEEP_CONTAINERS_AFTER_TEST")
+            .and_then(bool::from_str)
+            .unwrap_or(false);
+
+        match keep_container {
+            true => self.docker.stop(&self.container_id),
+            false => self.docker.rm(&self.container_id),
+        }
     }
 }
