@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 
-export GOOGLE_APPLICATION_CREDENTIALS="$TRAVIS_BUILD_DIR/.travis/gcloud-authentication.json"
-
-# Setup google cloud SDK if it does not yet exist
-gcloud version || true
-if [ ! -d "$HOME/google-cloud-sdk/bin" ]; then rm -rf $HOME/google-cloud-sdk; export CLOUDSDK_CORE_DISABLE_PROMPTS=1; curl https://sdk.cloud.google.com | bash; fi
-source $HOME/google-cloud-sdk/path.bash.inc
-gcloud version
+gcloud auth activate-service-account --key-file="$TRAVIS_BUILD_DIR/.travis/gcloud-authentication.json"
 
 LOG_DIR="build_$TRAVIS_COMMIT"
 LOG_DIR_PATH="/tmp/$LOG_DIR"
