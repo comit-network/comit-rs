@@ -5,6 +5,7 @@ extern crate crypto;
 #[macro_use]
 extern crate lazy_static;
 extern crate secp256k1;
+extern crate secp256k1_support;
 extern crate uuid;
 
 use secp256k1::Secp256k1;

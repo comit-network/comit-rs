@@ -1,16 +1,8 @@
+use secp256k1;
 pub use secp256k1::Message;
+pub use secp256k1::RecoveryId;
 pub use secp256k1::SecretKey;
 pub use secp256k1::Signature;
-
-pub trait SignMessage {
-    fn sign_ecdsa(&self, message: Message) -> Signature;
-}
-
-impl SignMessage for SecretKey {
-    fn sign_ecdsa(&self, message: Message) -> Signature {
-        super::SECP.sign(&message, &self).unwrap()
-    }
-}
 
 pub trait DerSerializableSignature {
     fn serialize_signature_der(&self) -> Vec<u8>;
@@ -19,5 +11,15 @@ pub trait DerSerializableSignature {
 impl DerSerializableSignature for Signature {
     fn serialize_signature_der(&self) -> Vec<u8> {
         self.serialize_der(&*super::SECP)
+    }
+}
+
+pub trait RecoverableSignature {
+    fn serialize_compact(&self) -> (RecoveryId, [u8; 64]);
+}
+
+impl RecoverableSignature for secp256k1::RecoverableSignature {
+    fn serialize_compact(&self) -> (RecoveryId, [u8; 64]) {
+        secp256k1::RecoverableSignature::serialize_compact(&self, &*super::SECP)
     }
 }

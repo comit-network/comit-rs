@@ -1,5 +1,4 @@
 use bitcoin_rpc;
-use bitcoin_support;
 use bitcoin_support::{Network, ToP2wpkhAddress};
 use common_types::secret::SecretHash;
 use ethereum_htlc;
@@ -19,7 +18,7 @@ use rocket::http::RawStr;
 use rocket::request::FromParam;
 use rocket::response::status::BadRequest;
 use rocket_contrib::Json;
-use secp256k1_support::ToPublicKey;
+use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use std::time::UNIX_EPOCH;
 use treasury_api_client::{ApiClient, Symbol};
@@ -116,7 +115,7 @@ pub fn post_buy_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
     event_store: State<EventStore>,
-    exchange_success_private_key: State<bitcoin_support::PrivateKey>,
+    exchange_success_keypair: State<KeyPair>,
     exchange_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
@@ -152,11 +151,11 @@ pub fn post_buy_orders(
         client_refund_address,
         order_request_body.client_success_address,
         *exchange_refund_address,
-        exchange_success_private_key
-            .secret_key()
-            .to_public_key()
+        exchange_success_keypair
+            .public_key()
+            .clone()
             .to_p2wpkh_address(*network),
-        exchange_success_private_key.clone(),
+        exchange_success_keypair.clone(),
     );
 
     match event_store.store_order_taken(order_taken.clone()) {
@@ -225,6 +224,7 @@ pub fn post_buy_orders_fundings(
 mod tests {
     use super::*;
     use bitcoin_fee_service::StaticBitcoinFeeService;
+    use bitcoin_support;
     use ethereum_service::BlockingEthereumApi;
     use ethereum_support::*;
     use ethereum_wallet::fake::StaticFakeWallet;
@@ -314,7 +314,10 @@ mod tests {
             "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
             bitcoin_support::PrivateKey::from_str(
                 "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
-            ).unwrap(),
+            ).unwrap()
+                .secret_key()
+                .clone()
+                .into(),
             bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
             Network::BitcoinCoreRegtest,
             Arc::new(StaticBitcoinFeeService::new(50.0)),

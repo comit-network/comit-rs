@@ -6,8 +6,7 @@ use bitcoin::util::bip32::ExtendedPubKey;
 use crypto::digest::Digest;
 use crypto::sha2::Sha256;
 use secp256k1;
-use secp256k1::key::PublicKey;
-use secp256k1::key::SecretKey;
+use secp256k1_support::KeyPair;
 use std::collections::HashMap;
 use std::ops::DerefMut;
 use std::sync::Mutex;
@@ -33,29 +32,6 @@ impl<'a> From<PoisonError<MutexGuard<'a, u32>>> for Error {
     }
 }
 
-#[derive(Clone)]
-pub struct KeyPair {
-    secret_key: SecretKey,
-    public_key: PublicKey,
-}
-
-impl KeyPair {
-    pub fn new(secret_key: SecretKey, public_key: PublicKey) -> KeyPair {
-        KeyPair {
-            secret_key,
-            public_key,
-        }
-    }
-
-    pub fn secret_key(&self) -> &SecretKey {
-        &self.secret_key
-    }
-
-    pub fn public_key(&self) -> &PublicKey {
-        &self.public_key
-    }
-}
-
 pub struct KeyStore {
     master_privkey: ExtendedPrivKey,
     transient_root_privkey: ExtendedPrivKey,
@@ -67,7 +43,7 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    transient_keys: HashMap<Uuid, KeyPair>, // Better generate Public Key from SecretKey on the fly or storing them?
+    transient_keys: HashMap<Uuid, KeyPair>,
 }
 
 impl KeyStore {
@@ -114,9 +90,9 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
 
-    fn get_transient_keypair(&mut self, id: &Uuid) -> KeyPair {
-        if let Some(key_pair) = self.transient_keys.get(id) {
-            return key_pair.clone();
+    pub fn get_transient_keypair(&mut self, id: &Uuid) -> KeyPair {
+        if let Some(keypair) = self.transient_keys.get(id) {
+            return keypair.clone();
         }
 
         let transient_keypair = Self::new_transient_keypair(&self.transient_root_privkey, id);
@@ -132,7 +108,7 @@ impl KeyStore {
         sha.result(secret);
     }
 
-    fn new_transient_secret_key(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> SecretKey {
+    fn new_transient_keypair(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> KeyPair {
         // SecretKey = SHA256(transient_root_privkey + id)
         let mut result: [u8; secp256k1::constants::SECRET_KEY_SIZE] =
             [0; secp256k1::constants::SECRET_KEY_SIZE];
@@ -143,30 +119,14 @@ impl KeyStore {
             &mut result,
         );
         // This returns a result as it can fail if the slice is empty which is very unlikely hence the expect.
-        SecretKey::from_slice(&SECP, &result).expect("This should never fail")
-    }
-
-    fn new_transient_keypair(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> KeyPair {
-        let secret_key = Self::new_transient_secret_key(transient_root_privkey, uid);
-        let public_key =
-            PublicKey::from_secret_key(&SECP, &secret_key).expect("This should never fail");
-        KeyPair::new(secret_key, public_key)
-    }
-
-    pub fn get_transient_privkey(&mut self, id: &Uuid) -> SecretKey {
-        let key_pair = self.get_transient_keypair(id);
-        key_pair.secret_key().clone()
-    }
-
-    pub fn get_transient_pubkey(&mut self, id: &Uuid) -> PublicKey {
-        let key_pair = self.get_transient_keypair(id);
-        key_pair.public_key().clone()
+        KeyPair::from_secret_key_slice(&result).expect("Should never fail")
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use secp256k1_support::PublicKey;
     use std::str::FromStr;
 
     fn setup_keystore() -> KeyStore {
@@ -244,21 +204,10 @@ mod tests {
 
         let uid0 = Uuid::new_v4();
         let uid1 = Uuid::new_v4();
-        let uid2 = Uuid::new_v4();
 
-        let privkey0 = keystore.get_transient_privkey(&uid0);
-        let privkey1 = keystore.get_transient_privkey(&uid1);
-        let privkey2 = keystore.get_transient_privkey(&uid2);
-        let pubkey0 = keystore.get_transient_pubkey(&uid0);
-        let pubkey1 = keystore.get_transient_pubkey(&uid1);
-        let pubkey2 = keystore.get_transient_pubkey(&uid2);
+        let transient_keypair0 = keystore.get_transient_keypair(&uid0);
+        let transient_keypair1 = keystore.get_transient_keypair(&uid1);
 
-        let pubkey_from_priv0 = PublicKey::from_secret_key(&SECP, &privkey0).unwrap();
-        let pubkey_from_priv1 = PublicKey::from_secret_key(&SECP, &privkey1).unwrap();
-        let pubkey_from_priv2 = PublicKey::from_secret_key(&SECP, &privkey2).unwrap();
-
-        assert_eq!(pubkey_from_priv0, pubkey0);
-        assert_eq!(pubkey_from_priv1, pubkey1);
-        assert_eq!(pubkey_from_priv2, pubkey2);
+        assert_ne!(transient_keypair0, transient_keypair1);
     }
 }
