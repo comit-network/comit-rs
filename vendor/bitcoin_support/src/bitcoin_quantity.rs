@@ -41,6 +41,7 @@ impl fmt::Display for BitcoinQuantity {
     }
 }
 
+#[cfg(test)]
 mod test {
     use super::*;
 
