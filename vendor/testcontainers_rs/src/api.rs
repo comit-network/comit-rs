@@ -7,6 +7,7 @@ pub trait Docker {
     fn logs(&self, id: &str) -> Box<Read>;
     fn inspect(&self, id: &str) -> ContainerInfo;
     fn rm(&self, id: &str);
+    fn stop(&self, id: &str);
 }
 
 pub trait Image

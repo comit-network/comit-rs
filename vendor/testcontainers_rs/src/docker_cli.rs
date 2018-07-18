@@ -90,4 +90,15 @@ impl Docker for DockerCli {
             .spawn()
             .expect("Failed to execute docker command");
     }
+
+    fn stop(&self, id: &str) {
+        info!("Killing docker container: {}", id);
+
+        Command::new("docker")
+            .arg("stop")
+            .arg(id)
+            .stdout(Stdio::piped())
+            .spawn()
+            .expect("Failed to execute docker command");
+    }
 }
