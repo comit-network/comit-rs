@@ -12,7 +12,7 @@ use bitcoin_rpc_helpers::RegtestHelperClient;
 use bitcoin_support::serialize::serialize_hex;
 use bitcoin_support::{Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
-use secp256k1_support::ToPublicKey;
+use secp256k1_support::KeyPair;
 
 use std::str::FromStr;
 
@@ -24,9 +24,9 @@ fn sign_with_rate() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+    let keypair: KeyPair = private_key.secret_key().clone().into();
 
-    let (txid, vout) =
-        client.create_p2wpkh_vout_at(private_key.secret_key().to_public_key(), input_amount);
+    let (txid, vout) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
 
     let alice_addr: Address = client
         .get_new_address()
@@ -43,7 +43,7 @@ fn sign_with_rate() {
                 txid.into(),
                 vout.n,
                 input_amount,
-                private_key.secret_key().p2wpkh_unlock_parameters(),
+                keypair.p2wpkh_unlock_parameters(),
             ),
         ],
         output_address: alice_addr.clone(),

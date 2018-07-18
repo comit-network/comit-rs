@@ -1,5 +1,5 @@
 use Address;
-use secp256k1_support::{PublicKey, SecretKey, ToPublicKey};
+use secp256k1_support::PublicKey;
 use tiny_keccak;
 
 pub trait ToEthereumAddress {
@@ -22,26 +22,18 @@ impl ToEthereumAddress for PublicKey {
     }
 }
 
-impl ToEthereumAddress for SecretKey {
-    fn to_ethereum_address(&self) -> Address {
-        self.to_public_key().to_ethereum_address()
-    }
-}
-
 #[cfg(test)]
 mod test {
 
     extern crate hex;
-    extern crate secp256k1;
-
-    use self::secp256k1::Secp256k1;
     use super::*;
+    use secp256k1_support::KeyPair;
     use std::str::FromStr;
 
     fn valid_pair(key: &str, address: &str) -> bool {
         let privkey_data = self::hex::decode(key).unwrap();
-        let secret_key = SecretKey::from_slice(&Secp256k1::new(), &privkey_data[..]).unwrap();
-        let generated_address: Address = secret_key.to_ethereum_address();
+        let keypair = KeyPair::from_secret_key_slice(&privkey_data[..]).unwrap();
+        let generated_address: Address = keypair.public_key().to_ethereum_address();
         Address::from_str(address).unwrap() == generated_address
     }
     #[test]

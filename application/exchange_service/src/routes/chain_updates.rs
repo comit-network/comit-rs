@@ -58,10 +58,8 @@ pub fn post_revealed_secret(
     let secret: Secret = redeem_btc_notification_body.into_inner().secret;
     let exchange_success_address = order_taken_event.exchange_success_address();
     let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
-    let exchange_success_secret_key = order_taken_event
-        .exchange_success_private_key()
-        .secret_key()
-        .clone();
+    let exchange_success_keypair = order_taken_event.exchange_success_keypair();
+
     let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address().into();
     let htlc_txid = trade_funded_event.transaction_id();
     let vout = trade_funded_event.vout();
@@ -73,19 +71,19 @@ pub fn post_revealed_secret(
         order_taken_event.client_contract_time_lock().clone().into(),
     );
 
-    htlc.can_be_unlocked_with(&secret, &exchange_success_secret_key)
+    htlc.can_be_unlocked_with(&secret, exchange_success_keypair)
         .map_err(|e| match e {
             UnlockingError::WrongSecret { .. } => {
                 error!("Poked with wrong secret: {:?}", e);
                 BadRequest(Some(format!("{:?}", e).to_string()))
             }
-            UnlockingError::WrongSecretKey { .. } => {
+            UnlockingError::WrongKeyPair { .. } => {
                 error!("exchange_success_public_key_hash was inconsistent with exchange_success_private_key");
                 BadRequest(None)
             }
         })?;
 
-    let unlocking_parameters = htlc.unlock_with_secret(exchange_success_secret_key, secret);
+    let unlocking_parameters = htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
 
     let primed_txn = PrimedTransaction {
         inputs: vec![

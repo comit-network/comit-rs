@@ -6,6 +6,7 @@ version = "0.1.0"
 bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
 ethereum_support = { path = "../ethereum_support" }
 bitcoin_support  = { path = "../bitcoin_support" }
+secp256k1_support = { path = "../secp256k1_support" }
 hex = "0.3.2"
 rand = "0.3"
-secp256k1 = "0.9.0"
+

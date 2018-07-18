@@ -12,7 +12,7 @@ use bitcoin_rpc_helpers::RegtestHelperClient;
 use bitcoin_support::serialize::serialize_hex;
 use bitcoin_support::{Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
-use secp256k1_support::ToPublicKey;
+use secp256k1_support::KeyPair;
 use std::str::FromStr;
 
 #[test]
@@ -23,9 +23,9 @@ fn redeem_single_p2wpkh() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+    let keypair: KeyPair = private_key.secret_key().clone().into();
 
-    let (txid, vout) =
-        client.create_p2wpkh_vout_at(private_key.secret_key().to_public_key(), input_amount);
+    let (txid, vout) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
 
     let alice_addr: Address = client
         .get_new_address()
@@ -42,7 +42,7 @@ fn redeem_single_p2wpkh() {
                 txid.into(),
                 vout.n,
                 input_amount,
-                private_key.secret_key().p2wpkh_unlock_parameters(),
+                keypair.p2wpkh_unlock_parameters(),
             ),
         ],
         output_address: alice_addr.clone(),
@@ -79,13 +79,15 @@ fn redeem_two_p2wpkh() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+    let keypair_1: KeyPair = private_key_1.secret_key().clone().into();
     let private_key_2 =
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
+    let keypair_2: KeyPair = private_key_2.secret_key().clone().into();
 
     let (txid_1, vout_1) =
-        client.create_p2wpkh_vout_at(private_key_1.secret_key().to_public_key(), input_amount);
+        client.create_p2wpkh_vout_at(keypair_1.public_key().clone(), input_amount);
     let (txid_2, vout_2) =
-        client.create_p2wpkh_vout_at(private_key_2.secret_key().to_public_key(), input_amount);
+        client.create_p2wpkh_vout_at(keypair_2.public_key().clone(), input_amount);
 
     let alice_addr: Address = client
         .get_new_address()
@@ -102,13 +104,13 @@ fn redeem_two_p2wpkh() {
                 txid_1.into(),
                 vout_1.n,
                 input_amount,
-                private_key_1.secret_key().p2wpkh_unlock_parameters(),
+                keypair_1.p2wpkh_unlock_parameters(),
             ),
             PrimedInput::new(
                 txid_2.into(),
                 vout_2.n,
                 input_amount,
-                private_key_2.secret_key().p2wpkh_unlock_parameters(),
+                keypair_2.p2wpkh_unlock_parameters(),
             ),
         ],
         output_address: alice_addr.clone(),
