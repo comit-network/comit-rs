@@ -12,6 +12,7 @@ use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, Sta
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::UNIX_EPOCH};
+use swap_log;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid::{self, Uuid};
 
@@ -19,7 +20,10 @@ impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+        Uuid::parse_str(param.as_str()).map(|uid| {
+            swap_log::set_context(&uid);
+            TradeId::from(uid)
+        })
     }
 }
 
@@ -119,7 +123,6 @@ pub fn post_buy_orders(
     // - Client success address (ETH)
     // = generates exchange refund address
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
-
     let order_request_body: OrderRequestBody = order_request_body.into_inner();
 
     let client_refund_address = match order_request_body
@@ -133,7 +136,7 @@ pub fn post_buy_orders(
                     "Invalid refund address: {}",
                     order_request_body.client_refund_address
                 ).to_string(),
-            )))
+            )));
         }
     };
 

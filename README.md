@@ -12,7 +12,7 @@ Contains crates that provides some kind of general functionality that is not spe
 
 ### Application
 
-Contains crates specific to our application. Can depend on stuff in `vendor`.
+Contains crates specific to our application. Can depend on libraries located in `vendor`.
 
 ## Setup
 

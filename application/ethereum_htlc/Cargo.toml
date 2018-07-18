@@ -13,7 +13,7 @@ ethereum_support = { path = "../../vendor/ethereum_support" }
 hex = "0.3.2"
 ganache_rust_web3 = { path = "../../vendor/ganache_rust_web3" }
 common_types = { path = "../common_types" }
-log = "0.4.1"
+log = "0.4.3"
 chrono = "0.4.2"
 env_logger = "0.5.10"
 

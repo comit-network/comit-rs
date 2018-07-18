@@ -13,6 +13,7 @@ use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, Sta
 use rocket_contrib::Json;
 use secret::Secret;
 use std::{str::FromStr, sync::Mutex};
+use swap_log;
 use symbol::Symbol;
 use uuid::{self, Uuid};
 
@@ -20,7 +21,10 @@ impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+        Uuid::parse_str(param.as_str()).map(|uid| {
+            swap_log::set_context(&uid);
+            TradeId::from(uid)
+        })
     }
 }
 

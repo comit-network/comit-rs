@@ -11,8 +11,8 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
 
-impl TradeId {
-    pub fn from_uuid(uuid: Uuid) -> Self {
+impl From<Uuid> for TradeId {
+    fn from(uuid: Uuid) -> Self {
         TradeId(uuid)
     }
 }
