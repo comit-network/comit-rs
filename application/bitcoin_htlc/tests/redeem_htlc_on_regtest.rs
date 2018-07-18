@@ -17,7 +17,7 @@ use bitcoin_support::serialize::serialize_hex;
 use bitcoin_support::{Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
-use secp256k1_support::ToPublicKey;
+use secp256k1_support::KeyPair;
 use std::str::FromStr;
 
 fn fund_htlc(
@@ -29,16 +29,18 @@ fn fund_htlc(
     Htlc,
     u32,
     Secret,
-    PrivateKey,
-    PrivateKey,
+    KeyPair,
+    KeyPair,
 ) {
     let success_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let success_pubkey_hash: PubkeyHash = success_privkey.secret_key().to_public_key().into();
+    let success_keypair: KeyPair = success_privkey.secret_key().clone().into();
+    let success_pubkey_hash: PubkeyHash = success_keypair.public_key().clone().into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
+    let refund_keypair: KeyPair = refund_privkey.secret_key().clone().into();
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let refund_pubkey_hash: PubkeyHash = refund_privkey.secret_key().to_public_key().into();
+    let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().clone().into();
     let sequence_lock = 10;
 
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
@@ -69,8 +71,8 @@ fn fund_htlc(
         htlc,
         sequence_lock,
         secret,
-        success_privkey,
-        refund_privkey,
+        success_keypair,
+        refund_keypair,
     )
 }
 
@@ -80,11 +82,10 @@ fn redeem_htlc_with_secret() {
     let client = bitcoin_node.get_client();
     client.generate(432).unwrap();
 
-    let (txid, vout, input_amount, htlc, _, secret, private_key, _) = fund_htlc(&client);
-    let secret_key = private_key.secret_key();
+    let (txid, vout, input_amount, htlc, _, secret, keypair, _) = fund_htlc(&client);
 
     assert!(
-        htlc.can_be_unlocked_with(&secret, &secret_key).is_ok(),
+        htlc.can_be_unlocked_with(&secret, &keypair).is_ok(),
         "Should be unlockable with the given secret and secret_key"
     );
 
@@ -103,7 +104,7 @@ fn redeem_htlc_with_secret() {
                 txid.into(),
                 vout.n,
                 input_amount,
-                htlc.unlock_with_secret(private_key.secret_key().clone(), secret),
+                htlc.unlock_with_secret(keypair, secret),
             ),
         ],
         output_address: alice_addr.clone(),
@@ -136,7 +137,7 @@ fn redeem_refund_htlc() {
     let client = bitcoin_node.get_client();
     client.generate(432).unwrap();
 
-    let (txid, vout, input_amount, htlc, nsequence, _, _, private_key) = fund_htlc(&client);
+    let (txid, vout, input_amount, htlc, nsequence, _, _, keypair) = fund_htlc(&client);
 
     let alice_addr: Address = client
         .get_new_address()
@@ -152,7 +153,7 @@ fn redeem_refund_htlc() {
                 txid.clone().into(),
                 vout.n,
                 input_amount,
-                htlc.unlock_after_timeout(private_key.secret_key().clone()),
+                htlc.unlock_after_timeout(keypair),
             ),
         ],
         output_address: alice_addr.clone(),

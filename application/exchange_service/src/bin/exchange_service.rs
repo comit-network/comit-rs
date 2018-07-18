@@ -13,7 +13,7 @@ extern crate log;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
-extern crate secp256k1;
+extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
@@ -31,7 +31,7 @@ use exchange_service::gas_price_service::StaticGasPriceService;
 use exchange_service::rocket_factory::create_rocket_instance;
 use exchange_service::treasury_api_client::{DefaultApiClient, TreasuryApiUrl};
 use hex::FromHex;
-use secp256k1::SecretKey;
+use secp256k1_support::KeyPair;
 use std::env::var;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -53,15 +53,16 @@ fn main() {
 
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
-    let private_key = var_or_exit("ETHEREUM_PRIVATE_KEY");
+    let secret_key_hex = var_or_exit("ETHEREUM_PRIVATE_KEY");
 
-    let private_key_data =
-        <[u8; 32]>::from_hex(private_key).expect("Private key is not hex_encoded");
+    let secret_key_data =
+        <[u8; 32]>::from_hex(secret_key_hex).expect("Private key is not hex_encoded");
 
-    let private_key = SecretKey::from_slice(&secp256k1::Secp256k1::new(), &private_key_data[..])
-        .expect("Private key isn't valid");
+    let eth_keypair: KeyPair =
+        KeyPair::from_secret_key_slice(&secret_key_data).expect("Private key isn't valid");
 
-    let wallet = InMemoryWallet::new(private_key, network_id);
+    let address = eth_keypair.public_key().to_ethereum_address();
+    let wallet = InMemoryWallet::new(eth_keypair, network_id);
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
 
@@ -72,7 +73,6 @@ fn main() {
         .unwrap_or(2_000_000_000);
     info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", gas_price);
 
-    let address = private_key.to_ethereum_address();
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
     info!(
         "ETH address derived from priv key: {}; AddressNonce: {}",
@@ -92,6 +92,8 @@ fn main() {
 
     let exchange_success_private_key =
         PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
+    let exchange_success_keypair: KeyPair =
+        exchange_success_private_key.secret_key().clone().into();
 
     let btc_exchange_redeem_address = bitcoin_support::Address::from_str(
         var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
@@ -143,7 +145,7 @@ fn main() {
         Arc::new(ethereum_service),
         Arc::new(bitcoin_rpc_client),
         exchange_refund_address,
-        exchange_success_private_key,
+        exchange_success_keypair,
         btc_exchange_redeem_address,
         network,
         Arc::new(bitcoin_fee_service),

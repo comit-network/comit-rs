@@ -71,7 +71,7 @@ mod test {
     extern crate hex;
     use super::*;
     use bitcoin::util::privkey::Privkey as PrivateKey;
-    use secp256k1_support::ToPublicKey;
+    use secp256k1_support::KeyPair;
     use std::str::FromStr;
 
     #[test]
@@ -89,7 +89,8 @@ mod test {
     fn correct_pubkeyhash_from_private_key() {
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
-        let pubkey_hash: PubkeyHash = private_key.secret_key().to_public_key().into();
+        let keypair: KeyPair = private_key.secret_key().clone().into();
+        let pubkey_hash: PubkeyHash = keypair.public_key().clone().into();
 
         assert_eq!(
             pubkey_hash,
@@ -112,12 +113,10 @@ mod test {
     #[test]
     fn generates_same_address_from_private_key_as_btc_address_generator() {
         // https://kimbatt.github.io/btc-address-generator/
-        let privkey =
+        let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-        let address = privkey
-            .secret_key()
-            .to_public_key()
-            .to_p2wpkh_address(Network::Bitcoin);
+        let keypair: KeyPair = private_key.secret_key().clone().into();
+        let address = keypair.public_key().to_p2wpkh_address(Network::Bitcoin);
 
         assert_eq!(
             address,

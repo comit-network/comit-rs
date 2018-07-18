@@ -21,7 +21,6 @@ impl EthereumQuantity {
         let (_sign, bytes) = wei_bigint.to_bytes_be();
         let mut buf = [0u8; 32];
         let start = 32 - bytes.len();
-        // ignore first 4 bytes which contain meta info
         buf[start..].clone_from_slice(&bytes[..]);
         buf.into()
     }

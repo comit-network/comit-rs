@@ -1,6 +1,6 @@
 use bitcoin_support::{Address, BitcoinQuantity, Script, Sha256dHash, SighashComponents,
                       Transaction, TxIn, TxOut, Weight};
-use secp256k1_support::{DerSerializableSignature, Message, SignMessage};
+use secp256k1_support::{DerSerializableSignature, Message};
 use witness::{UnlockParameters, Witness};
 
 pub struct PrimedInput {
@@ -68,7 +68,7 @@ impl PrimedTransaction {
         for (i, primed_input) in self.inputs.into_iter().enumerate() {
             let input_parameters = primed_input.input_parameters;
             for (j, witness) in input_parameters.witness.iter().enumerate() {
-                if let Witness::Signature(secret_key) = witness {
+                if let Witness::Signature(keypair) = witness {
                     let sighash_components = SighashComponents::new(transaction);
                     let hash_to_sign = sighash_components.sighash_all(
                         &transaction.input[i],
@@ -76,7 +76,7 @@ impl PrimedTransaction {
                         primed_input.value.satoshi(),
                     );
                     let message_to_sign = Message::from(hash_to_sign.data());
-                    let signature = secret_key.sign_ecdsa(message_to_sign);
+                    let signature = keypair.sign_ecdsa(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_signature_der();
                     // Without this 1 at the end you get "Non-canonical DER Signature"
@@ -145,12 +145,14 @@ mod test {
     use super::*;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
     use p2wpkh::UnlockP2wpkh;
+    use secp256k1_support::KeyPair;
     use std::str::FromStr;
 
     #[test]
     fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() {
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+        let keypair: KeyPair = private_key.secret_key().clone().into();
         let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl").unwrap();
         let txid = Sha256dHash::default();
 
@@ -160,7 +162,7 @@ mod test {
                     txid,
                     1, // First number I found that gave me a 71 byte signature
                     BitcoinQuantity::from_bitcoin(1.0),
-                    private_key.secret_key().p2wpkh_unlock_parameters(),
+                    keypair.p2wpkh_unlock_parameters(),
                 ),
             ],
             output_address: dst_addr,

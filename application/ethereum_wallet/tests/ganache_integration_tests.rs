@@ -2,12 +2,12 @@ extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate ganache_node;
 extern crate hex;
-extern crate secp256k1;
+extern crate secp256k1_support;
 
 use ethereum_support::*;
 use ethereum_wallet::*;
 use hex::FromHex;
-use secp256k1::{Secp256k1, SecretKey};
+use secp256k1_support::KeyPair;
 
 #[test]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
@@ -32,11 +32,11 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
     };
 
     let wallet = {
-        let private_key_data = &<[u8; 32]>::from_hex(
+        let secret_key_data = &<[u8; 32]>::from_hex(
             "a710faa76db883cd246112142b609bfe2f122b362b85719f47d91541e104b33d",
         ).unwrap();
-        let private_key = SecretKey::from_slice(&Secp256k1::new(), &private_key_data[..]).unwrap();
-        InMemoryWallet::new(private_key, 42) // 42 is used in GanacheCliNode
+        let keypair = KeyPair::from_secret_key_slice(secret_key_data).unwrap();
+        InMemoryWallet::new(keypair, 42) // 42 is used in GanacheCliNode
     };
 
     let tx = UnsignedTransaction::new_payment(

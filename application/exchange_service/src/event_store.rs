@@ -5,6 +5,7 @@ use bitcoin_support::BitcoinQuantity;
 use common_types::secret::SecretHash;
 use ethereum_support;
 use ethereum_support::*;
+use secp256k1_support::KeyPair;
 use std::collections::HashMap;
 use std::fmt;
 use std::sync::RwLock;
@@ -83,7 +84,7 @@ pub struct OrderTaken {
 
     exchange_refund_address: ethereum_support::Address,
     exchange_success_address: bitcoin_support::Address,
-    exchange_success_private_key: bitcoin_support::PrivateKey,
+    exchange_success_keypair: KeyPair,
 }
 
 impl OrderTaken {
@@ -92,12 +93,11 @@ impl OrderTaken {
 
         contract_secret_lock: SecretHash,
         client_contract_time_lock: bitcoin_rpc::BlockHeight,
-
         client_refund_address: bitcoin_support::Address,
         client_success_address: ethereum_support::Address,
         exchange_refund_address: ethereum_support::Address,
         exchange_success_address: bitcoin_support::Address,
-        exchange_success_private_key: bitcoin_support::PrivateKey,
+        exchange_success_keypair: KeyPair,
     ) -> Self {
         let twelve_hours = Duration::new(60 * 60 * 12, 0);
 
@@ -112,7 +112,7 @@ impl OrderTaken {
             client_success_address,
             exchange_refund_address,
             exchange_success_address,
-            exchange_success_private_key,
+            exchange_success_keypair,
         }
     }
 
@@ -144,8 +144,8 @@ impl OrderTaken {
         &self.client_contract_time_lock
     }
 
-    pub fn exchange_success_private_key(&self) -> &bitcoin_support::PrivateKey {
-        &self.exchange_success_private_key
+    pub fn exchange_success_keypair(&self) -> &KeyPair {
+        &self.exchange_success_keypair
     }
 }
 
