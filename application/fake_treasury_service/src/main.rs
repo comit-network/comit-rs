@@ -13,12 +13,9 @@ extern crate ethereum_support;
 
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
-use rocket::State;
-use rocket::http::RawStr;
-use rocket::response::status::BadRequest;
+use rocket::{http::RawStr, response::status::BadRequest, State};
 use rocket_contrib::Json;
-use std::env::var;
-use std::str::FromStr;
+use std::{env::var, str::FromStr};
 
 #[derive(Deserialize, Debug, FromForm)]
 pub struct RateRequestParams {

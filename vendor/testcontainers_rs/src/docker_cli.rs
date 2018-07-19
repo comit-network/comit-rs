@@ -1,7 +1,9 @@
 use api::*;
 use serde_json;
-use std::io::{BufRead, BufReader, Read};
-use std::process::{Command, Stdio};
+use std::{
+    io::{BufRead, BufReader, Read},
+    process::{Command, Stdio},
+};
 
 pub struct DockerCli;
 

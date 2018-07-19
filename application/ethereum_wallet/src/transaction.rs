@@ -1,6 +1,5 @@
 use ethereum_support::{Address, Bytes, H256, U256};
-use rlp::Encodable;
-use rlp::RlpStream;
+use rlp::{Encodable, RlpStream};
 use tiny_keccak::keccak256;
 
 pub struct UnsignedTransaction {
@@ -140,10 +139,10 @@ impl UnsignedTransaction {
 mod tests {
 
     use super::*;
-    use InMemoryWallet;
     use hex::FromHex;
     use secp256k1_support::KeyPair;
     use wallet::Wallet;
+    use InMemoryWallet;
 
     #[test]
     fn contract_deployment_transaction_should_have_correct_binary_representation() {

@@ -1,10 +1,6 @@
+use api::{Docker, ExposedPorts, Image};
+use std::{env::var, thread::sleep, time::Duration};
 use WaitForMessage;
-use api::Docker;
-use api::ExposedPorts;
-use api::Image;
-use std::env::var;
-use std::thread::sleep;
-use std::time::Duration;
 
 pub struct Bitcoind {
     tag: String,

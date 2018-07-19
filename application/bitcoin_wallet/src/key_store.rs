@@ -1,17 +1,13 @@
 use super::SECP;
-use bitcoin::util::bip32;
-use bitcoin::util::bip32::ChildNumber;
-use bitcoin::util::bip32::ExtendedPrivKey;
-use bitcoin::util::bip32::ExtendedPubKey;
-use crypto::digest::Digest;
-use crypto::sha2::Sha256;
-use secp256k1;
+use bitcoin::util::bip32::{self, ChildNumber, ExtendedPrivKey, ExtendedPubKey};
+use crypto::{digest::Digest, sha2::Sha256};
+use secp256k1::constants::SECRET_KEY_SIZE;
 use secp256k1_support::KeyPair;
-use std::collections::HashMap;
-use std::ops::DerefMut;
-use std::sync::Mutex;
-use std::sync::MutexGuard;
-use std::sync::PoisonError;
+use std::{
+    collections::HashMap,
+    ops::DerefMut,
+    sync::{Mutex, MutexGuard, PoisonError},
+};
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -76,7 +72,8 @@ impl KeyStore {
         let mut lock = self.last_internal_index.lock()?;
         let index = lock.deref_mut();
 
-        let res = self.internal_root_privkey
+        let res = self
+            .internal_root_privkey
             .ckd_priv(&SECP, ChildNumber::Hardened(*index))?;
 
         // If we reach here, res is Ok
@@ -85,7 +82,8 @@ impl KeyStore {
     }
 
     pub fn get_internal_pubkey(&self, index: u32) -> Result<ExtendedPubKey, Error> {
-        let priv_key = self.internal_root_privkey
+        let priv_key = self
+            .internal_root_privkey
             .ckd_priv(&SECP, ChildNumber::Hardened(index))?;
         Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
     }
@@ -110,8 +108,7 @@ impl KeyStore {
 
     fn new_transient_keypair(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> KeyPair {
         // SecretKey = SHA256(transient_root_privkey + id)
-        let mut result: [u8; secp256k1::constants::SECRET_KEY_SIZE] =
-            [0; secp256k1::constants::SECRET_KEY_SIZE];
+        let mut result: [u8; SECRET_KEY_SIZE] = [0; SECRET_KEY_SIZE];
 
         Self::new_secret_from_concat(
             &transient_root_privkey.secret_key[..],

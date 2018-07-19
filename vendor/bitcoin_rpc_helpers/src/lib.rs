@@ -1,8 +1,9 @@
 // Place for putting common queries needed in tests
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
-use bitcoin_rpc::BitcoinRpcApi;
-use bitcoin_rpc::{TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput};
+use bitcoin_rpc::{
+    BitcoinRpcApi, TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput,
+};
 use bitcoin_support::{Address, BitcoinQuantity, Network, Sha256dHash, ToP2wpkhAddress};
 
 pub trait RegtestHelperClient {
@@ -31,24 +32,27 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         txid: &TransactionId,
         address: &Address,
     ) -> Option<UnspentTransactionOutput> {
-        let unspent = self.list_unspent(
-            TxOutConfirmations::AtLeast(1),
-            None,
-            Some(vec![address.clone().into()]),
-        ).unwrap()
-            .into_result()
-            .unwrap();
+        let unspent =
+            self.list_unspent(
+                TxOutConfirmations::AtLeast(1),
+                None,
+                Some(vec![address.clone().into()]),
+            ).unwrap()
+                .into_result()
+                .unwrap();
 
         unspent.into_iter().find(|utxo| utxo.txid == *txid)
     }
 
     fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput {
-        let raw_txn = self.get_raw_transaction_serialized(&txid)
+        let raw_txn = self
+            .get_raw_transaction_serialized(&txid)
             .unwrap()
             .into_result()
             .unwrap();
 
-        let decoded_txn = self.decode_rawtransaction(raw_txn.clone())
+        let decoded_txn = self
+            .decode_rawtransaction(raw_txn.clone())
             .unwrap()
             .into_result()
             .unwrap();
@@ -68,7 +72,8 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
     ) -> (Sha256dHash, TransactionOutput) {
         let address = dest.to_p2wpkh_address(Network::BitcoinCoreRegtest);
 
-        let txid = self.send_to_address(&address.clone().into(), value.bitcoin())
+        let txid = self
+            .send_to_address(&address.clone().into(), value.bitcoin())
             .unwrap()
             .into_result()
             .unwrap();

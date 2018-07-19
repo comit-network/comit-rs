@@ -1,9 +1,8 @@
+use bitcoincore::TxOutConfirmations;
+use jsonrpc::{HTTPError, RpcResponse};
+use types::*;
 use BitcoinRpcApi;
 use NewTransactionOutput;
-use bitcoincore::TxOutConfirmations;
-use jsonrpc::HTTPError;
-use jsonrpc::RpcResponse;
-use types::*;
 
 pub struct BitcoinStubClient {}
 

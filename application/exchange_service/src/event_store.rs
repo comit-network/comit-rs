@@ -1,18 +1,16 @@
 pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
-use bitcoin_support;
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::{self, BitcoinQuantity};
 use common_types::secret::SecretHash;
-use ethereum_support;
-use ethereum_support::*;
+use ethereum_support::{self, *};
 use secp256k1_support::KeyPair;
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::RwLock;
-use std::time::Duration;
-use std::time::SystemTime;
-use treasury_api_client::RateResponseBody;
-use treasury_api_client::Symbol;
+use std::{
+    collections::HashMap,
+    fmt,
+    sync::RwLock,
+    time::{Duration, SystemTime},
+};
+use treasury_api_client::{RateResponseBody, Symbol};
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]

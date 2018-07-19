@@ -1,14 +1,10 @@
 use bitcoin_htlc::Htlc;
-use bitcoin_rpc;
-use bitcoin_rpc::BlockHeight;
+use bitcoin_rpc::{self, BlockHeight};
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support;
-use ethereum_support::EthereumQuantity;
+use ethereum_support::{self, EthereumQuantity};
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use std::collections::HashMap;
-use std::fmt;
-use std::sync::RwLock;
+use std::{collections::HashMap, fmt, sync::RwLock};
 use symbol::Symbol;
 use uuid::Uuid;
 

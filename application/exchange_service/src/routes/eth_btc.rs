@@ -4,26 +4,16 @@ use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
 use ethereum_support;
-use event_store;
-use event_store::ContractDeployed;
-use event_store::EventStore;
-use event_store::OfferCreated;
 pub use event_store::OfferCreated as OfferRequestResponse;
-use event_store::OfferState;
-use event_store::OrderTaken;
-use event_store::TradeFunded;
-use event_store::TradeId;
-use rocket::State;
-use rocket::http::RawStr;
-use rocket::request::FromParam;
-use rocket::response::status::BadRequest;
+use event_store::{
+    self, ContractDeployed, EventStore, OfferCreated, OfferState, OrderTaken, TradeFunded, TradeId,
+};
+use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
-use std::sync::Arc;
-use std::time::UNIX_EPOCH;
+use std::{sync::Arc, time::UNIX_EPOCH};
 use treasury_api_client::{ApiClient, Symbol};
-use uuid;
-use uuid::Uuid;
+use uuid::{self, Uuid};
 
 impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
@@ -109,8 +99,11 @@ impl From<OrderTaken> for OrderTakenResponseBody {
     }
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-orders", format = "application/json",
-       data = "<order_request_body>")]
+#[post(
+    "/trades/ETH-BTC/<trade_id>/buy-orders",
+    format = "application/json",
+    data = "<order_request_body>"
+)]
 pub fn post_buy_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
@@ -176,8 +169,11 @@ pub struct BuyOrderHtlcFundedNotification {
     vout: u32,
 }
 
-#[post("/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded", format = "application/json",
-       data = "<buy_order_htlc_funded_notification>")]
+#[post(
+    "/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded",
+    format = "application/json",
+    data = "<buy_order_htlc_funded_notification>"
+)]
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
     buy_order_htlc_funded_notification: Json<BuyOrderHtlcFundedNotification>,
@@ -229,14 +225,15 @@ mod tests {
     use ethereum_support::*;
     use ethereum_wallet::fake::StaticFakeWallet;
     use gas_price_service::StaticGasPriceService;
-    use rocket;
-    use rocket::http::{ContentType, Status};
-    use rocket::local::{Client, LocalResponse};
+    use rocket::{
+        self,
+        http::{ContentType, Status},
+        local::{Client, LocalResponse},
+    };
     use rocket_factory::create_rocket_instance;
     use serde::Deserialize;
     use serde_json;
-    use std::str::FromStr;
-    use std::sync::Arc;
+    use std::{str::FromStr, sync::Arc};
     use treasury_api_client::FakeApiClient;
 
     fn request_offer(client: &mut Client) -> LocalResponse {
@@ -394,9 +391,9 @@ mod tests {
             let mut response = request_offer(&mut client);
             assert_eq!(response.status(), Status::Ok);
 
-            let response =
-                serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap())
-                    .unwrap();
+            let response = serde_json::from_str::<serde_json::Value>(
+                &response.body_string().unwrap(),
+            ).unwrap();
 
             response["uid"].as_str().unwrap().to_string()
         };

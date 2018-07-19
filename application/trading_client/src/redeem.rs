@@ -1,12 +1,8 @@
 use common_types;
 use ethereum_support;
 use offer::Symbol;
-use std::fmt;
-use std::ops::Add;
-use trading_service_api_client::ApiClient;
-use trading_service_api_client::TradingApiUrl;
-use trading_service_api_client::TradingServiceError;
-use trading_service_api_client::create_client;
+use std::{fmt, ops::Add};
+use trading_service_api_client::{create_client, ApiClient, TradingApiUrl, TradingServiceError};
 use uuid::Uuid;
 
 pub enum RedeemOutput {

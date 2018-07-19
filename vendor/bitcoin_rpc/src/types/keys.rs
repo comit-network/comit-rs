@@ -1,11 +1,6 @@
 use bitcoin::util::privkey::Privkey;
-use serde::Deserialize;
-use serde::Serialize;
-use serde::de;
-use serde::export::fmt;
-use serde::{Deserializer, Serializer};
-use std::fmt as std_fmt;
-use std::str::FromStr;
+use serde::{de, export::fmt, Deserialize, Deserializer, Serialize, Serializer};
+use std::{fmt as std_fmt, str::FromStr};
 
 #[derive(PartialEq)]
 pub struct PrivateKey(Privkey);

@@ -1,7 +1,10 @@
-use bitcoin::network::constants::Network;
-use bitcoin::util::address::Address;
-use bitcoin::util::address::Payload;
-use bitcoin::util::hash::Hash160;
+use bitcoin::{
+    network::constants::Network,
+    util::{
+        address::{Address, Payload},
+        hash::Hash160,
+    },
+};
 use secp256k1_support::PublicKey;
 use std::fmt;
 

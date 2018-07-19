@@ -1,8 +1,5 @@
 use bitcoin::blockdata::script::Script;
-use serde::Deserializer;
-use serde::Serializer;
-use serde::de;
-use serde::export::fmt;
+use serde::{de, export::fmt, Deserializer, Serializer};
 use std_hex;
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<Script, D::Error>

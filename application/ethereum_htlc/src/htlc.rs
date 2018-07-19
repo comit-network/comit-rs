@@ -2,9 +2,7 @@ use chrono;
 use common_types::secret::SecretHash;
 use ethereum_support::{Address, Bytes, U256};
 use hex;
-use std::time::Duration;
-use std::time::SystemTime;
-use std::time::UNIX_EPOCH;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 #[derive(Debug)]
 pub struct Htlc {
@@ -82,7 +80,8 @@ impl Htlc {
     }
 
     pub fn compile_to_hex(&self) -> ByteCode {
-        let expiry_timestamp = self.expiry_timestamp
+        let expiry_timestamp = self
+            .expiry_timestamp
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();

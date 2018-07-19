@@ -1,9 +1,7 @@
 use offer::Symbol;
-use trading_service_api_client::ApiClient;
-use trading_service_api_client::BuyOrderRequestBody;
-use trading_service_api_client::TradingApiUrl;
-use trading_service_api_client::TradingServiceError;
-use trading_service_api_client::create_client;
+use trading_service_api_client::{
+    create_client, ApiClient, BuyOrderRequestBody, TradingApiUrl, TradingServiceError,
+};
 use uuid::Uuid;
 
 pub fn run(

@@ -1,5 +1,5 @@
-use WaitForMessage;
 use api::*;
+use WaitForMessage;
 
 pub struct GanacheCli {
     tag: String,

@@ -12,7 +12,8 @@ impl<'a> BitcoinCoreTestClient<'a> {
     pub fn a_utxo(&self) -> UnspentTransactionOutput {
         let _ = self.a_block(); // Need to generate a block first
 
-        let mut utxos = self.client
+        let mut utxos = self
+            .client
             .list_unspent(TxOutConfirmations::AtLeast(6), None, None)
             .unwrap()
             .into_result()

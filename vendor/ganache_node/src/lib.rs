@@ -1,13 +1,17 @@
 extern crate testcontainers;
 extern crate web3;
 
-use testcontainers::clients::DockerCli;
-use testcontainers::images::{GanacheCli, GanacheCliArgs};
-use testcontainers::{Container, Docker, Image, RunArgs};
+use testcontainers::{
+    clients::DockerCli,
+    images::{GanacheCli, GanacheCliArgs},
+    Container, Docker, Image, RunArgs,
+};
 
 use std::env::var;
-use web3::Web3;
-use web3::transports::{EventLoopHandle, Http};
+use web3::{
+    transports::{EventLoopHandle, Http},
+    Web3,
+};
 
 pub struct GanacheCliNode {
     container_id: String,

@@ -24,17 +24,17 @@ use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
-use exchange_service::bitcoin_fee_service::StaticBitcoinFeeService;
-use exchange_service::ethereum_service::EthereumService;
-use exchange_service::event_store::EventStore;
-use exchange_service::gas_price_service::StaticGasPriceService;
-use exchange_service::rocket_factory::create_rocket_instance;
-use exchange_service::treasury_api_client::{DefaultApiClient, TreasuryApiUrl};
+use exchange_service::{
+    bitcoin_fee_service::StaticBitcoinFeeService,
+    ethereum_service::EthereumService,
+    event_store::EventStore,
+    gas_price_service::StaticGasPriceService,
+    rocket_factory::create_rocket_instance,
+    treasury_api_client::{DefaultApiClient, TreasuryApiUrl},
+};
 use hex::FromHex;
 use secp256k1_support::KeyPair;
-use std::env::var;
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{env::var, str::FromStr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {

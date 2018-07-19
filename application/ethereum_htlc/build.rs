@@ -1,11 +1,12 @@
 extern crate regex;
 
 use regex::Regex;
-use std::env::var;
-use std::fs::File;
-use std::io::Write;
-use std::process::Command;
-use std::process::Stdio;
+use std::{
+    env::var,
+    fs::File,
+    io::Write,
+    process::{Command, Stdio},
+};
 
 const CONTRACT: &str = include_str!("./contract.asm");
 

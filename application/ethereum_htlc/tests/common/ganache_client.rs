@@ -41,7 +41,8 @@ impl GanacheClient {
     pub fn deploy(&self, from: Address, htlc: ethereum_htlc::Htlc, htlc_value: i32) -> Address {
         let compiled_contract = htlc.compile_to_hex();
 
-        let contract_tx_id = self.ganache_node
+        let contract_tx_id = self
+            .ganache_node
             .get_client()
             .eth()
             .send_transaction(TransactionRequest {
@@ -57,7 +58,8 @@ impl GanacheClient {
             .wait()
             .unwrap();
 
-        let receipt = self.ganache_node
+        let receipt = self
+            .ganache_node
             .get_client()
             .eth()
             .transaction_receipt(contract_tx_id)
@@ -71,7 +73,8 @@ impl GanacheClient {
     }
 
     pub fn send_data(&self, from: Address, to: Address, data: Option<Bytes>) -> U256 {
-        let result_tx = self.ganache_node
+        let result_tx = self
+            .ganache_node
             .get_client()
             .eth()
             .send_transaction(TransactionRequest {
@@ -87,7 +90,8 @@ impl GanacheClient {
             .wait()
             .unwrap();
 
-        let receipt = self.ganache_node
+        let receipt = self
+            .ganache_node
             .get_client()
             .eth()
             .transaction_receipt(result_tx)
@@ -99,7 +103,8 @@ impl GanacheClient {
     }
 
     pub fn activate_flux_compensator(&self, hours: u64) {
-        let _ = self.ganache_node
+        let _ = self
+            .ganache_node
             .get_client()
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
             .evm_increase_time(60 * 60 * hours)

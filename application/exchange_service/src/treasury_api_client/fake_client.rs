@@ -1,5 +1,4 @@
-use super::Symbol;
-use super::client::ApiClient;
+use super::{client::ApiClient, Symbol};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
 use reqwest;

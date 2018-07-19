@@ -1,14 +1,11 @@
-use serde::Deserialize;
-use serde::Deserializer;
-use serde::de;
-use serde::de::Visitor;
-use std::fmt;
-use std::str::FromStr;
-use trading_service_api_client::ApiClient;
-use trading_service_api_client::BuyOfferRequestBody;
-use trading_service_api_client::TradingApiUrl;
-use trading_service_api_client::TradingServiceError;
-use trading_service_api_client::create_client;
+use serde::{
+    de::{self, Visitor},
+    Deserialize, Deserializer,
+};
+use std::{fmt, str::FromStr};
+use trading_service_api_client::{
+    create_client, ApiClient, BuyOfferRequestBody, TradingApiUrl, TradingServiceError,
+};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Currency(String);

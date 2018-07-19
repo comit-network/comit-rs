@@ -2,17 +2,13 @@ use super::client::ApiClient;
 use bitcoin_rpc;
 use bitcoin_support::BitcoinQuantity;
 use common_types;
-use ethereum_support;
-use ethereum_support::EthereumQuantity;
+use ethereum_support::{self, EthereumQuantity};
 use offer::Symbol;
 use std::str::FromStr;
-use trading_service_api_client::BuyOfferRequestBody;
-use trading_service_api_client::BuyOrderRequestBody;
-use trading_service_api_client::OfferResponseBody;
-use trading_service_api_client::RequestToFund;
-use trading_service_api_client::TradeId;
-use trading_service_api_client::client::RedeemDetails;
-use trading_service_api_client::client::TradingServiceError;
+use trading_service_api_client::{
+    client::{RedeemDetails, TradingServiceError},
+    BuyOfferRequestBody, BuyOrderRequestBody, OfferResponseBody, RequestToFund, TradeId,
+};
 use uuid::Uuid;
 
 #[allow(dead_code)]

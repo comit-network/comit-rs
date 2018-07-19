@@ -4,8 +4,7 @@ extern crate ganache_rust_web3;
 extern crate web3;
 
 use ganache_rust_web3::Ganache;
-use web3::futures::Future;
-use web3::transports;
+use web3::{futures::Future, transports};
 
 #[test]
 fn test_evm_snapshot() {
@@ -14,7 +13,8 @@ fn test_evm_snapshot() {
     let node = ganache_node::GanacheCliNode::new();
     let web3 = node.get_client();
 
-    let _ = web3.api::<Ganache<transports::Http>>()
+    let _ = web3
+        .api::<Ganache<transports::Http>>()
         .evm_snapshot()
         .wait()
         .unwrap();
@@ -27,12 +27,14 @@ fn test_evm_revert() {
     let node = ganache_node::GanacheCliNode::new();
     let web3 = node.get_client();
 
-    let snapshot_id = web3.api::<Ganache<transports::Http>>()
+    let snapshot_id = web3
+        .api::<Ganache<transports::Http>>()
         .evm_snapshot()
         .wait()
         .unwrap();
 
-    let _ = web3.api::<Ganache<transports::Http>>()
+    let _ = web3
+        .api::<Ganache<transports::Http>>()
         .evm_revert(&snapshot_id)
         .wait()
         .unwrap();
@@ -47,12 +49,14 @@ fn test_evm_increase_time() {
 
     //        let increase = U256::from(1);
     //
-    let _ = web3.api::<Ganache<transports::Http>>()
+    let _ = web3
+        .api::<Ganache<transports::Http>>()
         .evm_increase_time(0)
         .wait()
         .unwrap();
 
-    let _ = web3.api::<Ganache<transports::Http>>()
+    let _ = web3
+        .api::<Ganache<transports::Http>>()
         .evm_mine()
         .wait()
         .unwrap();
@@ -65,7 +69,8 @@ fn test_evm_mine() {
     let node = ganache_node::GanacheCliNode::new();
     let web3 = node.get_client();
 
-    let _ = web3.api::<Ganache<transports::Http>>()
+    let _ = web3
+        .api::<Ganache<transports::Http>>()
         .evm_mine()
         .wait()
         .unwrap();
