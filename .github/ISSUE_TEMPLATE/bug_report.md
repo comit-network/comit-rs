@@ -17,19 +17,13 @@ Steps to reproduce the behavior:
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 
-**Screenshots**
-If applicable, add screenshots to help explain your problem.
-
-**Desktop (please complete the following information):**
- - OS: [e.g. iOS]
- - Browser [e.g. chrome, safari]
- - Version [e.g. 22]
-
-**Smartphone (please complete the following information):**
- - Device: [e.g. iPhone6]
- - OS: [e.g. iOS8.1]
- - Browser [e.g. stock browser, safari]
- - Version [e.g. 22]
+**Environment (please complete the following information):**
+ - OS: [e.g. MacOS 10.13.6]
+ - Rust version [e.g. rustc 1.27.0-nightly (91db9dcf3 2018-05-04)]
+ - CoBloX Version [e.g. git-commit id: 6cdb142f7202a0d6bb3edae4c5742ba8837bf61e]
+ 
+**Logs, Screenshots**
+If applicable, add logfiles and/or screenshots to help explain your problem.
 
 **Additional context**
 Add any other context about the problem here.
