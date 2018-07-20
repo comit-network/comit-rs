@@ -6,6 +6,7 @@ extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate env_logger;
 extern crate log;
+extern crate logging;
 extern crate rocket;
 extern crate trading_service;
 
@@ -16,7 +17,7 @@ use trading_service::{
 };
 
 fn main() {
-    let _ = env_logger::init();
+    logging::set_up_logging();
     let exchange_api_url = ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap());
 
     let network = match var("BTC_NETWORK") {

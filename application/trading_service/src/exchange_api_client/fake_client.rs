@@ -19,7 +19,7 @@ impl ApiClient for FakeApiClient {
         _amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let offer = OfferResponseBody {
-            uid: TradeId::from_uuid(Uuid::new_v4()),
+            uid: TradeId::from(Uuid::new_v4()),
             symbol: symbol.clone(),
             rate: 0.42,
             btc_amount: BitcoinQuantity::from_satoshi(24),

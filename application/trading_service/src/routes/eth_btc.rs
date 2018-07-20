@@ -8,6 +8,7 @@ use event_store::{
 use exchange_api_client::{
     create_client, ApiClient, ExchangeApiUrl, OfferResponseBody, OrderRequestBody,
 };
+use logging;
 use rand::OsRng;
 use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
@@ -20,7 +21,10 @@ impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+        Uuid::parse_str(param.as_str()).map(|uid| {
+            logging::set_context(&uid);
+            TradeId::from(uid)
+        })
     }
 }
 

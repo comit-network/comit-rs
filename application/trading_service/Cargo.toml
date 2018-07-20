@@ -11,7 +11,7 @@ authors = [
 [dependencies]
 env_logger = "0.5.10"
 lazy_static = "1.0.1"
-log = "0.4.2"
+log = "0.4.3"
 rand = "0.4.2"
 reqwest = "0.8.6"
 rocket = "=0.3.14"
@@ -27,6 +27,7 @@ ethereum_support = { path = "../../vendor/ethereum_support" }
 common_types = { path = "../common_types" }
 hex = "0.3.2"
 crypto = "0.0.2"
+logging = { path = "../logging" }
 
 [dependencies.uuid]
 features = ["serde", "v4"]

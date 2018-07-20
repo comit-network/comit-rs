@@ -3,13 +3,13 @@
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate common_types;
-extern crate env_logger;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate exchange_service;
 extern crate hex;
 #[macro_use]
 extern crate log;
+extern crate logging;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -38,7 +38,7 @@ use std::{env::var, str::FromStr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
-    let _ = env_logger::init();
+    logging::set_up_logging();
     let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
     info!("set TREASURY_SERVICE_URL={:?}", treasury_api_url);
 

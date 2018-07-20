@@ -16,7 +16,7 @@ bitcoin_support = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 hex = "0.3.2"
-log = "0.4.2"
+log = "0.4.3"
 
 [dev-dependencies]
 bitcoin_node    = { path = "../../vendor/bitcoin_node" }

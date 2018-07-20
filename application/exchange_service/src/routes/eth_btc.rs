@@ -8,6 +8,7 @@ pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::{
     self, ContractDeployed, EventStore, OfferCreated, OfferState, OrderTaken, TradeFunded, TradeId,
 };
+use logging;
 use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
@@ -19,7 +20,10 @@ impl<'a> FromParam<'a> for TradeId {
     type Error = uuid::ParseError;
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from_uuid(uid))
+        Uuid::parse_str(param.as_str()).map(|uid| {
+            logging::set_context(&uid);
+            TradeId::from(uid)
+        })
     }
 }
 
@@ -119,7 +123,6 @@ pub fn post_buy_orders(
     // - Client success address (ETH)
     // = generates exchange refund address
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
-
     let order_request_body: OrderRequestBody = order_request_body.into_inner();
 
     let client_refund_address = match order_request_body
@@ -133,7 +136,7 @@ pub fn post_buy_orders(
                     "Invalid refund address: {}",
                     order_request_body.client_refund_address
                 ).to_string(),
-            )))
+            )));
         }
     };
 

@@ -18,9 +18,9 @@ extern crate ethereum_wallet;
 extern crate secp256k1_support;
 extern crate serde_json;
 extern crate uuid;
-
 #[macro_use]
 extern crate log;
+extern crate logging;
 
 pub mod bitcoin_fee_service;
 pub mod ethereum_service;
