@@ -10,7 +10,7 @@ members = [
     "application/ethereum_htlc",
     "application/ethereum_wallet",
     "application/bitcoin_wallet",
-    "application/swap_log",
+    "application/logging",
     "vendor/ethereum_support",
     "vendor/bitcoin_support",
     "vendor/jsonrpc",

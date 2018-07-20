@@ -9,6 +9,7 @@ extern crate exchange_service;
 extern crate hex;
 #[macro_use]
 extern crate log;
+extern crate logging;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -16,7 +17,6 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
-extern crate swap_log;
 extern crate tiny_keccak;
 extern crate uuid;
 
@@ -38,7 +38,7 @@ use std::{env::var, str::FromStr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
-    swap_log::set_up_logging();
+    logging::set_up_logging();
     let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
     info!("set TREASURY_SERVICE_URL={:?}", treasury_api_url);
 

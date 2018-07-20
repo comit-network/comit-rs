@@ -8,12 +8,12 @@ use event_store::{
 use exchange_api_client::{
     create_client, ApiClient, ExchangeApiUrl, OfferResponseBody, OrderRequestBody,
 };
+use logging;
 use rand::OsRng;
 use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
 use std::{str::FromStr, sync::Mutex};
-use swap_log;
 use symbol::Symbol;
 use uuid::{self, Uuid};
 
@@ -22,7 +22,7 @@ impl<'a> FromParam<'a> for TradeId {
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
         Uuid::parse_str(param.as_str()).map(|uid| {
-            swap_log::set_context(&uid);
+            logging::set_context(&uid);
             TradeId::from(uid)
         })
     }

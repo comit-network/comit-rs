@@ -15,8 +15,8 @@ extern crate rocket_contrib;
 extern crate serde_derive;
 extern crate crypto;
 extern crate ethereum_support;
+extern crate logging;
 extern crate serde_json;
-extern crate swap_log;
 extern crate uuid;
 
 #[macro_use]

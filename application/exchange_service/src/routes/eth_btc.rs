@@ -8,11 +8,11 @@ pub use event_store::OfferCreated as OfferRequestResponse;
 use event_store::{
     self, ContractDeployed, EventStore, OfferCreated, OfferState, OrderTaken, TradeFunded, TradeId,
 };
+use logging;
 use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::UNIX_EPOCH};
-use swap_log;
 use treasury_api_client::{ApiClient, Symbol};
 use uuid::{self, Uuid};
 
@@ -21,7 +21,7 @@ impl<'a> FromParam<'a> for TradeId {
 
     fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
         Uuid::parse_str(param.as_str()).map(|uid| {
-            swap_log::set_context(&uid);
+            logging::set_context(&uid);
             TradeId::from(uid)
         })
     }
