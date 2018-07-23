@@ -13,8 +13,9 @@ secp256k1_support = { path = "../secp256k1_support" }
 bitcoin_support = { path = "../bitcoin_support" }
 
 [dev-dependencies]
-bitcoin_node = { path = "../bitcoin_node" }
+coblox_bitcoincore = { path = "../coblox_bitcoincore" }
 bitcoin_rpc  = { path = "../bitcoin_rpc" }
 hex = "0.3.2"
 bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }
+testcontainers = { path = "../testcontainers_rs" }
 env_logger = "0.5.11"

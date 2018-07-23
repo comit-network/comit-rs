@@ -7,12 +7,12 @@ extern crate log;
 
 mod api;
 mod docker_cli;
+mod node;
 mod wait_for_message;
 
-pub mod images;
-
 pub use api::*;
-pub use wait_for_message::WaitForMessage;
+pub use node::{ClientFactory, Node};
+pub use wait_for_message::{WaitForMessage, WaitResult};
 
 pub mod clients {
     pub use docker_cli::DockerCli;

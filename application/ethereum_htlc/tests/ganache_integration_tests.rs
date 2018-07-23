@@ -1,12 +1,13 @@
 extern crate env_logger;
 extern crate ethereum_htlc;
 extern crate ethereum_support;
-extern crate ganache_node;
 extern crate ganache_rust_web3;
 extern crate hex;
+extern crate trufflesuite_ganachecli;
 #[macro_use]
 extern crate log;
 extern crate common_types;
+extern crate testcontainers;
 
 mod common;
 use common::GanacheClient;

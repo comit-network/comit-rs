@@ -5,49 +5,43 @@ use std::{
     process::{Command, Stdio},
 };
 
+#[derive(Copy, Clone)]
 pub struct DockerCli;
 
 impl Docker for DockerCli {
-    fn run_detached<I: Image>(&self, image: &I, run_args: RunArgs) -> String {
-        let mut command = Command::new("docker");
+    fn new() -> Self {
+        DockerCli
+    }
 
-        let command_builder = command.arg("run").arg("-d");
+    fn run<I: Image>(&self, image: &I) -> Container<DockerCli> {
+        let mut docker = Command::new("docker");
 
-        if run_args.rm {
-            command_builder.arg("--rm");
-        }
-
-        if run_args.interactive {
-            command_builder.arg("-i");
-        }
-
-        let ports = run_args.ports;
-
-        for port in ports {
-            command_builder.arg("-p").arg(format!("{}", port));
-        }
-
-        let command = command_builder.arg(&image.descriptor()).args(image.args());
+        let command = docker
+            .arg("run")
+            .arg("-d") // Always run detached
+            .arg("-P") // Always expose all ports
+            .arg(&image.descriptor())
+            .args(image.args())
+            .stdout(Stdio::piped());
 
         info!("Executing command: {:?}", command);
 
-        let child = command
-            .stdout(Stdio::piped())
-            .spawn()
-            .expect("Failed to execute docker command");
+        let child = command.spawn().expect("Failed to execute docker command");
 
         let stdout = child.stdout.unwrap();
         let reader = BufReader::new(stdout);
 
         let container_id = reader.lines().next().unwrap().unwrap();
 
-        debug!("Waiting for docker container {} to be ready.", container_id);
+        let container = Container::new(container_id, DockerCli {});
 
-        image.wait_until_ready(&container_id, self);
+        debug!("Waiting for {} to be ready.", container);
 
-        debug!("Docker container {} is now ready!", container_id);
+        image.wait_until_ready(&container);
 
-        container_id
+        debug!("{} is now ready!", container);
+
+        container
     }
 
     fn logs(&self, id: &str) -> Box<Read> {
@@ -87,6 +81,7 @@ impl Docker for DockerCli {
         Command::new("docker")
             .arg("rm")
             .arg("-f")
+            .arg("-v") // Also remove volumes
             .arg(id)
             .stdout(Stdio::piped())
             .spawn()
@@ -94,7 +89,7 @@ impl Docker for DockerCli {
     }
 
     fn stop(&self, id: &str) {
-        info!("Killing docker container: {}", id);
+        info!("Stopping docker container: {}", id);
 
         Command::new("docker")
             .arg("stop")

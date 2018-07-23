@@ -1,5 +1,5 @@
-use api::*;
-use WaitForMessage;
+use testcontainers::{ClientFactory, Container, Docker, Image, WaitForMessage};
+use web3_client::Web3Client;
 
 pub struct GanacheCli {
     tag: String,
@@ -17,8 +17,8 @@ impl Default for GanacheCliArgs {
     fn default() -> Self {
         GanacheCliArgs {
             network_id: 42,
-            number_of_accounts: 10,
-            mnemonic: "".to_string(),
+            number_of_accounts: 7,
+            mnemonic: "supersecure".to_string(),
         }
     }
 }
@@ -51,14 +51,8 @@ impl Image for GanacheCli {
         format!("trufflesuite/ganache-cli:{}", self.tag)
     }
 
-    fn exposed_ports(&self) -> ExposedPorts {
-        ExposedPorts::new(&[8545])
-    }
-
-    fn wait_until_ready<D: Docker>(&self, id: &str, docker: &D) {
-        let logs = docker.logs(id);
-
-        logs.wait_for_message("Listening on localhost:").unwrap();
+    fn wait_until_ready<D: Docker>(&self, container: &Container<D>) {
+        container.logs().wait_for_message("Listening on localhost:").unwrap();
     }
 
     fn args(&self) -> <Self as Image>::Args {
@@ -74,5 +68,21 @@ impl Image for GanacheCli {
             tag: tag.to_string(),
             arguments: GanacheCliArgs::default(),
         }
+    }
+}
+
+impl ClientFactory<Web3Client> for GanacheCli {
+    fn new_client<D: Docker>(container: &Container<D>, _image: &Self) -> Web3Client {
+        let host_port = container.get_host_port(8545).unwrap();
+
+        let url = format!("http://localhost:{}", host_port);
+
+        Web3Client::new(&url).unwrap()
+    }
+}
+
+impl Default for GanacheCli {
+    fn default() -> Self {
+        GanacheCli::new("v6.1.3")
     }
 }
