@@ -29,7 +29,7 @@ impl<'a> From<PoisonError<MutexGuard<'a, u32>>> for Error {
 }
 
 pub struct KeyStore {
-    master_privkey: ExtendedPrivKey,
+    _master_privkey: ExtendedPrivKey,
     transient_root_privkey: ExtendedPrivKey,
     internal_root_privkey: ExtendedPrivKey,
     last_internal_index: Mutex<u32>,
@@ -60,7 +60,7 @@ impl KeyStore {
         let transient_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Hardened(2))?;
 
         Ok(KeyStore {
-            master_privkey,
+            _master_privkey: master_privkey,
             transient_root_privkey: transient_root_privkey,
             internal_root_privkey: internal_root_privkey,
             last_internal_index: Mutex::new(0),
