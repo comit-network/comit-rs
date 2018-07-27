@@ -20,7 +20,7 @@ fn main() -> std::io::Result<()> {
             .stdout(Stdio::piped())
             .spawn()?,
         Err(_) => {
-            check_bin_in_patch("docker");
+            check_bin_in_path("docker");
             Command::new("docker")
                 .arg("run")
                 .arg("--rm")
@@ -53,7 +53,7 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn check_bin_in_patch(bin: &str) {
+fn check_bin_in_path(bin: &str) {
     let output = Command::new("which").arg(bin).output().unwrap();
     if output.stdout.is_empty() {
         let mut msg = format!("`{}` cannot be found, check your path", bin);
