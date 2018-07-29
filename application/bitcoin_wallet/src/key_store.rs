@@ -47,7 +47,7 @@ impl KeyStore {
         // As per bip32 and bitcoind reference implementation
         //
         // We use the following child keys:
-        // m/0'/0' for bip32 internal chain (ie, where the BTC is sent after redeem, bitcoind-like)
+        // m/0'/1 for bip32 internal chain (ie, where the BTC is sent after redeem, bitcoind-like)
         // m/0'/2' for HTLC (ie, locking the money in HTLC). 2 is an arbitrary value I chose
         // (1' being reserved for the bip32 external chain)
         // At this stage we expect an extended master private key in the configuration (m)
@@ -56,7 +56,7 @@ impl KeyStore {
 
         let account_0_privkey = master_privkey.ckd_priv(&SECP, ChildNumber::Hardened(0))?;
 
-        let internal_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Hardened(0))?;
+        let internal_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Normal(1))?;
         let transient_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Hardened(2))?;
 
         Ok(KeyStore {
