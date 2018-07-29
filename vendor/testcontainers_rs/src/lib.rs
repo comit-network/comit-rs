@@ -11,7 +11,7 @@ mod node;
 mod wait_for_message;
 
 pub use api::*;
-pub use node::{ClientFactory, Node};
+pub use node::{ContainerClient, Node};
 pub use wait_for_message::{WaitForMessage, WaitResult};
 
 pub mod clients {

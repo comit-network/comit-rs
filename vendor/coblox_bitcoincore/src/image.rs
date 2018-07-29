@@ -4,7 +4,7 @@ use hmac::{Hmac, Mac};
 use rand::{thread_rng, Rng};
 use sha2::Sha256;
 use std::{env::var, thread::sleep, time::Duration};
-use testcontainers::{ClientFactory, Container, Docker, Image, WaitForMessage};
+use testcontainers::{Container, ContainerClient, Docker, Image, WaitForMessage};
 
 pub struct BitcoinCore {
     tag: String,
@@ -191,8 +191,11 @@ impl Default for BitcoinCore {
     }
 }
 
-impl ClientFactory<BitcoinCoreClient> for BitcoinCore {
-    fn new_client<D: Docker>(container: &Container<D>, image: &Self) -> BitcoinCoreClient {
+impl ContainerClient<BitcoinCoreClient> for BitcoinCore {
+    fn new_container_client<D: Docker>(
+        container: &Container<D>,
+        image: &Self,
+    ) -> BitcoinCoreClient {
         let host_port = container.get_host_port(18443).unwrap();
 
         let url = format!("http://localhost:{}", host_port);
