@@ -40,7 +40,6 @@ services:
     depends_on:
     - treasury_service
     - ethereum
-    command: ./exchange_service
 
   treasury_service:
     build:
