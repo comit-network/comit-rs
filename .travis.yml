@@ -28,6 +28,8 @@ script:
 - cargo test --all
 after_script:
 - expr $TRAVIS_TEST_RESULT > /dev/null && .travis/upload-container-logs-to-gcs.sh
+before_cache:
+- .travis/clean-workspace-artifacts.sh
 notifications:
   email: false
   slack:
