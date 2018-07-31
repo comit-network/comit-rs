@@ -24,7 +24,11 @@ where
         let logs = BufReader::new(self);
 
         for line in logs.lines() {
-            if line?.contains(message) {
+            let line = line?;
+
+            trace!("Checking if line '{}' contains message '{}'", line, message);
+
+            if line.contains(message) {
                 return Ok(());
             }
         }

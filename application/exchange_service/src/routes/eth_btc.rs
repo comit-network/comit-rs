@@ -239,6 +239,8 @@ mod tests {
     use std::{str::FromStr, sync::Arc};
     use treasury_api_client::FakeApiClient;
 
+    extern crate env_logger;
+
     fn request_offer(client: &mut Client) -> LocalResponse {
         let request = client
             .post("/trades/ETH-BTC/buy-offers")
@@ -327,6 +329,8 @@ mod tests {
 
     #[test]
     fn given_an_offer_request_then_return_valid_offer_response() {
+        let _ = env_logger::try_init();
+
         let mut client = create_rocket_client();
 
         let mut response = request_offer(&mut client);
@@ -343,6 +347,8 @@ mod tests {
 
     #[test]
     fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_response() {
+        let _ = env_logger::try_init();
+
         let mut client = create_rocket_client();
 
         let uid = {
@@ -376,6 +382,8 @@ mod tests {
 
     #[test]
     fn given_a_order_request_without_offer_should_fail() {
+        let _ = env_logger::try_init();
+
         let mut client = create_rocket_client();
 
         let uid = "d9ee2df7-c330-4893-8345-6ba171f96e8f";
@@ -388,6 +396,8 @@ mod tests {
 
     #[test]
     fn given_two_orders_request_with_same_uid_should_fail() {
+        let _ = env_logger::try_init();
+
         let mut client = create_rocket_client();
 
         let uid = {
@@ -414,6 +424,8 @@ mod tests {
 
     #[test]
     fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
+        let _ = env_logger::try_init();
+
         let mut client = create_rocket_client();
 
         let trade_id = {

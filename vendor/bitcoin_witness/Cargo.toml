@@ -17,3 +17,4 @@ bitcoin_node = { path = "../bitcoin_node" }
 bitcoin_rpc  = { path = "../bitcoin_rpc" }
 hex = "0.3.2"
 bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }
+env_logger = "0.5.11"

@@ -1,3 +1,4 @@
+extern crate env_logger;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate ganache_node;
@@ -11,6 +12,8 @@ use secp256k1_support::KeyPair;
 
 #[test]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
+    let _ = env_logger::try_init();
+
     // Arrange
 
     let account = Address::from("e7b6bfabddfaeb2c016b334a5322e4327dc5e499");

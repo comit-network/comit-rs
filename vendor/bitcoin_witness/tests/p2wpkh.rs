@@ -3,6 +3,7 @@ extern crate bitcoin_rpc;
 extern crate bitcoin_rpc_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
+extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
 
@@ -16,6 +17,8 @@ use std::str::FromStr;
 
 #[test]
 fn redeem_single_p2wpkh() {
+    let _ = env_logger::try_init();
+
     let bitcoin_node = BitcoinNode::new();
     let client = bitcoin_node.get_client();
     client.enable_segwit();

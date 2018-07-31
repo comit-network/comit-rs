@@ -6,6 +6,7 @@ extern crate bitcoin_rpc_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
 extern crate common_types;
+extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
 
@@ -79,6 +80,8 @@ fn fund_htlc(
 
 #[test]
 fn redeem_htlc_with_secret() {
+    let _ = env_logger::try_init();
+
     let bitcoin_node = BitcoinNode::new();
     let client = bitcoin_node.get_client();
     client.generate(432).unwrap();
@@ -132,6 +135,8 @@ fn redeem_htlc_with_secret() {
 
 #[test]
 fn redeem_refund_htlc() {
+    let _ = env_logger::try_init();
+
     let bitcoin_node = BitcoinNode::new();
     let client = bitcoin_node.get_client();
     client.generate(432).unwrap();
