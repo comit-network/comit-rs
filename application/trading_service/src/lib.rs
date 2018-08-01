@@ -5,6 +5,7 @@ extern crate bitcoin_htlc;
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate common_types;
+extern crate event_store;
 extern crate hex;
 extern crate lazy_static;
 extern crate rand;
@@ -25,7 +26,7 @@ extern crate serde;
 
 pub mod exchange_api_client;
 
-pub mod event_store;
+pub mod events;
 pub mod rocket_factory;
 pub mod routes;
 pub mod symbol;

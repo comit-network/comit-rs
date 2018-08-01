@@ -1,18 +1,19 @@
 use bitcoin_support::Network;
-use event_store::EventStore;
-use exchange_api_client::ExchangeApiUrl;
+use event_store::InMemoryEventStore;
+use events::TradeId;
+use exchange_api_client::ApiClient;
 use rand::OsRng;
 use rocket;
 use routes;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 pub fn create_rocket_instance(
-    exchange_api_url: ExchangeApiUrl,
     network: Network,
+    event_store: InMemoryEventStore<TradeId>,
+    client: Arc<ApiClient>,
 ) -> rocket::Rocket {
     // TODO: allow caller to choose randomness source
     let rng = OsRng::new().expect("Failed to get randomness from OS");
-    let event_store = EventStore::new();
     rocket::ignite()
         .mount(
             "/",
@@ -23,7 +24,7 @@ pub fn create_rocket_instance(
                 routes::eth_btc::post_contract_deployed,
             ],
         )
-        .manage(exchange_api_url)
+        .manage(client)
         .manage(network)
         .manage(event_store)
         .manage(Mutex::new(rng))

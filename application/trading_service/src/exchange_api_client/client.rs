@@ -1,7 +1,7 @@
 use bitcoin_rpc;
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{self, EthereumQuantity};
-use event_store::TradeId;
+use events::TradeId;
 use reqwest;
 use secret::SecretHash;
 use symbol::Symbol;
@@ -38,7 +38,7 @@ pub struct OrderResponseBody {
     pub exchange_success_address: bitcoin_rpc::Address,
 }
 
-pub trait ApiClient {
+pub trait ApiClient: Send + Sync {
     fn create_offer(
         &self,
         symbol: Symbol,
@@ -52,10 +52,18 @@ pub trait ApiClient {
     ) -> Result<OrderResponseBody, reqwest::Error>;
 }
 
-#[allow(dead_code)]
 pub struct DefaultApiClient {
-    pub client: reqwest::Client,
-    pub url: ExchangeApiUrl,
+    client: reqwest::Client,
+    url: ExchangeApiUrl,
+}
+
+impl DefaultApiClient {
+    pub fn new(url: ExchangeApiUrl) -> Self {
+        DefaultApiClient {
+            url,
+            client: reqwest::Client::new(),
+        }
+    }
 }
 
 impl ApiClient for DefaultApiClient {

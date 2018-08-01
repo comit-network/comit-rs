@@ -2496,6 +2496,7 @@ dependencies = [
  "crypto 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum_support 0.1.0",
+ "event_store 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",

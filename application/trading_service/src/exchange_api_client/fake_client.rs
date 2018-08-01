@@ -2,7 +2,7 @@ use super::client::ApiClient;
 use bitcoin_rpc::Address;
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
-use event_store::TradeId;
+use events::TradeId;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
 use reqwest;
 use std::str::FromStr;
@@ -11,6 +11,12 @@ use uuid::Uuid;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
+
+impl FakeApiClient {
+    pub fn new() -> Self {
+        FakeApiClient {}
+    }
+}
 
 impl ApiClient for FakeApiClient {
     fn create_offer(

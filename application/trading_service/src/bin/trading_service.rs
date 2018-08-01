@@ -5,15 +5,18 @@ extern crate bitcoin_htlc;
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate env_logger;
+extern crate event_store;
 extern crate log;
 extern crate logging;
 extern crate rocket;
 extern crate trading_service;
 
 use bitcoin_support::Network;
-use std::env::var;
+use event_store::InMemoryEventStore;
+use std::{env::var, sync::Arc};
 use trading_service::{
-    exchange_api_client::ExchangeApiUrl, rocket_factory::create_rocket_instance,
+    exchange_api_client::{DefaultApiClient, ExchangeApiUrl},
+    rocket_factory::create_rocket_instance,
 };
 
 fn main() {
@@ -33,5 +36,9 @@ fn main() {
         Err(_) => Network::BitcoinCoreRegtest,
     };
 
-    create_rocket_instance(exchange_api_url, network).launch();
+    create_rocket_instance(
+        network,
+        InMemoryEventStore::new(),
+        Arc::new(DefaultApiClient::new(exchange_api_url)),
+    ).launch();
 }
