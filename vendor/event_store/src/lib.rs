@@ -3,10 +3,10 @@ use std::{
     borrow::Borrow,
     collections::HashMap,
     hash::Hash,
-    sync::RwLock,
+    sync::Mutex,
 };
 
-pub trait Event: Clone + 'static {
+pub trait Event: Clone + 'static + Send + Sync {
     type Prev: Event;
 }
 
@@ -15,47 +15,48 @@ impl Event for () {
 }
 
 #[derive(Debug)]
-pub enum Error<E: Event> {
+pub enum Error {
     PrevEventMissing,
-    DuplicateEvent(E),
+    DuplicateEvent,
+    NotFound,
 }
 
 pub trait EventStore<K> {
-    fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error<E>>;
-    fn get_event<E: Event>(&self, key: K) -> Option<E>;
+    fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error>;
+    fn get_event<E: Event>(&self, key: K) -> Result<E, Error>;
 }
 
 pub struct InMemoryEventStore<K: Hash + Eq> {
-    events: RwLock<HashMap<(TypeId, K), Box<Any>>>,
+    events: Mutex<HashMap<(TypeId, K), Box<Any + Send>>>,
 }
 
 impl<K: Hash + Eq> InMemoryEventStore<K> {
     pub fn new() -> Self {
         InMemoryEventStore {
-            events: RwLock::new(HashMap::new()),
+            events: Mutex::new(HashMap::new()),
         }
     }
 
     fn _get_event<E: Event>(
-        events: &HashMap<(TypeId, K), Box<Any>>,
+        events: &HashMap<(TypeId, K), Box<Any + Send>>,
         type_id: TypeId,
         key: K,
     ) -> Option<E> {
         events.get(&(type_id, key)).map(|event| {
-            let _any: &Any = event.borrow();
+            let _any: &(Any + Send) = event.borrow();
             _any.downcast_ref::<E>().unwrap().clone()
         })
     }
 }
 
 impl<K: Hash + Eq + Clone> EventStore<K> for InMemoryEventStore<K> {
-    fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error<E>> {
+    fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error> {
         let unit_type_id: TypeId = TypeId::of::<()>();
 
         let id = TypeId::of::<E>();
         let id_prev = TypeId::of::<E::Prev>();
 
-        let mut events = self.events.write().unwrap();
+        let mut events = self.events.lock().unwrap();
         let get_prev_event = Self::_get_event::<E::Prev>(&*events, id_prev, key.clone());
 
         if get_prev_event.is_none() && id_prev != unit_type_id {
@@ -65,17 +66,17 @@ impl<K: Hash + Eq + Clone> EventStore<K> for InMemoryEventStore<K> {
         let get_existing_event = Self::_get_event::<E>(&*events, id, key.clone());
 
         if let Some(existing) = get_existing_event {
-            return Err(Error::DuplicateEvent(existing));
+            return Err(Error::DuplicateEvent);
         }
 
         events.insert((id, key), Box::new(event));
         Ok(())
     }
 
-    fn get_event<E: Event>(&self, key: K) -> Option<E> {
+    fn get_event<E: Event>(&self, key: K) -> Result<E, Error> {
         let id = TypeId::of::<E>();
-        let events = self.events.read().unwrap();
-        Self::_get_event::<E>(&*events, id, key)
+        let events = self.events.lock().unwrap();
+        Self::_get_event::<E>(&*events, id, key).ok_or(Error::NotFound)
     }
 }
 
@@ -93,7 +94,7 @@ mod tests {
         let event_store = InMemoryEventStore::new();
         assert!(event_store.add_event(&42, Init {}).is_ok());
         assert_eq!(event_store.get_event::<Init>(&42).unwrap(), Init {});
-        assert!(event_store.get_event::<Init>(&32).is_none());
+        assert!(event_store.get_event::<Init>(&32).is_err());
     }
 
     #[test]
