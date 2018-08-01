@@ -1,31 +1,39 @@
-use std::io::{BufRead, BufReader, Read};
+use std::io::{self, BufRead, BufReader, Read};
 
-#[derive(PartialEq, Debug)]
-pub enum WaitResult {
-    Found,
+#[derive(Debug)]
+pub enum WaitError {
     EndOfStream,
+    IO(io::Error),
+}
+
+impl From<io::Error> for WaitError {
+    fn from(e: io::Error) -> Self {
+        WaitError::IO(e)
+    }
 }
 
 pub trait WaitForMessage {
-    fn wait_for_message(self, message: &str) -> WaitResult;
+    fn wait_for_message(self, message: &str) -> Result<(), WaitError>;
 }
 
 impl<T> WaitForMessage for T
 where
     T: Read,
 {
-    fn wait_for_message(self, message: &str) -> WaitResult {
+    fn wait_for_message(self, message: &str) -> Result<(), WaitError> {
         let logs = BufReader::new(self);
 
         for line in logs.lines() {
-            let line = line.unwrap();
+            let line = line?;
+
+            trace!("Checking if line '{}' contains message '{}'", line, message);
 
             if line.contains(message) {
-                return WaitResult::Found;
+                return Ok(());
             }
         }
 
-        WaitResult::EndOfStream
+        Err(WaitError::EndOfStream)
     }
 }
 
@@ -45,7 +53,7 @@ mod tests {
 
         let result = logs.wait_for_message("Message three");
 
-        assert_eq!(result, WaitResult::Found)
+        assert!(result.is_ok())
     }
 
 }

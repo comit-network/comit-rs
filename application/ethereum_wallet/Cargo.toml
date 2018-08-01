@@ -18,3 +18,4 @@ tiny-keccak = "1.4.2"
 [dev-dependencies]
 hex = "0.3.1"
 ganache_node = { path = "../../vendor/ganache_node" }
+env_logger = "0.5.11"

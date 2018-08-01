@@ -21,3 +21,4 @@ log = "0.4.3"
 [dev-dependencies]
 bitcoin_node    = { path = "../../vendor/bitcoin_node" }
 bitcoin_rpc_helpers = { path = "../../vendor/bitcoin_rpc_helpers" }
+env_logger = "0.5.11"
