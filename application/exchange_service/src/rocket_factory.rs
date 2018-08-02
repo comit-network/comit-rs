@@ -28,7 +28,7 @@ pub fn create_rocket_instance(
                 eth_btc::routes::post_buy_offers,
                 eth_btc::routes::post_buy_orders,
                 eth_btc::routes::post_buy_orders_fundings,
-                eth_btc::chain_updates::post_revealed_secret
+                eth_btc::routes::post_revealed_secret
             ],
         )
         .manage(treasury_api_client)
