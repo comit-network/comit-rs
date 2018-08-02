@@ -6,10 +6,10 @@ use bitcoin_support::{self, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
 use event_store::{EventStore, InMemoryEventStore};
-use events_common::TradeId;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::{fmt::Debug, sync::Arc};
+use swaps::TradeId;
 
 //TODO: move back to eth_btc.rs
 

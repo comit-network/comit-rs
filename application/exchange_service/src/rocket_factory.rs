@@ -4,11 +4,10 @@ use bitcoin_support::{self, Network};
 use ethereum_service::EthereumService;
 use ethereum_support;
 use event_store::InMemoryEventStore;
-use events_common::TradeId;
 use rocket;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
-use swaps::eth_btc;
+use swaps::{eth_btc, TradeId};
 use treasury_api_client::ApiClient;
 
 pub fn create_rocket_instance(

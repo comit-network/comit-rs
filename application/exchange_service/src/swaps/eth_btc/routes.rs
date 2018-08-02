@@ -8,29 +8,16 @@ use ethereum_htlc;
 use ethereum_service;
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
-use events_common::TradeId;
-use logging;
 use reqwest;
-use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
+use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::{
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use swaps::TradeId;
 use treasury_api_client::{ApiClient, Symbol};
-use uuid::{self, Uuid};
-
-impl<'a> FromParam<'a> for TradeId {
-    type Error = uuid::ParseError;
-
-    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| {
-            logging::set_context(&uid);
-            TradeId::from(uid)
-        })
-    }
-}
 
 #[derive(Debug)]
 pub enum Error {

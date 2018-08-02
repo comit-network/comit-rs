@@ -4,9 +4,9 @@ use bitcoin_support::{self, BitcoinQuantity};
 use common_types::secret::SecretHash;
 use ethereum_support::{self, *};
 use event_store::Event;
-use events_common::TradeId;
 use secp256k1_support::KeyPair;
 use std::time::SystemTime;
+use swaps::TradeId;
 use treasury_api_client::{RateResponseBody, Symbol};
 use uuid::Uuid;
 
