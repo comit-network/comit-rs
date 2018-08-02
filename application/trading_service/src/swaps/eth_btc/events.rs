@@ -5,24 +5,8 @@ use ethereum_support::{self, EthereumQuantity};
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use std::fmt;
+use swaps::TradeId;
 use symbol::Symbol;
-use uuid::Uuid;
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct TradeId(Uuid);
-
-impl From<Uuid> for TradeId {
-    fn from(uuid: Uuid) -> Self {
-        TradeId(uuid)
-    }
-}
-
-impl fmt::Display for TradeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.0.fmt(f)
-    }
-}
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]

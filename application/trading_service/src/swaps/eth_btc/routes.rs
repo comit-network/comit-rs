@@ -1,33 +1,21 @@
+use super::events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken};
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
 use bitcoin_rpc::{self, BlockHeight};
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{self, EventStore, InMemoryEventStore};
-use events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken, TradeId};
 use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
-use logging;
 use rand::OsRng;
 use reqwest;
-use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
+use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
 };
+use swaps::TradeId;
 use symbol::Symbol;
-use uuid::{self, Uuid};
-
-impl<'a> FromParam<'a> for TradeId {
-    type Error = uuid::ParseError;
-
-    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| {
-            logging::set_context(&uid);
-            TradeId::from(uid)
-        })
-    }
-}
 
 #[derive(Debug)]
 pub enum Error {

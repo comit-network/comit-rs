@@ -1,9 +1,9 @@
 use bitcoin_rpc;
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{self, EthereumQuantity};
-use events::TradeId;
 use reqwest;
 use secret::SecretHash;
+use swaps::TradeId;
 use symbol::Symbol;
 
 #[derive(Clone)]

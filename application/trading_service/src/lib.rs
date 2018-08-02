@@ -26,9 +26,8 @@ extern crate serde;
 
 pub mod exchange_api_client;
 
-pub mod events;
 pub mod rocket_factory;
-pub mod routes;
+pub mod swaps;
 pub mod symbol;
 
 pub use common_types::secret;

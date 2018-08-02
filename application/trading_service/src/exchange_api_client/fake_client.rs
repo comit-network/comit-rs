@@ -2,10 +2,10 @@ use super::client::ApiClient;
 use bitcoin_rpc::Address;
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
-use events::TradeId;
 use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
 use reqwest;
 use std::str::FromStr;
+use swaps::TradeId;
 use symbol::Symbol;
 use uuid::Uuid;
 

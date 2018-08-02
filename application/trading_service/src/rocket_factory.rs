@@ -1,11 +1,10 @@
 use bitcoin_support::Network;
 use event_store::InMemoryEventStore;
-use events::TradeId;
 use exchange_api_client::ApiClient;
 use rand::OsRng;
 use rocket;
-use routes;
 use std::sync::{Arc, Mutex};
+use swaps::{eth_btc, TradeId};
 
 pub fn create_rocket_instance(
     network: Network,
@@ -18,10 +17,10 @@ pub fn create_rocket_instance(
         .mount(
             "/",
             routes![
-                routes::eth_btc::get_redeem_orders,
-                routes::eth_btc::post_buy_offers,
-                routes::eth_btc::post_buy_orders,
-                routes::eth_btc::post_contract_deployed,
+                eth_btc::routes::get_redeem_orders,
+                eth_btc::routes::post_buy_offers,
+                eth_btc::routes::post_buy_orders,
+                eth_btc::routes::post_contract_deployed,
             ],
         )
         .manage(client)
