@@ -9,6 +9,7 @@ extern crate exchange_service;
 extern crate hex;
 #[macro_use]
 extern crate log;
+extern crate event_store;
 extern crate logging;
 extern crate reqwest;
 extern crate rocket;
@@ -24,10 +25,10 @@ use bitcoin_rpc::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
+use event_store::InMemoryEventStore;
 use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     ethereum_service::EthereumService,
-    event_store::EventStore,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
     treasury_api_client::{DefaultApiClient, TreasuryApiUrl},
@@ -47,7 +48,7 @@ fn main() {
         url: treasury_api_url,
     };
 
-    let event_store = EventStore::new();
+    let event_store = InMemoryEventStore::new();
 
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 

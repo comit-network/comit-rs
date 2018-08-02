@@ -1,18 +1,23 @@
+pub use super::events::OfferCreated as OfferRequestResponse;
+use super::events::{ContractDeployed, OfferCreated, OfferState, OrderTaken, TradeFunded};
+use bitcoin_fee_service;
 use bitcoin_rpc;
-use bitcoin_support::{Network, ToP2wpkhAddress};
+use bitcoin_support::{self, Network, ToP2wpkhAddress};
 use common_types::secret::SecretHash;
 use ethereum_htlc;
 use ethereum_service;
 use ethereum_support;
-pub use event_store::OfferCreated as OfferRequestResponse;
-use event_store::{
-    self, ContractDeployed, EventStore, OfferCreated, OfferState, OrderTaken, TradeFunded, TradeId,
-};
+use event_store::{self, EventStore, InMemoryEventStore};
+use events_common::TradeId;
 use logging;
+use reqwest;
 use rocket::{http::RawStr, request::FromParam, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
-use std::{sync::Arc, time::UNIX_EPOCH};
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
 use treasury_api_client::{ApiClient, Symbol};
 use uuid::{self, Uuid};
 
@@ -27,10 +32,31 @@ impl<'a> FromParam<'a> for TradeId {
     }
 }
 
-impl From<event_store::Error> for BadRequest<String> {
+#[derive(Debug)]
+pub enum Error {
+    EventStore(event_store::Error),
+    TreasuryService(reqwest::Error),
+    FeeService(bitcoin_fee_service::Error),
+    AdHoc(String),
+}
+
+impl From<Error> for BadRequest<String> {
+    fn from(e: Error) -> Self {
+        let error_str = format!("{:?}", e);
+        error!("Error: {}", error_str);
+        BadRequest(Some(error_str))
+    }
+}
+
+impl From<event_store::Error> for Error {
     fn from(e: event_store::Error) -> Self {
-        error!("EventStore error: {:?}", e);
-        BadRequest(None)
+        Error::EventStore(e)
+    }
+}
+
+impl From<bitcoin_fee_service::Error> for Error {
+    fn from(e: bitcoin_fee_service::Error) -> Self {
+        Error::FeeService(e)
     }
 }
 
@@ -40,37 +66,36 @@ pub struct OfferRequestBody {
 }
 
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
-fn post_buy_offers(
+pub fn post_buy_offers(
     offer_request_body: Json<OfferRequestBody>,
-    event_store: State<EventStore>,
+    event_store: State<InMemoryEventStore<TradeId>>,
     treasury_api_client: State<Arc<ApiClient>>,
 ) -> Result<Json<OfferState>, BadRequest<String>> {
-    let offer_request_body: OfferRequestBody = offer_request_body.into_inner();
+    let offer_state = handle_post_buy_offers(
+        offer_request_body.into_inner(),
+        event_store.inner(),
+        treasury_api_client.inner(),
+    )?;
 
-    let res =
-        treasury_api_client.request_rate(Symbol("ETH-BTC".to_string()), offer_request_body.amount);
+    Ok(Json(offer_state)) // offer_event is the same than state.
+}
 
-    let rate_response_body = match res {
-        Ok(rate) => rate,
-        Err(e) => {
-            error!("{:?}", e);
-            return Err(BadRequest(None));
-        }
-    };
+fn handle_post_buy_offers(
+    offer_request_body: OfferRequestBody,
+    event_store: &InMemoryEventStore<TradeId>,
+    treasury_api_client: &Arc<ApiClient>,
+) -> Result<OfferState, Error> {
+    let rate_response_body = treasury_api_client
+        .request_rate(Symbol("ETH-BTC".to_string()), offer_request_body.amount)
+        .map_err(Error::TreasuryService)?;
 
     let offer_event = OfferCreated::from(rate_response_body);
 
-    match event_store.store_offer(offer_event.clone()) {
-        Ok(_) => (),
-        Err(e) => {
-            error!("{}", e);
-            return Err(BadRequest(None));
-        }
-    }
+    event_store.add_event(offer_event.uid, offer_event.clone())?;
 
     info!("Created new offer: {:?}", offer_event);
 
-    Ok(Json(offer_event.clone())) // offer_event is the same than state.
+    Ok(offer_event)
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -92,10 +117,10 @@ pub struct OrderTakenResponseBody {
 impl From<OrderTaken> for OrderTakenResponseBody {
     fn from(order_taken_event: OrderTaken) -> Self {
         OrderTakenResponseBody {
-            exchange_refund_address: order_taken_event.exchange_refund_address(),
-            exchange_success_address: order_taken_event.exchange_success_address().into(),
+            exchange_refund_address: order_taken_event.exchange_refund_address.into(),
+            exchange_success_address: order_taken_event.exchange_success_address.into(),
             exchange_contract_time_lock: order_taken_event
-                .exchange_contract_time_lock()
+                .exchange_contract_time_lock
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs(),
@@ -111,11 +136,30 @@ impl From<OrderTaken> for OrderTakenResponseBody {
 pub fn post_buy_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody>,
-    event_store: State<EventStore>,
+    event_store: State<InMemoryEventStore<TradeId>>,
     exchange_success_keypair: State<KeyPair>,
     exchange_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
+    let order_taken_response_body = handle_post_buy_orders(
+        trade_id,
+        order_request_body.into_inner(),
+        event_store.inner(),
+        exchange_success_keypair.inner(),
+        exchange_refund_address.inner(),
+        network.inner(),
+    )?;
+    Ok(Json(order_taken_response_body))
+}
+
+fn handle_post_buy_orders(
+    trade_id: TradeId,
+    order_request_body: OrderRequestBody,
+    event_store: &InMemoryEventStore<TradeId>,
+    exchange_success_keypair: &KeyPair,
+    exchange_refund_address: &ethereum_support::Address,
+    network: &Network,
+) -> Result<OrderTakenResponseBody, Error> {
     // Receive trade information
     // - Hashed Secret
     // - Client refund address (BTC)
@@ -123,47 +167,28 @@ pub fn post_buy_orders(
     // - Client success address (ETH)
     // = generates exchange refund address
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
-    let order_request_body: OrderRequestBody = order_request_body.into_inner();
+    let client_refund_address: bitcoin_support::Address =
+        order_request_body.client_refund_address.into();
 
-    let client_refund_address = match order_request_body
-        .client_refund_address
-        .to_bitcoin_address()
-    {
-        Ok(address) => address,
-        Err(_) => {
-            return Err(BadRequest(Some(
-                format!(
-                    "Invalid refund address: {}",
-                    order_request_body.client_refund_address
-                ).to_string(),
-            )));
-        }
-    };
+    let twelve_hours = Duration::new(60 * 60 * 12, 0);
 
-    let order_taken = OrderTaken::new(
-        trade_id,
-        order_request_body.contract_secret_lock,
-        order_request_body.client_contract_time_lock,
+    let order_taken = OrderTaken {
+        uid: trade_id,
+        contract_secret_lock: order_request_body.contract_secret_lock,
+        client_contract_time_lock: order_request_body.client_contract_time_lock,
+        exchange_contract_time_lock: SystemTime::now() + twelve_hours,
         client_refund_address,
-        order_request_body.client_success_address,
-        *exchange_refund_address,
-        exchange_success_keypair
+        client_success_address: order_request_body.client_success_address,
+        exchange_refund_address: *exchange_refund_address,
+        exchange_success_address: exchange_success_keypair
             .public_key()
             .clone()
             .to_p2wpkh_address(*network),
-        exchange_success_keypair.clone(),
-    );
+        exchange_success_keypair: exchange_success_keypair.clone(),
+    };
 
-    match event_store.store_order_taken(order_taken.clone()) {
-        Ok(_) => (),
-        Err(e) => {
-            error!("{:?}", e);
-            // TODO: create a to_string for e to return something nice.
-            return Err(BadRequest(Some(e.to_string())));
-        }
-    }
-
-    Ok(Json(order_taken.into()))
+    event_store.add_event(trade_id, order_taken.clone())?;
+    Ok(order_taken.into())
 }
 
 #[derive(Deserialize)]
@@ -180,41 +205,56 @@ pub struct BuyOrderHtlcFundedNotification {
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
     buy_order_htlc_funded_notification: Json<BuyOrderHtlcFundedNotification>,
-    event_store: State<EventStore>,
+    event_store: State<InMemoryEventStore<TradeId>>,
     ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
-    let trade_funded = TradeFunded::new(
+    handle_post_buy_order_funding(
         trade_id,
-        buy_order_htlc_funded_notification.transaction_id.clone(),
-        buy_order_htlc_funded_notification.vout,
-    );
-    event_store.store_trade_funded(trade_funded)?;
+        buy_order_htlc_funded_notification.into_inner(),
+        event_store.inner(),
+        ethereum_service.inner(),
+    )?;
+    Ok(())
+}
 
-    let order_taken = event_store.get_order_taken_event(&trade_id)?;
-
-    let htlc = ethereum_htlc::Htlc::new(
-        order_taken.exchange_contract_time_lock(),
-        order_taken.exchange_refund_address(),
-        order_taken.client_success_address(),
-        order_taken.contract_secret_lock().clone(),
-    );
-
-    let offer_created_event = event_store.get_offer_created_event(&trade_id)?;
-
-    let htlc_funding = offer_created_event.eth_amount().wei();
-
-    let tx_id = match ethereum_service.deploy_htlc(htlc, htlc_funding) {
-        Ok(tx_id) => tx_id,
-        Err(e) => {
-            // TODO: Should we rollback the TradeFunded event here?
-            // We didn't successfully transition from TradeFunded to ContractDeployed.
-
-            error!("Failed to deploy HTLC. Error: {:?}", e);
-            return Err(BadRequest(None));
-        }
+fn handle_post_buy_order_funding(
+    trade_id: TradeId,
+    buy_order_htlc_funded_notification: BuyOrderHtlcFundedNotification,
+    event_store: &InMemoryEventStore<TradeId>,
+    ethereum_service: &Arc<ethereum_service::EthereumService>,
+) -> Result<(), Error> {
+    let trade_funded = TradeFunded {
+        uid: trade_id,
+        transaction_id: buy_order_htlc_funded_notification.transaction_id.clone(),
+        vout: buy_order_htlc_funded_notification.vout,
     };
 
-    event_store.store_contract_deployed(ContractDeployed::new(trade_id, tx_id))?;
+    event_store.add_event(trade_id.clone(), trade_funded)?;
+
+    let order_taken = event_store.get_event::<OrderTaken>(trade_id.clone())?;
+
+    let htlc = ethereum_htlc::Htlc::new(
+        order_taken.exchange_contract_time_lock,
+        order_taken.exchange_refund_address,
+        order_taken.client_success_address,
+        order_taken.contract_secret_lock.clone(),
+    );
+
+    let offer_created_event = event_store.get_event::<OfferCreated>(trade_id.clone())?;
+
+    let htlc_funding = offer_created_event.eth_amount.wei();
+
+    let tx_id = ethereum_service
+        .deploy_htlc(htlc, htlc_funding)
+        .map_err(|e| Error::AdHoc(format!("Failed to deploy HTLC. Error: {:?}", e)))?;
+
+    event_store.add_event(
+        trade_id,
+        ContractDeployed {
+            uid: trade_id,
+            transaction_id: tx_id,
+        },
+    )?;
 
     Ok(())
 }
@@ -305,7 +345,7 @@ mod tests {
     fn create_rocket_client() -> Client {
         let rocket = create_rocket_instance(
             Arc::new(FakeApiClient),
-            EventStore::new(),
+            InMemoryEventStore::new(),
             Arc::new(ethereum_service::EthereumService::new(
                 Arc::new(StaticFakeWallet::account0()),
                 Arc::new(StaticGasPriceService::default()),

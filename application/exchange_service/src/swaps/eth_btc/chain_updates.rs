@@ -1,10 +1,12 @@
-use bitcoin_fee_service::{self, BitcoinFeeService};
+use super::{events::*, routes::Error};
+use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc;
 use bitcoin_support::{self, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
-use event_store::{EventStore, TradeId};
+use event_store::{EventStore, InMemoryEventStore};
+use events_common::TradeId;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::{fmt::Debug, sync::Arc};
@@ -16,22 +18,8 @@ pub struct RedeemBTCNotificationBody {
     pub secret: Secret,
 }
 
-fn log_error<E: Debug>(msg: &'static str) -> impl Fn(E) -> BadRequest<String> {
-    move |e: E| {
-        error!("{}: {:?}", msg, e);
-        BadRequest(None)
-    }
-}
-
-impl From<bitcoin_fee_service::Error> for BadRequest<String> {
-    fn from(e: bitcoin_fee_service::Error) -> Self {
-        match e {
-            bitcoin_fee_service::Error::Unavailable => {
-                error!("Unable to retrieve recommended fee. {:?}", e);
-                BadRequest(None)
-            }
-        }
-    }
+fn log_error<E: Debug>(msg: &'static str) -> impl Fn(E) -> Error {
+    move |e: E| Error::AdHoc(format!("{}: {:?}", msg, e))
 }
 
 #[post(
@@ -41,43 +29,62 @@ impl From<bitcoin_fee_service::Error> for BadRequest<String> {
 )]
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
-    event_store: State<EventStore>,
+    event_store: State<InMemoryEventStore<TradeId>>,
     rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
     fee_service: State<Arc<BitcoinFeeService>>,
     btc_exchange_redeem_address: State<bitcoin_support::Address>,
     trade_id: TradeId,
 ) -> Result<(), BadRequest<String>> {
-    let order_taken_event = event_store.get_order_taken_event(&trade_id)?;
-    let offer_created_event = event_store.get_offer_created_event(&trade_id)?;
-    // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
-    let trade_funded_event = event_store.get_trade_funded_event(&trade_id)?;
-    let btc_exchange_redeem_address = btc_exchange_redeem_address.inner();
-    let secret: Secret = redeem_btc_notification_body.into_inner().secret;
-    let exchange_success_address = order_taken_event.exchange_success_address();
-    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
-    let exchange_success_keypair = order_taken_event.exchange_success_keypair();
+    handle_post_revealed_secret(
+        redeem_btc_notification_body.into_inner(),
+        event_store.inner(),
+        rpc_client.inner(),
+        fee_service.inner(),
+        btc_exchange_redeem_address.inner(),
+        trade_id,
+    )?;
 
-    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address().into();
-    let htlc_txid = trade_funded_event.transaction_id();
-    let vout = trade_funded_event.vout();
+    Ok(())
+}
+
+fn handle_post_revealed_secret(
+    redeem_btc_notification_body: RedeemBTCNotificationBody,
+    event_store: &InMemoryEventStore<TradeId>,
+    rpc_client: &Arc<bitcoin_rpc::BitcoinRpcApi>,
+    fee_service: &Arc<BitcoinFeeService>,
+    btc_exchange_redeem_address: &bitcoin_support::Address,
+    trade_id: TradeId,
+) -> Result<(), Error> {
+    let order_taken_event = event_store.get_event::<OrderTaken>(trade_id.clone())?;
+    let offer_created_event = event_store.get_event::<OfferCreated>(trade_id.clone())?;
+    // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
+    let trade_funded_event = event_store.get_event::<TradeFunded>(trade_id.clone())?;
+    let secret: Secret = redeem_btc_notification_body.secret;
+    let exchange_success_address = order_taken_event.exchange_success_address;
+    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
+    let exchange_success_keypair = order_taken_event.exchange_success_keypair;
+
+    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address.into();
+    let htlc_txid = trade_funded_event.transaction_id;
+    let vout = trade_funded_event.vout;
 
     let htlc = bitcoin_htlc::Htlc::new(
         exchange_success_pubkey_hash,
         client_refund_pubkey_hash,
-        order_taken_event.contract_secret_lock().clone(),
-        order_taken_event.client_contract_time_lock().clone().into(),
+        order_taken_event.contract_secret_lock.clone(),
+        order_taken_event.client_contract_time_lock.clone().into(),
     );
 
-    htlc.can_be_unlocked_with(&secret, exchange_success_keypair)
-        .map_err(|e| match e {
+    htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)
+        .map_err(|e| {
+            match e {
             UnlockingError::WrongSecret { .. } => {
-                error!("Poked with wrong secret: {:?}", e);
-                BadRequest(Some(format!("{:?}", e).to_string()))
+                Error::AdHoc(format!("{:?}", e).to_string())
             }
             UnlockingError::WrongKeyPair { .. } => {
-                error!("exchange_success_public_key_hash was inconsistent with exchange_success_private_key");
-                BadRequest(None)
+                Error::AdHoc("exchange_success_public_key_hash was inconsistent with exchange_success_private_key".to_string())
             }
+        }
         })?;
 
     let unlocking_parameters = htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
@@ -86,7 +93,7 @@ pub fn post_revealed_secret(
         inputs: vec![PrimedInput::new(
             htlc_txid.clone().into(),
             vout,
-            offer_created_event.btc_amount(),
+            offer_created_event.btc_amount,
             unlocking_parameters,
         )],
         output_address: btc_exchange_redeem_address.clone(),

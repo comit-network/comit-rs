@@ -3,16 +3,17 @@ use bitcoin_rpc;
 use bitcoin_support::{self, Network};
 use ethereum_service::EthereumService;
 use ethereum_support;
-use event_store::EventStore;
+use event_store::InMemoryEventStore;
+use events_common::TradeId;
 use rocket;
-use routes;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
+use swaps::eth_btc;
 use treasury_api_client::ApiClient;
 
 pub fn create_rocket_instance(
     treasury_api_client: Arc<ApiClient>,
-    event_store: EventStore,
+    event_store: InMemoryEventStore<TradeId>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_rpc_client: Arc<bitcoin_rpc::BitcoinRpcApi>,
     exchange_refund_address: ethereum_support::Address,
@@ -25,10 +26,10 @@ pub fn create_rocket_instance(
         .mount(
             "/",
             routes![
-                routes::eth_btc::post_buy_offers,
-                routes::eth_btc::post_buy_orders,
-                routes::eth_btc::post_buy_orders_fundings,
-                routes::chain_updates::post_revealed_secret
+                eth_btc::routes::post_buy_offers,
+                eth_btc::routes::post_buy_orders,
+                eth_btc::routes::post_buy_orders_fundings,
+                eth_btc::chain_updates::post_revealed_secret
             ],
         )
         .manage(treasury_api_client)

@@ -657,6 +657,7 @@ dependencies = [
  "ethereum_htlc 0.1.0",
  "ethereum_support 0.1.0",
  "ethereum_wallet 0.1.0",
+ "event_store 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
