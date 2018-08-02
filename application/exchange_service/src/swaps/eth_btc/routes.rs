@@ -34,7 +34,7 @@ impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
         let error_str = format!("{:?}", e);
         error!("Error: {}", error_str);
-        BadRequest(Some(error_str))
+        BadRequest(None)
     }
 }
 
