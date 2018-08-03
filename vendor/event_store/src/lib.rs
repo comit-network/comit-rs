@@ -37,46 +37,52 @@ impl<K: Hash + Eq> InMemoryEventStore<K> {
         }
     }
 
-    fn _get_event<E: Event>(
-        events: &HashMap<(TypeId, K), Box<Any + Send>>,
-        type_id: TypeId,
-        key: K,
-    ) -> Option<E> {
-        events.get(&(type_id, key)).map(|event| {
+    fn _get_event<E: Event>(events: &HashMap<(TypeId, K), Box<Any + Send>>, key: K) -> Option<E> {
+        let key = (TypeId::of::<E>(), key);
+
+        events.get(&key).map(|event| {
             let _any: &(Any + Send) = event.borrow();
             _any.downcast_ref::<E>().unwrap().clone()
         })
+    }
+
+    fn _add_event<E: Event>(events: &mut HashMap<(TypeId, K), Box<Any + Send>>, key: K, event: E) {
+        let key = (TypeId::of::<E>(), key);
+        let value = Box::new(event);
+
+        events.insert(key, value);
+    }
+
+    fn is_initial_event<E: Event>() -> bool {
+        TypeId::of::<E>() == TypeId::of::<()>()
     }
 }
 
 impl<K: Hash + Eq + Clone> EventStore<K> for InMemoryEventStore<K> {
     fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error> {
-        let unit_type_id: TypeId = TypeId::of::<()>();
-
-        let id = TypeId::of::<E>();
-        let id_prev = TypeId::of::<E::Prev>();
-
         let mut events = self.events.lock().unwrap();
-        let get_prev_event = Self::_get_event::<E::Prev>(&*events, id_prev, key.clone());
 
-        if get_prev_event.is_none() && id_prev != unit_type_id {
+        let prev_event_is_missing = Self::_get_event::<E::Prev>(&*events, key.clone()).is_none();
+        let prev_event_is_initial = Self::is_initial_event::<E::Prev>();
+
+        if prev_event_is_missing && !prev_event_is_initial {
             return Err(Error::PrevEventMissing);
         }
 
-        let get_existing_event = Self::_get_event::<E>(&*events, id, key.clone());
+        let existing_event = Self::_get_event::<E>(&*events, key.clone());
 
-        if let Some(existing) = get_existing_event {
+        if existing_event.is_some() {
             return Err(Error::DuplicateEvent);
         }
 
-        events.insert((id, key), Box::new(event));
+        Self::_add_event(&mut events, key, event);
+
         Ok(())
     }
 
     fn get_event<E: Event>(&self, key: K) -> Result<E, Error> {
-        let id = TypeId::of::<E>();
         let events = self.events.lock().unwrap();
-        Self::_get_event::<E>(&*events, id, key).ok_or(Error::NotFound)
+        Self::_get_event::<E>(&*events, key).ok_or(Error::NotFound)
     }
 }
 
