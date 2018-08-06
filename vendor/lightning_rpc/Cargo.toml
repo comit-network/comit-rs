@@ -1,0 +1,35 @@
+[package]
+name = "lightning_rpc"
+version = "0.1.0"
+authors = [
+    "Franck Royer <franck@coblox.tech>",
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+    "Lloyd Fournier <lloyd@coblox.tech>",
+]
+
+[dependencies]
+bytes = "0.4"
+common_types = { path = "../../application/common_types" }
+futures = "0.1"
+http = "0.1"
+native-tls = "0.2.0"
+pem = "0.5.0"
+prost = "0.4"
+prost-derive = "0.4"
+tls-api = "0.1.20"
+tls-api-native-tls = "0.1.20"
+tokio = "0.1.7"
+tokio-core = "0.1"
+tokio-io = "0.1.7"
+tokio-tls-api = "0.1.20"
+tower-grpc = { git = "https://github.com/tower-rs/tower-grpc" }
+tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
+tower-http = { git = "https://github.com/tower-rs/tower-http" }
+
+
+[build-dependencies]
+tower-grpc-build = { git = "https://github.com/tower-rs/tower-grpc" }
+
+[dev-dependencies]
+hex = "0.3.2"
