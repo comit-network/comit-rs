@@ -15,7 +15,10 @@ ENV GODEBUG netdns=cgo
 
 RUN go get -u github.com/golang/dep/cmd/dep
 RUN go get -d github.com/lightningnetwork/lnd
-RUN cd $GOPATH/src/github.com/lightningnetwork/lnd && make && make install
+RUN cd $GOPATH/src/github.com/lightningnetwork/lnd \
+ && git checkout v0.4.2-beta \
+ && make \
+ && make install
 
 # Start a new, final image to reduce size.
 FROM alpine as final
@@ -32,5 +35,5 @@ RUN apk add --no-cache \
     bash
 
 # Copy the entrypoint script.
-COPY "lnd/start-lnd.sh" .
+COPY start-lnd.sh .
 RUN chmod +x start-lnd.sh

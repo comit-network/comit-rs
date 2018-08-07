@@ -42,11 +42,12 @@ set_default() {
 RPCUSER=$(set_default "$RPCUSER" "devuser")
 RPCPASS=$(set_default "$RPCPASS" "devpass")
 NETWORK=$(set_default "$NETWORK" "simnet")
+BTCSERVER=$(set_default "$BTCSERVER" "localhost")
 
 exec btcctl \
     "--$NETWORK" \
     --rpccert="/rpc/rpc.cert" \
     --rpcuser="$RPCUSER" \
     --rpcpass="$RPCPASS" \
-    --rpcserver="rpcserver" \
+    --rpcserver="$BTCSERVER" \
     "$@"
