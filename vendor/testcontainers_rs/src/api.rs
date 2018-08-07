@@ -5,7 +5,7 @@ where
     Self: Sized + Copy,
 {
     fn new() -> Self;
-    fn run<I: Image>(&self, image: &I) -> Container<Self>;
+    fn run<I: Image>(&self, image: I) -> Container<Self, I>;
 
     fn logs(&self, id: &str) -> Box<Read>;
     fn inspect(&self, id: &str) -> ContainerInfo;
@@ -21,33 +21,42 @@ where
     type Args;
 
     fn descriptor(&self) -> String;
-    fn wait_until_ready<D: Docker>(&self, container: &Container<D>);
+    fn wait_until_ready<D: Docker>(&self, container: &Container<D, Self>);
     fn args(&self) -> Self::Args;
 
     fn with_args(self, arguments: Self::Args) -> Self;
     fn new(tag: &str) -> Self;
 }
 
-pub struct Container<D: Docker> {
+pub trait ContainerClient<I: Image> {
+    fn new_container_client<D: Docker>(container: &Container<D, I>) -> Self;
+}
+
+pub struct Container<D: Docker, I: Image> {
     id: String,
     docker_client: D,
+    image: I,
 }
 
-impl<D: Docker> fmt::Debug for Container<D> {
+impl<D: Docker, I: Image> fmt::Debug for Container<D, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "Container ({})", self.id)
     }
 }
 
-impl<D: Docker> fmt::Display for Container<D> {
+impl<D: Docker, I: Image> fmt::Display for Container<D, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "Container ({})", self.id)
     }
 }
 
-impl<D: Docker> Container<D> {
-    pub fn new(id: String, docker_client: D) -> Self {
-        Container { id, docker_client }
+impl<D: Docker, I: Image> Container<D, I> {
+    pub fn new(id: String, docker_client: D, image: I) -> Self {
+        Container {
+            id,
+            docker_client,
+            image,
+        }
     }
 
     pub fn id(&self) -> &str {
@@ -66,6 +75,18 @@ impl<D: Docker> Container<D> {
             .map_to_external_port(internal_port)
     }
 
+    pub(crate) fn block_until_ready(&self) {
+        self.image.wait_until_ready(self);
+    }
+
+    pub fn connect<C: ContainerClient<I>>(&self) -> C {
+        C::new_container_client(&self)
+    }
+
+    pub fn image(&self) -> &I {
+        &self.image
+    }
+
     pub fn stop(&self) {
         self.docker_client.stop(&self.id)
     }
@@ -75,7 +96,7 @@ impl<D: Docker> Container<D> {
     }
 }
 
-impl<D: Docker> Drop for Container<D> {
+impl<D: Docker, I: Image> Drop for Container<D, I> {
     fn drop(&mut self) {
         let keep_container = var("KEEP_CONTAINERS")
             .ok()
@@ -149,6 +170,7 @@ impl Ports {
 mod tests {
 
     use super::*;
+    use clients::DockerCli;
     extern crate serde_json;
 
     #[test]
@@ -199,4 +221,5 @@ mod tests {
         );
         assert_eq!(external_port, Some(33076));
     }
+
 }

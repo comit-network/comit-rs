@@ -23,7 +23,7 @@ use secp256k1_support::KeyPair;
 use std::str::FromStr;
 
 use coblox_bitcoincore::BitcoinCore;
-use testcontainers::{clients::DockerCli, Node};
+use testcontainers::{clients::DockerCli, Docker};
 
 fn fund_htlc(
     client: &bitcoin_rpc::BitcoinCoreClient,
@@ -87,8 +87,8 @@ fn redeem_htlc_with_secret() {
 
     let _ = env_logger::try_init();
 
-    let node = Node::<BitcoinCoreClient, DockerCli>::new::<BitcoinCore>();
-    let client = node.get_client();
+    let container = DockerCli::new().run(BitcoinCore::default());
+    let client = container.connect::<BitcoinCoreClient>();
     client.generate(432).unwrap();
 
     let (txid, vout, input_amount, htlc, _, secret, keypair, _) = fund_htlc(&client);
@@ -144,8 +144,8 @@ fn redeem_refund_htlc() {
 
     let _ = env_logger::try_init();
 
-    let node = Node::<BitcoinCoreClient, DockerCli>::new::<BitcoinCore>();
-    let client = node.get_client();
+    let container = DockerCli::new().run(BitcoinCore::default());
+    let client = container.connect::<BitcoinCoreClient>();
     client.generate(432).unwrap();
 
     let (txid, vout, input_amount, htlc, nsequence, _, _, keypair) = fund_htlc(&client);

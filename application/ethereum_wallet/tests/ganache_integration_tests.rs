@@ -10,7 +10,7 @@ use ethereum_support::*;
 use ethereum_wallet::*;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
-use testcontainers::{clients::DockerCli, Node};
+use testcontainers::{clients::DockerCli, Docker};
 use trufflesuite_ganachecli::{GanacheCli, Web3Client};
 
 #[test]
@@ -21,14 +21,24 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
 
     let account = Address::from("e7b6bfabddfaeb2c016b334a5322e4327dc5e499");
 
-    let node = Node::<Web3Client, DockerCli>::new::<GanacheCli>();
-    let web3 = node.get_client();
+    let container = DockerCli::new().run(GanacheCli::default());
+    let client = container.connect::<Web3Client>();
 
-    let get_nonce = || web3.eth().transaction_count(account, None).wait().unwrap();
-    let get_balance = || web3.eth().balance(account, None).wait().unwrap();
+    let get_nonce = || {
+        client
+            .eth()
+            .transaction_count(account, None)
+            .wait()
+            .unwrap()
+    };
+    let get_balance = || client.eth().balance(account, None).wait().unwrap();
     let send_transaction = |transaction| {
-        let txid = web3.eth().send_raw_transaction(transaction).wait().unwrap();
-        let receipt = web3
+        let txid = client
+            .eth()
+            .send_raw_transaction(transaction)
+            .wait()
+            .unwrap();
+        let receipt = client
             .eth()
             .transaction_receipt(txid)
             .wait()

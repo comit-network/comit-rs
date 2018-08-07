@@ -13,7 +13,7 @@ impl Docker for DockerCli {
         DockerCli
     }
 
-    fn run<I: Image>(&self, image: &I) -> Container<DockerCli> {
+    fn run<I: Image>(&self, image: I) -> Container<DockerCli, I> {
         let mut docker = Command::new("docker");
 
         let command = docker
@@ -33,11 +33,12 @@ impl Docker for DockerCli {
 
         let container_id = reader.lines().next().unwrap().unwrap();
 
-        let container = Container::new(container_id, DockerCli {});
+        // TODO maybe move log statements to container
+        let container = Container::new(container_id, DockerCli {}, image);
 
         debug!("Waiting for {} to be ready.", container);
 
-        image.wait_until_ready(&container);
+        container.block_until_ready();
 
         debug!("{} is now ready!", container);
 

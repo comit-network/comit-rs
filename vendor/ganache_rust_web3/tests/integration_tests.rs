@@ -5,7 +5,7 @@ extern crate trufflesuite_ganachecli;
 extern crate web3;
 
 use ganache_rust_web3::Ganache;
-use testcontainers::{clients::DockerCli, Node};
+use testcontainers::{clients::DockerCli, Docker};
 use trufflesuite_ganachecli::{GanacheCli, Web3Client};
 use web3::{futures::Future, transports};
 
@@ -13,10 +13,10 @@ use web3::{futures::Future, transports};
 fn test_evm_snapshot() {
     let _ = env_logger::try_init();
 
-    let node = Node::<Web3Client, DockerCli>::new::<GanacheCli>();
-    let web3 = node.get_client();
+    let container = DockerCli::new().run(GanacheCli::default());
+    let client = container.connect::<Web3Client>();
 
-    let _ = web3
+    let _ = client
         .api::<Ganache<transports::Http>>()
         .evm_snapshot()
         .wait()
@@ -27,16 +27,16 @@ fn test_evm_snapshot() {
 fn test_evm_revert() {
     let _ = env_logger::try_init();
 
-    let node = Node::<Web3Client, DockerCli>::new::<GanacheCli>();
-    let web3 = node.get_client();
+    let container = DockerCli::new().run(GanacheCli::default());
+    let client = container.connect::<Web3Client>();
 
-    let snapshot_id = web3
+    let snapshot_id = client
         .api::<Ganache<transports::Http>>()
         .evm_snapshot()
         .wait()
         .unwrap();
 
-    let _ = web3
+    let _ = client
         .api::<Ganache<transports::Http>>()
         .evm_revert(&snapshot_id)
         .wait()
@@ -47,19 +47,19 @@ fn test_evm_revert() {
 fn test_evm_increase_time() {
     let _ = env_logger::try_init();
 
-    let node = Node::<Web3Client, DockerCli>::new::<GanacheCli>();
+    let container = DockerCli::new().run(GanacheCli::default());
 
-    let web3 = node.get_client();
+    let client = container.connect::<Web3Client>();
 
     //        let increase = U256::from(1);
     //
-    let _ = web3
+    let _ = client
         .api::<Ganache<transports::Http>>()
         .evm_increase_time(0)
         .wait()
         .unwrap();
 
-    let _ = web3
+    let _ = client
         .api::<Ganache<transports::Http>>()
         .evm_mine()
         .wait()
@@ -70,10 +70,10 @@ fn test_evm_increase_time() {
 fn test_evm_mine() {
     let _ = env_logger::try_init();
 
-    let node = Node::<Web3Client, DockerCli>::new::<GanacheCli>();
-    let web3 = node.get_client();
+    let container = DockerCli::new().run(GanacheCli::default());
+    let client = container.connect::<Web3Client>();
 
-    let _ = web3
+    let _ = client
         .api::<Ganache<transports::Http>>()
         .evm_mine()
         .wait()

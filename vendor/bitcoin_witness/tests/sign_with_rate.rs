@@ -17,14 +17,14 @@ use secp256k1_support::KeyPair;
 use std::str::FromStr;
 
 use coblox_bitcoincore::BitcoinCore;
-use testcontainers::{clients::DockerCli, Node};
+use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
 fn sign_with_rate() {
     let _ = env_logger::try_init();
 
-    let node = Node::<BitcoinCoreClient, DockerCli>::new::<BitcoinCore>();
-    let client = node.get_client();
+    let container = DockerCli::new().run(BitcoinCore::default());
+    let client = container.connect::<BitcoinCoreClient>();
     client.enable_segwit();
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =

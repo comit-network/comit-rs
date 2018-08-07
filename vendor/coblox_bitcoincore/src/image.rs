@@ -152,7 +152,7 @@ impl Image for BitcoinCore {
         format!("coblox/bitcoin-core:{}", self.tag)
     }
 
-    fn wait_until_ready<D: Docker>(&self, container: &Container<D>) {
+    fn wait_until_ready<D: Docker>(&self, container: &Container<D, Self>) {
         container.logs().wait_for_message("Flushed wallet.dat");
 
         let additional_sleep_period =
@@ -191,16 +191,13 @@ impl Default for BitcoinCore {
     }
 }
 
-impl ContainerClient<BitcoinCoreClient> for BitcoinCore {
-    fn new_container_client<D: Docker>(
-        container: &Container<D>,
-        image: &Self,
-    ) -> BitcoinCoreClient {
+impl ContainerClient<BitcoinCore> for BitcoinCoreClient {
+    fn new_container_client<D: Docker>(container: &Container<D, BitcoinCore>) -> BitcoinCoreClient {
         let host_port = container.get_host_port(18443).unwrap();
 
         let url = format!("http://localhost:{}", host_port);
 
-        let auth = image.auth();
+        let auth = container.image().auth();
 
         BitcoinCoreClient::new(url.as_str(), auth.username(), auth.password())
     }

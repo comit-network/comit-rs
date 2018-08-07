@@ -51,7 +51,7 @@ impl Image for GanacheCli {
         format!("trufflesuite/ganache-cli:{}", self.tag)
     }
 
-    fn wait_until_ready<D: Docker>(&self, container: &Container<D>) {
+    fn wait_until_ready<D: Docker>(&self, container: &Container<D, Self>) {
         container
             .logs()
             .wait_for_message("Listening on localhost:")
@@ -74,8 +74,8 @@ impl Image for GanacheCli {
     }
 }
 
-impl ContainerClient<Web3Client> for GanacheCli {
-    fn new_container_client<D: Docker>(container: &Container<D>, _image: &Self) -> Web3Client {
+impl ContainerClient<GanacheCli> for Web3Client {
+    fn new_container_client<D: Docker>(container: &Container<D, GanacheCli>) -> Web3Client {
         let host_port = container.get_host_port(8545).unwrap();
 
         let url = format!("http://localhost:{}", host_port);
