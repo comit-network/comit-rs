@@ -4,7 +4,7 @@ services:
   # btc is an image of bitcoin node which used as base image for btcd and
   # btccli. The environment variables default values determined on stage of
   # container start within starting script.
-  btc:
+  btcd:
     image: btcd
     build:
       context: btcd/
@@ -17,30 +17,76 @@ services:
     - NETWORK
     - DEBUG
     - MINING_ADDRESS
+    networks:
+    - lnd-network
+    container_name: btcd
     entrypoint: ["./start-btcd.sh"]
 
-  lnd:
+  btcctl:
+    image: btcd
+    build:
+      context: btcd/
+    volumes:
+    - shared:/rpc
+    - bitcoin:/data
+    environment:
+    - RPCUSER
+    - RPCPASS
+    - NETWORK
+    - DEBUG
+    - BTCSERVER=btcd
+    networks:
+    - lnd-network
+    container_name: btcctl
+    entrypoint: ["./start-btcctl.sh"]
+
+  lnd-alice:
     image: lnd
     build:
-      context: ./
-      dockerfile: lnd/Dockerfile
+      context: lnd
     environment:
     - RPCUSER
     - RPCPASS
     - NETWORK
     - CHAIN
     - DEBUG
+    - BTCSERVER=btcd
     volumes:
     - shared:/rpc
     entrypoint:
     - "./start-lnd.sh"
     - "--rpclisten=0.0.0.0:10009"
-    - "--no-macaroons"
     ports:
     - "127.0.0.1:10009:10009/tcp"
-    container_name: lnd_btc
-    links:
-    - "btc:blockchain"
+    container_name: lnd-alice
+    depends_on:
+      - btcd
+    networks:
+    - lnd-network
+
+  lnd-bob:
+    image: lnd
+    build:
+      context: lnd
+    environment:
+    - RPCUSER
+    - RPCPASS
+    - NETWORK
+    - CHAIN
+    - DEBUG
+    - BTCSERVER=btcd
+    volumes:
+    - shared:/rpc
+    entrypoint:
+    - "./start-lnd.sh"
+    - "--rpclisten=0.0.0.0:10009"
+    ports:
+    - "127.0.0.1:10010:10009/tcp"
+    container_name: lnd-bob
+    depends_on:
+      - btcd
+    networks:
+    - lnd-network
 
 volumes:
   # shared volume is need to store the btcd rpc certificates and use it within
@@ -52,3 +98,8 @@ volumes:
   # during btcd container recreation.
   bitcoin:
     driver: local
+
+
+networks:
+  # a virtual network to be shared between the nodes
+  lnd-network:

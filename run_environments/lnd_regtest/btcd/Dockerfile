@@ -8,14 +8,16 @@ LABEL maintainer.0="Philipp Hoenisch philipp@tenx.tech" \
 # Install build dependencies such as git and glide.
 RUN apk add --no-cache \
     git \
-&&  go get -u github.com/Masterminds/glide
+    &&  go get -u github.com/Masterminds/glide
 
 WORKDIR $GOPATH/src/github.com/btcsuite/btcd
 
 # Grab and install the latest version of of btcd and all related dependencies.
+# We use a commit hash here to fix the version from Aug 3, 2018
 RUN git clone https://github.com/btcsuite/btcd . \
-&&  glide install \
-&&  go install . ./cmd/...
+  && git checkout cf05f92c3f815bbd5091ed6c73eff51f7b1945e8 \
+  &&  glide install \
+  &&  go install . ./cmd/...
 
 # Start a new image
 FROM alpine as final
