@@ -60,7 +60,7 @@ services:
     - "127.0.0.1:10009:10009/tcp"
     container_name: lnd-alice
     depends_on:
-      - btcd
+    - btcd
     networks:
     - lnd-network
 
@@ -84,7 +84,7 @@ services:
     - "127.0.0.1:10010:10009/tcp"
     container_name: lnd-bob
     depends_on:
-      - btcd
+    - btcd
     networks:
     - lnd-network
 
