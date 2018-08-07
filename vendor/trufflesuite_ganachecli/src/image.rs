@@ -52,7 +52,10 @@ impl Image for GanacheCli {
     }
 
     fn wait_until_ready<D: Docker>(&self, container: &Container<D>) {
-        container.logs().wait_for_message("Listening on localhost:").unwrap();
+        container
+            .logs()
+            .wait_for_message("Listening on localhost:")
+            .unwrap();
     }
 
     fn args(&self) -> <Self as Image>::Args {
