@@ -1,8 +1,9 @@
 [package]
-name = "ganache_node"
+name = "trufflesuite_ganachecli"
 version = "0.1.0"
 authors = ["Thomas Eizinger <thomas@eizinger.io>"]
 
 [dependencies]
 testcontainers = { path = "../testcontainers_rs" }
 web3 = "0.3.0"
+jsonrpc-core = "8.0.1"

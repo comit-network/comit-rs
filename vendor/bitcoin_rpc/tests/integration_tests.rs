@@ -1,8 +1,9 @@
-extern crate bitcoin_node;
 extern crate bitcoin_rpc;
+extern crate coblox_bitcoincore;
 extern crate jsonrpc;
 #[macro_use]
 extern crate log;
+extern crate testcontainers;
 
 mod common;
 

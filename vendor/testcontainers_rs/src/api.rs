@@ -1,7 +1,12 @@
-use std::{collections::HashMap, io::Read, str::FromStr};
+use std::{collections::HashMap, env::var, fmt, io::Read, str::FromStr};
 
-pub trait Docker {
-    fn run_detached<I: Image>(&self, image: &I, run_args: RunArgs) -> String;
+pub trait Docker
+where
+    Self: Sized + Copy,
+{
+    fn new() -> Self;
+    fn run<I: Image>(&self, image: I) -> Container<Self, I>;
+
     fn logs(&self, id: &str) -> Box<Read>;
     fn inspect(&self, id: &str) -> ContainerInfo;
     fn rm(&self, id: &str);
@@ -10,46 +15,98 @@ pub trait Docker {
 
 pub trait Image
 where
-    Self: Sized,
+    Self: Sized + Default,
     Self::Args: IntoIterator<Item = String>,
 {
     type Args;
 
     fn descriptor(&self) -> String;
-    fn exposed_ports(&self) -> ExposedPorts;
-    fn wait_until_ready<D: Docker>(&self, id: &str, docker: &D);
+    fn wait_until_ready<D: Docker>(&self, container: &Container<D, Self>);
     fn args(&self) -> Self::Args;
+
     fn with_args(self, arguments: Self::Args) -> Self;
     fn new(tag: &str) -> Self;
 }
 
-pub trait Container {
-    fn id(&self) -> &str;
-    fn ports(&self) -> &Ports;
+pub trait ContainerClient<I: Image> {
+    fn new_container_client<D: Docker>(container: &Container<D, I>) -> Self;
 }
 
-#[derive(Default)]
-pub struct RunArgs {
-    pub ports: ExposedPorts,
-    pub rm: bool,
-    pub interactive: bool,
+pub struct Container<D: Docker, I: Image> {
+    id: String,
+    docker_client: D,
+    image: I,
 }
 
-#[derive(Default, Clone)]
-pub struct ExposedPorts(Vec<u32>);
-
-impl IntoIterator for ExposedPorts {
-    type Item = u32;
-    type IntoIter = ::std::vec::IntoIter<u32>;
-
-    fn into_iter(self) -> <Self as IntoIterator>::IntoIter {
-        self.0.into_iter()
+impl<D: Docker, I: Image> fmt::Debug for Container<D, I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Container ({})", self.id)
     }
 }
 
-impl ExposedPorts {
-    pub fn new(ports: &[u32]) -> Self {
-        ExposedPorts(ports.to_vec())
+impl<D: Docker, I: Image> fmt::Display for Container<D, I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Container ({})", self.id)
+    }
+}
+
+impl<D: Docker, I: Image> Container<D, I> {
+    pub fn new(id: String, docker_client: D, image: I) -> Self {
+        Container {
+            id,
+            docker_client,
+            image,
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn logs(&self) -> Box<Read> {
+        self.docker_client.logs(&self.id)
+    }
+
+    pub fn get_host_port(&self, internal_port: u32) -> Option<u32> {
+        self.docker_client
+            .inspect(&self.id)
+            .network_settings()
+            .ports()
+            .map_to_external_port(internal_port)
+    }
+
+    pub(crate) fn block_until_ready(&self) {
+        self.image.wait_until_ready(self);
+    }
+
+    pub fn connect<C: ContainerClient<I>>(&self) -> C {
+        C::new_container_client(&self)
+    }
+
+    pub fn image(&self) -> &I {
+        &self.image
+    }
+
+    pub fn stop(&self) {
+        self.docker_client.stop(&self.id)
+    }
+
+    pub fn rm(&self) {
+        self.docker_client.rm(&self.id)
+    }
+}
+
+impl<D: Docker, I: Image> Drop for Container<D, I> {
+    fn drop(&mut self) {
+        let keep_container = var("KEEP_CONTAINERS")
+            .ok()
+            .and_then(|var| var.parse().ok())
+            .unwrap_or(false);
+
+        match keep_container {
+            true => self.stop(),
+            false => self.rm(),
+        }
     }
 }
 
@@ -61,10 +118,22 @@ pub struct ContainerInfo {
     network_settings: NetworkSettings,
 }
 
+impl ContainerInfo {
+    pub fn network_settings(&self) -> &NetworkSettings {
+        &self.network_settings
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct NetworkSettings {
     #[serde(rename = "Ports")]
     ports: Ports,
+}
+
+impl NetworkSettings {
+    pub fn ports(&self) -> &Ports {
+        &self.ports
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -78,16 +147,6 @@ pub struct PortMapping {
     port: String,
 }
 
-impl Container for ContainerInfo {
-    fn id(&self) -> &str {
-        &self.id
-    }
-
-    fn ports(&self) -> &Ports {
-        &self.network_settings.ports
-    }
-}
-
 impl Ports {
     pub fn map_to_external_port(&self, internal_port: u32) -> Option<u32> {
         for key in self.0.keys() {
@@ -98,7 +157,7 @@ impl Ports {
                         .as_ref()
                         .and_then(|mappings| mappings.get(0))
                         .map(|mapping| &mapping.port)
-                        .map(|port| u32::from_str(port).unwrap())
+                        .and_then(|port| u32::from_str(port).ok())
                 });
             }
         }
@@ -111,6 +170,7 @@ impl Ports {
 mod tests {
 
     use super::*;
+    use clients::DockerCli;
     extern crate serde_json;
 
     #[test]
@@ -161,4 +221,5 @@ mod tests {
         );
         assert_eq!(external_port, Some(33076));
     }
+
 }

@@ -1,8 +1,13 @@
 [package]
-name = "bitcoin_node"
+name = "coblox_bitcoincore"
 version = "0.1.0"
 authors = ["Thomas Eizinger <thomas@tenx.tech>"]
 
 [dependencies]
 bitcoin_rpc = { path = "../bitcoin_rpc" }
 testcontainers = { path = "../testcontainers_rs" }
+log = "0.4.3"
+hmac = "0.5"
+sha2 = "0.7"
+hex = "0.3.2"
+rand = "0.5.4"
