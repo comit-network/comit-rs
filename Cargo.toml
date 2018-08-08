@@ -22,4 +22,5 @@ members = [
     "vendor/key_gen",
     "vendor/lightning_rpc",
     "vendor/testcontainers_rs",
+    "vendor/event_store"
 ]

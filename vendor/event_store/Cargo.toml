@@ -1,0 +1,11 @@
+[package]
+name = "event_store"
+version = "0.1.0"
+authors = [
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+    "Franck Royer <franck@coblox.tech>",
+    "Lloyd Fournier <lloyd@coblox.tech>",
+]
+
+[dependencies]

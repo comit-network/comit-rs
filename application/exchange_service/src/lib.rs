@@ -20,12 +20,12 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate log;
+extern crate event_store;
 extern crate logging;
 
 pub mod bitcoin_fee_service;
 pub mod ethereum_service;
-pub mod event_store;
 pub mod gas_price_service;
 pub mod rocket_factory;
-pub mod routes;
+pub mod swaps;
 pub mod treasury_api_client;

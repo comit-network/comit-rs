@@ -37,7 +37,7 @@ function setup() {
     sleep 5;
     docker-compose up -d 2> $OUTPUT > $OUTPUT
     test "$DOCKER_LOGS" && docker-compose logs -f &
-    sleep 3;
+    sleep 5;
     ########
 
     #### Env variables to run the end-to-end test
