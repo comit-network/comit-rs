@@ -76,14 +76,13 @@ const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
 
 impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
-        error!("Error: {:?}", e);
+        error!("{:?}", e);
         BadRequest(None)
     }
 }
 
 impl From<event_store::Error> for Error {
     fn from(e: event_store::Error) -> Self {
-        error!("Error: {:?}", e);
         Error::EventStore(e)
     }
 }

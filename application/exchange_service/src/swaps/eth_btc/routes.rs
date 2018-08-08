@@ -15,7 +15,6 @@ use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::{
-    fmt::Debug,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -27,13 +26,15 @@ pub enum Error {
     EventStore(event_store::Error),
     TreasuryService(reqwest::Error),
     FeeService(bitcoin_fee_service::Error),
-    AdHoc(String),
+    EthereumService(ethereum_service::Error),
+    BitcoinRpc(bitcoin_rpc::RpcError),
+    BitcoinNode(reqwest::Error),
+    Unlocking(String),
 }
 
 impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
-        let error_str = format!("{:?}", e);
-        error!("Error: {}", error_str);
+        error!("{:?}", e);
         BadRequest(None)
     }
 }
@@ -47,6 +48,31 @@ impl From<event_store::Error> for Error {
 impl From<bitcoin_fee_service::Error> for Error {
     fn from(e: bitcoin_fee_service::Error) -> Self {
         Error::FeeService(e)
+    }
+}
+
+impl From<bitcoin_rpc::RpcError> for Error {
+    fn from(e: bitcoin_rpc::RpcError) -> Self {
+        Error::BitcoinRpc(e)
+    }
+}
+
+impl From<ethereum_service::Error> for Error {
+    fn from(e: ethereum_service::Error) -> Self {
+        Error::EthereumService(e)
+    }
+}
+
+impl From<UnlockingError> for Error {
+    fn from(e: UnlockingError) -> Self {
+        match e {
+            UnlockingError::WrongSecret { .. } => {
+                Error::Unlocking(format!("{:?}", e).to_string())
+            }
+            UnlockingError::WrongKeyPair { .. } => {
+                Error::Unlocking("exchange_success_public_key_hash was inconsistent with exchange_success_private_key".to_string())
+            }
+        }
     }
 }
 
@@ -234,9 +260,7 @@ fn handle_post_buy_order_funding(
 
     let htlc_funding = offer_created_event.eth_amount.wei();
 
-    let tx_id = ethereum_service
-        .deploy_htlc(htlc, htlc_funding)
-        .map_err(|e| Error::AdHoc(format!("Failed to deploy HTLC. Error: {:?}", e)))?;
+    let tx_id = ethereum_service.deploy_htlc(htlc, htlc_funding)?;
 
     event_store.add_event(
         trade_id,
@@ -252,10 +276,6 @@ fn handle_post_buy_order_funding(
 #[derive(Deserialize)]
 pub struct RedeemBTCNotificationBody {
     pub secret: Secret,
-}
-
-fn log_error<E: Debug>(msg: &'static str) -> impl Fn(E) -> Error {
-    move |e: E| Error::AdHoc(format!("{}: {:?}", msg, e))
 }
 
 #[post(
@@ -311,17 +331,7 @@ fn handle_post_revealed_secret(
         order_taken_event.client_contract_time_lock.clone().into(),
     );
 
-    htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)
-        .map_err(|e| {
-            match e {
-            UnlockingError::WrongSecret { .. } => {
-                Error::AdHoc(format!("{:?}", e).to_string())
-            }
-            UnlockingError::WrongKeyPair { .. } => {
-                Error::AdHoc("exchange_success_public_key_hash was inconsistent with exchange_success_private_key".to_string())
-            }
-        }
-        })?;
+    htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)?;
 
     let unlocking_parameters = htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
 
@@ -359,9 +369,8 @@ fn handle_post_revealed_secret(
     //TODO: Store successful redeem in event
     let redeem_txid = rpc_client
         .send_raw_transaction(rpc_transaction)
-        .map_err(log_error("Failed to send connect to bitcoin RPC"))?
-        .into_result()
-        .map_err(log_error("Failed to send raw transaction to bitcoin RPC"))?;
+        .map_err(Error::BitcoinNode)?
+        .into_result()?;
 
     info!(
         "HTLC for {} successfully redeemed with {}",
