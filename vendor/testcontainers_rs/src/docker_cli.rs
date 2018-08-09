@@ -3,6 +3,8 @@ use serde_json;
 use std::{
     io::{BufRead, BufReader, Read},
     process::{Command, Stdio},
+    thread::sleep,
+    time::Duration,
 };
 
 #[derive(Copy, Clone)]
@@ -46,6 +48,10 @@ impl Docker for DockerCli {
     }
 
     fn logs(&self, id: &str) -> Box<Read> {
+        // Hack to fix unstable CI builds. Sometimes the logs are not immediately available after starting the container.
+        // Let's sleep for a little bit of time to let the container start up before we actually process the logs.
+        sleep(Duration::from_millis(100));
+
         let child = Command::new("docker")
             .arg("logs")
             .arg("-f")
@@ -71,7 +77,7 @@ impl Docker for DockerCli {
 
         let info = infos.remove(0);
 
-        debug!("Fetched container info: {:#?}", info);
+        trace!("Fetched container info: {:#?}", info);
 
         info
     }
