@@ -30,7 +30,7 @@ impl RequestBuilder {
     fn new<T>(message: T, macaroon: &Option<Macaroon>) -> Result<Request<T>, InvalidHeaderValue> {
         let mut request = Request::new(message);
         if let Some(macaroon) = macaroon {
-            let mut headers = request.headers_mut();
+            let headers = request.headers_mut();
             let macaroon: HeaderValue = macaroon.to_hex().parse()?;
             headers.insert("macaroon", macaroon);
         }
