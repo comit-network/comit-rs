@@ -1,4 +1,5 @@
 {
+    0x50000005 // Placeholder for deployment timestamp
     calldatacopy(0x00, 0x00, 0x20)
 	call(0x48, 0x000000000000000000000000000000000000002, 0x00, 0x00, 0x20, 0x21, 0x20)
 
@@ -11,7 +12,11 @@
 	success
 	jumpi
 
-	gt(timestamp, 0x20000002)
+    timestamp
+    sub
+
+    0x20000002 // Placeholder for relative expiry time
+	lt
 	refund
 	jumpi
 
