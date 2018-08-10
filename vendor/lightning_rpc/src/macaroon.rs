@@ -15,6 +15,7 @@ pub enum ReadMacaroonError {
     ReadFileFail(io::Error),
 }
 
+// TODO: Might be good to use Macaroon library to validate macaroon integrity before use
 impl Macaroon {
     pub fn to_hex(&self) -> String {
         hex::encode(&self)
