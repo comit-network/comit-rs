@@ -88,7 +88,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let refund_balance_before_htlc = client.get_balance(refund_address);
     let success_balance_before_htlc = client.get_balance(success_address);
 
-    client.activate_flux_compensator(2);
+    client.activate_flux_capacitor(2);
 
     let gas_used = client.send_data(refund_address, contract_address, None);
 
