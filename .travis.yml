@@ -13,7 +13,7 @@ services:
 - docker
 env:
   global:
-  - RUST_LOG=testcontainers=debug,testcontainers::wait_for_message=trace,bitcoin_rpc=debug
+  - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
   - RUST_BACKTRACE=full
   - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
   - KEEP_CONTAINERS=true
