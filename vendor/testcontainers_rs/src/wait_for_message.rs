@@ -23,15 +23,28 @@ where
     fn wait_for_message(self, message: &str) -> Result<(), WaitError> {
         let logs = BufReader::new(self);
 
-        for line in logs.lines() {
-            let line = line?;
+        let mut iter = logs.lines().into_iter();
 
-            trace!("Checking if line '{}' contains message '{}'", line, message);
+        let mut number_of_compared_lines = 0;
+
+        while let Some(line) = iter.next() {
+            let line = line?;
+            number_of_compared_lines += 1;
 
             if line.contains(message) {
+                info!(
+                    "Found message after comparing {} lines",
+                    number_of_compared_lines
+                );
+
                 return Ok(());
             }
         }
+
+        error!(
+            "Failed to find message in stream after comparing {} lines.",
+            number_of_compared_lines
+        );
 
         Err(WaitError::EndOfStream)
     }
