@@ -48,7 +48,7 @@ fn main() -> std::io::Result<()> {
     let mut file = File::create("contract.asm.hex")?;
     file.write_all(hexcode.as_str().as_bytes())?;
 
-    println!("rerun-if-changed=./contract.asm");
+    println!("cargo:rerun-if-changed=./contract.asm");
 
     Ok(())
 }
