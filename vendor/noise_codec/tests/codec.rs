@@ -75,6 +75,8 @@ fn encode_two_messages_and_decode() {
 
 #[test]
 fn decode_partial_message() {
+    let _ = env_logger::try_init();
+
     let (mut codec_1, mut codec_2) = init_noise(BytesCodec::new());
     {
         let bytes = Bytes::from(b"0123456789".to_vec());

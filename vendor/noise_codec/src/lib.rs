@@ -56,9 +56,8 @@ impl<E> From<snow::SnowError> for Error<E> {
     }
 }
 
-struct Length {
-    data: [u8; 2],
-}
+#[derive(Debug)]
+struct Length([u8; 2]);
 
 impl Length {
     fn new(length: usize) -> Self {
@@ -68,13 +67,23 @@ impl Length {
 
         BigEndian::write_u16(&mut data, total_length as u16);
 
-        Length { data }
+        Length(data)
+    }
+
+    fn as_usize(&self) -> usize {
+        BigEndian::read_u16(&self.0[..]) as usize
     }
 }
 
 impl AsRef<[u8]> for Length {
     fn as_ref(&self) -> &[u8] {
-        &self.data[..]
+        &self.0[..]
+    }
+}
+
+impl AsMut<[u8]> for Length {
+    fn as_mut(&mut self) -> &mut [u8] {
+        &mut self.0
     }
 }
 
@@ -118,14 +127,14 @@ impl AsRef<[u8]> for PayloadFrame {
     }
 }
 
-struct Item {
+struct EncodingItemBuffer {
     item_bytes: BytesMut,
     next_payload_length: usize,
 }
 
-impl Item {
+impl EncodingItemBuffer {
     fn new(bytes: BytesMut) -> Self {
-        Item {
+        EncodingItemBuffer {
             item_bytes: bytes,
             next_payload_length: 0,
         }
@@ -183,14 +192,14 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
             .encode(item, &mut item_bytes)
             .map_err(Error::InnerError)?;
 
-        let mut item = Item::new(item_bytes);
+        let mut item_buffer = EncodingItemBuffer::new(item_bytes);
 
-        while !item.finished_encoding() {
-            item.compute_next_payload_length();
-            let length_frame = item.encode_length(&mut self.noise)?;
-            let payload_frame = item.encode_payload(&mut self.noise)?;
+        while !item_buffer.finished_encoding() {
+            item_buffer.compute_next_payload_length();
+            let length_frame = item_buffer.encode_length(&mut self.noise)?;
+            let payload_frame = item_buffer.encode_payload(&mut self.noise)?;
 
-            encrypted.reserve(item.total_size());
+            encrypted.reserve(item_buffer.total_size());
             encrypted.put(length_frame.as_ref());
             encrypted.put(payload_frame.as_ref());
         }
@@ -204,49 +213,53 @@ impl<C: Decoder> Decoder for NoiseCodec<C> {
     type Error = Error<C::Error>;
 
     fn decode(&mut self, cipher_text: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        loop {
-            let payload_frame_len = match self.payload_frame_len {
-                None => {
-                    if cipher_text.len() < LENGTH_FRAME_LENGTH {
-                        break;
-                    }
+        let no_length_yet = self.payload_frame_len.is_none();
+        let not_enough_data_for_length = cipher_text.len() < LENGTH_FRAME_LENGTH;
 
-                    let payload_frame_len = {
-                        let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
-                        let mut payload_frame_len = [0u8; 2];
-                        self.noise
-                            .read_message(&length_frame[..], &mut payload_frame_len)?;
-                        BigEndian::read_u16(&payload_frame_len) as usize
-                    };
-
-                    self.payload_frame_len = Some(payload_frame_len);
-                    payload_frame_len
-                }
-                Some(payload_frame_len) => payload_frame_len,
-            };
-
-            if cipher_text.len() < payload_frame_len {
-                break;
-            }
-
-            let payload_len = payload_frame_len - NOISE_TAG_LENGTH;
-            let mut payload = vec![0u8; payload_len];
-            self.noise
-                .read_message(&cipher_text[..payload_frame_len], &mut payload[..])?;
-
-            self.payload_buffer.extend_from_slice(&payload);
-            cipher_text.advance(payload_frame_len);
-            self.payload_frame_len = None;
-
-            let item = self
-                .inner
-                .decode(&mut self.payload_buffer)
-                .map_err(Error::InnerError)?;
-
-            if item.is_some() {
-                return Ok(item);
-            }
+        if no_length_yet && not_enough_data_for_length {
+            return Ok(None);
         }
-        Ok(None)
+
+        let payload_frame_len = self.payload_frame_len.map(Ok).unwrap_or_else(
+            || -> Result<usize, Self::Error> {
+                let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
+
+                let mut length = Length::new(0);
+
+                self.noise.read_message(&length_frame[..], length.as_mut())?;
+
+                trace!("Decrypted length: {:?}", length);
+
+                let length = length.as_usize();
+
+                self.payload_frame_len = Some(length);
+
+                Ok(length)
+            },
+        )?;
+
+        if cipher_text.len() < payload_frame_len {
+            return Ok(None);
+        }
+
+        let payload_len = payload_frame_len - NOISE_TAG_LENGTH;
+        let mut payload = vec![0u8; payload_len];
+        self.noise
+            .read_message(&cipher_text[..payload_frame_len], &mut payload)?;
+
+        self.payload_buffer.extend_from_slice(&payload);
+        cipher_text.advance(payload_frame_len as usize);
+        self.payload_frame_len = None;
+
+        let item = self
+            .inner
+            .decode(&mut self.payload_buffer)
+            .map_err(Error::InnerError)?;
+
+        if item.is_none() {
+            return self.decode(cipher_text);
+        }
+
+        Ok(item)
     }
 }
