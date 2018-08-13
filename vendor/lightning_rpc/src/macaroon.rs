@@ -38,7 +38,7 @@ impl FromFile for Macaroon {
     type Err = ReadMacaroonError;
 
     fn from_file<P: AsRef<Path>>(file: P) -> Result<Self, Self::Err> {
-        let mut f = File::open(file).or_else(|e| Err(ReadMacaroonError::OpenFileFail(e)))?;
+        let mut f = File::open(file).map_err(ReadMacaroonError::OpenFileFail)?;
 
         let mut buffer = Vec::new();
 
