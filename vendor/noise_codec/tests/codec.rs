@@ -37,37 +37,37 @@ fn init_noise<C: Encoder + Decoder + Clone>(codec: C) -> (NoiseCodec<C>, NoiseCo
 fn encode_and_decode_hello_world() {
     let _ = env_logger::try_init();
 
-    let (mut codec_1, mut codec_2) = init_noise(BytesCodec::new());
+    let (mut alice, mut bob) = init_noise(BytesCodec::new());
     {
         let bytes = Bytes::from(b"hello world".to_vec());
         let mut cipher_text = BytesMut::new();
-        codec_1.encode(bytes, &mut cipher_text).unwrap();
-        let msg = codec_2.decode(&mut cipher_text).unwrap().unwrap();
+        alice.encode(bytes, &mut cipher_text).unwrap();
+        let msg = bob.decode(&mut cipher_text).unwrap().unwrap();
         assert_eq!(&msg[..], b"hello world");
     }
 
     {
         let bytes = Bytes::from(b"you are beautiful!!!".to_vec());
         let mut cipher_text = BytesMut::new();
-        codec_1.encode(bytes, &mut cipher_text).unwrap();
-        let msg = codec_2.decode(&mut cipher_text).unwrap().unwrap();
+        alice.encode(bytes, &mut cipher_text).unwrap();
+        let msg = bob.decode(&mut cipher_text).unwrap().unwrap();
         assert_eq!(&msg[..], b"you are beautiful!!!");
     }
 }
 
 #[test]
 fn encode_two_messages_and_decode() {
-    let (mut codec_1, mut codec_2) = init_noise(LinesCodec::new());
+    let (mut alice, mut bob) = init_noise(LinesCodec::new());
     {
         let mut cipher_text = BytesMut::new();
-        codec_1
+        alice
             .encode("hello world".to_string(), &mut cipher_text)
             .unwrap();
-        codec_1
+        alice
             .encode("you are beautiful!!!".to_string(), &mut cipher_text)
             .unwrap();
-        let msg1 = codec_2.decode(&mut cipher_text).unwrap().unwrap();
-        let msg2 = codec_2.decode(&mut cipher_text).unwrap().unwrap();
+        let msg1 = bob.decode(&mut cipher_text).unwrap().unwrap();
+        let msg2 = bob.decode(&mut cipher_text).unwrap().unwrap();
         assert_eq!(msg1, "hello world");
         assert_eq!(msg2, "you are beautiful!!!");
     }
@@ -77,36 +77,36 @@ fn encode_two_messages_and_decode() {
 fn decode_partial_message() {
     let _ = env_logger::try_init();
 
-    let (mut codec_1, mut codec_2) = init_noise(BytesCodec::new());
+    let (mut alice, mut bob) = init_noise(BytesCodec::new());
     {
         let bytes = Bytes::from(b"0123456789".to_vec());
         let mut cipher_text = BytesMut::new();
 
-        let empty_message = codec_2.decode(&mut cipher_text);
+        let empty_message = bob.decode(&mut cipher_text);
         assert!(empty_message.unwrap().is_none());
 
-        codec_1.encode(bytes, &mut cipher_text).unwrap();
+        alice.encode(bytes, &mut cipher_text).unwrap();
 
         let mut buf = cipher_text.split_to(6);
-        let after_6_bytes = codec_2.decode(&mut buf).unwrap();
+        let after_6_bytes = bob.decode(&mut buf).unwrap();
         assert!(after_6_bytes.is_none(), "shouldn't be a full message yet");
 
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
-        let after_17_bytes = codec_2.decode(&mut buf).unwrap();
+        let after_17_bytes = bob.decode(&mut buf).unwrap();
         assert!(
             after_17_bytes.is_none(),
             "still shouldn't be a full message yet"
         );
 
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
-        let after_28_bytes = codec_2.decode(&mut buf).unwrap();
+        let after_28_bytes = bob.decode(&mut buf).unwrap();
         assert!(
             after_28_bytes.is_none(),
             "given the message cipher text sans MAC still shouldn't have a message"
         );
 
         buf.extend_from_slice(&cipher_text[..]);
-        let after_all_bytes = codec_2.decode(&mut buf).unwrap();
+        let after_all_bytes = bob.decode(&mut buf).unwrap();
         assert!(after_all_bytes.is_some(), "should now have a full message");
         assert_eq!(&after_all_bytes.unwrap()[..], b"0123456789");
     }
@@ -114,16 +114,16 @@ fn decode_partial_message() {
 
 #[test]
 fn decode_message_spanning_multiple_noise_frames() {
-    let (mut codec_1, mut codec_2) = init_noise(LinesCodec::new());
+    let (mut alice, mut bob) = init_noise(LinesCodec::new());
     let message_1 = String::from_utf8(vec![b'X'; 70_000]).unwrap();
     let message_2 = String::from_utf8(vec![b'Y'; 70_000]).unwrap();
 
     let mut cipher_text = BytesMut::new();
-    codec_1.encode(message_1.clone(), &mut cipher_text).unwrap();
-    codec_1.encode(message_2.clone(), &mut cipher_text).unwrap();
+    alice.encode(message_1.clone(), &mut cipher_text).unwrap();
+    alice.encode(message_2.clone(), &mut cipher_text).unwrap();
 
     {
-        let item = codec_2.decode(&mut cipher_text).unwrap();
+        let item = bob.decode(&mut cipher_text).unwrap();
         assert!(item.is_some());
         assert!(item.unwrap() == message_1);
     }
@@ -131,12 +131,12 @@ fn decode_message_spanning_multiple_noise_frames() {
     {
         // The codec shouldn't be consuming more bytes than it needs
         // to produce one message
-        let item = codec_2.decode(&mut BytesMut::new()).unwrap();
+        let item = bob.decode(&mut BytesMut::new()).unwrap();
         assert!(item.is_none());
     }
 
     {
-        let item = codec_2.decode(&mut cipher_text).unwrap();
+        let item = bob.decode(&mut cipher_text).unwrap();
         assert!(item.is_some());
         assert!(item.unwrap() == message_2);
     }
