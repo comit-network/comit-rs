@@ -68,11 +68,29 @@ impl<D: Docker, I: Image> Container<D, I> {
     }
 
     pub fn get_host_port(&self, internal_port: u32) -> Option<u32> {
-        self.docker_client
+        let resolved_port = self
+            .docker_client
             .inspect(&self.id)
             .network_settings()
             .ports()
-            .map_to_external_port(internal_port)
+            .map_to_external_port(internal_port);
+
+        match resolved_port {
+            Some(port) => {
+                debug!(
+                    "Resolved port {} to {} for container {}",
+                    internal_port, port, self.id
+                );
+            }
+            None => {
+                warn!(
+                    "Unable to resolve port {} for container {}",
+                    internal_port, self.id
+                );
+            }
+        }
+
+        resolved_port
     }
 
     pub(crate) fn block_until_ready(&self) {
@@ -170,7 +188,6 @@ impl Ports {
 mod tests {
 
     use super::*;
-    use clients::DockerCli;
     extern crate serde_json;
 
     #[test]
