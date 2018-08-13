@@ -1,4 +1,5 @@
 extern crate bytes;
+extern crate env_logger;
 extern crate noise_codec;
 extern crate snow;
 extern crate tokio_codec;
@@ -34,6 +35,8 @@ fn init_noise<C: Encoder + Decoder + Clone>(codec: C) -> (NoiseCodec<C>, NoiseCo
 
 #[test]
 fn encode_and_decode_hello_world() {
+    let _ = env_logger::try_init();
+
     let (mut codec_1, mut codec_2) = init_noise(BytesCodec::new());
     {
         let bytes = Bytes::from(b"hello world".to_vec());
