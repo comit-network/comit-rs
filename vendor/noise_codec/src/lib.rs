@@ -38,14 +38,21 @@ impl<C> NoiseCodec<C> {
 }
 
 impl<C: Decoder> NoiseCodec<C> {
-    fn decode_length(&mut self, cipher_text: BytesMut) -> Result<usize, Error<C::Error>> {
+    fn decode_payload_frame_length(
+        &mut self,
+        cipher_text: &mut BytesMut,
+    ) -> Result<usize, Error<C::Error>> {
+        let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
+
         let mut length = Length::new(0);
 
-        self.noise.read_message(&cipher_text[..], length.as_mut())?;
+        self.noise.read_message(&length_frame[..], length.as_mut())?;
 
         let length = length.as_usize();
 
         trace!("Decrypted length: {:?}", length);
+
+        self.payload_frame_len = Some(length);
 
         Ok(length)
     }
@@ -234,16 +241,10 @@ impl<C: Decoder> Decoder for NoiseCodec<C> {
             return Ok(None);
         }
 
-        let payload_frame_len = self.payload_frame_len.map(Ok).unwrap_or_else(
-            || -> Result<usize, Self::Error> {
-                let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
-                let length = self.decode_length(length_frame)?;
-
-                self.payload_frame_len = Some(length);
-
-                Ok(length)
-            },
-        )?;
+        let payload_frame_len = self
+            .payload_frame_len
+            .map(Ok)
+            .unwrap_or_else(|| self.decode_payload_frame_length(cipher_text))?;
 
         if cipher_text.len() < payload_frame_len {
             return Ok(None);
