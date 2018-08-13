@@ -56,6 +56,28 @@ impl<C: Decoder> NoiseCodec<C> {
 
         Ok(length)
     }
+
+    fn decode_payload_frame(
+        &mut self,
+        cipher_text: &mut BytesMut,
+        payload_frame_len: usize,
+    ) -> Result<Option<C::Item>, Error<C::Error>> {
+        let payload_len = payload_frame_len - NOISE_TAG_LENGTH;
+        let mut payload = vec![0u8; payload_len];
+        self.noise
+            .read_message(&cipher_text[..payload_frame_len], &mut payload)?;
+
+        self.payload_buffer.extend_from_slice(&payload);
+        cipher_text.advance(payload_frame_len as usize);
+        self.payload_frame_len = None;
+
+        let item = self
+            .inner
+            .decode(&mut self.payload_buffer)
+            .map_err(Error::InnerError)?;
+
+        Ok(item)
+    }
 }
 
 #[derive(Debug)]
@@ -241,28 +263,16 @@ impl<C: Decoder> Decoder for NoiseCodec<C> {
             return Ok(None);
         }
 
-        let payload_frame_len = self
-            .payload_frame_len
-            .map(Ok)
-            .unwrap_or_else(|| self.decode_payload_frame_length(cipher_text))?;
+        let payload_frame_len = match self.payload_frame_len {
+            Some(length) => length,
+            None => self.decode_payload_frame_length(cipher_text)?,
+        };
 
         if cipher_text.len() < payload_frame_len {
             return Ok(None);
         }
 
-        let payload_len = payload_frame_len - NOISE_TAG_LENGTH;
-        let mut payload = vec![0u8; payload_len];
-        self.noise
-            .read_message(&cipher_text[..payload_frame_len], &mut payload)?;
-
-        self.payload_buffer.extend_from_slice(&payload);
-        cipher_text.advance(payload_frame_len as usize);
-        self.payload_frame_len = None;
-
-        let item = self
-            .inner
-            .decode(&mut self.payload_buffer)
-            .map_err(Error::InnerError)?;
+        let item = self.decode_payload_frame(cipher_text, payload_frame_len)?;
 
         if item.is_none() {
             return self.decode(cipher_text);
