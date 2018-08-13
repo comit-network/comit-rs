@@ -17,10 +17,10 @@ pub fn create_rocket_instance(
         .mount(
             "/",
             routes![
-                eth_btc::routes::get_redeem_orders,
-                eth_btc::routes::post_buy_offers,
-                eth_btc::routes::post_buy_orders,
-                eth_btc::routes::post_contract_deployed,
+                eth_btc::buy::routes::get_redeem_orders,
+                eth_btc::buy::routes::post_buy_offers,
+                eth_btc::buy::routes::post_buy_orders,
+                eth_btc::buy::routes::post_contract_deployed,
             ],
         )
         .manage(client)
