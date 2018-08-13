@@ -89,9 +89,7 @@ fn add_invoice_with_pre_image(lnd_client: &mut LndClient) {
 
 fn create_lnd_client(cert_path: String, macaroon_path: String) -> LndClient {
     let certificate = Certificate::from_file(cert_path).unwrap().into();
-    let macaroon = Macaroon::from_file(macaroon_path)
-        .and_then(|m| Ok(Some(m)))
-        .unwrap_or(None);
+    let macaroon = Macaroon::from_file(macaroon_path).ok();
     let lnd_addr = LND_URI.parse().unwrap();
     let origin_uri: http::Uri = ORIGIN_URI.parse().unwrap();
     let lnd_client = LndClient::new(certificate, macaroon, lnd_addr, origin_uri).unwrap();
