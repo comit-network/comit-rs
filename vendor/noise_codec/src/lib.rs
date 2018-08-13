@@ -26,7 +26,7 @@ pub struct NoiseCodec<C> {
     payload_buffer: BytesMut,
 }
 
-impl<C: Encoder + Decoder> NoiseCodec<C> {
+impl<C> NoiseCodec<C> {
     pub fn new(noise: Session, inner: C) -> Self {
         NoiseCodec {
             noise,
@@ -34,6 +34,20 @@ impl<C: Encoder + Decoder> NoiseCodec<C> {
             payload_frame_len: None,
             payload_buffer: BytesMut::new(),
         }
+    }
+}
+
+impl<C: Decoder> NoiseCodec<C> {
+    fn decode_length(&mut self, cipher_text: BytesMut) -> Result<usize, Error<C::Error>> {
+        let mut length = Length::new(0);
+
+        self.noise.read_message(&cipher_text[..], length.as_mut())?;
+
+        let length = length.as_usize();
+
+        trace!("Decrypted length: {:?}", length);
+
+        Ok(length)
     }
 }
 
@@ -223,14 +237,7 @@ impl<C: Decoder> Decoder for NoiseCodec<C> {
         let payload_frame_len = self.payload_frame_len.map(Ok).unwrap_or_else(
             || -> Result<usize, Self::Error> {
                 let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
-
-                let mut length = Length::new(0);
-
-                self.noise.read_message(&length_frame[..], length.as_mut())?;
-
-                trace!("Decrypted length: {:?}", length);
-
-                let length = length.as_usize();
+                let length = self.decode_length(length_frame)?;
 
                 self.payload_frame_len = Some(length);
 
