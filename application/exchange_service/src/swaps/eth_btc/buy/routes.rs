@@ -20,10 +20,7 @@ use event_store::{self, EventStore, InMemoryEventStore};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
-use std::{
-    sync::Arc,
-    time::{Duration, SystemTime, UNIX_EPOCH},
-};
+use std::{sync::Arc, time::Duration};
 use swaps::{
     eth_btc::common::{Error, OrderTaken, TradeFunded},
     TradeId,
@@ -135,11 +132,7 @@ impl From<OrderTaken<Ethereum, Bitcoin>> for OrderTakenResponseBody {
         OrderTakenResponseBody {
             exchange_refund_address: order_taken_event.exchange_refund_address.into(),
             exchange_success_address: order_taken_event.exchange_success_address.into(),
-            exchange_contract_time_lock: order_taken_event
-                .exchange_contract_time_lock
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
+            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock.as_secs(),
         }
     }
 }
@@ -199,7 +192,7 @@ fn handle_post_buy_orders(
         uid: trade_id,
         contract_secret_lock: order_request_body.contract_secret_lock,
         client_contract_time_lock: order_request_body.client_contract_time_lock,
-        exchange_contract_time_lock: SystemTime::now() + twelve_hours,
+        exchange_contract_time_lock: twelve_hours,
         client_refund_address,
         client_success_address: order_request_body.client_success_address,
         exchange_refund_address: *exchange_refund_address,

@@ -5,7 +5,7 @@ use std::time::Duration;
 
 #[derive(Debug)]
 pub struct Htlc {
-    expiry_offset: U256,
+    refund_timeout: Duration,
     refund_address: Address,
     success_address: Address,
     secret_hash: SecretHash,
@@ -19,60 +19,31 @@ impl Into<Bytes> for ByteCode {
     }
 }
 
-#[derive(Clone)]
-pub struct EpochOffset(Duration);
-
-impl EpochOffset {
-    pub fn hours(hours: u64) -> Self {
-        EpochOffset(Duration::from_secs(60 * 60 * hours))
-    }
-
-    pub fn to_u256(&self) -> U256 {
-        U256::from(self.0.as_secs())
-    }
-}
-
-impl From<EpochOffset> for U256 {
-    fn from(offset: EpochOffset) -> Self {
-        offset.to_u256()
-    }
-}
-
 impl Htlc {
     const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../contract.asm.hex");
-    const EXPIRY_OFFSET_PLACEHOLDER: &'static str = "20000002";
+    const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
     const DEPLOY_CODE_LENGTH: usize = 21;
 
-    pub fn new<
-        ExpiryOffset: Into<U256>,
-        RefundAddress: Into<Address>,
-        SuccessAddress: Into<Address>,
-        Hash: Into<SecretHash>,
-    >(
-        expiry_offset: ExpiryOffset,
-        refund_address: RefundAddress,
-        success_address: SuccessAddress,
-        secret_hash: Hash,
+    pub fn new(
+        refund_timeout: Duration,
+        refund_address: Address,
+        success_address: Address,
+        secret_hash: SecretHash,
     ) -> Self {
-        let expiry_offset: U256 = expiry_offset.into();
-        let refund_address: Address = refund_address.into();
-        let success_address: Address = success_address.into();
-        let secret_hash = secret_hash.into();
-
         debug!(
-            "Created HTLC with secret hash {:?} for address {}. After {}s, {} can reclaim the funds.",
+            "Created HTLC with secret hash {:?} for address {:?}. After {:?}, {:?} can reclaim the funds.",
             secret_hash,
             success_address,
-            expiry_offset,
+            refund_timeout,
             refund_address
         );
 
         Htlc {
-            expiry_offset,
+            refund_timeout,
             refund_address,
             success_address,
             secret_hash,
@@ -86,14 +57,14 @@ impl Htlc {
     }
 
     pub fn compile_to_hex(&self) -> ByteCode {
-        let expiry_offset = Self::int_to_hex_left_padded(self.expiry_offset);
+        let refund_timeout = Self::int_to_hex_left_padded(self.refund_timeout.as_secs().into());
         let success_address = format!("{:x}", self.success_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
 
         let contract_code = Self::CONTRACT_CODE_TEMPLATE
             .to_string()
-            .replace(Self::EXPIRY_OFFSET_PLACEHOLDER, &expiry_offset)
+            .replace(Self::REFUND_TIMEOUT_PLACEHOLDER, &refund_timeout)
             .replace(Self::SUCCESS_ADDRESS_PLACEHOLDER, &success_address)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash);
@@ -181,7 +152,7 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() {
         let htlc = Htlc::new(
-            U256::from(100),
+            Duration::from_secs(100),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
@@ -199,7 +170,7 @@ mod tests {
     #[test]
     fn given_input_data_when_compiled_should_no_longer_contain_placeholders() {
         let htlc = Htlc::new(
-            U256::from(100),
+            Duration::from_secs(100),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
@@ -209,7 +180,7 @@ mod tests {
 
         let compiled_code = htlc.compile_to_hex().0;
 
-        assert!(!compiled_code.contains(Htlc::EXPIRY_OFFSET_PLACEHOLDER));
+        assert!(!compiled_code.contains(Htlc::REFUND_TIMEOUT_PLACEHOLDER));
         assert!(!compiled_code.contains(Htlc::SUCCESS_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(Htlc::REFUND_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(Htlc::SECRET_HASH_PLACEHOLDER));
@@ -218,7 +189,7 @@ mod tests {
     #[test]
     fn should_generate_correct_deploy_header() {
         let htlc = Htlc::new(
-            U256::from(100),
+            Duration::from_secs(100),
             Address::new(),
             Address::new(),
             SecretHash::from_str("").unwrap(),

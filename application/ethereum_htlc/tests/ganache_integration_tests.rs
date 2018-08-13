@@ -12,10 +12,11 @@ extern crate testcontainers;
 mod common;
 use common::GanacheClient;
 use common_types::secret::Secret;
-use ethereum_htlc::EpochOffset;
 use ethereum_support::*;
+use std::time::Duration;
 
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
+const ONE_HOUR: Duration = Duration::from_secs(60 * 60);
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
@@ -27,7 +28,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let secret = Secret::from(SECRET.clone());
 
     let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(12),
+        ONE_HOUR * 12,
         refund_address,
         success_address,
         secret.hash(),
@@ -72,12 +73,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 
     let secret = Secret::from(SECRET.clone());
 
-    let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(1),
-        refund_address,
-        success_address,
-        secret.hash(),
-    );
+    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
 
     let mut client = GanacheClient::new();
 
@@ -113,12 +109,7 @@ fn given_advanced_timestamp_when_deployed_contract_cannot_yet_be_refunded() {
 
     let secret = Secret::from(SECRET.clone());
 
-    let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(1),
-        refund_address,
-        success_address,
-        secret.hash(),
-    );
+    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
 
     let mut client = GanacheClient::new();
 
@@ -160,7 +151,7 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
     let stupid_offset = 2;
 
     let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(1 + stupid_offset),
+        ONE_HOUR * (1 + stupid_offset),
         refund_address,
         success_address,
         secret.hash(),
