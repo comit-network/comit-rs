@@ -223,9 +223,8 @@ mod tests {
             Address::new(),
             SecretHash::from_str("").unwrap(),
         );
-        let deploy_header =
-            htlc.generate_deploy_header("6000602060006000376020602160206000600060026048f17f68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec602151141660515742036300000e101160685760006000f35b7325818640c330b071acf5fc836fe0b762a769523dff5b7303744e31a6b9e6c6f604ff5d8ce1caef1c7bb58cff");
+        let deploy_header = htlc.generate_deploy_header(Htlc::CONTRACT_CODE_TEMPLATE);
 
-        assert_eq!(&deploy_header, "426000526063601B536016601A602039601B601BF3");
+        assert_eq!(&deploy_header, "426000526063601B53607D601A6020396082601BF3");
     }
 }
