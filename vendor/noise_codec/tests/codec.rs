@@ -66,10 +66,10 @@ fn encode_two_messages_and_decode() {
         alice
             .encode("you are beautiful!!!".to_string(), &mut cipher_text)
             .unwrap();
-        let msg1 = bob.decode(&mut cipher_text).unwrap().unwrap();
-        let msg2 = bob.decode(&mut cipher_text).unwrap().unwrap();
-        assert_eq!(msg1, "hello world");
-        assert_eq!(msg2, "you are beautiful!!!");
+        let msg1 = bob.decode(&mut cipher_text).unwrap();
+        let msg2 = bob.decode(&mut cipher_text).unwrap();
+        assert_eq!(msg1, Some(String::from("hello world")));
+        assert_eq!(msg2, Some(String::from("you are beautiful!!!")));
     }
 }
 
@@ -107,8 +107,10 @@ fn decode_partial_message() {
 
         buf.extend_from_slice(&cipher_text[..]);
         let after_all_bytes = bob.decode(&mut buf).unwrap();
-        assert!(after_all_bytes.is_some(), "should now have a full message");
-        assert_eq!(&after_all_bytes.unwrap()[..], b"0123456789");
+        assert_eq!(
+            after_all_bytes,
+            Some(BytesMut::from(b"0123456789" as &[u8]))
+        );
     }
 }
 
@@ -124,8 +126,7 @@ fn decode_message_spanning_multiple_noise_frames() {
 
     {
         let item = bob.decode(&mut cipher_text).unwrap();
-        assert!(item.is_some());
-        assert!(item.unwrap() == message_1);
+        assert_eq!(item, Some(message_1));
     }
 
     {
@@ -137,7 +138,6 @@ fn decode_message_spanning_multiple_noise_frames() {
 
     {
         let item = bob.decode(&mut cipher_text).unwrap();
-        assert!(item.is_some());
-        assert!(item.unwrap() == message_2);
+        assert_eq!(item, Some(message_2));
     }
 }
