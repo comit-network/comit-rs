@@ -22,5 +22,6 @@ members = [
     "vendor/trufflesuite_ganachecli",
     "vendor/coblox_bitcoincore",
     "vendor/testcontainers_rs",
-    "vendor/event_store"
+    "vendor/event_store",
+    "vendor/noise_codec"
 ]

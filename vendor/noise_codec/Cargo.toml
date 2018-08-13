@@ -1,0 +1,16 @@
+[package]
+authors = [
+    "LLFourn <lloyd.fourn@gmail.com>",
+    "Franck Royer <franck@coblox.tech>",
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+]
+name = "noise_codec"
+version = "0.1.0"
+[dependencies]
+byteorder = "1.2.4"
+bytes = "0.4.9"
+futures = "0.1.23"
+snow = "0.3.1"
+tokio = "0.1.7"
+tokio-codec = "0.1.0"
