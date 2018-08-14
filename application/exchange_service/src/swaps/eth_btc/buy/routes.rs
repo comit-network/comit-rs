@@ -5,7 +5,11 @@ use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc;
 use bitcoin_support::{self, Network, PubkeyHash, ToP2wpkhAddress};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
-use common_types::secret::{Secret, SecretHash};
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    secret::{Secret, SecretHash},
+    TradingSymbol,
+};
 use ethereum_htlc;
 use ethereum_service;
 use ethereum_support;
@@ -19,7 +23,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use swaps::TradeId;
-use treasury_api_client::{ApiClient, Symbol};
+use treasury_api_client::ApiClient;
 
 #[derive(Debug)]
 pub enum Error {
@@ -86,7 +90,7 @@ pub fn post_buy_offers(
     offer_request_body: Json<OfferRequestBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
     treasury_api_client: State<Arc<ApiClient>>,
-) -> Result<Json<OfferState>, BadRequest<String>> {
+) -> Result<Json<OfferState<Ethereum, Bitcoin>>, BadRequest<String>> {
     let offer_state = handle_post_buy_offers(
         offer_request_body.into_inner(),
         event_store.inner(),
@@ -100,9 +104,9 @@ fn handle_post_buy_offers(
     offer_request_body: OfferRequestBody,
     event_store: &InMemoryEventStore<TradeId>,
     treasury_api_client: &Arc<ApiClient>,
-) -> Result<OfferState, Error> {
+) -> Result<OfferState<Ethereum, Bitcoin>, Error> {
     let rate_response_body = treasury_api_client
-        .request_rate(Symbol("ETH-BTC".to_string()), offer_request_body.amount)
+        .request_rate(TradingSymbol::ETH_BTC, offer_request_body.amount)
         .map_err(Error::TreasuryService)?;
 
     let offer_event = OfferCreated::from(rate_response_body);
@@ -256,9 +260,10 @@ fn handle_post_buy_order_funding(
         order_taken.contract_secret_lock.clone(),
     );
 
-    let offer_created_event = event_store.get_event::<OfferCreated>(trade_id.clone())?;
+    let offer_created_event =
+        event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
 
-    let htlc_funding = offer_created_event.eth_amount.wei();
+    let htlc_funding = offer_created_event.buy_amount.wei();
 
     let tx_id = ethereum_service.deploy_htlc(htlc, htlc_funding)?;
 
@@ -312,7 +317,8 @@ fn handle_post_revealed_secret(
     trade_id: TradeId,
 ) -> Result<(), Error> {
     let order_taken_event = event_store.get_event::<OrderTaken>(trade_id.clone())?;
-    let offer_created_event = event_store.get_event::<OfferCreated>(trade_id.clone())?;
+    let offer_created_event =
+        event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
     let trade_funded_event = event_store.get_event::<TradeFunded>(trade_id.clone())?;
     let secret: Secret = redeem_btc_notification_body.secret;
@@ -339,7 +345,7 @@ fn handle_post_revealed_secret(
         inputs: vec![PrimedInput::new(
             htlc_txid.clone().into(),
             vout,
-            offer_created_event.btc_amount,
+            offer_created_event.sell_amount,
             unlocking_parameters,
         )],
         output_address: btc_exchange_redeem_address.clone(),

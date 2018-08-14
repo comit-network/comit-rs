@@ -1,5 +1,5 @@
-use super::Symbol;
 use bitcoin_support::*;
+use common_types::TradingSymbol;
 use ethereum_support::*;
 use reqwest;
 
@@ -13,7 +13,7 @@ pub struct RateRequestBody {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateResponseBody {
-    pub symbol: String,
+    pub symbol: TradingSymbol,
     pub rate: f64,
     pub sell_amount: BitcoinQuantity,
     pub buy_amount: EthereumQuantity,
@@ -22,7 +22,7 @@ pub struct RateResponseBody {
 pub trait ApiClient: Send + Sync {
     fn request_rate(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         buy_amount: f64,
     ) -> Result<RateResponseBody, reqwest::Error>;
 }
@@ -36,7 +36,7 @@ pub struct DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn request_rate(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         buy_amount: f64,
     ) -> Result<RateResponseBody, reqwest::Error> {
         self.client

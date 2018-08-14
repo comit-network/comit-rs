@@ -339,6 +339,9 @@ dependencies = [
 name = "common_types"
 version = "0.1.0"
 dependencies = [
+ "bitcoin_rpc 0.1.0",
+ "bitcoin_support 0.1.0",
+ "ethereum_support 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
