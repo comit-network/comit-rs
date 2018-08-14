@@ -9,8 +9,7 @@ pub struct Rate {
 }
 
 // Export classes for test
-#[cfg(test)]
+
 mod fake_client;
 
-#[cfg(test)]
-pub use self::fake_client::*;
+pub use self::fake_client::{FakeBuyApiClient, FakeSellApiClient};
