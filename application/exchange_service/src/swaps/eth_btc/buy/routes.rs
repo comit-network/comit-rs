@@ -212,32 +212,32 @@ fn handle_post_buy_orders(
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded",
     format = "application/json",
-    data = "<buy_order_htlc_identification>"
+    data = "<htlc_identifier>"
 )]
-pub fn post_buy_orders_fundings(
+pub fn post_orders_funding(
     trade_id: TradeId,
-    buy_order_htlc_identification: Json<bitcoin::HtlcId>,
+    htlc_identifier: Json<bitcoin::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
     ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
-    handle_post_buy_order_funding(
+    handle_post_orders_funding(
         trade_id,
-        buy_order_htlc_identification.into_inner(),
+        htlc_identifier.into_inner(),
         event_store.inner(),
         ethereum_service.inner(),
     )?;
     Ok(())
 }
 
-fn handle_post_buy_order_funding(
+fn handle_post_orders_funding(
     trade_id: TradeId,
-    buy_order_htlc_identification: bitcoin::HtlcId,
+    htlc_identifier: bitcoin::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
     ethereum_service: &Arc<ethereum_service::EthereumService>,
 ) -> Result<(), Error> {
-    let trade_funded = TradeFunded {
+    let trade_funded: TradeFunded<Bitcoin> = TradeFunded {
         uid: trade_id,
-        htlc_identifier: buy_order_htlc_identification,
+        htlc_identifier,
     };
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
@@ -396,7 +396,7 @@ mod tests {
     use serde::Deserialize;
     use serde_json;
     use std::{str::FromStr, sync::Arc};
-    use treasury_api_client::FakeApiClient;
+    use treasury_api_client::FakeBuyApiClient;
 
     extern crate env_logger;
 
@@ -463,7 +463,7 @@ mod tests {
 
     fn create_rocket_client() -> Client {
         let rocket = create_rocket_instance(
-            Arc::new(FakeApiClient),
+            Arc::new(FakeBuyApiClient),
             InMemoryEventStore::new(),
             Arc::new(ethereum_service::EthereumService::new(
                 Arc::new(StaticFakeWallet::account0()),

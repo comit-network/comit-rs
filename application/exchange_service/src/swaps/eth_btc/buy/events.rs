@@ -1,3 +1,4 @@
+use bitcoin_support::*;
 use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ethereum_support::*;
 use event_store::Event;
@@ -15,8 +16,8 @@ impl From<RateResponseBody> for OfferCreated<Ethereum, Bitcoin> {
             uid: TradeId(Uuid::new_v4()),
             symbol: r.symbol,
             rate: r.rate,
-            buy_amount: r.buy_amount,   // ETH
-            sell_amount: r.sell_amount, // BTC
+            buy_amount: EthereumQuantity::from_eth(r.buy_amount), // ETH
+            sell_amount: BitcoinQuantity::from_bitcoin(r.sell_amount), // BTC
         }
     }
 }

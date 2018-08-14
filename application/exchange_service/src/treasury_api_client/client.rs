@@ -1,6 +1,4 @@
-use bitcoin_support::*;
 use common_types::TradingSymbol;
-use ethereum_support::*;
 use reqwest;
 
 #[derive(Clone, Debug)]
@@ -8,15 +6,17 @@ pub struct TreasuryApiUrl(pub String);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateRequestBody {
-    buy_amount: f64, //ethereum
+    buy_amount: f64,
 }
 
+//TODO: Update the treasury service!
+//TODO: Make it generic (if possible)
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateResponseBody {
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub sell_amount: BitcoinQuantity,
-    pub buy_amount: EthereumQuantity,
+    pub sell_amount: f64,
+    pub buy_amount: f64,
 }
 
 pub trait ApiClient: Send + Sync {
