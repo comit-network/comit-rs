@@ -174,6 +174,7 @@ dependencies = [
 name = "bitcoin_rpc_helpers"
 version = "0.1.0"
 dependencies = [
+ "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
  "bitcoin_rpc 0.1.0",
  "bitcoin_support 0.1.0",
 ]
@@ -183,6 +184,7 @@ name = "bitcoin_support"
 version = "0.1.0"
 dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
+ "bitcoin_rpc 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",

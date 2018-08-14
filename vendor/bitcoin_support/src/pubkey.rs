@@ -1,9 +1,7 @@
+use address::Address;
 use bitcoin::{
     network::constants::Network,
-    util::{
-        address::{Address, Payload},
-        hash::Hash160,
-    },
+    util::{address::Payload, hash::Hash160},
 };
 use secp256k1_support::PublicKey;
 use std::fmt;
@@ -29,7 +27,7 @@ impl From<Hash160> for PubkeyHash {
 
 impl From<Address> for PubkeyHash {
     fn from(address: Address) -> PubkeyHash {
-        match address.payload {
+        match address.to_address().payload {
             Payload::WitnessProgram(witness) => PubkeyHash(Hash160::from(witness.program())),
             // TODO: from/into should never fail. Remove this panic by
             // creating a PubkeyAddress type which is guaranteed to

@@ -67,7 +67,7 @@ fn fund_htlc(
 
     client.generate(1).unwrap();
 
-    let vout = client.find_vout_for_address(&txid, &htlc_address);
+    let vout = client.find_vout_for_address(&txid, &htlc_address.to_address());
 
     (
         txid,

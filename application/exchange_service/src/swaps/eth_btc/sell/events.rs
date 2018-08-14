@@ -1,29 +1,25 @@
-pub use self::OfferCreated as OfferState;
 use bitcoin_rpc;
 use bitcoin_support::{self, BitcoinQuantity};
-use common_types::secret::SecretHash;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    secret::SecretHash,
+};
 use ethereum_support::{self, *};
 use event_store::Event;
 use secp256k1_support::KeyPair;
 use std::time::SystemTime;
-use swaps::TradeId;
+use swaps::{eth_btc::common::OfferCreated, TradeId};
 use treasury_api_client::{RateResponseBody, Symbol};
 use uuid::Uuid;
 
-
-
-impl Event for OfferCreated {
-    type Prev = ();
-}
-
-impl From<RateResponseBody> for OfferCreated {
+impl From<RateResponseBody> for OfferCreated<Bitcoin, Ethereum> {
     fn from(r: RateResponseBody) -> Self {
         OfferCreated {
             uid: TradeId(Uuid::new_v4()),
-            symbol: Symbol(r.symbol),
+            symbol: r.symbol,
             rate: r.rate,
-            eth_amount: EthereumQuantity::from(r.sell_amount),
-            btc_amount: BitcoinQuantity::from_str(r.buy_amount),
+            buy_amount: r.buy_amount,   // BTC
+            sell_amount: r.sell_amount, // ETH
         }
     }
 }
@@ -45,7 +41,7 @@ pub struct OrderTaken {
 }
 
 impl Event for OrderTaken {
-    type Prev = OfferCreated;
+    type Prev = OfferCreated<Bitcoin, Ethereum>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -1,5 +1,5 @@
 pub use super::events::OfferCreated as OfferRequestResponse;
-use super::events::{ContractDeployed, OfferCreated, OfferState, OrderTaken, TradeFunded};
+use super::events::{ContractDeployed, OfferCreated, OfferState, TradeFunded};
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc;
@@ -14,7 +14,6 @@ use ethereum_htlc;
 use ethereum_service;
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
-use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
@@ -22,19 +21,11 @@ use std::{
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use swaps::TradeId;
+use swaps::{
+    eth_btc::common::{Error, OrderTaken},
+    TradeId,
+};
 use treasury_api_client::ApiClient;
-
-#[derive(Debug)]
-pub enum Error {
-    EventStore(event_store::Error),
-    TreasuryService(reqwest::Error),
-    FeeService(bitcoin_fee_service::Error),
-    EthereumService(ethereum_service::Error),
-    BitcoinRpc(bitcoin_rpc::RpcError),
-    BitcoinNode(reqwest::Error),
-    Unlocking(String),
-}
 
 impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
@@ -134,8 +125,8 @@ pub struct OrderTakenResponseBody {
     pub exchange_contract_time_lock: u64,
 }
 
-impl From<OrderTaken> for OrderTakenResponseBody {
-    fn from(order_taken_event: OrderTaken) -> Self {
+impl From<OrderTaken<Ethereum, Bitcoin>> for OrderTakenResponseBody {
+    fn from(order_taken_event: OrderTaken<Ethereum, Bitcoin>) -> Self {
         OrderTakenResponseBody {
             exchange_refund_address: order_taken_event.exchange_refund_address.into(),
             exchange_success_address: order_taken_event.exchange_success_address.into(),
@@ -189,6 +180,13 @@ fn handle_post_buy_orders(
     // -> returns ETH HTLC data (exchange refund address + ETH timeout)
     let client_refund_address: bitcoin_support::Address =
         order_request_body.client_refund_address.into();
+    //TODO: clean up, should not need to do address>pub_key>address
+    let exchange_success_address = bitcoin_support::Address::from(
+        exchange_success_keypair
+            .public_key()
+            .clone()
+            .to_p2wpkh_address(*network),
+    );
 
     let twelve_hours = Duration::new(60 * 60 * 12, 0);
 
@@ -200,10 +198,7 @@ fn handle_post_buy_orders(
         client_refund_address,
         client_success_address: order_request_body.client_success_address,
         exchange_refund_address: *exchange_refund_address,
-        exchange_success_address: exchange_success_keypair
-            .public_key()
-            .clone()
-            .to_p2wpkh_address(*network),
+        exchange_success_address,
         exchange_success_keypair: exchange_success_keypair.clone(),
     };
 
@@ -251,7 +246,7 @@ fn handle_post_buy_order_funding(
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
-    let order_taken = event_store.get_event::<OrderTaken>(trade_id.clone())?;
+    let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
     let htlc = ethereum_htlc::Htlc::new(
         order_taken.exchange_contract_time_lock,
@@ -316,7 +311,8 @@ fn handle_post_revealed_secret(
     btc_exchange_redeem_address: &bitcoin_support::Address,
     trade_id: TradeId,
 ) -> Result<(), Error> {
-    let order_taken_event = event_store.get_event::<OrderTaken>(trade_id.clone())?;
+    let order_taken_event =
+        event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
     let offer_created_event =
         event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?

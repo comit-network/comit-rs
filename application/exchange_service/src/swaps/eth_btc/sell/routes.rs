@@ -1,4 +1,12 @@
+use ethereum_htlc;
+use ethereum_service;
 use ethereum_support;
+use event_store::InMemoryEventStore;
+use reqwest;
+use rocket::{response::status::BadRequest, State};
+use rocket_contrib::Json;
+use std::sync::Arc;
+use swaps::{eth_btc::common::Error, TradeId};
 
 #[derive(Deserialize)]
 pub struct SellOrderHtlcDeployedNotification {

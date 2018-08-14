@@ -1,6 +1,8 @@
 // Place for putting common queries needed in tests
+extern crate bitcoin;
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
+use bitcoin::util::address::Address as BitcoinAddress;
 use bitcoin_rpc::{
     BitcoinRpcApi, TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput,
 };
@@ -12,7 +14,11 @@ pub trait RegtestHelperClient {
         txid: &TransactionId,
         address: &Address,
     ) -> Option<UnspentTransactionOutput>;
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput;
+    fn find_vout_for_address(
+        &self,
+        txid: &TransactionId,
+        address: &BitcoinAddress,
+    ) -> TransactionOutput;
 
     fn enable_segwit(&self);
     fn create_p2wpkh_vout_at<D: ToP2wpkhAddress>(
@@ -44,7 +50,11 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         unspent.into_iter().find(|utxo| utxo.txid == *txid)
     }
 
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput {
+    fn find_vout_for_address(
+        &self,
+        txid: &TransactionId,
+        address: &BitcoinAddress,
+    ) -> TransactionOutput {
         let raw_txn = self
             .get_raw_transaction_serialized(&txid)
             .unwrap()
@@ -80,7 +90,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
 
         self.generate(1).unwrap();
 
-        let vout = self.find_vout_for_address(&txid, &address);
+        let vout = self.find_vout_for_address(&txid, &address.to_address());
 
         (txid.into(), vout)
     }
