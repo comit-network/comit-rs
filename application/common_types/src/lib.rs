@@ -4,6 +4,7 @@ extern crate crypto;
 extern crate ethereum_support;
 extern crate hex;
 extern crate rand;
+#[macro_use]
 extern crate serde;
 
 pub mod ledger;

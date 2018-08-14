@@ -1,12 +1,15 @@
 pub use super::events::OfferCreated as OfferRequestResponse;
-use super::events::{ContractDeployed, OfferCreated, OfferState, TradeFunded};
+use super::events::{ContractDeployed, OfferCreated, OfferState};
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc;
 use bitcoin_support::{self, Network, PubkeyHash, ToP2wpkhAddress};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{
+        bitcoin::{self, Bitcoin},
+        ethereum::Ethereum,
+    },
     secret::{Secret, SecretHash},
     TradingSymbol,
 };
@@ -22,7 +25,7 @@ use std::{
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use swaps::{
-    eth_btc::common::{Error, OrderTaken},
+    eth_btc::common::{Error, OrderTaken, TradeFunded},
     TradeId,
 };
 use treasury_api_client::ApiClient;
@@ -206,26 +209,20 @@ fn handle_post_buy_orders(
     Ok(order_taken.into())
 }
 
-#[derive(Deserialize)]
-pub struct BuyOrderHtlcFundedNotification {
-    transaction_id: bitcoin_rpc::TransactionId,
-    vout: u32,
-}
-
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded",
     format = "application/json",
-    data = "<buy_order_htlc_funded_notification>"
+    data = "<buy_order_htlc_identification>"
 )]
 pub fn post_buy_orders_fundings(
     trade_id: TradeId,
-    buy_order_htlc_funded_notification: Json<BuyOrderHtlcFundedNotification>,
+    buy_order_htlc_identification: Json<bitcoin::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
     ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_buy_order_funding(
         trade_id,
-        buy_order_htlc_funded_notification.into_inner(),
+        buy_order_htlc_identification.into_inner(),
         event_store.inner(),
         ethereum_service.inner(),
     )?;
@@ -234,14 +231,13 @@ pub fn post_buy_orders_fundings(
 
 fn handle_post_buy_order_funding(
     trade_id: TradeId,
-    buy_order_htlc_funded_notification: BuyOrderHtlcFundedNotification,
+    buy_order_htlc_identification: bitcoin::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
     ethereum_service: &Arc<ethereum_service::EthereumService>,
 ) -> Result<(), Error> {
     let trade_funded = TradeFunded {
         uid: trade_id,
-        transaction_id: buy_order_htlc_funded_notification.transaction_id.clone(),
-        vout: buy_order_htlc_funded_notification.vout,
+        htlc_identifier: buy_order_htlc_identification,
     };
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
@@ -316,15 +312,15 @@ fn handle_post_revealed_secret(
     let offer_created_event =
         event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
-    let trade_funded_event = event_store.get_event::<TradeFunded>(trade_id.clone())?;
+    let trade_funded_event = event_store.get_event::<TradeFunded<Bitcoin>>(trade_id.clone())?;
     let secret: Secret = redeem_btc_notification_body.secret;
     let exchange_success_address = order_taken_event.exchange_success_address;
     let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
     let exchange_success_keypair = order_taken_event.exchange_success_keypair;
 
     let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address.into();
-    let htlc_txid = trade_funded_event.transaction_id;
-    let vout = trade_funded_event.vout;
+    let htlc_txid = trade_funded_event.htlc_identifier.transaction_id;
+    let vout = trade_funded_event.htlc_identifier.vout;
 
     let htlc = bitcoin_htlc::Htlc::new(
         exchange_success_pubkey_hash,

@@ -1,9 +1,11 @@
-use bitcoin_rpc;
 use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ethereum_support::*;
 use event_store::Event;
 pub use swaps::eth_btc::common::{OfferCreated as OfferState, OfferCreated};
-use swaps::{eth_btc::common::OrderTaken, TradeId};
+use swaps::{
+    eth_btc::common::{OrderTaken, TradeFunded},
+    TradeId,
+};
 use treasury_api_client::RateResponseBody;
 use uuid::Uuid;
 
@@ -23,14 +25,7 @@ impl Event for OrderTaken<Ethereum, Bitcoin> {
     type Prev = OfferCreated<Ethereum, Bitcoin>;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeFunded {
-    pub uid: TradeId,
-    pub transaction_id: bitcoin_rpc::TransactionId,
-    pub vout: u32,
-}
-
-impl Event for TradeFunded {
+impl Event for TradeFunded<Bitcoin> {
     type Prev = OrderTaken<Ethereum, Bitcoin>;
 }
 
@@ -41,5 +36,5 @@ pub struct ContractDeployed {
 }
 
 impl Event for ContractDeployed {
-    type Prev = TradeFunded;
+    type Prev = TradeFunded<Bitcoin>;
 }

@@ -47,3 +47,9 @@ pub struct OrderTaken<B: Ledger, S: Ledger> {
     pub exchange_success_address: S::Address,
     pub exchange_success_keypair: KeyPair,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TradeFunded<S: Ledger> {
+    pub uid: TradeId,
+    pub htlc_identifier: S::HtlcId,
+}

@@ -20,7 +20,7 @@ pub struct SellOrderHtlcDeployedNotification {
 )]
 pub fn post_sell_order_htlc_deployed(
     trade_id: TradeId,
-    sell_order_htlc_deployed_notification: Json<SellOrderHtlcDeployedNotification>,
+    sell_order_htlc_deployed_notification: Json<SellOrderHtlcFundedNotification>,
     event_store: State<InMemoryEventStore<TradeId>>,
     ethereum_service: State<Arc<ethereum_service::EthereumService>>,
 ) -> Result<(), BadRequest<String>> {
