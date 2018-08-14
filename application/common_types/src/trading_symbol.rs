@@ -4,11 +4,22 @@ use serde::{
 };
 use std::fmt;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub enum TradingSymbol {
     ETH_BTC,
     UNKNOWN(String),
+}
+
+impl fmt::Display for TradingSymbol {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        let symbol = match self {
+            &TradingSymbol::ETH_BTC => "ETH-BTC",
+            &TradingSymbol::UNKNOWN(ref string) => string.as_str(),
+        };
+
+        write!(f, "{}", symbol)
+    }
 }
 
 impl<'de> Deserialize<'de> for TradingSymbol {
@@ -26,7 +37,7 @@ impl<'de> Visitor<'de> for TradingSymbolVisitor {
     type Value = TradingSymbol;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        write!(formatter, "a trading symbol (BTC:ETH)")
+        write!(formatter, "a trading symbol (BTC-ETH)")
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -34,7 +45,7 @@ impl<'de> Visitor<'de> for TradingSymbolVisitor {
         E: de::Error,
     {
         match value {
-            "ETH:BTC" => Ok(TradingSymbol::ETH_BTC),
+            "ETH-BTC" => Ok(TradingSymbol::ETH_BTC),
             _ => Ok(TradingSymbol::UNKNOWN(value.to_string())),
         }
     }
@@ -45,12 +56,7 @@ impl Serialize for TradingSymbol {
     where
         S: Serializer,
     {
-        let serialized_symbol = match self {
-            &TradingSymbol::ETH_BTC => "ETH:BTC",
-            &TradingSymbol::UNKNOWN(ref string) => string.as_str(),
-        };
-
-        serializer.serialize_str(serialized_symbol)
+        serializer.serialize_str(format!("{}", self).as_str())
     }
 }
 
@@ -66,12 +72,12 @@ mod tests {
 
         let serialized_symbol = serde_json::to_string(&symbol).unwrap();
 
-        assert_eq!(serialized_symbol, r#""ETH:BTC""#)
+        assert_eq!(serialized_symbol, r#""ETH-BTC""#)
     }
 
     #[test]
     fn deserializes_correctly() {
-        let serialized_symbol = r#""ETH:BTC""#;
+        let serialized_symbol = r#""ETH-BTC""#;
 
         let symbol = serde_json::from_str::<TradingSymbol>(serialized_symbol).unwrap();
 

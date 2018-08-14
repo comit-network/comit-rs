@@ -9,3 +9,6 @@ rust-crypto = "0.2.36"
 serde = "1.0.64"
 serde_derive = "1.0.63"
 serde_json = "1.0.19"
+bitcoin_support = { path = "../../vendor/bitcoin_support"}
+bitcoin_rpc = { path = "../../vendor/bitcoin_rpc"}
+ethereum_support = { path = "../../vendor/ethereum_support"}
