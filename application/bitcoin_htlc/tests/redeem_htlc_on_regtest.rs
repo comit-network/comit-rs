@@ -1,7 +1,7 @@
 extern crate bitcoin;
 extern crate bitcoin_htlc;
 extern crate bitcoin_rpc;
-extern crate bitcoin_rpc_helpers;
+extern crate bitcoin_rpc_test_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
 extern crate coblox_bitcoincore;
@@ -13,7 +13,7 @@ extern crate testcontainers;
 
 use bitcoin_htlc::Htlc;
 use bitcoin_rpc::{BitcoinCoreClient, BitcoinRpcApi};
-use bitcoin_rpc_helpers::RegtestHelperClient;
+use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
     serialize::serialize_hex, Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash,
 };
@@ -67,7 +67,7 @@ fn fund_htlc(
 
     client.generate(1).unwrap();
 
-    let vout = client.find_vout_for_address(&txid, &htlc_address.to_address());
+    let vout = client.find_vout_for_address(&txid, &htlc_address);
 
     (
         txid,
