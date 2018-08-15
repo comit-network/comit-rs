@@ -50,14 +50,8 @@ impl Htlc {
         }
     }
 
-    fn int_to_hex_left_padded(int: U256) -> String {
-        let hex = format!("{:x}", int);
-
-        format!("{:0>8}", hex)
-    }
-
     pub fn compile_to_hex(&self) -> ByteCode {
-        let refund_timeout = Self::int_to_hex_left_padded(self.refund_timeout.as_secs().into());
+        let refund_timeout = format!("{:0>8x}", self.refund_timeout.as_secs());
         let success_address = format!("{:x}", self.success_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
@@ -141,13 +135,6 @@ impl Htlc {
 mod tests {
     use super::*;
     use std::str::FromStr;
-
-    #[test]
-    fn should_correctly_pad_integer() {
-        let padded_string = Htlc::int_to_hex_left_padded(U256::from(32));
-
-        assert_eq!(&padded_string, "00000020");
-    }
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
