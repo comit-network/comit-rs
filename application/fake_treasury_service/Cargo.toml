@@ -15,9 +15,6 @@ rocket_contrib = "=0.3.14"
 serde = "1.0.66"
 serde_derive = "1.0.66"
 log = "0.4.3"
-common_types = { path = "../common_types" }
-bitcoin_support = { path = "../../vendor/bitcoin_support" }
-ethereum_support = { path = "../../vendor/ethereum_support" }
 
 [dev-dependencies]
 serde_json = "1.0.22"

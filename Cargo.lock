@@ -758,9 +758,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "fake_treasury_service"
 version = "0.1.0"
 dependencies = [
- "bitcoin_support 0.1.0",
- "common_types 0.1.0",
- "ethereum_support 0.1.0",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
