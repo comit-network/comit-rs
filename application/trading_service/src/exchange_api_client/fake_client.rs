@@ -1,4 +1,3 @@
-use super::client::ApiClient;
 use bitcoin_rpc::Address;
 use common_types::TradingSymbol;
 
@@ -29,8 +28,8 @@ impl ApiClient for FakeApiClient {
             uid: TradeId::from(Uuid::new_v4()),
             symbol,
             rate: 0.42,
-            btc_amount: BitcoinQuantity::from_satoshi(24),
-            eth_amount: EthereumQuantity::from_eth(10.0),
+            sell_amount: String::from("24"),
+            buy_amount: String::from("10.0"),
         };
         Ok(offer)
     }

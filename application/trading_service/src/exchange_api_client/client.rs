@@ -18,14 +18,14 @@ pub struct OfferResponseBody {
     pub uid: TradeId,
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub eth_amount: EthereumQuantity,
-    pub btc_amount: BitcoinQuantity,
+    pub buy_amount: String,
+    pub sell_amount: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: bitcoin_rpc::Address,
+    pub client_refund_address: bitcoin_rpc::Address, // todo change this to bitcoin_support
     pub client_success_address: ethereum_support::Address,
     pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
 }
@@ -34,7 +34,7 @@ pub struct OrderRequestBody {
 pub struct OrderResponseBody {
     pub exchange_refund_address: ethereum_support::Address,
     pub exchange_contract_time_lock: u64,
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: bitcoin_rpc::Address, // todo change this to bitcoin_support
 }
 
 pub trait ApiClient: Send + Sync {

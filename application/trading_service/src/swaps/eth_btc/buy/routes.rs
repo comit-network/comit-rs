@@ -38,6 +38,7 @@ pub fn post_buy_offers(
     event_store: State<InMemoryEventStore<TradeId>>,
 ) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
+    let symbol = TradingSymbol::ETH_BTC;
 
     let res = client.create_offer(symbol, offer_request_body.amount);
 
@@ -64,7 +65,7 @@ pub struct BuyOrderRequestBody {
     // I think we should avoid it and push for a dependency on rust-bitcoin instead
     // However, rust-bitcoin addresses do not seem to deserialize:
     // the trait `serde::Deserialize<'_>` is not implemented for `bitcoin::util::address::Address`
-    client_refund_address: bitcoin_rpc::Address,
+    client_refund_address: bitcoin_rpc::Address, // todo change this to bitcoin_support
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -122,8 +123,7 @@ fn handle_buy_orders(
     trade_id: TradeId,
     buy_order: BuyOrderRequestBody,
 ) -> Result<RequestToFund, Error> {
-    let offer = event_store.get_event::<OfferCreated>(trade_id)?;
-
+    let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
     let client_success_address = buy_order.client_success_address;
     let client_refund_address = buy_order.client_refund_address;
 
@@ -187,14 +187,16 @@ fn handle_buy_orders(
 
     event_store.add_event(trade_id, order_taken_event)?;
 
-    let offer = event_store.get_event::<OfferCreated>(trade_id).unwrap();
+    let offer = event_store
+        .get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)
+        .unwrap();
 
     let htlc_address = bitcoin_rpc::Address::from(htlc.compute_address(network.clone()));
 
     Ok(RequestToFund {
         address_to_fund: htlc_address,
-        eth_amount: offer.eth_amount,
-        btc_amount: offer.btc_amount,
+        eth_amount: offer.buy_amount,
+        btc_amount: offer.sell_amount,
     })
 }
 
@@ -253,8 +255,12 @@ fn handle_get_redeem_orders(
     event_store: &InMemoryEventStore<TradeId>,
     trade_id: TradeId,
 ) -> Result<RedeemDetails, Error> {
-    let address = event_store.get_event::<ContractDeployed>(trade_id)?.address;
-    let secret = event_store.get_event::<OrderCreated>(trade_id)?.secret;
+    let address = event_store
+        .get_event::<ContractDeployed<Ethereum>>(trade_id)?
+        .address;
+    let secret = event_store
+        .get_event::<OrderCreated<Ethereum, Bitcoin>>(trade_id)?
+        .secret;
 
     Ok(RedeemDetails {
         address,

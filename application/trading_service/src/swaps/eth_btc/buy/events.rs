@@ -17,64 +17,78 @@ use std::str::FromStr;
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferCreated {
+pub struct OfferCreated<B, S>
+where
+    S: Ledger,
+    B: Ledger,
+{
     pub uid: TradeId,
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub btc_amount: BitcoinQuantity,
-    pub eth_amount: EthereumQuantity,
+    pub buy_amount: B::Quantity,
+    pub sell_amount: S::Quantity,
 }
 
-impl From<OfferResponseBody> for OfferCreated {
+impl From<OfferResponseBody> for OfferCreated<Ethereum, Bitcoin> {
     fn from(offer: OfferResponseBody) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            btc_amount: offer.btc_amount,
-            eth_amount: offer.eth_amount,
+            buy_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
+            sell_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
         }
     }
 }
 
-impl Event for OfferCreated {
+impl Event for OfferCreated<Ethereum, Bitcoin> {
     type Prev = ();
 }
 
 // State after client accepts trade offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderCreated {
+pub struct OrderCreated<B, S>
+where
+    B: Ledger,
+    S: Ledger,
+{
     pub uid: TradeId,
-    pub client_success_address: ethereum_support::Address,
-    pub client_refund_address: bitcoin_rpc::Address,
+    pub client_success_address: B::Address,
+    pub client_refund_address: S::Address,
     pub secret: Secret,
     pub long_relative_timelock: BlockHeight,
 }
 
-impl Event for OrderCreated {
-    type Prev = OfferCreated;
+impl Event for OrderCreated<Ethereum, Bitcoin> {
+    type Prev = OfferCreated<Ethereum, Bitcoin>;
 }
 
 #[derive(Clone, Debug)]
-pub struct OrderTaken {
+pub struct OrderTaken<B>
+where
+    B: Ledger,
+{
     pub uid: TradeId,
-    pub exchange_refund_address: ethereum_support::Address,
+    pub exchange_refund_address: B::Address,
     // This is embedded in the HTLC but we keep it here as well for completeness
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: bitcoin_rpc::Address, // todo change this to bitcoin_support
     pub exchange_contract_time_lock: u64,
     pub htlc: Htlc,
 }
 
-impl Event for OrderTaken {
-    type Prev = OrderCreated;
+impl Event for OrderTaken<Ethereum> {
+    type Prev = OrderCreated<Ethereum, Bitcoin>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed {
+pub struct ContractDeployed<B>
+where
+    B: Ledger,
+{
     pub uid: TradeId,
-    pub address: ethereum_support::Address,
+    pub address: B::Address,
 }
 
-impl Event for ContractDeployed {
-    type Prev = OrderTaken;
+impl Event for ContractDeployed<Ethereum> {
+    type Prev = OrderTaken<Ethereum>;
 }
