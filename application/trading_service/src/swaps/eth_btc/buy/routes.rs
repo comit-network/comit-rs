@@ -187,9 +187,7 @@ fn handle_buy_orders(
 
     event_store.add_event(trade_id, order_taken_event)?;
 
-    let offer = event_store
-        .get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)
-        .unwrap();
+    let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
 
     let htlc_address = bitcoin_rpc::Address::from(htlc.compute_address(network.clone()));
 
@@ -272,14 +270,13 @@ fn handle_get_redeem_orders(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use common_types::TradingSymbol;
     use event_store::InMemoryEventStore;
+    use exchange_api_client::FakeApiClient;
     use rocket::{self, http::*};
     use rocket_factory::create_rocket_instance;
     use serde_json;
-
-    use super::*;
-    use common_types::TradingSymbol;
-    use exchange_api_client::FakeApiClient;
 
     // Secret: 12345678901234567890123456789012
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c

@@ -1,6 +1,5 @@
 use bitcoin_rpc::Address;
 use common_types::TradingSymbol;
-
 use exchange_api_client::{
     client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
 };

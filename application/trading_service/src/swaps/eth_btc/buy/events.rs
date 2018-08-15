@@ -2,18 +2,15 @@ use bitcoin_htlc::Htlc;
 use bitcoin_rpc::{self, BlockHeight};
 use bitcoin_support::BitcoinQuantity;
 use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     TradingSymbol,
 };
-
-use common_types::ledger::Ledger;
 use ethereum_support::EthereumQuantity;
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use swaps::TradeId;
-
 use std::str::FromStr;
+use swaps::TradeId;
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
