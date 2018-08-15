@@ -1,6 +1,6 @@
 use super::events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken};
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
-use bitcoin_rpc::{self, BlockHeight};
+use bitcoin_rpc::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -14,10 +14,7 @@ use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use swaps::TradeId;
 
 #[derive(Debug)]
@@ -61,16 +58,12 @@ pub fn post_buy_offers(
 #[derive(Deserialize)]
 pub struct BuyOrderRequestBody {
     client_success_address: ethereum_support::Address,
-    // TODO: this forces the trading-cli to have a dependency on bitcoin_rpc.
-    // I think we should avoid it and push for a dependency on rust-bitcoin instead
-    // However, rust-bitcoin addresses do not seem to deserialize:
-    // the trait `serde::Deserialize<'_>` is not implemented for `bitcoin::util::address::Address`
-    client_refund_address: bitcoin_rpc::Address, // todo change this to bitcoin_support
+    client_refund_address: bitcoin_support::Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    address_to_fund: bitcoin_rpc::Address,
+    address_to_fund: bitcoin_support::Address,
     btc_amount: BitcoinQuantity,
     eth_amount: EthereumQuantity,
 }
@@ -158,16 +151,8 @@ fn handle_buy_orders(
         )
         .map_err(Error::ExchangeService)?;
 
-    let exchange_success_address =
-        bitcoin_support::Address::from_str(
-            order_response.exchange_success_address.to_string().as_str(),
-        ).expect("Could not convert exchange success address to bitcoin::util::address::Address");
-
-    let client_refund_address =
-        bitcoin_support::Address::from_str(client_refund_address.to_string().as_str())
-            .expect("Could not convert client refund address to bitcoin::util::address::Address");
-
-    let exchange_success_pubkey_hash = PubkeyHash::from(exchange_success_address);
+    let exchange_success_pubkey_hash =
+        PubkeyHash::from(order_response.exchange_success_address.clone());
     let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
@@ -189,7 +174,7 @@ fn handle_buy_orders(
 
     let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
 
-    let htlc_address = bitcoin_rpc::Address::from(htlc.compute_address(network.clone()));
+    let htlc_address = htlc.compute_address(network.clone());
 
     Ok(RequestToFund {
         address_to_fund: htlc_address,

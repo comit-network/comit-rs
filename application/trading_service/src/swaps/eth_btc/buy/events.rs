@@ -1,5 +1,5 @@
 use bitcoin_htlc::Htlc;
-use bitcoin_rpc::{self, BlockHeight};
+use bitcoin_rpc::BlockHeight;
 use bitcoin_support::BitcoinQuantity;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
@@ -61,19 +61,20 @@ impl Event for OrderCreated<Ethereum, Bitcoin> {
 }
 
 #[derive(Clone, Debug)]
-pub struct OrderTaken<B>
+pub struct OrderTaken<B, S>
 where
     B: Ledger,
+    S: Ledger,
 {
     pub uid: TradeId,
     pub exchange_refund_address: B::Address,
     // This is embedded in the HTLC but we keep it here as well for completeness
-    pub exchange_success_address: bitcoin_rpc::Address, // todo change this to bitcoin_support
+    pub exchange_success_address: S::Address,
     pub exchange_contract_time_lock: u64,
     pub htlc: Htlc,
 }
 
-impl Event for OrderTaken<Ethereum> {
+impl Event for OrderTaken<Ethereum, Bitcoin> {
     type Prev = OrderCreated<Ethereum, Bitcoin>;
 }
 
@@ -87,5 +88,5 @@ where
 }
 
 impl Event for ContractDeployed<Ethereum> {
-    type Prev = OrderTaken<Ethereum>;
+    type Prev = OrderTaken<Ethereum, Bitcoin>;
 }
