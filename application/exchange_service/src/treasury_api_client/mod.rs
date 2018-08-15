@@ -12,4 +12,4 @@ pub struct Rate {
 
 mod fake_client;
 
-pub use self::fake_client::{FakeBuyApiClient, FakeSellApiClient};
+pub use self::fake_client::FakeApiClient;

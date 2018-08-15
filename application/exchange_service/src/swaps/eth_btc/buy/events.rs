@@ -1,5 +1,8 @@
 use bitcoin_support::*;
-use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
 use ethereum_support::*;
 use event_store::Event;
 pub use swaps::eth_btc::common::{OfferCreated as OfferState, OfferCreated};
@@ -10,14 +13,14 @@ use swaps::{
 use treasury_api_client::RateResponseBody;
 use uuid::Uuid;
 
-impl From<RateResponseBody> for OfferCreated<Ethereum, Bitcoin> {
-    fn from(r: RateResponseBody) -> Self {
+impl OfferCreated<Ethereum, Bitcoin> {
+    pub fn new(r: RateResponseBody, buy_amount: EthereumQuantity) -> Self {
         OfferCreated {
             uid: TradeId(Uuid::new_v4()),
-            symbol: r.symbol,
+            symbol: TradingSymbol::ETH_BTC,
             rate: r.rate,
-            buy_amount: EthereumQuantity::from_eth(r.buy_amount), // ETH
-            sell_amount: BitcoinQuantity::from_bitcoin(r.sell_amount), // BTC
+            buy_amount,
+            sell_amount: BitcoinQuantity::from_bitcoin(r.rate * buy_amount.ethereum()),
         }
     }
 }

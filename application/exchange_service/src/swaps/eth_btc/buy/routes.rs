@@ -99,11 +99,13 @@ fn handle_post_buy_offers(
     event_store: &InMemoryEventStore<TradeId>,
     treasury_api_client: &Arc<ApiClient>,
 ) -> Result<OfferState<Ethereum, Bitcoin>, Error> {
+    let buy_amount = ethereum_support::EthereumQuantity::from_eth(offer_request_body.amount);
+
     let rate_response_body = treasury_api_client
-        .request_rate(TradingSymbol::ETH_BTC, offer_request_body.amount)
+        .request_rate(TradingSymbol::ETH_BTC)
         .map_err(Error::TreasuryService)?;
 
-    let offer_event = OfferCreated::from(rate_response_body);
+    let offer_event = OfferCreated::new(rate_response_body, buy_amount);
 
     event_store.add_event(offer_event.uid, offer_event.clone())?;
 

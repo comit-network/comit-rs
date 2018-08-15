@@ -22,7 +22,7 @@ use exchange_service::{
     ethereum_service::{self, BlockingEthereumApi},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
-    treasury_api_client::FakeBuyApiClient,
+    treasury_api_client::FakeApiClient,
 };
 use rocket::{
     http::{ContentType, Status},
@@ -94,7 +94,7 @@ impl BlockingEthereumApi for StaticEthereumApi {
 
 fn create_rocket_client() -> Client {
     let rocket = create_rocket_instance(
-        Arc::new(FakeBuyApiClient),
+        Arc::new(FakeApiClient),
         InMemoryEventStore::new(),
         Arc::new(ethereum_service::EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
