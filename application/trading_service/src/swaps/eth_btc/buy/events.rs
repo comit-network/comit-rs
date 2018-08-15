@@ -48,9 +48,9 @@ impl Event for OfferCreated<Ethereum, Bitcoin> {
 // State after client accepts trade offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderCreated<B, S>
-    where
-        B: Ledger,
-        S: Ledger,
+where
+    B: Ledger,
+    S: Ledger,
 {
     pub uid: TradeId,
     pub client_success_address: B::Address,
