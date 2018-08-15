@@ -1,7 +1,11 @@
 use super::events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken};
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
-use bitcoin_rpc::{self, BlockHeight};
+use bitcoin_rpc::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{self, EventStore, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
@@ -10,12 +14,8 @@ use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 use swaps::TradeId;
-use symbol::Symbol;
 
 #[derive(Debug)]
 pub enum Error {
@@ -35,7 +35,7 @@ pub fn post_buy_offers(
     event_store: State<InMemoryEventStore<TradeId>>,
 ) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
-    let symbol = Symbol("ETH-BTC".to_string());
+    let symbol = TradingSymbol::ETH_BTC;
 
     let res = client.create_offer(symbol, offer_request_body.amount);
 
@@ -58,16 +58,12 @@ pub fn post_buy_offers(
 #[derive(Deserialize)]
 pub struct BuyOrderRequestBody {
     client_success_address: ethereum_support::Address,
-    // TODO: this forces the trading-cli to have a dependency on bitcoin_rpc.
-    // I think we should avoid it and push for a dependency on rust-bitcoin instead
-    // However, rust-bitcoin addresses do not seem to deserialize:
-    // the trait `serde::Deserialize<'_>` is not implemented for `bitcoin::util::address::Address`
-    client_refund_address: bitcoin_rpc::Address,
+    client_refund_address: bitcoin_support::Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    address_to_fund: bitcoin_rpc::Address,
+    address_to_fund: bitcoin_support::Address,
     btc_amount: BitcoinQuantity,
     eth_amount: EthereumQuantity,
 }
@@ -120,8 +116,7 @@ fn handle_buy_orders(
     trade_id: TradeId,
     buy_order: BuyOrderRequestBody,
 ) -> Result<RequestToFund, Error> {
-    let offer = event_store.get_event::<OfferCreated>(trade_id)?;
-
+    let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
     let client_success_address = buy_order.client_success_address;
     let client_refund_address = buy_order.client_refund_address;
 
@@ -156,16 +151,8 @@ fn handle_buy_orders(
         )
         .map_err(Error::ExchangeService)?;
 
-    let exchange_success_address =
-        bitcoin_support::Address::from_str(
-            order_response.exchange_success_address.to_string().as_str(),
-        ).expect("Could not convert exchange success address to bitcoin::util::address::Address");
-
-    let client_refund_address =
-        bitcoin_support::Address::from_str(client_refund_address.to_string().as_str())
-            .expect("Could not convert client refund address to bitcoin::util::address::Address");
-
-    let exchange_success_pubkey_hash = PubkeyHash::from(exchange_success_address);
+    let exchange_success_pubkey_hash =
+        PubkeyHash::from(order_response.exchange_success_address.clone());
     let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
@@ -185,14 +172,14 @@ fn handle_buy_orders(
 
     event_store.add_event(trade_id, order_taken_event)?;
 
-    let offer = event_store.get_event::<OfferCreated>(trade_id).unwrap();
+    let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
 
-    let htlc_address = bitcoin_rpc::Address::from(htlc.compute_address(network.clone()));
+    let htlc_address = htlc.compute_address(network.clone());
 
     Ok(RequestToFund {
         address_to_fund: htlc_address,
-        eth_amount: offer.eth_amount,
-        btc_amount: offer.btc_amount,
+        eth_amount: offer.buy_amount,
+        btc_amount: offer.sell_amount,
     })
 }
 
@@ -251,8 +238,12 @@ fn handle_get_redeem_orders(
     event_store: &InMemoryEventStore<TradeId>,
     trade_id: TradeId,
 ) -> Result<RedeemDetails, Error> {
-    let address = event_store.get_event::<ContractDeployed>(trade_id)?.address;
-    let secret = event_store.get_event::<OrderCreated>(trade_id)?.secret;
+    let address = event_store
+        .get_event::<ContractDeployed<Ethereum>>(trade_id)?
+        .address;
+    let secret = event_store
+        .get_event::<OrderCreated<Ethereum, Bitcoin>>(trade_id)?
+        .secret;
 
     Ok(RedeemDetails {
         address,
@@ -264,13 +255,13 @@ fn handle_get_redeem_orders(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use common_types::TradingSymbol;
     use event_store::InMemoryEventStore;
+    use exchange_api_client::FakeApiClient;
     use rocket::{self, http::*};
     use rocket_factory::create_rocket_instance;
     use serde_json;
-
-    use super::*;
-    use exchange_api_client::FakeApiClient;
 
     // Secret: 12345678901234567890123456789012
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
@@ -306,7 +297,7 @@ mod tests {
 
         assert_eq!(
             offer_response.symbol,
-            Symbol("ETH-BTC".to_string()),
+            TradingSymbol::ETH_BTC,
             "offer_response has correct symbol"
         );
         let uid = offer_response.uid;
