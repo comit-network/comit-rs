@@ -1,6 +1,8 @@
+use bigdecimal::ParseBigDecimalError;
 use std::{
     fmt,
     ops::{Add, Sub},
+    str::FromStr,
 };
 
 #[derive(Serialize, PartialEq, Deserialize, Clone, Debug, Copy)]
@@ -43,6 +45,15 @@ impl fmt::Display for BitcoinQuantity {
     }
 }
 
+impl FromStr for BitcoinQuantity {
+    type Err = ParseBigDecimalError;
+
+    fn from_str(string: &str) -> Result<BitcoinQuantity, Self::Err> {
+        let dec = string.parse()?;
+        Ok(Self::from_bitcoin(dec))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -55,6 +66,30 @@ mod test {
     #[test]
     fn a_bitcoin_is_a_hundred_million_sats() {
         assert_eq!(BitcoinQuantity::from_bitcoin(1.0).satoshi(), 100_000_000);
+    }
+
+    #[test]
+    fn a_bitcoin_as_string_is_a_hundred_million_sats() {
+        assert_eq!(
+            BitcoinQuantity::from_str("1.00000001").unwrap(),
+            BitcoinQuantity::from_bitcoin(1.00000001)
+        )
+    }
+
+    #[test]
+    fn bitcoin_with_small_fraction_format() {
+        assert_eq!(
+            format!("{}", BitcoinQuantity::from_str("1234.00000100").unwrap()),
+            "1234.000001 BTC"
+        )
+    }
+
+    #[test]
+    fn one_hundred_bitcoin_format() {
+        assert_eq!(
+            format!("{}", BitcoinQuantity::from_str("100").unwrap()),
+            "100 BTC"
+        )
     }
 
     #[test]
