@@ -1,12 +1,13 @@
 use super::client::ApiClient;
 use bitcoin_rpc::Address;
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EthereumQuantity;
-use exchange_api_client::client::{OfferResponseBody, OrderRequestBody, OrderResponseBody};
+use common_types::TradingSymbol;
+
+use exchange_api_client::{
+    client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
+};
 use reqwest;
 use std::str::FromStr;
 use swaps::TradeId;
-use symbol::Symbol;
 use uuid::Uuid;
 
 #[allow(dead_code)]
@@ -21,12 +22,12 @@ impl FakeApiClient {
 impl ApiClient for FakeApiClient {
     fn create_offer(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         _amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let offer = OfferResponseBody {
             uid: TradeId::from(Uuid::new_v4()),
-            symbol: symbol.clone(),
+            symbol,
             rate: 0.42,
             btc_amount: BitcoinQuantity::from_satoshi(24),
             eth_amount: EthereumQuantity::from_eth(10.0),
@@ -36,7 +37,7 @@ impl ApiClient for FakeApiClient {
 
     fn create_order(
         &self,
-        _symbol: Symbol,
+        _symbol: TradingSymbol,
         _uid: TradeId,
         _trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {

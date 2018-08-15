@@ -2,6 +2,10 @@ use super::events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken};
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
 use bitcoin_rpc::{self, BlockHeight};
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{self, EventStore, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
@@ -15,7 +19,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use swaps::TradeId;
-use symbol::Symbol;
 
 #[derive(Debug)]
 pub enum Error {
@@ -35,7 +38,6 @@ pub fn post_buy_offers(
     event_store: State<InMemoryEventStore<TradeId>>,
 ) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
-    let symbol = Symbol("ETH-BTC".to_string());
 
     let res = client.create_offer(symbol, offer_request_body.amount);
 
@@ -270,6 +272,7 @@ mod tests {
     use serde_json;
 
     use super::*;
+    use common_types::TradingSymbol;
     use exchange_api_client::FakeApiClient;
 
     // Secret: 12345678901234567890123456789012
@@ -306,7 +309,7 @@ mod tests {
 
         assert_eq!(
             offer_response.symbol,
-            Symbol("ETH-BTC".to_string()),
+            TradingSymbol::ETH_BTC,
             "offer_response has correct symbol"
         );
         let uid = offer_response.uid;

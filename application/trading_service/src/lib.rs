@@ -28,6 +28,5 @@ pub mod exchange_api_client;
 
 pub mod rocket_factory;
 pub mod swaps;
-pub mod symbol;
 
 pub use common_types::secret;

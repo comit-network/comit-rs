@@ -1,18 +1,25 @@
 use bitcoin_htlc::Htlc;
 use bitcoin_rpc::{self, BlockHeight};
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{self, EthereumQuantity};
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
+
+use common_types::ledger::Ledger;
+use ethereum_support::EthereumQuantity;
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use swaps::TradeId;
-use symbol::Symbol;
+
+use std::str::FromStr;
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferCreated {
     pub uid: TradeId,
-    pub symbol: Symbol,
+    pub symbol: TradingSymbol,
     pub rate: f64,
     pub btc_amount: BitcoinQuantity,
     pub eth_amount: EthereumQuantity,
