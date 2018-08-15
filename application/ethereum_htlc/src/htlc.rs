@@ -1,5 +1,5 @@
 use common_types::secret::SecretHash;
-use ethereum_support::{Address, Bytes, U256};
+use ethereum_support::{Address, Bytes};
 use hex;
 use std::time::Duration;
 
