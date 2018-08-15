@@ -13,6 +13,27 @@ use snow::Session;
 use std::{cmp::min, io};
 use tokio_codec::{Decoder, Encoder};
 
+/*
+This is the format for each message. It first contains
+a noise encrypted length (and tag/MAC) and then a noise
+encrypted payload.
++-------------------------------+
+|2-byte encrypted message length|
++-------------------------------+
+|  16-byte tag of the encrypted |
+|        message length         |
++-------------------------------+
+|                               |
+|                               |
+|     encrypted payload         |
+|     (max 65519 bytes)         |
+|                               |
++-------------------------------+
+|     16-byte tag of the        |
+|      payload                  |
++-------------------------------+
+*/
+
 pub const NOISE_MSG_MAX_LENGTH: usize = 65535;
 pub const NOISE_TAG_LENGTH: usize = 16;
 
