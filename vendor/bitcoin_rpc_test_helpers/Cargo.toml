@@ -1,5 +1,5 @@
 [package]
-name = "bitcoin_rpc_helpers"
+name = "bitcoin_rpc_test_helpers"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,5 +9,6 @@ authors = [
 ]
 
 [dependencies]
-bitcoin_support = { path = "../bitcoin_support" }
 bitcoin_rpc     = { path = "../bitcoin_rpc" }
+bitcoin_support = { path = "../bitcoin_support" }
+

@@ -16,6 +16,6 @@ bitcoin_support = { path = "../bitcoin_support" }
 coblox_bitcoincore = { path = "../coblox_bitcoincore" }
 bitcoin_rpc  = { path = "../bitcoin_rpc" }
 hex = "0.3.2"
-bitcoin_rpc_helpers = { path = "../bitcoin_rpc_helpers" }
+bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
 testcontainers = { path = "../testcontainers_rs" }
 env_logger = "0.5.11"
