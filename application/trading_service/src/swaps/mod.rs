@@ -1,8 +1,10 @@
-pub mod eth_btc;
 use logging;
 use rocket::{http::RawStr, request::FromParam};
 use std::fmt;
 use uuid::{self, Uuid};
+
+pub mod eth_btc;
+pub mod eth_ln;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
