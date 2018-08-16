@@ -6,16 +6,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-mod address;
-mod bitcoin_quantity;
-mod pubkey;
-mod weight;
-
 pub use address::Address;
-pub use bitcoin_quantity::*;
-pub use pubkey::*;
-pub use weight::*;
-
 pub use bitcoin::{
     blockdata::{
         script::Script,
@@ -26,5 +17,14 @@ pub use bitcoin::{
         bip143::SighashComponents,
         hash::{Hash160, Sha256dHash},
         privkey::Privkey as PrivateKey,
+        Error,
     },
 };
+pub use bitcoin_quantity::*;
+pub use pubkey::*;
+pub use weight::*;
+
+mod address;
+mod bitcoin_quantity;
+mod pubkey;
+mod weight;

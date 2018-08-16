@@ -13,7 +13,10 @@ use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
-use std::sync::{Arc, Mutex};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
 use swaps::{
     events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
     TradeId,
@@ -23,6 +26,7 @@ use swaps::{
 pub enum Error {
     EventStore(event_store::Error),
     ExchangeService(reqwest::Error),
+    TradingService(String),
 }
 
 #[derive(Deserialize)]
@@ -85,6 +89,18 @@ impl From<event_store::Error> for Error {
     }
 }
 
+impl From<bitcoin_support::Error> for Error {
+    fn from(_e: bitcoin_support::Error) -> Self {
+        Error::TradingService(String::from("Invalid address format"))
+    }
+}
+
+//impl From<rustc_hex::FromHexError> for Error {
+//    fn from(e: rustc_hex::FromHexError) -> Self {
+//        Error::TradingService(String::from("Invalid address format"))
+//    }
+//} //TODO implement this method
+
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-orders",
     format = "application/json",
@@ -146,15 +162,16 @@ fn handle_buy_orders(
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
-                client_refund_address: client_refund_address.clone(),
-                client_success_address: client_success_address.clone(),
-                client_contract_time_lock: BlockHeight::new(BTC_BLOCKS_IN_24H),
+                client_refund_address: client_refund_address.to_string(),
+                client_success_address: client_success_address.to_string(),
+                client_contract_time_lock: BTC_BLOCKS_IN_24H,
             },
         )
         .map_err(Error::ExchangeService)?;
 
-    let exchange_success_pubkey_hash =
-        PubkeyHash::from(order_response.exchange_success_address.clone());
+    let exchange_success_pubkey_hash = PubkeyHash::from(bitcoin_support::Address::from_str(
+        order_response.exchange_success_address.as_str(),
+    )?);
     let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
@@ -164,11 +181,15 @@ fn handle_buy_orders(
         BTC_BLOCKS_IN_24H,
     );
 
-    let order_taken_event = OrderTaken {
+    let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
         exchange_contract_time_lock: order_response.exchange_contract_time_lock,
-        exchange_refund_address: order_response.exchange_refund_address,
-        exchange_success_address: order_response.exchange_success_address,
+        exchange_refund_address: order_response
+            .exchange_refund_address
+            .parse()
+            .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address"),
+        //TODO could not find the  error rustc_hex::FromHexError anywhere
+        exchange_success_address: order_response.exchange_success_address.parse()?,
         htlc: htlc.clone(),
     };
 

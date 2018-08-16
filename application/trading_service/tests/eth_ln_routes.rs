@@ -5,6 +5,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde_json;
 extern crate trading_service;
+extern crate uuid;
 
 use bitcoin_support::Network;
 use common_types::TradingSymbol;
@@ -18,15 +19,17 @@ use trading_service::{
 
 #[test]
 fn post_buy_offers_should_call_create_offer_and_return_offer() {
+    let api_client = FakeApiClient::new();
+
     let rocket = create_rocket_instance(
         Network::Testnet,
         InMemoryEventStore::new(),
-        Arc::new(FakeApiClient::new()),
+        Arc::new(api_client),
     );
     let client = rocket::local::Client::new(rocket).unwrap();
 
     let request = client
-        .post("/trades/ETH-LN/buy-offers")
+        .post("/trades/ETH-LN/sell-offer")
         .header(ContentType::JSON)
         .body(r#"{ "amount": 42 }"#);
 

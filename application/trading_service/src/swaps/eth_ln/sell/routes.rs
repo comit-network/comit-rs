@@ -1,17 +1,11 @@
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    TradingSymbol,
-};
+use common_types::TradingSymbol;
 use event_store::{self, EventStore, InMemoryEventStore};
-use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
+use exchange_api_client::{ApiClient, OfferResponseBody};
 use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
-use std::sync::{Arc, Mutex};
-use swaps::{
-    events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
-    TradeId,
-};
+use std::sync::Arc;
+use swaps::{events::OfferCreated, TradeId};
 
 #[derive(Debug)]
 pub enum Error {
@@ -31,8 +25,8 @@ pub struct BuyOfferRequestBody {
     amount: f64,
 }
 
-#[post("/trades/ETH-LN/buy-offers", format = "application/json", data = "<offer_request_body>")]
-pub fn post_buy_offers(
+#[post("/trades/ETH-LN/sell-offer", format = "application/json", data = "<offer_request_body>")]
+pub fn post_sell_offer(
     offer_request_body: Json<BuyOfferRequestBody>,
     client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
