@@ -1,9 +1,9 @@
 language: rust
 cache:
-  cargo: true
   directories:
   - "$HOME/.rustup"
-  timeout: 300
+  - "$HOME/.cargo"
+  - "$HOME/.cache/sccache"
 sudo: required
 rust: nightly-2018-06-24
 before_install:
@@ -23,10 +23,11 @@ before_script:
 - docker pull coblox/bitcoin-core:0.16.1-r2
 - "./setup.sh"
 - ".travis/capture-docker-traffic.sh"
+- which sccache || cargo install sccache
 script:
 - "./check-fmt.sh"
-- cargo build --all
-- cargo test --all
+- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all
+- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
 after_script:
 - expr $TRAVIS_TEST_RESULT > /dev/null && .travis/upload-container-logs-to-gcs.sh
 notifications:
