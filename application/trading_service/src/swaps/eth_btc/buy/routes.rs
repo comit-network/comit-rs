@@ -1,4 +1,3 @@
-use super::events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken};
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
 use bitcoin_rpc::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
@@ -15,7 +14,10 @@ use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
 use std::sync::{Arc, Mutex};
-use swaps::TradeId;
+use swaps::{
+    events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
+    TradeId,
+};
 
 #[derive(Debug)]
 pub enum Error {

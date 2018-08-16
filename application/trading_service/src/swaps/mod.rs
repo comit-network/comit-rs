@@ -5,6 +5,7 @@ use uuid::{self, Uuid};
 
 pub mod eth_btc;
 pub mod eth_ln;
+pub mod events;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
