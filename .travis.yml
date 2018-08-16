@@ -3,12 +3,11 @@ cache:
   directories:
   - "$HOME/.rustup"
   - "$HOME/.cargo"
+  - "$HOME/.cache/sccache"
 sudo: required
 rust: nightly-2018-06-24
 before_install:
 - openssl aes-256-cbc -K $encrypted_13ab58161701_key -iv $encrypted_13ab58161701_iv -in .travis/gcloud-authentication.json.enc -out .travis/gcloud-authentication.json -d
-- openssl aes-256-cbc -K $encrypted_13ab58161701_key -iv $encrypted_13ab58161701_iv -in .travis/travis_build_cache.enc -out .travis/travis_build_cache -d
-- chmod 600 .travis/travis_build_cache
 install: true
 services:
 - docker
@@ -24,7 +23,6 @@ before_script:
 - docker pull coblox/bitcoin-core:0.16.1-r2
 - "./setup.sh"
 - ".travis/capture-docker-traffic.sh"
-- ".travis/download-cache.sh"
 - which sccache || cargo install sccache
 script:
 - "./check-fmt.sh"
@@ -32,8 +30,6 @@ script:
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
 after_script:
 - expr $TRAVIS_TEST_RESULT > /dev/null && .travis/upload-container-logs-to-gcs.sh
-- ".travis/upload-cache.sh"
-before_cache: 
 notifications:
   email: false
   slack:
