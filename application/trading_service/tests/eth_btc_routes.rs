@@ -50,7 +50,7 @@ pub struct RedeemDetails {
 
 // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
 #[test]
-fn happy_path_sell_x_btc_for_eth() {
+fn happy_path_buy_x_eth_for_btc() {
     let api_client = FakeApiClient::new();
 
     let rocket = create_rocket_instance(
@@ -125,3 +125,32 @@ fn happy_path_sell_x_btc_for_eth() {
 }
 
 // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
+
+#[test]
+fn sell_x_eth_for_btc() {
+    let api_client = FakeApiClient::new();
+
+    let rocket = create_rocket_instance(
+        Network::Testnet,
+        InMemoryEventStore::new(),
+        Arc::new(api_client),
+    );
+    let client = rocket::local::Client::new(rocket).unwrap();
+
+    let request = client
+        .post("/trades/ETH-BTC/sell-offers")
+        .header(ContentType::JSON)
+        .body(r#"{ "amount": 42 }"#);
+
+    let mut response = request.dispatch();
+
+    assert_eq!(response.status(), Status::Ok);
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+
+    assert_eq!(
+        offer_response.symbol,
+        TradingSymbol::ETH_BTC,
+        "offer_response has correct symbol"
+    );
+}

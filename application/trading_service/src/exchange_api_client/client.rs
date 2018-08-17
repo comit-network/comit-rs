@@ -47,6 +47,11 @@ pub trait ApiClient: Send + Sync {
         uid: TradeId,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error>;
+    fn create_sell_offer(
+        &self,
+        symbol: TradingSymbol,
+        amount: f64,
+    ) -> Result<OfferResponseBody, reqwest::Error>;
 }
 
 pub struct DefaultApiClient {
@@ -89,5 +94,19 @@ impl ApiClient for DefaultApiClient {
             .json(trade_request)
             .send()
             .and_then(|mut res| res.json::<OrderResponseBody>())
+    }
+
+    fn create_sell_offer(
+        &self,
+        symbol: TradingSymbol,
+        amount: f64,
+    ) -> Result<OfferResponseBody, reqwest::Error> {
+        let body = OfferRequestBody { amount };
+
+        self.client
+            .post(format!("{}/trades/{}/sell-offers", self.url.0, symbol).as_str())
+            .json(&body)
+            .send()
+            .and_then(|mut res| res.json::<OfferResponseBody>())
     }
 }

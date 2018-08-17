@@ -1,6 +1,6 @@
 use common_types::TradingSymbol;
 use exchange_api_client::{
-    client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
+    ApiClient, client::OrderResponseBody, OfferResponseBody, OrderRequestBody,
 };
 use reqwest;
 use swaps::TradeId;
@@ -44,5 +44,20 @@ impl ApiClient for FakeApiClient {
         };
 
         Ok(accept)
+    }
+
+    fn create_sell_offer(
+        &self,
+        symbol: TradingSymbol,
+        _amount: f64,
+    ) -> Result<OfferResponseBody, reqwest::Error> {
+        let offer = OfferResponseBody {
+            uid: TradeId::from(Uuid::new_v4()),
+            symbol,
+            rate: 0.42,
+            sell_amount: String::from("10"),
+            buy_amount: String::from("24"),
+        };
+        Ok(offer)
     }
 }
