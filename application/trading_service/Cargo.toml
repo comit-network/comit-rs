@@ -29,6 +29,7 @@ common_types = { path = "../common_types" }
 hex = "0.3.2"
 crypto = "0.0.2"
 logging = { path = "../logging" }
+rustc-hex = "1.0.0"
 
 [dependencies.uuid]
 features = ["serde", "v4"]

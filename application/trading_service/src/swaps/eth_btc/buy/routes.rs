@@ -12,6 +12,7 @@ use rand::OsRng;
 use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
+use rustc_hex;
 use secret::Secret;
 use std::{
     str::FromStr,
@@ -27,6 +28,31 @@ pub enum Error {
     EventStore(event_store::Error),
     ExchangeService(reqwest::Error),
     TradingService(String),
+}
+
+impl From<Error> for BadRequest<String> {
+    fn from(e: Error) -> Self {
+        error!("{:?}", e);
+        BadRequest(None)
+    }
+}
+
+impl From<event_store::Error> for Error {
+    fn from(e: event_store::Error) -> Self {
+        Error::EventStore(e)
+    }
+}
+
+impl From<bitcoin_support::Error> for Error {
+    fn from(_e: bitcoin_support::Error) -> Self {
+        Error::TradingService(String::from("Invalid address format"))
+    }
+}
+
+impl From<rustc_hex::FromHexError> for Error {
+    fn from(e: rustc_hex::FromHexError) -> Self {
+        Error::TradingService(String::from("Invalid address format"))
+    }
 }
 
 #[derive(Deserialize)]
@@ -75,31 +101,6 @@ pub struct RequestToFund {
 }
 
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
-
-impl From<Error> for BadRequest<String> {
-    fn from(e: Error) -> Self {
-        error!("{:?}", e);
-        BadRequest(None)
-    }
-}
-
-impl From<event_store::Error> for Error {
-    fn from(e: event_store::Error) -> Self {
-        Error::EventStore(e)
-    }
-}
-
-impl From<bitcoin_support::Error> for Error {
-    fn from(_e: bitcoin_support::Error) -> Self {
-        Error::TradingService(String::from("Invalid address format"))
-    }
-}
-
-//impl From<rustc_hex::FromHexError> for Error {
-//    fn from(e: rustc_hex::FromHexError) -> Self {
-//        Error::TradingService(String::from("Invalid address format"))
-//    }
-//} //TODO implement this method
 
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-orders",
@@ -184,10 +185,7 @@ fn handle_buy_orders(
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
         exchange_contract_time_lock: order_response.exchange_contract_time_lock,
-        exchange_refund_address: order_response
-            .exchange_refund_address
-            .parse()
-            .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address"),
+        exchange_refund_address: order_response.exchange_refund_address.parse()?,
         //TODO could not find the  error rustc_hex::FromHexError anywhere
         exchange_success_address: order_response.exchange_success_address.parse()?,
         htlc: htlc.clone(),
