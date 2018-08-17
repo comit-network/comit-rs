@@ -253,7 +253,7 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
     type Item = C::Item;
     type Error = Error<C::Error>;
 
-    fn encode(&mut self, item: C::Item, encrypted: &mut BytesMut) -> Result<(), Self::Error> {
+    fn encode(&mut self, item: C::Item, cipher_text: &mut BytesMut) -> Result<(), Self::Error> {
         let mut item_bytes = BytesMut::new();
 
         self.inner
@@ -267,9 +267,9 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
             let length_frame = item_buffer.encode_length(&mut self.noise)?;
             let payload_frame = item_buffer.encode_payload(&mut self.noise)?;
 
-            encrypted.reserve(item_buffer.total_size());
-            encrypted.put(length_frame.as_ref());
-            encrypted.put(payload_frame.as_ref());
+            cipher_text.reserve(item_buffer.total_size());
+            cipher_text.put(length_frame.as_ref());
+            cipher_text.put(payload_frame.as_ref());
         }
 
         Ok(())
