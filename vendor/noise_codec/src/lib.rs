@@ -62,20 +62,24 @@ impl<C: Decoder> NoiseCodec<C> {
     fn decode_payload_frame_length(
         &mut self,
         cipher_text: &mut BytesMut,
-    ) -> Result<usize, Error<C::Error>> {
-        let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
+    ) -> Result<Option<usize>, Error<C::Error>> {
+        let no_length_yet = self.payload_frame_len.is_none();
+        let enough_data_for_length = cipher_text.len() >= LENGTH_FRAME_LENGTH;
 
-        let mut length = Length::new(0);
+        if no_length_yet && enough_data_for_length {
+            let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
 
-        self.noise.read_message(&length_frame[..], length.as_mut())?;
+            let mut length = Length::new(0);
 
-        let length = length.as_usize();
+            self.noise.read_message(&length_frame[..], length.as_mut())?;
 
-        trace!("Decrypted length: {:?}", length);
+            let length = length.as_usize();
+            trace!("Decrypted length: {:?}", length);
 
-        self.payload_frame_len = Some(length);
+            self.payload_frame_len = Some(length);
+        }
 
-        Ok(length)
+        Ok(self.payload_frame_len)
     }
 
     fn decode_payload_frame(
@@ -277,28 +281,21 @@ impl<C: Decoder> Decoder for NoiseCodec<C> {
     type Error = Error<C::Error>;
 
     fn decode(&mut self, cipher_text: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let no_length_yet = self.payload_frame_len.is_none();
-        let not_enough_data_for_length = cipher_text.len() < LENGTH_FRAME_LENGTH;
+        match self.decode_payload_frame_length(cipher_text)? {
+            Some(payload_frame_length) => {
+                if cipher_text.len() < payload_frame_length {
+                    return Ok(None);
+                }
 
-        if no_length_yet && not_enough_data_for_length {
-            return Ok(None);
+                let item = self.decode_payload_frame(cipher_text, payload_frame_length)?;
+
+                if item.is_none() {
+                    return self.decode(cipher_text);
+                }
+
+                Ok(item)
+            }
+            None => Ok(None),
         }
-
-        let payload_frame_len = match self.payload_frame_len {
-            Some(length) => length,
-            None => self.decode_payload_frame_length(cipher_text)?,
-        };
-
-        if cipher_text.len() < payload_frame_len {
-            return Ok(None);
-        }
-
-        let item = self.decode_payload_frame(cipher_text, payload_frame_len)?;
-
-        if item.is_none() {
-            return self.decode(cipher_text);
-        }
-
-        Ok(item)
     }
 }
