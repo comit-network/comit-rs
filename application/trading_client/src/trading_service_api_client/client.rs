@@ -138,7 +138,7 @@ impl ApiClient for DefaultApiClient {
             .json(request)
             .send()
             .and_then(|mut res| res.json::<OfferResponseBody>())
-            .map_err(|err| TradingServiceError::OfferAborted(err))
+            .map_err(TradingServiceError::OfferAborted)
     }
 
     fn request_order(
@@ -172,7 +172,6 @@ impl ApiClient for DefaultApiClient {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     #[test]

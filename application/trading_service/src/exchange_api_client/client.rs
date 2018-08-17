@@ -1,7 +1,4 @@
-use bitcoin_rpc;
-use bitcoin_support;
 use common_types::TradingSymbol;
-use ethereum_support;
 use reqwest;
 use secret::SecretHash;
 use swaps::TradeId;
@@ -26,16 +23,16 @@ pub struct OfferResponseBody {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: bitcoin_support::Address,
-    pub client_success_address: ethereum_support::Address,
-    pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
+    pub client_refund_address: String,
+    pub client_success_address: String,
+    pub client_contract_time_lock: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderResponseBody {
-    pub exchange_refund_address: ethereum_support::Address,
+    pub exchange_refund_address: String,
     pub exchange_contract_time_lock: u64,
-    pub exchange_success_address: bitcoin_support::Address,
+    pub exchange_success_address: String,
 }
 
 pub trait ApiClient: Send + Sync {

@@ -1,4 +1,3 @@
-use super::events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken};
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
 use bitcoin_rpc::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
@@ -13,14 +12,47 @@ use rand::OsRng;
 use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
+use rustc_hex;
 use secret::Secret;
-use std::sync::{Arc, Mutex};
-use swaps::TradeId;
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+};
+use swaps::{
+    events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
+    TradeId,
+};
 
 #[derive(Debug)]
 pub enum Error {
     EventStore(event_store::Error),
     ExchangeService(reqwest::Error),
+    TradingService(String),
+}
+
+impl From<Error> for BadRequest<String> {
+    fn from(e: Error) -> Self {
+        error!("{:?}", e);
+        BadRequest(None)
+    }
+}
+
+impl From<event_store::Error> for Error {
+    fn from(e: event_store::Error) -> Self {
+        Error::EventStore(e)
+    }
+}
+
+impl From<bitcoin_support::Error> for Error {
+    fn from(_e: bitcoin_support::Error) -> Self {
+        Error::TradingService(String::from("Invalid address format"))
+    }
+}
+
+impl From<rustc_hex::FromHexError> for Error {
+    fn from(_e: rustc_hex::FromHexError) -> Self {
+        Error::TradingService(String::from("Invalid address format"))
+    }
 }
 
 #[derive(Deserialize)]
@@ -69,19 +101,6 @@ pub struct RequestToFund {
 }
 
 const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
-
-impl From<Error> for BadRequest<String> {
-    fn from(e: Error) -> Self {
-        error!("{:?}", e);
-        BadRequest(None)
-    }
-}
-
-impl From<event_store::Error> for Error {
-    fn from(e: event_store::Error) -> Self {
-        Error::EventStore(e)
-    }
-}
 
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-orders",
@@ -144,15 +163,16 @@ fn handle_buy_orders(
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
-                client_refund_address: client_refund_address.clone(),
-                client_success_address: client_success_address.clone(),
-                client_contract_time_lock: BlockHeight::new(BTC_BLOCKS_IN_24H),
+                client_refund_address: client_refund_address.to_string(),
+                client_success_address: client_success_address.to_string(),
+                client_contract_time_lock: BTC_BLOCKS_IN_24H,
             },
         )
         .map_err(Error::ExchangeService)?;
 
-    let exchange_success_pubkey_hash =
-        PubkeyHash::from(order_response.exchange_success_address.clone());
+    let exchange_success_pubkey_hash = PubkeyHash::from(bitcoin_support::Address::from_str(
+        order_response.exchange_success_address.as_str(),
+    )?);
     let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
@@ -162,11 +182,12 @@ fn handle_buy_orders(
         BTC_BLOCKS_IN_24H,
     );
 
-    let order_taken_event = OrderTaken {
+    let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
         exchange_contract_time_lock: order_response.exchange_contract_time_lock,
-        exchange_refund_address: order_response.exchange_refund_address,
-        exchange_success_address: order_response.exchange_success_address,
+        exchange_refund_address: order_response.exchange_refund_address.parse()?,
+        //TODO could not find the  error rustc_hex::FromHexError anywhere
+        exchange_success_address: order_response.exchange_success_address.parse()?,
         htlc: htlc.clone(),
     };
 
@@ -251,102 +272,4 @@ fn handle_get_redeem_orders(
         // TODO: check how much gas we should tell the customer to pay
         gas: 35000,
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use common_types::TradingSymbol;
-    use event_store::InMemoryEventStore;
-    use exchange_api_client::FakeApiClient;
-    use rocket::{self, http::*};
-    use rocket_factory::create_rocket_instance;
-    use serde_json;
-
-    // Secret: 12345678901234567890123456789012
-    // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
-
-    // Sender address: bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg
-    // Sender pubkey: 020c04eb8cb87485501e30b656f37439ea7866d7c58b3c38161e5793b68e712356
-    // Sender pubkey hash: 1925a274ac004373bb5429553bdb55c40e57b124
-
-    // Recipient address: bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap
-    // Recipient pubkey: 0298e113cc06bc862ac205f2c0f27ee8c0de98d0716537bbf74e2ea6f38a84d5dc
-    // Recipient pubkey hash: c021f17be99c6adfbcba5d38ee0d292c0399d2f5
-
-    // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
-    #[test]
-    fn happy_path_sell_x_btc_for_eth() {
-        let rocket = create_rocket_instance(
-            Network::Testnet,
-            InMemoryEventStore::new(),
-            Arc::new(FakeApiClient::new()),
-        );
-        let client = rocket::local::Client::new(rocket).unwrap();
-
-        let request = client
-            .post("/trades/ETH-BTC/buy-offers")
-            .header(ContentType::JSON)
-            .body(r#"{ "amount": 43 }"#);
-
-        let mut response = request.dispatch();
-
-        assert_eq!(response.status(), Status::Ok);
-        let offer_response =
-            serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
-
-        assert_eq!(
-            offer_response.symbol,
-            TradingSymbol::ETH_BTC,
-            "offer_response has correct symbol"
-        );
-        let uid = offer_response.uid;
-
-        let request = client
-            .post(format!("/trades/ETH-BTC/{}/buy-orders", uid))
-            .header(ContentType::JSON)
-            // some random addresses I pulled off the internet
-            .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
-
-        let mut response = request.dispatch();
-
-        assert_eq!(response.status(), Status::Ok);
-
-        let funding_request =
-            serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
-
-        assert!(
-            funding_request
-                .address_to_fund
-                .to_string()
-                .starts_with("tb1")
-        );
-
-        let request = client
-            .post(format!(
-                "/trades/ETH-BTC/{}/buy-order-contract-deployed",
-                uid
-            ))
-            .header(ContentType::JSON)
-            .body(r#"{ "contract_address" : "0x00a329c0648769a73afac7f9381e08fb43dbea72" }"#);
-
-        let response = request.dispatch();
-
-        assert_eq!(
-            response.status(),
-            Status::Ok,
-            "buy-order-contract-deployed call is successful"
-        );
-
-        let request = client.get(format!("/trades/ETH-BTC/{}/redeem-orders", uid).to_string());
-
-        let mut response = request.dispatch();
-
-        assert_eq!(response.status(), Status::Ok);
-
-        let _redeem_details =
-            serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
-    }
-
-    // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
 }

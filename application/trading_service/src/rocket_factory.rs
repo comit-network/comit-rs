@@ -4,7 +4,7 @@ use exchange_api_client::ApiClient;
 use rand::OsRng;
 use rocket;
 use std::sync::{Arc, Mutex};
-use swaps::{eth_btc, TradeId};
+use swaps::{eth_btc, eth_ln, TradeId};
 
 pub fn create_rocket_instance(
     network: Network,
@@ -21,6 +21,7 @@ pub fn create_rocket_instance(
                 eth_btc::buy::routes::post_buy_offers,
                 eth_btc::buy::routes::post_buy_orders,
                 eth_btc::buy::routes::post_contract_deployed,
+                eth_ln::sell::routes::post_sell_offers,
             ],
         )
         .manage(client)
