@@ -20,34 +20,46 @@ impl From<Error> for BadRequest<String> {
     }
 }
 
+impl From<event_store::Error> for Error {
+    fn from(e: event_store::Error) -> Self {
+        Error::EventStore(e)
+    }
+}
+
 #[derive(Deserialize)]
-pub struct BuyOfferRequestBody {
+pub struct OfferRequestBody {
     amount: f64,
 }
 
 #[post("/trades/ETH-LN/sell-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_sell_offers(
-    offer_request_body: Json<BuyOfferRequestBody>,
+    offer_request_body: Json<OfferRequestBody>,
     client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
 ) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
-    let offer_request_body = offer_request_body.into_inner();
     let symbol = TradingSymbol::ETH_LN;
+    let offer_response_body = handle_sell_offer(
+        client.inner(),
+        event_store.inner(),
+        offer_request_body.into_inner(),
+        symbol,
+    )?;
 
-    let res = client.create_offer(symbol, offer_request_body.amount);
+    Ok(Json(offer_response_body))
+}
 
-    match res {
-        Ok(offer) => {
-            let id = offer.uid.clone();
-            let event = OfferCreated::from(offer.clone());
+fn handle_sell_offer(
+    client: &Arc<ApiClient>,
+    event_store: &InMemoryEventStore<TradeId>,
+    offer_request_body: OfferRequestBody,
+    symbol: TradingSymbol,
+) -> Result<OfferResponseBody, Error> {
+    let offer = client
+        .create_offer(symbol, offer_request_body.amount)
+        .map_err(Error::ExchangeService)?;
+    let id = offer.uid.clone();
+    let event = OfferCreated::from(offer.clone());
 
-            event_store.add_event(id, event).map_err(Error::EventStore)?;
-            Ok(Json(offer))
-        }
-        Err(e) => {
-            error!("{:?}", e);
-
-            Err(BadRequest(None))
-        }
-    }
+    event_store.add_event(id, event)?;
+    Ok(offer)
 }

@@ -50,7 +50,7 @@ impl From<bitcoin_support::Error> for Error {
 }
 
 impl From<rustc_hex::FromHexError> for Error {
-    fn from(e: rustc_hex::FromHexError) -> Self {
+    fn from(_e: rustc_hex::FromHexError) -> Self {
         Error::TradingService(String::from("Invalid address format"))
     }
 }
