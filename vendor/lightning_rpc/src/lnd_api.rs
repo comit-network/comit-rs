@@ -1,7 +1,9 @@
 use futures::Future;
+use http::header::{HeaderValue, InvalidHeaderValue};
 use lightning_rpc_api::LightningRpcApi;
 use lnrpc::{client::Lightning, *};
-use std::{io, net::SocketAddr};
+use macaroon::Macaroon;
+use std::{self, io, net::SocketAddr};
 use tls_api::{self, Certificate, TlsConnector, TlsConnectorBuilder};
 use tls_api_native_tls;
 use tokio_core::{self, net::TcpStream, reactor::Core};
@@ -22,9 +24,28 @@ pub struct TowerLightningClient(
     >,
 );
 
+trait WithMacaroon
+where
+    Self: std::marker::Sized,
+{
+    fn with_macaroon(self, macaroon: Option<&Macaroon>) -> Result<Self, InvalidHeaderValue>;
+}
+
+impl<M> WithMacaroon for Request<M> {
+    fn with_macaroon(mut self, macaroon: Option<&Macaroon>) -> Result<Self, InvalidHeaderValue> {
+        if let Some(macaroon) = macaroon {
+            let headers = self.headers_mut();
+            let macaroon: HeaderValue = macaroon.to_hex().parse()?;
+            headers.insert("macaroon", macaroon);
+        }
+        Ok(self)
+    }
+}
+
 pub struct LndClient {
     core: Core,
     client: TowerLightningClient,
+    macaroon: Option<Macaroon>,
 }
 
 #[derive(Debug)]
@@ -33,6 +54,8 @@ pub enum Error {
     TcpStream(io::Error),
     AddOrigin(add_origin::BuilderError),
     Tower(tower_h2::client::HandshakeError),
+    Grpc(tower_grpc::Error<tower_h2::client::Error>),
+    Macaroon(InvalidHeaderValue),
 }
 
 impl LndClient {
@@ -51,6 +74,7 @@ impl LndClient {
 
     pub fn new(
         tls_cert: Certificate,
+        macaroon: Option<Macaroon>,
         lnd_addr: SocketAddr,
         origin_uri: http::Uri,
     ) -> Result<Self, Error> {
@@ -84,32 +108,44 @@ impl LndClient {
         Ok(LndClient {
             core,
             client: TowerLightningClient(client),
+            macaroon,
         })
     }
 }
 
+impl From<tower_grpc::Error<tower_h2::client::Error>> for Error {
+    fn from(error: tower_grpc::Error<tower_h2::client::Error>) -> Self {
+        Error::Grpc(error)
+    }
+}
+
+impl From<InvalidHeaderValue> for Error {
+    fn from(error: InvalidHeaderValue) -> Self {
+        Error::Macaroon(error)
+    }
+}
+
 impl LightningRpcApi for LndClient {
-    type Err = tower_grpc::Error<tower_h2::client::Error>;
+    type Err = Error;
 
     fn add_invoice(&mut self, invoice: Invoice) -> Result<AddInvoiceResponse, Self::Err> {
-        let response: Response<AddInvoiceResponse> = self
-            .core
-            .run({ self.client.0.add_invoice(Request::new(invoice)) })?;
+        let request = Request::new(invoice).with_macaroon(self.macaroon.as_ref())?;
+        let response: Response<AddInvoiceResponse> =
+            self.core.run({ self.client.0.add_invoice(request) })?;
         Ok(response.into_inner())
     }
 
     fn get_info(&mut self) -> Result<GetInfoResponse, Self::Err> {
-        let response: Response<GetInfoResponse> = self
-            .core
-            .run({ self.client.0.get_info(Request::new(GetInfoRequest {})) })?;
+        let request = Request::new(GetInfoRequest {}).with_macaroon(self.macaroon.as_ref())?;
+        let response: Response<GetInfoResponse> =
+            self.core.run({ self.client.0.get_info(request) })?;
         Ok(response.into_inner())
     }
 
     fn send_payment(&mut self, send_request: SendRequest) -> Result<SendResponse, Self::Err> {
-        let response: Response<SendResponse> = self
-            .core
-            // TODO: `send_payment` uses streams and may be better to use
-            .run({ self.client.0.send_payment_sync(Request::new(send_request)) })?;
+        let request = Request::new(send_request).with_macaroon(self.macaroon.as_ref())?;
+        let response: Response<SendResponse> =
+            self.core.run({ self.client.0.send_payment_sync(request) })?;
         Ok(response.into_inner())
     }
 }

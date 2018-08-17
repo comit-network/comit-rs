@@ -1,11 +1,13 @@
 // Place for putting common queries needed in tests
 extern crate bitcoin_rpc;
 extern crate bitcoin_support;
+
 use bitcoin_rpc::{
     BitcoinRpcApi, TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput,
 };
 use bitcoin_support::{Address, BitcoinQuantity, Network, Sha256dHash, ToP2wpkhAddress};
 
+//TODO: All of this should be under #[cfg(test)]
 pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(
         &self,
@@ -60,7 +62,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         decoded_txn
             .vout
             .iter()
-            .find(|txout| txout.script_pub_key.hex == address.script_pubkey())
+            .find(|txout| txout.script_pub_key.hex == address.to_address().script_pubkey())
             .unwrap()
             .clone()
     }

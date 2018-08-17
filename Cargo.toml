@@ -12,7 +12,7 @@ members = [
     "application/trading_client",
     "application/trading_service",
     "vendor/bitcoin_rpc",
-    "vendor/bitcoin_rpc_helpers",
+    "vendor/bitcoin_rpc_test_helpers",
     "vendor/bitcoin_support",
     "vendor/ethereum_support",
     "vendor/ganache_rust_web3",

@@ -1,9 +1,9 @@
 language: rust
 cache:
-  cargo: true
   directories:
   - "$HOME/.rustup"
-  timeout: 300
+  - "$HOME/.cargo"
+  - "$HOME/.cache/sccache"
 sudo: required
 rust: nightly-2018-06-24
 before_install:
@@ -13,19 +13,21 @@ services:
 - docker
 env:
   global:
-  - RUST_LOG=testcontainers=debug,testcontainers::wait_for_message=trace,bitcoin_rpc=debug
+  - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
   - RUST_BACKTRACE=full
   - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
   - KEEP_CONTAINERS=true
+  - RUST_TEST_THREADS=8 # Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
 before_script:
 - docker pull trufflesuite/ganache-cli:v6.1.3
 - docker pull coblox/bitcoin-core:0.16.1-r2
 - "./setup.sh"
 - ".travis/capture-docker-traffic.sh"
+- which sccache || cargo install sccache
 script:
 - "./check-fmt.sh"
-- cargo build --all
-- cargo test --all
+- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all
+- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
 after_script:
 - expr $TRAVIS_TEST_RESULT > /dev/null && .travis/upload-container-logs-to-gcs.sh
 notifications:

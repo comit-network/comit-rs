@@ -4,19 +4,26 @@
 ///    We expect lnd to listen on 127.0.0.1:10009
 /// 2. Have access to the lnd's tls.cert:
 ///     - By default, it is expected to be at ~/.lnd/tls.cert
-///     - if using docker: `docker cp lnd_btc:/root/.lnd/tls.cert ./`
-/// 3. run this example, passing the path to tls.cert (optional)
-///    `cargo run --package lighting_rpc --example basic_lnd_calls -- $HOME/.lnd/tls.cert`
+///     - if using docker: `docker cp lnd_btc:/root/.lnd/tls.cert ~/.lnd/`
+/// 3. Have access to lnd admin.macaroon file
+///     - By default, it is expected to be at ~/.lnd/admin.macaroon
+///     - if using docker: `docker cp lnd_btc:/root/.lnd/admin.macaroon ~/.lnd/`
+/// 4.a. run this example, with:
+///     - tls.cert file in ~/.lnd/
+///     - lnd started with --no-macaroons OR admin.macaroon file in ~/.lnd/
+///    `cargo run --package lightning_rpc --example basic_lnd_calls`
+/// 4.b. run this example, passing tls.cert file path, lnd started with --no-macaroons
+///    `cargo run --package lightning_rpc --example basic_lnd_calls -- $HOME/.lnd/tls.cert`
+/// 4.c. run this example, passing both tls.cert and macaroon file paths
+///    `cargo run --package lighthning_rpc --example basic_lnd_calls -- $HOME/.lnd/tls.cert $HOME/.lnd/admin.macaroon`
 extern crate hex;
 extern crate http;
 extern crate lightning_rpc;
 extern crate tower_grpc;
 
 use lightning_rpc::{
-    certificate::{Certificate, FromFile},
-    lightning_rpc_api::LightningRpcApi,
-    lnd_api::LndClient,
-    lnrpc::*,
+    certificate::Certificate, lightning_rpc_api::LightningRpcApi, lnd_api::LndClient, lnrpc::*,
+    macaroon::Macaroon, FromFile,
 };
 use std::env;
 
@@ -26,9 +33,13 @@ static ORIGIN_URI: &'static str = "http://127.0.0.1";
 
 fn main() {
     let cert_path = env::args().skip(1).next();
-    let cert_path = cert_path.unwrap_or({ format!("{}/.lnd/tls.cert", env::var("HOME").unwrap()) });
+    let macaroon_path = env::args().skip(2).next();
 
-    let mut lnd_client = create_lnd_client(cert_path);
+    let cert_path = cert_path.unwrap_or({ format!("{}/.lnd/tls.cert", env::var("HOME").unwrap()) });
+    let macaroon_path =
+        macaroon_path.unwrap_or({ format!("{}/.lnd/admin.macaroon", env::var("HOME").unwrap()) });
+
+    let mut lnd_client = create_lnd_client(cert_path, macaroon_path);
 
     let info = lnd_client.get_info();
     println!("Lnd Info:\n{:#?}", info.unwrap());
@@ -76,13 +87,12 @@ fn add_invoice_with_pre_image(lnd_client: &mut LndClient) {
     };
 }
 
-fn create_lnd_client(cert_path: String) -> LndClient {
-    // Be sure to run the following command once lnd has started:
-    // `docker cp lnd_btc:/root/.lnd/tls.cert ~/src/swap/vendor/lightning_rpc/`
+fn create_lnd_client(cert_path: String, macaroon_path: String) -> LndClient {
     let certificate = Certificate::from_file(cert_path).unwrap().into();
+    let macaroon = Macaroon::from_file(macaroon_path).ok();
     let lnd_addr = LND_URI.parse().unwrap();
     let origin_uri: http::Uri = ORIGIN_URI.parse().unwrap();
-    let lnd_client = LndClient::new(certificate, lnd_addr, origin_uri).unwrap();
+    let lnd_client = LndClient::new(certificate, macaroon, lnd_addr, origin_uri).unwrap();
     lnd_client
 }
 

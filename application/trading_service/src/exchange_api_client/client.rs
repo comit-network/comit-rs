@@ -1,10 +1,7 @@
-use bitcoin_rpc;
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{self, EthereumQuantity};
+use common_types::TradingSymbol;
 use reqwest;
 use secret::SecretHash;
 use swaps::TradeId;
-use symbol::Symbol;
 
 #[derive(Clone)]
 pub struct ExchangeApiUrl(pub String);
@@ -17,36 +14,36 @@ struct OfferRequestBody {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {
     pub uid: TradeId,
-    pub symbol: Symbol,
+    pub symbol: TradingSymbol,
     pub rate: f64,
-    pub eth_amount: EthereumQuantity,
-    pub btc_amount: BitcoinQuantity,
+    pub buy_amount: String,
+    pub sell_amount: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: bitcoin_rpc::Address,
-    pub client_success_address: ethereum_support::Address,
-    pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
+    pub client_refund_address: String,
+    pub client_success_address: String,
+    pub client_contract_time_lock: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderResponseBody {
-    pub exchange_refund_address: ethereum_support::Address,
+    pub exchange_refund_address: String,
     pub exchange_contract_time_lock: u64,
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: String,
 }
 
 pub trait ApiClient: Send + Sync {
     fn create_offer(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error>;
     fn create_order(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         uid: TradeId,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error>;
@@ -69,7 +66,7 @@ impl DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn create_offer(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error> {
         let body = OfferRequestBody { amount };
@@ -83,7 +80,7 @@ impl ApiClient for DefaultApiClient {
 
     fn create_order(
         &self,
-        symbol: Symbol,
+        symbol: TradingSymbol,
         uid: TradeId,
         trade_request: &OrderRequestBody,
     ) -> Result<OrderResponseBody, reqwest::Error> {

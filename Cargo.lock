@@ -141,7 +141,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
  "bitcoin_rpc 0.1.0",
- "bitcoin_rpc_helpers 0.1.0",
+ "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
  "coblox_bitcoincore 0.1.0",
@@ -171,7 +171,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitcoin_rpc_helpers"
+name = "bitcoin_rpc_test_helpers"
 version = "0.1.0"
 dependencies = [
  "bitcoin_rpc 0.1.0",
@@ -182,7 +182,9 @@ dependencies = [
 name = "bitcoin_support"
 version = "0.1.0"
 dependencies = [
+ "bigdecimal 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.13.0 (git+https://github.com/coblox/rust-bitcoin.git?branch=bitcoincore-regtest)",
+ "bitcoin_rpc 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
@@ -212,7 +214,7 @@ name = "bitcoin_witness"
 version = "0.1.0"
 dependencies = [
  "bitcoin_rpc 0.1.0",
- "bitcoin_rpc_helpers 0.1.0",
+ "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "coblox_bitcoincore 0.1.0",
  "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -364,6 +366,9 @@ dependencies = [
 name = "common_types"
 version = "0.1.0"
 dependencies = [
+ "bitcoin_rpc 0.1.0",
+ "bitcoin_support 0.1.0",
+ "ethereum_support 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -792,9 +797,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "fake_treasury_service"
 version = "0.1.0"
 dependencies = [
- "bitcoin_support 0.1.0",
- "common_types 0.1.0",
- "ethereum_support 0.1.0",
  "log 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2665,6 +2667,7 @@ dependencies = [
  "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.70 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.70 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.22 (registry+https://github.com/rust-lang/crates.io-index)",

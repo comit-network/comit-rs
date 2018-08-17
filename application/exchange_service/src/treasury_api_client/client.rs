@@ -1,30 +1,18 @@
-use super::Symbol;
-use bitcoin_support::*;
-use ethereum_support::*;
+use common_types::TradingSymbol;
 use reqwest;
 
 #[derive(Clone, Debug)]
 pub struct TreasuryApiUrl(pub String);
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RateRequestBody {
-    buy_amount: f64, //ethereum
-}
-
+//TODO: Update the treasury service!
+//TODO: Make it generic (if possible)
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateResponseBody {
-    pub symbol: String,
     pub rate: f64,
-    pub sell_amount: BitcoinQuantity,
-    pub buy_amount: EthereumQuantity,
 }
 
 pub trait ApiClient: Send + Sync {
-    fn request_rate(
-        &self,
-        symbol: Symbol,
-        buy_amount: f64,
-    ) -> Result<RateResponseBody, reqwest::Error>;
+    fn request_rate(&self, symbol: TradingSymbol) -> Result<RateResponseBody, reqwest::Error>;
 }
 
 #[allow(dead_code)]
@@ -34,13 +22,9 @@ pub struct DefaultApiClient {
 }
 
 impl ApiClient for DefaultApiClient {
-    fn request_rate(
-        &self,
-        symbol: Symbol,
-        buy_amount: f64,
-    ) -> Result<RateResponseBody, reqwest::Error> {
+    fn request_rate(&self, symbol: TradingSymbol) -> Result<RateResponseBody, reqwest::Error> {
         self.client
-            .get(format!("{}/rates/{}?amount={}", self.url.0, symbol, buy_amount).as_str())
+            .get(format!("{}/rates/{}", self.url.0, symbol).as_str())
             .send()
             .and_then(|mut res| res.json::<RateResponseBody>())
     }

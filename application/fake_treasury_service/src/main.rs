@@ -8,52 +8,23 @@ extern crate rocket_contrib;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
-extern crate bitcoin_support;
-extern crate ethereum_support;
 
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EthereumQuantity;
 use rocket::{http::RawStr, response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::{env::var, str::FromStr};
 
-#[derive(Deserialize, Debug, FromForm)]
-pub struct RateRequestParams {
-    amount: f64, //ethereum
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RateResponseBody {
-    symbol: String,
     rate: f64,
-    sell_amount: BitcoinQuantity,
-    buy_amount: EthereumQuantity,
 }
 
-fn calculate_sell_amount(buy_amount: f64, rate: f64) -> BitcoinQuantity {
-    BitcoinQuantity::from_bitcoin(buy_amount * rate)
-}
-
-#[get("/<symbol>?<rate_request_params>")]
+#[get("/<symbol>")]
 pub fn get_rates(
     symbol: &RawStr,
     rate: State<f64>,
-    rate_request_params: RateRequestParams,
 ) -> Result<Json<RateResponseBody>, BadRequest<String>> {
-    let buy_amount_eth = rate_request_params.amount;
-    let symbol = symbol.to_string();
-    let sell_amount = calculate_sell_amount(buy_amount_eth, *rate);
-    let buy_amount = EthereumQuantity::from_eth(buy_amount_eth);
-    info!(
-        "Rate for {} is {}: {}:{}",
-        symbol, *rate, buy_amount, sell_amount
-    );
-    return Ok(Json(RateResponseBody {
-        symbol,
-        rate: *rate,
-        sell_amount,
-        buy_amount,
-    }));
+    info!("Rate for {} is {}", symbol, *rate,);
+    return Ok(Json(RateResponseBody { rate: *rate }));
 }
 
 fn main() {
@@ -69,12 +40,11 @@ fn main() {
 #[cfg(test)]
 mod test {
     extern crate serde_json;
-    use self::ethereum_support::*;
     use super::*;
     use rocket::http::*;
 
     #[test]
-    fn given_a_rate_and_buy_amount_sell_amount_is_correct_in_wei() {
+    fn given_a_rate_then_returned_rate_is_correct() {
         let rate = 0.1;
 
         let rocket = rocket::ignite()
@@ -83,7 +53,7 @@ mod test {
 
         let client = rocket::local::Client::new(rocket).unwrap();
 
-        let request = client.get("/rates/ETH-BTC?amount=10");
+        let request = client.get("/rates/ETH-BTC");
         let mut response = request.dispatch();
 
         assert_eq!(response.status(), Status::Ok);
@@ -91,10 +61,6 @@ mod test {
         let rate_response =
             serde_json::from_str::<RateResponseBody>(&response.body_string().unwrap()).unwrap();
 
-        assert_eq!(rate_response.sell_amount.satoshi(), 100_000_000);
-        assert_eq!(
-            rate_response.buy_amount.wei(),
-            U256::from(10_000_000_000_000_000_000 as u64)
-        );
+        assert_eq!(rate_response.rate, 0.1);
     }
 }

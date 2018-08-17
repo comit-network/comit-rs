@@ -153,7 +153,10 @@ impl Image for BitcoinCore {
     }
 
     fn wait_until_ready<D: Docker>(&self, container: &Container<D, Self>) {
-        container.logs().wait_for_message("Flushed wallet.dat");
+        container
+            .logs()
+            .wait_for_message("Flushed wallet.dat")
+            .unwrap();
 
         let additional_sleep_period =
             var("BITCOIND_ADDITIONAL_SLEEP_PERIOD").map(|value| value.parse());
