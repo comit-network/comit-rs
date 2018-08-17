@@ -12,10 +12,11 @@ extern crate testcontainers;
 mod common;
 use common::GanacheClient;
 use common_types::secret::Secret;
-use ethereum_htlc::EpochOffset;
 use ethereum_support::*;
+use std::time::Duration;
 
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
+const ONE_HOUR: Duration = Duration::from_secs(60 * 60);
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
@@ -27,7 +28,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let secret = Secret::from(SECRET.clone());
 
     let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(12),
+        ONE_HOUR * 12,
         refund_address,
         success_address,
         secret.hash(),
@@ -72,12 +73,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 
     let secret = Secret::from(SECRET.clone());
 
-    let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(1),
-        refund_address,
-        success_address,
-        secret.hash(),
-    );
+    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
 
     let mut client = GanacheClient::new();
 
@@ -88,7 +84,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let refund_balance_before_htlc = client.get_balance(refund_address);
     let success_balance_before_htlc = client.get_balance(success_address);
 
-    client.activate_flux_compensator(2);
+    client.activate_flux_capacitor(2);
 
     let gas_used = client.send_data(refund_address, contract_address, None);
 
@@ -100,6 +96,42 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     assert_eq!(success_balance_after_htlc, success_balance_before_htlc);
     assert_eq!(
         refund_balance_before_htlc - gas_used + U256::from(10),
+        refund_balance_after_htlc
+    );
+}
+
+#[test]
+fn given_advanced_timestamp_when_deployed_contract_cannot_yet_be_refunded() {
+    let _ = env_logger::try_init();
+
+    let refund_address: Address = "03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into();
+    let success_address: Address = "25818640c330b071acf5fc836fe0b762a769523d".into();
+
+    let secret = Secret::from(SECRET.clone());
+
+    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
+
+    let mut client = GanacheClient::new();
+
+    client.activate_flux_capacitor(2);
+
+    client.take_snapshot();
+
+    let contract_address = client.deploy(refund_address, htlc, 10);
+
+    let refund_balance_before_htlc = client.get_balance(refund_address);
+    let success_balance_before_htlc = client.get_balance(success_address);
+
+    let gas_used = client.send_data(refund_address, contract_address, None);
+
+    let refund_balance_after_htlc = client.get_balance(refund_address);
+    let success_balance_after_htlc = client.get_balance(success_address);
+
+    client.restore_snapshot();
+
+    assert_eq!(success_balance_after_htlc, success_balance_before_htlc);
+    assert_eq!(
+        refund_balance_before_htlc - gas_used,
         refund_balance_after_htlc
     );
 }
@@ -119,7 +151,7 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
     let stupid_offset = 2;
 
     let htlc = ethereum_htlc::Htlc::new(
-        EpochOffset::hours(1 + stupid_offset),
+        ONE_HOUR * (1 + stupid_offset),
         refund_address,
         success_address,
         secret.hash(),

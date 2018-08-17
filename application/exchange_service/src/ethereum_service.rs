@@ -114,7 +114,7 @@ mod tests {
     use super::*;
     use common_types::secret::SecretHash;
     use ethereum_support;
-    use std::{ops::Deref, str::FromStr, time::SystemTime};
+    use std::{ops::Deref, str::FromStr, time::Duration};
 
     struct EthereumApiMock {
         result: Result<H256, web3::Error>,
@@ -152,7 +152,7 @@ mod tests {
 
         let result = service.deploy_htlc(
             Htlc::new(
-                SystemTime::now(),
+                Duration::from_secs(100),
                 ethereum_support::Address::new(),
                 ethereum_support::Address::new(),
                 SecretHash::from_str("").unwrap(),
@@ -182,7 +182,7 @@ mod tests {
 
         let result = service.deploy_htlc(
             Htlc::new(
-                SystemTime::now(),
+                Duration::from_secs(100),
                 ethereum_support::Address::new(),
                 ethereum_support::Address::new(),
                 SecretHash::from_str("").unwrap(),

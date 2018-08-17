@@ -100,7 +100,7 @@ impl GanacheClient {
         receipt.gas_used
     }
 
-    pub fn activate_flux_compensator(&self, hours: u64) {
+    pub fn activate_flux_capacitor(&self, hours: u64) {
         let _ = self
             .client
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()

@@ -1,21 +1,46 @@
 {
-    calldatacopy(0x00, 0x00, 0x20)
-	call(0x48, 0x000000000000000000000000000000000000002, 0x00, 0x00, 0x20, 0x21, 0x20)
+    // Placeholder for deployment timestamp
+    0x50000005
 
+    // Load secret into memory
+    calldatacopy(0, 0, 32)
+
+    // Hash secret with SHA-256 (pre-compiled contract 0x02)
+	call(72, 0x02, 0, 0, 32, 33, 32)
+
+    // Placeholder for correct secret hash
 	0x1000000000000000000000000000000000000000000000000000000000000001
-	mload(0x21)
+
+	// Load hashed secret from memory
+	mload(33)
+
+	// Compare hashed secret with existing one
 	eq
 
+    // Combine `eq` result with `call` result
     and
 
+	// Jump to success if hashes match
 	success
 	jumpi
 
-	gt(timestamp, 0x20000002)
+    timestamp
+
+    // Substract current timestamp from deployment timestamp (pushed to stack as first instruction of this contract)
+    sub
+
+    // Placeholder for relative expiry time
+    0x20000002
+
+    // Compare relative expiry timestamp with result of substraction
+	lt
+
+	// Jump to refund if time is expired
 	refund
 	jumpi
 
-	return(0x00, 0x00)
+    // Don't do anything if we get here (e.g. secret didn't match and time didn't expire)
+	return(0, 0)
 
 success:
 	selfdestruct(0x3000000000000000000000000000000000000003) 
