@@ -21,7 +21,7 @@ pub fn create_rocket_instance(
                 eth_btc::buy::routes::post_buy_offers,
                 eth_btc::buy::routes::post_buy_orders,
                 eth_btc::buy::routes::post_contract_deployed,
-                eth_ln::sell::routes::post_sell_offer,
+                eth_ln::sell::routes::post_sell_offers,
             ],
         )
         .manage(client)

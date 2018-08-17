@@ -25,8 +25,8 @@ pub struct BuyOfferRequestBody {
     amount: f64,
 }
 
-#[post("/trades/ETH-LN/sell-offer", format = "application/json", data = "<offer_request_body>")]
-pub fn post_sell_offer(
+#[post("/trades/ETH-LN/sell-offers", format = "application/json", data = "<offer_request_body>")]
+pub fn post_sell_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
     client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,

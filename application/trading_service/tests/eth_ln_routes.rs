@@ -29,7 +29,7 @@ fn post_buy_offers_should_call_create_offer_and_return_offer() {
     let client = rocket::local::Client::new(rocket).unwrap();
 
     let request = client
-        .post("/trades/ETH-LN/sell-offer")
+        .post("/trades/ETH-LN/sell-offers")
         .header(ContentType::JSON)
         .body(r#"{ "amount": 42 }"#);
 
