@@ -69,7 +69,7 @@ pub fn post_buy_offers(
     let offer_request_body = offer_request_body.into_inner();
     let symbol = TradingSymbol::ETH_BTC;
 
-    let res = client.create_offer(symbol, offer_request_body.amount);
+    let res = client.create_buy_offer(symbol, offer_request_body.amount);
 
     match res {
         Ok(offer) => {
@@ -158,7 +158,7 @@ fn handle_buy_orders(
     event_store.add_event(trade_id, order_created_event.clone())?;
 
     let order_response = client
-        .create_order(
+        .create_buy_order(
             offer.symbol,
             trade_id,
             &OrderRequestBody {

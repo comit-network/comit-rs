@@ -36,12 +36,12 @@ pub struct OrderResponseBody {
 }
 
 pub trait ApiClient: Send + Sync {
-    fn create_offer(
+    fn create_buy_offer(
         &self,
         symbol: TradingSymbol,
         amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error>;
-    fn create_order(
+    fn create_buy_order(
         &self,
         symbol: TradingSymbol,
         uid: TradeId,
@@ -64,7 +64,7 @@ impl DefaultApiClient {
 }
 
 impl ApiClient for DefaultApiClient {
-    fn create_offer(
+    fn create_buy_offer(
         &self,
         symbol: TradingSymbol,
         amount: f64,
@@ -78,7 +78,7 @@ impl ApiClient for DefaultApiClient {
             .and_then(|mut res| res.json::<OfferResponseBody>())
     }
 
-    fn create_order(
+    fn create_buy_order(
         &self,
         symbol: TradingSymbol,
         uid: TradeId,

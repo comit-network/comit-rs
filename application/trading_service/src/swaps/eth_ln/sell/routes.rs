@@ -55,7 +55,7 @@ fn handle_sell_offer(
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody, Error> {
     let offer = client
-        .create_offer(symbol, offer_request_body.amount)
+        .create_buy_offer(symbol, offer_request_body.amount)
         .map_err(Error::ExchangeService)?;
     let id = offer.uid.clone();
     let event = OfferCreated::from(offer.clone());

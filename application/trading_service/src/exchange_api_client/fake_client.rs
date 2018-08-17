@@ -16,7 +16,7 @@ impl FakeApiClient {
 }
 
 impl ApiClient for FakeApiClient {
-    fn create_offer(
+    fn create_buy_offer(
         &self,
         symbol: TradingSymbol,
         _amount: f64,
@@ -31,7 +31,7 @@ impl ApiClient for FakeApiClient {
         Ok(offer)
     }
 
-    fn create_order(
+    fn create_buy_order(
         &self,
         _symbol: TradingSymbol,
         _uid: TradeId,
