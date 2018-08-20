@@ -76,7 +76,7 @@ pub struct RequestToFund {
     gas: u64,
 }
 
-const ETH_HTLC_TIMEOUT: Duration = Duration::from_secs(12 * 60 * 60); //ethereum HTLC timout in seconds
+const ETH_HTLC_TIMEOUT: Duration = Duration::from_secs(12 * 60 * 60); //ethereum HTLC timeout in seconds
 
 #[post("/trades/ETH-BTC/sell-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_sell_offers(
@@ -120,7 +120,6 @@ pub fn post_sell_orders(
     trade_id: TradeId,
     sell_order_request_body: Json<SellOrderRequestBody>,
     client: State<Arc<ApiClient>>,
-    _network: State<Network>,
     event_store: State<InMemoryEventStore<TradeId>>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
