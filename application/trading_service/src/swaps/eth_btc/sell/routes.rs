@@ -107,7 +107,6 @@ fn handle_sell_offer(
         .map_err(Error::ExchangeService)?;
     let id = offer.uid.clone();
     let event: OfferCreated<Bitcoin, Ethereum> = OfferCreated::from(offer.clone());
-    println!("event stored: {:?}", id.to_string());
     event_store.add_event(id, event)?;
     Ok(offer)
 }
