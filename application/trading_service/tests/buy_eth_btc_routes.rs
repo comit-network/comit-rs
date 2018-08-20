@@ -125,32 +125,3 @@ fn happy_path_buy_x_eth_for_btc() {
 }
 
 // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4
-
-#[test]
-fn sell_x_eth_for_btc() {
-    let api_client = FakeApiClient::new();
-
-    let rocket = create_rocket_instance(
-        Network::Testnet,
-        InMemoryEventStore::new(),
-        Arc::new(api_client),
-    );
-    let client = rocket::local::Client::new(rocket).unwrap();
-
-    let request = client
-        .post("/trades/ETH-BTC/sell-offers")
-        .header(ContentType::JSON)
-        .body(r#"{ "amount": 42 }"#);
-
-    let mut response = request.dispatch();
-
-    assert_eq!(response.status(), Status::Ok);
-    let offer_response =
-        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
-
-    assert_eq!(
-        offer_response.symbol,
-        TradingSymbol::ETH_BTC,
-        "offer_response has correct symbol"
-    );
-}
