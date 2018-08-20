@@ -74,7 +74,7 @@ fn post_sell_offer_of_x_eth_for_btc() {
 }
 
 #[test]
-fn post_sell_oorder_of_x_eth_for_btc() {
+fn post_sell_order_of_x_eth_for_btc() {
     let api_client = FakeApiClient::new();
 
     let rocket = create_rocket_instance(
