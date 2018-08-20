@@ -1,4 +1,4 @@
-use bitcoin_support::{self, BitcoinQuantity, Network};
+use bitcoin_support::{self, BitcoinQuantity};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     secret::Secret,
