@@ -8,7 +8,7 @@ use regex::Regex;
 use std::{f64, fmt, mem, str::FromStr};
 use U256;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Copy)]
+#[derive(Serialize, PartialEq, Deserialize, Clone, Debug, Copy)]
 pub struct EthereumQuantity(U256);
 
 const U64SIZE: usize = mem::size_of::<u64>();

@@ -25,6 +25,7 @@ bitcoin_htlc = { path = "../bitcoin_htlc" }
 bitcoin_support = { path = "../../vendor/bitcoin_support" }
 event_store = { path = "../../vendor/event_store" }
 ethereum_support = { path = "../../vendor/ethereum_support" }
+ethereum_htlc = { path = "../ethereum_htlc" }
 common_types = { path = "../common_types" }
 hex = "0.3.2"
 crypto = "0.0.2"

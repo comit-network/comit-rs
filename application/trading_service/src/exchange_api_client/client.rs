@@ -25,7 +25,7 @@ pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
     pub client_refund_address: String,
     pub client_success_address: String,
-    pub client_contract_time_lock: u32,
+    pub client_contract_time_lock: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -52,6 +52,12 @@ pub trait ApiClient: Send + Sync {
         symbol: TradingSymbol,
         amount: f64,
     ) -> Result<OfferResponseBody, reqwest::Error>;
+    fn create_sell_order(
+        &self,
+        symbol: TradingSymbol,
+        uid: TradeId,
+        trade_request: &OrderRequestBody,
+    ) -> Result<OrderResponseBody, reqwest::Error>;
 }
 
 pub struct DefaultApiClient {
@@ -108,5 +114,18 @@ impl ApiClient for DefaultApiClient {
             .json(&body)
             .send()
             .and_then(|mut res| res.json::<OfferResponseBody>())
+    }
+
+    fn create_sell_order(
+        &self,
+        symbol: TradingSymbol,
+        uid: TradeId,
+        trade_request: &OrderRequestBody,
+    ) -> Result<OrderResponseBody, reqwest::Error> {
+        self.client
+            .post(format!("{}/trades/{}/{}/sell-orders", self.url.0, symbol, uid).as_str())
+            .json(trade_request)
+            .send()
+            .and_then(|mut res| res.json::<OrderResponseBody>())
     }
 }
