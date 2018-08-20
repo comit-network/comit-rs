@@ -186,9 +186,8 @@ fn handle_buy_orders(
         uid: trade_id,
         exchange_contract_time_lock: order_response.exchange_contract_time_lock,
         exchange_refund_address: order_response.exchange_refund_address.parse()?,
-        //TODO could not find the  error rustc_hex::FromHexError anywhere
         exchange_success_address: order_response.exchange_success_address.parse()?,
-        htlc: htlc.script().clone().into_vec().clone(),
+        htlc: htlc.script().clone().into_vec(),
     };
 
     event_store.add_event(trade_id, order_taken_event)?;
