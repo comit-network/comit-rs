@@ -14,7 +14,7 @@ extern crate trading_service;
 
 use bitcoin_support::{BitcoinQuantity, Network};
 use common_types::TradingSymbol;
-use ethereum_support::EthereumQuantity;
+use ethereum_support::{Bytes, EthereumQuantity};
 use event_store::InMemoryEventStore;
 use rocket::http::*;
 use std::{str::FromStr, sync::Arc};
@@ -109,24 +109,25 @@ fn post_sell_order_of_x_eth_for_btc() {
     assert_eq!(
         request_to_fund.address_to_fund,
         "0000000000000000000000000000000000000000".parse().unwrap(),
-        "offer_response has correct address_to_fund"
+        "request_to_fund has correct address_to_fund"
     );
 
     assert_eq!(
         request_to_fund.btc_amount,
         BitcoinQuantity::from_str("1").unwrap(),
-        "offer_response has correct btc_amount"
+        "request_to_fund has correct btc_amount"
     );
     assert_eq!(
         request_to_fund.eth_amount,
         EthereumQuantity::from_str("24").unwrap(),
-        "offer_response has correct eth_amount"
+        "request_to_fund has correct eth_amount"
     );
 
-    println!("{:?}", request_to_fund.data);
+    let bytes: Bytes = request_to_fund.data.into();
+    assert!(!bytes.0.is_empty(), "request_to_fund has htlc data");
 
     assert_eq!(
         request_to_fund.gas, 21_000u64,
-        "offer_response has correct gas"
+        "request_to_fund has correct gas"
     );
 }
