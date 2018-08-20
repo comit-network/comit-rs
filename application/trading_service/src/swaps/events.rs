@@ -1,5 +1,3 @@
-use bitcoin_htlc::Htlc;
-use bitcoin_rpc::BlockHeight;
 use bitcoin_support::BitcoinQuantity;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
@@ -38,7 +36,22 @@ impl From<OfferResponseBody> for OfferCreated<Ethereum, Bitcoin> {
     }
 }
 
+impl From<OfferResponseBody> for OfferCreated<Bitcoin, Ethereum> {
+    fn from(offer: OfferResponseBody) -> Self {
+        OfferCreated {
+            uid: offer.uid,
+            symbol: offer.symbol,
+            rate: offer.rate,
+            buy_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
+            sell_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
+        }
+    }
+}
+
 impl Event for OfferCreated<Ethereum, Bitcoin> {
+    type Prev = ();
+}
+impl Event for OfferCreated<Bitcoin, Ethereum> {
     type Prev = ();
 }
 
@@ -53,11 +66,14 @@ where
     pub client_success_address: B::Address,
     pub client_refund_address: S::Address,
     pub secret: Secret,
-    pub long_relative_timelock: BlockHeight,
+    pub long_relative_timelock: S::Time,
 }
 
 impl Event for OrderCreated<Ethereum, Bitcoin> {
     type Prev = OfferCreated<Ethereum, Bitcoin>;
+}
+impl Event for OrderCreated<Bitcoin, Ethereum> {
+    type Prev = OfferCreated<Bitcoin, Ethereum>;
 }
 
 #[derive(Clone, Debug)]
@@ -71,11 +87,14 @@ where
     // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: S::Address,
     pub exchange_contract_time_lock: u64,
-    pub htlc: Htlc,
+    pub htlc: Vec<u8>,
 }
 
 impl Event for OrderTaken<Ethereum, Bitcoin> {
     type Prev = OrderCreated<Ethereum, Bitcoin>;
+}
+impl Event for OrderTaken<Bitcoin, Ethereum> {
+    type Prev = OrderCreated<Bitcoin, Ethereum>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

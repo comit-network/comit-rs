@@ -74,7 +74,7 @@ pub fn post_buy_offers(
     match res {
         Ok(offer) => {
             let id = offer.uid.clone();
-            let event = OfferCreated::from(offer.clone());
+            let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer.clone());
 
             event_store.add_event(id, event).map_err(Error::EventStore)?;
             Ok(Json(offer))
@@ -147,7 +147,7 @@ fn handle_buy_orders(
     //TODO: Remove before prod
     debug!("Secret: {:x}", secret);
 
-    let order_created_event = OrderCreated {
+    let order_created_event: OrderCreated<Ethereum, Bitcoin> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
@@ -165,7 +165,7 @@ fn handle_buy_orders(
                 contract_secret_lock: secret.hash(),
                 client_refund_address: client_refund_address.to_string(),
                 client_success_address: client_success_address.to_string(),
-                client_contract_time_lock: BTC_BLOCKS_IN_24H,
+                client_contract_time_lock: BTC_BLOCKS_IN_24H as u64,
             },
         )
         .map_err(Error::ExchangeService)?;
@@ -188,7 +188,7 @@ fn handle_buy_orders(
         exchange_refund_address: order_response.exchange_refund_address.parse()?,
         //TODO could not find the  error rustc_hex::FromHexError anywhere
         exchange_success_address: order_response.exchange_success_address.parse()?,
-        htlc: htlc.clone(),
+        htlc: htlc.script().clone().into_vec().clone(),
     };
 
     event_store.add_event(trade_id, order_taken_event)?;
