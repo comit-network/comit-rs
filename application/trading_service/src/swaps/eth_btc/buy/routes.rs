@@ -6,13 +6,11 @@ use common_types::{
     TradingSymbol,
 };
 use ethereum_support::{self, EthereumQuantity};
-use event_store::{self, EventStore, InMemoryEventStore};
+use event_store::{EventStore, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
 use rand::OsRng;
-use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
-use rustc_hex;
 use secret::Secret;
 use std::{
     str::FromStr,
@@ -20,41 +18,10 @@ use std::{
     time::Duration,
 };
 use swaps::{
+    errors::Error,
     events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
     TradeId,
 };
-
-#[derive(Debug)]
-pub enum Error {
-    EventStore(event_store::Error),
-    ExchangeService(reqwest::Error),
-    TradingService(String),
-}
-
-impl From<Error> for BadRequest<String> {
-    fn from(e: Error) -> Self {
-        error!("{:?}", e);
-        BadRequest(None)
-    }
-}
-
-impl From<event_store::Error> for Error {
-    fn from(e: event_store::Error) -> Self {
-        Error::EventStore(e)
-    }
-}
-
-impl From<bitcoin_support::Error> for Error {
-    fn from(_e: bitcoin_support::Error) -> Self {
-        Error::TradingService(String::from("Invalid address format"))
-    }
-}
-
-impl From<rustc_hex::FromHexError> for Error {
-    fn from(_e: rustc_hex::FromHexError) -> Self {
-        Error::TradingService(String::from("Invalid address format"))
-    }
-}
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
