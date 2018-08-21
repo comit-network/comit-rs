@@ -5,7 +5,7 @@ use common_types::{
     TradingSymbol,
 };
 use ethereum_htlc;
-use ethereum_support::{self, Bytes, EthereumQuantity};
+use ethereum_support::{self, EthereumQuantity};
 use event_store::{self, EventStore, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
 use rand::OsRng;
@@ -184,14 +184,12 @@ fn handle_sell_orders(
     );
 
     let byte_code = htlc.compile_to_hex();
-    let bytes: Bytes = htlc.compile_to_hex().into();
 
     let order_taken_event: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
         uid: trade_id,
         exchange_contract_time_lock: order_response.exchange_contract_time_lock,
         exchange_refund_address: order_response.exchange_refund_address.parse()?,
         exchange_success_address: order_response.exchange_success_address.parse()?,
-        htlc: bytes.0,
     };
 
     event_store.add_event(trade_id, order_taken_event)?;
