@@ -15,7 +15,7 @@ extern crate trading_service;
 use bitcoin_support::{BitcoinQuantity, Network};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    TradingSymbol,
+    secret::Secret, TradingSymbol,
 };
 use ethereum_support::{Bytes, EthereumQuantity};
 use event_store::InMemoryEventStore;
@@ -33,6 +33,12 @@ pub struct RequestToFund {
     eth_amount: EthereumQuantity,
     data: ethereum_htlc::ByteCode,
     gas: u64,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RedeemDetails {
+    address: bitcoin_support::Address,
+    data: Secret,
 }
 
 #[test]
@@ -185,4 +191,61 @@ fn post_sell_order_contract_deployed_of_eth_for_btc() {
         Status::Ok,
         "sell-order-contract-deployed call is successful"
     );
+}
+
+#[test]
+fn get_redeem_details_of_eth_for_btc() {
+    let api_client = FakeApiClient::new();
+
+    let rocket = create_rocket_instance(
+        Network::Testnet,
+        InMemoryEventStore::new(),
+        Arc::new(api_client),
+    );
+    let client = rocket::local::Client::new(rocket).unwrap();
+
+    let request = client
+        .post("/trades/ETH-BTC/sell-offers")
+        .header(ContentType::JSON)
+        .body(r#"{ "amount": 42 }"#);
+
+    let mut response = request.dispatch();
+
+    assert_eq!(response.status(), Status::Ok);
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+    let uid = offer_response.uid;
+
+    let request = client
+        .post(format!("/trades/ETH-BTC/{}/sell-orders", uid))
+        .header(ContentType::JSON)
+        .body(r#"{ "client_success_address": "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv", "client_refund_address" : "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238" }"#);
+
+    let response = request.dispatch();
+    assert_eq!(response.status(), Status::Ok);
+
+    let request = client
+        .post(format!(
+            "/trades/ETH-BTC/{}/sell-order-contract-deployed",
+            uid
+        ))
+        .header(ContentType::JSON)
+        .body(r#"{ "contract_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
+
+    let response = request.dispatch();
+
+    assert_eq!(
+        response.status(),
+        Status::Ok,
+        "sell-order-contract-deployed call is successful"
+    );
+
+    let request = client.get(format!("/trades/ETH-BTC/{}/redeem-sell-orders", uid).to_string());
+
+    let mut response = request.dispatch();
+
+    assert_eq!(response.status(), Status::Ok);
+
+    let _redeem_details =
+        serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
 }
