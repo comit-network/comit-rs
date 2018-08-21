@@ -23,6 +23,7 @@ pub fn create_rocket_instance(
                 eth_btc::buy::routes::post_contract_deployed,
                 eth_btc::sell::routes::post_sell_offers,
                 eth_btc::sell::routes::post_sell_orders,
+                eth_btc::sell::routes::post_contract_deployed,
                 eth_ln::sell::routes::post_sell_offers,
             ],
         )
