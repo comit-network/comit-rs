@@ -11,6 +11,7 @@ pub struct Htlc {
     secret_hash: SecretHash,
 }
 
+#[derive(Deserialize, Serialize, Debug)]
 pub struct ByteCode(String);
 
 impl Into<Bytes> for ByteCode {

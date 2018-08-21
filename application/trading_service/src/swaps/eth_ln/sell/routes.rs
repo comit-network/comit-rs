@@ -55,11 +55,13 @@ fn handle_sell_offer(
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody, Error> {
     let offer = client
-        .create_offer(symbol, offer_request_body.amount)
+        .create_buy_offer(symbol, offer_request_body.amount)
         .map_err(Error::ExchangeService)?;
     let id = offer.uid.clone();
-    let event = OfferCreated::from(offer.clone());
-
-    event_store.add_event(id, event)?;
+    //TODO Fixme, this feature has a lower priority for now. For this we need decide either on
+    // how we handle Lightning, i.e. creating an additional ledger for Lightning payments
+    //    let event = OfferCreated::from(offer.clone());
+    //
+    //    event_store.add_event(id, event)?;
     Ok(offer)
 }

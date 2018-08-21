@@ -6,54 +6,22 @@ use common_types::{
     TradingSymbol,
 };
 use ethereum_support::{self, EthereumQuantity};
-use event_store::{self, EventStore, InMemoryEventStore};
+use event_store::{EventStore, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
 use rand::OsRng;
-use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
-use rustc_hex;
 use secret::Secret;
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 use swaps::{
+    errors::Error,
     events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
     TradeId,
 };
-
-#[derive(Debug)]
-pub enum Error {
-    EventStore(event_store::Error),
-    ExchangeService(reqwest::Error),
-    TradingService(String),
-}
-
-impl From<Error> for BadRequest<String> {
-    fn from(e: Error) -> Self {
-        error!("{:?}", e);
-        BadRequest(None)
-    }
-}
-
-impl From<event_store::Error> for Error {
-    fn from(e: event_store::Error) -> Self {
-        Error::EventStore(e)
-    }
-}
-
-impl From<bitcoin_support::Error> for Error {
-    fn from(_e: bitcoin_support::Error) -> Self {
-        Error::TradingService(String::from("Invalid address format"))
-    }
-}
-
-impl From<rustc_hex::FromHexError> for Error {
-    fn from(_e: rustc_hex::FromHexError) -> Self {
-        Error::TradingService(String::from("Invalid address format"))
-    }
-}
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -69,22 +37,13 @@ pub fn post_buy_offers(
     let offer_request_body = offer_request_body.into_inner();
     let symbol = TradingSymbol::ETH_BTC;
 
-    let res = client.create_offer(symbol, offer_request_body.amount);
+    let res = client.create_buy_offer(symbol, offer_request_body.amount);
+    let offer_response = res.map_err(Error::ExchangeService)?;
+    let id = offer_response.uid.clone();
+    let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer_response.clone());
 
-    match res {
-        Ok(offer) => {
-            let id = offer.uid.clone();
-            let event = OfferCreated::from(offer.clone());
-
-            event_store.add_event(id, event).map_err(Error::EventStore)?;
-            Ok(Json(offer))
-        }
-        Err(e) => {
-            error!("{:?}", e);
-
-            Err(BadRequest(None))
-        }
-    }
+    event_store.add_event(id, event).map_err(Error::EventStore)?;
+    Ok(Json(offer_response))
 }
 
 #[derive(Deserialize)]
@@ -147,7 +106,7 @@ fn handle_buy_orders(
     //TODO: Remove before prod
     debug!("Secret: {:x}", secret);
 
-    let order_created_event = OrderCreated {
+    let order_created_event: OrderCreated<Ethereum, Bitcoin> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
@@ -158,14 +117,14 @@ fn handle_buy_orders(
     event_store.add_event(trade_id, order_created_event.clone())?;
 
     let order_response = client
-        .create_order(
+        .create_buy_order(
             offer.symbol,
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
                 client_refund_address: client_refund_address.to_string(),
                 client_success_address: client_success_address.to_string(),
-                client_contract_time_lock: BTC_BLOCKS_IN_24H,
+                client_contract_time_lock: BTC_BLOCKS_IN_24H as u64,
             },
         )
         .map_err(Error::ExchangeService)?;
@@ -184,11 +143,11 @@ fn handle_buy_orders(
 
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
+        exchange_contract_time_lock: Duration::from_secs(
+            order_response.exchange_contract_time_lock,
+        ),
         exchange_refund_address: order_response.exchange_refund_address.parse()?,
-        //TODO could not find the  error rustc_hex::FromHexError anywhere
         exchange_success_address: order_response.exchange_success_address.parse()?,
-        htlc: htlc.clone(),
     };
 
     event_store.add_event(trade_id, order_taken_event)?;
@@ -233,7 +192,8 @@ fn handle_post_contract_deployed(
     uid: TradeId,
     address: ethereum_support::Address,
 ) -> Result<(), Error> {
-    event_store.add_event(uid, ContractDeployed { uid, address })?;
+    let deployed: ContractDeployed<Ethereum, Bitcoin> = ContractDeployed::new(uid, address);
+    event_store.add_event(uid, deployed)?;
 
     Ok(())
 }
@@ -260,7 +220,7 @@ fn handle_get_redeem_orders(
     trade_id: TradeId,
 ) -> Result<RedeemDetails, Error> {
     let address = event_store
-        .get_event::<ContractDeployed<Ethereum>>(trade_id)?
+        .get_event::<ContractDeployed<Ethereum, Bitcoin>>(trade_id)?
         .address;
     let secret = event_store
         .get_event::<OrderCreated<Ethereum, Bitcoin>>(trade_id)?

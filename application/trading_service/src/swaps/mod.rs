@@ -3,6 +3,7 @@ use rocket::{http::RawStr, request::FromParam};
 use std::fmt;
 use uuid::{self, Uuid};
 
+pub mod errors;
 pub mod eth_btc;
 pub mod eth_ln;
 pub mod events;

@@ -6,6 +6,7 @@ extern crate bitcoin_rpc;
 extern crate bitcoin_support;
 extern crate common_types;
 extern crate crypto;
+extern crate ethereum_htlc;
 extern crate ethereum_support;
 extern crate event_store;
 extern crate hex;

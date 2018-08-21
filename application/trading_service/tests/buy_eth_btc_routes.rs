@@ -50,7 +50,7 @@ pub struct RedeemDetails {
 
 // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
 #[test]
-fn happy_path_sell_x_btc_for_eth() {
+fn happy_path_buy_x_eth_for_btc() {
     let api_client = FakeApiClient::new();
 
     let rocket = create_rocket_instance(

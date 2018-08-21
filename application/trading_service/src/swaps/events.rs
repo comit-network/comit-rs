@@ -1,5 +1,3 @@
-use bitcoin_htlc::Htlc;
-use bitcoin_rpc::BlockHeight;
 use bitcoin_support::BitcoinQuantity;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
@@ -9,7 +7,7 @@ use ethereum_support::EthereumQuantity;
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use std::str::FromStr;
+use std::{marker::PhantomData, str::FromStr};
 use swaps::TradeId;
 
 // State after exchange has made an offer
@@ -38,7 +36,19 @@ impl From<OfferResponseBody> for OfferCreated<Ethereum, Bitcoin> {
     }
 }
 
-impl Event for OfferCreated<Ethereum, Bitcoin> {
+impl From<OfferResponseBody> for OfferCreated<Bitcoin, Ethereum> {
+    fn from(offer: OfferResponseBody) -> Self {
+        OfferCreated {
+            uid: offer.uid,
+            symbol: offer.symbol,
+            rate: offer.rate,
+            buy_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
+            sell_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
+        }
+    }
+}
+
+impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
     type Prev = ();
 }
 
@@ -53,11 +63,11 @@ where
     pub client_success_address: B::Address,
     pub client_refund_address: S::Address,
     pub secret: Secret,
-    pub long_relative_timelock: BlockHeight,
+    pub long_relative_timelock: S::Time,
 }
 
-impl Event for OrderCreated<Ethereum, Bitcoin> {
-    type Prev = OfferCreated<Ethereum, Bitcoin>;
+impl<B: Ledger, S: Ledger> Event for OrderCreated<B, S> {
+    type Prev = OfferCreated<B, S>;
 }
 
 #[derive(Clone, Debug)]
@@ -68,25 +78,35 @@ where
 {
     pub uid: TradeId,
     pub exchange_refund_address: B::Address,
-    // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: S::Address,
-    pub exchange_contract_time_lock: u64,
-    pub htlc: Htlc,
+    pub exchange_contract_time_lock: B::Time,
 }
 
-impl Event for OrderTaken<Ethereum, Bitcoin> {
-    type Prev = OrderCreated<Ethereum, Bitcoin>;
+impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
+    type Prev = OrderCreated<B, S>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<B>
+pub struct ContractDeployed<B, S>
 where
     B: Ledger,
+    S: Ledger,
 {
     pub uid: TradeId,
     pub address: B::Address,
+    phantom: PhantomData<S>,
 }
 
-impl Event for ContractDeployed<Ethereum> {
-    type Prev = OrderTaken<Ethereum, Bitcoin>;
+impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
+    pub fn new(uid: TradeId, address: B::Address) -> ContractDeployed<B, S> {
+        ContractDeployed {
+            uid,
+            address,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Ledger, S: Ledger> Event for ContractDeployed<B, S> {
+    type Prev = OrderTaken<B, S>;
 }
