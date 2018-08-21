@@ -208,3 +208,36 @@ fn handle_post_contract_deployed(
 
     Ok(())
 }
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RedeemDetails {
+    address: bitcoin_support::Address,
+    data: Secret,
+}
+
+#[get("/trades/ETH-BTC/<trade_id>/redeem-sell-orders")]
+pub fn get_redeem_orders(
+    trade_id: TradeId,
+    event_store: State<InMemoryEventStore<TradeId>>,
+) -> Result<Json<RedeemDetails>, BadRequest<String>> {
+    let details = handle_get_redeem_orders(event_store.inner(), trade_id)?;
+
+    Ok(Json(details))
+}
+
+fn handle_get_redeem_orders(
+    event_store: &InMemoryEventStore<TradeId>,
+    trade_id: TradeId,
+) -> Result<RedeemDetails, Error> {
+    let address = event_store
+        .get_event::<ContractDeployed<Bitcoin, Ethereum>>(trade_id)?
+        .address;
+    let secret = event_store
+        .get_event::<OrderCreated<Bitcoin, Ethereum>>(trade_id)?
+        .secret;
+
+    Ok(RedeemDetails {
+        address,
+        data: secret,
+    })
+}
