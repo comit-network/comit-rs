@@ -7,7 +7,7 @@ use ethereum_support::EthereumQuantity;
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use std::str::FromStr;
+use std::{marker::PhantomData, str::FromStr};
 use swaps::TradeId;
 
 // State after exchange has made an offer
@@ -87,14 +87,26 @@ impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<B>
+pub struct ContractDeployed<B, S>
 where
     B: Ledger,
+    S: Ledger,
 {
     pub uid: TradeId,
     pub address: B::Address,
+    phantom: PhantomData<S>,
 }
 
-impl Event for ContractDeployed<Ethereum> {
-    type Prev = OrderTaken<Ethereum, Bitcoin>;
+impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
+    pub fn new(uid: TradeId, address: B::Address) -> ContractDeployed<B, S> {
+        ContractDeployed {
+            uid,
+            address,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Ledger, S: Ledger> Event for ContractDeployed<B, S> {
+    type Prev = OrderTaken<B, S>;
 }

@@ -192,7 +192,8 @@ fn handle_post_contract_deployed(
     uid: TradeId,
     address: ethereum_support::Address,
 ) -> Result<(), Error> {
-    event_store.add_event(uid, ContractDeployed { uid, address })?;
+    let deployed: ContractDeployed<Ethereum, Bitcoin> = ContractDeployed::new(uid, address);
+    event_store.add_event(uid, deployed)?;
 
     Ok(())
 }
@@ -219,7 +220,7 @@ fn handle_get_redeem_orders(
     trade_id: TradeId,
 ) -> Result<RedeemDetails, Error> {
     let address = event_store
-        .get_event::<ContractDeployed<Ethereum>>(trade_id)?
+        .get_event::<ContractDeployed<Ethereum, Bitcoin>>(trade_id)?
         .address;
     let secret = event_store
         .get_event::<OrderCreated<Ethereum, Bitcoin>>(trade_id)?
