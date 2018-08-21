@@ -48,10 +48,7 @@ impl From<OfferResponseBody> for OfferCreated<Bitcoin, Ethereum> {
     }
 }
 
-impl Event for OfferCreated<Ethereum, Bitcoin> {
-    type Prev = ();
-}
-impl Event for OfferCreated<Bitcoin, Ethereum> {
+impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
     type Prev = ();
 }
 
@@ -87,7 +84,6 @@ where
     // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: S::Address,
     pub exchange_contract_time_lock: u64,
-    pub htlc: Vec<u8>,
 }
 
 impl Event for OrderTaken<Ethereum, Bitcoin> {
