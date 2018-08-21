@@ -1,5 +1,5 @@
 [package]
-name = "ethereum_wallet"
+name = "tc_web3_client"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,14 +9,6 @@ authors = [
 ]
 
 [dependencies]
-ethereum_support = { path = "../../vendor/ethereum_support" }
-secp256k1_support = { path = "../../vendor/secp256k1_support" }
-hex = "0.3.2"
-rlp = "0.2.2"
-tiny-keccak = "1.4.2"
-
-[dev-dependencies]
-hex = "0.3.1"
 testcontainers = "0.1"
 tc_trufflesuite_ganachecli = "0.1"
-env_logger = "0.5.11"
+web3 = "0.3"

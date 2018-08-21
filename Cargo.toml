@@ -11,16 +11,11 @@ members = [
     "application/logging",
     "application/trading_client",
     "application/trading_service",
-    "vendor/bitcoin_rpc",
     "vendor/bitcoin_rpc_test_helpers",
     "vendor/bitcoin_support",
     "vendor/ethereum_support",
     "vendor/ganache_rust_web3",
-    "vendor/jsonrpc",
     "vendor/key_gen",
     "vendor/lightning_rpc",
-    "vendor/trufflesuite_ganachecli",
-    "vendor/coblox_bitcoincore",
-    "vendor/testcontainers_rs",
     "vendor/event_store"
 ]

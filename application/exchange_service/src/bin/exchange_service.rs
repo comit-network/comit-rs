@@ -1,6 +1,6 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate common_types;
 extern crate ethereum_support;

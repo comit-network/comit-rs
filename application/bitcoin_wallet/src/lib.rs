@@ -1,5 +1,5 @@
 extern crate bitcoin;
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate common_types;
 extern crate crypto;
 #[macro_use]

@@ -15,6 +15,6 @@ serde = "1.0.64"
 serde_json = "1.0.19"
 
 [dev-dependencies]
-trufflesuite_ganachecli = { path = "../trufflesuite_ganachecli" }
-testcontainers = { path = "../testcontainers_rs" }
+tc_trufflesuite_ganachecli = "0.1"
+testcontainers = "0.1"
 env_logger = "0.5.10"

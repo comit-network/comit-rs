@@ -23,5 +23,5 @@ serde_derive = "1.0.66"
 regex = "1.0.0"
 
 [dev-dependencies]
-trufflesuite_ganachecli = { path = "../../vendor/trufflesuite_ganachecli" }
-testcontainers = { path = "../../vendor/testcontainers_rs" }
+tc_trufflesuite_ganachecli = "0.1"
+testcontainers = "0.1"

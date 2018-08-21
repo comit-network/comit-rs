@@ -1,6 +1,6 @@
 extern crate bigdecimal;
 extern crate bitcoin;
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate secp256k1_support;
 extern crate serde;
 #[macro_use]

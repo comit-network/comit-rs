@@ -2,7 +2,7 @@
 #![plugin(rocket_codegen)]
 
 extern crate bitcoin_htlc;
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate env_logger;
 extern crate event_store;

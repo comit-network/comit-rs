@@ -1,4 +1,4 @@
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate common_types;
 extern crate reqwest;
 extern crate serde;

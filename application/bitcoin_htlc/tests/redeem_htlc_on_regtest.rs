@@ -1,6 +1,6 @@
 extern crate bitcoin;
 extern crate bitcoin_htlc;
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_rpc_test_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;

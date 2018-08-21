@@ -20,7 +20,7 @@ rocket_contrib = "=0.3.14"
 serde = "1.0.66"
 serde_derive = "1.0.66"
 serde_json = "1.0.22"
-bitcoin_rpc = { path = "../../vendor/bitcoin_rpc" }
+bitcoin_rpc_client = "0.1"
 bitcoin_htlc = { path = "../bitcoin_htlc" }
 bitcoin_support = { path = "../../vendor/bitcoin_support" }
 event_store = { path = "../../vendor/event_store" }
