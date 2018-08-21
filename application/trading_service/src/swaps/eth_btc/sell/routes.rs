@@ -42,7 +42,7 @@ pub struct RequestToFund {
     gas: u64,
 }
 
-const ETH_HTLC_TIMEOUT: Duration = Duration::from_secs(12 * 60 * 60); //ethereum HTLC timeout in seconds
+const ETH_HTLC_TIMEOUT_IN_SECONDS: Duration = Duration::from_secs(12 * 60 * 60);
 
 #[post("/trades/ETH-BTC/sell-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_sell_offers(
@@ -124,7 +124,7 @@ fn handle_sell_orders(
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
         client_refund_address: client_refund_address.clone(),
-        long_relative_timelock: ETH_HTLC_TIMEOUT,
+        long_relative_timelock: ETH_HTLC_TIMEOUT_IN_SECONDS,
     };
 
     event_store.add_event(trade_id, order_created_event.clone())?;
@@ -137,13 +137,13 @@ fn handle_sell_orders(
                 contract_secret_lock: secret.hash(),
                 client_refund_address: client_refund_address.to_string(),
                 client_success_address: client_success_address.to_string(),
-                client_contract_time_lock: ETH_HTLC_TIMEOUT.as_secs(),
+                client_contract_time_lock: ETH_HTLC_TIMEOUT_IN_SECONDS.as_secs(),
             },
         )
         .map_err(Error::ExchangeService)?;
 
     let htlc = ethereum_htlc::Htlc::new(
-        ETH_HTLC_TIMEOUT,
+        ETH_HTLC_TIMEOUT_IN_SECONDS,
         client_refund_address,
         order_response.exchange_success_address.parse()?,
         secret.hash(),
