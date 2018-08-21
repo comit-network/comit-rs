@@ -70,21 +70,12 @@ pub fn post_buy_offers(
     let symbol = TradingSymbol::ETH_BTC;
 
     let res = client.create_buy_offer(symbol, offer_request_body.amount);
+    let offer_response = res.map_err(Error::ExchangeService)?;
+    let id = offer_response.uid.clone();
+    let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer_response.clone());
 
-    match res {
-        Ok(offer) => {
-            let id = offer.uid.clone();
-            let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer.clone());
-
-            event_store.add_event(id, event).map_err(Error::EventStore)?;
-            Ok(Json(offer))
-        }
-        Err(e) => {
-            error!("{:?}", e);
-
-            Err(BadRequest(None))
-        }
-    }
+    event_store.add_event(id, event).map_err(Error::EventStore)?;
+    Ok(Json(offer_response))
 }
 
 #[derive(Deserialize)]
