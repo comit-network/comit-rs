@@ -18,7 +18,7 @@ use std::{
 };
 use swaps::{
     errors::Error,
-    events::{OfferCreated, OrderCreated, OrderTaken},
+    events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
     TradeId,
 };
 
@@ -172,4 +172,39 @@ fn handle_sell_orders(
         gas: 21_000u64,
     };
     Ok(fund)
+}
+
+#[derive(Deserialize)]
+pub struct ContractDeployedRequestBody {
+    pub contract_address: bitcoin_support::Address,
+}
+
+#[post(
+    "/trades/ETH-BTC/<trade_id>/sell-order-contract-deployed",
+    format = "application/json",
+    data = "<contract_deployed_request_body>"
+)]
+pub fn post_contract_deployed(
+    trade_id: TradeId,
+    contract_deployed_request_body: Json<ContractDeployedRequestBody>,
+    event_store: State<InMemoryEventStore<TradeId>>,
+) -> Result<(), BadRequest<String>> {
+    handle_post_contract_deployed(
+        event_store.inner(),
+        trade_id,
+        contract_deployed_request_body.into_inner().contract_address,
+    )?;
+
+    Ok(())
+}
+
+fn handle_post_contract_deployed(
+    event_store: &InMemoryEventStore<TradeId>,
+    uid: TradeId,
+    address: bitcoin_support::Address,
+) -> Result<(), Error> {
+    let deployed: ContractDeployed<Bitcoin, Ethereum> = ContractDeployed::new(uid, address);
+    event_store.add_event(uid, deployed)?;
+
+    Ok(())
 }

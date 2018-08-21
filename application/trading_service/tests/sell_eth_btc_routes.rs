@@ -33,7 +33,7 @@ pub struct RequestToFund {
 }
 
 #[test]
-fn post_sell_offer_of_x_eth_for_btc() {
+fn post_sell_offer_of_eth_for_btc() {
     let api_client = FakeApiClient::new();
 
     let rocket = create_rocket_instance(
@@ -74,7 +74,7 @@ fn post_sell_offer_of_x_eth_for_btc() {
 }
 
 #[test]
-fn post_sell_order_of_x_eth_for_btc() {
+fn post_sell_order_of_eth_for_btc() {
     let api_client = FakeApiClient::new();
 
     let rocket = create_rocket_instance(
@@ -129,5 +129,53 @@ fn post_sell_order_of_x_eth_for_btc() {
     assert_eq!(
         request_to_fund.gas, 21_000u64,
         "request_to_fund has correct gas"
+    );
+}
+
+#[test]
+fn post_sell_order_contract_deployed_of_eth_for_btc() {
+    let api_client = FakeApiClient::new();
+
+    let rocket = create_rocket_instance(
+        Network::Testnet,
+        InMemoryEventStore::new(),
+        Arc::new(api_client),
+    );
+    let client = rocket::local::Client::new(rocket).unwrap();
+
+    let request = client
+        .post("/trades/ETH-BTC/sell-offers")
+        .header(ContentType::JSON)
+        .body(r#"{ "amount": 42 }"#);
+
+    let mut response = request.dispatch();
+
+    assert_eq!(response.status(), Status::Ok);
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+    let uid = offer_response.uid;
+
+    let request = client
+        .post(format!("/trades/ETH-BTC/{}/sell-orders", uid))
+        .header(ContentType::JSON)
+        .body(r#"{ "client_success_address": "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv", "client_refund_address" : "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238" }"#);
+
+    let response = request.dispatch();
+    assert_eq!(response.status(), Status::Ok);
+
+    let request = client
+        .post(format!(
+            "/trades/ETH-BTC/{}/sell-order-contract-deployed",
+            uid
+        ))
+        .header(ContentType::JSON)
+        .body(r#"{ "contract_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
+
+    let response = request.dispatch();
+
+    assert_eq!(
+        response.status(),
+        Status::Ok,
+        "sell-order-contract-deployed call is successful"
     );
 }
