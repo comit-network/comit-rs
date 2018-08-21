@@ -17,6 +17,7 @@ use secret::Secret;
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 use swaps::{
     events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
@@ -175,7 +176,9 @@ fn handle_buy_orders(
 
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
+        exchange_contract_time_lock: Duration::from_secs(
+            order_response.exchange_contract_time_lock,
+        ),
         exchange_refund_address: order_response.exchange_refund_address.parse()?,
         exchange_success_address: order_response.exchange_success_address.parse()?,
     };

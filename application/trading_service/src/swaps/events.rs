@@ -66,11 +66,8 @@ where
     pub long_relative_timelock: S::Time,
 }
 
-impl Event for OrderCreated<Ethereum, Bitcoin> {
-    type Prev = OfferCreated<Ethereum, Bitcoin>;
-}
-impl Event for OrderCreated<Bitcoin, Ethereum> {
-    type Prev = OfferCreated<Bitcoin, Ethereum>;
+impl<B: Ledger, S: Ledger> Event for OrderCreated<B, S> {
+    type Prev = OfferCreated<B, S>;
 }
 
 #[derive(Clone, Debug)]
@@ -81,16 +78,12 @@ where
 {
     pub uid: TradeId,
     pub exchange_refund_address: B::Address,
-    // This is embedded in the HTLC but we keep it here as well for completeness
     pub exchange_success_address: S::Address,
-    pub exchange_contract_time_lock: u64,
+    pub exchange_contract_time_lock: B::Time,
 }
 
-impl Event for OrderTaken<Ethereum, Bitcoin> {
-    type Prev = OrderCreated<Ethereum, Bitcoin>;
-}
-impl Event for OrderTaken<Bitcoin, Ethereum> {
-    type Prev = OrderCreated<Bitcoin, Ethereum>;
+impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
+    type Prev = OrderCreated<B, S>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

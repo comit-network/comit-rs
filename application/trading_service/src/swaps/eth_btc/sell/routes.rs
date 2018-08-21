@@ -1,3 +1,4 @@
+use bitcoin_rpc::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -187,7 +188,9 @@ fn handle_sell_orders(
 
     let order_taken_event: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
+        exchange_contract_time_lock: BlockHeight::new(
+            order_response.exchange_contract_time_lock as u32,
+        ),
         exchange_refund_address: order_response.exchange_refund_address.parse()?,
         exchange_success_address: order_response.exchange_success_address.parse()?,
     };
