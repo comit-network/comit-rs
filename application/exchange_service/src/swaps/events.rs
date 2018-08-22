@@ -1,13 +1,12 @@
 use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    secret::SecretHash,
     TradingSymbol,
 };
 use event_store::Event;
 use secp256k1_support::KeyPair;
-use swaps::common::TradeId;
-// todo check why OfferCreated as OfferState
-use common_types::{ledger::Ledger, secret::SecretHash};
 use std::marker::PhantomData;
+use swaps::common::TradeId;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferCreated<B: Ledger, S: Ledger> {
@@ -44,31 +43,6 @@ pub struct TradeFunded<S: Ledger> {
     pub uid: TradeId,
     pub htlc_identifier: S::HtlcId,
 }
-
-//impl OfferCreated<Ethereum, Bitcoin> {
-//    pub fn new(r: RateResponseBody, buy_amount: EthereumQuantity) -> Self {
-//        OfferCreated {
-//            uid: TradeId(Uuid::new_v4()),
-//            symbol: TradingSymbol::ETH_BTC,
-//            rate: r.rate,
-//            buy_amount,
-//            sell_amount: BitcoinQuantity::from_bitcoin(r.rate * buy_amount.ethereum()),
-//        }
-//    }
-//}
-//
-//impl OfferCreated<Bitcoin, Ethereum> {
-//    fn new(r: RateResponseBody, buy_amount: BitcoinQuantity) -> Self {
-//        OfferCreated {
-//            uid: TradeId(Uuid::new_v4()),
-//            symbol: TradingSymbol::ETH_BTC,
-//            rate: r.rate,
-//            buy_amount,
-//            // TODO: Fail nicely if rate == 0
-//            sell_amount: EthereumQuantity::from_eth(buy_amount.bitcoin() / r.rate), // ETH
-//        }
-//    }
-//}
 
 impl<B: Ledger, S: Ledger> OfferCreated<B, S> {
     pub fn new(
@@ -123,6 +97,3 @@ impl Event for ContractDeployed<Bitcoin> {
 impl Event for ContractDeployed<Ethereum> {
     type Prev = TradeFunded<Bitcoin>;
 }
-
-//series of events is as follows:
-// OfferCreated buy ETH for BTC -> OrderTaken ETH for BTC-> TradeFunded BTC from trader -> ContractDeployed ETH from exchange
