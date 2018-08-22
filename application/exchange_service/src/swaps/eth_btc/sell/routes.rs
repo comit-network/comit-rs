@@ -4,8 +4,8 @@ use event_store::{EventStore, InMemoryEventStore};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use swaps::{
-    eth_btc::common::{Error, TradeFunded},
-    TradeId,
+    common::{Error, TradeId},
+    events::TradeFunded,
 };
 
 #[derive(Deserialize)]

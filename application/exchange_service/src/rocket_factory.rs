@@ -7,7 +7,7 @@ use event_store::InMemoryEventStore;
 use rocket;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
-use swaps::{eth_btc, TradeId};
+use swaps::{common::TradeId, eth_btc};
 use treasury_api_client::ApiClient;
 
 pub fn create_rocket_instance(
