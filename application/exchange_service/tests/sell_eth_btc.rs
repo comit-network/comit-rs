@@ -46,29 +46,6 @@ use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{str::FromStr, sync::Arc, time::Duration};
 
-fn request_offer(client: &mut Client) -> LocalResponse {
-    let request = client
-        .post("/trades/ETH-BTC/buy-offers")
-        .header(ContentType::JSON)
-        .body(r#"{ "amount": 42 }"#);
-    request.dispatch()
-}
-
-fn request_order<'a>(client: &'a mut Client, uid: &TradeId) -> LocalResponse<'a> {
-    let request = client
-        .post(format!("/trades/ETH-BTC/{}/sell-orders", uid).to_string())
-        .header(ContentType::JSON)
-        .body(
-            r#"{
-                    "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
-                    "client_refund_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
-                    "client_success_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-                    "client_contract_time_lock": 24
-                  }"#,
-        );
-    request.dispatch()
-}
-
 trait DeserializeAsJson {
     fn body_json<T>(&mut self) -> T
     where
@@ -167,12 +144,6 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
 
     event_store.add_event(trade_id, order_taken);
 
-    //    let trade_funded: TradeFunded<Ethereum> = TradeFunded {
-    //        uid: trade_id,
-    //        htlc_identifier: ethereum_support::Address::from_str("2222222222222222222222222222222222222222").unwrap(),
-    //    };
-    //    event_store.add_event(trade_id, trade_funded);
-    //
     let mut client = create_rocket_client(event_store);
 
     let response = {
@@ -183,6 +154,5 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
         request.dispatch()
     };
 
-    println!("{:?}", response);
     assert_eq!(response.status(), Status::Ok);
 }
