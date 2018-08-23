@@ -50,14 +50,14 @@ pub fn post_sell_offers(
 
 fn handle_sell_offer(
     client: &Arc<ApiClient>,
-    event_store: &InMemoryEventStore<TradeId>,
+    _event_store: &InMemoryEventStore<TradeId>,
     offer_request_body: OfferRequestBody,
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody, Error> {
     let offer = client
         .create_buy_offer(symbol, offer_request_body.amount)
         .map_err(Error::ExchangeService)?;
-    let id = offer.uid.clone();
+    let _id = offer.uid.clone();
     //TODO Fixme, this feature has a lower priority for now. For this we need decide either on
     // how we handle Lightning, i.e. creating an additional ledger for Lightning payments
     //    let event = OfferCreated::from(offer.clone());

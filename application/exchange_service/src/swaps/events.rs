@@ -17,11 +17,6 @@ pub struct OfferCreated<B: Ledger, S: Ledger> {
     pub sell_amount: S::Quantity,
     // TODO: treasury_expiry_timestamp
 }
-
-impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
-    type Prev = ();
-}
-
 #[derive(Clone, Debug)]
 pub struct OrderTaken<B: Ledger, S: Ledger> {
     pub uid: TradeId,
@@ -42,6 +37,44 @@ pub struct OrderTaken<B: Ledger, S: Ledger> {
 pub struct TradeFunded<S: Ledger> {
     pub uid: TradeId,
     pub htlc_identifier: S::HtlcId,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ContractDeployed<T> {
+    pub uid: TradeId,
+    pub transaction_id: String,
+    phantom: PhantomData<T>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ContractRedeemed<T> {
+    pub uid: TradeId,
+    pub transaction_id: String,
+    phantom: PhantomData<T>,
+}
+
+impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
+    type Prev = ();
+}
+
+impl<B: Ledger> ContractDeployed<B> {
+    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<B> {
+        ContractDeployed {
+            uid,
+            transaction_id,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<B: Ledger> ContractRedeemed<B> {
+    pub fn new(uid: TradeId, transaction_id: String) -> ContractRedeemed<B> {
+        ContractRedeemed {
+            uid,
+            transaction_id,
+            phantom: PhantomData,
+        }
+    }
 }
 
 impl<B: Ledger, S: Ledger> OfferCreated<B, S> {
@@ -65,23 +98,6 @@ impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
     type Prev = OfferCreated<B, S>;
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<T> {
-    pub uid: TradeId,
-    pub transaction_id: String,
-    phantom: PhantomData<T>,
-}
-
-impl<B: Ledger> ContractDeployed<B> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<B> {
-        ContractDeployed {
-            uid,
-            transaction_id,
-            phantom: PhantomData,
-        }
-    }
-}
-
 impl Event for TradeFunded<Ethereum> {
     type Prev = OrderTaken<Bitcoin, Ethereum>;
 }
@@ -95,5 +111,13 @@ impl Event for ContractDeployed<Bitcoin> {
 }
 
 impl Event for ContractDeployed<Ethereum> {
+    type Prev = TradeFunded<Bitcoin>;
+}
+
+impl Event for ContractRedeemed<Ethereum> {
+    type Prev = TradeFunded<Ethereum>;
+}
+
+impl Event for ContractRedeemed<Bitcoin> {
     type Prev = TradeFunded<Bitcoin>;
 }

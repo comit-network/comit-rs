@@ -43,7 +43,7 @@ use rocket::{
     local::{Client, LocalResponse},
 };
 use secp256k1_support::KeyPair;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc, time::Duration};
 
 trait DeserializeAsJson {
@@ -96,33 +96,6 @@ fn create_rocket_client(event_store: InMemoryEventStore<TradeId>) -> Client {
     rocket::local::Client::new(rocket).unwrap()
 }
 
-//series of events is as follows:
-// OfferCreated buy ETH for BTC -> OrderTaken ETH for BTC-> TradeFunded BTC from trader -> ContractDeployed ETH from exchange
-
-#[test]
-fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
-    let _ = env_logger::try_init();
-    let event_store = InMemoryEventStore::new();
-
-    let trade_id = TradeId::new();
-
-    mock_offer_created(&event_store, trade_id);
-    mock_order_taken(&event_store, trade_id);
-
-    let mut client = create_rocket_client(event_store);
-
-    let response = {
-        let request = client
-            .post(format!("/trades/ETH-BTC/{}/sell-order-htlc-funded", trade_id).to_string())
-            .header(ContentType::JSON)
-            .body(r#" "0x3333333333333333333333333333333333333333" "#);
-        request.dispatch()
-    };
-
-    assert_eq!(response.status(), Status::Ok);
-    //contract should be deployed now
-}
-
 fn mock_offer_created(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
     let offer_created: OfferCreated<Bitcoin, Ethereum> = OfferCreated::new(
         0.1,
@@ -130,7 +103,9 @@ fn mock_offer_created(event_store: &InMemoryEventStore<TradeId>, trade_id: Trade
         ethereum_support::EthereumQuantity::from_eth(10.0),
         TradingSymbol::ETH_BTC,
     );
-    event_store.add_event(trade_id.clone(), offer_created);
+    event_store
+        .add_event(trade_id.clone(), offer_created)
+        .unwrap();
 }
 
 fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
@@ -161,5 +136,73 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
         ).unwrap(),
         exchange_success_keypair: keypair,
     };
-    event_store.add_event(trade_id, order_taken);
+    event_store.add_event(trade_id, order_taken).unwrap();
+}
+
+fn mock_trade_funded(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
+    let trade_funded: TradeFunded<Ethereum> = TradeFunded {
+        uid: trade_id,
+        htlc_identifier: ethereum_support::Address::from_str(
+            "2222222222222222222222222222222222222222",
+        ).unwrap(),
+    };
+    event_store.add_event(trade_id, trade_funded).unwrap();
+}
+//series of events is as follows:
+// OfferCreated buy ETH for BTC -> OrderTaken ETH for BTC-> TradeFunded BTC from trader -> ContractDeployed ETH from exchange
+
+#[test]
+fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
+    let _ = env_logger::try_init();
+    let event_store = InMemoryEventStore::new();
+
+    let trade_id = TradeId::new();
+
+    mock_offer_created(&event_store, trade_id);
+    mock_order_taken(&event_store, trade_id);
+
+    let client = create_rocket_client(event_store);
+
+    let response = {
+        let request = client
+            .post(format!("/trades/ETH-BTC/{}/sell-order-htlc-funded", trade_id).to_string())
+            .header(ContentType::JSON)
+            .body(r#" "0x3333333333333333333333333333333333333333" "#);
+        request.dispatch()
+    };
+
+    assert_eq!(response.status(), Status::Ok);
+    //contract should be deployed now
+    //TODO Finish this test and implement bitcoin service
+}
+
+#[derive(Serialize)]
+pub struct RedeemETHNotificationBody {
+    pub secret: Secret,
+}
+
+#[test]
+fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
+    let _ = env_logger::try_init();
+    let event_store = InMemoryEventStore::new();
+
+    let trade_id = TradeId::new();
+
+    mock_offer_created(&event_store, trade_id);
+    mock_order_taken(&event_store, trade_id);
+    mock_trade_funded(&event_store, trade_id);
+
+    let client = create_rocket_client(event_store);
+
+    let bytes = b"hello world, you are beautiful!!";
+    let secret = Secret::from(*bytes);
+    let redeem_body = RedeemETHNotificationBody { secret };
+    let response = {
+        let request = client
+            .post(format!("/trades/ETH-BTC/{}/sell-order-secret-revealed", trade_id).to_string())
+            .header(ContentType::JSON)
+            .body(serde_json::to_string(&redeem_body).unwrap());
+        request.dispatch()
+    };
+    assert_eq!(response.status(), Status::Ok);
 }
