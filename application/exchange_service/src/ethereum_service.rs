@@ -1,3 +1,4 @@
+use common_types::secret::Secret;
 use ethereum_htlc::Htlc;
 use ethereum_support::*;
 use ethereum_wallet;
@@ -101,6 +102,42 @@ impl EthereumService {
         Ok(tx_id)
     }
 
+    pub fn redeem_htlc(&self, secret: Secret, contract_address: Address) -> Result<H256, Error> {
+        let gas_price = self.gas_price_service.get_gas_price()?;
+
+        let tx_id = {
+            let mut lock = self.nonce.lock()?;
+
+            let nonce = lock.deref_mut();
+
+            let transaction = ethereum_wallet::UnsignedTransaction::new_contract_invocation(
+                secret.raw_secret().to_vec(),
+                contract_address,
+                10000,
+                gas_price,
+                0,
+                *nonce,
+            );
+
+            let signed_transaction = self.wallet.sign(&transaction);
+
+            let tx_id = self.web3.send_raw_transaction(signed_transaction.into())?;
+
+            debug!(
+                "Transaction was successfully deployed in transaction {:?}",
+                tx_id
+            );
+
+            // If we get this far, everything worked.
+            // Update the nonce and release the lock.
+            EthereumService::increment_nonce(nonce);
+
+            tx_id
+        };
+
+        Ok(tx_id)
+    }
+
     fn increment_nonce(nonce: &mut U256) {
         let next_nonce = *nonce + U256::from(1);
         debug!("Nonce was incremented from {} to {}", nonce, next_nonce);
@@ -110,7 +147,6 @@ impl EthereumService {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use common_types::secret::SecretHash;
     use ethereum_support;
@@ -135,6 +171,7 @@ mod tests {
     // This is a test where we know that the instance is always accessed only from one thread.
     // Thus it is safe although the mock takes a mutable reference.
     unsafe impl Send for EthereumApiMock {}
+
     unsafe impl Sync for EthereumApiMock {}
 
     #[test]
@@ -197,4 +234,28 @@ mod tests {
         assert_eq!(*nonce, U256::from(1))
     }
 
+    #[test]
+    fn given_a_normal_transaction_when_deployment_succeeds_nonce_should_be_updated() {
+        let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
+        let gas_price_service = gas_price_service::StaticGasPriceService::default();
+        let ethereum_api = EthereumApiMock::with_result(Ok(H256::new()));
+
+        let service = EthereumService::new(
+            Arc::new(wallet),
+            Arc::new(gas_price_service),
+            Arc::new(ethereum_api),
+            0,
+        );
+
+        let result = service.redeem_htlc(
+            Secret::from(*b"hello world, you are beautiful!!"),
+            ethereum_support::Address::new(),
+        );
+
+        let lock = service.nonce.lock().unwrap();
+        let nonce = lock.deref();
+
+        assert!(result.is_ok());
+        assert_eq!(*nonce, U256::from(1))
+    }
 }
