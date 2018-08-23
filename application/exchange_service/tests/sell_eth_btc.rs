@@ -106,14 +106,34 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
 
     let trade_id = TradeId::new();
 
+    mock_offer_created(&event_store, trade_id);
+    mock_order_taken(&event_store, trade_id);
+
+    let mut client = create_rocket_client(event_store);
+
+    let response = {
+        let request = client
+            .post(format!("/trades/ETH-BTC/{}/sell-order-htlc-funded", trade_id).to_string())
+            .header(ContentType::JSON)
+            .body(r#" "0x3333333333333333333333333333333333333333" "#);
+        request.dispatch()
+    };
+
+    assert_eq!(response.status(), Status::Ok);
+    //contract should be deployed now
+}
+
+fn mock_offer_created(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
     let offer_created: OfferCreated<Bitcoin, Ethereum> = OfferCreated::new(
         0.1,
         bitcoin_support::BitcoinQuantity::from_bitcoin(1.0),
         ethereum_support::EthereumQuantity::from_eth(10.0),
         TradingSymbol::ETH_BTC,
     );
-
     event_store.add_event(trade_id.clone(), offer_created);
+}
+
+fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
     let bytes = b"hello world, you are beautiful!!";
     let secret = Secret::from(*bytes);
 
@@ -141,18 +161,5 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
         ).unwrap(),
         exchange_success_keypair: keypair,
     };
-
     event_store.add_event(trade_id, order_taken);
-
-    let mut client = create_rocket_client(event_store);
-
-    let response = {
-        let request = client
-            .post(format!("/trades/ETH-BTC/{}/sell-order-htlc-funded", trade_id).to_string())
-            .header(ContentType::JSON)
-            .body(r#" "0x3333333333333333333333333333333333333333" "#);
-        request.dispatch()
-    };
-
-    assert_eq!(response.status(), Status::Ok);
 }
