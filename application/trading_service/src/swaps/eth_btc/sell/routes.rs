@@ -1,4 +1,4 @@
-use bitcoin_rpc::BlockHeight;
+use bitcoin_rpc_client::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},

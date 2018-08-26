@@ -2,7 +2,7 @@ pub use super::events::OfferCreated as OfferRequestResponse;
 use super::events::{ContractDeployed, OfferCreated, OfferState};
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::{self, UnlockingError};
-use bitcoin_rpc;
+use bitcoin_rpc_client;
 use bitcoin_support::{self, Network, PubkeyHash, ToP2wpkhAddress};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::{
@@ -46,8 +46,8 @@ impl From<bitcoin_fee_service::Error> for Error {
     }
 }
 
-impl From<bitcoin_rpc::RpcError> for Error {
-    fn from(e: bitcoin_rpc::RpcError) -> Self {
+impl From<bitcoin_rpc_client::RpcError> for Error {
+    fn from(e: bitcoin_rpc_client::RpcError) -> Self {
         Error::BitcoinRpc(e)
     }
 }
@@ -114,16 +114,16 @@ fn handle_post_buy_offers(
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody {
     pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: bitcoin_rpc::BlockHeight,
+    pub client_contract_time_lock: bitcoin_rpc_client::BlockHeight,
 
-    pub client_refund_address: bitcoin_rpc::Address,
+    pub client_refund_address: bitcoin_rpc_client::Address,
     pub client_success_address: ethereum_support::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody {
     pub exchange_refund_address: ethereum_support::Address,
-    pub exchange_success_address: bitcoin_rpc::Address,
+    pub exchange_success_address: bitcoin_rpc_client::Address,
     pub exchange_contract_time_lock: u64,
 }
 
@@ -277,7 +277,7 @@ pub struct RedeemBTCNotificationBody {
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    rpc_client: State<Arc<bitcoin_rpc::BitcoinRpcApi>>,
+    rpc_client: State<Arc<bitcoin_rpc_client::BitcoinRpcApi>>,
     fee_service: State<Arc<BitcoinFeeService>>,
     btc_exchange_redeem_address: State<bitcoin_support::Address>,
     trade_id: TradeId,
@@ -297,7 +297,7 @@ pub fn post_revealed_secret(
 fn handle_post_revealed_secret(
     redeem_btc_notification_body: RedeemBTCNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
-    rpc_client: &Arc<bitcoin_rpc::BitcoinRpcApi>,
+    rpc_client: &Arc<bitcoin_rpc_client::BitcoinRpcApi>,
     fee_service: &Arc<BitcoinFeeService>,
     btc_exchange_redeem_address: &bitcoin_support::Address,
     trade_id: TradeId,
@@ -353,7 +353,7 @@ fn handle_post_revealed_secret(
         redeem_tx.output[0].value
     );
     //TODO: Store above in event prior to doing rnpc request
-    let rpc_transaction = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx);
+    let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
     debug!("RPC Transaction: {:?}", rpc_transaction);
     info!(
         "Attempting to redeem HTLC with txid {} for {}",
@@ -362,8 +362,7 @@ fn handle_post_revealed_secret(
     //TODO: Store successful redeem in event
     let redeem_txid = rpc_client
         .send_raw_transaction(rpc_transaction)
-        .map_err(Error::BitcoinNode)?
-        .into_result()?;
+        .map_err(Error::BitcoinNode)??;
 
     info!(
         "HTLC for {} successfully redeemed with {}",

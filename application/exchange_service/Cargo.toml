@@ -14,7 +14,7 @@ bitcoin_htlc = { path = "../bitcoin_htlc" }
 reqwest = "0.8.6"
 serde = "1.0.66"
 serde_derive = "1.0.66"
-lazy_static = "1.0.1"
+lazy_static = "1"
 log = "0.4.3"
 uuid = { version = "0.6.5", features = ["serde", "v4"] }
 rocket = "=0.3.14"

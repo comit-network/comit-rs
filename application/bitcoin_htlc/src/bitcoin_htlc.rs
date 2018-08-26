@@ -201,7 +201,7 @@ mod tests {
         );
 
         assert_eq!(
-            htlc.script.into_vec(),
+            htlc.script.into_bytes(),
             hex::decode(
                 "63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f2345\
                  1af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f\
@@ -231,7 +231,7 @@ mod tests {
             900,
         );
 
-        let address = htlc.compute_address(Network::BitcoinCoreRegtest);
+        let address = htlc.compute_address(Network::Regtest);
 
         assert_eq!(
             address.to_string(),

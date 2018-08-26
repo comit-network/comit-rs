@@ -22,7 +22,7 @@ extern crate serde_json;
 extern crate tiny_keccak;
 extern crate uuid;
 
-use bitcoin_rpc::BitcoinRpcApi;
+use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
@@ -106,13 +106,17 @@ fn main() {
         let username = var_or_exit("BITCOIN_RPC_USERNAME");
         let password = var_or_exit("BITCOIN_RPC_PASSWORD");
 
-        bitcoin_rpc::BitcoinCoreClient::new(url.as_str(), username.as_str(), password.as_str())
+        bitcoin_rpc_client::BitcoinCoreClient::new(
+            url.as_str(),
+            username.as_str(),
+            password.as_str(),
+        )
     };
 
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
             info!("Blockchain info:\n{:?}", blockchain_info);
-            match bitcoin_rpc_client.validate_address(&bitcoin_rpc::Address::from(
+            match bitcoin_rpc_client.validate_address(&bitcoin_rpc_client::Address::from(
                 btc_exchange_redeem_address.clone(),
             )) {
                 Ok(address_validation) => info!("Validation:\n{:?}", address_validation),
@@ -126,13 +130,13 @@ fn main() {
         Ok(value) => match value.as_str() {
             "BTC_MAINNET" => Network::Bitcoin,
             "BTC_TESTNET" => Network::Testnet,
-            "BTCORE_REGTEST" => Network::BitcoinCoreRegtest,
+            "BTCORE_REGTEST" => Network::Regtest,
             _ => panic!(
                 "Please set environment variable BTC_NETWORK to one of the following values:\n\
                  - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
             ),
         },
-        Err(_) => Network::BitcoinCoreRegtest,
+        Err(_) => Network::Regtest,
     };
     info!("set BTC_NETWORK={}", network);
 

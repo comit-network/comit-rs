@@ -1,5 +1,5 @@
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
-use bitcoin_rpc::BlockHeight;
+use bitcoin_rpc_client::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},

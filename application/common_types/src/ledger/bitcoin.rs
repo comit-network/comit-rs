@@ -1,5 +1,5 @@
 //TODO: create and use bitcoin_support blockheight
-use bitcoin_rpc::{BlockHeight, TransactionId};
+use bitcoin_rpc_client::{BlockHeight, TransactionId};
 use bitcoin_support::{Address, BitcoinQuantity};
 use ledger::Ledger;
 

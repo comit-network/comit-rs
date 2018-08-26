@@ -2,7 +2,7 @@
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 
-use bitcoin_rpc::{
+use bitcoin_rpc_client::{
     BitcoinRpcApi, TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput,
 };
 use bitcoin_support::{Address, BitcoinQuantity, Network, Sha256dHash, ToP2wpkhAddress};
@@ -26,7 +26,7 @@ pub trait RegtestHelperClient {
 
 impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
     fn enable_segwit(&self) {
-        self.generate(432).unwrap();
+        self.generate(432).unwrap().unwrap();
     }
 
     fn find_utxo_at_tx_for_address(
@@ -40,23 +40,17 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
                 None,
                 Some(vec![address.clone().into()]),
             ).unwrap()
-                .into_result()
                 .unwrap();
 
         unspent.into_iter().find(|utxo| utxo.txid == *txid)
     }
 
     fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput {
-        let raw_txn = self
-            .get_raw_transaction_serialized(&txid)
-            .unwrap()
-            .into_result()
-            .unwrap();
+        let raw_txn = self.get_raw_transaction_serialized(&txid).unwrap().unwrap();
 
         let decoded_txn = self
             .decode_rawtransaction(raw_txn.clone())
             .unwrap()
-            .into_result()
             .unwrap();
 
         decoded_txn
@@ -72,15 +66,14 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         dest: D,
         value: BitcoinQuantity,
     ) -> (Sha256dHash, TransactionOutput) {
-        let address = dest.to_p2wpkh_address(Network::BitcoinCoreRegtest);
+        let address = dest.to_p2wpkh_address(Network::Regtest);
 
         let txid = self
             .send_to_address(&address.clone().into(), value.bitcoin())
             .unwrap()
-            .into_result()
             .unwrap();
 
-        self.generate(1).unwrap();
+        self.generate(1).unwrap().unwrap();
 
         let vout = self.find_vout_for_address(&txid, &address);
 

@@ -1,3 +1,5 @@
+use bitcoin_htlc::Htlc;
+use bitcoin_rpc_client::BlockHeight;
 use bitcoin_support::BitcoinQuantity;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},

@@ -1,4 +1,4 @@
-use bitcoin_rpc;
+use bitcoin_rpc_client;
 use bitcoin_support::BitcoinQuantity;
 use common_types;
 use ethereum_support::{self, EthereumQuantity};
@@ -59,7 +59,7 @@ pub struct OfferResponseBody {
 #[derive(Deserialize, Serialize)]
 pub struct BuyOrderRequestBody {
     client_success_address: ethereum_support::Address,
-    client_refund_address: bitcoin_rpc::Address,
+    client_refund_address: bitcoin_rpc_client::Address,
 }
 
 impl BuyOrderRequestBody {
@@ -74,8 +74,9 @@ impl BuyOrderRequestBody {
 
         let client_success_address = ethereum_support::Address::from_str(&client_success_address)
             .expect("Could not convert the success address");
-        let client_refund_address = bitcoin_rpc::Address::from_str(client_refund_address.as_str())
-            .expect("Could not convert the Bitcoin refund address");
+        let client_refund_address = bitcoin_rpc_client::Address::from_str(
+            client_refund_address.as_str(),
+        ).expect("Could not convert the Bitcoin refund address");
 
         BuyOrderRequestBody {
             client_success_address,
@@ -86,7 +87,7 @@ impl BuyOrderRequestBody {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    pub address_to_fund: bitcoin_rpc::Address,
+    pub address_to_fund: bitcoin_rpc_client::Address,
     pub btc_amount: BitcoinQuantity,
     pub eth_amount: EthereumQuantity,
 }

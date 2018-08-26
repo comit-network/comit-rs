@@ -27,13 +27,13 @@ fn main() {
         Ok(value) => match value.as_str() {
             "BTC_MAINNET" => Network::Bitcoin,
             "BTC_TESTNET" => Network::Testnet,
-            "BTCORE_REGTEST" => Network::BitcoinCoreRegtest,
+            "BTCORE_REGTEST" => Network::Regtest,
             _ => panic!(
                 "Please set environment variable BTC_NETWORK to one of the following values:\n\
                  - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
             ),
         },
-        Err(_) => Network::BitcoinCoreRegtest,
+        Err(_) => Network::Regtest,
     };
 
     create_rocket_instance(

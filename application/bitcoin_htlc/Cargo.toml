@@ -22,4 +22,5 @@ log = "0.4.3"
 tc_coblox_bitcoincore = "0.1"
 testcontainers = "0.1"
 bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
+tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
 env_logger = "0.5.11"
