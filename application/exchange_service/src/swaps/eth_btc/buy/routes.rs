@@ -1,7 +1,7 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc_client;
-use bitcoin_support::{self,BitcoinQuantity, Network, PubkeyHash, ToP2wpkhAddress};
+use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash, ToP2wpkhAddress};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::{
     ledger::{

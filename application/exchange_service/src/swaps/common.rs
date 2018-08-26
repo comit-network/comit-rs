@@ -1,5 +1,5 @@
 use bitcoin_fee_service;
-use bitcoin_rpc;
+use bitcoin_rpc_client;
 use ethereum_service;
 use event_store;
 use logging;
@@ -46,7 +46,7 @@ pub enum Error {
     TreasuryService(reqwest::Error),
     FeeService(bitcoin_fee_service::Error),
     EthereumService(ethereum_service::Error),
-    BitcoinRpc(bitcoin_rpc::RpcError),
+    BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),
     Unlocking(String),
 }
