@@ -32,8 +32,7 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
             cipher_text.reserve(2 + NOISE_TAG_LENGTH);
             cipher_text.put(size_frame);
 
-            let payload = item_bytes.split_to(payload_size);
-            let payload_frame = self.encrypt(payload)?;
+            let payload_frame = self.encrypt(item_bytes.split_to(payload_size))?;
             cipher_text.reserve(payload_size + NOISE_TAG_LENGTH);
             cipher_text.put(payload_frame);
         }
