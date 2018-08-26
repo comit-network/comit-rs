@@ -95,14 +95,14 @@ fn decode_partial_message() {
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
         let after_17_bytes = bob.decode(&mut buf);
         asserting("still shouldn't be a full message yet")
-            .that(&after_6_bytes)
+            .that(&after_17_bytes)
             .is_ok()
             .is_none();
 
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
         let after_28_bytes = bob.decode(&mut buf).unwrap();
         asserting("given the message cipher text and MAC still shouldn't have a message")
-            .that(&after_6_bytes)
+            .that(&after_28_bytes)
             .is_ok()
             .is_none();
 
