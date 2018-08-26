@@ -60,7 +60,10 @@ impl Len for BytesMut {
 }
 
 impl<C: Encoder> NoiseCodec<C> {
-    fn encrypt<S: AsRef<[u8]> + Len>(&mut self, clear_text: S) -> Result<(usize, Vec<u8>), Error<C::Error>> {
+    fn encrypt<S: AsRef<[u8]> + Len>(
+        &mut self,
+        clear_text: S,
+    ) -> Result<(usize, Vec<u8>), Error<C::Error>> {
         let cipher_text_length = clear_text.len() + NOISE_TAG_LENGTH;
         let mut cipher_text = vec![0u8; cipher_text_length];
 
