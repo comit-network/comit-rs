@@ -62,7 +62,7 @@ trait Len {
     fn len(&self) -> usize;
 }
 
-impl Len for Length {
+impl Len for PayloadLength {
     fn len(&self) -> usize {
         2
     }
@@ -116,7 +116,7 @@ impl<C: Decoder> NoiseCodec<C> {
         let enough_data_for_length = cipher_text.len() >= LENGTH_FRAME_LENGTH;
 
         if no_length_yet && enough_data_for_length {
-            let length: Length = self.decrypt(cipher_text, LENGTH_FRAME_LENGTH)?;
+            let length: PayloadLength = self.decrypt(cipher_text, LENGTH_FRAME_LENGTH)?;
 
             let length = length.as_usize();
             debug!("Decrypted length: {:?}", length);
@@ -166,9 +166,9 @@ impl<E> From<snow::SnowError> for Error<E> {
 }
 
 #[derive(Debug)]
-struct Length([u8; 2]);
+struct PayloadLength([u8; 2]);
 
-impl Length {
+impl PayloadLength {
     fn new(length: usize) -> Self {
         let mut data = [0u8; 2];
 
@@ -176,7 +176,7 @@ impl Length {
 
         BigEndian::write_u16(&mut data, total_length as u16);
 
-        Length(data)
+        PayloadLength(data)
     }
 
     fn as_usize(&self) -> usize {
@@ -184,13 +184,13 @@ impl Length {
     }
 }
 
-impl From<Vec<u8>> for Length {
+impl From<Vec<u8>> for PayloadLength {
     fn from(vec: Vec<u8>) -> Self {
-        Length([vec[0], vec[1]])
+        PayloadLength([vec[0], vec[1]])
     }
 }
 
-impl AsRef<[u8]> for Length {
+impl AsRef<[u8]> for PayloadLength {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
     }
@@ -210,7 +210,7 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
         while !item_bytes.is_empty() {
             let next_payload_length = min(item_bytes.len(), MAX_PAYLOAD_LENGTH);
 
-            let length = Length::new(next_payload_length);
+            let length = PayloadLength::new(next_payload_length);
             let length_frame = self.encrypt(length)?;
             cipher_text.reserve(2 + NOISE_TAG_LENGTH);
             cipher_text.put(length_frame);
