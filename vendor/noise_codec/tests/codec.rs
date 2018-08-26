@@ -118,7 +118,7 @@ fn decode_partial_message() {
         let after_28_bytes = bob.decode(&mut buf).unwrap();
         assert!(
             after_28_bytes.is_none(),
-            "given the message cipher text sans MAC still shouldn't have a message"
+            "given the message cipher text and MAC still shouldn't have a message"
         );
 
         buf.extend_from_slice(&cipher_text[..]);

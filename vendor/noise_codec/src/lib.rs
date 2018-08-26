@@ -45,7 +45,7 @@ pub const MAX_PAYLOAD_LENGTH: usize = NOISE_MSG_MAX_LENGTH - NOISE_TAG_LENGTH;
 pub struct NoiseCodec<C> {
     noise: Session,
     inner: C,
-    payload_frame_len: Option<usize>,
+    payload_size: Option<usize>,
     payload_buffer: BytesMut,
 }
 
@@ -54,7 +54,7 @@ impl<C> NoiseCodec<C> {
         NoiseCodec {
             noise,
             inner,
-            payload_frame_len: None,
+            payload_size: None,
             payload_buffer: BytesMut::new(),
         }
     }
@@ -80,31 +80,33 @@ impl<E> From<snow::SnowError> for Error<E> {
 }
 
 #[derive(Debug)]
-struct PayloadLength([u8; 2]);
+struct PayloadSize([u8; 2]);
 
-impl PayloadLength {
-    fn new(length: usize) -> Self {
+impl From<PayloadSize> for usize {
+    fn from(payload_length: PayloadSize) -> Self {
+        BigEndian::read_u16(&payload_length.0[..]) as usize
+    }
+}
+
+impl From<usize> for PayloadSize {
+    fn from(length: usize) -> Self {
         let mut data = [0u8; 2];
 
         let total_length = length + NOISE_TAG_LENGTH;
 
         BigEndian::write_u16(&mut data, total_length as u16);
 
-        PayloadLength(data)
-    }
-
-    fn as_usize(&self) -> usize {
-        BigEndian::read_u16(&self.0[..]) as usize
+        PayloadSize(data)
     }
 }
 
-impl From<Vec<u8>> for PayloadLength {
+impl From<Vec<u8>> for PayloadSize {
     fn from(vec: Vec<u8>) -> Self {
-        PayloadLength([vec[0], vec[1]])
+        PayloadSize([vec[0], vec[1]])
     }
 }
 
-impl AsRef<[u8]> for PayloadLength {
+impl AsRef<[u8]> for PayloadSize {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
     }
