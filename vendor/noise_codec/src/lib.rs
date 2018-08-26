@@ -68,7 +68,7 @@ impl Len for Length {
     }
 }
 
-impl Len for Vec<u8> {
+impl Len for BytesMut {
     fn len(&self) -> usize {
         self.len()
     }
@@ -196,106 +196,6 @@ impl AsRef<[u8]> for Length {
     }
 }
 
-impl AsMut<[u8]> for Length {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-struct LengthFrame([u8; LENGTH_FRAME_LENGTH]);
-
-impl LengthFrame {
-    fn new() -> Self {
-        LengthFrame([0u8; LENGTH_FRAME_LENGTH])
-    }
-}
-
-struct PayloadFrame(Vec<u8>);
-
-impl PayloadFrame {
-    fn new(payload_size: usize) -> Self {
-        PayloadFrame(vec![0; payload_size + NOISE_TAG_LENGTH])
-    }
-}
-
-impl AsMut<[u8]> for LengthFrame {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
-impl AsMut<[u8]> for PayloadFrame {
-    fn as_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-}
-
-impl AsRef<[u8]> for LengthFrame {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl AsRef<[u8]> for PayloadFrame {
-    fn as_ref(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-}
-
-struct EncodingItemBuffer {
-    item_bytes: BytesMut,
-    next_payload_length: usize,
-}
-
-impl EncodingItemBuffer {
-    fn new(bytes: BytesMut) -> Self {
-        EncodingItemBuffer {
-            item_bytes: bytes,
-            next_payload_length: 0,
-        }
-    }
-
-    fn finished_encoding(&self) -> bool {
-        self.item_bytes.is_empty()
-    }
-
-    fn compute_next_payload_length(&mut self) {
-        self.next_payload_length = min(self.item_bytes.len(), MAX_PAYLOAD_LENGTH);
-
-        debug!("Next payload length is {}", self.next_payload_length);
-    }
-
-    fn total_size(&self) -> usize {
-        LENGTH_FRAME_LENGTH + self.next_payload_length + NOISE_TAG_LENGTH
-    }
-
-    fn encode_length(&mut self, noise: &mut Session) -> Result<LengthFrame, snow::SnowError> {
-        let length = Length::new(self.next_payload_length);
-        let mut length_frame = LengthFrame::new();
-
-        trace!("Length: {:?}", length.as_ref());
-
-        noise.write_message(length.as_ref(), length_frame.as_mut())?;
-
-        trace!("Length-Frame: {:?}", length_frame.as_ref());
-
-        Ok(length_frame)
-    }
-
-    fn encode_payload(&mut self, noise: &mut Session) -> Result<PayloadFrame, snow::SnowError> {
-        let payload = self.item_bytes.split_to(self.next_payload_length);
-        let mut payload_frame = PayloadFrame::new(self.next_payload_length);
-
-        trace!("Payload: {:?}", payload.as_ref());
-
-        noise.write_message(&payload[..], payload_frame.as_mut())?;
-
-        trace!("Payload-Frame: {:?}", payload_frame.as_ref());
-
-        Ok(payload_frame)
-    }
-}
-
 impl<C: Encoder> Encoder for NoiseCodec<C> {
     type Item = C::Item;
     type Error = Error<C::Error>;
@@ -307,17 +207,17 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
             .encode(item, &mut item_bytes)
             .map_err(Error::InnerError)?;
 
-        let mut item_buffer = EncodingItemBuffer::new(item_bytes);
+        while !item_bytes.is_empty() {
+            let next_payload_length = min(item_bytes.len(), MAX_PAYLOAD_LENGTH);
 
-        while !item_buffer.finished_encoding() {
-            item_buffer.compute_next_payload_length();
+            let length_frame = self.encrypt(Length::new(next_payload_length))?;
 
-            let length_frame = self.encrypt(Length::new(item_buffer.next_payload_length))?;
-            let payload_frame = item_buffer.encode_payload(&mut self.noise)?;
+            let payload = item_bytes.split_to(next_payload_length);
+            let payload_frame = self.encrypt(payload)?;
 
-            cipher_text.reserve(item_buffer.total_size());
+            cipher_text.reserve(LENGTH_FRAME_LENGTH + next_payload_length + NOISE_TAG_LENGTH);
             cipher_text.put(length_frame);
-            cipher_text.put(payload_frame.as_ref());
+            cipher_text.put(payload_frame);
         }
 
         Ok(())
