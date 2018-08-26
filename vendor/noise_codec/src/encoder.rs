@@ -1,9 +1,10 @@
 use bytes::{BufMut, BytesMut};
 use std::cmp::min;
 use tokio_codec::Encoder;
-use Error;
+
+use error::Error;
+use payload_size::PayloadSize;
 use NoiseCodec;
-use PayloadSize;
 use MAX_PAYLOAD_LENGTH;
 use NOISE_TAG_LENGTH;
 
@@ -16,7 +17,7 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
 
         self.inner
             .encode(item, &mut item_bytes)
-            .map_err(Error::InnerError)?;
+            .map_err(Error::Inner)?;
 
         debug!(
             "Encoding {} bytes into {} frame(s).",

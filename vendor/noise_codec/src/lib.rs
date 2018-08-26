@@ -7,13 +7,15 @@ extern crate tokio_codec;
 #[macro_use]
 extern crate log;
 
-use byteorder::{BigEndian, ByteOrder};
 use bytes::BytesMut;
 use snow::Session;
-use std::io;
 
 mod decoder;
 mod encoder;
+mod error;
+mod payload_size;
+
+pub use error::*;
 
 /*
 This is the format for each message. It first contains
@@ -57,57 +59,5 @@ impl<C> NoiseCodec<C> {
             payload_size: None,
             payload_buffer: BytesMut::new(),
         }
-    }
-}
-
-#[derive(Debug)]
-pub enum Error<E> {
-    IoError(io::Error),
-    SnowError(snow::SnowError),
-    InnerError(E),
-}
-
-impl<E> From<io::Error> for Error<E> {
-    fn from(e: io::Error) -> Error<E> {
-        Error::IoError(e)
-    }
-}
-
-impl<E> From<snow::SnowError> for Error<E> {
-    fn from(e: snow::SnowError) -> Error<E> {
-        Error::SnowError(e)
-    }
-}
-
-#[derive(Debug)]
-struct PayloadSize([u8; 2]);
-
-impl From<PayloadSize> for usize {
-    fn from(payload_length: PayloadSize) -> Self {
-        BigEndian::read_u16(&payload_length.0[..]) as usize
-    }
-}
-
-impl From<usize> for PayloadSize {
-    fn from(length: usize) -> Self {
-        let mut data = [0u8; 2];
-
-        let total_length = length + NOISE_TAG_LENGTH;
-
-        BigEndian::write_u16(&mut data, total_length as u16);
-
-        PayloadSize(data)
-    }
-}
-
-impl From<Vec<u8>> for PayloadSize {
-    fn from(vec: Vec<u8>) -> Self {
-        PayloadSize([vec[0], vec[1]])
-    }
-}
-
-impl AsRef<[u8]> for PayloadSize {
-    fn as_ref(&self) -> &[u8] {
-        &self.0[..]
     }
 }

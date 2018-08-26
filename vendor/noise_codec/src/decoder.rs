@@ -1,8 +1,8 @@
 use bytes::BytesMut;
+use error::Error;
+use payload_size::PayloadSize;
 use tokio_codec::Decoder;
-use Error;
 use NoiseCodec;
-use PayloadSize;
 use LENGTH_FRAME_LENGTH;
 use NOISE_TAG_LENGTH;
 
@@ -55,7 +55,7 @@ impl<C: Decoder> Decoder for NoiseCodec<C> {
                 let item = self
                     .inner
                     .decode(&mut self.payload_buffer)
-                    .map_err(Error::InnerError)?;
+                    .map_err(Error::Inner)?;
 
                 match item {
                     Some(item) => Ok(Some(item)),
