@@ -2,9 +2,12 @@ extern crate bytes;
 extern crate env_logger;
 extern crate noise_codec;
 extern crate snow;
+extern crate spectral;
 extern crate tokio_codec;
+
 use bytes::{Bytes, BytesMut};
 use noise_codec::NoiseCodec;
+use spectral::prelude::*;
 use tokio_codec::{BytesCodec, Decoder, Encoder, LinesCodec};
 
 fn init_noise<C: Encoder + Decoder + Clone>(codec: C) -> (NoiseCodec<C>, NoiseCodec<C>) {
@@ -42,8 +45,12 @@ fn encode_and_decode_hello_world() {
         let bytes = Bytes::from(b"hello world".to_vec());
         let mut cipher_text = BytesMut::new();
         alice.encode(bytes, &mut cipher_text).unwrap();
-        let msg = bob.decode(&mut cipher_text).unwrap().unwrap();
-        assert_eq!(&msg[..], b"hello world");
+        let msg = bob.decode(&mut cipher_text);
+
+        assert_that(&msg)
+            .is_ok()
+            .is_some()
+            .is_equal_to(&BytesMut::from(b"hello world".to_vec()));
     }
 
     {
@@ -57,6 +64,8 @@ fn encode_and_decode_hello_world() {
 
 #[test]
 fn encode_two_messages_and_decode() {
+    let _ = env_logger::try_init();
+
     let (mut alice, mut bob) = init_noise(LinesCodec::new());
     {
         let mut cipher_text = BytesMut::new();
@@ -66,10 +75,17 @@ fn encode_two_messages_and_decode() {
         alice
             .encode("you are beautiful!!!".to_string(), &mut cipher_text)
             .unwrap();
-        let msg1 = bob.decode(&mut cipher_text).unwrap();
-        let msg2 = bob.decode(&mut cipher_text).unwrap();
-        assert_eq!(msg1, Some(String::from("hello world")));
-        assert_eq!(msg2, Some(String::from("you are beautiful!!!")));
+        let msg1 = bob.decode(&mut cipher_text);
+        let msg2 = bob.decode(&mut cipher_text);
+
+        assert_that(&msg1)
+            .is_ok()
+            .is_some()
+            .is_equal_to(String::from("hello world"));
+        assert_that(&msg2)
+            .is_ok()
+            .is_some()
+            .is_equal_to(String::from("you are beautiful!!!"));
     }
 }
 

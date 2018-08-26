@@ -18,3 +18,4 @@ log = "0.4.3"
 
 [dev-dependencies]
 env_logger = "0.5.12"
+spectral = "0.6.0"

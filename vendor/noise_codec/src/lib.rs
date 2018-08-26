@@ -59,6 +59,26 @@ impl<C> NoiseCodec<C> {
 }
 
 impl<C: Decoder> NoiseCodec<C> {
+    fn decrypt<T: From<Vec<u8>>>(
+        &mut self,
+        cipher_text: &mut BytesMut,
+        number_of_bytes_to_decrypt: usize,
+    ) -> Result<T, Error<C::Error>> {
+        let cleartext_length = number_of_bytes_to_decrypt - NOISE_TAG_LENGTH;
+        debug!("Decrypting {} bytes", number_of_bytes_to_decrypt);
+
+        let mut cleartext = vec![0; cleartext_length];
+
+        if cipher_text.len() > number_of_bytes_to_decrypt {
+            let cipher_text = cipher_text.split_to(number_of_bytes_to_decrypt);
+            self.noise.read_message(&cipher_text[..], &mut cleartext)?;
+        } else {
+            self.noise.read_message(&cipher_text[..], &mut cleartext)?;
+        }
+
+        Ok(cleartext.into())
+    }
+
     fn decode_payload_frame_length(
         &mut self,
         cipher_text: &mut BytesMut,
@@ -67,14 +87,10 @@ impl<C: Decoder> NoiseCodec<C> {
         let enough_data_for_length = cipher_text.len() >= LENGTH_FRAME_LENGTH;
 
         if no_length_yet && enough_data_for_length {
-            let length_frame = cipher_text.split_to(LENGTH_FRAME_LENGTH);
-
-            let mut length = Length::new(0);
-
-            self.noise.read_message(&length_frame[..], length.as_mut())?;
+            let length: Length = self.decrypt(cipher_text, LENGTH_FRAME_LENGTH)?;
 
             let length = length.as_usize();
-            trace!("Decrypted length: {:?}", length);
+            debug!("Decrypted length: {:?}", length);
 
             self.payload_frame_len = Some(length);
         }
@@ -87,13 +103,9 @@ impl<C: Decoder> NoiseCodec<C> {
         cipher_text: &mut BytesMut,
         payload_frame_len: usize,
     ) -> Result<Option<C::Item>, Error<C::Error>> {
-        let payload_len = payload_frame_len - NOISE_TAG_LENGTH;
-        let mut payload = vec![0u8; payload_len];
-        self.noise
-            .read_message(&cipher_text[..payload_frame_len], &mut payload)?;
+        let payload: Vec<u8> = self.decrypt(cipher_text, payload_frame_len)?;
 
         self.payload_buffer.extend_from_slice(&payload);
-        cipher_text.advance(payload_frame_len as usize);
         self.payload_frame_len = None;
 
         let item = self
@@ -140,6 +152,12 @@ impl Length {
 
     fn as_usize(&self) -> usize {
         BigEndian::read_u16(&self.0[..]) as usize
+    }
+}
+
+impl From<Vec<u8>> for Length {
+    fn from(vec: Vec<u8>) -> Self {
+        Length([vec[0], vec[1]])
     }
 }
 
@@ -215,7 +233,7 @@ impl EncodingItemBuffer {
     fn compute_next_payload_length(&mut self) {
         self.next_payload_length = min(self.item_bytes.len(), MAX_PAYLOAD_LENGTH);
 
-        trace!("Next payload length is {}", self.next_payload_length);
+        debug!("Next payload length is {}", self.next_payload_length);
     }
 
     fn total_size(&self) -> usize {
