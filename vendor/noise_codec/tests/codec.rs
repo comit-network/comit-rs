@@ -5,36 +5,13 @@ extern crate snow;
 extern crate spectral;
 extern crate tokio_codec;
 
-use bytes::{Bytes, BytesMut};
-use noise_codec::NoiseCodec;
 use spectral::prelude::*;
-use tokio_codec::{BytesCodec, Decoder, Encoder, LinesCodec};
 
-fn init_noise<C: Encoder + Decoder + Clone>(codec: C) -> (NoiseCodec<C>, NoiseCodec<C>) {
-    let mut noise_1 = snow::Builder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s".parse().unwrap())
-        .build_initiator()
-        .unwrap();
+mod helper;
 
-    let mut noise_2 = snow::Builder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s".parse().unwrap())
-        .build_responder()
-        .unwrap();
-
-    let mut buf1 = [0u8; 65535];
-    let mut buf2 = [0u8; 65535];
-    // write first handshake message
-    let len = noise_1.write_message(&[], &mut buf1).unwrap();
-    let _len = noise_2.read_message(&buf1[..len], &mut buf2).unwrap();
-    let len = noise_2.write_message(&[], &mut buf1).unwrap();
-    let _len = noise_1.read_message(&buf1[..len], &mut buf2).unwrap();
-
-    let noise_1 = noise_1.into_transport_mode().unwrap();
-    let noise_2 = noise_2.into_transport_mode().unwrap();
-
-    (
-        NoiseCodec::new(noise_1, codec.clone()),
-        NoiseCodec::new(noise_2, codec),
-    )
-}
+use bytes::BytesMut;
+use helper::*;
+use tokio_codec::{Decoder, Encoder, LinesCodec};
 
 #[test]
 fn encode_and_decode_hello_world() {
@@ -42,23 +19,29 @@ fn encode_and_decode_hello_world() {
 
     let (mut alice, mut bob) = init_noise(BytesCodec::new());
     {
-        let bytes = Bytes::from(b"hello world".to_vec());
         let mut cipher_text = BytesMut::new();
-        alice.encode(bytes, &mut cipher_text).unwrap();
-        let msg = bob.decode(&mut cipher_text);
+        alice.encode(msg(b"hello world"), &mut cipher_text).unwrap();
 
-        assert_that(&msg)
+        let actual_message = bob.decode(&mut cipher_text);
+
+        assert_that(&actual_message)
             .is_ok()
             .is_some()
-            .is_equal_to(&BytesMut::from(b"hello world".to_vec()));
+            .is_equal_to(&msg(b"hello world"));
     }
 
     {
-        let bytes = Bytes::from(b"you are beautiful!!!".to_vec());
         let mut cipher_text = BytesMut::new();
-        alice.encode(bytes, &mut cipher_text).unwrap();
-        let msg = bob.decode(&mut cipher_text).unwrap().unwrap();
-        assert_eq!(&msg[..], b"you are beautiful!!!");
+        alice
+            .encode(msg(b"you are beautiful!!!"), &mut cipher_text)
+            .unwrap();
+
+        let actual_message = bob.decode(&mut cipher_text);
+
+        assert_that(&actual_message)
+            .is_ok()
+            .is_some()
+            .is_equal_to(&msg(b"you are beautiful!!!"));
     }
 }
 
@@ -95,38 +78,40 @@ fn decode_partial_message() {
 
     let (mut alice, mut bob) = init_noise(BytesCodec::new());
     {
-        let bytes = Bytes::from(b"0123456789".to_vec());
         let mut cipher_text = BytesMut::new();
 
-        let empty_message = bob.decode(&mut cipher_text);
-        assert!(empty_message.unwrap().is_none());
+        let actual_message = bob.decode(&mut cipher_text);
+        assert_that(&actual_message).is_ok().is_none();
 
-        alice.encode(bytes, &mut cipher_text).unwrap();
+        alice.encode(msg(b"0123456789"), &mut cipher_text).unwrap();
 
         let mut buf = cipher_text.split_to(6);
-        let after_6_bytes = bob.decode(&mut buf).unwrap();
-        assert!(after_6_bytes.is_none(), "shouldn't be a full message yet");
+        let after_6_bytes = bob.decode(&mut buf);
+        asserting("shouldn't be a full message yet")
+            .that(&after_6_bytes)
+            .is_ok()
+            .is_none();
 
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
-        let after_17_bytes = bob.decode(&mut buf).unwrap();
-        assert!(
-            after_17_bytes.is_none(),
-            "still shouldn't be a full message yet"
-        );
+        let after_17_bytes = bob.decode(&mut buf);
+        asserting("still shouldn't be a full message yet")
+            .that(&after_6_bytes)
+            .is_ok()
+            .is_none();
 
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
         let after_28_bytes = bob.decode(&mut buf).unwrap();
-        assert!(
-            after_28_bytes.is_none(),
-            "given the message cipher text and MAC still shouldn't have a message"
-        );
+        asserting("given the message cipher text and MAC still shouldn't have a message")
+            .that(&after_6_bytes)
+            .is_ok()
+            .is_none();
 
         buf.extend_from_slice(&cipher_text[..]);
-        let after_all_bytes = bob.decode(&mut buf).unwrap();
-        assert_eq!(
-            after_all_bytes,
-            Some(BytesMut::from(b"0123456789" as &[u8]))
-        );
+        let after_all_bytes = bob.decode(&mut buf);
+        assert_that(&after_all_bytes)
+            .is_ok()
+            .is_some()
+            .is_equal_to(&msg(b"0123456789"));
     }
 }
 
@@ -141,19 +126,19 @@ fn decode_message_spanning_multiple_noise_frames() {
     alice.encode(message_2.clone(), &mut cipher_text).unwrap();
 
     {
-        let item = bob.decode(&mut cipher_text).unwrap();
-        assert_eq!(item, Some(message_1));
+        let item = bob.decode(&mut cipher_text);
+        assert_that(&item).is_ok().is_some().is_equal_to(&message_1);
     }
 
     {
         // The codec shouldn't be consuming more bytes than it needs
         // to produce one message
-        let item = bob.decode(&mut BytesMut::new()).unwrap();
-        assert!(item.is_none());
+        let item = bob.decode(&mut BytesMut::new());
+        assert_that(&item).is_ok().is_none();
     }
 
     {
-        let item = bob.decode(&mut cipher_text).unwrap();
-        assert_eq!(item, Some(message_2));
+        let item = bob.decode(&mut cipher_text);
+        assert_that(&item).is_ok().is_some().is_equal_to(&message_2);
     }
 }
