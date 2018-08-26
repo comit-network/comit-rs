@@ -1,18 +1,19 @@
 extern crate bitcoin;
 extern crate bitcoin_htlc;
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_rpc_test_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
-extern crate coblox_bitcoincore;
 extern crate common_types;
 extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
+extern crate tc_bitcoincore_client;
+extern crate tc_coblox_bitcoincore;
 extern crate testcontainers;
 
 use bitcoin_htlc::Htlc;
-use bitcoin_rpc::{BitcoinCoreClient, BitcoinRpcApi};
+use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
     serialize::serialize_hex, Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash,
@@ -22,14 +23,14 @@ use common_types::secret::Secret;
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
 
-use coblox_bitcoincore::BitcoinCore;
+use tc_coblox_bitcoincore::BitcoinCore;
 use testcontainers::{clients::DockerCli, Docker};
 
 fn fund_htlc(
-    client: &bitcoin_rpc::BitcoinCoreClient,
+    client: &bitcoin_rpc_client::BitcoinCoreClient,
 ) -> (
-    bitcoin_rpc::TransactionId,
-    bitcoin_rpc::TransactionOutput,
+    bitcoin_rpc_client::TransactionId,
+    bitcoin_rpc_client::TransactionOutput,
     BitcoinQuantity,
     Htlc,
     u32,
@@ -57,12 +58,11 @@ fn fund_htlc(
         sequence_lock,
     );
 
-    let htlc_address = htlc.compute_address(Network::BitcoinCoreRegtest);
+    let htlc_address = htlc.compute_address(Network::Regtest);
 
     let txid = client
         .send_to_address(&htlc_address.clone().into(), amount.bitcoin())
         .unwrap()
-        .into_result()
         .unwrap();
 
     client.generate(1).unwrap();
@@ -85,10 +85,8 @@ fn fund_htlc(
 fn redeem_htlc_with_secret() {
     let _ = env_logger::try_init();
 
-    let _ = env_logger::try_init();
-
     let container = DockerCli::new().run(BitcoinCore::default());
-    let client = container.connect::<BitcoinCoreClient>();
+    let client = tc_bitcoincore_client::new(&container);
     client.generate(432).unwrap();
 
     let (txid, vout, input_amount, htlc, _, secret, keypair, _) = fund_htlc(&client);
@@ -98,12 +96,7 @@ fn redeem_htlc_with_secret() {
         "Should be unlockable with the given secret and secret_key"
     );
 
-    let alice_addr: Address = client
-        .get_new_address()
-        .unwrap()
-        .into_result()
-        .unwrap()
-        .into();
+    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -120,13 +113,9 @@ fn redeem_htlc_with_secret() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
 
-    let rpc_redeem_txid = client
-        .send_raw_transaction(raw_redeem_tx)
-        .unwrap()
-        .into_result()
-        .unwrap();
+    let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
 
     client.generate(1).unwrap();
 
@@ -142,20 +131,13 @@ fn redeem_htlc_with_secret() {
 fn redeem_refund_htlc() {
     let _ = env_logger::try_init();
 
-    let _ = env_logger::try_init();
-
     let container = DockerCli::new().run(BitcoinCore::default());
-    let client = container.connect::<BitcoinCoreClient>();
+    let client = tc_bitcoincore_client::new(&container);
     client.generate(432).unwrap();
 
     let (txid, vout, input_amount, htlc, nsequence, _, _, keypair) = fund_htlc(&client);
 
-    let alice_addr: Address = client
-        .get_new_address()
-        .unwrap()
-        .into_result()
-        .unwrap()
-        .into();
+    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
@@ -171,12 +153,9 @@ fn redeem_refund_htlc() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
 
-    let rpc_redeem_txid_error = client
-        .send_raw_transaction(raw_redeem_tx.clone())
-        .unwrap()
-        .into_result();
+    let rpc_redeem_txid_error = client.send_raw_transaction(raw_redeem_tx.clone()).unwrap();
 
     // It should fail because it's too early
     assert!(rpc_redeem_txid_error.is_err());
@@ -188,17 +167,9 @@ fn redeem_refund_htlc() {
 
     client.generate(nsequence).unwrap();
 
-    let _txn = client
-        .get_transaction(&txid)
-        .unwrap()
-        .into_result()
-        .unwrap();
+    let _txn = client.get_transaction(&txid).unwrap().unwrap();
 
-    let rpc_redeem_txid = client
-        .send_raw_transaction(raw_redeem_tx)
-        .unwrap()
-        .into_result()
-        .unwrap();
+    let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
 
     client.generate(1).unwrap();
 

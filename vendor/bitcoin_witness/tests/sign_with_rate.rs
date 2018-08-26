@@ -1,14 +1,15 @@
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_rpc_test_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
-extern crate coblox_bitcoincore;
 extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
+extern crate tc_bitcoincore_client;
+extern crate tc_coblox_bitcoincore;
 extern crate testcontainers;
 
-use bitcoin_rpc::{BitcoinCoreClient, BitcoinRpcApi};
+use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
@@ -16,7 +17,7 @@ use secp256k1_support::KeyPair;
 
 use std::str::FromStr;
 
-use coblox_bitcoincore::BitcoinCore;
+use tc_coblox_bitcoincore::BitcoinCore;
 use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
@@ -24,7 +25,7 @@ fn sign_with_rate() {
     let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
-    let client = container.connect::<BitcoinCoreClient>();
+    let client = tc_bitcoincore_client::new(&container);
     client.enable_segwit();
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
@@ -33,12 +34,7 @@ fn sign_with_rate() {
 
     let (txid, vout) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
 
-    let alice_addr: Address = client
-        .get_new_address()
-        .unwrap()
-        .into_result()
-        .unwrap()
-        .into();
+    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
 
     let rate = 42.0;
 
@@ -57,15 +53,14 @@ fn sign_with_rate() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
 
     let rpc_redeem_txid = client
         .send_raw_transaction(raw_redeem_tx.clone())
         .unwrap()
-        .into_result()
         .unwrap();
 
-    client.generate(1).unwrap();
+    client.generate(1).unwrap().unwrap();
 
     assert!(
         client

@@ -1,5 +1,5 @@
 use bitcoin::{self, blockdata::script, util::address::Address as BitcoinAddress};
-use bitcoin_rpc;
+use bitcoin_rpc_client;
 use secp256k1_support::PublicKey;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -27,22 +27,22 @@ impl Hash for Address {
 }
 
 impl FromStr for Address {
-    type Err = bitcoin::util::Error;
+    type Err = bitcoin::network::serialize::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         BitcoinAddress::from_str(s).and_then(|address| Ok(Address(address)))
     }
 }
 
-impl From<bitcoin_rpc::Address> for Address {
-    fn from(address: bitcoin_rpc::Address) -> Self {
+impl From<bitcoin_rpc_client::Address> for Address {
+    fn from(address: bitcoin_rpc_client::Address) -> Self {
         Address::from(address.to_address())
     }
 }
 
-impl From<Address> for bitcoin_rpc::Address {
+impl From<Address> for bitcoin_rpc_client::Address {
     fn from(address: Address) -> Self {
-        bitcoin_rpc::Address::from(address.to_address())
+        bitcoin_rpc_client::Address::from(address.to_address())
     }
 }
 

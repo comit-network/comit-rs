@@ -9,8 +9,8 @@ authors = [
 ]
 
 [dependencies]
-secp256k1 = { version = "0.9.0", features = ["rand"] }
-lazy_static = "1.0.1"
+secp256k1 = { version = "0.11.0", features = ["rand"] }
+lazy_static = "1"
 rand = "0.3"
 
 [dev-dependencies]

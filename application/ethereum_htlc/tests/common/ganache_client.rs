@@ -1,8 +1,9 @@
 use ethereum_htlc;
 use ethereum_support::*;
 use ganache_rust_web3;
+use tc_trufflesuite_ganachecli::GanacheCli;
+use tc_web3_client::Web3Client;
 use testcontainers::{clients::DockerCli, Container, Docker};
-use trufflesuite_ganachecli::{GanacheCli, Web3Client};
 
 pub struct GanacheClient {
     _container: Container<DockerCli, GanacheCli>,
@@ -13,7 +14,7 @@ pub struct GanacheClient {
 impl GanacheClient {
     pub fn new() -> Self {
         let container = DockerCli::new().run(GanacheCli::default());
-        let client = container.connect::<Web3Client>();
+        let client = Web3Client::new(&container);
 
         GanacheClient {
             _container: container,

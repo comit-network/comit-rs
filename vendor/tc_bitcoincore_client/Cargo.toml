@@ -1,5 +1,5 @@
 [package]
-name = "jsonrpc"
+name = "tc_bitcoincore_client"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,9 +9,6 @@ authors = [
 ]
 
 [dependencies]
-reqwest = "0.8.5"
-serde_json = "1.0.19"
-serde_derive = "1.0.63"
-serde = "1.0.64"
-spectral = "0.6.0"
-log = "0.4.3"
+testcontainers = "0.1"
+tc_coblox_bitcoincore = "0.1"
+bitcoin_rpc_client = "0.1"

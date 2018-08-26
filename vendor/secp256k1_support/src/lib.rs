@@ -3,13 +3,12 @@ extern crate secp256k1;
 extern crate lazy_static;
 extern crate rand;
 
-use secp256k1::Secp256k1;
-pub use secp256k1::{PublicKey, SecretKey};
+pub use secp256k1::{constants::SECRET_KEY_SIZE, All, PublicKey, Secp256k1};
 mod signature;
 pub use signature::*;
 mod keypair;
 pub use keypair::*;
 
 lazy_static! {
-    static ref SECP: Secp256k1 = Secp256k1::new();
+    static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
 }

@@ -3,7 +3,8 @@ extern crate ethereum_htlc;
 extern crate ethereum_support;
 extern crate ganache_rust_web3;
 extern crate hex;
-extern crate trufflesuite_ganachecli;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
 #[macro_use]
 extern crate log;
 extern crate common_types;

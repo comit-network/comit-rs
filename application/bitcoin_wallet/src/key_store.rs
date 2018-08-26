@@ -1,8 +1,7 @@
 use super::SECP;
 use bitcoin::util::bip32::{self, ChildNumber, ExtendedPrivKey, ExtendedPubKey};
 use crypto::{digest::Digest, sha2::Sha256};
-use secp256k1::constants::SECRET_KEY_SIZE;
-use secp256k1_support::KeyPair;
+use secp256k1_support::{KeyPair, SECRET_KEY_SIZE};
 use std::{
     collections::HashMap,
     ops::DerefMut,
@@ -54,10 +53,12 @@ impl KeyStore {
         // Then we just assume that we use account 0' (like bitcoind), hence we derive m/0'
         // and create our child keys from there.
 
-        let account_0_privkey = master_privkey.ckd_priv(&SECP, ChildNumber::Hardened(0))?;
+        let account_0_privkey = master_privkey.ckd_priv(&*SECP, ChildNumber::from_hardened_idx(0))?;
 
-        let internal_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Normal(1))?;
-        let transient_root_privkey = account_0_privkey.ckd_priv(&SECP, ChildNumber::Hardened(2))?;
+        let internal_root_privkey =
+            account_0_privkey.ckd_priv(&*SECP, ChildNumber::from_normal_idx(1))?;
+        let transient_root_privkey =
+            account_0_privkey.ckd_priv(&*SECP, ChildNumber::from_hardened_idx(2))?;
 
         Ok(KeyStore {
             _master_privkey: master_privkey,
@@ -74,7 +75,7 @@ impl KeyStore {
 
         let res = self
             .internal_root_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(*index))?;
+            .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(*index))?;
 
         // If we reach here, res is Ok
         *index += 1;
@@ -84,8 +85,8 @@ impl KeyStore {
     pub fn get_internal_pubkey(&self, index: u32) -> Result<ExtendedPubKey, Error> {
         let priv_key = self
             .internal_root_privkey
-            .ckd_priv(&SECP, ChildNumber::Hardened(index))?;
-        Ok(ExtendedPubKey::from_private(&SECP, &priv_key))
+            .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(index))?;
+        Ok(ExtendedPubKey::from_private(&*SECP, &priv_key))
     }
 
     pub fn get_transient_keypair(&mut self, id: &Uuid) -> KeyPair {
@@ -142,9 +143,18 @@ mod tests {
         let internal_privkey1 = keystore.get_new_internal_privkey().unwrap();
         let internal_privkey2 = keystore.get_new_internal_privkey().unwrap();
 
-        assert_eq!(internal_privkey0.child_number, ChildNumber::Hardened(0));
-        assert_eq!(internal_privkey1.child_number, ChildNumber::Hardened(1));
-        assert_eq!(internal_privkey2.child_number, ChildNumber::Hardened(2));
+        assert_eq!(
+            internal_privkey0.child_number,
+            ChildNumber::from_hardened_idx(0)
+        );
+        assert_eq!(
+            internal_privkey1.child_number,
+            ChildNumber::from_hardened_idx(1)
+        );
+        assert_eq!(
+            internal_privkey2.child_number,
+            ChildNumber::from_hardened_idx(2)
+        );
         assert_ne!(internal_privkey0, internal_privkey1);
         assert_ne!(internal_privkey1, internal_privkey2);
         assert_ne!(internal_privkey2, internal_privkey0);
@@ -158,9 +168,18 @@ mod tests {
         let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
         let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
 
-        assert_eq!(internal_pubkey0.child_number, ChildNumber::Hardened(0));
-        assert_eq!(internal_pubkey1.child_number, ChildNumber::Hardened(1));
-        assert_eq!(internal_pubkey2.child_number, ChildNumber::Hardened(2));
+        assert_eq!(
+            internal_pubkey0.child_number,
+            ChildNumber::from_hardened_idx(0)
+        );
+        assert_eq!(
+            internal_pubkey1.child_number,
+            ChildNumber::from_hardened_idx(1)
+        );
+        assert_eq!(
+            internal_pubkey2.child_number,
+            ChildNumber::from_hardened_idx(2)
+        );
         assert_ne!(internal_pubkey0, internal_pubkey1);
         assert_ne!(internal_pubkey1, internal_pubkey2);
         assert_ne!(internal_pubkey2, internal_pubkey0);
@@ -177,12 +196,9 @@ mod tests {
         let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
         let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
 
-        let pubkey_from_priv0 =
-            PublicKey::from_secret_key(&SECP, &internal_privkey0.secret_key).unwrap();
-        let pubkey_from_priv1 =
-            PublicKey::from_secret_key(&SECP, &internal_privkey1.secret_key).unwrap();
-        let pubkey_from_priv2 =
-            PublicKey::from_secret_key(&SECP, &internal_privkey2.secret_key).unwrap();
+        let pubkey_from_priv0 = PublicKey::from_secret_key(&*SECP, &internal_privkey0.secret_key);
+        let pubkey_from_priv1 = PublicKey::from_secret_key(&*SECP, &internal_privkey1.secret_key);
+        let pubkey_from_priv2 = PublicKey::from_secret_key(&*SECP, &internal_privkey2.secret_key);
         let pub_key_from_ext0 = internal_pubkey0.public_key;
         let pub_key_from_ext1 = internal_pubkey1.public_key;
         let pub_key_from_ext2 = internal_pubkey2.public_key;

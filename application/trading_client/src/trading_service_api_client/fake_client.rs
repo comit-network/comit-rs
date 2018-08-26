@@ -1,5 +1,5 @@
 use super::client::ApiClient;
-use bitcoin_rpc;
+use bitcoin_rpc_client;
 use bitcoin_support::BitcoinQuantity;
 use common_types;
 use ethereum_support::{self, EthereumQuantity};
@@ -36,7 +36,7 @@ impl ApiClient for FakeApiClient {
         _request: &BuyOrderRequestBody,
     ) -> Result<RequestToFund, TradingServiceError> {
         Ok(RequestToFund {
-            address_to_fund: bitcoin_rpc::Address::from_str(
+            address_to_fund: bitcoin_rpc_client::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ).unwrap(),
             btc_amount: BitcoinQuantity::from_bitcoin(1001.0),

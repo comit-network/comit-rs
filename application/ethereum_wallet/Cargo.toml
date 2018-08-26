@@ -17,6 +17,7 @@ tiny-keccak = "1.4.2"
 
 [dev-dependencies]
 hex = "0.3.1"
-testcontainers = { path = "../../vendor/testcontainers_rs" }
-trufflesuite_ganachecli = { path = "../../vendor/trufflesuite_ganachecli" }
+testcontainers = "0.1"
+tc_trufflesuite_ganachecli = "0.1"
+tc_web3_client = { path = "../../vendor/tc_web3_client" }
 env_logger = "0.5.11"

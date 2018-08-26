@@ -25,20 +25,18 @@ impl KeyPair {
     }
 
     pub fn sign_ecdsa(&self, message: Message) -> Signature {
-        super::SECP.sign(&message, &self.secret_key).unwrap()
+        super::SECP.sign(&message, &self.secret_key)
     }
 
     pub fn sign_ecdsa_recoverable(&self, message: Message) -> RecoverableSignature {
-        super::SECP
-            .sign_recoverable(&message, &self.secret_key)
-            .unwrap()
+        super::SECP.sign_recoverable(&message, &self.secret_key)
     }
 }
 
 impl From<SecretKey> for KeyPair {
     fn from(secret_key: SecretKey) -> KeyPair {
         KeyPair {
-            public_key: PublicKey::from_secret_key(&*super::SECP, &secret_key).unwrap(),
+            public_key: PublicKey::from_secret_key(&*super::SECP, &secret_key),
             secret_key,
         }
     }

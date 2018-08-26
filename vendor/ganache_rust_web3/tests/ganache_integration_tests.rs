@@ -1,20 +1,23 @@
 extern crate env_logger;
 extern crate ganache_rust_web3;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
 extern crate testcontainers;
-extern crate trufflesuite_ganachecli;
 extern crate web3;
 
 use ganache_rust_web3::Ganache;
+use tc_trufflesuite_ganachecli::GanacheCli;
 use testcontainers::{clients::DockerCli, Docker};
-use trufflesuite_ganachecli::{GanacheCli, Web3Client};
 use web3::{futures::Future, transports};
 
+use tc_web3_client::Web3Client;
+
 #[test]
-fn test_evm_snapshot() {
+fn evm_snapshot() {
     let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
-    let client = container.connect::<Web3Client>();
+    let client = Web3Client::new(&container);
 
     let _ = client
         .api::<Ganache<transports::Http>>()
@@ -24,11 +27,11 @@ fn test_evm_snapshot() {
 }
 
 #[test]
-fn test_evm_revert() {
+fn evm_revert() {
     let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
-    let client = container.connect::<Web3Client>();
+    let client = Web3Client::new(&container);
 
     let snapshot_id = client
         .api::<Ganache<transports::Http>>()
@@ -44,12 +47,12 @@ fn test_evm_revert() {
 }
 
 #[test]
-fn test_evm_increase_time() {
+fn evm_increase_time() {
     let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
 
-    let client = container.connect::<Web3Client>();
+    let client = Web3Client::new(&container);
 
     //        let increase = U256::from(1);
     //
@@ -67,11 +70,11 @@ fn test_evm_increase_time() {
 }
 
 #[test]
-fn test_evm_mine() {
+fn evm_mine() {
     let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
-    let client = container.connect::<Web3Client>();
+    let client = Web3Client::new(&container);
 
     let _ = client
         .api::<Ganache<transports::Http>>()

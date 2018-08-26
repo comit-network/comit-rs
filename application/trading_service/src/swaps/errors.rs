@@ -24,8 +24,8 @@ impl From<event_store::Error> for Error {
     }
 }
 
-impl From<bitcoin_support::Error> for Error {
-    fn from(e: bitcoin_support::Error) -> Self {
+impl From<bitcoin_support::serialize::Error> for Error {
+    fn from(e: bitcoin_support::serialize::Error) -> Self {
         error!("Invalid bitcoin address format: {}", e);
         Error::TradingService(String::from("Invalid bitcoin address format"))
     }

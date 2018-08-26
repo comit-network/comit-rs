@@ -10,10 +10,10 @@ authors = [
 
 [dependencies]
 bigdecimal = "0.0.12"
-bitcoin = { git = "https://github.com/coblox/rust-bitcoin.git", branch = "bitcoincore-regtest" }
-bitcoin_rpc = { path = "../bitcoin_rpc" }
+bitcoin = "0.14"
+bitcoin_rpc_client = "0.1"
 secp256k1_support = { path = "../secp256k1_support" }
-lazy_static = "1.0.1"
+lazy_static = "1"
 serde = "1.0.64"
 serde_derive = "1.0.63"
 

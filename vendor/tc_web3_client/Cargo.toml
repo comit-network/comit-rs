@@ -1,5 +1,5 @@
 [package]
-name = "ganache_rust_web3"
+name = "tc_web3_client"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",
@@ -9,13 +9,6 @@ authors = [
 ]
 
 [dependencies]
-web3 = "0.3.0"
-serde_derive = "1.0.63"
-serde = "1.0.64"
-serde_json = "1.0.19"
-
-[dev-dependencies]
-tc_trufflesuite_ganachecli = "0.1"
-tc_web3_client = { path = "../tc_web3_client" }
 testcontainers = "0.1"
-env_logger = "0.5.10"
+tc_trufflesuite_ganachecli = "0.1"
+web3 = "0.3"

@@ -1,6 +1,6 @@
 use bitcoin_support::{
-    Address, BitcoinQuantity, Script, Sha256dHash, SighashComponents, Transaction, TxIn, TxOut,
-    Weight,
+    Address, BitcoinQuantity, OutPoint, Script, Sha256dHash, SighashComponents, Transaction, TxIn,
+    TxOut, Weight,
 };
 use secp256k1_support::{DerSerializableSignature, Message};
 use witness::{UnlockParameters, Witness};
@@ -8,8 +8,7 @@ use witness::{UnlockParameters, Witness};
 pub struct PrimedInput {
     input_parameters: UnlockParameters,
     value: BitcoinQuantity,
-    vout: u32,
-    txid: Sha256dHash,
+    previous_output: OutPoint,
 }
 
 impl PrimedInput {
@@ -22,8 +21,7 @@ impl PrimedInput {
         PrimedInput {
             input_parameters,
             value,
-            vout,
-            txid,
+            previous_output: OutPoint { txid, vout },
         }
     }
 
@@ -39,14 +37,13 @@ impl PrimedInput {
             } else {
                 vec![]
             },
-            Witness::PrevScript => self.input_parameters.prev_script.clone().into_vec(),
+            Witness::PrevScript => self.input_parameters.prev_script.clone().into_bytes(),
         }
     }
 
     fn to_txin_without_signature(&self) -> TxIn {
         TxIn {
-            prev_hash: self.txid,
-            prev_index: self.vout,
+            previous_output: self.previous_output,
             script_sig: Script::new(),
             sequence: self.input_parameters.sequence,
             witness: self
@@ -78,7 +75,7 @@ impl PrimedTransaction {
                         &input_parameters.prev_script,
                         primed_input.value.satoshi(),
                     );
-                    let message_to_sign = Message::from(hash_to_sign.data());
+                    let message_to_sign = Message::from(hash_to_sign.into_bytes());
                     let signature = keypair.sign_ecdsa(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_signature_der();
