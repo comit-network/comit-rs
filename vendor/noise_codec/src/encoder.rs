@@ -28,13 +28,15 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
         while !item_bytes.is_empty() {
             let payload_size = min(item_bytes.len(), MAX_PAYLOAD_LENGTH);
 
-            let size_frame = self.encrypt(PayloadSize::from(payload_size))?;
-            cipher_text.reserve(2 + NOISE_TAG_LENGTH);
-            cipher_text.put(size_frame);
+            let payload_size_clear_text = PayloadSize::from(payload_size);
+            let (length, payload_size_encrypted) = self.encrypt(payload_size_clear_text)?;
+            cipher_text.reserve(length);
+            cipher_text.put(payload_size_encrypted);
 
-            let payload_frame = self.encrypt(item_bytes.split_to(payload_size))?;
-            cipher_text.reserve(payload_size + NOISE_TAG_LENGTH);
-            cipher_text.put(payload_frame);
+            let payload_clear_text = item_bytes.split_to(payload_size);
+            let (length, payload_encrypted) = self.encrypt(payload_clear_text)?;
+            cipher_text.reserve(length);
+            cipher_text.put(payload_encrypted);
         }
 
         Ok(())
@@ -58,13 +60,13 @@ impl Len for BytesMut {
 }
 
 impl<C: Encoder> NoiseCodec<C> {
-    fn encrypt<S: AsRef<[u8]> + Len>(&mut self, clear_text: S) -> Result<Vec<u8>, Error<C::Error>> {
+    fn encrypt<S: AsRef<[u8]> + Len>(&mut self, clear_text: S) -> Result<(usize, Vec<u8>), Error<C::Error>> {
         let cipher_text_length = clear_text.len() + NOISE_TAG_LENGTH;
         let mut cipher_text = vec![0u8; cipher_text_length];
 
         self.noise
             .write_message(clear_text.as_ref(), &mut cipher_text[..])?;
 
-        Ok(cipher_text)
+        Ok((cipher_text_length, cipher_text))
     }
 }

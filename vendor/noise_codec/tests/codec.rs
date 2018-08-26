@@ -100,7 +100,7 @@ fn decode_partial_message() {
             .is_none();
 
         buf.extend_from_slice(&cipher_text.split_to(11)[..]);
-        let after_28_bytes = bob.decode(&mut buf).unwrap();
+        let after_28_bytes = bob.decode(&mut buf);
         asserting("given the message cipher text and MAC still shouldn't have a message")
             .that(&after_28_bytes)
             .is_ok()

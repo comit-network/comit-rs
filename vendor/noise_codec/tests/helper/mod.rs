@@ -2,7 +2,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use noise_codec::NoiseCodec;
 use snow;
 use std::io;
-use tokio_codec::{Decoder, Encoder, LinesCodec};
+use tokio_codec::{Decoder, Encoder};
 
 pub fn init_noise<C: Encoder + Decoder + Clone>(codec: C) -> (NoiseCodec<C>, NoiseCodec<C>) {
     let mut noise_1 = snow::Builder::new("Noise_NN_25519_ChaChaPoly_BLAKE2s".parse().unwrap())
