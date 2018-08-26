@@ -58,6 +58,35 @@ impl<C> NoiseCodec<C> {
     }
 }
 
+trait Len {
+    fn len(&self) -> usize;
+}
+
+impl Len for Length {
+    fn len(&self) -> usize {
+        2
+    }
+}
+
+impl Len for Vec<u8> {
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+impl<C: Encoder> NoiseCodec<C> {
+    fn encrypt<S: AsRef<[u8]> + Len>(&mut self, cleartext: S) -> Result<Vec<u8>, Error<C::Error>> {
+        let cipher_text_length = cleartext.len() + NOISE_TAG_LENGTH;
+
+        let mut cipher_text = vec![0u8; cipher_text_length];
+
+        self.noise
+            .write_message(cleartext.as_ref(), &mut cipher_text[..])?;
+
+        Ok(cipher_text)
+    }
+}
+
 impl<C: Decoder> NoiseCodec<C> {
     fn decrypt<T: From<Vec<u8>>>(
         &mut self,
@@ -282,11 +311,12 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
 
         while !item_buffer.finished_encoding() {
             item_buffer.compute_next_payload_length();
-            let length_frame = item_buffer.encode_length(&mut self.noise)?;
+
+            let length_frame = self.encrypt(Length::new(item_buffer.next_payload_length))?;
             let payload_frame = item_buffer.encode_payload(&mut self.noise)?;
 
             cipher_text.reserve(item_buffer.total_size());
-            cipher_text.put(length_frame.as_ref());
+            cipher_text.put(length_frame);
             cipher_text.put(payload_frame.as_ref());
         }
 
