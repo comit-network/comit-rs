@@ -210,13 +210,14 @@ impl<C: Encoder> Encoder for NoiseCodec<C> {
         while !item_bytes.is_empty() {
             let next_payload_length = min(item_bytes.len(), MAX_PAYLOAD_LENGTH);
 
-            let length_frame = self.encrypt(Length::new(next_payload_length))?;
+            let length = Length::new(next_payload_length);
+            let length_frame = self.encrypt(length)?;
+            cipher_text.reserve(2 + NOISE_TAG_LENGTH);
+            cipher_text.put(length_frame);
 
             let payload = item_bytes.split_to(next_payload_length);
             let payload_frame = self.encrypt(payload)?;
-
-            cipher_text.reserve(LENGTH_FRAME_LENGTH + next_payload_length + NOISE_TAG_LENGTH);
-            cipher_text.put(length_frame);
+            cipher_text.reserve(next_payload_length + NOISE_TAG_LENGTH);
             cipher_text.put(payload_frame);
         }
 
