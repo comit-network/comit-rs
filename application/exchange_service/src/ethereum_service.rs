@@ -68,65 +68,56 @@ impl EthereumService {
     }
 
     pub fn deploy_htlc(&self, contract: Htlc, funding: U256) -> Result<H256, Error> {
-        let gas_price = self.gas_price_service.get_gas_price()?;
-
-        let tx_id = {
-            let mut lock = self.nonce.lock()?;
-
-            let nonce = lock.deref_mut();
-
-            let transaction = ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
                 contract.compile_to_hex(),
                 86578, //TODO: calculate the gas consumption based on 32k + 200*bytes
                 gas_price,
                 funding,
-                *nonce,
-            );
-
-            let signed_transaction = self.wallet.sign(&transaction);
-
-            let tx_id = self.web3.send_raw_transaction(signed_transaction.into())?;
-
-            debug!(
-                "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
-                contract, tx_id, funding
-            );
-
-            // If we get this far, everything worked.
-            // Update the nonce and release the lock.
-            EthereumService::increment_nonce(nonce);
-
-            tx_id
-        };
-
+                nonce,
+            )
+        })?;
+        debug!(
+            "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
+            contract, tx_id, funding
+        );
         Ok(tx_id)
     }
 
     pub fn redeem_htlc(&self, secret: Secret, contract_address: Address) -> Result<H256, Error> {
-        let gas_price = self.gas_price_service.get_gas_price()?;
-
-        let tx_id = {
-            let mut lock = self.nonce.lock()?;
-
-            let nonce = lock.deref_mut();
-
-            let transaction = ethereum_wallet::UnsignedTransaction::new_contract_invocation(
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_invocation(
                 secret.raw_secret().to_vec(),
                 contract_address,
                 10000,
                 gas_price,
                 0,
-                *nonce,
-            );
+                nonce,
+            )
+        })?;
+        debug!(
+            "Contract was successfully redeemed in transaction {:?}",
+            tx_id
+        );
+        Ok(tx_id)
+    }
+
+    fn sign_and_send<T: Fn(U256, U256) -> ethereum_wallet::UnsignedTransaction>(
+        &self,
+        transaction_fn: T,
+    ) -> Result<H256, Error> {
+        let gas_price = self.gas_price_service.get_gas_price()?;
+
+        let tx_id = {
+            let mut lock = self.nonce.lock()?;
+
+            let nonce = lock.deref_mut();
+
+            let transaction = transaction_fn(*nonce, gas_price);
 
             let signed_transaction = self.wallet.sign(&transaction);
 
             let tx_id = self.web3.send_raw_transaction(signed_transaction.into())?;
-
-            debug!(
-                "Transaction was successfully deployed in transaction {:?}",
-                tx_id
-            );
 
             // If we get this far, everything worked.
             // Update the nonce and release the lock.
