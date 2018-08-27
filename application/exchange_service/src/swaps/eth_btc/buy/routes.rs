@@ -235,10 +235,7 @@ fn handle_post_orders_funding(
     event_store: &InMemoryEventStore<TradeId>,
     ethereum_service: &Arc<ethereum_service::EthereumService>,
 ) -> Result<(), Error> {
-    let trade_funded: TradeFunded<Bitcoin> = TradeFunded {
-        uid: trade_id,
-        htlc_identifier,
-    };
+    let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
@@ -257,7 +254,8 @@ fn handle_post_orders_funding(
     let htlc_funding = offer_created_event.buy_amount.wei();
 
     let tx_id = ethereum_service.deploy_htlc(htlc, htlc_funding)?;
-    let deployed: ContractDeployed<Ethereum> = ContractDeployed::new(trade_id, tx_id.to_string());
+    let deployed: ContractDeployed<Ethereum, Bitcoin> =
+        ContractDeployed::new(trade_id, tx_id.to_string());
 
     event_store.add_event(trade_id, deployed)?;
 
@@ -307,7 +305,8 @@ fn handle_post_revealed_secret(
     let offer_created_event =
         event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
-    let trade_funded_event = event_store.get_event::<TradeFunded<Bitcoin>>(trade_id.clone())?;
+    let trade_funded_event =
+        event_store.get_event::<TradeFunded<Ethereum, Bitcoin>>(trade_id.clone())?;
     let secret: Secret = redeem_btc_notification_body.secret;
     let exchange_success_address = order_taken_event.exchange_success_address;
     let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();

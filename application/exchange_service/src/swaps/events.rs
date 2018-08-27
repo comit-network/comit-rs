@@ -17,6 +17,7 @@ pub struct OfferCreated<B: Ledger, S: Ledger> {
     pub sell_amount: S::Quantity,
     // TODO: treasury_expiry_timestamp
 }
+
 #[derive(Clone, Debug)]
 pub struct OrderTaken<B: Ledger, S: Ledger> {
     pub uid: TradeId,
@@ -34,45 +35,60 @@ pub struct OrderTaken<B: Ledger, S: Ledger> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeFunded<S: Ledger> {
+pub struct TradeFunded<B: Ledger, S: Ledger> {
     pub uid: TradeId,
     pub htlc_identifier: S::HtlcId,
+    phantom: PhantomData<B>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<T> {
+pub struct ContractDeployed<B: Ledger, S: Ledger> {
     pub uid: TradeId,
     pub transaction_id: String,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<B>,
+    phantom2: PhantomData<S>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractRedeemed<T> {
+pub struct ContractRedeemed<B: Ledger, S: Ledger> {
     pub uid: TradeId,
     pub transaction_id: String,
-    phantom: PhantomData<T>,
+    phantom: PhantomData<B>,
+    phantom2: PhantomData<S>,
 }
 
 impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
     type Prev = ();
 }
 
-impl<B: Ledger> ContractDeployed<B> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<B> {
+impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
+    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<B, S> {
         ContractDeployed {
             uid,
             transaction_id,
+            phantom: PhantomData,
+            phantom2: PhantomData,
+        }
+    }
+}
+
+impl<B: Ledger, S: Ledger> TradeFunded<B, S> {
+    pub fn new(uid: TradeId, htlc_identifier: S::HtlcId) -> TradeFunded<B, S> {
+        TradeFunded {
+            uid,
+            htlc_identifier,
             phantom: PhantomData,
         }
     }
 }
 
-impl<B: Ledger> ContractRedeemed<B> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractRedeemed<B> {
+impl<B: Ledger, S: Ledger> ContractRedeemed<B, S> {
+    pub fn new(uid: TradeId, transaction_id: String) -> ContractRedeemed<B, S> {
         ContractRedeemed {
             uid,
             transaction_id,
             phantom: PhantomData,
+            phantom2: PhantomData,
         }
     }
 }
@@ -98,26 +114,14 @@ impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
     type Prev = OfferCreated<B, S>;
 }
 
-impl Event for TradeFunded<Ethereum> {
-    type Prev = OrderTaken<Bitcoin, Ethereum>;
+impl<B: Ledger, S: Ledger> Event for TradeFunded<B, S> {
+    type Prev = OrderTaken<B, S>;
 }
 
-impl Event for TradeFunded<Bitcoin> {
-    type Prev = OrderTaken<Ethereum, Bitcoin>;
+impl<B: Ledger, S: Ledger> Event for ContractDeployed<B, S> {
+    type Prev = TradeFunded<B, S>;
 }
 
-impl Event for ContractDeployed<Bitcoin> {
-    type Prev = TradeFunded<Ethereum>;
-}
-
-impl Event for ContractDeployed<Ethereum> {
-    type Prev = TradeFunded<Bitcoin>;
-}
-
-impl Event for ContractRedeemed<Ethereum> {
-    type Prev = TradeFunded<Ethereum>;
-}
-
-impl Event for ContractRedeemed<Bitcoin> {
-    type Prev = TradeFunded<Bitcoin>;
+impl<B: Ledger, S: Ledger> Event for ContractRedeemed<B, S> {
+    type Prev = TradeFunded<B, S>;
 }

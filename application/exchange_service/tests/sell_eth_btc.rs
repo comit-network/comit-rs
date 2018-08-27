@@ -1,7 +1,7 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
-extern crate bitcoin_rpc;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate common_types;
 extern crate env_logger;
@@ -16,7 +16,7 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
 
-use bitcoin_rpc::BlockHeight;
+use bitcoin_rpc_client::BlockHeight;
 use bitcoin_support::Network;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -81,7 +81,7 @@ fn create_rocket_client(event_store: InMemoryEventStore<TradeId>) -> Client {
             Arc::new(StaticEthereumApi),
             0,
         )),
-        Arc::new(bitcoin_rpc::BitcoinStubClient::new()),
+        Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
@@ -90,7 +90,7 @@ fn create_rocket_client(event_store: InMemoryEventStore<TradeId>) -> Client {
             .clone()
             .into(),
         bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
-        Network::BitcoinCoreRegtest,
+        Network::Regtest,
         Arc::new(StaticBitcoinFeeService::new(50.0)),
     );
     rocket::local::Client::new(rocket).unwrap()
@@ -140,12 +140,10 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
 }
 
 fn mock_trade_funded(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
-    let trade_funded: TradeFunded<Ethereum> = TradeFunded {
-        uid: trade_id,
-        htlc_identifier: ethereum_support::Address::from_str(
-            "2222222222222222222222222222222222222222",
-        ).unwrap(),
-    };
+    let trade_funded: TradeFunded<Bitcoin, Ethereum> = TradeFunded::new(
+        trade_id,
+        ethereum_support::Address::from_str("2222222222222222222222222222222222222222").unwrap(),
+    );
     event_store.add_event(trade_id, trade_funded).unwrap();
 }
 //series of events is as follows:

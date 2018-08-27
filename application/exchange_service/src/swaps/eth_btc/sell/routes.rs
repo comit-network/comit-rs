@@ -41,10 +41,7 @@ fn handle_post_orders_funding(
     let _order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     //create new event
-    let trade_funded: TradeFunded<Ethereum> = TradeFunded {
-        uid: trade_id,
-        htlc_identifier,
-    };
+    let trade_funded: TradeFunded<Bitcoin, Ethereum> = TradeFunded::new(trade_id, htlc_identifier);
     event_store.add_event(trade_id.clone(), trade_funded)?;
     //TODO Finish this and implement bitcoin service for deploying the bitcoin htlc
 
@@ -83,13 +80,14 @@ fn handle_post_revealed_secret(
     trade_id: TradeId,
     ethereum_service: &Arc<ethereum_service::EthereumService>,
 ) -> Result<(), Error> {
-    let trade_funded = event_store.get_event::<TradeFunded<Ethereum>>(trade_id.clone())?;
+    let trade_funded = event_store.get_event::<TradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,
         trade_funded.htlc_identifier,
     )?;
-    let deployed: ContractRedeemed<Ethereum> = ContractRedeemed::new(trade_id, tx_id.to_string());
+    let deployed: ContractRedeemed<Bitcoin, Ethereum> =
+        ContractRedeemed::new(trade_id, tx_id.to_string());
 
     event_store.add_event(trade_id, deployed)?;
     Ok(())
