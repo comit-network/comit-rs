@@ -77,7 +77,7 @@ impl EthereumService {
                 nonce,
             )
         })?;
-        debug!(
+        info!(
             "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
             contract, tx_id, funding
         );
@@ -95,9 +95,9 @@ impl EthereumService {
                 nonce,
             )
         })?;
-        debug!(
-            "Contract was successfully redeemed in transaction {:?}",
-            tx_id
+        info!(
+            "Contract {:?} was successfully redeemed in transaction {:?}",
+            contract_address, tx_id
         );
         Ok(tx_id)
     }
