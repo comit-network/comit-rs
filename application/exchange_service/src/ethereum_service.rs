@@ -166,7 +166,7 @@ mod tests {
     unsafe impl Sync for EthereumApiMock {}
 
     #[test]
-    fn given_an_htlc_when_deployment_fails_nonce_is_not_updated() {
+    fn given_a_transaction_when_deployment_fails_nonce_is_not_updated() {
         let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
         let ethereum_api = EthereumApiMock::with_result(Err(web3::ErrorKind::Internal.into()));
@@ -178,15 +178,20 @@ mod tests {
             0,
         );
 
-        let result = service.deploy_htlc(
-            Htlc::new(
-                Duration::from_secs(100),
-                ethereum_support::Address::new(),
-                ethereum_support::Address::new(),
-                SecretHash::from_str("").unwrap(),
-            ),
-            U256::from(10),
-        );
+        let result = service.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+                Htlc::new(
+                    Duration::from_secs(100),
+                    ethereum_support::Address::new(),
+                    ethereum_support::Address::new(),
+                    SecretHash::from_str("").unwrap(),
+                ).compile_to_hex(),
+                86578,
+                gas_price,
+                U256::from(10),
+                nonce,
+            )
+        });
 
         let lock = service.nonce.lock().unwrap();
         let nonce = lock.deref();
@@ -196,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    fn given_an_htlc_when_deployment_succeeds_nonce_should_be_updated() {
+    fn given_a_transaction_when_deployment_succeeds_nonce_should_be_updated() {
         let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
         let ethereum_api = EthereumApiMock::with_result(Ok(H256::new()));
@@ -208,40 +213,20 @@ mod tests {
             0,
         );
 
-        let result = service.deploy_htlc(
-            Htlc::new(
-                Duration::from_secs(100),
-                ethereum_support::Address::new(),
-                ethereum_support::Address::new(),
-                SecretHash::from_str("").unwrap(),
-            ),
-            U256::from(10),
-        );
-
-        let lock = service.nonce.lock().unwrap();
-        let nonce = lock.deref();
-
-        assert!(result.is_ok());
-        assert_eq!(*nonce, U256::from(1))
-    }
-
-    #[test]
-    fn given_a_normal_transaction_when_deployment_succeeds_nonce_should_be_updated() {
-        let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
-        let gas_price_service = gas_price_service::StaticGasPriceService::default();
-        let ethereum_api = EthereumApiMock::with_result(Ok(H256::new()));
-
-        let service = EthereumService::new(
-            Arc::new(wallet),
-            Arc::new(gas_price_service),
-            Arc::new(ethereum_api),
-            0,
-        );
-
-        let result = service.redeem_htlc(
-            Secret::from(*b"hello world, you are beautiful!!"),
-            ethereum_support::Address::new(),
-        );
+        let result = service.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+                Htlc::new(
+                    Duration::from_secs(100),
+                    ethereum_support::Address::new(),
+                    ethereum_support::Address::new(),
+                    SecretHash::from_str("").unwrap(),
+                ).compile_to_hex(),
+                86578,
+                gas_price,
+                U256::from(10),
+                nonce,
+            )
+        });
 
         let lock = service.nonce.lock().unwrap();
         let nonce = lock.deref();
