@@ -1,15 +1,8 @@
-use bitcoin_htlc::Htlc;
-use bitcoin_rpc_client::BlockHeight;
-use bitcoin_support::BitcoinQuantity;
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    TradingSymbol,
-};
-use ethereum_support::EthereumQuantity;
+use common_types::{ledger::Ledger, TradingSymbol};
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use std::{marker::PhantomData, str::FromStr};
+use std::marker::PhantomData;
 use swaps::TradeId;
 
 // State after exchange has made an offer

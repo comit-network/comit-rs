@@ -1,8 +1,4 @@
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    secret::SecretHash,
-    TradingSymbol,
-};
+use common_types::{ledger::Ledger, secret::SecretHash, TradingSymbol};
 use event_store::Event;
 use secp256k1_support::KeyPair;
 use std::marker::PhantomData;

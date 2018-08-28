@@ -2,13 +2,13 @@ use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     TradingSymbol,
 };
-use event_store::{self, EventStore, InMemoryEventStore};
+use event_store::{self, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody};
 use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
-use swaps::{events::OfferCreated, TradeId};
+use swaps::TradeId;
 
 #[derive(Debug)]
 pub enum Error {
