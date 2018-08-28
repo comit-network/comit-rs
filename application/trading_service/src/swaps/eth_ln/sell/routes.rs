@@ -1,11 +1,14 @@
-use common_types::TradingSymbol;
-use event_store::{self, EventStore, InMemoryEventStore};
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
+use event_store::{self, InMemoryEventStore};
 use exchange_api_client::{ApiClient, OfferResponseBody};
 use reqwest;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
-use swaps::{events::OfferCreated, TradeId};
+use swaps::TradeId;
 
 #[derive(Debug)]
 pub enum Error {
@@ -36,7 +39,7 @@ pub fn post_sell_offers(
     offer_request_body: Json<OfferRequestBody>,
     client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
-) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
+) -> Result<Json<OfferResponseBody<Bitcoin, Ethereum>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_LN;
     let offer_response_body = handle_sell_offer(
         client.inner(),
@@ -53,9 +56,9 @@ fn handle_sell_offer(
     _event_store: &InMemoryEventStore<TradeId>,
     offer_request_body: OfferRequestBody,
     symbol: TradingSymbol,
-) -> Result<OfferResponseBody, Error> {
+) -> Result<OfferResponseBody<Bitcoin, Ethereum>, Error> {
     let offer = client
-        .create_buy_offer(symbol, offer_request_body.amount)
+        .create_sell_offer(symbol, offer_request_body.amount)
         .map_err(Error::ExchangeService)?;
     let _id = offer.uid.clone();
     //TODO Fixme, this feature has a lower priority for now. For this we need decide either on

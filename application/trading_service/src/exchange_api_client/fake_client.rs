@@ -1,4 +1,9 @@
-use common_types::TradingSymbol;
+use bitcoin_support;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
+use ethereum_support;
 use exchange_api_client::{
     client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
 };
@@ -19,14 +24,16 @@ impl ApiClient for FakeApiClient {
     fn create_buy_offer(
         &self,
         symbol: TradingSymbol,
-        _amount: f64,
-    ) -> Result<OfferResponseBody, reqwest::Error> {
+        amount: f64,
+    ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
+        let rate = 0.1;
+        let sell_amount = amount * rate;
         let offer = OfferResponseBody {
             uid: TradeId::from(Uuid::new_v4()),
             symbol,
-            rate: 0.42,
-            sell_amount: String::from("24"),
-            buy_amount: String::from("10.0"),
+            rate,
+            sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(sell_amount),
+            buy_amount: ethereum_support::EthereumQuantity::from_eth(amount),
         };
         Ok(offer)
     }
@@ -49,14 +56,16 @@ impl ApiClient for FakeApiClient {
     fn create_sell_offer(
         &self,
         symbol: TradingSymbol,
-        _amount: f64,
-    ) -> Result<OfferResponseBody, reqwest::Error> {
+        amount: f64,
+    ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
+        let rate = 0.1;
+        let buy_amount = amount * rate;
         let offer = OfferResponseBody {
             uid: TradeId::from(Uuid::new_v4()),
             symbol,
-            rate: 0.24,
-            sell_amount: String::from("1"),
-            buy_amount: String::from("24"),
+            rate,
+            sell_amount: ethereum_support::EthereumQuantity::from_eth(amount),
+            buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
         };
         Ok(offer)
     }

@@ -1,4 +1,7 @@
-use common_types::TradingSymbol;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    TradingSymbol,
+};
 use reqwest;
 use secret::SecretHash;
 use swaps::TradeId;
@@ -12,12 +15,12 @@ struct OfferRequestBody {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferResponseBody {
+pub struct OfferResponseBody<B: Ledger, S: Ledger> {
     pub uid: TradeId,
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub buy_amount: String,
-    pub sell_amount: String,
+    pub buy_amount: B::Quantity,
+    pub sell_amount: S::Quantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -40,7 +43,7 @@ pub trait ApiClient: Send + Sync {
         &self,
         symbol: TradingSymbol,
         amount: f64,
-    ) -> Result<OfferResponseBody, reqwest::Error>;
+    ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, reqwest::Error>;
     fn create_buy_order(
         &self,
         symbol: TradingSymbol,
@@ -51,7 +54,7 @@ pub trait ApiClient: Send + Sync {
         &self,
         symbol: TradingSymbol,
         amount: f64,
-    ) -> Result<OfferResponseBody, reqwest::Error>;
+    ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, reqwest::Error>;
     fn create_sell_order(
         &self,
         symbol: TradingSymbol,
@@ -79,14 +82,14 @@ impl ApiClient for DefaultApiClient {
         &self,
         symbol: TradingSymbol,
         amount: f64,
-    ) -> Result<OfferResponseBody, reqwest::Error> {
+    ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
         let body = OfferRequestBody { amount };
 
         self.client
             .post(format!("{}/trades/{}/buy-offers", self.url.0, symbol).as_str())
             .json(&body)
             .send()
-            .and_then(|mut res| res.json::<OfferResponseBody>())
+            .and_then(|mut res| res.json::<OfferResponseBody<Ethereum, Bitcoin>>())
     }
 
     fn create_buy_order(
@@ -106,14 +109,14 @@ impl ApiClient for DefaultApiClient {
         &self,
         symbol: TradingSymbol,
         amount: f64,
-    ) -> Result<OfferResponseBody, reqwest::Error> {
+    ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
         let body = OfferRequestBody { amount };
 
         self.client
             .post(format!("{}/trades/{}/sell-offers", self.url.0, symbol).as_str())
             .json(&body)
             .send()
-            .and_then(|mut res| res.json::<OfferResponseBody>())
+            .and_then(|mut res| res.json::<OfferResponseBody<Bitcoin, Ethereum>>())
     }
 
     fn create_sell_order(

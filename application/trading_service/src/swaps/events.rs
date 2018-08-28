@@ -1,15 +1,8 @@
-use bitcoin_htlc::Htlc;
-use bitcoin_rpc_client::BlockHeight;
-use bitcoin_support::BitcoinQuantity;
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    TradingSymbol,
-};
-use ethereum_support::EthereumQuantity;
+use common_types::{ledger::Ledger, TradingSymbol};
 use event_store::Event;
 use exchange_api_client::OfferResponseBody;
 use secret::Secret;
-use std::{marker::PhantomData, str::FromStr};
+use std::marker::PhantomData;
 use swaps::TradeId;
 
 // State after exchange has made an offer
@@ -26,26 +19,14 @@ where
     pub sell_amount: S::Quantity,
 }
 
-impl From<OfferResponseBody> for OfferCreated<Ethereum, Bitcoin> {
-    fn from(offer: OfferResponseBody) -> Self {
+impl<B: Ledger, S: Ledger> From<OfferResponseBody<B, S>> for OfferCreated<B, S> {
+    fn from(offer: OfferResponseBody<B, S>) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            buy_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
-            sell_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
-        }
-    }
-}
-
-impl From<OfferResponseBody> for OfferCreated<Bitcoin, Ethereum> {
-    fn from(offer: OfferResponseBody) -> Self {
-        OfferCreated {
-            uid: offer.uid,
-            symbol: offer.symbol,
-            rate: offer.rate,
-            buy_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
-            sell_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
+            buy_amount: offer.buy_amount,
+            sell_amount: offer.sell_amount,
         }
     }
 }
