@@ -27,6 +27,7 @@ use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
+    bitcoin_service::BitcoinService,
     ethereum_service::EthereumService,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
@@ -142,12 +143,15 @@ fn main() {
     let satoshi_per_kb =
         f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
+    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
+    let bitcoin_service = BitcoinService::new(bitcoin_rpc_client.clone(), network);
 
     create_rocket_instance(
         Arc::new(api_client),
         event_store,
         Arc::new(ethereum_service),
-        Arc::new(bitcoin_rpc_client),
+        Arc::new(bitcoin_service),
+        bitcoin_rpc_client,
         exchange_refund_address,
         exchange_success_keypair,
         btc_exchange_redeem_address,

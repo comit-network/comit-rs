@@ -19,6 +19,7 @@ use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
+    bitcoin_service::BitcoinService,
     ethereum_service::{self, BlockingEthereumApi},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
@@ -101,6 +102,10 @@ fn create_rocket_client() -> Client {
             Arc::new(StaticGasPriceService::default()),
             Arc::new(StaticEthereumApi),
             0,
+        )),
+        Arc::new(BitcoinService::new(
+            Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
+            bitcoin_support::Network::Regtest,
         )),
         Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
