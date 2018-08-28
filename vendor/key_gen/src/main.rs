@@ -16,7 +16,7 @@ fn main() {
     let keypair = KeyPair::new(&mut rng);
     let secret_key = keypair.secret_key();
     let public_key = keypair.public_key();
-    let private_key = PrivateKey::from_secret_key(secret_key.clone(), true, Network::Bitcoin);
+    let private_key = PrivateKey::from_secret_key(secret_key.clone(), true, Network::Regtest);
 
     println!("private_key: {}", hex::encode(&secret_key[..]));
     println!("btc_base58_private_key: {}", private_key.to_string());

@@ -18,7 +18,7 @@ use std::{
 };
 use swaps::{
     errors::Error,
-    events::{OfferCreated, OrderCreated, OrderTaken},
+    events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
     TradeId,
 };
 
@@ -172,4 +172,72 @@ fn handle_sell_orders(
         gas: 21_000u64,
     };
     Ok(fund)
+}
+
+#[derive(Deserialize)]
+pub struct ContractDeployedRequestBody {
+    pub contract_address: bitcoin_support::Address,
+}
+
+#[post(
+    "/trades/ETH-BTC/<trade_id>/sell-order-contract-deployed",
+    format = "application/json",
+    data = "<contract_deployed_request_body>"
+)]
+pub fn post_contract_deployed(
+    trade_id: TradeId,
+    contract_deployed_request_body: Json<ContractDeployedRequestBody>,
+    event_store: State<InMemoryEventStore<TradeId>>,
+) -> Result<(), BadRequest<String>> {
+    handle_post_contract_deployed(
+        event_store.inner(),
+        trade_id,
+        contract_deployed_request_body.into_inner().contract_address,
+    )?;
+
+    Ok(())
+}
+
+fn handle_post_contract_deployed(
+    event_store: &InMemoryEventStore<TradeId>,
+    uid: TradeId,
+    address: bitcoin_support::Address,
+) -> Result<(), Error> {
+    let deployed: ContractDeployed<Bitcoin, Ethereum> = ContractDeployed::new(uid, address);
+    event_store.add_event(uid, deployed)?;
+
+    Ok(())
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct RedeemDetails {
+    address: bitcoin_support::Address,
+    data: Secret,
+}
+
+#[get("/trades/ETH-BTC/<trade_id>/redeem-sell-orders")]
+pub fn get_redeem_orders(
+    trade_id: TradeId,
+    event_store: State<InMemoryEventStore<TradeId>>,
+) -> Result<Json<RedeemDetails>, BadRequest<String>> {
+    let details = handle_get_redeem_orders(event_store.inner(), trade_id)?;
+
+    Ok(Json(details))
+}
+
+fn handle_get_redeem_orders(
+    event_store: &InMemoryEventStore<TradeId>,
+    trade_id: TradeId,
+) -> Result<RedeemDetails, Error> {
+    let address = event_store
+        .get_event::<ContractDeployed<Bitcoin, Ethereum>>(trade_id)?
+        .address;
+    let secret = event_store
+        .get_event::<OrderCreated<Bitcoin, Ethereum>>(trade_id)?
+        .secret;
+
+    Ok(RedeemDetails {
+        address,
+        data: secret,
+    })
 }

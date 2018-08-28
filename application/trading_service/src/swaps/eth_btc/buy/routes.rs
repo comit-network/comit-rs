@@ -201,11 +201,11 @@ fn handle_post_contract_deployed(
 #[derive(Deserialize, Serialize, Debug)]
 pub struct RedeemDetails {
     address: ethereum_support::Address,
-    data: bitcoin_htlc::secret::Secret,
+    data: Secret,
     gas: u64,
 }
 
-#[get("/trades/ETH-BTC/<trade_id>/redeem-orders")]
+#[get("/trades/ETH-BTC/<trade_id>/redeem-buy-orders")]
 pub fn get_redeem_orders(
     trade_id: TradeId,
     event_store: State<InMemoryEventStore<TradeId>>,

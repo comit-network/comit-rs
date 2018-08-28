@@ -1,5 +1,6 @@
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_rpc_client;
+use bitcoin_service::BitcoinService;
 use bitcoin_support::{self, Network};
 use ethereum_service::EthereumService;
 use ethereum_support;
@@ -14,6 +15,7 @@ pub fn create_rocket_instance(
     treasury_api_client: Arc<ApiClient>,
     event_store: InMemoryEventStore<TradeId>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_service: Arc<BitcoinService>,
     bitcoin_rpc_client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
     exchange_refund_address: ethereum_support::Address,
     exchange_success_keypair: KeyPair,
@@ -36,6 +38,7 @@ pub fn create_rocket_instance(
         .manage(treasury_api_client)
         .manage(event_store)
         .manage(ethereum_service)
+        .manage(bitcoin_service)
         .manage(bitcoin_rpc_client)
         .manage(exchange_success_keypair)
         .manage(exchange_refund_address)
