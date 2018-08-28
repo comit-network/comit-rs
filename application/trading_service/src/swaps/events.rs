@@ -26,20 +26,8 @@ where
     pub sell_amount: S::Quantity,
 }
 
-impl From<OfferResponseBody<Ethereum, Bitcoin>> for OfferCreated<Ethereum, Bitcoin> {
-    fn from(offer: OfferResponseBody<Ethereum, Bitcoin>) -> Self {
-        OfferCreated {
-            uid: offer.uid,
-            symbol: offer.symbol,
-            rate: offer.rate,
-            buy_amount: offer.buy_amount,
-            sell_amount: offer.sell_amount,
-        }
-    }
-}
-
-impl From<OfferResponseBody<Bitcoin, Ethereum>> for OfferCreated<Bitcoin, Ethereum> {
-    fn from(offer: OfferResponseBody<Bitcoin, Ethereum>) -> Self {
+impl<B: Ledger, S: Ledger> From<OfferResponseBody<B, S>> for OfferCreated<B, S> {
+    fn from(offer: OfferResponseBody<B, S>) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
