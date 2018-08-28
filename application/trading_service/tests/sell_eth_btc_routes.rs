@@ -15,7 +15,8 @@ extern crate trading_service;
 use bitcoin_support::{BitcoinQuantity, Network};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    secret::Secret, TradingSymbol,
+    secret::Secret,
+    TradingSymbol,
 };
 use ethereum_support::{Bytes, EthereumQuantity};
 use event_store::InMemoryEventStore;
