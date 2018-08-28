@@ -120,6 +120,31 @@ impl UnsignedTransaction {
         }
     }
 
+    pub fn new_contract_invocation<
+        B: Into<Bytes>,
+        A: Into<Address>,
+        G: Into<U256>,
+        GP: Into<U256>,
+        V: Into<U256>,
+        N: Into<U256>,
+    >(
+        data: B,
+        to: A,
+        gas: G,
+        gas_price: GP,
+        value: V,
+        nonce: N,
+    ) -> Self {
+        UnsignedTransaction {
+            nonce: nonce.into(),
+            gas_price: gas_price.into(),
+            gas: gas.into(),
+            to: Some(to.into()),
+            value: value.into(),
+            data: Some(data.into()),
+        }
+    }
+
     pub(crate) fn hash(&self, chain_id: u8) -> H256 {
         let mut stream = RlpStream::new();
 
@@ -158,6 +183,35 @@ mod tests {
         let bytes = stream.as_raw();
 
         assert_eq!(bytes, &[203, 1, 2, 130, 1, 244, 128, 10, 128, 1, 128, 128]);
+    }
+
+    #[test]
+    fn contract_invocation_transaction_should_have_correct_binary_representation() {
+        let tx = UnsignedTransaction::new_contract_invocation(
+            Bytes(Vec::new()),
+            "147ba99ef89c152f8004e91999fee87bda6cbc3e",
+            500,
+            2,
+            0,
+            1,
+        );
+
+        let mut stream = RlpStream::new();
+
+        tx.rlp_append(&mut stream);
+        stream.append(&1u8);
+        stream.append(&0u8);
+        stream.append(&0u8);
+
+        let bytes = stream.as_raw();
+
+        assert_eq!(
+            bytes,
+            &[
+                223, 1, 2, 130, 1, 244, 148, 20, 123, 169, 158, 248, 156, 21, 47, 128, 4, 233, 25,
+                153, 254, 232, 123, 218, 108, 188, 62, 128, 128, 1, 128, 128
+            ]
+        );
     }
 
     #[test]

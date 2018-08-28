@@ -1,9 +1,7 @@
-pub use super::events::OfferCreated as OfferRequestResponse;
-use super::events::{ContractDeployed, OfferCreated, OfferState};
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::{self, UnlockingError};
 use bitcoin_rpc_client;
-use bitcoin_support::{self, Network, PubkeyHash, ToP2wpkhAddress};
+use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash, ToP2wpkhAddress};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::{
     ledger::{
@@ -22,8 +20,8 @@ use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::Duration};
 use swaps::{
-    eth_btc::common::{Error, OrderTaken, TradeFunded},
-    TradeId,
+    common::{Error, TradeId},
+    events::{ContractDeployed, OfferCreated as OfferState, OfferCreated, OrderTaken, TradeFunded},
 };
 use treasury_api_client::ApiClient;
 
@@ -101,8 +99,15 @@ fn handle_post_buy_offers(
     let rate_response_body = treasury_api_client
         .request_rate(TradingSymbol::ETH_BTC)
         .map_err(Error::TreasuryService)?;
+    let sell_amount =
+        BitcoinQuantity::from_bitcoin(rate_response_body.rate * buy_amount.ethereum());
 
-    let offer_event = OfferCreated::new(rate_response_body, buy_amount);
+    let offer_event = OfferCreated::new(
+        rate_response_body.rate,
+        buy_amount,
+        sell_amount,
+        TradingSymbol::ETH_BTC,
+    );
 
     event_store.add_event(offer_event.uid, offer_event.clone())?;
 
@@ -230,10 +235,7 @@ fn handle_post_orders_funding(
     event_store: &InMemoryEventStore<TradeId>,
     ethereum_service: &Arc<ethereum_service::EthereumService>,
 ) -> Result<(), Error> {
-    let trade_funded: TradeFunded<Bitcoin> = TradeFunded {
-        uid: trade_id,
-        htlc_identifier,
-    };
+    let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
@@ -252,14 +254,10 @@ fn handle_post_orders_funding(
     let htlc_funding = offer_created_event.buy_amount.wei();
 
     let tx_id = ethereum_service.deploy_htlc(htlc, htlc_funding)?;
+    let deployed: ContractDeployed<Ethereum, Bitcoin> =
+        ContractDeployed::new(trade_id, tx_id.to_string());
 
-    event_store.add_event(
-        trade_id,
-        ContractDeployed {
-            uid: trade_id,
-            transaction_id: tx_id,
-        },
-    )?;
+    event_store.add_event(trade_id, deployed)?;
 
     Ok(())
 }
@@ -307,7 +305,8 @@ fn handle_post_revealed_secret(
     let offer_created_event =
         event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
-    let trade_funded_event = event_store.get_event::<TradeFunded<Bitcoin>>(trade_id.clone())?;
+    let trade_funded_event =
+        event_store.get_event::<TradeFunded<Ethereum, Bitcoin>>(trade_id.clone())?;
     let secret: Secret = redeem_btc_notification_body.secret;
     let exchange_success_address = order_taken_event.exchange_success_address;
     let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
@@ -352,7 +351,7 @@ fn handle_post_revealed_secret(
         redeem_tx.txid(),
         redeem_tx.output[0].value
     );
-    //TODO: Store above in event prior to doing rnpc request
+    //TODO: Store above in event prior to doing rpc request
     let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
     debug!("RPC Transaction: {:?}", rpc_transaction);
     info!(
