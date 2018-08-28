@@ -1,5 +1,4 @@
 use bitcoin_htlc;
-use bitcoin_rpc_client::TransactionId;
 use bitcoin_service;
 use bitcoin_support::PubkeyHash;
 use common_types::{
@@ -11,7 +10,7 @@ use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
     events::{ContractDeployed, ContractRedeemed, OfferCreated, OrderTaken, TradeFunded},
@@ -75,9 +74,7 @@ fn handle_post_orders_funding(
     let offer_created_event =
         event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
 
-    let tx_id = TransactionId::from_str(
-        "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
-    ).unwrap();
+    let tx_id = bitcoin_service.deploy_htlc(htlc, offer_created_event.buy_amount)?;
 
     let deployed: ContractDeployed<Bitcoin, Ethereum> =
         ContractDeployed::new(trade_id, tx_id.to_string());

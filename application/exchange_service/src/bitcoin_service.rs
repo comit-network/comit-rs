@@ -1,5 +1,5 @@
 use bitcoin_htlc::bitcoin_htlc::Htlc;
-use bitcoin_rpc_client::{self, BitcoinRpcApi, RpcError, TransactionId};
+use bitcoin_rpc_client::{self, RpcError, TransactionId};
 use bitcoin_support::{self, Address};
 use reqwest;
 use std::sync::Arc;
