@@ -51,13 +51,13 @@ fn post_buy_offers_should_call_create_offer_and_return_offer() {
     );
     assert_eq!(
         offer_response.sell_amount,
-        ethereum_support::EthereumQuantity::from_eth(1.0),
+        ethereum_support::EthereumQuantity::from_eth(42.0),
         "offer_response has correct sell amount"
     );
     assert_eq!(
         offer_response.buy_amount,
-        bitcoin_support::BitcoinQuantity::from_bitcoin(24.0),
+        bitcoin_support::BitcoinQuantity::from_bitcoin(4.2),
         "offer_response has correct buy amount"
     );
-    assert_eq!(offer_response.rate, 0.24, "offer_response has correct rate");
+    assert_eq!(offer_response.rate, 0.1, "offer_response has correct rate");
 }

@@ -65,16 +65,16 @@ fn post_sell_offer_of_x_eth_for_btc() {
     );
     assert_eq!(
         offer_response.buy_amount,
-        bitcoin_support::BitcoinQuantity::from_bitcoin(24.0),
+        bitcoin_support::BitcoinQuantity::from_bitcoin(4.2),
         "offer_response has correct buy amount"
     );
     assert_eq!(
         offer_response.sell_amount,
-        ethereum_support::EthereumQuantity::from_eth(1.0),
+        ethereum_support::EthereumQuantity::from_eth(42.0),
         "offer_response has correct sell amount"
     );
     assert_eq!(
-        offer_response.rate, 0.24,
+        offer_response.rate, 0.1,
         "offer_response has correct sell amount"
     );
 }
@@ -121,12 +121,12 @@ fn post_sell_order_of_x_eth_for_btc() {
 
     assert_eq!(
         request_to_fund.btc_amount,
-        BitcoinQuantity::from_str("24").unwrap(),
+        BitcoinQuantity::from_str("4.2").unwrap(),
         "request_to_fund has correct btc_amount"
     );
     assert_eq!(
         request_to_fund.eth_amount,
-        EthereumQuantity::from_str("1").unwrap(),
+        EthereumQuantity::from_str("42").unwrap(),
         "request_to_fund has correct eth_amount"
     );
 

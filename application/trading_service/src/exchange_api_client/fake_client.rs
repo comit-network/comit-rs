@@ -24,14 +24,16 @@ impl ApiClient for FakeApiClient {
     fn create_buy_offer(
         &self,
         symbol: TradingSymbol,
-        _amount: f64,
+        amount: f64,
     ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
+        let rate = 0.1;
+        let sell_amount = amount * rate;
         let offer = OfferResponseBody {
             uid: TradeId::from(Uuid::new_v4()),
             symbol,
-            rate: 0.42,
-            sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(24.0),
-            buy_amount: ethereum_support::EthereumQuantity::from_eth(1.0),
+            rate,
+            sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(sell_amount),
+            buy_amount: ethereum_support::EthereumQuantity::from_eth(amount),
         };
         Ok(offer)
     }
@@ -54,14 +56,16 @@ impl ApiClient for FakeApiClient {
     fn create_sell_offer(
         &self,
         symbol: TradingSymbol,
-        _amount: f64,
+        amount: f64,
     ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
+        let rate = 0.1;
+        let buy_amount = amount * rate;
         let offer = OfferResponseBody {
             uid: TradeId::from(Uuid::new_v4()),
             symbol,
-            rate: 0.24,
-            sell_amount: ethereum_support::EthereumQuantity::from_eth(1.0),
-            buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(24.0),
+            rate,
+            sell_amount: ethereum_support::EthereumQuantity::from_eth(amount),
+            buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
         };
         Ok(offer)
     }
