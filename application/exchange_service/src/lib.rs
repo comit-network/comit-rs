@@ -24,6 +24,7 @@ extern crate event_store;
 extern crate logging;
 
 pub mod bitcoin_fee_service;
+pub mod bitcoin_service;
 pub mod ethereum_service;
 pub mod gas_price_service;
 pub mod rocket_factory;
