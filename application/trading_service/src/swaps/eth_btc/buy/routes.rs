@@ -33,7 +33,7 @@ pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
     client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
-) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
+) -> Result<Json<OfferResponseBody<Ethereum, Bitcoin>>, BadRequest<String>> {
     let offer_request_body = offer_request_body.into_inner();
     let symbol = TradingSymbol::ETH_BTC;
 

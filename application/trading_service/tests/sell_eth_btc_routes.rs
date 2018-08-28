@@ -13,7 +13,10 @@ extern crate serde_json;
 extern crate trading_service;
 
 use bitcoin_support::{BitcoinQuantity, Network};
-use common_types::TradingSymbol;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
 use ethereum_support::{Bytes, EthereumQuantity};
 use event_store::InMemoryEventStore;
 use rocket::http::*;
@@ -51,8 +54,9 @@ fn post_sell_offer_of_x_eth_for_btc() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response =
-        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+    let offer_response = serde_json::from_str::<OfferResponseBody<Bitcoin, Ethereum>>(
+        &response.body_string().unwrap(),
+    ).unwrap();
 
     assert_eq!(
         offer_response.symbol,
@@ -60,11 +64,13 @@ fn post_sell_offer_of_x_eth_for_btc() {
         "offer_response has correct symbol"
     );
     assert_eq!(
-        offer_response.buy_amount, "24",
+        offer_response.buy_amount,
+        bitcoin_support::BitcoinQuantity::from_bitcoin(24.0),
         "offer_response has correct buy amount"
     );
     assert_eq!(
-        offer_response.sell_amount, "1",
+        offer_response.sell_amount,
+        ethereum_support::EthereumQuantity::from_eth(1.0),
         "offer_response has correct sell amount"
     );
     assert_eq!(
@@ -92,8 +98,9 @@ fn post_sell_order_of_x_eth_for_btc() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response =
-        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+    let offer_response = serde_json::from_str::<OfferResponseBody<Bitcoin, Ethereum>>(
+        &response.body_string().unwrap(),
+    ).unwrap();
     let uid = offer_response.uid;
 
     let request = client
@@ -114,12 +121,12 @@ fn post_sell_order_of_x_eth_for_btc() {
 
     assert_eq!(
         request_to_fund.btc_amount,
-        BitcoinQuantity::from_str("1").unwrap(),
+        BitcoinQuantity::from_str("24").unwrap(),
         "request_to_fund has correct btc_amount"
     );
     assert_eq!(
         request_to_fund.eth_amount,
-        EthereumQuantity::from_str("24").unwrap(),
+        EthereumQuantity::from_str("1").unwrap(),
         "request_to_fund has correct eth_amount"
     );
 

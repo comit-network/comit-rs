@@ -26,26 +26,26 @@ where
     pub sell_amount: S::Quantity,
 }
 
-impl From<OfferResponseBody> for OfferCreated<Ethereum, Bitcoin> {
-    fn from(offer: OfferResponseBody) -> Self {
+impl From<OfferResponseBody<Ethereum, Bitcoin>> for OfferCreated<Ethereum, Bitcoin> {
+    fn from(offer: OfferResponseBody<Ethereum, Bitcoin>) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            buy_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
-            sell_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
+            buy_amount: offer.buy_amount,
+            sell_amount: offer.sell_amount,
         }
     }
 }
 
-impl From<OfferResponseBody> for OfferCreated<Bitcoin, Ethereum> {
-    fn from(offer: OfferResponseBody) -> Self {
+impl From<OfferResponseBody<Bitcoin, Ethereum>> for OfferCreated<Bitcoin, Ethereum> {
+    fn from(offer: OfferResponseBody<Bitcoin, Ethereum>) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
             rate: offer.rate,
-            buy_amount: BitcoinQuantity::from_str(offer.sell_amount.as_str()).unwrap(),
-            sell_amount: EthereumQuantity::from_str(offer.buy_amount.as_str()).unwrap(),
+            buy_amount: offer.buy_amount,
+            sell_amount: offer.sell_amount,
         }
     }
 }

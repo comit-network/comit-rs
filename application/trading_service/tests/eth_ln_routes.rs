@@ -1,5 +1,6 @@
 extern crate bitcoin_support;
 extern crate common_types;
+extern crate ethereum_support;
 extern crate event_store;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -8,7 +9,10 @@ extern crate trading_service;
 extern crate uuid;
 
 use bitcoin_support::Network;
-use common_types::TradingSymbol;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
 use event_store::InMemoryEventStore;
 use rocket::http::*;
 use std::sync::Arc;
@@ -36,8 +40,9 @@ fn post_buy_offers_should_call_create_offer_and_return_offer() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response =
-        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+    let offer_response = serde_json::from_str::<OfferResponseBody<Bitcoin, Ethereum>>(
+        &response.body_string().unwrap(),
+    ).unwrap();
 
     assert_eq!(
         offer_response.symbol,
@@ -45,12 +50,14 @@ fn post_buy_offers_should_call_create_offer_and_return_offer() {
         "offer_response has correct symbol"
     );
     assert_eq!(
-        offer_response.sell_amount, "24",
+        offer_response.sell_amount,
+        ethereum_support::EthereumQuantity::from_eth(1.0),
         "offer_response has correct sell amount"
     );
     assert_eq!(
-        offer_response.buy_amount, "10.0",
+        offer_response.buy_amount,
+        bitcoin_support::BitcoinQuantity::from_bitcoin(24.0),
         "offer_response has correct buy amount"
     );
-    assert_eq!(offer_response.rate, 0.42, "offer_response has correct rate");
+    assert_eq!(offer_response.rate, 0.24, "offer_response has correct rate");
 }

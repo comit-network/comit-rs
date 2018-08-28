@@ -13,7 +13,10 @@ extern crate trading_service;
 extern crate uuid;
 
 use bitcoin_support::{BitcoinQuantity, Network};
-use common_types::TradingSymbol;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    TradingSymbol,
+};
 use ethereum_support::EthereumQuantity;
 use event_store::InMemoryEventStore;
 use rocket::http::*;
@@ -68,8 +71,9 @@ fn happy_path_buy_x_eth_for_btc() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response =
-        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
+    let offer_response = serde_json::from_str::<OfferResponseBody<Ethereum, Bitcoin>>(
+        &response.body_string().unwrap(),
+    ).unwrap();
 
     assert_eq!(
         offer_response.symbol,

@@ -49,7 +49,7 @@ pub fn post_sell_offers(
     offer_request_body: Json<SellOfferRequestBody>,
     client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
-) -> Result<Json<OfferResponseBody>, BadRequest<String>> {
+) -> Result<Json<OfferResponseBody<Bitcoin, Ethereum>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_BTC;
 
     let offer_response_body = handle_sell_offer(
@@ -67,7 +67,7 @@ fn handle_sell_offer(
     event_store: &InMemoryEventStore<TradeId>,
     offer_request_body: SellOfferRequestBody,
     symbol: TradingSymbol,
-) -> Result<OfferResponseBody, Error> {
+) -> Result<OfferResponseBody<Bitcoin, Ethereum>, Error> {
     let offer = client
         .create_sell_offer(symbol, offer_request_body.amount)
         .map_err(Error::ExchangeService)?;
