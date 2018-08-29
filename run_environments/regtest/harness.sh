@@ -23,7 +23,11 @@ function log {
 
 END(){
     log "KILLING docker containers";
-    docker-compose rm -sfv;
+    (
+        cd $PROJECT_ROOT/run_environments/regtest;
+        docker-compose rm -sfv;
+    );
+
     for pid in "$FAKE_TREASURY_PID" "$EXCHANGE_SERVICE_PID" "$TRADING_SERVICE_PID"; do
         if test "$pid" && ps "$pid" >/dev/null; then
             echo "KILLING $pid";
@@ -39,6 +43,7 @@ function start_target() {
     logdest=3;
     name=$1;
     log "Starting $name";
+    # Logs prefixes the service name in front of its logs
     "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed -l "s/^/$name: / " >&3 &
     # returns the PID of the process
     jobs -p
@@ -61,8 +66,11 @@ function setup() {
     set +a;
 
     #### Start all services
-    cd $PROJECT_ROOT/run_environments/regtest
-    docker-compose up -d ethereum bitcoin >&4 2>&4
+    (
+        cd $PROJECT_ROOT/run_environments/regtest;
+        docker-compose up -d ethereum bitcoin >&4 2>&4;
+    );
+
     sleep 5;
 
     activate_segwit;
