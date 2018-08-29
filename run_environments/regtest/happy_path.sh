@@ -1,14 +1,7 @@
 #!/bin/bash
 set -e;
 
-END(){
-    echo "KILLING docker containers" > $OUTPUT;
-    docker-compose rm -sfv
-}
 
-trap 'END' EXIT;
-
-PROJECT_ROOT=$(git rev-parse --show-toplevel)
 OUTPUT=/dev/null
 
 if [ "$1" = "--interactive" ]
@@ -23,23 +16,7 @@ fi
 ## Define functions from here
 
 function setup() {
-
-    echo "Starting up ...";
-
-    #### Env variable to run all services
-    source ${PROJECT_ROOT}/run_environments/common.env
-    source ${PROJECT_ROOT}/run_environments/regtest/network.env
-    source ${PROJECT_ROOT}/run_environments/regtest/regtest.env
-
-    #### Start all services
-    cd $PROJECT_ROOT/run_environments/regtest
-    docker-compose up -d ethereum bitcoin 2> $OUTPUT > $OUTPUT
-    sleep 5;
-    docker-compose up -d 2> $OUTPUT > $OUTPUT
-    test "$DOCKER_LOGS" && docker-compose logs -f &
-    sleep 5;
     ########
-
     #### Env variables to run the end-to-end test
 
     export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
@@ -52,8 +29,6 @@ function setup() {
 
     ## Generate funds and activate segwit
     debug "Generating enough blocks to activate segwit";
-    $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
-    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL  > /dev/null
     # Watch the btc exchange redeem address
     debug "Adding BTC_EXCHANGE_REDEEM_ADDRESS to wallet";
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
