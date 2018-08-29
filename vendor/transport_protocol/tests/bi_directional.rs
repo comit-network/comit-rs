@@ -1,10 +1,7 @@
 extern crate futures;
-#[macro_use]
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate memsocket;
 extern crate pretty_env_logger;
+extern crate serde;
 extern crate serde_json;
 extern crate spectral;
 extern crate tokio;

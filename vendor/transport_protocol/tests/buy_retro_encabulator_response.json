@@ -1,0 +1,10 @@
+{
+  "type": "RESPONSE",
+  "id": 11,
+  "payload": {
+    "headers": {
+      "PRICE": 9001
+    },
+    "status": "OK00"
+  }
+}

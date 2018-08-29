@@ -11,16 +11,15 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate transport_protocol;
 
-mod common;
-use common::*;
+#[macro_use]
+pub mod common;
+use common::{setup::setup, *};
 use futures::future::Future;
 use spectral::prelude::*;
-use transport_protocol::{config::Config, json::*, Error, Status};
 
 #[test]
-fn handle_ping_request_frame() {
-    let (_runtime, alice, _bob) =
-        setup(Config::new().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))));
+fn ping_message() {
+    let (_runtime, alice, _bob) = setup(ping::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
@@ -34,37 +33,36 @@ fn handle_ping_request_frame() {
 }
 
 #[test]
-fn handle_two_ping_request_frame() {
-    let (_runtime, alice, _bob) =
-        setup(Config::new().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))));
+fn two_ping_messages() {
+    let (_runtime, alice, _bob) = setup(ping::config());
 
-    let actual_response_from_bob = alice
+    let response1 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
         .and_then(|_| alice.receive())
         .wait();
 
-    assert_that(&actual_response_from_bob)
-        .is_ok()
-        .is_some()
-        .is_equal_to(&r#"{"type":"RESPONSE","id":10,"payload":{"status":"OK00"}}"#.into());
-
-    let actual_response_from_bob = alice
+    let response2 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":11,"payload":{"type":"PING"}}"#)
         .and_then(|_| alice.receive())
         .wait();
 
-    assert_that(&actual_response_from_bob)
+    assert_that(&response1)
+        .is_ok()
+        .is_some()
+        .is_equal_to(&r#"{"type":"RESPONSE","id":10,"payload":{"status":"OK00"}}"#.into());
+
+    assert_that(&response2)
         .is_ok()
         .is_some()
         .is_equal_to(&r#"{"type":"RESPONSE","id":11,"payload":{"status":"OK00"}}"#.into());
 }
 
 #[test]
-fn handle_unknown_request_frame() {
-    let (_runtime, alice, _bob) = setup(Config::new());
+fn unknown_message() {
+    let (_runtime, alice, _bob) = setup(ping::config());
 
     let actual_response_from_bob = alice
-        .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
+        .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"UNKNOWN"}}"#)
         .and_then(|_| alice.receive())
         .wait();
 
@@ -76,29 +74,30 @@ fn handle_unknown_request_frame() {
 
 #[test]
 fn reject_out_of_order_request() {
-    let (mut _runtime, alice, _bob) =
-        setup(Config::new().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))));
+    let (mut _runtime, alice, _bob) = setup(ping::config());
 
-    let actual_response_from_bob = alice
+    let response1 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
         .and_then(|_| alice.receive())
         .wait();
 
-    assert_that(&actual_response_from_bob)
-        .is_ok()
-        .is_some()
-        .is_equal_to(&r#"{"type":"RESPONSE","id":10,"payload":{"status":"OK00"}}"#.into());
-
-    alice
+    let out_of_error_request = alice
         .send_with_newline(r#"{"type":"REQUEST","id":9,"payload":{"type":"PING"}}"#)
         .wait();
 
-    let actual_response_from_bob = alice
+    let response2 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":11,"payload":{"type":"PING"}}"#)
         .and_then(|_| alice.receive())
         .wait();
 
-    assert_that(&actual_response_from_bob)
+    assert_that(&response1)
+        .is_ok()
+        .is_some()
+        .is_equal_to(&r#"{"type":"RESPONSE","id":10,"payload":{"status":"OK00"}}"#.into());
+
+    assert_that(&out_of_error_request).is_ok();
+
+    assert_that(&response2)
         .is_ok()
         .is_some()
         .is_equal_to(&r#"{"type":"RESPONSE","id":11,"payload":{"status":"OK00"}}"#.into());;
@@ -106,327 +105,180 @@ fn reject_out_of_order_request() {
 
 #[test]
 fn request_and_response_with_string_headers() {
-    let (mut handler, _) = gen_frame_handler();
-    assert_successful(
-        &mut handler,
-        r#"{"type":"REQUEST","id":10,"payload":{"type":"SAY_HELLO", "headers":{"TO": {"value":"WORLD"}}}}"#,
-        Some(r#"{"type":"RESPONSE","id":10,"payload":{"headers":{"HELLO":"WORLD"},"status":"OK00"}}"#),
-    );
+    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!("say_hello_to_world_request.json"))
+        .and_then(|_| alice.receive())
+        .wait();
+
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("say_hello_to_world_response.json"));
 }
 
 #[test]
 fn request_and_response_with_compact_string_headers() {
-    let (mut handler, _) = gen_frame_handler();
-    assert_successful(
-        &mut handler,
-        r#"{"type":"REQUEST","id":10,"payload":{"type":"SAY_HELLO", "headers":{"TO": "WORLD"}}}"#,
-        Some(r#"{"type":"RESPONSE","id":10,"payload":{"headers":{"HELLO":"WORLD"},"status":"OK00"}}"#),
-    );
+    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!(
+            "say_hello_to_world_compact_header_request.json"
+        ))
+        .and_then(|_| alice.receive())
+        .wait();
+
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("say_hello_to_world_response.json"));
 }
 
 #[test]
 fn unknown_non_mandatory_header_gets_ignored() {
-    let (mut handler, _) = gen_frame_handler();
-    assert_successful(
-        &mut handler,
-        r#"{"type":"REQUEST","id":10,"payload":{"type":"FOO", "headers":{"_SOMETHING": {"value":"42"}}}}"#,
-        Some(r#"{"type":"RESPONSE","id":10,"payload":{"status":"OK00"}}"#),
-    );
+    let (mut _runtime, alice, _bob) = setup(ping::config());
+
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!("ping_with_non_mandatory_header.json"))
+        .and_then(|_| alice.receive())
+        .wait();
+
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("empty_response_id-10_ok00.json"));
 }
 
 #[test]
 fn rejects_malformed_header_without_value() {
-    let (mut handler, _) = gen_frame_handler();
-    assert_successful(
-        &mut handler,
-        json!({"type":"REQUEST","id":10,"payload":{"type":"FOO", "headers":{"_SOMETHING": {"number":"42"}}}})
-            .to_string()
-            .as_str(),
-        Some(
-            json!({
-                "type": "RESPONSE",
-                "id": 10,
-                "payload": {
-                    "status": "SE00",
-                }
-            }).to_string()
-                .as_str(),
-        ),
-    );
+    let (mut _runtime, alice, _bob) = setup(ping::config());
+
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!("ping_with_malformed_header.json"))
+        .and_then(|_| alice.receive())
+        .wait();
+
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("empty_response_se00.json"));
 }
 
 #[test]
 fn can_parse_json_integer_value_in_header() {
-    let (mut handler, _) = gen_frame_handler();
-    assert_successful(
-        &mut handler,
-        r#"{"type":"REQUEST","id":10,"payload":{"type":"SAY_HELLO", "headers":{"TO": "WORLD", "_TIMES": 2}}}"#,
-        Some(r#"{"type":"RESPONSE","id":10,"payload":{"headers":{"HELLO":"WORLD WORLD"},"status":"OK00"}}"#),
-    );
+    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!(
+            "say_hello_to_world_2_times_request.json"
+        ))
+        .and_then(|_| alice.receive())
+        .wait();
+
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!(
+            "say_hello_to_world_2_times_response.json"
+        ));
 }
 
 #[test]
 fn can_parse_header_parameters() {
-    let (mut handler, _) = gen_frame_handler();
+    let (mut _runtime, alice, _bob) = setup(buy::config());
 
-    let input = json!({
-      "type": "REQUEST",
-      "id": 10,
-      "payload": {
-        "type": "BUY",
-        "headers": {
-          "THING": {
-            "value": "PHONE",
-            "parameters": {
-                "os": "Android",
-                "model": "Pixel 2 XL",
-                "brand": "LG",
-            }
-          }
-        }
-      }
-    });
-    let expected_output = json!({
-      "type": "RESPONSE",
-      "id": 10,
-      "payload": {
-        "status": "OK00",
-        "headers": {
-          "PRICE": 420
-        }
-      }
-    });
+    let buy_phone_response = alice
+        .send_with_newline(include_json_line!("buy_phone_request.json"))
+        .and_then(|_| alice.receive());
 
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    );
+    let buy_retro_encabulator_response = alice
+        .send_with_newline(include_json_line!("buy_retro_encabulator_request.json"))
+        .and_then(|_| alice.receive());
 
-    let input = json!({
-      "type": "REQUEST",
-      "id": 11,
-      "payload": {
-        "type": "BUY",
-        "headers": {
-          "THING": {
-            "value": "RETRO ENCABULATOR",
-          }
-        }
-      }
-    });
-    let expected_output = json!({
-      "type": "RESPONSE",
-      "id": 11,
-      "payload": {
-        "status": "OK00",
-        "headers": {
-          "PRICE": 9001
-        }
-      }
-    });
+    assert_that(&buy_phone_response.wait())
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("buy_phone_response.json"));
 
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    );
+    assert_that(&buy_retro_encabulator_response.wait())
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("buy_retro_encabulator_response.json"));
 }
 
 #[test]
 fn unknown_mandatory_header_triggers_error_response() {
-    let (mut handler, _) = gen_frame_handler();
+    let (mut _runtime, alice, _bob) = setup(say_hello::config());
 
-    let input = json!({
-      "type": "REQUEST",
-      "id": 10,
-      "payload": {
-        "type": "SAY_HELLO",
-        "headers": {
-          "LANG": {
-            "value": "ENG"
-          },
-          "TO": {
-            "value": "WORLD"
-          }
-        }
-      }
-    });
-    let expected_output = json!({
-      "type": "RESPONSE",
-      "id": 10,
-      "payload": {
-        "status": "SE01",
-        "headers": {
-          "Unsupported-Headers": ["LANG"]
-        }
-      }
-    });
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!(
+            "say_hello_with_unknown_mandatory_header.json"
+        ))
+        .and_then(|_| alice.receive())
+        .wait();
 
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    );
-}
-
-#[test]
-fn unknown_mandatory_header_defined_in_other_header_triggers_error_response() {
-    let (mut handler, _) = gen_frame_handler();
-
-    let input = json!({
-        "type": "REQUEST",
-        "id": 10,
-        "payload": {
-            "type": "SAY_HELLO",
-            "headers": {
-                "TO": {
-                    "value": "WORLD"
-                },
-                "THING" : {
-                    "value" : "RETRO ENCABULATOR"
-                }
-            }
-        }
-    });
-    let expected_output = json!({
-        "type": "RESPONSE",
-        "id": 10,
-        "payload": {
-            "status": "SE01",
-            "headers": {
-                "Unsupported-Headers": ["THING"]
-            }
-        }
-    });
-
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    );
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("unsupported_lang_header_response.json"));
 }
 
 #[test]
 fn handle_malformed_request_type() {
-    let (mut handler, _) = gen_frame_handler();
+    let (mut _runtime, alice, _bob) = setup(ping::config());
 
-    let input = json!({
-        "type": "REQUEST",
-        "id": 10,
-        "payload": {
-            "type": 42,
-        }
-    });
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!("malformed_request_type.json"))
+        .and_then(|_| alice.receive())
+        .wait();
 
-    let expected_output = json!({
-        "type" : "RESPONSE",
-        "id" : 10,
-        "payload" : {
-            "status" : "SE00",
-        }
-    });
-
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    )
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("empty_response_se00.json"));
 }
 
 #[test]
 fn handle_malformed_headers() {
-    let (mut handler, _) = gen_frame_handler();
+    let (mut _runtime, alice, _bob) = setup(say_hello::config());
 
-    let input = json!({
-        "type": "REQUEST",
-        "id": 10,
-        "payload": {
-            "type": "SAY_HELLO",
-            //It shouldn't be an array
-            "headers" : [
-                "TO", { "value" : "world" }
-            ]
-        }
-    });
+    let actual_response_from_bob = alice
+        .send_with_newline(include_json_line!(
+            "say_hello_to_world_malformed_header_request.json"
+        ))
+        .and_then(|_| alice.receive())
+        .wait();
 
-    let expected_output = json!({
-        "type" : "RESPONSE",
-        "id" : 10,
-        "payload" : {
-            "status" : "SE00",
-        }
-    });
-
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    )
+    assert_that(&actual_response_from_bob)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("empty_response_se00.json"));
 }
 
 #[test]
 fn handle_request_with_payload() {
-    let (mut handler, _) = gen_frame_handler();
+    let (mut _runtime, alice, _bob) = setup(place_order::config());
 
-    let input = json!({
-        "type": "REQUEST",
-        "id": 10,
-        "payload": {
-            "type": "PLACE-ORDER",
-            "headers" : {
-                "PRODUCT-TYPE" : "PHONE",
-            },
-            "body" : {
-                "os": "Android",
-                "model": "Pixel 2 XL",
-                "brand": "LG",
-            }
-        }
-    });
+    let android_order_response = alice
+        .send_with_newline(include_json_line!("place_android_phone_order_request.json"))
+        .and_then(|_| alice.receive())
+        .wait();
 
-    let expected_output = json!({
-        "type" : "RESPONSE",
-        "id" : 10,
-        "payload" : {
-            "status" : "OK00",
-            "body" : 420
-        }
-    });
+    let apple_order_response = alice
+        .send_with_newline(include_json_line!("place_apple_phone_order_request.json"))
+        .and_then(|_| alice.receive())
+        .wait();
 
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    );
+    assert_that(&android_order_response)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!(
+            "place_android_phone_order_response.json"
+        ));
 
-    let input = json!({
-        "type": "REQUEST",
-        "id": 11,
-        "payload": {
-            "type": "PLACE-ORDER",
-            "headers" : {
-                "PRODUCT-TYPE" : "PHONE",
-            },
-            "body" : {
-                "os": "iOS",
-                "model": "iPhone XL",
-                "brand": "Apple",
-            }
-        }
-    });
-
-    let expected_output = json!({
-        "type" : "RESPONSE",
-        "id" : 11,
-        "payload" : {
-            "status" : "OK00",
-            "body" : 840
-        }
-    });
-    assert_successful(
-        &mut handler,
-        input.to_string().as_str(),
-        Some(expected_output.to_string().as_str()),
-    );
+    assert_that(&apple_order_response)
+        .is_ok()
+        .is_some()
+        .is_equal_to(include_json_line!("place_apple_phone_order_response.json"));
 }

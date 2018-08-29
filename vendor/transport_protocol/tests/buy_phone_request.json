@@ -1,0 +1,17 @@
+{
+  "type": "REQUEST",
+  "id": 10,
+  "payload": {
+    "type": "BUY",
+    "headers": {
+      "THING": {
+        "value": "PHONE",
+        "parameters": {
+          "os": "Android",
+          "model": "Pixel 2 XL",
+          "brand": "LG"
+        }
+      }
+    }
+  }
+}

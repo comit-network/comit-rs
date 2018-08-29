@@ -1,0 +1,7 @@
+{
+  "type": "REQUEST",
+  "id": 10,
+  "payload": {
+    "type": 42
+  }
+}
