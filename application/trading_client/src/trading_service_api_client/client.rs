@@ -52,8 +52,8 @@ pub struct OfferResponseBody {
     pub symbol: Symbol,
     pub rate: f64,
     //TODO: trading-cli should be agnostic of the currencies
-    pub eth_amount: EthereumQuantity,
-    pub btc_amount: BitcoinQuantity,
+    pub buy_amount: EthereumQuantity,
+    pub sell_amount: BitcoinQuantity,
 }
 
 #[derive(Deserialize, Serialize)]

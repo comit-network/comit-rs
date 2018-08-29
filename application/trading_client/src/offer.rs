@@ -120,7 +120,7 @@ pub fn run(
                  Sell {} for {}\n\
                  To accept the offer, run:\n\
                  trading_client order --symbol=ETH-BTC --uid={} --refund-address=<your BTC address> --success-address=<your ETH address>",
-                offer.uid, offer.rate, symbol, offer.btc_amount, offer.eth_amount, offer.uid,
+                offer.uid, offer.rate, symbol, offer.sell_amount, offer.buy_amount, offer.uid,
             ));
         }
     }
