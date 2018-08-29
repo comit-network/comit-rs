@@ -44,7 +44,7 @@ function start_target() {
     name=$1;
     log "Starting $name";
     # Logs prefixes the service name in front of its logs
-    "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed -l "s/^/$name: / " >&3 &
+    "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed  "s/^/$name: / " >&3 &
     # returns the PID of the process
     jobs -p
 }
