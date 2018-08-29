@@ -71,7 +71,7 @@ impl EthereumService {
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             ethereum_wallet::UnsignedTransaction::new_contract_deployment(
                 contract.compile_to_hex(),
-                86578, //TODO: calculate the gas consumption based on 32k + 200*bytes
+                865780, //TODO: calculate the gas consumption based on 32k + 200*bytes
                 gas_price,
                 funding,
                 nonce,
