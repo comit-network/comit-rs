@@ -135,9 +135,9 @@ fn handle_sell_orders(
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
-                client_refund_address: client_refund_address.to_string(),
-                client_success_address: client_success_address.to_string(),
-                client_contract_time_lock: ETH_HTLC_TIMEOUT_IN_SECONDS.as_secs(),
+                client_refund_address: client_refund_address,
+                client_success_address: client_success_address,
+                client_contract_time_lock: ETH_HTLC_TIMEOUT_IN_SECONDS.as_secs() as u32,
             },
         )
         .map_err(Error::ExchangeService)?;
@@ -145,7 +145,7 @@ fn handle_sell_orders(
     let htlc = ethereum_htlc::Htlc::new(
         ETH_HTLC_TIMEOUT_IN_SECONDS,
         client_refund_address,
-        order_response.exchange_success_address.parse()?,
+        order_response.exchange_success_address,
         secret.hash(),
     );
 
@@ -153,11 +153,9 @@ fn handle_sell_orders(
 
     let order_taken_event: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: BlockHeight::new(
-            order_response.exchange_contract_time_lock as u32,
-        ),
-        exchange_refund_address: order_response.exchange_refund_address.parse()?,
-        exchange_success_address: order_response.exchange_success_address.parse()?,
+        exchange_contract_time_lock: BlockHeight::new(order_response.exchange_contract_time_lock),
+        exchange_refund_address: order_response.exchange_refund_address,
+        exchange_success_address: order_response.exchange_success_address,
     };
 
     event_store.add_event(trade_id, order_taken_event)?;
