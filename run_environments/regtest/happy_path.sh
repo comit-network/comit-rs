@@ -27,8 +27,6 @@ function setup() {
     symbol_param="--symbol=ETH-BTC"
     eth_amount=10
 
-    ## Generate funds and activate segwit
-    debug "Generating enough blocks to activate segwit";
     # Watch the btc exchange redeem address
     debug "Adding BTC_EXCHANGE_REDEEM_ADDRESS to wallet";
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
