@@ -1,6 +1,6 @@
 use bitcoin_htlc::bitcoin_htlc::Htlc;
 use bitcoin_rpc_client::{self, RpcError, TransactionId};
-use bitcoin_support::{self, Address};
+use bitcoin_support;
 use reqwest;
 use std::sync::Arc;
 
@@ -22,34 +22,16 @@ impl From<bitcoin_rpc_client::RpcError> for Error {
     }
 }
 
-pub trait LocalBitcoinApi: Send + Sync {
-    fn deploy_htlc(
-        &self,
-        address: &Address,
-        amount: f64,
-    ) -> Result<Result<TransactionId, RpcError>, reqwest::Error>;
-}
-
-impl<T> LocalBitcoinApi for T
-where
-    T: bitcoin_rpc_client::BitcoinRpcApi,
-{
-    fn deploy_htlc(
-        &self,
-        address: &Address,
-        amount: f64,
-    ) -> Result<Result<TransactionId, RpcError>, reqwest::Error> {
-        self.send_to_address(&address.clone().into(), amount)
-    }
-}
-
 pub struct BitcoinService {
-    client: Arc<LocalBitcoinApi>,
+    client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
     network: bitcoin_support::Network,
 }
 
 impl BitcoinService {
-    pub fn new(client: Arc<LocalBitcoinApi>, network: bitcoin_support::Network) -> Self {
+    pub fn new(
+        client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
+        network: bitcoin_support::Network,
+    ) -> Self {
         BitcoinService { client, network }
     }
 
@@ -62,7 +44,7 @@ impl BitcoinService {
 
         let tx_id = self
             .client
-            .deploy_htlc(&htlc_address.clone().into(), amount.bitcoin())??;
+            .send_to_address(&htlc_address.clone().into(), amount.bitcoin())??;
 
         Ok(tx_id)
     }

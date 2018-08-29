@@ -30,7 +30,7 @@ use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::{EventStore, InMemoryEventStore};
 use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::{BitcoinService, LocalBitcoinApi},
+    bitcoin_service::BitcoinService,
     ethereum_service::{self, BlockingEthereumApi},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
@@ -88,7 +88,7 @@ impl BitcoinRpcClientMock {
 impl LocalBitcoinApi for BitcoinRpcClientMock {
     fn deploy_htlc(
         &self,
-        address: &Address,
+        address: &bitcoin_rpc_client::Address,
         amount: f64,
     ) -> Result<Result<TransactionId, RpcError>, reqwest::Error> {
         Ok(Ok(self.transaction_id.clone()))
