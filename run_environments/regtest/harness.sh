@@ -40,7 +40,6 @@ trap 'END' EXIT;
 
 
 function start_target() {
-    logdest=3;
     name=$1;
     log "Starting $name";
     # Logs prefixes the service name in front of its logs
