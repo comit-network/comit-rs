@@ -8,7 +8,6 @@ use std::sync::Arc;
 pub enum Error {
     BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),
-    Unknown(),
 }
 
 impl From<reqwest::Error> for Error {
