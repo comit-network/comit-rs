@@ -1,7 +1,5 @@
 use bitcoin_fee_service;
 use bitcoin_rpc_client;
-use bitcoin_service;
-use ethereum_service;
 use event_store;
 use ledger_htlc_service;
 use logging;

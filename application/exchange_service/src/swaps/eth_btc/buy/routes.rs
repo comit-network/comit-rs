@@ -201,7 +201,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<bitcoin::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    ethereum_service: State<Arc<ledger_htlc_service::LedgerHtlcService<Ethereum>>>,
+    ethereum_service: State<Arc<LedgerHtlcService<Ethereum>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -216,7 +216,7 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: bitcoin::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
-    ethereum_service: &Arc<ledger_htlc_service::LedgerHtlcService<Ethereum>>,
+    ethereum_service: &Arc<LedgerHtlcService<Ethereum>>,
 ) -> Result<(), Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 

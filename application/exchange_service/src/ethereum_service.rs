@@ -7,10 +7,12 @@ use ethereum_support::*;
 use ethereum_wallet;
 use gas_price_service::{self, GasPriceService};
 use ledger_htlc_service::{self, LedgerHtlcService};
+use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
+use swaps::common::TradeId;
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {
     fn from(_e: gas_price_service::Error) -> Self {
@@ -25,7 +27,7 @@ impl<'a> From<PoisonError<MutexGuard<'a, U256>>> for ledger_htlc_service::Error 
 }
 
 impl<'a> From<web3::Error> for ledger_htlc_service::Error {
-    fn from(e: web3::Error) -> Self {
+    fn from(_e: web3::Error) -> Self {
         ledger_htlc_service::Error::NodeConnection
     }
 }
@@ -79,6 +81,36 @@ impl LedgerHtlcService<Ethereum> for EthereumService {
 
         Ok(tx_id)
     }
+
+    fn redeem_htlc(
+        &self,
+        secret: Secret,
+        _trade_id: TradeId,
+        _exchange_success_address: <Ethereum as Ledger>::Address,
+        _exchange_success_keypair: KeyPair,
+        _client_refund_address: <Ethereum as Ledger>::Address,
+        contract_address: <Ethereum as Ledger>::HtlcId,
+        _sell_amount: <Ethereum as Ledger>::Quantity,
+        _lock_time: <Ethereum as Ledger>::Time,
+    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_invocation(
+                secret.raw_secret().to_vec(),
+                contract_address,
+                10000,
+                gas_price,
+                0,
+                nonce,
+            )
+        })?;
+
+        info!(
+            "Contract {:?} was successfully redeemed in transaction {:?}",
+            contract_address, tx_id
+        );
+
+        Ok(tx_id)
+    }
 }
 
 impl EthereumService {
@@ -94,28 +126,6 @@ impl EthereumService {
             gas_price_service,
             web3,
         }
-    }
-
-    pub fn redeem_htlc(
-        &self,
-        secret: Secret,
-        contract_address: Address,
-    ) -> Result<H256, ledger_htlc_service::Error> {
-        let tx_id = self.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_invocation(
-                secret.raw_secret().to_vec(),
-                contract_address,
-                10000,
-                gas_price,
-                0,
-                nonce,
-            )
-        })?;
-        info!(
-            "Contract {:?} was successfully redeemed in transaction {:?}",
-            contract_address, tx_id
-        );
-        Ok(tx_id)
     }
 
     fn sign_and_send<T: Fn(U256, U256) -> ethereum_wallet::UnsignedTransaction>(
