@@ -56,24 +56,22 @@ fn handle_post_orders_funding(
     let order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     //create new event
-    let trade_funded: TradeFunded<Bitcoin, Ethereum> = TradeFunded::new(trade_id, htlc_identifier);
+    let trade_funded = TradeFunded::<Bitcoin, Ethereum>::new(trade_id, htlc_identifier);
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
-    let offer_created_event =
-        event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let offer_created = event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     let tx_id = bitcoin_service.deploy_htlc(
         order_taken.exchange_refund_address,
         order_taken.client_success_address,
         order_taken.exchange_contract_time_lock,
-        offer_created_event.buy_amount,
+        offer_created.buy_amount,
         order_taken.contract_secret_lock,
     )?;
 
-    let deployed: ContractDeployed<Bitcoin, Ethereum> =
-        ContractDeployed::new(trade_id, tx_id.to_string());
+    let contract_deployed = ContractDeployed::<Bitcoin, Ethereum>::new(trade_id, tx_id.to_string());
 
-    event_store.add_event(trade_id, deployed)?;
+    event_store.add_event(trade_id, contract_deployed)?;
 
     Ok(())
 }
