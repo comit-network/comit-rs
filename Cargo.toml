@@ -19,5 +19,6 @@ members = [
     "vendor/tc_bitcoincore_client",
     "vendor/key_gen",
     "vendor/lightning_rpc",
-    "vendor/event_store"
+    "vendor/event_store",
+    "vendor/transport_protocol",
 ]
