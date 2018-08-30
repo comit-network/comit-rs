@@ -117,4 +117,6 @@ test "$@" || { log "ERROR: The harness requires a file to run!"; exit 1; }
 
 setup;
 
+sleep 2;
+
 "$@"
