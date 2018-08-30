@@ -17,6 +17,7 @@ use ethereum_htlc;
 use ethereum_service;
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
+use ledger_htlc_service::LedgerHtlcService;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
@@ -310,9 +311,12 @@ fn handle_post_revealed_secret(
     let redeem_tx_id = bitcoin_service.redeem_htlc(
         secret,
         trade_id,
-        order_taken_event,
-        offer_created_event,
-        trade_funded_event,
+        order_taken_event.exchange_success_address,
+        order_taken_event.exchange_success_keypair,
+        order_taken_event.client_refund_address,
+        trade_funded_event.htlc_identifier,
+        offer_created_event.sell_amount,
+        order_taken_event.client_contract_time_lock,
     )?;
 
     let contract_redeemed: ContractRedeemed<Ethereum, Bitcoin> =
