@@ -149,7 +149,6 @@ impl BitcoinService {
         );
 
         let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
-        debug!("RPC Transaction: {:?}", rpc_transaction);
         info!(
             "Attempting to redeem HTLC with txid {} for {}",
             htlc_tx_id, trade_id
@@ -159,6 +158,11 @@ impl BitcoinService {
             .client
             .send_raw_transaction(rpc_transaction)
             .map_err(Error::BitcoinNode)??;
+
+        info!(
+            "HTLC for {} successfully redeemed with {}",
+            trade_id, redeem_txid
+        );
 
         Ok(redeem_txid)
     }

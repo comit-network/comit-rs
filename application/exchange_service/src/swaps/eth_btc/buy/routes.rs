@@ -319,10 +319,5 @@ fn handle_post_revealed_secret(
         ContractRedeemed::new(trade_id, redeem_tx_id.to_string());
     event_store.add_event(trade_id, contract_redeemed)?;
 
-    info!(
-        "HTLC for {} successfully redeemed with {}",
-        trade_id, redeem_tx_id
-    );
-
     Ok(())
 }
