@@ -1,7 +1,8 @@
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_rpc_client;
-use bitcoin_service::BitcoinService;
+use bitcoin_service::{BitcoinService, LedgerHtlcService};
 use bitcoin_support::{self, Network};
+use common_types::ledger::bitcoin::Bitcoin;
 use ethereum_service::EthereumService;
 use ethereum_support;
 use event_store::InMemoryEventStore;
@@ -15,7 +16,7 @@ pub fn create_rocket_instance(
     treasury_api_client: Arc<ApiClient>,
     event_store: InMemoryEventStore<TradeId>,
     ethereum_service: Arc<EthereumService>,
-    bitcoin_service: Arc<BitcoinService>,
+    bitcoin_service: Arc<LedgerHtlcService<Bitcoin>>,
     bitcoin_rpc_client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
     exchange_refund_address: ethereum_support::Address,
     exchange_success_keypair: KeyPair,

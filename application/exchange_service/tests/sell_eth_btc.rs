@@ -17,7 +17,7 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
 
-use bitcoin_rpc_client::{BlockHeight, RpcError, TransactionId};
+use bitcoin_rpc_client::{BitcoinRpcApi, BlockHeight, RpcError, TransactionId};
 use bitcoin_support::Network;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -85,8 +85,8 @@ impl BitcoinRpcClientMock {
 }
 
 #[allow(unused_variables)]
-impl LocalBitcoinApi for BitcoinRpcClientMock {
-    fn deploy_htlc(
+impl BitcoinRpcApi for BitcoinRpcClientMock {
+    fn send_to_address(
         &self,
         _address: &bitcoin_rpc_client::Address,
         _amount: f64,

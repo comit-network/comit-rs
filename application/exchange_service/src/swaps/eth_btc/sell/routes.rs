@@ -34,7 +34,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<<Ethereum as Ledger>::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    bitcoin_service: State<Arc<bitcoin_service::BitcoinService>>,
+    bitcoin_service: State<Arc<bitcoin_service::LedgerHtlcService<Bitcoin>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -49,7 +49,7 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: <Ethereum as Ledger>::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
-    bitcoin_service: &Arc<bitcoin_service::BitcoinService>,
+    bitcoin_service: &Arc<bitcoin_service::LedgerHtlcService<Bitcoin>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
     let order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
@@ -61,7 +61,13 @@ fn handle_post_orders_funding(
     let offer_created_event =
         event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
 
-    let tx_id = bitcoin_service.deploy_htlc(order_taken, offer_created_event)?;
+    let tx_id = bitcoin_service.deploy_htlc(
+        order_taken.exchange_refund_address,
+        order_taken.client_success_address,
+        order_taken.exchange_contract_time_lock,
+        offer_created_event.buy_amount,
+        order_taken.contract_secret_lock,
+    )?;
 
     let deployed: ContractDeployed<Bitcoin, Ethereum> =
         ContractDeployed::new(trade_id, tx_id.to_string());
