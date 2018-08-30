@@ -6,6 +6,7 @@ use common_types::{
 use ethereum_service;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
+use ledger_htlc_service;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
@@ -14,9 +15,9 @@ use swaps::{
     events::{ContractDeployed, ContractRedeemed, OfferCreated, OrderTaken, TradeFunded},
 };
 
-impl From<bitcoin_service::Error> for Error {
-    fn from(e: bitcoin_service::Error) -> Self {
-        Error::BitcoinService(e)
+impl From<ledger_htlc_service::Error> for Error {
+    fn from(e: ledger_htlc_service::Error) -> Self {
+        Error::LedgerHtlcService(e)
     }
 }
 
@@ -34,7 +35,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<<Ethereum as Ledger>::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    bitcoin_service: State<Arc<bitcoin_service::LedgerHtlcService<Bitcoin>>>,
+    bitcoin_service: State<Arc<ledger_htlc_service::LedgerHtlcService<Bitcoin>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -49,7 +50,7 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: <Ethereum as Ledger>::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
-    bitcoin_service: &Arc<bitcoin_service::LedgerHtlcService<Bitcoin>>,
+    bitcoin_service: &Arc<ledger_htlc_service::LedgerHtlcService<Bitcoin>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
     let order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;

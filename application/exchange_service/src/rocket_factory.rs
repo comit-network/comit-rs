@@ -1,11 +1,12 @@
 use bitcoin_fee_service::BitcoinFeeService;
 use bitcoin_rpc_client;
-use bitcoin_service::{BitcoinService, LedgerHtlcService};
+use bitcoin_service::BitcoinService;
 use bitcoin_support::{self, Network};
 use common_types::ledger::bitcoin::Bitcoin;
 use ethereum_service::EthereumService;
 use ethereum_support;
 use event_store::InMemoryEventStore;
+use ledger_htlc_service::LedgerHtlcService;
 use rocket;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;

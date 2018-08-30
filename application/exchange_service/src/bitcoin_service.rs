@@ -7,19 +7,13 @@ use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     secret::{Secret, SecretHash},
 };
+use ledger_htlc_service::{Error, LedgerHtlcService};
 use reqwest;
 use std::sync::Arc;
 use swaps::{
     common::TradeId,
     events::{OfferCreated, OrderTaken, TradeFunded},
 };
-
-#[derive(Debug)]
-pub enum Error {
-    Unlocking,
-    NodeConnection,
-    Internal,
-}
 
 impl From<reqwest::Error> for Error {
     fn from(_error: reqwest::Error) -> Self {
@@ -50,17 +44,6 @@ pub struct BitcoinService {
     fee_service: Arc<BitcoinFeeService>,
     network: bitcoin_support::Network,
     btc_exchange_redeem_address: bitcoin_support::Address,
-}
-
-pub trait LedgerHtlcService<B: Ledger>: Send + Sync {
-    fn deploy_htlc(
-        &self,
-        refund_address: B::Address,
-        success_address: B::Address,
-        time_lock: B::Time,
-        amount: B::Quantity,
-        secret: SecretHash,
-    ) -> Result<B::TxId, Error>;
 }
 
 impl LedgerHtlcService<Bitcoin> for BitcoinService {

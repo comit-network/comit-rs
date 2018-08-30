@@ -3,6 +3,7 @@ use bitcoin_rpc_client;
 use bitcoin_service;
 use ethereum_service;
 use event_store;
+use ledger_htlc_service;
 use logging;
 use reqwest;
 use rocket::{http::RawStr, request::FromParam};
@@ -47,7 +48,7 @@ pub enum Error {
     TreasuryService(reqwest::Error),
     FeeService(bitcoin_fee_service::Error),
     EthereumService(ethereum_service::Error),
-    BitcoinService(bitcoin_service::Error),
+    LedgerHtlcService(ledger_htlc_service::Error),
     BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),
     Unlocking(String),
