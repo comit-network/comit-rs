@@ -24,18 +24,18 @@ pub struct OfferResponseBody<B: Ledger, S: Ledger> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody {
+pub struct OrderRequestBody<B: Ledger, S: Ledger> {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: String,
-    pub client_success_address: String,
-    pub client_contract_time_lock: u64,
+    pub client_refund_address: S::Address,
+    pub client_success_address: B::Address,
+    pub client_contract_time_lock: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderResponseBody {
-    pub exchange_refund_address: String,
-    pub exchange_contract_time_lock: u64,
-    pub exchange_success_address: String,
+pub struct OrderResponseBody<B: Ledger, S: Ledger> {
+    pub exchange_refund_address: B::Address,
+    pub exchange_contract_time_lock: u32,
+    pub exchange_success_address: S::Address,
 }
 
 pub trait ApiClient: Send + Sync {
@@ -48,8 +48,8 @@ pub trait ApiClient: Send + Sync {
         &self,
         symbol: TradingSymbol,
         uid: TradeId,
-        trade_request: &OrderRequestBody,
-    ) -> Result<OrderResponseBody, reqwest::Error>;
+        trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
+    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, reqwest::Error>;
     fn create_sell_offer(
         &self,
         symbol: TradingSymbol,
@@ -59,8 +59,8 @@ pub trait ApiClient: Send + Sync {
         &self,
         symbol: TradingSymbol,
         uid: TradeId,
-        trade_request: &OrderRequestBody,
-    ) -> Result<OrderResponseBody, reqwest::Error>;
+        trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
+    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, reqwest::Error>;
 }
 
 pub struct DefaultApiClient {
@@ -96,13 +96,13 @@ impl ApiClient for DefaultApiClient {
         &self,
         symbol: TradingSymbol,
         uid: TradeId,
-        trade_request: &OrderRequestBody,
-    ) -> Result<OrderResponseBody, reqwest::Error> {
+        trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
+    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
         self.client
             .post(format!("{}/trades/{}/{}/buy-orders", self.url.0, symbol, uid).as_str())
             .json(trade_request)
             .send()
-            .and_then(|mut res| res.json::<OrderResponseBody>())
+            .and_then(|mut res| res.json::<OrderResponseBody<Ethereum, Bitcoin>>())
     }
 
     fn create_sell_offer(
@@ -123,12 +123,12 @@ impl ApiClient for DefaultApiClient {
         &self,
         symbol: TradingSymbol,
         uid: TradeId,
-        trade_request: &OrderRequestBody,
-    ) -> Result<OrderResponseBody, reqwest::Error> {
+        trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
+    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
         self.client
             .post(format!("{}/trades/{}/{}/sell-orders", self.url.0, symbol, uid).as_str())
             .json(trade_request)
             .send()
-            .and_then(|mut res| res.json::<OrderResponseBody>())
+            .and_then(|mut res| res.json::<OrderResponseBody<Bitcoin, Ethereum>>())
     }
 }

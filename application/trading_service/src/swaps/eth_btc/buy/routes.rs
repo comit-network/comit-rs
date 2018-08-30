@@ -1,5 +1,5 @@
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
-use bitcoin_rpc_client::BlockHeight;
+use bitcoin_rpc_client;
 use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -13,7 +13,6 @@ use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
 use std::{
-    str::FromStr,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -111,7 +110,7 @@ fn handle_buy_orders(
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
         client_refund_address: client_refund_address.clone(),
-        long_relative_timelock: BlockHeight::new(BTC_BLOCKS_IN_24H),
+        long_relative_timelock: bitcoin_rpc_client::BlockHeight::new(BTC_BLOCKS_IN_24H),
     };
 
     event_store.add_event(trade_id, order_created_event.clone())?;
@@ -122,16 +121,15 @@ fn handle_buy_orders(
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
-                client_refund_address: client_refund_address.to_string(),
-                client_success_address: client_success_address.to_string(),
-                client_contract_time_lock: BTC_BLOCKS_IN_24H as u64,
+                client_refund_address: client_refund_address.clone(),
+                client_success_address: client_success_address.clone(),
+                client_contract_time_lock: BTC_BLOCKS_IN_24H,
             },
         )
         .map_err(Error::ExchangeService)?;
 
-    let exchange_success_pubkey_hash = PubkeyHash::from(bitcoin_support::Address::from_str(
-        order_response.exchange_success_address.as_str(),
-    )?);
+    let exchange_success_pubkey_hash =
+        PubkeyHash::from(order_response.exchange_success_address.clone());
     let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
@@ -144,10 +142,10 @@ fn handle_buy_orders(
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
         exchange_contract_time_lock: Duration::from_secs(
-            order_response.exchange_contract_time_lock,
+            order_response.exchange_contract_time_lock as u64,
         ),
-        exchange_refund_address: order_response.exchange_refund_address.parse()?,
-        exchange_success_address: order_response.exchange_success_address.parse()?,
+        exchange_refund_address: order_response.exchange_refund_address,
+        exchange_success_address: order_response.exchange_success_address,
     };
 
     event_store.add_event(trade_id, order_taken_event)?;

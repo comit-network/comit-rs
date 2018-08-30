@@ -1,9 +1,7 @@
 version: '3'
 services:
   trading_service:
-    build:
-      context: ../..
-      dockerfile: Dockerfile_cache
+    build: ../..
     env_file:
       - ./regtest.env
       - ./network.env
@@ -20,9 +18,7 @@ services:
     command: ./trading_service
 
   exchange_service:
-    build:
-      context: ../..
-      dockerfile: Dockerfile_cache
+    build: ../..
     command: bash -c 'sleep 5 && ./exchange_service'
     env_file:
       - ./regtest.env
@@ -42,9 +38,7 @@ services:
     - ethereum
 
   treasury_service:
-    build:
-      context: ../..
-      dockerfile: Dockerfile_cache
+    build: ../..
     environment:
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,fake_treasury_service=debug

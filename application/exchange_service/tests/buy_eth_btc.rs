@@ -163,7 +163,7 @@ fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_respons
         #[derive(Deserialize)]
         #[allow(dead_code)]
         struct Response {
-            exchange_contract_time_lock: i64,
+            exchange_contract_time_lock: u32,
         }
 
         serde_json::from_str::<Response>(&response.body_string().unwrap()).unwrap();

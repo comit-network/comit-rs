@@ -7,6 +7,7 @@ use common_types::{
     ledger::{
         bitcoin::{self, Bitcoin},
         ethereum::Ethereum,
+        Ledger,
     },
     secret::{Secret, SecretHash},
     TradingSymbol,
@@ -117,27 +118,37 @@ fn handle_post_buy_offers(
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody {
+pub struct OrderRequestBody<B: Ledger, S: Ledger> {
     pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: bitcoin_rpc_client::BlockHeight,
-
-    pub client_refund_address: bitcoin_rpc_client::Address,
-    pub client_success_address: ethereum_support::Address,
+    pub client_contract_time_lock: u32,
+    pub client_refund_address: S::Address,
+    pub client_success_address: B::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderTakenResponseBody {
-    pub exchange_refund_address: ethereum_support::Address,
-    pub exchange_success_address: bitcoin_rpc_client::Address,
-    pub exchange_contract_time_lock: u64,
+pub struct OrderTakenResponseBody<B: Ledger, S: Ledger> {
+    pub exchange_refund_address: B::Address,
+    pub exchange_success_address: S::Address,
+    pub exchange_contract_time_lock: u32,
 }
 
-impl From<OrderTaken<Ethereum, Bitcoin>> for OrderTakenResponseBody {
+impl From<OrderTaken<Bitcoin, Ethereum>> for OrderTakenResponseBody<Bitcoin, Ethereum> {
+    fn from(order_taken_event: OrderTaken<Bitcoin, Ethereum>) -> Self {
+        OrderTakenResponseBody {
+            exchange_refund_address: order_taken_event.exchange_refund_address.into(),
+            exchange_success_address: order_taken_event.exchange_success_address.into(),
+            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock.into(),
+        }
+    }
+}
+
+impl From<OrderTaken<Ethereum, Bitcoin>> for OrderTakenResponseBody<Ethereum, Bitcoin> {
     fn from(order_taken_event: OrderTaken<Ethereum, Bitcoin>) -> Self {
         OrderTakenResponseBody {
             exchange_refund_address: order_taken_event.exchange_refund_address.into(),
             exchange_success_address: order_taken_event.exchange_success_address.into(),
-            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock.as_secs(),
+            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock.as_secs()
+                as u32,
         }
     }
 }
@@ -149,12 +160,12 @@ impl From<OrderTaken<Ethereum, Bitcoin>> for OrderTakenResponseBody {
 )]
 pub fn post_buy_orders(
     trade_id: TradeId,
-    order_request_body: Json<OrderRequestBody>,
+    order_request_body: Json<OrderRequestBody<Ethereum, Bitcoin>>,
     event_store: State<InMemoryEventStore<TradeId>>,
     exchange_success_keypair: State<KeyPair>,
     exchange_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
-) -> Result<Json<OrderTakenResponseBody>, BadRequest<String>> {
+) -> Result<Json<OrderTakenResponseBody<Ethereum, Bitcoin>>, BadRequest<String>> {
     let order_taken_response_body = handle_post_buy_orders(
         trade_id,
         order_request_body.into_inner(),
@@ -168,12 +179,12 @@ pub fn post_buy_orders(
 
 fn handle_post_buy_orders(
     trade_id: TradeId,
-    order_request_body: OrderRequestBody,
+    order_request_body: OrderRequestBody<Ethereum, Bitcoin>,
     event_store: &InMemoryEventStore<TradeId>,
     exchange_success_keypair: &KeyPair,
     exchange_refund_address: &ethereum_support::Address,
     network: &Network,
-) -> Result<OrderTakenResponseBody, Error> {
+) -> Result<OrderTakenResponseBody<Ethereum, Bitcoin>, Error> {
     // Receive trade information
     // - Hashed Secret
     // - Client refund address (BTC)
@@ -196,7 +207,9 @@ fn handle_post_buy_orders(
     let order_taken = OrderTaken {
         uid: trade_id,
         contract_secret_lock: order_request_body.contract_secret_lock,
-        client_contract_time_lock: order_request_body.client_contract_time_lock,
+        client_contract_time_lock: bitcoin_rpc_client::BlockHeight::new(
+            order_request_body.client_contract_time_lock,
+        ),
         exchange_contract_time_lock: twelve_hours,
         client_refund_address,
         client_success_address: order_request_body.client_success_address,
