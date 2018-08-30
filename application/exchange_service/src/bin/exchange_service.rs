@@ -144,7 +144,13 @@ fn main() {
         f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
     let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
-    let bitcoin_service = BitcoinService::new(bitcoin_rpc_client.clone(), network);
+    let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
+    let bitcoin_service = BitcoinService::new(
+        bitcoin_rpc_client.clone(),
+        network,
+        bitcoin_fee_service.clone(),
+        btc_exchange_redeem_address.clone(),
+    );
 
     create_rocket_instance(
         Arc::new(api_client),
@@ -156,7 +162,7 @@ fn main() {
         exchange_success_keypair,
         btc_exchange_redeem_address,
         network,
-        Arc::new(bitcoin_fee_service),
+        bitcoin_fee_service,
     ).launch();
 }
 

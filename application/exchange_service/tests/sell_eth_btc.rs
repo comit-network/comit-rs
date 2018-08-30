@@ -18,7 +18,7 @@ extern crate serde;
 extern crate serde_json;
 
 use bitcoin_rpc_client::{BlockHeight, RpcError, TransactionId};
-use bitcoin_support::{Address, Network};
+use bitcoin_support::Network;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     seconds::Seconds,
@@ -88,8 +88,8 @@ impl BitcoinRpcClientMock {
 impl LocalBitcoinApi for BitcoinRpcClientMock {
     fn deploy_htlc(
         &self,
-        address: &bitcoin_rpc_client::Address,
-        amount: f64,
+        _address: &bitcoin_rpc_client::Address,
+        _amount: f64,
     ) -> Result<Result<TransactionId, RpcError>, reqwest::Error> {
         Ok(Ok(self.transaction_id.clone()))
     }
@@ -178,6 +178,10 @@ fn mock_trade_funded(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeI
 #[test]
 fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
     let _ = env_logger::try_init();
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+    let exchange_success_address =
+        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
+
     let bitcoin_service = BitcoinService::new(
         Arc::new(BitcoinRpcClientMock::new(
             TransactionId::from_str(
@@ -185,8 +189,9 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
             ).unwrap(),
         )),
         bitcoin_support::Network::Regtest,
+        bitcoin_fee_service.clone(),
+        exchange_success_address,
     );
-
     let event_store = InMemoryEventStore::new();
 
     let trade_id = TradeId::new();
@@ -214,6 +219,10 @@ pub struct RedeemETHNotificationBody {
 #[test]
 fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
     let _ = env_logger::try_init();
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+    let exchange_success_address =
+        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
+
     let bitcoin_service = BitcoinService::new(
         Arc::new(BitcoinRpcClientMock::new(
             TransactionId::from_str(
@@ -221,6 +230,8 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
             ).unwrap(),
         )),
         bitcoin_support::Network::Regtest,
+        bitcoin_fee_service.clone(),
+        exchange_success_address,
     );
     let event_store = InMemoryEventStore::new();
 

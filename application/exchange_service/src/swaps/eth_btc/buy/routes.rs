@@ -1,8 +1,8 @@
-use bitcoin_fee_service::{self, BitcoinFeeService};
-use bitcoin_htlc::{self, UnlockingError};
+use bitcoin_fee_service;
+use bitcoin_htlc::UnlockingError;
 use bitcoin_rpc_client;
-use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash, ToP2wpkhAddress};
-use bitcoin_witness::{PrimedInput, PrimedTransaction};
+use bitcoin_service;
+use bitcoin_support::{self, BitcoinQuantity, Network, ToP2wpkhAddress};
 use common_types::{
     ledger::{
         bitcoin::{self, Bitcoin},
@@ -23,7 +23,10 @@ use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
-    events::{ContractDeployed, OfferCreated as OfferState, OfferCreated, OrderTaken, TradeFunded},
+    events::{
+        ContractDeployed, ContractRedeemed, OfferCreated as OfferState, OfferCreated, OrderTaken,
+        TradeFunded,
+    },
 };
 use treasury_api_client::ApiClient;
 
@@ -276,30 +279,23 @@ pub struct RedeemBTCNotificationBody {
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    rpc_client: State<Arc<bitcoin_rpc_client::BitcoinRpcApi>>,
-    fee_service: State<Arc<BitcoinFeeService>>,
-    btc_exchange_redeem_address: State<bitcoin_support::Address>,
     trade_id: TradeId,
+    bitcoin_service: State<Arc<bitcoin_service::BitcoinService>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_revealed_secret(
         redeem_btc_notification_body.into_inner(),
         event_store.inner(),
-        rpc_client.inner(),
-        fee_service.inner(),
-        btc_exchange_redeem_address.inner(),
         trade_id,
+        bitcoin_service.inner(),
     )?;
-
     Ok(())
 }
 
 fn handle_post_revealed_secret(
     redeem_btc_notification_body: RedeemBTCNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
-    rpc_client: &Arc<bitcoin_rpc_client::BitcoinRpcApi>,
-    fee_service: &Arc<BitcoinFeeService>,
-    btc_exchange_redeem_address: &bitcoin_support::Address,
     trade_id: TradeId,
+    bitcoin_service: &Arc<bitcoin_service::BitcoinService>,
 ) -> Result<(), Error> {
     let order_taken_event =
         event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
@@ -308,65 +304,24 @@ fn handle_post_revealed_secret(
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
     let trade_funded_event =
         event_store.get_event::<TradeFunded<Ethereum, Bitcoin>>(trade_id.clone())?;
+
     let secret: Secret = redeem_btc_notification_body.secret;
-    let exchange_success_address = order_taken_event.exchange_success_address;
-    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
-    let exchange_success_keypair = order_taken_event.exchange_success_keypair;
 
-    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address.into();
-    let htlc_txid = trade_funded_event.htlc_identifier.transaction_id;
-    let vout = trade_funded_event.htlc_identifier.vout;
+    let redeem_tx_id = bitcoin_service.redeem_htlc(
+        secret,
+        trade_id,
+        order_taken_event,
+        offer_created_event,
+        trade_funded_event,
+    )?;
 
-    let htlc = bitcoin_htlc::Htlc::new(
-        exchange_success_pubkey_hash,
-        client_refund_pubkey_hash,
-        order_taken_event.contract_secret_lock.clone(),
-        order_taken_event.client_contract_time_lock.clone().into(),
-    );
-
-    htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)?;
-
-    let unlocking_parameters = htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
-
-    let primed_txn = PrimedTransaction {
-        inputs: vec![PrimedInput::new(
-            htlc_txid.clone().into(),
-            vout,
-            offer_created_event.sell_amount,
-            unlocking_parameters,
-        )],
-        output_address: btc_exchange_redeem_address.clone(),
-        locktime: 0,
-    };
-
-    let total_input_value = primed_txn.total_input_value();
-
-    let rate = fee_service.get_recommended_fee()?;
-    let redeem_tx = primed_txn.sign_with_rate(rate);
-
-    debug!(
-        "Redeem {} (input: {}, vout: {}) to {} (output: {})",
-        htlc_txid,
-        total_input_value,
-        vout,
-        redeem_tx.txid(),
-        redeem_tx.output[0].value
-    );
-    //TODO: Store above in event prior to doing rpc request
-    let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
-    debug!("RPC Transaction: {:?}", rpc_transaction);
-    info!(
-        "Attempting to redeem HTLC with txid {} for {}",
-        htlc_txid, trade_id
-    );
-    //TODO: Store successful redeem in event
-    let redeem_txid = rpc_client
-        .send_raw_transaction(rpc_transaction)
-        .map_err(Error::BitcoinNode)??;
+    let contract_redeemed: ContractRedeemed<Ethereum, Bitcoin> =
+        ContractRedeemed::new(trade_id, redeem_tx_id.to_string());
+    event_store.add_event(trade_id, contract_redeemed)?;
 
     info!(
         "HTLC for {} successfully redeemed with {}",
-        trade_id, redeem_txid
+        trade_id, redeem_tx_id
     );
 
     Ok(())

@@ -94,6 +94,10 @@ impl BlockingEthereumApi for StaticEthereumApi {
 }
 
 fn create_rocket_client() -> Client {
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+    let exchange_success_address =
+        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
+
     let rocket = create_rocket_instance(
         Arc::new(FakeApiClient),
         InMemoryEventStore::new(),
@@ -106,6 +110,8 @@ fn create_rocket_client() -> Client {
         Arc::new(BitcoinService::new(
             Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
             bitcoin_support::Network::Regtest,
+            bitcoin_fee_service.clone(),
+            exchange_success_address,
         )),
         Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
@@ -117,7 +123,7 @@ fn create_rocket_client() -> Client {
             .into(),
         bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
         Network::Regtest,
-        Arc::new(StaticBitcoinFeeService::new(50.0)),
+        bitcoin_fee_service,
     );
     rocket::local::Client::new(rocket).unwrap()
 }
