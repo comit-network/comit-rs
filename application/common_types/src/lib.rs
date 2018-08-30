@@ -1,3 +1,5 @@
+#![feature(custom_attribute)]
+#![feature(const_fn)]
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate crypto;
@@ -12,3 +14,4 @@ pub mod ledger;
 pub mod secret;
 mod trading_symbol;
 pub use trading_symbol::TradingSymbol;
+pub mod seconds;

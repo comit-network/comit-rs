@@ -20,6 +20,7 @@ use bitcoin_rpc_client::BlockHeight;
 use bitcoin_support::Network;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    seconds::Seconds,
     secret::Secret,
     TradingSymbol,
 };
@@ -44,7 +45,7 @@ use rocket::{
 };
 use secp256k1_support::KeyPair;
 use serde::{Deserialize, Serialize};
-use std::{str::FromStr, sync::Arc, time::Duration};
+use std::{str::FromStr, sync::Arc};
 
 trait DeserializeAsJson {
     fn body_json<T>(&mut self) -> T
@@ -120,7 +121,7 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
     let order_taken: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
         uid: trade_id,
         contract_secret_lock: secret.hash(),
-        client_contract_time_lock: Duration::new(60 * 60 * 12, 0),
+        client_contract_time_lock: Seconds::new(60 * 60 * 12),
         exchange_contract_time_lock: BlockHeight::new(24u32),
         client_refund_address: ethereum_support::Address::from_str(
             "1111111111111111111111111111111111111111",

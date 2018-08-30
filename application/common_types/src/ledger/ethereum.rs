@@ -1,6 +1,6 @@
 use ethereum_support::{Address, EthereumQuantity};
 use ledger::Ledger;
-use std::time::Duration;
+use seconds::Seconds;
 
 #[derive(Clone, Debug)]
 pub struct Ethereum {}
@@ -8,7 +8,7 @@ pub struct Ethereum {}
 impl Ledger for Ethereum {
     type Quantity = EthereumQuantity;
     type Address = Address;
-    type Time = Duration;
+    type LockDuration = Seconds;
     type HtlcId = Address;
 
     fn symbol() -> String {

@@ -9,6 +9,7 @@ use common_types::{
         ethereum::Ethereum,
         Ledger,
     },
+    seconds::Seconds,
     secret::{Secret, SecretHash},
     TradingSymbol,
 };
@@ -19,7 +20,7 @@ use event_store::{self, EventStore, InMemoryEventStore};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
     events::{ContractDeployed, OfferCreated as OfferState, OfferCreated, OrderTaken, TradeFunded},
@@ -118,37 +119,26 @@ fn handle_post_buy_offers(
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody<B: Ledger, S: Ledger> {
+pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
     pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: u32,
-    pub client_refund_address: S::Address,
-    pub client_success_address: B::Address,
+    pub client_contract_time_lock: Sell::LockDuration,
+    pub client_refund_address: Sell::Address,
+    pub client_success_address: Buy::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderTakenResponseBody<B: Ledger, S: Ledger> {
-    pub exchange_refund_address: B::Address,
-    pub exchange_success_address: S::Address,
-    pub exchange_contract_time_lock: u32,
+pub struct OrderTakenResponseBody<Buy: Ledger, Sell: Ledger> {
+    pub exchange_refund_address: Buy::Address,
+    pub exchange_success_address: Sell::Address,
+    pub exchange_contract_time_lock: Buy::LockDuration,
 }
 
-impl From<OrderTaken<Bitcoin, Ethereum>> for OrderTakenResponseBody<Bitcoin, Ethereum> {
-    fn from(order_taken_event: OrderTaken<Bitcoin, Ethereum>) -> Self {
+impl<Buy: Ledger, Sell: Ledger> From<OrderTaken<Buy, Sell>> for OrderTakenResponseBody<Buy, Sell> {
+    fn from(order_taken_event: OrderTaken<Buy, Sell>) -> Self {
         OrderTakenResponseBody {
             exchange_refund_address: order_taken_event.exchange_refund_address.into(),
             exchange_success_address: order_taken_event.exchange_success_address.into(),
-            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock.into(),
-        }
-    }
-}
-
-impl From<OrderTaken<Ethereum, Bitcoin>> for OrderTakenResponseBody<Ethereum, Bitcoin> {
-    fn from(order_taken_event: OrderTaken<Ethereum, Bitcoin>) -> Self {
-        OrderTakenResponseBody {
-            exchange_refund_address: order_taken_event.exchange_refund_address.into(),
-            exchange_success_address: order_taken_event.exchange_success_address.into(),
-            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock.as_secs()
-                as u32,
+            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock,
         }
     }
 }
@@ -202,14 +192,12 @@ fn handle_post_buy_orders(
             .to_p2wpkh_address(*network),
     );
 
-    let twelve_hours = Duration::new(60 * 60 * 12, 0);
+    let twelve_hours = Seconds::new(60 * 60 * 12);
 
     let order_taken = OrderTaken {
         uid: trade_id,
         contract_secret_lock: order_request_body.contract_secret_lock,
-        client_contract_time_lock: bitcoin_rpc_client::BlockHeight::new(
-            order_request_body.client_contract_time_lock,
-        ),
+        client_contract_time_lock: order_request_body.client_contract_time_lock,
         exchange_contract_time_lock: twelve_hours,
         client_refund_address,
         client_success_address: order_request_body.client_success_address,
@@ -255,7 +243,7 @@ fn handle_post_orders_funding(
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
     let htlc = ethereum_htlc::Htlc::new(
-        order_taken.exchange_contract_time_lock,
+        order_taken.exchange_contract_time_lock.into(),
         order_taken.exchange_refund_address,
         order_taken.client_success_address,
         order_taken.contract_secret_lock.clone(),

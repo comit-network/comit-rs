@@ -5,60 +5,60 @@ use std::marker::PhantomData;
 use swaps::common::TradeId;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferCreated<B: Ledger, S: Ledger> {
+pub struct OfferCreated<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub buy_amount: B::Quantity,
-    pub sell_amount: S::Quantity,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
     // TODO: treasury_expiry_timestamp
 }
 
 #[derive(Clone, Debug)]
-pub struct OrderTaken<B: Ledger, S: Ledger> {
+pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
 
     pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: S::Time,
-    pub exchange_contract_time_lock: B::Time,
+    pub client_contract_time_lock: Sell::LockDuration,
+    pub exchange_contract_time_lock: Buy::LockDuration,
 
-    pub client_refund_address: S::Address,
-    pub client_success_address: B::Address,
+    pub client_refund_address: Sell::Address,
+    pub client_success_address: Buy::Address,
 
-    pub exchange_refund_address: B::Address,
-    pub exchange_success_address: S::Address,
+    pub exchange_refund_address: Buy::Address,
+    pub exchange_success_address: Sell::Address,
     pub exchange_success_keypair: KeyPair,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TradeFunded<B: Ledger, S: Ledger> {
+pub struct TradeFunded<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
-    pub htlc_identifier: S::HtlcId,
-    phantom: PhantomData<B>,
+    pub htlc_identifier: Sell::HtlcId,
+    phantom: PhantomData<Buy>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<B: Ledger, S: Ledger> {
+pub struct ContractDeployed<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
     pub transaction_id: String,
-    phantom: PhantomData<B>,
-    phantom2: PhantomData<S>,
+    phantom: PhantomData<Buy>,
+    phantom2: PhantomData<Sell>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractRedeemed<B: Ledger, S: Ledger> {
+pub struct ContractRedeemed<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
     pub transaction_id: String,
-    phantom: PhantomData<B>,
-    phantom2: PhantomData<S>,
+    phantom: PhantomData<Buy>,
+    phantom2: PhantomData<Sell>,
 }
 
-impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
+impl<Buy: Ledger, Sell: Ledger> Event for OfferCreated<Buy, Sell> {
     type Prev = ();
 }
 
-impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<B, S> {
+impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
+    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<Buy, Sell> {
         ContractDeployed {
             uid,
             transaction_id,
@@ -68,8 +68,8 @@ impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
     }
 }
 
-impl<B: Ledger, S: Ledger> TradeFunded<B, S> {
-    pub fn new(uid: TradeId, htlc_identifier: S::HtlcId) -> TradeFunded<B, S> {
+impl<Buy: Ledger, Sell: Ledger> TradeFunded<Buy, Sell> {
+    pub fn new(uid: TradeId, htlc_identifier: Sell::HtlcId) -> TradeFunded<Buy, Sell> {
         TradeFunded {
             uid,
             htlc_identifier,
@@ -78,8 +78,8 @@ impl<B: Ledger, S: Ledger> TradeFunded<B, S> {
     }
 }
 
-impl<B: Ledger, S: Ledger> ContractRedeemed<B, S> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractRedeemed<B, S> {
+impl<Buy: Ledger, Sell: Ledger> ContractRedeemed<Buy, Sell> {
+    pub fn new(uid: TradeId, transaction_id: String) -> ContractRedeemed<Buy, Sell> {
         ContractRedeemed {
             uid,
             transaction_id,
@@ -89,11 +89,11 @@ impl<B: Ledger, S: Ledger> ContractRedeemed<B, S> {
     }
 }
 
-impl<B: Ledger, S: Ledger> OfferCreated<B, S> {
+impl<Buy: Ledger, Sell: Ledger> OfferCreated<Buy, Sell> {
     pub fn new(
         rate: f64,
-        buy_amount: B::Quantity,
-        sell_amount: S::Quantity,
+        buy_amount: Buy::Quantity,
+        sell_amount: Sell::Quantity,
         symbol: TradingSymbol,
     ) -> Self {
         OfferCreated {
@@ -106,18 +106,18 @@ impl<B: Ledger, S: Ledger> OfferCreated<B, S> {
     }
 }
 
-impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
-    type Prev = OfferCreated<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for OrderTaken<Buy, Sell> {
+    type Prev = OfferCreated<Buy, Sell>;
 }
 
-impl<B: Ledger, S: Ledger> Event for TradeFunded<B, S> {
-    type Prev = OrderTaken<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for TradeFunded<Buy, Sell> {
+    type Prev = OrderTaken<Buy, Sell>;
 }
 
-impl<B: Ledger, S: Ledger> Event for ContractDeployed<B, S> {
-    type Prev = TradeFunded<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for ContractDeployed<Buy, Sell> {
+    type Prev = TradeFunded<Buy, Sell>;
 }
 
-impl<B: Ledger, S: Ledger> Event for ContractRedeemed<B, S> {
-    type Prev = TradeFunded<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for ContractRedeemed<Buy, Sell> {
+    type Prev = TradeFunded<Buy, Sell>;
 }

@@ -15,27 +15,27 @@ struct OfferRequestBody {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferResponseBody<B: Ledger, S: Ledger> {
+pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub buy_amount: B::Quantity,
-    pub sell_amount: S::Quantity,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody<B: Ledger, S: Ledger> {
+pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: S::Address,
-    pub client_success_address: B::Address,
-    pub client_contract_time_lock: u32,
+    pub client_refund_address: Sell::Address,
+    pub client_success_address: Buy::Address,
+    pub client_contract_time_lock: Sell::LockDuration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderResponseBody<B: Ledger, S: Ledger> {
-    pub exchange_refund_address: B::Address,
-    pub exchange_contract_time_lock: u32,
-    pub exchange_success_address: S::Address,
+pub struct OrderResponseBody<Buy: Ledger, Sell: Ledger> {
+    pub exchange_refund_address: Buy::Address,
+    pub exchange_contract_time_lock: Buy::LockDuration,
+    pub exchange_success_address: Sell::Address,
 }
 
 pub trait ApiClient: Send + Sync {

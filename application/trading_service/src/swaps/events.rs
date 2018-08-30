@@ -7,20 +7,20 @@ use swaps::TradeId;
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferCreated<B, S>
+pub struct OfferCreated<Buy, Sell>
 where
-    B: Ledger,
-    S: Ledger,
+    Buy: Ledger,
+    Sell: Ledger,
 {
     pub uid: TradeId,
     pub symbol: TradingSymbol,
     pub rate: f64,
-    pub buy_amount: B::Quantity,
-    pub sell_amount: S::Quantity,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
-impl<B: Ledger, S: Ledger> From<OfferResponseBody<B, S>> for OfferCreated<B, S> {
-    fn from(offer: OfferResponseBody<B, S>) -> Self {
+impl<Buy: Ledger, Sell: Ledger> From<OfferResponseBody<Buy, Sell>> for OfferCreated<Buy, Sell> {
+    fn from(offer: OfferResponseBody<Buy, Sell>) -> Self {
         OfferCreated {
             uid: offer.uid,
             symbol: offer.symbol,
@@ -31,57 +31,57 @@ impl<B: Ledger, S: Ledger> From<OfferResponseBody<B, S>> for OfferCreated<B, S> 
     }
 }
 
-impl<B: Ledger, S: Ledger> Event for OfferCreated<B, S> {
+impl<Buy: Ledger, Sell: Ledger> Event for OfferCreated<Buy, Sell> {
     type Prev = ();
 }
 
 // State after client accepts trade offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderCreated<B, S>
+pub struct OrderCreated<Buy, Sell>
 where
-    B: Ledger,
-    S: Ledger,
+    Buy: Ledger,
+    Sell: Ledger,
 {
     pub uid: TradeId,
-    pub client_success_address: B::Address,
-    pub client_refund_address: S::Address,
+    pub client_success_address: Buy::Address,
+    pub client_refund_address: Sell::Address,
     pub secret: Secret,
-    pub long_relative_timelock: S::Time,
+    pub long_relative_timelock: Sell::LockDuration,
 }
 
-impl<B: Ledger, S: Ledger> Event for OrderCreated<B, S> {
-    type Prev = OfferCreated<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for OrderCreated<Buy, Sell> {
+    type Prev = OfferCreated<Buy, Sell>;
 }
 
 #[derive(Clone, Debug)]
-pub struct OrderTaken<B, S>
+pub struct OrderTaken<Buy, Sell>
 where
-    B: Ledger,
-    S: Ledger,
+    Buy: Ledger,
+    Sell: Ledger,
 {
     pub uid: TradeId,
-    pub exchange_refund_address: B::Address,
-    pub exchange_success_address: S::Address,
-    pub exchange_contract_time_lock: B::Time,
+    pub exchange_refund_address: Buy::Address,
+    pub exchange_success_address: Sell::Address,
+    pub exchange_contract_time_lock: Buy::LockDuration,
 }
 
-impl<B: Ledger, S: Ledger> Event for OrderTaken<B, S> {
-    type Prev = OrderCreated<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for OrderTaken<Buy, Sell> {
+    type Prev = OrderCreated<Buy, Sell>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<B, S>
+pub struct ContractDeployed<Buy, Sell>
 where
-    B: Ledger,
-    S: Ledger,
+    Buy: Ledger,
+    Sell: Ledger,
 {
     pub uid: TradeId,
-    pub address: B::Address,
-    phantom: PhantomData<S>,
+    pub address: Buy::Address,
+    phantom: PhantomData<Sell>,
 }
 
-impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
-    pub fn new(uid: TradeId, address: B::Address) -> ContractDeployed<B, S> {
+impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
+    pub fn new(uid: TradeId, address: Buy::Address) -> ContractDeployed<Buy, Sell> {
         ContractDeployed {
             uid,
             address,
@@ -90,6 +90,6 @@ impl<B: Ledger, S: Ledger> ContractDeployed<B, S> {
     }
 }
 
-impl<B: Ledger, S: Ledger> Event for ContractDeployed<B, S> {
-    type Prev = OrderTaken<B, S>;
+impl<Buy: Ledger, Sell: Ledger> Event for ContractDeployed<Buy, Sell> {
+    type Prev = OrderTaken<Buy, Sell>;
 }
