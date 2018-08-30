@@ -5,7 +5,7 @@ pub struct SayHelloToHeader {
     value: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct SayHelloToTimesHeader {
     value: u32,
 }

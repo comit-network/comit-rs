@@ -10,6 +10,8 @@ extern crate spectral;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate transport_protocol;
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 pub mod common;
