@@ -92,7 +92,7 @@ pub fn post_revealed_secret(
     redeem_eth_notification_body: Json<RedeemETHNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
-    ethereum_service: State<Arc<ethereum_service::EthereumService>>,
+    ethereum_service: State<Arc<ledger_htlc_service::LedgerHtlcService<Ethereum>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_revealed_secret(
         redeem_eth_notification_body.into_inner(),
@@ -108,17 +108,17 @@ fn handle_post_revealed_secret(
     redeem_eth_notification_body: RedeemETHNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
     trade_id: TradeId,
-    ethereum_service: &Arc<ethereum_service::EthereumService>,
+    ethereum_service: &Arc<ledger_htlc_service::LedgerHtlcService<Ethereum>>,
 ) -> Result<(), Error> {
-    let trade_funded = event_store.get_event::<TradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
-
-    let tx_id = ethereum_service.redeem_htlc(
-        redeem_eth_notification_body.secret,
-        trade_funded.htlc_identifier,
-    )?;
-    let deployed: ContractRedeemed<Bitcoin, Ethereum> =
-        ContractRedeemed::new(trade_id, tx_id.to_string());
-
-    event_store.add_event(trade_id, deployed)?;
+    //    let trade_funded = event_store.get_event::<TradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
+    //
+    //    let tx_id = ethereum_service.redeem_htlc(
+    //        redeem_eth_notification_body.secret,
+    //        trade_funded.htlc_identifier,
+    //    )?;
+    //    let deployed: ContractRedeemed<Bitcoin, Ethereum> =
+    //        ContractRedeemed::new(trade_id, tx_id.to_string());
+    //
+    //    event_store.add_event(trade_id, deployed)?;
     Ok(())
 }

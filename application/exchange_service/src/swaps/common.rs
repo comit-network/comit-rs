@@ -47,7 +47,6 @@ pub enum Error {
     EventStore(event_store::Error),
     TreasuryService(reqwest::Error),
     FeeService(bitcoin_fee_service::Error),
-    EthereumService(ethereum_service::Error),
     LedgerHtlcService(ledger_htlc_service::Error),
     BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),

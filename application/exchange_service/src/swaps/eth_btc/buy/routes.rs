@@ -1,5 +1,4 @@
 use bitcoin_fee_service;
-use bitcoin_htlc::UnlockingError;
 use bitcoin_rpc_client;
 use bitcoin_service;
 use bitcoin_support::{self, BitcoinQuantity, Network, ToP2wpkhAddress};
@@ -13,8 +12,6 @@ use common_types::{
     secret::{Secret, SecretHash},
     TradingSymbol,
 };
-use ethereum_htlc;
-use ethereum_service;
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
 use ledger_htlc_service::LedgerHtlcService;
@@ -53,25 +50,6 @@ impl From<bitcoin_fee_service::Error> for Error {
 impl From<bitcoin_rpc_client::RpcError> for Error {
     fn from(e: bitcoin_rpc_client::RpcError) -> Self {
         Error::BitcoinRpc(e)
-    }
-}
-
-impl From<ethereum_service::Error> for Error {
-    fn from(e: ethereum_service::Error) -> Self {
-        Error::EthereumService(e)
-    }
-}
-
-impl From<UnlockingError> for Error {
-    fn from(e: UnlockingError) -> Self {
-        match e {
-            UnlockingError::WrongSecret { .. } => {
-                Error::Unlocking(format!("{:?}", e).to_string())
-            }
-            UnlockingError::WrongKeyPair { .. } => {
-                Error::Unlocking("exchange_success_public_key_hash was inconsistent with exchange_success_private_key".to_string())
-            }
-        }
     }
 }
 
@@ -223,7 +201,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<bitcoin::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    ethereum_service: State<Arc<ethereum_service::EthereumService>>,
+    ethereum_service: State<Arc<ledger_htlc_service::LedgerHtlcService<Ethereum>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -238,27 +216,24 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: bitcoin::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
-    ethereum_service: &Arc<ethereum_service::EthereumService>,
+    ethereum_service: &Arc<ledger_htlc_service::LedgerHtlcService<Ethereum>>,
 ) -> Result<(), Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
-
-    let htlc = ethereum_htlc::Htlc::new(
-        order_taken.exchange_contract_time_lock.into(),
-        order_taken.exchange_refund_address,
-        order_taken.client_success_address,
-        order_taken.contract_secret_lock.clone(),
-    );
-
     let offer_created_event =
         event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
 
-    let htlc_funding = offer_created_event.buy_amount.wei();
+    let tx_id = ethereum_service.deploy_htlc(
+        order_taken.exchange_refund_address,
+        order_taken.client_success_address,
+        order_taken.exchange_contract_time_lock,
+        offer_created_event.buy_amount,
+        order_taken.contract_secret_lock.clone().into(),
+    )?;
 
-    let tx_id = ethereum_service.deploy_htlc(htlc, htlc_funding)?;
     let deployed: ContractDeployed<Ethereum, Bitcoin> =
         ContractDeployed::new(trade_id, tx_id.to_string());
 
