@@ -15,7 +15,7 @@ pub struct HtlcId {
 impl Ledger for Bitcoin {
     type Quantity = BitcoinQuantity;
     type Address = Address;
-    type Time = BlockHeight;
+    type LockDuration = BlockHeight;
     type HtlcId = HtlcId;
 
     fn symbol() -> String {

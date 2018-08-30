@@ -12,10 +12,7 @@ use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secret::Secret;
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::sync::{Arc, Mutex};
 use swaps::{
     errors::Error,
     events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
@@ -105,12 +102,14 @@ fn handle_buy_orders(
     //TODO: Remove before prod
     debug!("Secret: {:x}", secret);
 
+    let lock_duration = bitcoin_rpc_client::BlockHeight::new(BTC_BLOCKS_IN_24H);
+
     let order_created_event: OrderCreated<Ethereum, Bitcoin> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
         client_refund_address: client_refund_address.clone(),
-        long_relative_timelock: bitcoin_rpc_client::BlockHeight::new(BTC_BLOCKS_IN_24H),
+        long_relative_timelock: lock_duration.clone(),
     };
 
     event_store.add_event(trade_id, order_created_event.clone())?;
@@ -123,7 +122,7 @@ fn handle_buy_orders(
                 contract_secret_lock: secret.hash(),
                 client_refund_address: client_refund_address.clone(),
                 client_success_address: client_success_address.clone(),
-                client_contract_time_lock: BTC_BLOCKS_IN_24H,
+                client_contract_time_lock: lock_duration.clone(),
             },
         )
         .map_err(Error::ExchangeService)?;
@@ -136,14 +135,12 @@ fn handle_buy_orders(
         exchange_success_pubkey_hash,
         client_refund_pubkey_hash,
         secret.hash(),
-        BTC_BLOCKS_IN_24H,
+        lock_duration.into(),
     );
 
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: Duration::from_secs(
-            order_response.exchange_contract_time_lock as u64,
-        ),
+        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
         exchange_refund_address: order_response.exchange_refund_address,
         exchange_success_address: order_response.exchange_success_address,
     };

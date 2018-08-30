@@ -1,7 +1,7 @@
-use bitcoin_rpc_client::BlockHeight;
 use bitcoin_support::{self, BitcoinQuantity};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    seconds::Seconds,
     secret::Secret,
     TradingSymbol,
 };
@@ -12,10 +12,7 @@ use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::sync::{Arc, Mutex};
 use swaps::{
     errors::Error,
     events::{OfferCreated, OrderCreated, OrderTaken},
@@ -42,7 +39,7 @@ pub struct RequestToFund {
     gas: u64,
 }
 
-const ETH_HTLC_TIMEOUT_IN_SECONDS: Duration = Duration::from_secs(12 * 60 * 60);
+const ETH_HTLC_TIMEOUT_IN_SECONDS: Seconds = Seconds::new(12 * 60 * 60);
 
 #[post("/trades/ETH-BTC/sell-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_sell_offers(
@@ -119,12 +116,14 @@ fn handle_sell_orders(
     //TODO: Remove before prod
     debug!("Secret: {:x}", secret);
 
+    let lock_duration = ETH_HTLC_TIMEOUT_IN_SECONDS;
+
     let order_created_event: OrderCreated<Bitcoin, Ethereum> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
         client_success_address: client_success_address.clone(),
         client_refund_address: client_refund_address.clone(),
-        long_relative_timelock: ETH_HTLC_TIMEOUT_IN_SECONDS,
+        long_relative_timelock: lock_duration,
     };
 
     event_store.add_event(trade_id, order_created_event.clone())?;
@@ -137,13 +136,13 @@ fn handle_sell_orders(
                 contract_secret_lock: secret.hash(),
                 client_refund_address: client_refund_address,
                 client_success_address: client_success_address,
-                client_contract_time_lock: ETH_HTLC_TIMEOUT_IN_SECONDS.as_secs() as u32,
+                client_contract_time_lock: lock_duration,
             },
         )
         .map_err(Error::ExchangeService)?;
 
     let htlc = ethereum_htlc::Htlc::new(
-        ETH_HTLC_TIMEOUT_IN_SECONDS,
+        lock_duration.into(),
         client_refund_address,
         order_response.exchange_success_address,
         secret.hash(),
@@ -153,7 +152,7 @@ fn handle_sell_orders(
 
     let order_taken_event: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: BlockHeight::new(order_response.exchange_contract_time_lock),
+        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
         exchange_refund_address: order_response.exchange_refund_address,
         exchange_success_address: order_response.exchange_success_address,
     };

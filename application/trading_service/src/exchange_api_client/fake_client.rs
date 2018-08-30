@@ -1,6 +1,8 @@
+use bitcoin_rpc_client;
 use bitcoin_support;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    seconds::Seconds,
     TradingSymbol,
 };
 use ethereum_support;
@@ -49,7 +51,7 @@ impl ApiClient for FakeApiClient {
             exchange_refund_address: ethereum_support::Address::from_str(
                 "34b19d15e793883d840c563d7dbc8a6723465146",
             ).unwrap(),
-            exchange_contract_time_lock: 43200,
+            exchange_contract_time_lock: Seconds::new(43200),
             exchange_success_address: bitcoin_support::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ).unwrap(),
@@ -85,7 +87,7 @@ impl ApiClient for FakeApiClient {
             exchange_refund_address: bitcoin_support::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
             ).unwrap(),
-            exchange_contract_time_lock: 43200,
+            exchange_contract_time_lock: bitcoin_rpc_client::BlockHeight::new(43200),
             exchange_success_address: ethereum_support::Address::from_str(
                 "34b19d15e793883d840c563d7dbc8a6723465146",
             ).unwrap(),
