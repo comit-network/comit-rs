@@ -1,6 +1,5 @@
 use bitcoin_fee_service;
 use bitcoin_rpc_client;
-use bitcoin_service;
 use bitcoin_support::{self, BitcoinQuantity, Network, ToP2wpkhAddress};
 use common_types::{
     ledger::{
@@ -256,13 +255,13 @@ pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
-    bitcoin_service: State<Arc<bitcoin_service::BitcoinService>>,
+    bitcoin_htlc_service: State<Arc<LedgerHtlcService<Bitcoin>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_revealed_secret(
         redeem_btc_notification_body.into_inner(),
         event_store.inner(),
         trade_id,
-        bitcoin_service.inner(),
+        bitcoin_htlc_service.inner(),
     )?;
     Ok(())
 }
@@ -271,7 +270,7 @@ fn handle_post_revealed_secret(
     redeem_btc_notification_body: RedeemBTCNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
     trade_id: TradeId,
-    bitcoin_service: &Arc<bitcoin_service::BitcoinService>,
+    bitcoin_htlc_service: &Arc<LedgerHtlcService<Bitcoin>>,
 ) -> Result<(), Error> {
     let order_taken_event =
         event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
@@ -283,7 +282,7 @@ fn handle_post_revealed_secret(
 
     let secret: Secret = redeem_btc_notification_body.secret;
 
-    let redeem_tx_id = bitcoin_service.redeem_htlc(
+    let redeem_tx_id = bitcoin_htlc_service.redeem_htlc(
         secret,
         trade_id,
         order_taken_event.exchange_success_address,

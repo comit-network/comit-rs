@@ -17,7 +17,9 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
 
-use bitcoin_rpc_client::{BitcoinRpcApi, BlockHeight, RpcError, TransactionId};
+mod mocks;
+
+use bitcoin_rpc_client::{BlockHeight, TransactionId};
 use bitcoin_support::Network;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -41,6 +43,7 @@ use exchange_service::{
     treasury_api_client::FakeApiClient,
 };
 use hex::FromHex;
+use mocks::BitcoinRpcClientMock;
 use rocket::{
     http::{ContentType, Status},
     local::{Client, LocalResponse},
@@ -71,27 +74,6 @@ struct StaticEthereumApi;
 impl BlockingEthereumApi for StaticEthereumApi {
     fn send_raw_transaction(&self, _rlp: Bytes) -> Result<H256, web3::Error> {
         Ok(H256::new())
-    }
-}
-
-pub struct BitcoinRpcClientMock {
-    transaction_id: TransactionId,
-}
-
-impl BitcoinRpcClientMock {
-    pub fn new(transaction_id: TransactionId) -> Self {
-        BitcoinRpcClientMock { transaction_id }
-    }
-}
-
-#[allow(unused_variables)]
-impl BitcoinRpcApi for BitcoinRpcClientMock {
-    fn send_to_address(
-        &self,
-        _address: &bitcoin_rpc_client::Address,
-        _amount: f64,
-    ) -> Result<Result<TransactionId, RpcError>, reqwest::Error> {
-        Ok(Ok(self.transaction_id.clone()))
     }
 }
 
