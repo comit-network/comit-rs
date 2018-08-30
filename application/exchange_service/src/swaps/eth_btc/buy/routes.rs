@@ -118,18 +118,18 @@ fn handle_post_buy_offers(
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody<B: Ledger, S: Ledger> {
+pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
     pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: u32,
-    pub client_refund_address: S::Address,
-    pub client_success_address: B::Address,
+    pub client_contract_time_lock: Sell::LockDuration,
+    pub client_refund_address: Sell::Address,
+    pub client_success_address: Buy::Address,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderTakenResponseBody<B: Ledger, S: Ledger> {
-    pub exchange_refund_address: B::Address,
-    pub exchange_success_address: S::Address,
-    pub exchange_contract_time_lock: u32,
+pub struct OrderTakenResponseBody<Buy: Ledger, Sell: Ledger> {
+    pub exchange_refund_address: Buy::Address,
+    pub exchange_success_address: Sell::Address,
+    pub exchange_contract_time_lock: Buy::LockDuration,
 }
 
 impl From<OrderTaken<Bitcoin, Ethereum>> for OrderTakenResponseBody<Bitcoin, Ethereum> {
