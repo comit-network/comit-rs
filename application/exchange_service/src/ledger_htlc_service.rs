@@ -1,4 +1,9 @@
-use common_types::{ledger::Ledger, secret::SecretHash};
+use common_types::{
+    ledger::Ledger,
+    secret::{Secret, SecretHash},
+};
+use secp256k1_support::KeyPair;
+use swaps::common::TradeId;
 
 #[derive(Debug)]
 pub enum Error {
@@ -15,5 +20,17 @@ pub trait LedgerHtlcService<B: Ledger>: Send + Sync {
         time_lock: B::Time,
         amount: B::Quantity,
         secret: SecretHash,
+    ) -> Result<B::TxId, Error>;
+
+    fn redeem_htlc(
+        &self,
+        secret: Secret,
+        trade_id: TradeId,
+        exchange_success_address: B::Address,
+        exchange_success_keypair: KeyPair,
+        client_refund_address: B::Address,
+        htlc_identifier: B::HtlcId,
+        sell_amount: B::Quantity,
+        lock_time: B::Time,
     ) -> Result<B::TxId, Error>;
 }

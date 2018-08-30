@@ -9,6 +9,7 @@ use common_types::{
 };
 use ledger_htlc_service::{Error, LedgerHtlcService};
 use reqwest;
+use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swaps::{
     common::TradeId,
@@ -65,6 +66,75 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
             .send_to_address(&htlc_address.clone().into(), amount.bitcoin())??;
 
         Ok(tx_id)
+    }
+
+    fn redeem_htlc(
+        &self,
+        secret: Secret,
+        trade_id: TradeId,
+        exchange_success_address: <Bitcoin as Ledger>::Address,
+        exchange_success_keypair: KeyPair,
+        client_refund_address: <Bitcoin as Ledger>::Address,
+        htlc_identifier: <Bitcoin as Ledger>::HtlcId,
+        sell_amount: <Bitcoin as Ledger>::Quantity,
+        lock_time: <Bitcoin as Ledger>::Time,
+    ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
+        let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
+
+        let client_refund_pubkey_hash: PubkeyHash = client_refund_address.into();
+        let htlc_tx_id = htlc_identifier.transaction_id;
+        let vout = htlc_identifier.vout;
+
+        let htlc = bitcoin_htlc::Htlc::new(
+            exchange_success_pubkey_hash,
+            client_refund_pubkey_hash,
+            secret.hash().clone(),
+            lock_time.clone().into(),
+        );
+
+        htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)?;
+
+        let unlocking_parameters =
+            htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
+
+        let primed_txn = PrimedTransaction {
+            inputs: vec![PrimedInput::new(
+                htlc_tx_id.clone().into(),
+                vout,
+                sell_amount,
+                unlocking_parameters,
+            )],
+            output_address: self.btc_exchange_redeem_address.clone(),
+            locktime: 0,
+        };
+
+        let total_input_value = primed_txn.total_input_value();
+
+        let rate = self.fee_service.get_recommended_fee()?;
+        let redeem_tx = primed_txn.sign_with_rate(rate);
+        debug!(
+            "Redeem {} (input: {}, vout: {}) to {} (output: {})",
+            htlc_tx_id,
+            total_input_value,
+            vout,
+            redeem_tx.txid(),
+            redeem_tx.output[0].value
+        );
+
+        let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
+        info!(
+            "Attempting to redeem HTLC with txid {} for {}",
+            htlc_tx_id, trade_id
+        );
+
+        let redeem_txid = self.client.send_raw_transaction(rpc_transaction)??;
+
+        info!(
+            "HTLC for {} successfully redeemed with {}",
+            trade_id, redeem_txid
+        );
+
+        Ok(redeem_txid)
     }
 }
 
