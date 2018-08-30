@@ -1,5 +1,6 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
+#![cfg_attr(test, deny(warnings))]
 
 extern crate bitcoin_rpc_client;
 extern crate reqwest;
