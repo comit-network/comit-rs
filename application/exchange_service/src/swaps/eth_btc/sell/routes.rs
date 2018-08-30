@@ -1,6 +1,4 @@
-use bitcoin_htlc;
 use bitcoin_service;
-use bitcoin_support::PubkeyHash;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     secret::Secret,
@@ -59,22 +57,11 @@ fn handle_post_orders_funding(
     //create new event
     let trade_funded: TradeFunded<Bitcoin, Ethereum> = TradeFunded::new(trade_id, htlc_identifier);
     event_store.add_event(trade_id.clone(), trade_funded)?;
-    let exchange_refund_address = order_taken.exchange_refund_address;
-    let exchange_refund_address_pub_key: PubkeyHash = exchange_refund_address.into();
-    let client_success_address = order_taken.client_success_address;
-    let client_success_address_hash: PubkeyHash = client_success_address.into();
-
-    let htlc = bitcoin_htlc::Htlc::new(
-        client_success_address_hash,
-        exchange_refund_address_pub_key,
-        order_taken.contract_secret_lock.clone(),
-        order_taken.exchange_contract_time_lock.into(),
-    );
 
     let offer_created_event =
         event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
 
-    let tx_id = bitcoin_service.deploy_htlc(htlc, offer_created_event.buy_amount)?;
+    let tx_id = bitcoin_service.deploy_htlc(order_taken, offer_created_event)?;
 
     let deployed: ContractDeployed<Bitcoin, Ethereum> =
         ContractDeployed::new(trade_id, tx_id.to_string());

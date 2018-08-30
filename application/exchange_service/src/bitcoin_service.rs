@@ -70,10 +70,24 @@ impl BitcoinService {
 
     pub fn deploy_htlc(
         &self,
-        contract: bitcoin_htlc::Htlc,
-        amount: bitcoin_support::BitcoinQuantity,
+        order_taken_event: OrderTaken<Bitcoin, Ethereum>,
+        offer_created_event: OfferCreated<Bitcoin, Ethereum>,
     ) -> Result<TransactionId, Error> {
-        let htlc_address = contract.compute_address(self.network);
+        let exchange_refund_address = order_taken_event.exchange_refund_address;
+        let exchange_refund_address_pub_key: PubkeyHash = exchange_refund_address.into();
+        let client_success_address = order_taken_event.client_success_address;
+        let client_success_address_hash: PubkeyHash = client_success_address.into();
+
+        let amount = offer_created_event.buy_amount;
+
+        let htlc = bitcoin_htlc::Htlc::new(
+            client_success_address_hash,
+            exchange_refund_address_pub_key,
+            order_taken_event.contract_secret_lock.clone(),
+            order_taken_event.exchange_contract_time_lock.into(),
+        );
+
+        let htlc_address = htlc.compute_address(self.network);
 
         let tx_id = self
             .client
