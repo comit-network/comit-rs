@@ -1,0 +1,12 @@
+{
+  "type": "REQUEST",
+  "id": 10,
+  "payload": {
+    "type": "PING",
+    "headers": {
+      "_UNKNOWN": {
+        "value": "42"
+      }
+    }
+  }
+}

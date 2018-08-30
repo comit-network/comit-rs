@@ -20,10 +20,12 @@ pub struct Alice {
 }
 
 impl Alice {
-    pub fn send_with_newline(
+    pub fn send_with_newline<S: Into<String>>(
         &self,
-        msg: &'static str,
+        msg: S,
     ) -> impl Future<Item = (), Error = ::std::io::Error> {
+        let msg = msg.into();
+
         let write = self.write.clone();
 
         let send_future = ::futures::future::poll_fn(move || {
@@ -76,7 +78,7 @@ impl Alice {
 }
 
 pub struct Bob {
-    _alice: Client<Frame, Request, Response>,
+    pub _alice: Client<Frame, Request, Response>,
     _shutdown_handle: ShutdownHandle,
 }
 

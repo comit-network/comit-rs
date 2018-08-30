@@ -1,0 +1,12 @@
+{
+  "type": "RESPONSE",
+  "id": 10,
+  "payload": {
+    "headers": {
+      "Unsupported-Headers": [
+        "LANG"
+      ]
+    },
+    "status": "SE01"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "type": "RESPONSE",
+  "id": 10,
+  "payload": {
+    "headers": {
+      "HELLO": "WORLD"
+    },
+    "status": "OK00"
+  }
+}

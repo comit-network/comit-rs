@@ -1,0 +1,15 @@
+{
+  "type": "REQUEST",
+  "id": 10,
+  "payload": {
+    "type": "PLACE-ORDER",
+    "headers" : {
+      "PRODUCT-TYPE" : "PHONE"
+    },
+    "body" : {
+      "os": "Android",
+      "model": "Pixel 2 XL",
+      "brand": "LG"
+    }
+  }
+}
