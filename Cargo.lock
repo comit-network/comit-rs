@@ -129,7 +129,7 @@ name = "bitcoin_htlc"
 version = "0.1.0"
 dependencies = [
  "bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "bitcoin_rpc_client"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -161,7 +161,7 @@ dependencies = [
 name = "bitcoin_rpc_test_helpers"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -172,7 +172,7 @@ version = "0.1.0"
 dependencies = [
  "bigdecimal 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
@@ -186,7 +186,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_htlc 0.1.0",
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "common_types 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -200,7 +200,7 @@ dependencies = [
 name = "bitcoin_witness"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -316,7 +316,7 @@ dependencies = [
 name = "common_types"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "ethereum_support 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -635,7 +635,7 @@ name = "exchange_service"
 version = "0.1.0"
 dependencies = [
  "bitcoin_htlc 0.1.0",
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
  "common_types 0.1.0",
@@ -2059,7 +2059,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "tc_bitcoincore_client"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2489,7 +2489,7 @@ dependencies = [
 name = "trading_client"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "common_types 0.1.0",
  "ethereum_support 0.1.0",
@@ -2509,7 +2509,7 @@ name = "trading_service"
 version = "0.1.0"
 dependencies = [
  "bitcoin_htlc 0.1.0",
- "bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "common_types 0.1.0",
  "crypto 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2823,7 +2823,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum bigdecimal 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)" = "a33704f529287dc275e16ef871c2407ff36c01f15b374e1c28f49a5fc340369f"
 "checksum bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)" = "16e8dd6e5a96b72130f5dfc1507fccad0ae275f9d617b6cbb107ef86a85077a8"
 "checksum bitcoin-bech32 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ab22a4c40d68ebb8cb3a820273e46ec3ed959556214967e88d33d8665f07016e"
-"checksum bitcoin_rpc_client 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5a9d99bb38052d7c5a6563548b0971fca12aaf16f8b5906964669a6b34c475d1"
+"checksum bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4445f30bdea3e8c8211920f214397a4e3f63147e8b8f27290a66ca8d61c85c6d"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bitflags 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d0c54bb8f454c567f21197eefcdbf5679d0bd99f2ddbe52e84c77061952e6789"
 "checksum block-buffer 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a076c298b9ecdb530ed9d967e74a6027d6a7478924520acddcddc24c1c8ab3ab"
