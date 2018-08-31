@@ -151,7 +151,7 @@ impl From<serde_json::Error> for Error {
 
 impl JsonFrameHandler {
     fn dispatch_request(
-        &self,
+        &mut self,
         _type: JsonValue,
         headers: JsonValue,
         body: JsonValue,

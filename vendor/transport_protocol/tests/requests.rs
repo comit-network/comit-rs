@@ -15,7 +15,7 @@ extern crate log;
 
 #[macro_use]
 pub mod common;
-use common::{setup::setup, *};
+use common::{buy, counter, ping, place_order, say_hello, setup::setup};
 use futures::future::Future;
 use spectral::prelude::*;
 
@@ -283,4 +283,29 @@ fn handle_request_with_payload() {
         .is_ok()
         .is_some()
         .is_equal_to(include_json_line!("place_apple_phone_order_response.json"));
+}
+
+#[test]
+fn handle_request_with_mutable_state() {
+    let (mut _runtime, alice, _bob) = setup(counter::config());
+
+    let count_1 = alice
+        .send_with_newline(r#"{"type":"REQUEST","id":0,"payload":{"type":"COUNT"}}"#)
+        .and_then(|_| alice.receive())
+        .wait();
+
+    let count_2 = alice
+        .send_with_newline(r#"{"type":"REQUEST","id":1,"payload":{"type":"COUNT"}}"#)
+        .and_then(|_| alice.receive())
+        .wait();
+
+    assert_that(&count_1)
+        .is_ok()
+        .is_some()
+        .is_equal_to(&r#"{"type":"RESPONSE","id":0,"payload":{"body":1,"status":"OK00"}}"#.into());
+
+    assert_that(&count_2)
+        .is_ok()
+        .is_some()
+        .is_equal_to(&r#"{"type":"RESPONSE","id":1,"payload":{"body":2,"status":"OK00"}}"#.into());
 }
