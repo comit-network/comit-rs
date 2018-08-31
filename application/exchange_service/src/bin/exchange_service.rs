@@ -157,12 +157,9 @@ fn main() {
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_service),
-        bitcoin_rpc_client,
         exchange_refund_address,
         exchange_success_keypair,
-        btc_exchange_redeem_address,
         network,
-        bitcoin_fee_service,
     ).launch();
 }
 

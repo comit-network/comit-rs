@@ -123,7 +123,6 @@ fn create_rocket_client() -> Client {
             0,
         )),
         bitcoin_service,
-        Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
@@ -131,9 +130,7 @@ fn create_rocket_client() -> Client {
             .secret_key()
             .clone()
             .into(),
-        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
         Network::Regtest,
-        bitcoin_fee_service,
     );
     rocket::local::Client::new(rocket).unwrap()
 }
