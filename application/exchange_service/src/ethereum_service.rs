@@ -56,11 +56,11 @@ impl LedgerHtlcService<Ethereum> for EthereumService {
         &self,
         refund_address: <Ethereum as Ledger>::Address,
         success_address: <Ethereum as Ledger>::Address,
-        time_lock: <Ethereum as Ledger>::Time,
+        time_lock: <Ethereum as Ledger>::LockDuration,
         amount: <Ethereum as Ledger>::Quantity,
         secret: SecretHash,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
-        let contract = Htlc::new(time_lock, refund_address, success_address, secret);
+        let contract = Htlc::new(time_lock.into(), refund_address, success_address, secret);
 
         let funding = amount.wei();
 
@@ -91,7 +91,7 @@ impl LedgerHtlcService<Ethereum> for EthereumService {
         _client_refund_address: <Ethereum as Ledger>::Address,
         contract_address: <Ethereum as Ledger>::HtlcId,
         _sell_amount: <Ethereum as Ledger>::Quantity,
-        _lock_time: <Ethereum as Ledger>::Time,
+        _lock_time: <Ethereum as Ledger>::LockDuration,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             ethereum_wallet::UnsignedTransaction::new_contract_invocation(

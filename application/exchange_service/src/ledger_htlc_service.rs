@@ -17,7 +17,7 @@ pub trait LedgerHtlcService<B: Ledger>: Send + Sync {
         &self,
         refund_address: B::Address,
         success_address: B::Address,
-        time_lock: B::Time,
+        time_lock: B::LockDuration,
         amount: B::Quantity,
         secret: SecretHash,
     ) -> Result<B::TxId, Error>;
@@ -31,6 +31,6 @@ pub trait LedgerHtlcService<B: Ledger>: Send + Sync {
         client_refund_address: B::Address,
         htlc_identifier: B::HtlcId,
         sell_amount: B::Quantity,
-        lock_time: B::Time,
+        lock_time: B::LockDuration,
     ) -> Result<B::TxId, Error>;
 }

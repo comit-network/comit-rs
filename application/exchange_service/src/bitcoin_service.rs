@@ -49,7 +49,7 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
         &self,
         refund_address: <Bitcoin as Ledger>::Address,
         success_address: <Bitcoin as Ledger>::Address,
-        time_lock: <Bitcoin as Ledger>::Time,
+        time_lock: <Bitcoin as Ledger>::LockDuration,
         amount: <Bitcoin as Ledger>::Quantity,
         secret: SecretHash,
     ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
@@ -74,7 +74,7 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
         client_refund_address: <Bitcoin as Ledger>::Address,
         htlc_identifier: <Bitcoin as Ledger>::HtlcId,
         sell_amount: <Bitcoin as Ledger>::Quantity,
-        lock_time: <Bitcoin as Ledger>::Time,
+        lock_time: <Bitcoin as Ledger>::LockDuration,
     ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
         let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
 
