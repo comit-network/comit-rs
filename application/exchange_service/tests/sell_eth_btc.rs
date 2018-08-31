@@ -10,13 +10,16 @@ extern crate ethereum_wallet;
 extern crate event_store;
 extern crate exchange_service;
 extern crate hex;
+extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
 
-use bitcoin_rpc_client::BlockHeight;
+mod mocks;
+
+use bitcoin_rpc_client::{BlockHeight, TransactionId};
 use bitcoin_support::Network;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -29,6 +32,7 @@ use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::{EventStore, InMemoryEventStore};
 use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
+    bitcoin_service::BitcoinService,
     ethereum_service::{self, BlockingEthereumApi},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
@@ -39,6 +43,7 @@ use exchange_service::{
     treasury_api_client::FakeApiClient,
 };
 use hex::FromHex;
+use mocks::BitcoinRpcClientMock;
 use rocket::{
     http::{ContentType, Status},
     local::{Client, LocalResponse},
@@ -72,7 +77,10 @@ impl BlockingEthereumApi for StaticEthereumApi {
     }
 }
 
-fn create_rocket_client(event_store: InMemoryEventStore<TradeId>) -> Client {
+fn create_rocket_client(
+    event_store: InMemoryEventStore<TradeId>,
+    bitcoin_service: BitcoinService,
+) -> Client {
     let rocket = create_rocket_instance(
         Arc::new(FakeApiClient),
         event_store,
@@ -82,7 +90,7 @@ fn create_rocket_client(event_store: InMemoryEventStore<TradeId>) -> Client {
             Arc::new(StaticEthereumApi),
             0,
         )),
-        Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
+        Arc::new(bitcoin_service),
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
@@ -90,9 +98,7 @@ fn create_rocket_client(event_store: InMemoryEventStore<TradeId>) -> Client {
             .secret_key()
             .clone()
             .into(),
-        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
         Network::Regtest,
-        Arc::new(StaticBitcoinFeeService::new(50.0)),
     );
     rocket::local::Client::new(rocket).unwrap()
 }
@@ -124,16 +130,16 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
         client_contract_time_lock: Seconds::new(60 * 60 * 12),
         exchange_contract_time_lock: BlockHeight::new(24u32),
         client_refund_address: ethereum_support::Address::from_str(
-            "1111111111111111111111111111111111111111",
+            "2d72ccd2f36173d945bc7247b29b60e5d5d0ca5e", // privkey: 5fce23dbb7656edea89728e2f5a95ea288b9c0d570a2fb839f0c11be6b55c0ab
         ).unwrap(),
         client_success_address: bitcoin_support::Address::from_str(
-            "2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL",
+            "bc1q5p6eyvxld0p2c93fwccw436z9f830v0krsf9ux", //privkey: b2253c744dffb1c6df0465716059d13076780ef184afe1199d7f4a3cb627c7b2
         ).unwrap(),
         exchange_refund_address: bitcoin_support::Address::from_str(
-            "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
+            "bc1q92ec9ycs65fd3xcxxh5wvwzz5cz6jvpthjdxx6", //privkey: e5a2d87ea2c6af42dbc95fbb08d345a4f5bf8dfbf25dc67834a1f5af01729eab
         ).unwrap(),
         exchange_success_address: ethereum_support::Address::from_str(
-            "2222222222222222222222222222222222222222",
+            "77b0f5692ae5662cdd3f3187774367ad47c53b61", // privkey: 0829b16159b596db867bd9f696e7c0b7c32b0fee7f6379ce15f14f4b355ee0ce
         ).unwrap(),
         exchange_success_keypair: keypair,
     };
@@ -147,20 +153,31 @@ fn mock_trade_funded(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeI
     );
     event_store.add_event(trade_id, trade_funded).unwrap();
 }
-//series of events is as follows:
-// OfferCreated buy ETH for BTC -> OrderTaken ETH for BTC-> TradeFunded BTC from trader -> ContractDeployed ETH from exchange
 
 #[test]
 fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
     let _ = env_logger::try_init();
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+    let exchange_success_address =
+        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
+
+    let bitcoin_service = BitcoinService::new(
+        Arc::new(BitcoinRpcClientMock::new(
+            TransactionId::from_str(
+                "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
+            ).unwrap(),
+        )),
+        bitcoin_support::Network::Regtest,
+        bitcoin_fee_service.clone(),
+        exchange_success_address,
+    );
     let event_store = InMemoryEventStore::new();
 
     let trade_id = TradeId::new();
 
     mock_offer_created(&event_store, trade_id);
     mock_order_taken(&event_store, trade_id);
-
-    let client = create_rocket_client(event_store);
+    let client = create_rocket_client(event_store, bitcoin_service);
 
     let response = {
         let request = client
@@ -171,8 +188,6 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
     };
 
     assert_eq!(response.status(), Status::Ok);
-    //contract should be deployed now
-    //TODO Finish this test and implement bitcoin service
 }
 
 #[derive(Serialize)]
@@ -183,6 +198,20 @@ pub struct RedeemETHNotificationBody {
 #[test]
 fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
     let _ = env_logger::try_init();
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+    let exchange_success_address =
+        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
+
+    let bitcoin_service = BitcoinService::new(
+        Arc::new(BitcoinRpcClientMock::new(
+            TransactionId::from_str(
+                "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
+            ).unwrap(),
+        )),
+        bitcoin_support::Network::Regtest,
+        bitcoin_fee_service.clone(),
+        exchange_success_address,
+    );
     let event_store = InMemoryEventStore::new();
 
     let trade_id = TradeId::new();
@@ -191,7 +220,7 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
     mock_order_taken(&event_store, trade_id);
     mock_trade_funded(&event_store, trade_id);
 
-    let client = create_rocket_client(event_store);
+    let client = create_rocket_client(event_store, bitcoin_service);
 
     let bytes = b"hello world, you are beautiful!!";
     let secret = Secret::from(*bytes);

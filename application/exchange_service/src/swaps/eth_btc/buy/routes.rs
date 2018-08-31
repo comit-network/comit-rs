@@ -1,8 +1,6 @@
-use bitcoin_fee_service::{self, BitcoinFeeService};
-use bitcoin_htlc::{self, UnlockingError};
+use bitcoin_fee_service;
 use bitcoin_rpc_client;
-use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash, ToP2wpkhAddress};
-use bitcoin_witness::{PrimedInput, PrimedTransaction};
+use bitcoin_support::{self, BitcoinQuantity, Network, ToP2wpkhAddress};
 use common_types::{
     ledger::{
         bitcoin::{self, Bitcoin},
@@ -13,17 +11,19 @@ use common_types::{
     secret::{Secret, SecretHash},
     TradingSymbol,
 };
-use ethereum_htlc;
-use ethereum_service;
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
+use ledger_htlc_service::LedgerHtlcService;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
-    events::{ContractDeployed, OfferCreated as OfferState, OfferCreated, OrderTaken, TradeFunded},
+    events::{
+        ContractDeployed, ContractRedeemed, OfferCreated as OfferState, OfferCreated, OrderTaken,
+        TradeFunded,
+    },
 };
 use treasury_api_client::ApiClient;
 
@@ -49,25 +49,6 @@ impl From<bitcoin_fee_service::Error> for Error {
 impl From<bitcoin_rpc_client::RpcError> for Error {
     fn from(e: bitcoin_rpc_client::RpcError) -> Self {
         Error::BitcoinRpc(e)
-    }
-}
-
-impl From<ethereum_service::Error> for Error {
-    fn from(e: ethereum_service::Error) -> Self {
-        Error::EthereumService(e)
-    }
-}
-
-impl From<UnlockingError> for Error {
-    fn from(e: UnlockingError) -> Self {
-        match e {
-            UnlockingError::WrongSecret { .. } => {
-                Error::Unlocking(format!("{:?}", e).to_string())
-            }
-            UnlockingError::WrongKeyPair { .. } => {
-                Error::Unlocking("exchange_success_public_key_hash was inconsistent with exchange_success_private_key".to_string())
-            }
-        }
     }
 }
 
@@ -219,7 +200,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<bitcoin::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    ethereum_service: State<Arc<ethereum_service::EthereumService>>,
+    ethereum_service: State<Arc<LedgerHtlcService<Ethereum>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -234,27 +215,24 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: bitcoin::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
-    ethereum_service: &Arc<ethereum_service::EthereumService>,
+    ethereum_service: &Arc<LedgerHtlcService<Ethereum>>,
 ) -> Result<(), Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
-
-    let htlc = ethereum_htlc::Htlc::new(
-        order_taken.exchange_contract_time_lock.into(),
-        order_taken.exchange_refund_address,
-        order_taken.client_success_address,
-        order_taken.contract_secret_lock.clone(),
-    );
-
     let offer_created_event =
         event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
 
-    let htlc_funding = offer_created_event.buy_amount.wei();
+    let tx_id = ethereum_service.deploy_htlc(
+        order_taken.exchange_refund_address,
+        order_taken.client_success_address,
+        order_taken.exchange_contract_time_lock,
+        offer_created_event.buy_amount,
+        order_taken.contract_secret_lock.clone().into(),
+    )?;
 
-    let tx_id = ethereum_service.deploy_htlc(htlc, htlc_funding)?;
     let deployed: ContractDeployed<Ethereum, Bitcoin> =
         ContractDeployed::new(trade_id, tx_id.to_string());
 
@@ -276,30 +254,23 @@ pub struct RedeemBTCNotificationBody {
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    rpc_client: State<Arc<bitcoin_rpc_client::BitcoinRpcApi>>,
-    fee_service: State<Arc<BitcoinFeeService>>,
-    btc_exchange_redeem_address: State<bitcoin_support::Address>,
     trade_id: TradeId,
+    bitcoin_htlc_service: State<Arc<LedgerHtlcService<Bitcoin>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_revealed_secret(
         redeem_btc_notification_body.into_inner(),
         event_store.inner(),
-        rpc_client.inner(),
-        fee_service.inner(),
-        btc_exchange_redeem_address.inner(),
         trade_id,
+        bitcoin_htlc_service.inner(),
     )?;
-
     Ok(())
 }
 
 fn handle_post_revealed_secret(
     redeem_btc_notification_body: RedeemBTCNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
-    rpc_client: &Arc<bitcoin_rpc_client::BitcoinRpcApi>,
-    fee_service: &Arc<BitcoinFeeService>,
-    btc_exchange_redeem_address: &bitcoin_support::Address,
     trade_id: TradeId,
+    bitcoin_htlc_service: &Arc<LedgerHtlcService<Bitcoin>>,
 ) -> Result<(), Error> {
     let order_taken_event =
         event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
@@ -308,66 +279,23 @@ fn handle_post_revealed_secret(
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
     let trade_funded_event =
         event_store.get_event::<TradeFunded<Ethereum, Bitcoin>>(trade_id.clone())?;
+
     let secret: Secret = redeem_btc_notification_body.secret;
-    let exchange_success_address = order_taken_event.exchange_success_address;
-    let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
-    let exchange_success_keypair = order_taken_event.exchange_success_keypair;
 
-    let client_refund_pubkey_hash: PubkeyHash = order_taken_event.client_refund_address.into();
-    let htlc_txid = trade_funded_event.htlc_identifier.transaction_id;
-    let vout = trade_funded_event.htlc_identifier.vout;
+    let redeem_tx_id = bitcoin_htlc_service.redeem_htlc(
+        secret,
+        trade_id,
+        order_taken_event.exchange_success_address,
+        order_taken_event.exchange_success_keypair,
+        order_taken_event.client_refund_address,
+        trade_funded_event.htlc_identifier,
+        offer_created_event.sell_amount,
+        order_taken_event.client_contract_time_lock,
+    )?;
 
-    let htlc = bitcoin_htlc::Htlc::new(
-        exchange_success_pubkey_hash,
-        client_refund_pubkey_hash,
-        order_taken_event.contract_secret_lock.clone(),
-        order_taken_event.client_contract_time_lock.clone().into(),
-    );
-
-    htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)?;
-
-    let unlocking_parameters = htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
-
-    let primed_txn = PrimedTransaction {
-        inputs: vec![PrimedInput::new(
-            htlc_txid.clone().into(),
-            vout,
-            offer_created_event.sell_amount,
-            unlocking_parameters,
-        )],
-        output_address: btc_exchange_redeem_address.clone(),
-        locktime: 0,
-    };
-
-    let total_input_value = primed_txn.total_input_value();
-
-    let rate = fee_service.get_recommended_fee()?;
-    let redeem_tx = primed_txn.sign_with_rate(rate);
-
-    debug!(
-        "Redeem {} (input: {}, vout: {}) to {} (output: {})",
-        htlc_txid,
-        total_input_value,
-        vout,
-        redeem_tx.txid(),
-        redeem_tx.output[0].value
-    );
-    //TODO: Store above in event prior to doing rpc request
-    let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
-    debug!("RPC Transaction: {:?}", rpc_transaction);
-    info!(
-        "Attempting to redeem HTLC with txid {} for {}",
-        htlc_txid, trade_id
-    );
-    //TODO: Store successful redeem in event
-    let redeem_txid = rpc_client
-        .send_raw_transaction(rpc_transaction)
-        .map_err(Error::BitcoinNode)??;
-
-    info!(
-        "HTLC for {} successfully redeemed with {}",
-        trade_id, redeem_txid
-    );
+    let contract_redeemed: ContractRedeemed<Ethereum, Bitcoin> =
+        ContractRedeemed::new(trade_id, redeem_tx_id.to_string());
+    event_store.add_event(trade_id, contract_redeemed)?;
 
     Ok(())
 }

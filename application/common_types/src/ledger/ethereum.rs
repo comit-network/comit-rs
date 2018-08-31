@@ -1,4 +1,4 @@
-use ethereum_support::{Address, EthereumQuantity};
+use ethereum_support::{Address, EthereumQuantity, H256};
 use ledger::Ledger;
 use seconds::Seconds;
 
@@ -10,6 +10,7 @@ impl Ledger for Ethereum {
     type Address = Address;
     type LockDuration = Seconds;
     type HtlcId = Address;
+    type TxId = H256;
 
     fn symbol() -> String {
         String::from("ETH")

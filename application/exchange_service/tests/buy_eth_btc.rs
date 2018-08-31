@@ -8,22 +8,24 @@ extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
 extern crate exchange_service;
+extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate serde_json;
 
+mod mocks;
+
+use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
-use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use exchange_service::{
-    bitcoin_fee_service::StaticBitcoinFeeService,
-    ethereum_service::{self, BlockingEthereumApi},
-    gas_price_service::StaticGasPriceService,
-    rocket_factory::create_rocket_instance,
-    treasury_api_client::FakeApiClient,
+    bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
+    ethereum_service, gas_price_service::StaticGasPriceService,
+    rocket_factory::create_rocket_instance, treasury_api_client::FakeApiClient,
 };
+use mocks::{BitcoinRpcClientMock, StaticEthereumApi};
 use rocket::{
     http::{ContentType, Status},
     local::{Client, LocalResponse},
@@ -67,6 +69,18 @@ fn notify_about_funding<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<
     request.dispatch()
 }
 
+fn notify_about_revealed_secret<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
+    let request = client
+        .post(format!("/trades/ETH-BTC/{}/buy-order-secret-revealed", uid).to_string())
+        .header(ContentType::JSON)
+        .body(
+            r#"{
+                    "secret": "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b"
+                  }"#,
+        );
+    request.dispatch()
+}
+
 trait DeserializeAsJson {
     fn body_json<T>(&mut self) -> T
     where
@@ -84,15 +98,21 @@ impl<'r> DeserializeAsJson for LocalResponse<'r> {
     }
 }
 
-struct StaticEthereumApi;
-
-impl BlockingEthereumApi for StaticEthereumApi {
-    fn send_raw_transaction(&self, _rlp: Bytes) -> Result<H256, web3::Error> {
-        Ok(H256::new())
-    }
-}
-
 fn create_rocket_client() -> Client {
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+    let exchange_success_address =
+        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
+    let bitcoin_service = Arc::new(BitcoinService::new(
+        Arc::new(BitcoinRpcClientMock::new(
+            TransactionId::from_str(
+                "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
+            ).unwrap(),
+        )),
+        bitcoin_support::Network::Regtest,
+        bitcoin_fee_service.clone(),
+        exchange_success_address,
+    ));
+
     let rocket = create_rocket_instance(
         Arc::new(FakeApiClient),
         InMemoryEventStore::new(),
@@ -102,7 +122,7 @@ fn create_rocket_client() -> Client {
             Arc::new(StaticEthereumApi),
             0,
         )),
-        Arc::new(bitcoin_rpc_client::BitcoinStubClient::new()),
+        bitcoin_service,
         "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
@@ -110,9 +130,7 @@ fn create_rocket_client() -> Client {
             .secret_key()
             .clone()
             .into(),
-        bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap(),
         Network::Regtest,
-        Arc::new(StaticBitcoinFeeService::new(50.0)),
     );
     rocket::local::Client::new(rocket).unwrap()
 }
@@ -234,6 +252,40 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
 
     {
         let response = notify_about_funding(&mut client, &trade_id);
+        assert_eq!(response.status(), Status::Ok)
+    }
+}
+
+#[test]
+fn given_an_deployed_htlc_and_a_secret_should_redeem_secret() {
+    let _ = env_logger::try_init();
+
+    let mut client = create_rocket_client();
+
+    let trade_id = {
+        let mut response = request_offer(&mut client);
+
+        assert_eq!(response.status(), Status::Ok);
+        response.body_json::<serde_json::Value>()["uid"]
+            .as_str()
+            .unwrap()
+            .to_string()
+    };
+
+    {
+        let response = request_order(&mut client, &trade_id);
+        assert_eq!(response.status(), Status::Ok)
+    }
+
+    {
+        let response = notify_about_funding(&mut client, &trade_id);
+        assert_eq!(response.status(), Status::Ok)
+    }
+
+    {
+        let response = notify_about_revealed_secret(&mut client, &trade_id);
+        println!("{:?}", response);
+
         assert_eq!(response.status(), Status::Ok)
     }
 }

@@ -17,6 +17,7 @@ impl Ledger for Bitcoin {
     type Address = Address;
     type LockDuration = BlockHeight;
     type HtlcId = HtlcId;
+    type TxId = TransactionId;
 
     fn symbol() -> String {
         String::from("BTC")

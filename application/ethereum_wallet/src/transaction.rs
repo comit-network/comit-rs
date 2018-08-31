@@ -186,35 +186,6 @@ mod tests {
     }
 
     #[test]
-    fn contract_invocation_transaction_should_have_correct_binary_representation() {
-        let tx = UnsignedTransaction::new_contract_invocation(
-            Bytes(Vec::new()),
-            "147ba99ef89c152f8004e91999fee87bda6cbc3e",
-            500,
-            2,
-            0,
-            1,
-        );
-
-        let mut stream = RlpStream::new();
-
-        tx.rlp_append(&mut stream);
-        stream.append(&1u8);
-        stream.append(&0u8);
-        stream.append(&0u8);
-
-        let bytes = stream.as_raw();
-
-        assert_eq!(
-            bytes,
-            &[
-                223, 1, 2, 130, 1, 244, 148, 20, 123, 169, 158, 248, 156, 21, 47, 128, 4, 233, 25,
-                153, 254, 232, 123, 218, 108, 188, 62, 128, 128, 1, 128, 128
-            ]
-        );
-    }
-
-    #[test]
     fn payment_transaction_should_have_correct_binary_representation() {
         let tx = UnsignedTransaction::new_payment(
             "147ba99ef89c152f8004e91999fee87bda6cbc3e",

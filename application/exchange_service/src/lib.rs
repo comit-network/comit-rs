@@ -1,5 +1,6 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
+#![cfg_attr(test, deny(warnings))]
 
 extern crate bitcoin_rpc_client;
 extern crate reqwest;
@@ -24,8 +25,10 @@ extern crate event_store;
 extern crate logging;
 
 pub mod bitcoin_fee_service;
+pub mod bitcoin_service;
 pub mod ethereum_service;
 pub mod gas_price_service;
+pub mod ledger_htlc_service;
 pub mod rocket_factory;
 pub mod swaps;
 pub mod treasury_api_client;

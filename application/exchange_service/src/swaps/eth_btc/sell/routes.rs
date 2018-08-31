@@ -2,16 +2,22 @@ use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     secret::Secret,
 };
-use ethereum_service;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
+use ledger_htlc_service::{self, LedgerHtlcService};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
-    events::{ContractRedeemed, OrderTaken, TradeFunded},
+    events::{ContractDeployed, ContractRedeemed, OfferCreated, OrderTaken, TradeFunded},
 };
+
+impl From<ledger_htlc_service::Error> for Error {
+    fn from(e: ledger_htlc_service::Error) -> Self {
+        Error::LedgerHtlcService(e)
+    }
+}
 
 #[derive(Deserialize, Debug)]
 pub struct SellOrderHtlcDeployedNotification {
@@ -27,8 +33,14 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<<Ethereum as Ledger>::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
+    bitcoin_service: State<Arc<LedgerHtlcService<Bitcoin>>>,
 ) -> Result<(), BadRequest<String>> {
-    handle_post_orders_funding(trade_id, htlc_identifier.into_inner(), event_store.inner())?;
+    handle_post_orders_funding(
+        trade_id,
+        htlc_identifier.into_inner(),
+        event_store.inner(),
+        bitcoin_service.inner(),
+    )?;
     Ok(())
 }
 
@@ -36,14 +48,28 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: <Ethereum as Ledger>::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
+    bitcoin_service: &Arc<LedgerHtlcService<Bitcoin>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
-    let _order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     //create new event
-    let trade_funded: TradeFunded<Bitcoin, Ethereum> = TradeFunded::new(trade_id, htlc_identifier);
+    let trade_funded = TradeFunded::<Bitcoin, Ethereum>::new(trade_id, htlc_identifier);
     event_store.add_event(trade_id.clone(), trade_funded)?;
-    //TODO Finish this and implement bitcoin service for deploying the bitcoin htlc
+
+    let offer_created = event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
+
+    let tx_id = bitcoin_service.deploy_htlc(
+        order_taken.exchange_refund_address,
+        order_taken.client_success_address,
+        order_taken.exchange_contract_time_lock,
+        offer_created.buy_amount,
+        order_taken.contract_secret_lock,
+    )?;
+
+    let contract_deployed = ContractDeployed::<Bitcoin, Ethereum>::new(trade_id, tx_id.to_string());
+
+    event_store.add_event(trade_id, contract_deployed)?;
 
     Ok(())
 }
@@ -62,7 +88,7 @@ pub fn post_revealed_secret(
     redeem_eth_notification_body: Json<RedeemETHNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
-    ethereum_service: State<Arc<ethereum_service::EthereumService>>,
+    ethereum_service: State<Arc<LedgerHtlcService<Ethereum>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_revealed_secret(
         redeem_eth_notification_body.into_inner(),
@@ -78,13 +104,21 @@ fn handle_post_revealed_secret(
     redeem_eth_notification_body: RedeemETHNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
     trade_id: TradeId,
-    ethereum_service: &Arc<ethereum_service::EthereumService>,
+    ethereum_service: &Arc<LedgerHtlcService<Ethereum>>,
 ) -> Result<(), Error> {
     let trade_funded = event_store.get_event::<TradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let offer_created = event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,
+        trade_id,
+        order_taken.exchange_success_address,
+        order_taken.exchange_success_keypair,
+        order_taken.client_refund_address,
         trade_funded.htlc_identifier,
+        offer_created.sell_amount,
+        order_taken.client_contract_time_lock,
     )?;
     let deployed: ContractRedeemed<Bitcoin, Ethereum> =
         ContractRedeemed::new(trade_id, tx_id.to_string());

@@ -1,35 +1,34 @@
-use common_types::secret::Secret;
+use common_types::{
+    ledger::{ethereum::Ethereum, Ledger},
+    secret::{Secret, SecretHash},
+};
 use ethereum_htlc::Htlc;
 use ethereum_support::*;
 use ethereum_wallet;
 use gas_price_service::{self, GasPriceService};
+use ledger_htlc_service::{self, LedgerHtlcService};
+use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
+use swaps::common::TradeId;
 
-#[derive(Debug)]
-pub enum Error {
-    GasPriceUnavailable(gas_price_service::Error),
-    NonceLockError,
-    Web3(web3::Error),
-}
-
-impl From<gas_price_service::Error> for Error {
-    fn from(e: gas_price_service::Error) -> Self {
-        Error::GasPriceUnavailable(e)
+impl From<gas_price_service::Error> for ledger_htlc_service::Error {
+    fn from(_e: gas_price_service::Error) -> Self {
+        ledger_htlc_service::Error::Internal
     }
 }
 
-impl<'a> From<PoisonError<MutexGuard<'a, U256>>> for Error {
+impl<'a> From<PoisonError<MutexGuard<'a, U256>>> for ledger_htlc_service::Error {
     fn from(_e: PoisonError<MutexGuard<'a, U256>>) -> Self {
-        Error::NonceLockError
+        ledger_htlc_service::Error::Internal
     }
 }
 
-impl<'a> From<web3::Error> for Error {
-    fn from(e: web3::Error) -> Self {
-        Error::Web3(e)
+impl<'a> From<web3::Error> for ledger_htlc_service::Error {
+    fn from(_e: web3::Error) -> Self {
+        ledger_htlc_service::Error::NodeConnection
     }
 }
 
@@ -52,6 +51,68 @@ pub struct EthereumService {
     web3: Arc<BlockingEthereumApi>,
 }
 
+impl LedgerHtlcService<Ethereum> for EthereumService {
+    fn deploy_htlc(
+        &self,
+        refund_address: <Ethereum as Ledger>::Address,
+        success_address: <Ethereum as Ledger>::Address,
+        time_lock: <Ethereum as Ledger>::LockDuration,
+        amount: <Ethereum as Ledger>::Quantity,
+        secret: SecretHash,
+    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        let contract = Htlc::new(time_lock.into(), refund_address, success_address, secret);
+
+        let funding = amount.wei();
+
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+                contract.compile_to_hex(),
+                865780, //TODO: calculate the gas consumption based on 32k + 200*bytes
+                gas_price,
+                funding,
+                nonce,
+            )
+        })?;
+
+        info!(
+            "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
+            contract, tx_id, funding
+        );
+
+        Ok(tx_id)
+    }
+
+    fn redeem_htlc(
+        &self,
+        secret: Secret,
+        _trade_id: TradeId,
+        _exchange_success_address: <Ethereum as Ledger>::Address,
+        _exchange_success_keypair: KeyPair,
+        _client_refund_address: <Ethereum as Ledger>::Address,
+        contract_address: <Ethereum as Ledger>::HtlcId,
+        _sell_amount: <Ethereum as Ledger>::Quantity,
+        _lock_time: <Ethereum as Ledger>::LockDuration,
+    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            ethereum_wallet::UnsignedTransaction::new_contract_invocation(
+                secret.raw_secret().to_vec(),
+                contract_address,
+                10000,
+                gas_price,
+                0,
+                nonce,
+            )
+        })?;
+
+        info!(
+            "Contract {:?} was successfully redeemed in transaction {:?}",
+            contract_address, tx_id
+        );
+
+        Ok(tx_id)
+    }
+}
+
 impl EthereumService {
     pub fn new<N: Into<U256>>(
         wallet: Arc<ethereum_wallet::Wallet>,
@@ -67,45 +128,10 @@ impl EthereumService {
         }
     }
 
-    pub fn deploy_htlc(&self, contract: Htlc, funding: U256) -> Result<H256, Error> {
-        let tx_id = self.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
-                contract.compile_to_hex(),
-                865780, //TODO: calculate the gas consumption based on 32k + 200*bytes
-                gas_price,
-                funding,
-                nonce,
-            )
-        })?;
-        info!(
-            "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
-            contract, tx_id, funding
-        );
-        Ok(tx_id)
-    }
-
-    pub fn redeem_htlc(&self, secret: Secret, contract_address: Address) -> Result<H256, Error> {
-        let tx_id = self.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_invocation(
-                secret.raw_secret().to_vec(),
-                contract_address,
-                10000,
-                gas_price,
-                0,
-                nonce,
-            )
-        })?;
-        info!(
-            "Contract {:?} was successfully redeemed in transaction {:?}",
-            contract_address, tx_id
-        );
-        Ok(tx_id)
-    }
-
     fn sign_and_send<T: Fn(U256, U256) -> ethereum_wallet::UnsignedTransaction>(
         &self,
         transaction_fn: T,
-    ) -> Result<H256, Error> {
+    ) -> Result<H256, ledger_htlc_service::Error> {
         let gas_price = self.gas_price_service.get_gas_price()?;
 
         let tx_id = {
