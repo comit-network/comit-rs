@@ -27,11 +27,22 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
-    address_to_fund: ethereum_support::Address,
-    btc_amount: BitcoinQuantity,
-    eth_amount: EthereumQuantity,
-    data: ethereum_htlc::ByteCode,
+    address_to_fund: String,
+    btc_amount: String,
+    eth_amount: String,
+    data: String,
     gas: u64,
+}
+
+impl PartialEq for RequestToFund {
+    fn eq(&self, other: &RequestToFund) -> bool {
+        self.address_to_fund == other.address_to_fund
+            && self.btc_amount == other.btc_amount
+            && self.eth_amount == other.eth_amount
+            && self.gas == other.gas
+            && self.data.len() > 0
+            && other.data.len() > 0
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -58,12 +69,21 @@ impl<'a> FromParam<'a> for TradeId {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
-    pub symbol: TradingSymbol,
+pub struct OfferResponseBody {
+    pub uid: String,
+    pub symbol: String,
     pub rate: f64,
-    pub buy_amount: Buy::Quantity,
-    pub sell_amount: Sell::Quantity,
+    pub buy_amount: String,
+    pub sell_amount: String,
+}
+
+impl PartialEq for OfferResponseBody {
+    fn eq(&self, other: &OfferResponseBody) -> bool {
+        self.symbol == other.symbol
+            && self.rate == other.rate
+            && self.buy_amount == other.buy_amount
+            && self.sell_amount == other.sell_amount
+    }
 }
 
 #[test]
@@ -85,28 +105,19 @@ fn post_sell_offer_of_x_eth_for_btc() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response = serde_json::from_str::<OfferResponseBody<Bitcoin, Ethereum>>(
-        &response.body_string().unwrap(),
-    ).unwrap();
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
 
     assert_eq!(
-        offer_response.symbol,
-        TradingSymbol::ETH_BTC,
-        "offer_response has correct symbol"
-    );
-    assert_eq!(
-        offer_response.buy_amount,
-        bitcoin_support::BitcoinQuantity::from_bitcoin(4.2),
-        "offer_response has correct buy amount"
-    );
-    assert_eq!(
-        offer_response.sell_amount,
-        ethereum_support::EthereumQuantity::from_eth(42.0),
-        "offer_response has correct sell amount"
-    );
-    assert_eq!(
-        offer_response.rate, 0.1,
-        "offer_response has correct sell amount"
+        offer_response,
+        OfferResponseBody {
+            uid: String::from(""),
+            symbol: String::from("ETH-BTC"),
+            rate: 0.1,
+            buy_amount: String::from("420000000"),
+            sell_amount: String::from("42000000000000000000"),
+        },
+        "offer_response has correct fields"
     );
 }
 
@@ -129,9 +140,8 @@ fn post_sell_order_of_x_eth_for_btc() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response = serde_json::from_str::<OfferResponseBody<Bitcoin, Ethereum>>(
-        &response.body_string().unwrap(),
-    ).unwrap();
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
     let uid = offer_response.uid;
 
     let request = client
@@ -145,27 +155,14 @@ fn post_sell_order_of_x_eth_for_btc() {
         serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
 
     assert_eq!(
-        request_to_fund.address_to_fund,
-        "0000000000000000000000000000000000000000".parse().unwrap(),
+        request_to_fund,
+        RequestToFund {
+            address_to_fund: String::from("0x0000000000000000000000000000000000000000"),
+            btc_amount: String::from("420000000"),
+            eth_amount: String::from("42000000000000000000"),
+            data: String::from("some random data for passing the partial equal"),
+            gas: 21_000u64,
+        },
         "request_to_fund has correct address_to_fund"
-    );
-
-    assert_eq!(
-        request_to_fund.btc_amount,
-        BitcoinQuantity::from_str("4.2").unwrap(),
-        "request_to_fund has correct btc_amount"
-    );
-    assert_eq!(
-        request_to_fund.eth_amount,
-        EthereumQuantity::from_str("42").unwrap(),
-        "request_to_fund has correct eth_amount"
-    );
-
-    let bytes: Bytes = request_to_fund.data.into();
-    assert!(!bytes.0.is_empty(), "request_to_fund has htlc data");
-
-    assert_eq!(
-        request_to_fund.gas, 21_000u64,
-        "request_to_fund has correct gas"
     );
 }
