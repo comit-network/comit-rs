@@ -8,9 +8,7 @@ extern crate web3 as web3_crate;
 
 #[macro_use]
 extern crate lazy_static;
-
-#[macro_use]
-extern crate serde_derive;
+extern crate serde;
 
 pub use web3_crate::types::*;
 
