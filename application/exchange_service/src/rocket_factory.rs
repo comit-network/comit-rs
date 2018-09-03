@@ -22,7 +22,6 @@ pub fn create_rocket_instance(
         .mount(
             "/",
             routes![
-                eth_btc::buy::routes::post_buy_offers,
                 eth_btc::buy::routes::post_buy_orders,
                 eth_btc::buy::routes::post_orders_funding,
                 eth_btc::buy::routes::post_revealed_secret,

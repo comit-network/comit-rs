@@ -1,18 +1,8 @@
-use common_types::{ledger::Ledger, secret::SecretHash, TradingSymbol};
+use common_types::{ledger::Ledger, secret::SecretHash};
 use event_store::Event;
 use secp256k1_support::KeyPair;
 use std::marker::PhantomData;
 use swaps::common::TradeId;
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferCreated<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
-    pub symbol: TradingSymbol,
-    pub rate: f64,
-    pub buy_amount: Buy::Quantity,
-    pub sell_amount: Sell::Quantity,
-    // TODO: treasury_expiry_timestamp
-}
 
 #[derive(Clone, Debug)]
 pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
@@ -28,6 +18,9 @@ pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
     pub exchange_refund_address: Buy::Address,
     pub exchange_success_address: Sell::Address,
     pub exchange_success_keypair: KeyPair,
+
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -51,10 +44,6 @@ pub struct ContractRedeemed<Buy: Ledger, Sell: Ledger> {
     pub transaction_id: String,
     phantom: PhantomData<Buy>,
     phantom2: PhantomData<Sell>,
-}
-
-impl<Buy: Ledger, Sell: Ledger> Event for OfferCreated<Buy, Sell> {
-    type Prev = ();
 }
 
 impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
@@ -89,25 +78,8 @@ impl<Buy: Ledger, Sell: Ledger> ContractRedeemed<Buy, Sell> {
     }
 }
 
-impl<Buy: Ledger, Sell: Ledger> OfferCreated<Buy, Sell> {
-    pub fn new(
-        rate: f64,
-        buy_amount: Buy::Quantity,
-        sell_amount: Sell::Quantity,
-        symbol: TradingSymbol,
-    ) -> Self {
-        OfferCreated {
-            uid: TradeId::new(),
-            symbol,
-            rate,
-            buy_amount,
-            sell_amount,
-        }
-    }
-}
-
 impl<Buy: Ledger, Sell: Ledger> Event for OrderTaken<Buy, Sell> {
-    type Prev = OfferCreated<Buy, Sell>;
+    type Prev = ();
 }
 
 impl<Buy: Ledger, Sell: Ledger> Event for TradeFunded<Buy, Sell> {

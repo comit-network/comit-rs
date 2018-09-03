@@ -141,6 +141,8 @@ fn handle_buy_orders(
                 client_refund_address: client_refund_address.clone(),
                 client_success_address: client_success_address.clone(),
                 client_contract_time_lock: lock_duration.clone(),
+                buy_amount: offer.buy_amount,
+                sell_amount: offer.sell_amount,
             },
         )
         .map_err(Error::ExchangeService)?;

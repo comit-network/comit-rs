@@ -140,6 +140,8 @@ fn handle_sell_orders(
                 client_refund_address: client_refund_address,
                 client_success_address: client_success_address,
                 client_contract_time_lock: lock_duration,
+                buy_amount: offer.buy_amount,
+                sell_amount: offer.sell_amount,
             },
         )
         .map_err(Error::ExchangeService)?;

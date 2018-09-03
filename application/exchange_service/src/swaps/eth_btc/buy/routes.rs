@@ -1,6 +1,6 @@
 use bitcoin_fee_service;
 use bitcoin_rpc_client;
-use bitcoin_support::{self, BitcoinQuantity, Network, ToP2wpkhAddress};
+use bitcoin_support::{self, Network, ToP2wpkhAddress};
 use common_types::{
     ledger::{
         bitcoin::{self, Bitcoin},
@@ -9,7 +9,6 @@ use common_types::{
     },
     seconds::Seconds,
     secret::{Secret, SecretHash},
-    TradingSymbol,
 };
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
@@ -20,12 +19,8 @@ use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
-    events::{
-        ContractDeployed, ContractRedeemed, OfferCreated as OfferState, OfferCreated, OrderTaken,
-        TradeFunded,
-    },
+    events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
 };
-use treasury_api_client::ApiClient;
 
 impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
@@ -52,59 +47,14 @@ impl From<bitcoin_rpc_client::RpcError> for Error {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OfferRequestBody {
-    pub amount: f64,
-}
-
-#[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
-pub fn post_buy_offers(
-    offer_request_body: Json<OfferRequestBody>,
-    event_store: State<InMemoryEventStore<TradeId>>,
-    treasury_api_client: State<Arc<ApiClient>>,
-) -> Result<Json<OfferState<Ethereum, Bitcoin>>, BadRequest<String>> {
-    let offer_state = handle_post_buy_offers(
-        offer_request_body.into_inner(),
-        event_store.inner(),
-        treasury_api_client.inner(),
-    )?;
-
-    Ok(Json(offer_state)) // offer_event is the same than state.
-}
-
-fn handle_post_buy_offers(
-    offer_request_body: OfferRequestBody,
-    event_store: &InMemoryEventStore<TradeId>,
-    treasury_api_client: &Arc<ApiClient>,
-) -> Result<OfferState<Ethereum, Bitcoin>, Error> {
-    let buy_amount = ethereum_support::EthereumQuantity::from_eth(offer_request_body.amount);
-
-    let rate_response_body = treasury_api_client
-        .request_rate(TradingSymbol::ETH_BTC)
-        .map_err(Error::TreasuryService)?;
-    let sell_amount =
-        BitcoinQuantity::from_bitcoin(rate_response_body.rate * buy_amount.ethereum());
-
-    let offer_event = OfferCreated::new(
-        rate_response_body.rate,
-        buy_amount,
-        sell_amount,
-        TradingSymbol::ETH_BTC,
-    );
-
-    event_store.add_event(offer_event.uid, offer_event.clone())?;
-
-    info!("Created new offer: {:?}", offer_event);
-
-    Ok(offer_event)
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
     pub contract_secret_lock: SecretHash,
     pub client_contract_time_lock: Sell::LockDuration,
     pub client_refund_address: Sell::Address,
     pub client_success_address: Buy::Address,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -185,6 +135,8 @@ fn handle_post_buy_orders(
         exchange_refund_address: *exchange_refund_address,
         exchange_success_address,
         exchange_success_keypair: exchange_success_keypair.clone(),
+        buy_amount: order_request_body.buy_amount,
+        sell_amount: order_request_body.sell_amount,
     };
 
     event_store.add_event(trade_id, order_taken.clone())?;
@@ -222,14 +174,12 @@ fn handle_post_orders_funding(
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
-    let offer_created_event =
-        event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.deploy_htlc(
         order_taken.exchange_refund_address,
         order_taken.client_success_address,
         order_taken.exchange_contract_time_lock,
-        offer_created_event.buy_amount,
+        order_taken.buy_amount,
         order_taken.contract_secret_lock.clone().into(),
     )?;
 
@@ -274,8 +224,6 @@ fn handle_post_revealed_secret(
 ) -> Result<(), Error> {
     let order_taken_event =
         event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
-    let offer_created_event =
-        event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id.clone())?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
     let trade_funded_event =
         event_store.get_event::<TradeFunded<Ethereum, Bitcoin>>(trade_id.clone())?;
@@ -289,7 +237,7 @@ fn handle_post_revealed_secret(
         order_taken_event.exchange_success_keypair,
         order_taken_event.client_refund_address,
         trade_funded_event.htlc_identifier,
-        offer_created_event.sell_amount,
+        order_taken_event.sell_amount,
         order_taken_event.client_contract_time_lock,
     )?;
 

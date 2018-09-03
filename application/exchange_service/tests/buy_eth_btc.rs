@@ -13,6 +13,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate serde_json;
+extern crate uuid;
 
 mod mocks;
 
@@ -32,14 +33,7 @@ use rocket::{
 };
 use serde::Deserialize;
 use std::{str::FromStr, sync::Arc};
-
-fn request_offer(client: &mut Client) -> LocalResponse {
-    let request = client
-        .post("/trades/ETH-BTC/buy-offers")
-        .header(ContentType::JSON)
-        .body(r#"{ "amount": 42 }"#);
-    request.dispatch()
-}
+use uuid::Uuid;
 
 fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
     let request = client
@@ -50,7 +44,9 @@ fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
                     "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
                     "client_refund_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
                     "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
-                    "client_contract_time_lock": 24
+                    "client_contract_time_lock": 24,
+                    "buy_amount" : "0xF4240",
+                    "sell_amount" : 10000000
                   }"#,
             );
     request.dispatch()
@@ -136,43 +132,12 @@ fn create_rocket_client() -> Client {
 }
 
 #[test]
-fn given_an_offer_request_then_return_valid_offer_response() {
-    let _ = env_logger::try_init();
-
-    let mut client = create_rocket_client();
-
-    let mut response = request_offer(&mut client);
-    assert_eq!(response.status(), Status::Ok);
-
-    let offer_response = response.body_json::<serde_json::Value>();
-
-    assert_eq!(
-        offer_response["symbol"], "ETH-BTC",
-        "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
-        offer_response
-    );
-}
-
-#[test]
 fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_response() {
     let _ = env_logger::try_init();
 
     let mut client = create_rocket_client();
 
-    let uid = {
-        let mut response = request_offer(&mut client);
-        assert_eq!(response.status(), Status::Ok);
-
-        let offer_response = response.body_json::<serde_json::Value>();
-
-        assert_eq!(
-            offer_response["symbol"], "ETH-BTC",
-            "Expected to receive a symbol in response of buy_offers. Json Response:\n{:?}",
-            offer_response
-        );
-
-        offer_response["uid"].as_str().unwrap().to_string()
-    };
+    let uid = Uuid::new_v4().to_string();
 
     {
         let mut response = request_order(&mut client, &uid);
@@ -189,34 +154,12 @@ fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_respons
 }
 
 #[test]
-fn given_a_order_request_without_offer_should_fail() {
-    let _ = env_logger::try_init();
-
-    let mut client = create_rocket_client();
-
-    let uid = "d9ee2df7-c330-4893-8345-6ba171f96e8f";
-
-    {
-        let response = request_order(&mut client, uid);
-        assert_eq!(response.status(), Status::BadRequest);
-    }
-}
-
-#[test]
 fn given_two_orders_request_with_same_uid_should_fail() {
     let _ = env_logger::try_init();
 
     let mut client = create_rocket_client();
 
-    let uid = {
-        let mut response = request_offer(&mut client);
-        assert_eq!(response.status(), Status::Ok);
-
-        let response =
-            serde_json::from_str::<serde_json::Value>(&response.body_string().unwrap()).unwrap();
-
-        response["uid"].as_str().unwrap().to_string()
-    };
+    let uid = Uuid::new_v4().to_string();
 
     {
         let response = request_order(&mut client, &uid);
@@ -235,15 +178,7 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
 
     let mut client = create_rocket_client();
 
-    let trade_id = {
-        let mut response = request_offer(&mut client);
-
-        assert_eq!(response.status(), Status::Ok);
-        response.body_json::<serde_json::Value>()["uid"]
-            .as_str()
-            .unwrap()
-            .to_string()
-    };
+    let trade_id = Uuid::new_v4().to_string();
 
     {
         let response = request_order(&mut client, &trade_id);
@@ -262,15 +197,7 @@ fn given_an_deployed_htlc_and_a_secret_should_redeem_secret() {
 
     let mut client = create_rocket_client();
 
-    let trade_id = {
-        let mut response = request_offer(&mut client);
-
-        assert_eq!(response.status(), Status::Ok);
-        response.body_json::<serde_json::Value>()["uid"]
-            .as_str()
-            .unwrap()
-            .to_string()
-    };
+    let trade_id = Uuid::new_v4().to_string();
 
     {
         let response = request_order(&mut client, &trade_id);

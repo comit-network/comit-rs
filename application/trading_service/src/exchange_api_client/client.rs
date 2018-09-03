@@ -20,6 +20,8 @@ pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
     pub client_refund_address: Sell::Address,
     pub client_success_address: Buy::Address,
     pub client_contract_time_lock: Sell::LockDuration,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
