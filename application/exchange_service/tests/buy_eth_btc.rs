@@ -45,8 +45,8 @@ fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
                     "client_refund_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
                     "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
                     "client_contract_time_lock": 24,
-                    "buy_amount" : "0xF4240",
-                    "sell_amount" : 10000000
+                    "buy_amount" : "1000000",
+                    "sell_amount" : "10000000"
                   }"#,
             );
     request.dispatch()
@@ -201,6 +201,7 @@ fn given_an_deployed_htlc_and_a_secret_should_redeem_secret() {
 
     {
         let response = request_order(&mut client, &trade_id);
+        println!("{:?}", response);
         assert_eq!(response.status(), Status::Ok)
     }
 
