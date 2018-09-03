@@ -18,7 +18,7 @@ pub struct EthereumQuantity(U256);
 const U64SIZE: usize = mem::size_of::<u64>();
 
 impl EthereumQuantity {
-    fn from_bigdec(decimal: BigDecimal) -> EthereumQuantity {
+    fn from_eth_bigdec(decimal: BigDecimal) -> EthereumQuantity {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
         Self::from_wei_bigint(wei_bigint.to_biguint().unwrap())
     }
@@ -26,7 +26,7 @@ impl EthereumQuantity {
     pub fn from_eth(eth: f64) -> Self {
         let dec =
             BigDecimal::from_f64(eth).expect(format!("{} is an invalid eth value", eth).as_str());
-        Self::from_bigdec(dec)
+        Self::from_eth_bigdec(dec)
     }
 
     pub fn from_wei(wei: U256) -> Self {
@@ -90,7 +90,7 @@ impl FromStr for EthereumQuantity {
     type Err = ParseBigDecimalError;
     fn from_str(string: &str) -> Result<EthereumQuantity, Self::Err> {
         let dec = BigDecimal::from_str(string)?;
-        Ok(Self::from_bigdec(dec))
+        Ok(Self::from_eth_bigdec(dec))
     }
 }
 
