@@ -6,7 +6,7 @@ use common_types::{
 };
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
-use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
+use exchange_api_client::{ApiClient, OrderRequestBody};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
@@ -15,8 +15,9 @@ use std::sync::{Arc, Mutex};
 use swaps::{
     errors::Error,
     events::{ContractDeployed, OfferCreated, OrderCreated, OrderTaken},
-    TradeId,
+    OfferResponseBody, TradeId,
 };
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -26,19 +27,37 @@ pub struct BuyOfferRequestBody {
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
-    client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
 ) -> Result<Json<OfferResponseBody<Ethereum, Bitcoin>>, BadRequest<String>> {
-    let offer_request_body = offer_request_body.into_inner();
     let symbol = TradingSymbol::ETH_BTC;
 
-    let res = client.create_buy_offer(symbol, offer_request_body.amount);
-    let offer_response = res.map_err(Error::ExchangeService)?;
-    let id = offer_response.uid.clone();
-    let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer_response.clone());
+    let offer = handle_buy_offer(event_store.inner(), offer_request_body.into_inner(), symbol)?;
+
+    Ok(Json(offer))
+}
+
+fn handle_buy_offer(
+    event_store: &InMemoryEventStore<TradeId>,
+    offer_request_body: BuyOfferRequestBody,
+    symbol: TradingSymbol,
+) -> Result<OfferResponseBody<Ethereum, Bitcoin>, Error> {
+    let rate = 0.1; //TODO export this somewhere
+    let sell_amount = offer_request_body.amount;
+    let buy_amount = sell_amount * rate;
+
+    let offer: OfferResponseBody<Ethereum, Bitcoin> = OfferResponseBody {
+        uid: TradeId::from(Uuid::new_v4()),
+        symbol,
+        rate,
+        sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
+        buy_amount: ethereum_support::EthereumQuantity::from_eth(sell_amount),
+    };
+
+    let id = offer.uid.clone();
+    let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer.clone());
 
     event_store.add_event(id, event).map_err(Error::EventStore)?;
-    Ok(Json(offer_response))
+    Ok(offer)
 }
 
 #[derive(Deserialize)]

@@ -14,17 +14,15 @@ extern crate uuid;
 
 use bitcoin_support::{BitcoinQuantity, Network};
 use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     TradingSymbol,
 };
 use ethereum_support::EthereumQuantity;
 use event_store::InMemoryEventStore;
-use rocket::http::*;
-use std::sync::Arc;
-use trading_service::{
-    exchange_api_client::{FakeApiClient, OfferResponseBody},
-    rocket_factory::create_rocket_instance,
-};
+use rocket::{http::*, request::FromParam};
+use std::{fmt, sync::Arc};
+use trading_service::{exchange_api_client::FakeApiClient, rocket_factory::create_rocket_instance};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
@@ -38,6 +36,38 @@ pub struct RedeemDetails {
     address: ethereum_support::Address,
     data: bitcoin_htlc::secret::Secret,
     gas: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct TradeId(Uuid); //todo extract common types from tests into own module
+
+impl From<Uuid> for TradeId {
+    fn from(uuid: Uuid) -> Self {
+        TradeId(uuid)
+    }
+}
+
+impl fmt::Display for TradeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0.fmt(f)
+    }
+}
+
+impl<'a> FromParam<'a> for TradeId {
+    type Error = uuid::ParseError;
+
+    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
+        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from(uid))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
+    pub uid: TradeId,
+    pub symbol: TradingSymbol,
+    pub rate: f64,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
 // Secret: 12345678901234567890123456789012

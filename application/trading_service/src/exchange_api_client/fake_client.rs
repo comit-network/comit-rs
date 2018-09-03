@@ -5,13 +5,10 @@ use common_types::{
     TradingSymbol,
 };
 use ethereum_support;
-use exchange_api_client::{
-    client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
-};
+use exchange_api_client::{client::OrderResponseBody, ApiClient, OrderRequestBody};
 use reqwest;
 use std::str::FromStr;
 use swaps::TradeId;
-use uuid::Uuid;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
@@ -23,23 +20,6 @@ impl FakeApiClient {
 }
 
 impl ApiClient for FakeApiClient {
-    fn create_buy_offer(
-        &self,
-        symbol: TradingSymbol,
-        amount: f64,
-    ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
-        let rate = 0.1;
-        let sell_amount = amount * rate;
-        let offer = OfferResponseBody {
-            uid: TradeId::from(Uuid::new_v4()),
-            symbol,
-            rate,
-            sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(sell_amount),
-            buy_amount: ethereum_support::EthereumQuantity::from_eth(amount),
-        };
-        Ok(offer)
-    }
-
     fn create_buy_order(
         &self,
         _symbol: TradingSymbol,
@@ -57,23 +37,6 @@ impl ApiClient for FakeApiClient {
         };
 
         Ok(accept)
-    }
-
-    fn create_sell_offer(
-        &self,
-        symbol: TradingSymbol,
-        amount: f64,
-    ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
-        let rate = 0.1;
-        let buy_amount = amount * rate;
-        let offer = OfferResponseBody {
-            uid: TradeId::from(Uuid::new_v4()),
-            symbol,
-            rate,
-            sell_amount: ethereum_support::EthereumQuantity::from_eth(amount),
-            buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
-        };
-        Ok(offer)
     }
 
     fn create_sell_order(

@@ -11,20 +11,19 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate trading_service;
+extern crate uuid;
 
 use bitcoin_support::{BitcoinQuantity, Network};
 use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     TradingSymbol,
 };
 use ethereum_support::{Bytes, EthereumQuantity};
 use event_store::InMemoryEventStore;
-use rocket::http::*;
-use std::{str::FromStr, sync::Arc};
-use trading_service::{
-    exchange_api_client::{FakeApiClient, OfferResponseBody},
-    rocket_factory::create_rocket_instance,
-};
+use rocket::{http::*, request::FromParam};
+use std::{fmt, str::FromStr, sync::Arc};
+use trading_service::{exchange_api_client::FakeApiClient, rocket_factory::create_rocket_instance};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
@@ -33,6 +32,38 @@ pub struct RequestToFund {
     eth_amount: EthereumQuantity,
     data: ethereum_htlc::ByteCode,
     gas: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct TradeId(Uuid);
+
+impl From<Uuid> for TradeId {
+    fn from(uuid: Uuid) -> Self {
+        TradeId(uuid)
+    }
+}
+
+impl fmt::Display for TradeId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0.fmt(f)
+    }
+}
+
+impl<'a> FromParam<'a> for TradeId {
+    type Error = uuid::ParseError;
+
+    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
+        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from(uid))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
+    pub uid: TradeId,
+    pub symbol: TradingSymbol,
+    pub rate: f64,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
 
 #[test]
