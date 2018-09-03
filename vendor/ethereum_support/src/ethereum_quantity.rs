@@ -1,36 +1,44 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use byteorder::{LittleEndian, WriteBytesExt};
 use num::{
-    bigint::{BigInt, Sign},
+    bigint::{BigInt, BigUint, Sign},
     FromPrimitive, ToPrimitive,
 };
 use regex::Regex;
+use serde::{
+    de::{self, Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
 use std::{f64, fmt, mem, str::FromStr};
 use U256;
 
-#[derive(Serialize, PartialEq, Deserialize, Clone, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub struct EthereumQuantity(U256);
 
 const U64SIZE: usize = mem::size_of::<u64>();
 
 impl EthereumQuantity {
-    fn bigdecimal_eth_to_u256_wei(decimal: BigDecimal) -> U256 {
+    fn from_eth_bigdec(decimal: BigDecimal) -> EthereumQuantity {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
-        let (_sign, bytes) = wei_bigint.to_bytes_be();
-        let mut buf = [0u8; 32];
-        let start = 32 - bytes.len();
-        buf[start..].clone_from_slice(&bytes[..]);
-        buf.into()
+        Self::from_wei_bigint(wei_bigint.to_biguint().unwrap())
     }
 
     pub fn from_eth(eth: f64) -> Self {
         let dec =
             BigDecimal::from_f64(eth).expect(format!("{} is an invalid eth value", eth).as_str());
-        EthereumQuantity(Self::bigdecimal_eth_to_u256_wei(dec))
+        Self::from_eth_bigdec(dec)
     }
 
     pub fn from_wei(wei: U256) -> Self {
         EthereumQuantity(wei)
+    }
+
+    fn from_wei_bigint(wei: BigUint) -> EthereumQuantity {
+        let bytes = wei.to_bytes_be();
+        let mut buf = [0u8; 32];
+        let start = 32 - bytes.len();
+        buf[start..].clone_from_slice(&bytes[..]);
+        EthereumQuantity(buf.into())
     }
 
     fn to_ethereum_bigdec(&self) -> BigDecimal {
@@ -82,90 +90,43 @@ impl FromStr for EthereumQuantity {
     type Err = ParseBigDecimalError;
     fn from_str(string: &str) -> Result<EthereumQuantity, Self::Err> {
         let dec = BigDecimal::from_str(string)?;
-        Ok(EthereumQuantity(Self::bigdecimal_eth_to_u256_wei(dec)))
+        Ok(Self::from_eth_bigdec(dec))
     }
 }
 
-#[cfg(test)]
-mod test {
+impl<'de> Deserialize<'de> for EthereumQuantity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
 
-    use super::*;
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = EthereumQuantity;
 
-    lazy_static! {
-        static ref WEI_IN_ETHEREUM: U256 = U256::from((10u64).pow(18));
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("A string representing a wei quantity")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<EthereumQuantity, E>
+            where
+                E: de::Error,
+            {
+                let bigint = BigUint::from_str(v).map_err(E::custom)?;
+                Ok(EthereumQuantity::from_wei_bigint(bigint))
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
     }
+}
 
-    #[test]
-    fn display_ethereum() {
-        assert_eq!(
-            format!("{}", EthereumQuantity::from_eth(9000.0)),
-            "9000 ETH"
-        );
-    }
-
-    #[test]
-    fn a_ethereum_is_a_quintillion_wei() {
-        assert_eq!(
-            EthereumQuantity::from_eth(2.0).wei(),
-            U256::from(2_000_000_000_000_000_000u64) // 2 quintillion
-        )
-    }
-
-    #[test]
-    fn from_eth_works_when_resulting_wei_cant_fit_in_u64() {
-        assert_eq!(
-            EthereumQuantity::from_eth(9001.0).wei(),
-            U256::from(9001u64) * *WEI_IN_ETHEREUM
-        )
-    }
-
-    #[test]
-    fn from_fractional_ethereum_converts_to_correct_wei() {
-        assert_eq!(
-            EthereumQuantity::from_eth(0.000_000_001).wei(),
-            U256::from(1_000_000_000)
-        )
-    }
-
-    #[test]
-    fn ethereum_quantity_from_str() {
-        assert_eq!(
-            EthereumQuantity::from_str("1.000000001").unwrap().wei(),
-            U256::from(1_000_000_001_000_000_000u64)
-        )
-    }
-
-    #[test]
-    fn ethereum_quantity_back_into_f64() {
-        assert!(EthereumQuantity::from_eth(0.1234).ethereum() - 0.1234f64 < f64::EPSILON)
-    }
-
-    #[test]
-    fn fractional_ethereum_format() {
-        assert_eq!(
-            format!("{}", EthereumQuantity::from_eth(0.1234)),
-            "0.1234 ETH"
-        )
-    }
-
-    #[test]
-    fn whole_ethereum_format() {
-        assert_eq!(format!("{}", EthereumQuantity::from_eth(12.0)), "12 ETH");
-    }
-
-    #[test]
-    fn ethereum_with_small_fraction_format() {
-        assert_eq!(
-            format!("{}", EthereumQuantity::from_str("1234.00000100").unwrap()),
-            "1234.000001 ETH"
-        )
-    }
-
-    #[test]
-    fn one_hundren_ethereum_format() {
-        assert_eq!(
-            format!("{}", EthereumQuantity::from_str("100").unwrap()),
-            "100 ETH"
-        )
+impl Serialize for EthereumQuantity {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        let (bigint, _exponent) = self.to_ethereum_bigdec().as_bigint_and_exponent();
+        serializer.serialize_str(bigint.to_string().as_str())
     }
 }

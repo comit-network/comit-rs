@@ -1,4 +1,5 @@
 extern crate bitcoin_support;
+extern crate serde_json;
 
 use bitcoin_support::BitcoinQuantity;
 use std::str::FromStr;
@@ -44,4 +45,16 @@ fn display_bitcoin() {
         format!("{}", BitcoinQuantity::from_satoshi(200_000_000)),
         "2 BTC"
     );
+}
+
+#[test]
+fn serialize_bitcoin_quantity() {
+    let quantity = BitcoinQuantity::from_satoshi(100_000_000);
+    assert_eq!(serde_json::to_string(&quantity).unwrap(), "\"100000000\"");
+}
+
+#[test]
+fn deserialize_bitcoin_quantity() {
+    let quantity = serde_json::from_str::<BitcoinQuantity>("\"100000000\"").unwrap();
+    assert_eq!(quantity, BitcoinQuantity::from_satoshi(100_000_000))
 }

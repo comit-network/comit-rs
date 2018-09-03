@@ -1,11 +1,15 @@
 use bigdecimal::ParseBigDecimalError;
+use serde::{
+    de::{self, Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
 use std::{
     fmt,
     ops::{Add, Sub},
     str::FromStr,
 };
 
-#[derive(Serialize, PartialEq, Deserialize, Clone, Debug, Copy)]
+#[derive(PartialEq, Clone, Debug, Copy)]
 pub struct BitcoinQuantity(u64);
 
 impl BitcoinQuantity {
@@ -51,5 +55,42 @@ impl FromStr for BitcoinQuantity {
     fn from_str(string: &str) -> Result<BitcoinQuantity, Self::Err> {
         let dec = string.parse()?;
         Ok(Self::from_bitcoin(dec))
+    }
+}
+
+impl<'de> Deserialize<'de> for BitcoinQuantity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = BitcoinQuantity;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("A string representing a satoshi quantity")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<BitcoinQuantity, E>
+            where
+                E: de::Error,
+            {
+                Ok(v.parse()
+                    .map(BitcoinQuantity::from_satoshi)
+                    .map_err(E::custom)?)
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl Serialize for BitcoinQuantity {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.to_string().as_str())
     }
 }
