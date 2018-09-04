@@ -13,7 +13,7 @@ extern crate tc_coblox_bitcoincore;
 extern crate testcontainers;
 
 use bitcoin_htlc::Htlc;
-use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
+use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
     serialize::serialize_hex, Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash,
@@ -65,7 +65,7 @@ fn fund_htlc(
         .unwrap()
         .unwrap();
 
-    client.generate(1).unwrap();
+    client.generate(1).unwrap().unwrap();
 
     let vout = client.find_vout_for_address(&txid, &htlc_address);
 
@@ -87,7 +87,7 @@ fn redeem_htlc_with_secret() {
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432).unwrap();
+    client.generate(432).unwrap().unwrap();
 
     let (txid, vout, input_amount, htlc, _, secret, keypair, _) = fund_htlc(&client);
 
@@ -117,7 +117,7 @@ fn redeem_htlc_with_secret() {
 
     let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
 
-    client.generate(1).unwrap();
+    client.generate(1).unwrap().unwrap();
 
     assert!(
         client
@@ -133,7 +133,7 @@ fn redeem_refund_htlc() {
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432).unwrap();
+    client.generate(432).unwrap().unwrap();
 
     let (txid, vout, input_amount, htlc, nsequence, _, _, keypair) = fund_htlc(&client);
 
@@ -165,13 +165,13 @@ fn redeem_refund_htlc() {
     ///RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by network rules
     assert!(error.message.contains("non-BIP68-final"));
 
-    client.generate(nsequence).unwrap();
+    client.generate(nsequence).unwrap().unwrap();
 
     let _txn = client.get_transaction(&txid).unwrap().unwrap();
 
     let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
 
-    client.generate(1).unwrap();
+    client.generate(1).unwrap().unwrap();
 
     assert!(
         client
