@@ -39,7 +39,7 @@ impl From<Address> for PubkeyHash {
 
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
-        PubkeyHash(Hash160::from_data(&public_key.serialize()))
+        PubkeyHash(Hash160::from_data(&public_key.inner().serialize()))
     }
 }
 
