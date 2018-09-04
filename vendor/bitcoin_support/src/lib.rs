@@ -9,7 +9,7 @@ pub use address::Address;
 pub use bitcoin::{
     blockdata::{
         script::Script,
-        transaction::{OutPoint, Transaction, TxIn, TxOut},
+        transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },
     network::{constants::Network, serialize},
     util::{
