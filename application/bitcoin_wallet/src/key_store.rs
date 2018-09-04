@@ -196,15 +196,24 @@ mod tests {
         let internal_pubkey1 = keystore.get_internal_pubkey(1).unwrap();
         let internal_pubkey2 = keystore.get_internal_pubkey(2).unwrap();
 
-        let pubkey_from_priv0 = PublicKey::from_secret_key(&*SECP, &internal_privkey0.secret_key);
-        let pubkey_from_priv1 = PublicKey::from_secret_key(&*SECP, &internal_privkey1.secret_key);
-        let pubkey_from_priv2 = PublicKey::from_secret_key(&*SECP, &internal_privkey2.secret_key);
+        let keypair_from_priv0 = KeyPair::from(internal_privkey0.secret_key);
+        let keypair_from_priv1 = KeyPair::from(internal_privkey1.secret_key);
+        let keypair_from_priv2 = KeyPair::from(internal_privkey2.secret_key);
         let pub_key_from_ext0 = internal_pubkey0.public_key;
         let pub_key_from_ext1 = internal_pubkey1.public_key;
         let pub_key_from_ext2 = internal_pubkey2.public_key;
-        assert_eq!(pubkey_from_priv0, pub_key_from_ext0);
-        assert_eq!(pubkey_from_priv1, pub_key_from_ext1);
-        assert_eq!(pubkey_from_priv2, pub_key_from_ext2);
+        assert_eq!(
+            keypair_from_priv0.public_key(),
+            &PublicKey::from(pub_key_from_ext0)
+        );
+        assert_eq!(
+            keypair_from_priv1.public_key(),
+            &PublicKey::from(pub_key_from_ext1)
+        );
+        assert_eq!(
+            keypair_from_priv2.public_key(),
+            &PublicKey::from(pub_key_from_ext2)
+        );
     }
 
     #[test]

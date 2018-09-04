@@ -20,10 +20,13 @@ fn main() {
 
     println!("private_key: {}", hex::encode(&secret_key[..]));
     println!("btc_base58_private_key: {}", private_key.to_string());
-    println!("public_key: {}", hex::encode(&public_key.serialize()[..]));
+    println!(
+        "public_key: {}",
+        hex::encode(&public_key.inner().serialize()[..])
+    );
     println!(
         "public_key_uncompressed: {}",
-        hex::encode(&public_key.serialize_uncompressed()[..])
+        hex::encode(&public_key.inner().serialize_uncompressed()[..])
     );
     let eth_address = public_key.to_ethereum_address();
     println!("eth_address: {:?}", eth_address);

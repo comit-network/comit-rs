@@ -1,5 +1,6 @@
+use public_key::PublicKey;
 use rand::Rng;
-use secp256k1::{Error, Message, PublicKey, RecoverableSignature, SecretKey, Signature};
+use secp256k1::{self, Error, Message, RecoverableSignature, SecretKey, Signature};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
@@ -36,7 +37,7 @@ impl KeyPair {
 impl From<SecretKey> for KeyPair {
     fn from(secret_key: SecretKey) -> KeyPair {
         KeyPair {
-            public_key: PublicKey::from_secret_key(&*super::SECP, &secret_key),
+            public_key: secp256k1::PublicKey::from_secret_key(&*super::SECP, &secret_key).into(),
             secret_key,
         }
     }
@@ -61,6 +62,7 @@ impl Into<(SecretKey, PublicKey)> for KeyPair {
 mod test {
     use super::*;
     extern crate hex;
+    use hex::FromHex;
 
     #[test]
     fn correct_keypair_from_secret_key_slice() {
@@ -72,11 +74,9 @@ mod test {
 
         assert_eq!(
             *keypair.public_key(),
-            PublicKey::from_slice(
-                &*super::super::SECP,
-                &hex::decode("0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352")
-                    .unwrap()[..]
-            ).unwrap()
+            PublicKey::from_hex(
+                "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352"
+            ).unwrap(),
         )
     }
 }
