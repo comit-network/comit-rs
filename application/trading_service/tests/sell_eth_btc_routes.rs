@@ -1,6 +1,5 @@
 extern crate bitcoin_htlc;
 extern crate bitcoin_support;
-extern crate common_types;
 extern crate ethereum_htlc;
 extern crate ethereum_support;
 extern crate event_store;
@@ -13,17 +12,14 @@ extern crate serde_json;
 extern crate trading_service;
 extern crate uuid;
 
-use bitcoin_support::{BitcoinQuantity, Network};
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    TradingSymbol,
-};
-use ethereum_support::{Bytes, EthereumQuantity};
+mod common;
+
+use bitcoin_support::Network;
+use common::OfferResponseBody;
 use event_store::InMemoryEventStore;
-use rocket::{http::*, request::FromParam};
-use std::{fmt, str::FromStr, sync::Arc};
+use rocket::http::*;
+use std::sync::Arc;
 use trading_service::{exchange_api_client::FakeApiClient, rocket_factory::create_rocket_instance};
-use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
@@ -42,47 +38,6 @@ impl PartialEq for RequestToFund {
             && self.gas == other.gas
             && self.data.len() > 0
             && other.data.len() > 0
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct TradeId(Uuid);
-
-impl From<Uuid> for TradeId {
-    fn from(uuid: Uuid) -> Self {
-        TradeId(uuid)
-    }
-}
-
-impl fmt::Display for TradeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        self.0.fmt(f)
-    }
-}
-
-impl<'a> FromParam<'a> for TradeId {
-    type Error = uuid::ParseError;
-
-    fn from_param(param: &RawStr) -> Result<Self, <Self as FromParam>::Error> {
-        Uuid::parse_str(param.as_str()).map(|uid| TradeId::from(uid))
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferResponseBody {
-    pub uid: String,
-    pub symbol: String,
-    pub rate: f64,
-    pub buy_amount: String,
-    pub sell_amount: String,
-}
-
-impl PartialEq for OfferResponseBody {
-    fn eq(&self, other: &OfferResponseBody) -> bool {
-        self.symbol == other.symbol
-            && self.rate == other.rate
-            && self.buy_amount == other.buy_amount
-            && self.sell_amount == other.sell_amount
     }
 }
 
