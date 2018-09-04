@@ -3,7 +3,6 @@ extern crate bitcoin;
 extern crate bitcoin_rpc_client;
 extern crate secp256k1_support;
 extern crate serde;
-extern crate serde_derive;
 
 pub use address::Address;
 pub use bitcoin::{
