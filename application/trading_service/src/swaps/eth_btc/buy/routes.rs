@@ -1,6 +1,5 @@
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
-use bitcoin_rpc_client;
-use bitcoin_support::{self, BitcoinQuantity, Network, PubkeyHash};
+use bitcoin_support::{self, BitcoinQuantity, Blocks, Network, PubkeyHash};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     TradingSymbol,
@@ -55,7 +54,7 @@ pub struct RequestToFund {
     eth_amount: EthereumQuantity,
 }
 
-const BTC_BLOCKS_IN_24H: u32 = 24 * 60 / 10;
+const BTC_BLOCKS_IN_24H: Blocks = Blocks::new(24 * 60 / 10);
 
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-orders",
@@ -102,7 +101,7 @@ fn handle_buy_orders(
     //TODO: Remove before prod
     debug!("Secret: {:x}", secret);
 
-    let lock_duration = bitcoin_rpc_client::BlockHeight::new(BTC_BLOCKS_IN_24H);
+    let lock_duration = BTC_BLOCKS_IN_24H;
 
     let order_created_event: OrderCreated<Ethereum, Bitcoin> = OrderCreated {
         uid: trade_id,
