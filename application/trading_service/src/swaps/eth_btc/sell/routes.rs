@@ -8,7 +8,7 @@ use common_types::{
 use ethereum_htlc;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
-use exchange_api_client::{ApiClient, OfferResponseBody, OrderRequestBody};
+use exchange_api_client::{ApiClient, OrderRequestBody};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
@@ -16,8 +16,9 @@ use std::sync::{Arc, Mutex};
 use swaps::{
     errors::Error,
     events::{OfferCreated, OrderCreated, OrderTaken},
-    TradeId,
+    OfferResponseBody, TradeId,
 };
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct SellOfferRequestBody {
@@ -44,30 +45,32 @@ const ETH_HTLC_TIMEOUT_IN_SECONDS: Seconds = Seconds::new(12 * 60 * 60);
 #[post("/trades/ETH-BTC/sell-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_sell_offers(
     offer_request_body: Json<SellOfferRequestBody>,
-    client: State<Arc<ApiClient>>,
     event_store: State<InMemoryEventStore<TradeId>>,
 ) -> Result<Json<OfferResponseBody<Bitcoin, Ethereum>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_BTC;
 
-    let offer_response_body = handle_sell_offer(
-        client.inner(),
-        event_store.inner(),
-        offer_request_body.into_inner(),
-        symbol,
-    )?;
+    let offer_response_body =
+        handle_sell_offer(event_store.inner(), offer_request_body.into_inner(), symbol)?;
 
     Ok(Json(offer_response_body))
 }
 
 fn handle_sell_offer(
-    client: &Arc<ApiClient>,
     event_store: &InMemoryEventStore<TradeId>,
     offer_request_body: SellOfferRequestBody,
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, Error> {
-    let offer = client
-        .create_sell_offer(symbol, offer_request_body.amount)
-        .map_err(Error::ExchangeService)?;
+    let rate = 0.1; //TODO export this somewhere
+    let sell_amount = offer_request_body.amount;
+    let buy_amount = sell_amount * rate;
+
+    let offer: OfferResponseBody<Bitcoin, Ethereum> = OfferResponseBody {
+        uid: TradeId::from(Uuid::new_v4()),
+        symbol,
+        rate,
+        sell_amount: ethereum_support::EthereumQuantity::from_eth(sell_amount),
+        buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
+    };
     let id = offer.uid.clone();
     let event: OfferCreated<Bitcoin, Ethereum> = OfferCreated::from(offer.clone());
     event_store.add_event(id, event)?;
@@ -137,6 +140,8 @@ fn handle_sell_orders(
                 client_refund_address: client_refund_address,
                 client_success_address: client_success_address,
                 client_contract_time_lock: lock_duration,
+                buy_amount: offer.buy_amount,
+                sell_amount: offer.sell_amount,
             },
         )
         .map_err(Error::ExchangeService)?;

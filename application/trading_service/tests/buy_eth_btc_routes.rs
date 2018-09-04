@@ -1,6 +1,5 @@
 extern crate bitcoin_htlc;
 extern crate bitcoin_support;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate event_store;
 extern crate rocket;
@@ -12,33 +11,14 @@ extern crate serde_json;
 extern crate trading_service;
 extern crate uuid;
 
+mod common;
+
 use bitcoin_support::{BitcoinQuantity, Network};
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    TradingSymbol,
-};
-use ethereum_support::EthereumQuantity;
+use common::{OfferResponseBody, RedeemDetails, RequestToFund};
 use event_store::InMemoryEventStore;
 use rocket::http::*;
 use std::sync::Arc;
-use trading_service::{
-    exchange_api_client::{FakeApiClient, OfferResponseBody},
-    rocket_factory::create_rocket_instance,
-};
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RequestToFund {
-    address_to_fund: bitcoin_support::Address,
-    btc_amount: BitcoinQuantity,
-    eth_amount: EthereumQuantity,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct RedeemDetails {
-    address: ethereum_support::Address,
-    data: bitcoin_htlc::secret::Secret,
-    gas: u64,
-}
+use trading_service::{exchange_api_client::FakeApiClient, rocket_factory::create_rocket_instance};
 
 // Secret: 12345678901234567890123456789012
 // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
@@ -71,13 +51,11 @@ fn happy_path_buy_x_eth_for_btc() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response = serde_json::from_str::<OfferResponseBody<Ethereum, Bitcoin>>(
-        &response.body_string().unwrap(),
-    ).unwrap();
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
 
     assert_eq!(
-        offer_response.symbol,
-        TradingSymbol::ETH_BTC,
+        offer_response.symbol, "ETH-BTC",
         "offer_response has correct symbol"
     );
     let uid = offer_response.uid;
@@ -95,12 +73,7 @@ fn happy_path_buy_x_eth_for_btc() {
     let funding_request =
         serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
 
-    assert!(
-        funding_request
-            .address_to_fund
-            .to_string()
-            .starts_with("tb1")
-    );
+    assert!(funding_request.address_to_fund.starts_with("tb1"));
 
     let request = client
         .post(format!(

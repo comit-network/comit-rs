@@ -10,7 +10,7 @@ use rocket_contrib::Json;
 use std::sync::Arc;
 use swaps::{
     common::{Error, TradeId},
-    events::{ContractDeployed, ContractRedeemed, OfferCreated, OrderTaken, TradeFunded},
+    events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
 };
 
 impl From<ledger_htlc_service::Error> for Error {
@@ -57,13 +57,11 @@ fn handle_post_orders_funding(
     let trade_funded = TradeFunded::<Bitcoin, Ethereum>::new(trade_id, htlc_identifier);
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
-    let offer_created = event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
-
     let tx_id = bitcoin_service.deploy_htlc(
         order_taken.exchange_refund_address,
         order_taken.client_success_address,
         order_taken.exchange_contract_time_lock,
-        offer_created.buy_amount,
+        order_taken.buy_amount,
         order_taken.contract_secret_lock,
     )?;
 
@@ -108,7 +106,6 @@ fn handle_post_revealed_secret(
 ) -> Result<(), Error> {
     let trade_funded = event_store.get_event::<TradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
     let order_taken = event_store.get_event::<OrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
-    let offer_created = event_store.get_event::<OfferCreated<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,
@@ -117,7 +114,7 @@ fn handle_post_revealed_secret(
         order_taken.exchange_success_keypair,
         order_taken.client_refund_address,
         trade_funded.htlc_identifier,
-        offer_created.sell_amount,
+        order_taken.sell_amount,
         order_taken.client_contract_time_lock,
     )?;
     let deployed: ContractRedeemed<Bitcoin, Ethereum> =

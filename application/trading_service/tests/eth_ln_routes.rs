@@ -1,25 +1,22 @@
 extern crate bitcoin_support;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate event_store;
 extern crate rocket;
 extern crate rocket_contrib;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate trading_service;
-extern crate uuid;
+
+mod common;
 
 use bitcoin_support::Network;
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    TradingSymbol,
-};
+use common::OfferResponseBody;
 use event_store::InMemoryEventStore;
 use rocket::http::*;
 use std::sync::Arc;
-use trading_service::{
-    exchange_api_client::{FakeApiClient, OfferResponseBody},
-    rocket_factory::create_rocket_instance,
-};
+use trading_service::{exchange_api_client::FakeApiClient, rocket_factory::create_rocket_instance};
 
 #[test]
 fn post_buy_offers_should_call_create_offer_and_return_offer() {
@@ -40,24 +37,18 @@ fn post_buy_offers_should_call_create_offer_and_return_offer() {
     let mut response = request.dispatch();
 
     assert_eq!(response.status(), Status::Ok);
-    let offer_response = serde_json::from_str::<OfferResponseBody<Bitcoin, Ethereum>>(
-        &response.body_string().unwrap(),
-    ).unwrap();
+    let offer_response =
+        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
 
     assert_eq!(
-        offer_response.symbol,
-        TradingSymbol::ETH_LN,
-        "offer_response has correct symbol"
+        offer_response,
+        OfferResponseBody {
+            uid: String::from(""),
+            symbol: String::from("ETH-LN"),
+            rate: 0.1,
+            buy_amount: String::from("420000000"),
+            sell_amount: String::from("42000000000000000000"),
+        },
+        "offer_response has correct fields"
     );
-    assert_eq!(
-        offer_response.sell_amount,
-        ethereum_support::EthereumQuantity::from_eth(42.0),
-        "offer_response has correct sell amount"
-    );
-    assert_eq!(
-        offer_response.buy_amount,
-        bitcoin_support::BitcoinQuantity::from_bitcoin(4.2),
-        "offer_response has correct buy amount"
-    );
-    assert_eq!(offer_response.rate, 0.1, "offer_response has correct rate");
 }

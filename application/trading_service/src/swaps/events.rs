@@ -1,9 +1,8 @@
 use common_types::{ledger::Ledger, TradingSymbol};
 use event_store::Event;
-use exchange_api_client::OfferResponseBody;
 use secret::Secret;
 use std::marker::PhantomData;
-use swaps::TradeId;
+use swaps::{OfferResponseBody, TradeId};
 
 // State after exchange has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]

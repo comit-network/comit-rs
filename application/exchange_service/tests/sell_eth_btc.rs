@@ -38,7 +38,7 @@ use exchange_service::{
     rocket_factory::create_rocket_instance,
     swaps::{
         common::TradeId,
-        events::{OfferCreated, OrderTaken, TradeFunded},
+        events::{OrderTaken, TradeFunded},
     },
     treasury_api_client::FakeApiClient,
 };
@@ -103,18 +103,6 @@ fn create_rocket_client(
     rocket::local::Client::new(rocket).unwrap()
 }
 
-fn mock_offer_created(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
-    let offer_created: OfferCreated<Bitcoin, Ethereum> = OfferCreated::new(
-        0.1,
-        bitcoin_support::BitcoinQuantity::from_bitcoin(1.0),
-        ethereum_support::EthereumQuantity::from_eth(10.0),
-        TradingSymbol::ETH_BTC,
-    );
-    event_store
-        .add_event(trade_id.clone(), offer_created)
-        .unwrap();
-}
-
 fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId) {
     let bytes = b"hello world, you are beautiful!!";
     let secret = Secret::from(*bytes);
@@ -142,6 +130,8 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
             "77b0f5692ae5662cdd3f3187774367ad47c53b61", // privkey: 0829b16159b596db867bd9f696e7c0b7c32b0fee7f6379ce15f14f4b355ee0ce
         ).unwrap(),
         exchange_success_keypair: keypair,
+        buy_amount: bitcoin_support::BitcoinQuantity::from_satoshi(10000000),
+        sell_amount: ethereum_support::EthereumQuantity::from_eth(0.000000000001),
     };
     event_store.add_event(trade_id, order_taken).unwrap();
 }
@@ -175,7 +165,6 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
 
     let trade_id = TradeId::new();
 
-    mock_offer_created(&event_store, trade_id);
     mock_order_taken(&event_store, trade_id);
     let client = create_rocket_client(event_store, bitcoin_service);
 
@@ -216,7 +205,6 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
 
     let trade_id = TradeId::new();
 
-    mock_offer_created(&event_store, trade_id);
     mock_order_taken(&event_store, trade_id);
     mock_trade_funded(&event_store, trade_id);
 

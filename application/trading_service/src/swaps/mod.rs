@@ -1,3 +1,4 @@
+use common_types::{ledger::Ledger, TradingSymbol};
 use logging;
 use rocket::{http::RawStr, request::FromParam};
 use std::fmt;
@@ -32,4 +33,13 @@ impl<'a> FromParam<'a> for TradeId {
             TradeId::from(uid)
         })
     }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
+    pub uid: TradeId,
+    pub symbol: TradingSymbol,
+    pub rate: f64,
+    pub buy_amount: Buy::Quantity,
+    pub sell_amount: Sell::Quantity,
 }
