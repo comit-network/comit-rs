@@ -1053,6 +1053,24 @@ version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "ledger_query_service"
+version = "0.1.0"
+dependencies = [
+ "bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pretty_env_logger 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.43"
 source = "registry+https://github.com/rust-lang/crates.io-index"
