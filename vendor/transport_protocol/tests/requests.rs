@@ -71,7 +71,9 @@ fn handle_invalid_json_line() {
         .join(
             alice
                 .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING""#)
-                .map_err(|_e| unreachable!()),
+                .map_err(|_e| {
+                    unreachable!("Cannot happen because the shutdown handle sender shouldn't be able to go out of scope")
+                }),
         )
         .and_then(|_| Ok(()))
         .or_else(|bob_error| Err(bob_error))
