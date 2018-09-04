@@ -1,6 +1,5 @@
-//TODO: create and use bitcoin_support blockheight
-use bitcoin_rpc_client::{BlockHeight, TransactionId};
-use bitcoin_support::{Address, BitcoinQuantity};
+use bitcoin_rpc_client::TransactionId;
+use bitcoin_support::{Address, BitcoinQuantity, Blocks};
 use ledger::Ledger;
 
 #[derive(Clone, Debug)]
@@ -15,7 +14,7 @@ pub struct HtlcId {
 impl Ledger for Bitcoin {
     type Quantity = BitcoinQuantity;
     type Address = Address;
-    type LockDuration = BlockHeight;
+    type LockDuration = Blocks;
     type HtlcId = HtlcId;
     type TxId = TransactionId;
 

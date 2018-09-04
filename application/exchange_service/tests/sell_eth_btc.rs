@@ -19,8 +19,8 @@ extern crate serde_json;
 
 mod mocks;
 
-use bitcoin_rpc_client::{BlockHeight, TransactionId};
-use bitcoin_support::Network;
+use bitcoin_rpc_client::TransactionId;
+use bitcoin_support::{Blocks, Network};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     seconds::Seconds,
@@ -128,7 +128,7 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
         uid: trade_id,
         contract_secret_lock: secret.hash(),
         client_contract_time_lock: Seconds::new(60 * 60 * 12),
-        exchange_contract_time_lock: BlockHeight::new(24u32),
+        exchange_contract_time_lock: Blocks::from(24u32),
         client_refund_address: ethereum_support::Address::from_str(
             "2d72ccd2f36173d945bc7247b29b60e5d5d0ca5e", // privkey: 5fce23dbb7656edea89728e2f5a95ea288b9c0d570a2fb839f0c11be6b55c0ab
         ).unwrap(),
