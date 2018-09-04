@@ -14,14 +14,14 @@ extern crate transport_protocol;
 #[macro_use]
 pub mod common;
 
-use common::{setup::setup, *};
+use common::{setup::start_server_with, *};
 use futures::*;
 use std::{collections::HashMap, time::Duration};
 use transport_protocol::{json::*, *};
 
 #[test]
 fn do_something_on_response() {
-    let (mut _runtime, alice, mut _bob) = setup(say_hello::config());
+    let (mut _runtime, alice, mut _bob) = start_server_with(say_hello::config());
 
     let future = _bob._alice.send_request(Request::new(
         "PING".into(),

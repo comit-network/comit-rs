@@ -42,7 +42,7 @@ impl<
     pub fn start<FH: FrameHandler<Frame, Req, Res> + Send + 'static>(
         self,
     ) -> (
-        Box<Future<Item = (), Error = ()> + Send>,
+        Box<Future<Item = (), Error = Error<CodecErr>> + Send>,
         Client<Frame, Req, Res>,
     ) {
         let (sink, stream) = self.codec.framed(self.socket).split();
@@ -86,7 +86,6 @@ impl<
             .select(request_stream.map_err(|_| Error::Request))
             .inspect(|frame| trace!("---> Outgoing {:?}", frame))
             .forward(sink.sink_map_err(Error::Codec))
-            .map_err(|e| error!("Error in connection: {:?}", e))
             .map(|_| ());
 
         (Box::new(connection_loop), client)

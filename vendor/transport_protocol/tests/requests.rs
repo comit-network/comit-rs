@@ -15,13 +15,17 @@ extern crate log;
 
 #[macro_use]
 pub mod common;
-use common::{buy, counter, ping, place_order, say_hello, setup::setup};
+use common::{
+    setup::{create_server_with, start_server_with},
+    *,
+};
 use futures::future::Future;
 use spectral::prelude::*;
+use transport_protocol::{connection, json};
 
 #[test]
 fn ping_message() {
-    let (_runtime, alice, _bob) = setup(ping::config());
+    let (_runtime, alice, _bob) = start_server_with(ping::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
@@ -36,7 +40,7 @@ fn ping_message() {
 
 #[test]
 fn two_ping_messages() {
-    let (_runtime, alice, _bob) = setup(ping::config());
+    let (_runtime, alice, _bob) = start_server_with(ping::config());
 
     let response1 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
@@ -60,9 +64,53 @@ fn two_ping_messages() {
 }
 
 #[test]
-fn unknown_message() {
-    let (_runtime, alice, _bob) = setup(ping::config());
+fn handle_invalid_json_line() {
+    let (alice, bob_server) = create_server_with(ping::config());
 
+    let bob_shutdown = bob_server
+        .join(
+            alice
+                .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING""#)
+                .map_err(|_e| unreachable!()),
+        )
+        .and_then(|_| Ok(()))
+        .or_else(|bob_error| Err(bob_error))
+        .wait();
+
+    let error = assert_that(&bob_shutdown).is_err();
+    match *error.subject {
+        connection::Error::Codec(json::Error::Json(_)) => {}
+        _ => panic!("Error should have been a codec error"),
+    }
+}
+
+#[test]
+fn handle_unknown_frame_type() {
+    let (alice, bob_server) = create_server_with(ping::config());
+
+    let bob_shutdown = bob_server
+        .join(
+            alice
+                .send_with_newline(r#"{"type":"I_DONT_EXIST","id":10,"payload":{"type":"PING"}}"#)
+                .map_err(|_e| unreachable!()),
+        )
+        .and_then(|_| Ok(()))
+        .or_else(|bob_error| Err(bob_error))
+        .wait();
+
+    let error = assert_that(&bob_shutdown).is_err();
+
+    match *error.subject {
+        connection::Error::FrameHandler(transport_protocol::Error::UnknownFrameType(
+            ref frame_type,
+        )) => assert_eq!(frame_type, "I_DONT_EXIST"),
+        _ => panic!("expected an UnknownFrameType error"),
+    }
+}
+
+#[test]
+fn unknown_message() {
+    let (_runtime, alice, _bob) = start_server_with(ping::config());
     let actual_response_from_bob = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"UNKNOWN"}}"#)
         .and_then(|_| alice.receive())
@@ -76,7 +124,7 @@ fn unknown_message() {
 
 #[test]
 fn reject_out_of_order_request() {
-    let (mut _runtime, alice, _bob) = setup(ping::config());
+    let (mut _runtime, alice, _bob) = start_server_with(ping::config());
 
     let response1 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":10,"payload":{"type":"PING"}}"#)
@@ -107,7 +155,7 @@ fn reject_out_of_order_request() {
 
 #[test]
 fn request_and_response_with_string_headers() {
-    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+    let (mut _runtime, alice, _bob) = start_server_with(say_hello::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!("say_hello_to_world_request.json"))
@@ -122,7 +170,7 @@ fn request_and_response_with_string_headers() {
 
 #[test]
 fn request_and_response_with_compact_string_headers() {
-    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+    let (mut _runtime, alice, _bob) = start_server_with(say_hello::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
@@ -139,7 +187,7 @@ fn request_and_response_with_compact_string_headers() {
 
 #[test]
 fn unknown_non_mandatory_header_gets_ignored() {
-    let (mut _runtime, alice, _bob) = setup(ping::config());
+    let (mut _runtime, alice, _bob) = start_server_with(ping::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!("ping_with_non_mandatory_header.json"))
@@ -154,7 +202,7 @@ fn unknown_non_mandatory_header_gets_ignored() {
 
 #[test]
 fn rejects_malformed_header_without_value() {
-    let (mut _runtime, alice, _bob) = setup(ping::config());
+    let (mut _runtime, alice, _bob) = start_server_with(ping::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!("ping_with_malformed_header.json"))
@@ -169,7 +217,7 @@ fn rejects_malformed_header_without_value() {
 
 #[test]
 fn can_parse_json_integer_value_in_header() {
-    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+    let (mut _runtime, alice, _bob) = start_server_with(say_hello::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
@@ -188,7 +236,7 @@ fn can_parse_json_integer_value_in_header() {
 
 #[test]
 fn can_parse_header_parameters() {
-    let (mut _runtime, alice, _bob) = setup(buy::config());
+    let (mut _runtime, alice, _bob) = start_server_with(buy::config());
 
     let buy_phone_response = alice
         .send_with_newline(include_json_line!("buy_phone_request.json"))
@@ -211,7 +259,7 @@ fn can_parse_header_parameters() {
 
 #[test]
 fn unknown_mandatory_header_triggers_error_response() {
-    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+    let (mut _runtime, alice, _bob) = start_server_with(say_hello::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
@@ -228,7 +276,7 @@ fn unknown_mandatory_header_triggers_error_response() {
 
 #[test]
 fn handle_malformed_request_type() {
-    let (mut _runtime, alice, _bob) = setup(ping::config());
+    let (mut _runtime, alice, _bob) = start_server_with(ping::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!("malformed_request_type.json"))
@@ -243,7 +291,7 @@ fn handle_malformed_request_type() {
 
 #[test]
 fn handle_malformed_headers() {
-    let (mut _runtime, alice, _bob) = setup(say_hello::config());
+    let (mut _runtime, alice, _bob) = start_server_with(say_hello::config());
 
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
@@ -260,7 +308,7 @@ fn handle_malformed_headers() {
 
 #[test]
 fn handle_request_with_payload() {
-    let (mut _runtime, alice, _bob) = setup(place_order::config());
+    let (mut _runtime, alice, _bob) = start_server_with(place_order::config());
 
     let android_order_response = alice
         .send_with_newline(include_json_line!("place_android_phone_order_request.json"))
@@ -287,7 +335,7 @@ fn handle_request_with_payload() {
 
 #[test]
 fn handle_request_with_mutable_state() {
-    let (mut _runtime, alice, _bob) = setup(counter::config());
+    let (mut _runtime, alice, _bob) = start_server_with(counter::config());
 
     let count_1 = alice
         .send_with_newline(r#"{"type":"REQUEST","id":0,"payload":{"type":"COUNT"}}"#)
