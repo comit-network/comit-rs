@@ -21,9 +21,9 @@ impl From<secp256k1::PublicKey> for PublicKey {
     }
 }
 
-impl Into<secp256k1::PublicKey> for PublicKey {
-    fn into(self) -> secp256k1::PublicKey {
-        self.0
+impl From<PublicKey> for secp256k1::PublicKey {
+    fn from(public_key: PublicKey) -> secp256k1::PublicKey {
+        public_key.0
     }
 }
 
