@@ -1,6 +1,6 @@
 use bitcoin_support::{
-    Address, BitcoinQuantity, OutPoint, Script, Sha256dHash, SighashComponents, Transaction, TxIn,
-    TxOut, Weight,
+    Address, BitcoinQuantity, OutPoint, Script, Sha256dHash, SigHashType, SighashComponents,
+    Transaction, TxIn, TxOut, Weight,
 };
 use secp256k1_support::{DerSerializableSignature, Message};
 use witness::{UnlockParameters, Witness};
@@ -79,8 +79,7 @@ impl PrimedTransaction {
                     let signature = keypair.sign_ecdsa(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_signature_der();
-                    // Without this 1 at the end you get "Non-canonical DER Signature"
-                    serialized_signature.push(1u8);
+                    serialized_signature.push(SigHashType::All as u8);
                     transaction.input[i].witness[j] = serialized_signature;
                 }
             }
