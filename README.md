@@ -42,9 +42,9 @@ Save these files in the same folder (let's say ~/swap_env) and set the path in `
 `export SWAP_ENV=$HOME/swap_env`
 
 The following variables are also needed to run automated tests:
-* `client_refund_address` (BTC)
-* `client_success_address` (ETH)
-* `client_sender_address` (ETH, when redeem the ETH HTLC)
+* `alice_refund_address` (BTC)
+* `alice_success_address` (ETH)
+* `alice_sender_address` (ETH, when redeem the ETH HTLC)
 
 ## Testing
 

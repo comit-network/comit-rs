@@ -42,9 +42,9 @@ fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
             .body(
                 r#"{
                     "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
-                    "client_refund_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-                    "client_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
-                    "client_contract_time_lock": 24,
+                    "alice_refund_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
+                    "alice_success_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
+                    "alice_contract_time_lock": 24,
                     "buy_amount" : "1000000",
                     "sell_amount" : "10000000"
                   }"#,

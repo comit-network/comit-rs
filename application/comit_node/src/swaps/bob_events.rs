@@ -9,11 +9,11 @@ pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
 
     pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: Sell::LockDuration,
+    pub alice_contract_time_lock: Sell::LockDuration,
     pub bob_contract_time_lock: Buy::LockDuration,
 
-    pub client_refund_address: Sell::Address,
-    pub client_success_address: Buy::Address,
+    pub alice_refund_address: Sell::Address,
+    pub alice_success_address: Buy::Address,
 
     pub bob_refund_address: Buy::Address,
     pub bob_success_address: Sell::Address,

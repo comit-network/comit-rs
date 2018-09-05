@@ -28,7 +28,7 @@ pub trait LedgerHtlcService<B: Ledger>: Send + Sync {
         trade_id: TradeId,
         bob_success_address: B::Address,
         bob_success_keypair: KeyPair,
-        client_refund_address: B::Address,
+        alice_refund_address: B::Address,
         htlc_identifier: B::HtlcId,
         sell_amount: B::Quantity,
         lock_time: B::LockDuration,

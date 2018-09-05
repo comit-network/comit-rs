@@ -59,7 +59,7 @@ fn handle_post_orders_funding(
 
     let tx_id = bitcoin_service.deploy_htlc(
         order_taken.bob_refund_address,
-        order_taken.client_success_address,
+        order_taken.alice_success_address,
         order_taken.bob_contract_time_lock,
         order_taken.buy_amount,
         order_taken.contract_secret_lock,
@@ -112,10 +112,10 @@ fn handle_post_revealed_secret(
         trade_id,
         order_taken.bob_success_address,
         order_taken.bob_success_keypair,
-        order_taken.client_refund_address,
+        order_taken.alice_refund_address,
         trade_funded.htlc_identifier,
         order_taken.sell_amount,
-        order_taken.client_contract_time_lock,
+        order_taken.alice_contract_time_lock,
     )?;
     let deployed: ContractRedeemed<Bitcoin, Ethereum> =
         ContractRedeemed::new(trade_id, tx_id.to_string());

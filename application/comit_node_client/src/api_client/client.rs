@@ -27,11 +27,11 @@ impl fmt::Display for TradeId {
 }
 
 #[derive(Clone)]
-pub struct TradingApiUrl(pub String); //TODO rename this to ComitNodeApiUrl
+pub struct ComitNodeApiUrl(pub String); //TODO rename this to ComitNodeApiUrl
 
 #[allow(dead_code)]
 pub struct DefaultApiClient {
-    pub url: TradingApiUrl,
+    pub url: ComitNodeApiUrl,
     pub client: reqwest::Client,
 }
 
@@ -58,29 +58,26 @@ pub struct OfferResponseBody {
 
 #[derive(Deserialize, Serialize)]
 pub struct BuyOrderRequestBody {
-    client_success_address: ethereum_support::Address,
-    client_refund_address: bitcoin_rpc_client::Address,
+    alice_success_address: ethereum_support::Address,
+    alice_refund_address: bitcoin_rpc_client::Address,
 }
 
 impl BuyOrderRequestBody {
-    pub fn new(
-        client_success_address: String,
-        client_refund_address: String,
-    ) -> BuyOrderRequestBody {
-        let client_success_address = client_success_address.clone();
+    pub fn new(alice_success_address: String, alice_refund_address: String) -> BuyOrderRequestBody {
+        let alice_success_address = alice_success_address.clone();
 
         let re = Regex::new("^0x").unwrap();
-        let client_success_address = re.replace(&client_success_address.as_str(), "");
+        let alice_success_address = re.replace(&alice_success_address.as_str(), "");
 
-        let client_success_address = ethereum_support::Address::from_str(&client_success_address)
+        let alice_success_address = ethereum_support::Address::from_str(&alice_success_address)
             .expect("Could not convert the success address");
-        let client_refund_address = bitcoin_rpc_client::Address::from_str(
-            client_refund_address.as_str(),
+        let alice_refund_address = bitcoin_rpc_client::Address::from_str(
+            alice_refund_address.as_str(),
         ).expect("Could not convert the Bitcoin refund address");
 
         BuyOrderRequestBody {
-            client_success_address,
-            client_refund_address,
+            alice_success_address,
+            alice_refund_address,
         }
     }
 }
@@ -184,7 +181,7 @@ mod tests {
         let eth_address = ethereum_support::Address::from_str(
             "00a329c0648769a73afac7f9381e08fb43dbea72",
         ).unwrap();
-        assert_eq!(order_request_body.client_success_address, eth_address)
+        assert_eq!(order_request_body.alice_success_address, eth_address)
     }
 
     #[test]
@@ -196,7 +193,7 @@ mod tests {
         let eth_address = ethereum_support::Address::from_str(
             "00a329c0648769a73afac7f9381e08fb43dbea72",
         ).unwrap();
-        assert_eq!(order_request_body.client_success_address, eth_address)
+        assert_eq!(order_request_body.alice_success_address, eth_address)
     }
 
 }

@@ -78,7 +78,7 @@ function new_offer() {
 
 function new_order() {
 
-    cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${client_refund_address} --success-address=${client_success_address}"
+    cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${alice_refund_address} --success-address=${alice_success_address}"
     print_green "$cmd"
     output=$(export COMIT_NODE_URL=$ALICE_COMIT_NODE_URL; $cmd)
     echo "$output"
@@ -170,7 +170,7 @@ function get_eth_balance() {
       \"jsonrpc\":\"2.0\",\
       \"method\":\"eth_getBalance\",\
       \"params\":[\
-        \"${client_success_address}\",\
+        \"${alice_success_address}\",\
         \"latest\"\
       ],\
       \"id\":1\
@@ -186,7 +186,7 @@ function redeem_eth() {
       \"method\":\"eth_sendTransaction\",\
       \"params\":[\
         {\
-          \"from\": \"${client_sender_address}\",\
+          \"from\": \"${alice_sender_address}\",\
           \"to\": \"${ETH_HTLC_ADDRESS}\",\
           \"gas\": \"0x100000\",\
           \"gasPrice\": \"0x01\",\

@@ -22,7 +22,6 @@ use swaps::{
     bob_events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
     common::{Error, TradeId},
 };
-//TODO rename Client to Alice
 
 impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
@@ -105,8 +104,8 @@ fn handle_post_buy_orders(
     // - Client success address (ETH)
     // = generates bob refund address
     // -> returns ETH HTLC data (bob refund address + ETH timeout)
-    let client_refund_address: bitcoin_support::Address =
-        order_request_body.client_refund_address.into();
+    let alice_refund_address: bitcoin_support::Address =
+        order_request_body.alice_refund_address.into();
     //TODO: clean up, should not need to do address>pub_key>address
     let bob_success_address = bitcoin_support::Address::from(
         bob_success_keypair
@@ -120,10 +119,10 @@ fn handle_post_buy_orders(
     let order_taken = OrderTaken {
         uid: trade_id,
         contract_secret_lock: order_request_body.contract_secret_lock,
-        client_contract_time_lock: order_request_body.client_contract_time_lock,
+        alice_contract_time_lock: order_request_body.alice_contract_time_lock,
         bob_contract_time_lock: twelve_hours,
-        client_refund_address,
-        client_success_address: order_request_body.client_success_address,
+        alice_refund_address,
+        alice_success_address: order_request_body.alice_success_address,
         bob_refund_address: *bob_refund_address,
         bob_success_address,
         bob_success_keypair: bob_success_keypair.clone(),
@@ -169,7 +168,7 @@ fn handle_post_orders_funding(
 
     let tx_id = ethereum_service.deploy_htlc(
         order_taken.bob_refund_address,
-        order_taken.client_success_address,
+        order_taken.alice_success_address,
         order_taken.bob_contract_time_lock,
         order_taken.buy_amount,
         order_taken.contract_secret_lock.clone().into(),
@@ -227,10 +226,10 @@ fn handle_post_revealed_secret(
         trade_id,
         order_taken_event.bob_success_address,
         order_taken_event.bob_success_keypair,
-        order_taken_event.client_refund_address,
+        order_taken_event.alice_refund_address,
         trade_funded_event.htlc_identifier,
         order_taken_event.sell_amount,
-        order_taken_event.client_contract_time_lock,
+        order_taken_event.alice_contract_time_lock,
     )?;
 
     let contract_redeemed: ContractRedeemed<Ethereum, Bitcoin> =

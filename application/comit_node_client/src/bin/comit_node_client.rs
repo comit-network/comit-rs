@@ -8,7 +8,7 @@ extern crate comit_node_client;
 extern crate uuid;
 
 use comit_node_client::{
-    api_client::TradingApiUrl,
+    api_client::ComitNodeApiUrl,
     offer::{self, OrderType, Symbol},
     order,
     redeem::{self, RedeemOutput},
@@ -18,7 +18,7 @@ use structopt::StructOpt;
 use uuid::Uuid;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "Trading Client", about = "CLI for the atomic swap trading service.")]
+#[structopt(name = "Comit Node Client", about = "CLI for the COMIT Node.")]
 enum Opt {
     /// Request an offer
     #[structopt(name = "offer")]
@@ -91,7 +91,7 @@ impl<T, E> UnwrapOrExit<T, E> for Result<T, E> {
 
 fn main() {
     let trading_api_url =
-        TradingApiUrl(var("COMIT_NODE_URL").expect("env variable COMIT_NODE_URL must be set"));
+        ComitNodeApiUrl(var("COMIT_NODE_URL").expect("env variable COMIT_NODE_URL must be set"));
 
     let output = match Opt::from_args() {
         Opt::Offer {

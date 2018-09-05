@@ -55,7 +55,7 @@ function setup() {
     # TODO: This is a manual step until we have the ETH watcher
     export ETH_HTLC_ADDRESS="0x0000000000000000000000000000000000000000"
 
-    cli="$PROJECT_ROOT/target/debug/trading_client"
+    cli="$PROJECT_ROOT/target/debug/comit_node_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
@@ -109,7 +109,7 @@ function new_offer() {
 
 function new_order() {
 
-    cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${client_refund_address} --success-address=${client_success_address}"
+    cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${alice_refund_address} --success-address=${alice_success_address}"
     print_green "$cmd"
     output=$($cmd)
     echo "$output"
@@ -200,7 +200,7 @@ function get_eth_balance() {
       \"jsonrpc\":\"2.0\",\
       \"method\":\"eth_getBalance\",\
       \"params\":[\
-        \"${client_success_address}\",\
+        \"${alice_success_address}\",\
         \"latest\"\
       ],\
       \"id\":1\
@@ -216,7 +216,7 @@ function redeem_eth() {
       \"method\":\"eth_sendTransaction\",\
       \"params\":[\
         {\
-          \"from\": \"${client_sender_address}\",\
+          \"from\": \"${alice_sender_address}\",\
           \"to\": \"${ETH_HTLC_ADDRESS}\",\
           \"gas\": \"0x100000\",\
           \"gasPrice\": \"0x01\",\

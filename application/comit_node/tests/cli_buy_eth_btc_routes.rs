@@ -109,7 +109,7 @@ fn happy_path_buy_x_eth_for_btc() {
         .post(format!("/cli/trades/ETH-BTC/{}/buy-orders", uid))
         .header(ContentType::JSON)
         // some random addresses I pulled off the internet
-        .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
+        .body(r#"{ "alice_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "alice_refund_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
 
     let mut response = request.dispatch();
 

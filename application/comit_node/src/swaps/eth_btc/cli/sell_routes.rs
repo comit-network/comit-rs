@@ -27,8 +27,8 @@ pub struct SellOfferRequestBody {
 
 #[derive(Deserialize)]
 pub struct SellOrderRequestBody {
-    client_success_address: bitcoin_support::Address,
-    client_refund_address: ethereum_support::Address,
+    alice_success_address: bitcoin_support::Address,
+    alice_refund_address: ethereum_support::Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -130,8 +130,8 @@ fn handle_sell_orders(
     sell_order: SellOrderRequestBody,
 ) -> Result<RequestToFund, Error> {
     let offer: OfferCreated<Bitcoin, Ethereum> = event_store.get_event(trade_id)?;
-    let client_success_address = sell_order.client_success_address;
-    let client_refund_address = sell_order.client_refund_address;
+    let alice_success_address = sell_order.alice_success_address;
+    let alice_refund_address = sell_order.alice_refund_address;
 
     let secret = {
         let mut rng = rng.lock().unwrap();
@@ -146,8 +146,8 @@ fn handle_sell_orders(
     let order_created_event: OrderCreated<Bitcoin, Ethereum> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
-        client_success_address: client_success_address.clone(),
-        client_refund_address: client_refund_address.clone(),
+        alice_success_address: alice_success_address.clone(),
+        alice_refund_address: alice_refund_address.clone(),
         long_relative_timelock: lock_duration,
     };
 
@@ -159,9 +159,9 @@ fn handle_sell_orders(
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
-                client_refund_address: client_refund_address,
-                client_success_address: client_success_address,
-                client_contract_time_lock: lock_duration,
+                alice_refund_address: alice_refund_address,
+                alice_success_address: alice_success_address,
+                alice_contract_time_lock: lock_duration,
                 buy_amount: offer.buy_amount,
                 sell_amount: offer.sell_amount,
             },
@@ -170,7 +170,7 @@ fn handle_sell_orders(
 
     let htlc = ethereum_htlc::Htlc::new(
         lock_duration.into(),
-        client_refund_address,
+        alice_refund_address,
         order_response.bob_success_address,
         secret.hash(),
     );

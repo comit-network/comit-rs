@@ -26,9 +26,9 @@ pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
     pub contract_secret_lock: SecretHash,
-    pub client_refund_address: Sell::Address,
-    pub client_success_address: Buy::Address,
-    pub client_contract_time_lock: Sell::LockDuration,
+    pub alice_refund_address: Sell::Address,
+    pub alice_success_address: Buy::Address,
+    pub alice_contract_time_lock: Sell::LockDuration,
     pub buy_amount: Buy::Quantity,
     pub sell_amount: Sell::Quantity,
 }

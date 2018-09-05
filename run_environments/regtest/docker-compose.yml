@@ -8,14 +8,14 @@ services:
     environment:
       - COMIT_NODE_URL=http://comit_node_bob:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,trading_service=debug,bitcoin_htlc=debug
+      - RUST_LOG=info,comit_node=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8000:8000"
     depends_on:
     - comit_node_bob
     - bitcoin
-    command: ./trading_service
+    command: ./comit_node
 
   comit_node_bob:
     build: ../..

@@ -75,20 +75,20 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
         trade_id: TradeId,
         bob_success_address: <Bitcoin as Ledger>::Address,
         bob_success_keypair: KeyPair,
-        client_refund_address: <Bitcoin as Ledger>::Address,
+        alice_refund_address: <Bitcoin as Ledger>::Address,
         htlc_identifier: <Bitcoin as Ledger>::HtlcId,
         sell_amount: <Bitcoin as Ledger>::Quantity,
         lock_time: <Bitcoin as Ledger>::LockDuration,
     ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
         let bob_success_pubkey_hash: PubkeyHash = bob_success_address.into();
 
-        let client_refund_pubkey_hash: PubkeyHash = client_refund_address.into();
+        let alice_refund_pubkey_hash: PubkeyHash = alice_refund_address.into();
         let htlc_tx_id = htlc_identifier.transaction_id;
         let vout = htlc_identifier.vout;
 
         let htlc = bitcoin_htlc::Htlc::new(
             bob_success_pubkey_hash,
-            client_refund_pubkey_hash,
+            alice_refund_pubkey_hash,
             secret.hash().clone(),
             lock_time.clone().into(),
         );

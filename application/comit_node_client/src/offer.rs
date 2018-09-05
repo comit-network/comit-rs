@@ -1,5 +1,5 @@
 use api_client::{
-    create_client, ApiClient, BuyOfferRequestBody, TradingApiUrl, TradingServiceError,
+    create_client, ApiClient, BuyOfferRequestBody, ComitNodeApiUrl, TradingServiceError,
 };
 use serde::{
     de::{self, Visitor},
@@ -101,7 +101,7 @@ pub enum OrderType {
 }
 
 pub fn run(
-    trading_api_url: TradingApiUrl,
+    trading_api_url: ComitNodeApiUrl,
     symbol: Symbol,
     order_type: OrderType,
     amount: f64,
@@ -119,7 +119,7 @@ pub fn run(
                  The offered exchange rate is {} {}\n\
                  Sell {} for {}\n\
                  To accept the offer, run:\n\
-                 trading_client order --symbol=ETH-BTC --uid={} --refund-address=<your BTC address> --success-address=<your ETH address>",
+                 comit_node_client order --symbol=ETH-BTC --uid={} --refund-address=<your BTC address> --success-address=<your ETH address>",
                 offer.uid, offer.rate, symbol, offer.sell_amount, offer.buy_amount, offer.uid,
             ));
         }
@@ -132,7 +132,7 @@ mod tests {
 
     #[test]
     fn request_offer_with_supported_currency() {
-        let trading_api_url = TradingApiUrl("stub".to_string());
+        let trading_api_url = ComitNodeApiUrl("stub".to_string());
         let symbol = Symbol::from_str("ETH-BTC").unwrap();
         let response = run(trading_api_url, symbol, OrderType::Buy, 12.0).unwrap();
 
@@ -142,7 +142,7 @@ mod tests {
              The offered exchange rate is 0.07 ETH-BTC\n\
              Sell 7 BTC for 100 ETH\n\
              To accept the offer, run:\n\
-             trading_client order --symbol=ETH-BTC --uid=a83aac12-0c78-417e-88e4-1a2948c6d538 --refund-address=<your BTC address> --success-address=<your ETH address>"
+             comit_node_client order --symbol=ETH-BTC --uid=a83aac12-0c78-417e-88e4-1a2948c6d538 --refund-address=<your BTC address> --success-address=<your ETH address>"
         );
     }
 }

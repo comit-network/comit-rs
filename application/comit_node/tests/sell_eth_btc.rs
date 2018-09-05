@@ -117,12 +117,12 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
     let order_taken: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
         uid: trade_id,
         contract_secret_lock: secret.hash(),
-        client_contract_time_lock: Seconds::new(60 * 60 * 12),
+        alice_contract_time_lock: Seconds::new(60 * 60 * 12),
         bob_contract_time_lock: Blocks::from(24u32),
-        client_refund_address: ethereum_support::Address::from_str(
+        alice_refund_address: ethereum_support::Address::from_str(
             "2d72ccd2f36173d945bc7247b29b60e5d5d0ca5e", // privkey: 5fce23dbb7656edea89728e2f5a95ea288b9c0d570a2fb839f0c11be6b55c0ab
         ).unwrap(),
-        client_success_address: bitcoin_support::Address::from_str(
+        alice_success_address: bitcoin_support::Address::from_str(
             "bc1q5p6eyvxld0p2c93fwccw436z9f830v0krsf9ux", //privkey: b2253c744dffb1c6df0465716059d13076780ef184afe1199d7f4a3cb627c7b2
         ).unwrap(),
         bob_refund_address: bitcoin_support::Address::from_str(

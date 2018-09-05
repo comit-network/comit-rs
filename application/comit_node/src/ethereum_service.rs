@@ -91,7 +91,7 @@ impl LedgerHtlcService<Ethereum> for EthereumService {
         _trade_id: TradeId,
         _bob_success_address: <Ethereum as Ledger>::Address,
         _bob_success_keypair: KeyPair,
-        _client_refund_address: <Ethereum as Ledger>::Address,
+        _alice_refund_address: <Ethereum as Ledger>::Address,
         contract_address: <Ethereum as Ledger>::HtlcId,
         _sell_amount: <Ethereum as Ledger>::Quantity,
         _lock_time: <Ethereum as Ledger>::LockDuration,

@@ -1,4 +1,4 @@
-use api_client::{create_client, ApiClient, TradingApiUrl, TradingServiceError};
+use api_client::{create_client, ApiClient, ComitNodeApiUrl, TradingServiceError};
 use common_types;
 use ethereum_support;
 use offer::Symbol;
@@ -50,7 +50,7 @@ impl EthereumPaymentURL {
 }
 
 pub fn run(
-    trading_api_url: TradingApiUrl,
+    trading_api_url: ComitNodeApiUrl,
     symbol: Symbol,
     uid: Uuid,
     output_type: RedeemOutput,
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn redeem_with_valid_uid() {
-        let trading_api_url = TradingApiUrl("stub".to_string());
+        let trading_api_url = ComitNodeApiUrl("stub".to_string());
 
         let uid = Uuid::from_str("27b36adf-eda3-4684-a21c-a08a84f36fb1").unwrap();
         let symbol = Symbol::from_str("ETH-BTC").unwrap();

@@ -84,8 +84,8 @@ fn handle_buy_offer(
 
 #[derive(Deserialize)]
 pub struct BuyOrderRequestBody {
-    client_success_address: ethereum_support::Address,
-    client_refund_address: bitcoin_support::Address,
+    alice_success_address: ethereum_support::Address,
+    alice_refund_address: bitcoin_support::Address,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -131,8 +131,8 @@ fn handle_buy_orders(
     buy_order: BuyOrderRequestBody,
 ) -> Result<RequestToFund, Error> {
     let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
-    let client_success_address = buy_order.client_success_address;
-    let client_refund_address = buy_order.client_refund_address;
+    let alice_success_address = buy_order.alice_success_address;
+    let alice_refund_address = buy_order.alice_refund_address;
 
     let secret = {
         let mut rng = rng.lock().unwrap();
@@ -147,8 +147,8 @@ fn handle_buy_orders(
     let order_created_event: OrderCreated<Ethereum, Bitcoin> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
-        client_success_address: client_success_address.clone(),
-        client_refund_address: client_refund_address.clone(),
+        alice_success_address: alice_success_address.clone(),
+        alice_refund_address: alice_refund_address.clone(),
         long_relative_timelock: lock_duration.clone(),
     };
 
@@ -160,9 +160,9 @@ fn handle_buy_orders(
             trade_id,
             &OrderRequestBody {
                 contract_secret_lock: secret.hash(),
-                client_refund_address: client_refund_address.clone(),
-                client_success_address: client_success_address.clone(),
-                client_contract_time_lock: lock_duration.clone(),
+                alice_refund_address: alice_refund_address.clone(),
+                alice_success_address: alice_success_address.clone(),
+                alice_contract_time_lock: lock_duration.clone(),
                 buy_amount: offer.buy_amount,
                 sell_amount: offer.sell_amount,
             },
@@ -170,11 +170,11 @@ fn handle_buy_orders(
         .map_err(Error::ComitNode)?;
 
     let bob_success_pubkey_hash = PubkeyHash::from(order_response.bob_success_address.clone());
-    let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
+    let alice_refund_pubkey_hash = PubkeyHash::from(alice_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
         bob_success_pubkey_hash,
-        client_refund_pubkey_hash,
+        alice_refund_pubkey_hash,
         secret.hash(),
         lock_duration.into(),
     );

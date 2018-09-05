@@ -1,11 +1,11 @@
 use api_client::{
-    create_client, ApiClient, BuyOrderRequestBody, TradingApiUrl, TradingServiceError,
+    create_client, ApiClient, BuyOrderRequestBody, ComitNodeApiUrl, TradingServiceError,
 };
 use offer::Symbol;
 use uuid::Uuid;
 
 pub fn run(
-    trading_api_url: TradingApiUrl,
+    trading_api_url: ComitNodeApiUrl,
     symbol: Symbol,
     uid: Uuid,
     success_address: String,
@@ -23,7 +23,7 @@ pub fn run(
          {}\n\
          Once you transaction has 6 confirmations, the {} contract will be deployed.\n\
          You can then get your redeem details with:\n\
-         trading_client redeem --symbol={} --uid={}",
+         comit_node_client redeem --symbol={} --uid={}",
         uid,
         request_to_fund.btc_amount,
         request_to_fund.eth_amount,
@@ -42,7 +42,7 @@ mod tests {
 
     #[test]
     fn accept_order_happy_path() {
-        let trading_api_url = TradingApiUrl("stub".to_string());
+        let trading_api_url = ComitNodeApiUrl("stub".to_string());
         let symbol = Symbol::from_str("ETH-BTC").unwrap();
         let uid = Uuid::from_str("27b36adf-eda3-4684-a21c-a08a84f36fb1").unwrap();
 
@@ -62,7 +62,7 @@ mod tests {
              bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap\n\
              Once you transaction has 6 confirmations, the ETH contract will be deployed.\n\
              You can then get your redeem details with:\n\
-             trading_client redeem --symbol=ETH-BTC --uid=27b36adf-eda3-4684-a21c-a08a84f36fb1"
+             comit_node_client redeem --symbol=ETH-BTC --uid=27b36adf-eda3-4684-a21c-a08a84f36fb1"
         );
     }
 }

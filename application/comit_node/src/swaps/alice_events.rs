@@ -29,8 +29,8 @@ where
     Sell: Ledger,
 {
     pub uid: TradeId,
-    pub client_success_address: Buy::Address,
-    pub client_refund_address: Sell::Address,
+    pub alice_success_address: Buy::Address,
+    pub alice_refund_address: Sell::Address,
     pub secret: Secret,
     pub long_relative_timelock: Sell::LockDuration,
 }

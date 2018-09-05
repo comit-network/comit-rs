@@ -20,7 +20,7 @@ services:
     environment:
       - EXCHANGE_SERVICE_URL=http://exchange_service:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,trading_service=debug,bitcoin_htlc=debug
+      - RUST_LOG=info,comit_node=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8000:8000"

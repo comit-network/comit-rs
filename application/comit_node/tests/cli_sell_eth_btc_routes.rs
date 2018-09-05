@@ -138,7 +138,7 @@ fn post_sell_order_of_x_eth_for_btc() {
     let request = client
         .post(format!("/cli/trades/ETH-BTC/{}/sell-orders", uid))
         .header(ContentType::JSON)
-        .body(r#"{ "client_success_address": "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv", "client_refund_address" : "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238" }"#);
+        .body(r#"{ "alice_success_address": "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv", "alice_refund_address" : "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238" }"#);
 
     let mut response = request.dispatch();
     assert_eq!(response.status(), Status::Ok);
