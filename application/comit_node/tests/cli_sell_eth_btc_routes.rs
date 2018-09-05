@@ -54,7 +54,7 @@ impl PartialEq for RequestToFund {
 }
 fn create_rocket_client() -> Client {
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
-    let exchange_success_address =
+    let bob_success_address =
         bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
     let bitcoin_service = Arc::new(BitcoinService::new(
         Arc::new(BitcoinRpcClientMock::new(
@@ -64,7 +64,7 @@ fn create_rocket_client() -> Client {
         )),
         bitcoin_support::Network::Regtest,
         bitcoin_fee_service.clone(),
-        exchange_success_address,
+        bob_success_address,
     ));
 
     let api_client = FakeComitNodeApiClient::new();

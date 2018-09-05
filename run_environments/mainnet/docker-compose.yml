@@ -7,7 +7,7 @@ services:
       - ./network.env
     environment:
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,exchange_service=debug,bitcoin_htlc=debug
+      - RUST_LOG=info,comit_node=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8010:8000"
@@ -18,9 +18,9 @@ services:
       - "$SWAP_ENV/mainnet.env"
       - ./network.env
     environment:
-      - COMIT_NODE_URL=http://exchange_service:8000
+      - COMIT_NODE_URL=http://comit_node_bob:8000
       - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,trading_service=debug,bitcoin_htlc=debug
+      - RUST_LOG=info,comit_node=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8000:8000"

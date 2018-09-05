@@ -10,14 +10,14 @@ pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
 
     pub contract_secret_lock: SecretHash,
     pub client_contract_time_lock: Sell::LockDuration,
-    pub exchange_contract_time_lock: Buy::LockDuration,
+    pub bob_contract_time_lock: Buy::LockDuration,
 
     pub client_refund_address: Sell::Address,
     pub client_success_address: Buy::Address,
 
-    pub exchange_refund_address: Buy::Address,
-    pub exchange_success_address: Sell::Address,
-    pub exchange_success_keypair: KeyPair,
+    pub bob_refund_address: Buy::Address,
+    pub bob_success_address: Sell::Address,
+    pub bob_success_keypair: KeyPair,
 
     pub buy_amount: Buy::Quantity,
     pub sell_amount: Sell::Quantity,

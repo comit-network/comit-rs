@@ -118,20 +118,20 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
         uid: trade_id,
         contract_secret_lock: secret.hash(),
         client_contract_time_lock: Seconds::new(60 * 60 * 12),
-        exchange_contract_time_lock: Blocks::from(24u32),
+        bob_contract_time_lock: Blocks::from(24u32),
         client_refund_address: ethereum_support::Address::from_str(
             "2d72ccd2f36173d945bc7247b29b60e5d5d0ca5e", // privkey: 5fce23dbb7656edea89728e2f5a95ea288b9c0d570a2fb839f0c11be6b55c0ab
         ).unwrap(),
         client_success_address: bitcoin_support::Address::from_str(
             "bc1q5p6eyvxld0p2c93fwccw436z9f830v0krsf9ux", //privkey: b2253c744dffb1c6df0465716059d13076780ef184afe1199d7f4a3cb627c7b2
         ).unwrap(),
-        exchange_refund_address: bitcoin_support::Address::from_str(
+        bob_refund_address: bitcoin_support::Address::from_str(
             "bc1q92ec9ycs65fd3xcxxh5wvwzz5cz6jvpthjdxx6", //privkey: e5a2d87ea2c6af42dbc95fbb08d345a4f5bf8dfbf25dc67834a1f5af01729eab
         ).unwrap(),
-        exchange_success_address: ethereum_support::Address::from_str(
+        bob_success_address: ethereum_support::Address::from_str(
             "77b0f5692ae5662cdd3f3187774367ad47c53b61", // privkey: 0829b16159b596db867bd9f696e7c0b7c32b0fee7f6379ce15f14f4b355ee0ce
         ).unwrap(),
-        exchange_success_keypair: keypair,
+        bob_success_keypair: keypair,
         buy_amount: bitcoin_support::BitcoinQuantity::from_satoshi(10000000),
         sell_amount: ethereum_support::EthereumQuantity::from_eth(0.000000000001),
     };
@@ -150,7 +150,7 @@ fn mock_trade_funded(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeI
 fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
     let _ = env_logger::try_init();
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
-    let exchange_success_address =
+    let bob_success_address =
         bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
 
     let bitcoin_service = BitcoinService::new(
@@ -161,7 +161,7 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
         )),
         bitcoin_support::Network::Regtest,
         bitcoin_fee_service.clone(),
-        exchange_success_address,
+        bob_success_address,
     );
     let event_store = InMemoryEventStore::new();
 
@@ -190,7 +190,7 @@ pub struct RedeemETHNotificationBody {
 fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
     let _ = env_logger::try_init();
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
-    let exchange_success_address =
+    let bob_success_address =
         bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
 
     let bitcoin_service = BitcoinService::new(
@@ -201,7 +201,7 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
         )),
         bitcoin_support::Network::Regtest,
         bitcoin_fee_service.clone(),
-        exchange_success_address,
+        bob_success_address,
     );
     let event_store = InMemoryEventStore::new();
 

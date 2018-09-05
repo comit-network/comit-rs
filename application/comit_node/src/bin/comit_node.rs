@@ -25,7 +25,7 @@ use bitcoin_support::{Network, PrivateKey};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     bitcoin_service::BitcoinService,
-    comit_node_api_client::{DefaultApiClient as ComitNodeClient, ExchangeApiUrl},
+    comit_node_api_client::{ComitNodeUrl, DefaultApiClient as ComitNodeClient},
     ethereum_service::EthereumService,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
@@ -80,18 +80,17 @@ fn main() {
         nonce,
     );
 
-    let exchange_refund_address =
-        ethereum_support::Address::from_str(var_or_exit("EXCHANGE_REFUND_ADDRESS").as_str())
-            .expect("EXCHANGE_REFUND_ADDRESS wasn't a valid ethereum address");
+    let bob_refund_address = ethereum_support::Address::from_str(
+        var_or_exit("BOB_REFUND_ADDRESS").as_str(),
+    ).expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
 
-    let exchange_success_private_key =
-        PrivateKey::from_str(var_or_exit("EXCHANGE_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
-    let exchange_success_keypair: KeyPair =
-        exchange_success_private_key.secret_key().clone().into();
+    let bob_success_private_key =
+        PrivateKey::from_str(var_or_exit("BTC_BOB_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
+    let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
 
-    let btc_exchange_redeem_address = bitcoin_support::Address::from_str(
-        var_or_exit("BTC_EXCHANGE_REDEEM_ADDRESS").as_str(),
-    ).expect("BTC Exchange Redeem Address is Invalid");
+    let btc_bob_redeem_address = bitcoin_support::Address::from_str(
+        var_or_exit("BTC_BOB_REDEEM_ADDRESS").as_str(),
+    ).expect("BTC Bob Redeem Address is Invalid");
 
     let bitcoin_rpc_client = {
         let url = var_or_exit("BITCOIN_RPC_URL");
@@ -109,10 +108,10 @@ fn main() {
         Ok(blockchain_info) => {
             info!("Blockchain info:\n{:?}", blockchain_info);
             match bitcoin_rpc_client.validate_address(&bitcoin_rpc_client::Address::from(
-                btc_exchange_redeem_address.clone(),
+                btc_bob_redeem_address.clone(),
             )) {
                 Ok(address_validation) => info!("Validation:\n{:?}", address_validation),
-                Err(e) => error!("Could not validate BTC_EXCHANGE_REDEEM_ADDRESS: {}", e),
+                Err(e) => error!("Could not validate BTC_BOB_REDEEM_ADDRESS: {}", e),
             };
         }
         Err(e) => error!("Could not connect to Bitcoin RPC:\n{}", e),
@@ -142,17 +141,17 @@ fn main() {
         bitcoin_rpc_client.clone(),
         network,
         bitcoin_fee_service.clone(),
-        btc_exchange_redeem_address.clone(),
+        btc_bob_redeem_address.clone(),
     );
 
-    let comit_node_api_url = ExchangeApiUrl(var("COMIT_NODE_URL").unwrap());
+    let comit_node_api_url = ComitNodeUrl(var("COMIT_NODE_URL").unwrap());
 
     create_rocket_instance(
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_service),
-        exchange_refund_address,
-        exchange_success_keypair,
+        bob_refund_address,
+        bob_success_keypair,
         network,
         Arc::new(ComitNodeClient::new(comit_node_api_url)),
     ).launch();

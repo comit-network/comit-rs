@@ -3,7 +3,7 @@ use event_store::Event;
 use std::marker::PhantomData;
 use swaps::common::TradeId;
 
-// State after exchange has made an offer
+// State after bob has made an offer
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferCreated<Buy, Sell>
 where
@@ -46,9 +46,9 @@ where
     Sell: Ledger,
 {
     pub uid: TradeId,
-    pub exchange_refund_address: Buy::Address,
-    pub exchange_success_address: Sell::Address,
-    pub exchange_contract_time_lock: Buy::LockDuration,
+    pub bob_refund_address: Buy::Address,
+    pub bob_success_address: Sell::Address,
+    pub bob_contract_time_lock: Buy::LockDuration,
 }
 
 impl<Buy: Ledger, Sell: Ledger> Event for OrderTaken<Buy, Sell> {

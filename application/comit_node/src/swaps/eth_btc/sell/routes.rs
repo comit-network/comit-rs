@@ -58,9 +58,9 @@ fn handle_post_orders_funding(
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
     let tx_id = bitcoin_service.deploy_htlc(
-        order_taken.exchange_refund_address,
+        order_taken.bob_refund_address,
         order_taken.client_success_address,
-        order_taken.exchange_contract_time_lock,
+        order_taken.bob_contract_time_lock,
         order_taken.buy_amount,
         order_taken.contract_secret_lock,
     )?;
@@ -110,8 +110,8 @@ fn handle_post_revealed_secret(
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,
         trade_id,
-        order_taken.exchange_success_address,
-        order_taken.exchange_success_keypair,
+        order_taken.bob_success_address,
+        order_taken.bob_success_keypair,
         order_taken.client_refund_address,
         trade_funded.htlc_identifier,
         order_taken.sell_amount,

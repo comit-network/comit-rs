@@ -240,7 +240,7 @@ function list_unspent_transactions() {
         0,\
         9999999,\
         [\
-          \"${EXCHANGE_SUCCESS_ADDRESS}\"\
+          \"${BTC_BOB_SUCCESS_ADDRESS}\"\
         ]\
       ],\
       \"id\":1\

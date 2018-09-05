@@ -1,5 +1,5 @@
 use bitcoin_support::Network;
-use comit_node_api_client::ApiClient as ExchangeApiClient;
+use comit_node_api_client::ApiClient;
 use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ethereum_support;
 use event_store::InMemoryEventStore;
@@ -15,10 +15,10 @@ pub fn create_rocket_instance(
     event_store: InMemoryEventStore<TradeId>,
     ethereum_service: Arc<LedgerHtlcService<Ethereum>>,
     bitcoin_service: Arc<LedgerHtlcService<Bitcoin>>,
-    exchange_refund_address: ethereum_support::Address,
-    exchange_success_keypair: KeyPair,
+    bob_refund_address: ethereum_support::Address,
+    bob_success_keypair: KeyPair,
     network: Network,
-    exchange_client: Arc<ExchangeApiClient>,
+    bob_client: Arc<ApiClient>,
 ) -> rocket::Rocket {
     let rng = OsRng::new().expect("Failed to get randomness from OS");
 
@@ -47,9 +47,9 @@ pub fn create_rocket_instance(
         .manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_service)
-        .manage(exchange_success_keypair)
-        .manage(exchange_refund_address)
+        .manage(bob_success_keypair)
+        .manage(bob_refund_address)
         .manage(network)
-        .manage(exchange_client)
+        .manage(bob_client)
         .manage(Mutex::new(rng))
 }

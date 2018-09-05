@@ -167,14 +167,13 @@ fn handle_buy_orders(
                 sell_amount: offer.sell_amount,
             },
         )
-        .map_err(Error::ExchangeService)?;
+        .map_err(Error::ComitNode)?;
 
-    let exchange_success_pubkey_hash =
-        PubkeyHash::from(order_response.exchange_success_address.clone());
+    let bob_success_pubkey_hash = PubkeyHash::from(order_response.bob_success_address.clone());
     let client_refund_pubkey_hash = PubkeyHash::from(client_refund_address);
 
     let htlc: BtcHtlc = BtcHtlc::new(
-        exchange_success_pubkey_hash,
+        bob_success_pubkey_hash,
         client_refund_pubkey_hash,
         secret.hash(),
         lock_duration.into(),
@@ -182,9 +181,9 @@ fn handle_buy_orders(
 
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
-        exchange_contract_time_lock: order_response.exchange_contract_time_lock,
-        exchange_refund_address: order_response.exchange_refund_address,
-        exchange_success_address: order_response.exchange_success_address,
+        bob_contract_time_lock: order_response.bob_contract_time_lock,
+        bob_refund_address: order_response.bob_refund_address,
+        bob_success_address: order_response.bob_success_address,
     };
 
     event_store.add_event(trade_id, order_taken_event)?;

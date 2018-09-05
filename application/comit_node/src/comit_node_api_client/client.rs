@@ -7,7 +7,7 @@ use reqwest;
 use swaps::common::TradeId;
 
 #[derive(Clone)]
-pub struct ExchangeApiUrl(pub String);
+pub struct ComitNodeUrl(pub String);
 
 #[derive(Serialize, Deserialize)]
 struct OfferRequestBody {
@@ -25,7 +25,6 @@ pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
-    //TODO merge this with the other OrderRequestBody
     pub contract_secret_lock: SecretHash,
     pub client_refund_address: Sell::Address,
     pub client_success_address: Buy::Address,
@@ -36,9 +35,9 @@ pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderResponseBody<Buy: Ledger, Sell: Ledger> {
-    pub exchange_refund_address: Buy::Address,
-    pub exchange_contract_time_lock: Buy::LockDuration,
-    pub exchange_success_address: Sell::Address,
+    pub bob_refund_address: Buy::Address,
+    pub bob_contract_time_lock: Buy::LockDuration,
+    pub bob_success_address: Sell::Address,
 }
 
 pub trait ApiClient: Send + Sync {
@@ -68,11 +67,11 @@ pub trait ApiClient: Send + Sync {
 
 pub struct DefaultApiClient {
     client: reqwest::Client,
-    url: ExchangeApiUrl,
+    url: ComitNodeUrl,
 }
 
 impl DefaultApiClient {
-    pub fn new(url: ExchangeApiUrl) -> Self {
+    pub fn new(url: ComitNodeUrl) -> Self {
         DefaultApiClient {
             url,
             client: reqwest::Client::new(),

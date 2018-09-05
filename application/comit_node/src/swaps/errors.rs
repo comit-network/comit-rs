@@ -7,8 +7,8 @@ use rustc_hex;
 #[derive(Debug)]
 pub enum Error {
     EventStore(event_store::Error),
-    ExchangeService(reqwest::Error),
-    TradingService(String),
+    ComitNode(reqwest::Error),
+    TradingService(String), //TODO this should not exist anymore
 }
 
 impl From<Error> for BadRequest<String> {

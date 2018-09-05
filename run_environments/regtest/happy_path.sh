@@ -30,8 +30,8 @@ function setup() {
     symbol_param="--symbol=ETH-BTC"
     eth_amount=10
 
-    # Watch the btc exchange redeem address
-    debug "Adding BTC_EXCHANGE_REDEEM_ADDRESS to wallet";
+    # Watch the btc bob redeem address
+    debug "Adding BTC_BOB_REDEEM_ADDRESS to wallet";
     $curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
     "{\
         \"jsonrpc\": \"1.0\",\
@@ -39,7 +39,7 @@ function setup() {
         \"method\": \"importaddress\",\
         \"params\":\
             [\
-                \"${BTC_EXCHANGE_REDEEM_ADDRESS}\",\
+                \"${BTC_BOB_REDEEM_ADDRESS}\",\
                 \"htlc\"\
             ]\
     }" \
@@ -210,7 +210,7 @@ function list_unspent_transactions() {
         0,\
         9999999,\
         [\
-          \"${BTC_EXCHANGE_REDEEM_ADDRESS}\"\
+          \"${BTC_BOB_REDEEM_ADDRESS}\"\
         ]\
       ],\
       \"id\":1\

@@ -45,7 +45,7 @@ pub struct BitcoinService {
     client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
     fee_service: Arc<BitcoinFeeService>,
     network: bitcoin_support::Network,
-    btc_exchange_redeem_address: bitcoin_support::Address,
+    btc_bob_redeem_address: bitcoin_support::Address,
 }
 
 impl LedgerHtlcService<Bitcoin> for BitcoinService {
@@ -73,30 +73,29 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
         &self,
         secret: Secret,
         trade_id: TradeId,
-        exchange_success_address: <Bitcoin as Ledger>::Address,
-        exchange_success_keypair: KeyPair,
+        bob_success_address: <Bitcoin as Ledger>::Address,
+        bob_success_keypair: KeyPair,
         client_refund_address: <Bitcoin as Ledger>::Address,
         htlc_identifier: <Bitcoin as Ledger>::HtlcId,
         sell_amount: <Bitcoin as Ledger>::Quantity,
         lock_time: <Bitcoin as Ledger>::LockDuration,
     ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
-        let exchange_success_pubkey_hash: PubkeyHash = exchange_success_address.into();
+        let bob_success_pubkey_hash: PubkeyHash = bob_success_address.into();
 
         let client_refund_pubkey_hash: PubkeyHash = client_refund_address.into();
         let htlc_tx_id = htlc_identifier.transaction_id;
         let vout = htlc_identifier.vout;
 
         let htlc = bitcoin_htlc::Htlc::new(
-            exchange_success_pubkey_hash,
+            bob_success_pubkey_hash,
             client_refund_pubkey_hash,
             secret.hash().clone(),
             lock_time.clone().into(),
         );
 
-        htlc.can_be_unlocked_with(&secret, &exchange_success_keypair)?;
+        htlc.can_be_unlocked_with(&secret, &bob_success_keypair)?;
 
-        let unlocking_parameters =
-            htlc.unlock_with_secret(exchange_success_keypair.clone(), secret);
+        let unlocking_parameters = htlc.unlock_with_secret(bob_success_keypair.clone(), secret);
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(
@@ -105,7 +104,7 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
                 sell_amount,
                 unlocking_parameters,
             )],
-            output_address: self.btc_exchange_redeem_address.clone(),
+            output_address: self.btc_bob_redeem_address.clone(),
             locktime: 0,
         };
 
@@ -144,13 +143,13 @@ impl BitcoinService {
         client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
         network: bitcoin_support::Network,
         fee_service: Arc<BitcoinFeeService>,
-        btc_exchange_redeem_address: bitcoin_support::Address,
+        btc_bob_redeem_address: bitcoin_support::Address,
     ) -> Self {
         BitcoinService {
             client,
             fee_service,
             network,
-            btc_exchange_redeem_address,
+            btc_bob_redeem_address,
         }
     }
 }

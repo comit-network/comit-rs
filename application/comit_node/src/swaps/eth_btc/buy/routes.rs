@@ -22,7 +22,6 @@ use swaps::{
     bob_events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
     common::{Error, TradeId},
 };
-//TODO rename Exchange to Bob
 //TODO rename Client to Alice
 
 impl From<Error> for BadRequest<String> {
@@ -52,17 +51,17 @@ impl From<bitcoin_rpc_client::RpcError> for Error {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderTakenResponseBody<Buy: Ledger, Sell: Ledger> {
-    pub exchange_refund_address: Buy::Address,
-    pub exchange_success_address: Sell::Address,
-    pub exchange_contract_time_lock: Buy::LockDuration,
+    pub bob_refund_address: Buy::Address,
+    pub bob_success_address: Sell::Address,
+    pub bob_contract_time_lock: Buy::LockDuration,
 }
 
 impl<Buy: Ledger, Sell: Ledger> From<OrderTaken<Buy, Sell>> for OrderTakenResponseBody<Buy, Sell> {
     fn from(order_taken_event: OrderTaken<Buy, Sell>) -> Self {
         OrderTakenResponseBody {
-            exchange_refund_address: order_taken_event.exchange_refund_address.into(),
-            exchange_success_address: order_taken_event.exchange_success_address.into(),
-            exchange_contract_time_lock: order_taken_event.exchange_contract_time_lock,
+            bob_refund_address: order_taken_event.bob_refund_address.into(),
+            bob_success_address: order_taken_event.bob_success_address.into(),
+            bob_contract_time_lock: order_taken_event.bob_contract_time_lock,
         }
     }
 }
@@ -76,16 +75,16 @@ pub fn post_buy_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody<Ethereum, Bitcoin>>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    exchange_success_keypair: State<KeyPair>,
-    exchange_refund_address: State<ethereum_support::Address>,
+    bob_success_keypair: State<KeyPair>,
+    bob_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody<Ethereum, Bitcoin>>, BadRequest<String>> {
     let order_taken_response_body = handle_post_buy_orders(
         trade_id,
         order_request_body.into_inner(),
         event_store.inner(),
-        exchange_success_keypair.inner(),
-        exchange_refund_address.inner(),
+        bob_success_keypair.inner(),
+        bob_refund_address.inner(),
         network.inner(),
     )?;
     Ok(Json(order_taken_response_body))
@@ -95,8 +94,8 @@ fn handle_post_buy_orders(
     trade_id: TradeId,
     order_request_body: OrderRequestBody<Ethereum, Bitcoin>,
     event_store: &InMemoryEventStore<TradeId>,
-    exchange_success_keypair: &KeyPair,
-    exchange_refund_address: &ethereum_support::Address,
+    bob_success_keypair: &KeyPair,
+    bob_refund_address: &ethereum_support::Address,
     network: &Network,
 ) -> Result<OrderTakenResponseBody<Ethereum, Bitcoin>, Error> {
     // Receive trade information
@@ -104,13 +103,13 @@ fn handle_post_buy_orders(
     // - Client refund address (BTC)
     // - timeout (BTC)
     // - Client success address (ETH)
-    // = generates exchange refund address
-    // -> returns ETH HTLC data (exchange refund address + ETH timeout)
+    // = generates bob refund address
+    // -> returns ETH HTLC data (bob refund address + ETH timeout)
     let client_refund_address: bitcoin_support::Address =
         order_request_body.client_refund_address.into();
     //TODO: clean up, should not need to do address>pub_key>address
-    let exchange_success_address = bitcoin_support::Address::from(
-        exchange_success_keypair
+    let bob_success_address = bitcoin_support::Address::from(
+        bob_success_keypair
             .public_key()
             .clone()
             .to_p2wpkh_address(*network),
@@ -122,12 +121,12 @@ fn handle_post_buy_orders(
         uid: trade_id,
         contract_secret_lock: order_request_body.contract_secret_lock,
         client_contract_time_lock: order_request_body.client_contract_time_lock,
-        exchange_contract_time_lock: twelve_hours,
+        bob_contract_time_lock: twelve_hours,
         client_refund_address,
         client_success_address: order_request_body.client_success_address,
-        exchange_refund_address: *exchange_refund_address,
-        exchange_success_address,
-        exchange_success_keypair: exchange_success_keypair.clone(),
+        bob_refund_address: *bob_refund_address,
+        bob_success_address,
+        bob_success_keypair: bob_success_keypair.clone(),
         buy_amount: order_request_body.buy_amount,
         sell_amount: order_request_body.sell_amount,
     };
@@ -169,9 +168,9 @@ fn handle_post_orders_funding(
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.deploy_htlc(
-        order_taken.exchange_refund_address,
+        order_taken.bob_refund_address,
         order_taken.client_success_address,
-        order_taken.exchange_contract_time_lock,
+        order_taken.bob_contract_time_lock,
         order_taken.buy_amount,
         order_taken.contract_secret_lock.clone().into(),
     )?;
@@ -226,8 +225,8 @@ fn handle_post_revealed_secret(
     let redeem_tx_id = bitcoin_htlc_service.redeem_htlc(
         secret,
         trade_id,
-        order_taken_event.exchange_success_address,
-        order_taken_event.exchange_success_keypair,
+        order_taken_event.bob_success_address,
+        order_taken_event.bob_success_keypair,
         order_taken_event.client_refund_address,
         trade_funded_event.htlc_identifier,
         order_taken_event.sell_amount,

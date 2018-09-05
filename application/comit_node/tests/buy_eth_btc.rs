@@ -96,7 +96,7 @@ impl<'r> DeserializeAsJson for LocalResponse<'r> {
 
 fn create_rocket_client() -> Client {
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
-    let exchange_success_address =
+    let bob_success_address =
         bitcoin_support::Address::from_str("2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL").unwrap();
     let bitcoin_service = Arc::new(BitcoinService::new(
         Arc::new(BitcoinRpcClientMock::new(
@@ -106,7 +106,7 @@ fn create_rocket_client() -> Client {
         )),
         bitcoin_support::Network::Regtest,
         bitcoin_fee_service.clone(),
-        exchange_success_address,
+        bob_success_address,
     ));
 
     let api_client = FakeComitNodeApiClient::new();
@@ -148,7 +148,7 @@ fn given_a_trade_request_when_buy_offer_was_done_then_return_valid_trade_respons
         #[derive(Deserialize)]
         #[allow(dead_code)]
         struct Response {
-            exchange_contract_time_lock: u32,
+            bob_contract_time_lock: u32,
         }
 
         serde_json::from_str::<Response>(&response.body_string().unwrap()).unwrap();
