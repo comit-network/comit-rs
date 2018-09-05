@@ -90,9 +90,8 @@ impl<T, E> UnwrapOrExit<T, E> for Result<T, E> {
 }
 
 fn main() {
-    let trading_api_url = TradingApiUrl(
-        var("TRADING_SERVICE_URL").expect("env variable TRADING_SERVICE_URL must be set"),
-    );
+    let trading_api_url =
+        TradingApiUrl(var("COMIT_NODE_URL").expect("env variable COMIT_NODE_URL must be set"));
 
     let output = match Opt::from_args() {
         Opt::Offer {

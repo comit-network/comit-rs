@@ -1,5 +1,5 @@
 [package]
-name = "exchange_service"
+name = "comit_node"
 version = "0.1.0"
 authors = [
     "Thomas Eizinger <thomas@coblox.tech>",

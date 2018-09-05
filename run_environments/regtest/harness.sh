@@ -30,7 +30,7 @@ END(){
         docker-compose rm -sfv;
     );
 
-    for pid in "$FAKE_TREASURY_PID" "$EXCHANGE_SERVICE_PID" "$TRADING_SERVICE_PID"; do
+    for pid in "$FAKE_TREASURY_PID" "$BOB_COMIT_NODE_PID" "$ALICE_COMIT_NODE_PID"; do
         if test "$pid" && ps "$pid" >/dev/null; then
             echo "KILLING $pid";
             kill "$pid" 2>/dev/null;
@@ -43,10 +43,10 @@ trap 'END' EXIT;
 
 function start_target() {
     name=$1;
-    log_prefix=$name-$2
-    log "Starting $name";
+    log_prefixed=$name-$2
+    log "Starting $log_prefixed";
     # Logs prefixes the service name in front of its logs
-    "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed  "s/^/$log_prefix: / " >&3 &
+    "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed  "s/^/$log_prefixed: / " >&3 &
     # returns the PID of the process
     jobs -p
 }
@@ -71,7 +71,8 @@ function setup() {
     #### Start all services
     (
         cd $PROJECT_ROOT/run_environments/regtest;
-        docker-compose up -d ethereum bitcoin >&4 2>&4;
+        docker-compose up -d bitcoin >&4 2>&4;
+        docker run --rm --name ethereum -d -p 8545:8545 trufflesuite/ganache-cli:latest -h 0.0.0.0 -a 7 -m supersecure >&4 2>&4;
     );
 
     sleep 5;
@@ -79,8 +80,8 @@ function setup() {
     activate_segwit;
 
     FAKE_TREASURY_PORT=8020
-    EXCHANGE_PORT=8010
-    TRADING_SERVICE_PORT=8000
+    BOB_COMIT_NODE_PORT=8010
+    ALICE_COMIT_NODE_PORT=8000
 
 #    FAKE_TREASURY_PID=$(
 #        export ROCKET_ADDRESS=0.0.0.0 \
@@ -91,28 +92,29 @@ function setup() {
 #        start_target "fake_treasury_service";
 #    ); //TODO remove treasury service
 
-    EXCHANGE_SERVICE_PID=$(
+    BOB_COMIT_NODE_PID=$(
         export BITCOIN_RPC_URL=http://localhost:18443 \
                ETHEREUM_NODE_ENDPOINT=http://localhost:8545 \
                TREASURY_SERVICE_URL=http://localhost:$FAKE_TREASURY_PORT \
                ROCKET_ADDRESS=0.0.0.0 \
-               ROCKET_PORT=$EXCHANGE_PORT \
-               RUST_LOG=info,exchange_service=debug,bitcoin_htlc=debug \
+               COMIT_NODE_URL=http://localhost:$ALICE_COMIT_NODE_PORT \
+               ROCKET_PORT=$BOB_COMIT_NODE_PORT \
+               RUST_LOG=info,comit_node=debug,bitcoin_htlc=debug \
                RUST_BACKTRACE=1 \
                BITCOIN_SATOSHI_PER_KB=50;
 
-        start_target "exchange_service" "Bob";
+        start_target "comit_node" "Bob";
     );
 
 
-    TRADING_SERVICE_PID=$(
+    ALICE_COMIT_NODE_PID=$(
         export  ROCKET_ADDRESS=0.0.0.0 \
-                RUST_LOG=info,exchange_service=debug,fake_treasury_service=debug \
-                EXCHANGE_SERVICE_URL=http://localhost:$EXCHANGE_PORT \
-                ROCKET_PORT=$TRADING_SERVICE_PORT \
+                RUST_LOG=debug,comit_node=debug \
+                COMIT_NODE_URL=http://localhost:$BOB_COMIT_NODE_PORT \
+                ROCKET_PORT=$ALICE_COMIT_NODE_PORT \
                 RATE=0.1;
 
-        start_target "exchange_service" "Alice";
+        start_target "comit_node" "Alice";
     );
 }
 

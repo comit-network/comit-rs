@@ -3,11 +3,11 @@
 
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
+extern crate comit_node;
 extern crate env_logger;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
-extern crate exchange_service;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -19,14 +19,14 @@ mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
-use ethereum_wallet::fake::StaticFakeWallet;
-use event_store::InMemoryEventStore;
-use exchange_service::{
+use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
-    ethereum_service, exchange_api_client::FakeApiClient as FakeComitNodeApiClient,
+    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient, ethereum_service,
     gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
     treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
 };
+use ethereum_wallet::fake::StaticFakeWallet;
+use event_store::InMemoryEventStore;
 use mocks::{BitcoinRpcClientMock, StaticEthereumApi};
 use rocket::{
     http::{ContentType, Status},

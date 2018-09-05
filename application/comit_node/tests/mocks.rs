@@ -1,13 +1,13 @@
 extern crate bitcoin_rpc_client;
+extern crate comit_node;
 extern crate ethereum_support;
-extern crate exchange_service;
 extern crate reqwest;
 
 use bitcoin_rpc_client::{
     Address, BitcoinRpcApi, RpcError, SerializedRawTransaction, TransactionId,
 };
+use comit_node::ethereum_service::BlockingEthereumApi;
 use ethereum_support::{web3, Bytes, H256};
-use exchange_service::ethereum_service::BlockingEthereumApi;
 
 pub struct BitcoinRpcClientMock {
     transaction_id: TransactionId,

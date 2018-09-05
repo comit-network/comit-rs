@@ -1,5 +1,6 @@
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
 use bitcoin_support::{self, BitcoinQuantity, Blocks, Network, PubkeyHash};
+use comit_node_api_client::{ApiClient, OrderRequestBody};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     secret::Secret,
@@ -7,7 +8,6 @@ use common_types::{
 };
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
-use exchange_api_client::{ApiClient, OrderRequestBody};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;

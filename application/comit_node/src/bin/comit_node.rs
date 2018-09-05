@@ -2,10 +2,10 @@
 #![plugin(rocket_codegen)]
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
+extern crate comit_node;
 extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
-extern crate exchange_service;
 extern crate hex;
 #[macro_use]
 extern crate log;
@@ -22,18 +22,18 @@ extern crate uuid;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
-use ethereum_support::*;
-use ethereum_wallet::InMemoryWallet;
-use event_store::InMemoryEventStore;
-use exchange_service::{
+use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     bitcoin_service::BitcoinService,
+    comit_node_api_client::{DefaultApiClient as ComitNodeClient, ExchangeApiUrl},
     ethereum_service::EthereumService,
-    exchange_api_client::{DefaultApiClient as ComitNodeClient, ExchangeApiUrl},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
     treasury_api_client::{DefaultApiClient as TreasuryApiClient, TreasuryApiUrl},
 };
+use ethereum_support::*;
+use ethereum_wallet::InMemoryWallet;
+use event_store::InMemoryEventStore;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
 use std::{env::var, str::FromStr, sync::Arc};
@@ -153,7 +153,7 @@ fn main() {
         btc_exchange_redeem_address.clone(),
     );
 
-    let exchange_api_url = ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap());
+    let comit_node_api_url = ExchangeApiUrl(var("COMIT_NODE_URL").unwrap());
 
     create_rocket_instance(
         Arc::new(api_client), //TODO remove treasury service
@@ -163,7 +163,7 @@ fn main() {
         exchange_refund_address,
         exchange_success_keypair,
         network,
-        Arc::new(ComitNodeClient::new(exchange_api_url)),
+        Arc::new(ComitNodeClient::new(comit_node_api_url)),
     ).launch();
 }
 

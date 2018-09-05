@@ -21,6 +21,9 @@ function setup() {
 
     export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
+    export ALICE_COMIT_NODE_URL=$ALICE_COMIT_NODE_URL
+    export BOB_COMIT_NODE_URL=$BOB_COMIT_NODE_URL
+
     cli="$PROJECT_ROOT/target/debug/comit_node_client"
     curl="curl -s"
 
@@ -65,7 +68,7 @@ function new_offer() {
     ## Offer
     cmd="$cli offer ${symbol_param} --amount=${eth_amount} buy"
     print_green "$cmd"
-    output=$($cmd)
+    output=$(export COMIT_NODE_URL=$ALICE_COMIT_NODE_URL; $cmd)
     echo "$output"
 
     ## get UID
@@ -77,7 +80,7 @@ function new_order() {
 
     cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${client_refund_address} --success-address=${client_success_address}"
     print_green "$cmd"
-    output=$($cmd)
+    output=$(export COMIT_NODE_URL=$ALICE_COMIT_NODE_URL; $cmd)
     echo "$output"
 
     ## Get BTC HTLC address
@@ -125,26 +128,26 @@ function fund_htlc() {
     echo "HTLC successfully funded - BTC payment was made."
 }
 
-function notify_exchange_service_btc_htlc_funded() {
+function notify_bob_comit_node_btc_htlc_funded() {
 
-    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
+    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
 
     echo $result > $OUTPUT
 
     print_blue "Notified exchange about trader's BTC payment (Trader funded BTC HTLC)."
 }
 
-function notify_trading_service_eth_htlc_funded() {
+function notify_alice_comit_node_eth_htlc_funded() {
 
-    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
+    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${ALICE_COMIT_NODE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
 
     echo $result > $OUTPUT
 
     print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
 }
 
-function notify_exchange_service_eth_redeemed() {
-    $curl -v --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed 2> $OUTPUT
+function notify_bob_comit_node_eth_redeemed() {
+    $curl -v --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed 2> $OUTPUT
 
     print_blue "Notified exchange about revealed secret (Trader redeemed ETH funds)."
 }
@@ -154,7 +157,7 @@ function get_redeem_details() {
 
     print_green "$cmd"
 
-    output=$($cmd)
+    output=$(export COMIT_NODE_URL=$ALICE_COMIT_NODE_URL; $cmd)
 
     secret=$(echo "$output" | tail -n1 |sed -E 's/^ethereum:.*bytes32=(.+)$/\1/')
 
@@ -247,11 +250,11 @@ fund_htlc;
 
 step;
 
-notify_exchange_service_btc_htlc_funded;
+notify_bob_comit_node_btc_htlc_funded;
 
 step;
 
-notify_trading_service_eth_htlc_funded;
+notify_alice_comit_node_eth_htlc_funded;
 
 step;
 
@@ -294,7 +297,7 @@ echo "BTC: Total UTXOs before redeem: $old_unspent_num"
 step;
 
 # Poke exchange service to redeem BTC
-notify_exchange_service_eth_redeemed;
+notify_bob_comit_node_eth_redeemed;
 
 generate_blocks 2>&1 /dev/null
 

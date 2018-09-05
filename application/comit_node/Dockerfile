@@ -1,10 +1,10 @@
 FROM tenx-tech/swap:latest
 
-COPY . /source/exchange_service
-WORKDIR /source/exchange_service
+COPY . /source/comit_node
+WORKDIR /source/comit_node
 RUN cargo fetch
 RUN cargo build
 
 WORKDIR /source/target/debug
 
-CMD ./exchange_service
+CMD ./comit_node

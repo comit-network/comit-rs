@@ -25,14 +25,14 @@ def main():
     parser.add_argument("-s", "--secret", help="The secret.")
     args = parser.parse_args()
     
-    exchange_service_url = os.environ['EXCHANGE_SERVICE_URL']
+    exchange_service_url = os.environ['BOB_COMIT_NODE_PID']
     if not exchange_service_url:
-        print("EXCHANGE_SERVICE_URL must be set.")
+        print("BOB_COMIT_NODE_PID must be set.")
         sys.exit(1)
 
-    trading_service_url = os.environ['TRADING_SERVICE_URL']
+    trading_service_url = os.environ['ALICE_COMIT_NODE_PID']
     if not trading_service_url:
-        print("TRADING_SERVICE_URL must be set.")
+        print("ALICE_COMIT_NODE_PID must be set.")
         sys.exit(1)
 
     if args.btc_funded:

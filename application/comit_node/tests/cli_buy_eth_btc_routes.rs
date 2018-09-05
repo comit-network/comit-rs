@@ -8,8 +8,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate bitcoin_rpc_client;
+extern crate comit_node;
 extern crate ethereum_wallet;
-extern crate exchange_service;
 extern crate serde_json;
 extern crate uuid;
 
@@ -18,15 +18,15 @@ mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
-use common::OfferResponseBody;
-use ethereum_wallet::fake::StaticFakeWallet;
-use event_store::InMemoryEventStore;
-use exchange_service::{
+use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
-    ethereum_service, exchange_api_client::FakeApiClient as FakeComitNodeApiClient,
+    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient, ethereum_service,
     gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
     treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
 };
+use common::{OfferResponseBody, RedeemDetails, RequestToFund};
+use ethereum_wallet::fake::StaticFakeWallet;
+use event_store::InMemoryEventStore;
 use mocks::{BitcoinRpcClientMock, StaticEthereumApi};
 use rocket::{
     http::{ContentType, Status},
@@ -34,25 +34,6 @@ use rocket::{
 };
 use std::{str::FromStr, sync::Arc};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RequestToFund {
-    address_to_fund: String,
-    btc_amount: String,
-    eth_amount: String,
-    data: String,
-    gas: u64,
-}
-
-impl PartialEq for RequestToFund {
-    fn eq(&self, other: &RequestToFund) -> bool {
-        self.address_to_fund == other.address_to_fund
-            && self.btc_amount == other.btc_amount
-            && self.eth_amount == other.eth_amount
-            && self.gas == other.gas
-            && self.data.len() > 0
-            && other.data.len() > 0
-    }
-}
 fn create_rocket_client() -> Client {
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
     let exchange_success_address =
@@ -93,14 +74,26 @@ fn create_rocket_client() -> Client {
     rocket::local::Client::new(rocket).unwrap()
 }
 
+// Secret: 12345678901234567890123456789012
+// Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
+
+// Sender address: bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg
+// Sender pubkey: 020c04eb8cb87485501e30b656f37439ea7866d7c58b3c38161e5793b68e712356
+// Sender pubkey hash: 1925a274ac004373bb5429553bdb55c40e57b124
+
+// Recipient address: bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap
+// Recipient pubkey: 0298e113cc06bc862ac205f2c0f27ee8c0de98d0716537bbf74e2ea6f38a84d5dc
+// Recipient pubkey hash: c021f17be99c6adfbcba5d38ee0d292c0399d2f5
+
+// htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
 #[test]
-fn post_sell_offer_of_x_eth_for_btc() {
+fn happy_path_buy_x_eth_for_btc() {
     let client = create_rocket_client();
 
     let request = client
-        .post("/cli/trades/ETH-BTC/sell-offers")
+        .post("/cli/trades/ETH-BTC/buy-offers")
         .header(ContentType::JSON)
-        .body(r#"{ "amount": 42 }"#);
+        .body(r#"{ "amount": 43 }"#);
 
     let mut response = request.dispatch();
 
@@ -109,53 +102,49 @@ fn post_sell_offer_of_x_eth_for_btc() {
         serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
 
     assert_eq!(
-        offer_response,
-        OfferResponseBody {
-            uid: String::from(""),
-            symbol: String::from("ETH-BTC"),
-            rate: 0.1,
-            buy_amount: String::from("420000000"),
-            sell_amount: String::from("42000000000000000000"),
-        },
-        "offer_response has correct fields"
+        offer_response.symbol, "ETH-BTC",
+        "offer_response has correct symbol"
     );
-}
-
-#[test]
-fn post_sell_order_of_x_eth_for_btc() {
-    let client = create_rocket_client();
-
-    let request = client
-        .post("/cli/trades/ETH-BTC/sell-offers")
-        .header(ContentType::JSON)
-        .body(r#"{ "amount": 42 }"#);
-
-    let mut response = request.dispatch();
-
-    assert_eq!(response.status(), Status::Ok);
-    let offer_response =
-        serde_json::from_str::<OfferResponseBody>(&response.body_string().unwrap()).unwrap();
     let uid = offer_response.uid;
 
     let request = client
-        .post(format!("/cli/trades/ETH-BTC/{}/sell-orders", uid))
+        .post(format!("/cli/trades/ETH-BTC/{}/buy-orders", uid))
         .header(ContentType::JSON)
-        .body(r#"{ "client_success_address": "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv", "client_refund_address" : "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238" }"#);
+        // some random addresses I pulled off the internet
+        .body(r#"{ "client_success_address": "0x4a965b089f8cb5c75efaa0fbce27ceaaf7722238", "client_refund_address" : "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv" }"#);
 
     let mut response = request.dispatch();
+
     assert_eq!(response.status(), Status::Ok);
-    let request_to_fund =
+
+    let funding_request =
         serde_json::from_str::<RequestToFund>(&response.body_string().unwrap()).unwrap();
+    assert!(funding_request.address_to_fund.starts_with("tb1"));
+
+    let request = client
+        .post(format!(
+            "/cli/trades/ETH-BTC/{}/buy-order-contract-deployed",
+            uid
+        ))
+        .header(ContentType::JSON)
+        .body(r#"{ "contract_address" : "0x00a329c0648769a73afac7f9381e08fb43dbea72" }"#);
+
+    let response = request.dispatch();
 
     assert_eq!(
-        request_to_fund,
-        RequestToFund {
-            address_to_fund: String::from("0x0000000000000000000000000000000000000000"),
-            btc_amount: String::from("420000000"),
-            eth_amount: String::from("42000000000000000000"),
-            data: String::from("some random data for passing the partial equal"),
-            gas: 21_000u64,
-        },
-        "request_to_fund has correct address_to_fund"
+        response.status(),
+        Status::Ok,
+        "buy-order-contract-deployed call is successful"
     );
+
+    let request = client.get(format!("/cli/trades/ETH-BTC/{}/redeem-orders", uid).to_string());
+
+    let mut response = request.dispatch();
+
+    assert_eq!(response.status(), Status::Ok);
+
+    let _redeem_details =
+        serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
 }
+
+// sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4

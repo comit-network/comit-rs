@@ -3,12 +3,12 @@
 
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
+extern crate comit_node;
 extern crate common_types;
 extern crate env_logger;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
-extern crate exchange_service;
 extern crate hex;
 extern crate reqwest;
 extern crate rocket;
@@ -21,6 +21,19 @@ mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Blocks, Network};
+use comit_node::{
+    bitcoin_fee_service::StaticBitcoinFeeService,
+    bitcoin_service::BitcoinService,
+    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
+    ethereum_service::{self, BlockingEthereumApi},
+    gas_price_service::StaticGasPriceService,
+    rocket_factory::create_rocket_instance,
+    swaps::{
+        bob_events::{OrderTaken, TradeFunded},
+        common::TradeId,
+    },
+    treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
+};
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     seconds::Seconds,
@@ -30,19 +43,6 @@ use common_types::{
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::{EventStore, InMemoryEventStore};
-use exchange_service::{
-    bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::BitcoinService,
-    ethereum_service::{self, BlockingEthereumApi},
-    exchange_api_client::FakeApiClient as FakeComitNodeApiClient,
-    gas_price_service::StaticGasPriceService,
-    rocket_factory::create_rocket_instance,
-    swaps::{
-        bob_events::{OrderTaken, TradeFunded},
-        common::TradeId,
-    },
-    treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
-};
 use hex::FromHex;
 use mocks::BitcoinRpcClientMock;
 use rocket::{
