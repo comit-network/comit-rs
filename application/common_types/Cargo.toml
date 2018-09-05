@@ -10,5 +10,6 @@ serde = "1.0.64"
 serde_derive = "1.0.63"
 serde_json = "1.0.19"
 bitcoin_support = { path = "../../vendor/bitcoin_support"}
+secp256k1_support = { path = "../../vendor/secp256k1_support" }
 bitcoin_rpc_client = "0.1"
 ethereum_support = { path = "../../vendor/ethereum_support"}
