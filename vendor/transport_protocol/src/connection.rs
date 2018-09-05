@@ -7,10 +7,10 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};
 
 #[derive(Debug)]
-pub enum Error<C> {
-    Codec(C),
-    Request,
-    FrameHandler(::api::Error),
+pub enum ClosedReason<C> {
+    CodecError(C),
+    InternalError,
+    InvalidFrame(::api::Error),
 }
 
 pub struct Connection<Req, Res, Codec, Socket> {
@@ -42,7 +42,7 @@ impl<
     pub fn start<FH: FrameHandler<Frame, Req, Res> + Send + 'static>(
         self,
     ) -> (
-        Box<Future<Item = (), Error = Error<CodecErr>> + Send>,
+        Box<Future<Item = (), Error = ClosedReason<CodecErr>> + Send>,
         Client<Frame, Req, Res>,
     ) {
         let (sink, stream) = self.codec.framed(self.socket).split();
@@ -51,7 +51,7 @@ impl<
         let (client, request_stream) = Client::new(response_source);
 
         let connection_loop = stream
-            .map_err(Error::Codec)
+            .map_err(ClosedReason::CodecError)
             .inspect(|frame| trace!("<--- Incoming {:?}", frame))
             .map(move |frame| {
                 let result = frame_handler.handle(frame);
@@ -69,7 +69,7 @@ impl<
                     _ => result,
                 };
 
-                result.map_err(Error::FrameHandler)
+                result.map_err(ClosedReason::InvalidFrame)
             })
             .then(|result| {
                 match result {
@@ -83,9 +83,9 @@ impl<
             })
             .filter(Option::is_some)
             .map(Option::unwrap)
-            .select(request_stream.map_err(|_| Error::Request))
+            .select(request_stream.map_err(|_| ClosedReason::InternalError))
             .inspect(|frame| trace!("---> Outgoing {:?}", frame))
-            .forward(sink.sink_map_err(Error::Codec))
+            .forward(sink.sink_map_err(ClosedReason::CodecError))
             .map(|_| ());
 
         (Box::new(connection_loop), client)

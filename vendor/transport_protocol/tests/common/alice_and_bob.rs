@@ -83,7 +83,7 @@ pub fn create(
     config: Config<Request, Response>,
 ) -> (
     Alice,
-    impl Future<Item = (), Error = connection::Error<json::Error>>,
+    impl Future<Item = (), Error = connection::ClosedReason<json::Error>>,
     Client<Frame, Request, Response>,
 ) {
     let (alice, bob) = memsocket::unbounded();

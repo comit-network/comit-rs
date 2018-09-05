@@ -31,7 +31,7 @@ pub fn create_server_with(
     config: Config<Request, Response>,
 ) -> (
     Alice,
-    impl Future<Item = (), Error = connection::Error<json::Error>>,
+    impl Future<Item = (), Error = connection::ClosedReason<json::Error>>,
 ) {
     let _ = pretty_env_logger::try_init();
     let (alice, bob_server, _alice_client) = alice_and_bob::create(config);

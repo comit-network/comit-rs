@@ -79,10 +79,10 @@ fn handle_invalid_json_line() {
         .or_else(|bob_error| Err(bob_error))
         .wait();
 
-    let error = assert_that(&bob_shutdown).is_err();
-    match *error.subject {
-        connection::Error::Codec(json::Error::Json(_)) => {}
-        _ => panic!("Error should have been a codec error"),
+    match bob_shutdown {
+        Ok(_) => panic!("should have shutdown with error"),
+        Err(connection::ClosedReason::CodecError(json::Error::Json(_))) => {}
+        _ => panic!("Expected a Json error"),
     }
 }
 
@@ -100,13 +100,12 @@ fn handle_unknown_frame_type() {
         .or_else(|bob_error| Err(bob_error))
         .wait();
 
-    let error = assert_that(&bob_shutdown).is_err();
-
-    match *error.subject {
-        connection::Error::FrameHandler(transport_protocol::Error::UnknownFrameType(
-            ref frame_type,
+    match bob_shutdown {
+        Ok(_) => panic!("should have shutdown with error"),
+        Err(connection::ClosedReason::InvalidFrame(
+            transport_protocol::Error::UnknownFrameType(ref frame_type),
         )) => assert_eq!(frame_type, "I_DONT_EXIST"),
-        _ => panic!("expected an UnknownFrameType error"),
+        _ => panic!("Expected an UnknownFrameType error"),
     }
 }
 
