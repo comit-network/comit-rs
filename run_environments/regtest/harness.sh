@@ -59,7 +59,9 @@ function activate_segwit() {
 
 
 function setup() {
-    log "Starting up ..."; #TODO add cargo build
+    log "Starting up ...";
+
+    cargo build
 
     #### Env variable to run all services
     set -a;
@@ -71,8 +73,7 @@ function setup() {
     #### Start all services
     (
         cd $PROJECT_ROOT/run_environments/regtest;
-        docker-compose up -d bitcoin >&4 2>&4;
-        docker run --rm --name ethereum -d -p 8545:8545 trufflesuite/ganache-cli:latest -h 0.0.0.0 -a 7 -m supersecure >&4 2>&4;
+        docker-compose up -d bitcoin ethereum >&4 2>&4;
     );
 
     sleep 5;

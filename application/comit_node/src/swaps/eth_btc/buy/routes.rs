@@ -1,6 +1,7 @@
 use bitcoin_fee_service;
 use bitcoin_rpc_client;
 use bitcoin_support::{self, Network, ToP2wpkhAddress};
+use comit_node_api_client::OrderRequestBody;
 use common_types::{
     ledger::{
         bitcoin::{self, Bitcoin},
@@ -8,7 +9,7 @@ use common_types::{
         Ledger,
     },
     seconds::Seconds,
-    secret::{Secret, SecretHash},
+    secret::Secret,
 };
 use ethereum_support;
 use event_store::{self, EventStore, InMemoryEventStore};
@@ -47,16 +48,6 @@ impl From<bitcoin_rpc_client::RpcError> for Error {
     fn from(e: bitcoin_rpc_client::RpcError) -> Self {
         Error::BitcoinRpc(e)
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
-    pub contract_secret_lock: SecretHash,
-    pub client_contract_time_lock: Sell::LockDuration,
-    pub client_refund_address: Sell::Address,
-    pub client_success_address: Buy::Address,
-    pub buy_amount: Buy::Quantity,
-    pub sell_amount: Sell::Quantity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
