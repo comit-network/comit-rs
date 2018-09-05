@@ -29,7 +29,6 @@ use comit_node::{
     ethereum_service::EthereumService,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
-    treasury_api_client::{DefaultApiClient as TreasuryApiClient, TreasuryApiUrl},
 };
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
@@ -41,13 +40,6 @@ use std::{env::var, str::FromStr, sync::Arc};
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     logging::set_up_logging();
-    let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
-    info!("set TREASURY_SERVICE_URL={:?}", treasury_api_url);
-
-    let api_client = TreasuryApiClient {
-        client: reqwest::Client::new(),
-        url: treasury_api_url,
-    };
 
     let event_store = InMemoryEventStore::new();
 
@@ -156,7 +148,6 @@ fn main() {
     let comit_node_api_url = ExchangeApiUrl(var("COMIT_NODE_URL").unwrap());
 
     create_rocket_instance(
-        Arc::new(api_client), //TODO remove treasury service
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_service),

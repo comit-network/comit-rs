@@ -22,7 +22,6 @@ use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient, ethereum_service,
     gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
-    treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
 };
 use common::OfferResponseBody;
 use ethereum_wallet::fake::StaticFakeWallet;
@@ -71,7 +70,6 @@ fn create_rocket_client() -> Client {
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
-        Arc::new(FakeTreasuryApiClient),
         InMemoryEventStore::new(),
         Arc::new(ethereum_service::EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),

@@ -7,7 +7,6 @@ members = [
     "application/ethereum_htlc",
     "application/ethereum_wallet",
     "application/comit_node",
-    "application/fake_treasury_service",
     "application/logging",
     "application/comit_node_client",
     "application/ledger_query_service",

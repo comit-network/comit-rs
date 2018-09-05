@@ -43,7 +43,6 @@ impl<'a> FromParam<'a> for TradeId {
 #[derive(Debug)] //TODO merge these errors into error
 pub enum Error {
     EventStore(event_store::Error),
-    TreasuryService(reqwest::Error),
     FeeService(bitcoin_fee_service::Error),
     LedgerHtlcService(ledger_htlc_service::Error),
     BitcoinRpc(bitcoin_rpc_client::RpcError),

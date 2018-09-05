@@ -10,10 +10,8 @@ use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use std::sync::Mutex; //TODO rename
 use swaps::{common::TradeId, eth_btc};
-use treasury_api_client::ApiClient;
 
 pub fn create_rocket_instance(
-    treasury_api_client: Arc<ApiClient>,
     event_store: InMemoryEventStore<TradeId>,
     ethereum_service: Arc<LedgerHtlcService<Ethereum>>,
     bitcoin_service: Arc<LedgerHtlcService<Bitcoin>>,
@@ -46,7 +44,6 @@ pub fn create_rocket_instance(
                 eth_btc::ledger::routes::post_contract_deployed, // TODO uncomment when cli working
             ],
         )
-        .manage(treasury_api_client)
         .manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_service)

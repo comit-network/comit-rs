@@ -1,27 +1,17 @@
 version: '3'
 services:
-  treasury_service:
-    build: ../../
-    environment:
-      - ROCKET_ADDRESS=0.0.0.0
-      - RUST_LOG=info,fake_treasury_service=debug
-      - RATE=0.07857713
-    ports:
-    - "8020:8000"
   comit_node_bob:
     build: ../../
     env_file:
       - "$SWAP_ENV/mainnet.env"
       - ./network.env
     environment:
-      - TREASURY_SERVICE_URL=http://treasury_service:8000
       - ROCKET_ADDRESS=0.0.0.0
       - RUST_LOG=info,exchange_service=debug,bitcoin_htlc=debug
       - RUST_BACKTRACE=1
     ports:
     - "8010:8000"
     depends_on:
-    - treasury_service
   comit_node_alice:
     build: ../../
     env_file:

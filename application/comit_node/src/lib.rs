@@ -34,4 +34,3 @@ pub mod gas_price_service;
 pub mod ledger_htlc_service;
 pub mod rocket_factory;
 pub mod swaps;
-pub mod treasury_api_client;

@@ -32,7 +32,6 @@ use comit_node::{
         bob_events::{OrderTaken, TradeFunded},
         common::TradeId,
     },
-    treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
 };
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -85,7 +84,6 @@ fn create_rocket_client(
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
-        Arc::new(FakeTreasuryApiClient),
         event_store,
         Arc::new(ethereum_service::EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),

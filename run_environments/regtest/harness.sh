@@ -30,7 +30,7 @@ END(){
         docker-compose rm -sfv;
     );
 
-    for pid in "$FAKE_TREASURY_PID" "$BOB_COMIT_NODE_PID" "$ALICE_COMIT_NODE_PID"; do
+    for pid in "$BOB_COMIT_NODE_PID" "$ALICE_COMIT_NODE_PID"; do
         if test "$pid" && ps "$pid" >/dev/null; then
             echo "KILLING $pid";
             kill "$pid" 2>/dev/null;
@@ -79,23 +79,12 @@ function setup() {
 
     activate_segwit;
 
-    FAKE_TREASURY_PORT=8020
     BOB_COMIT_NODE_PORT=8010
     ALICE_COMIT_NODE_PORT=8000
-
-#    FAKE_TREASURY_PID=$(
-#        export ROCKET_ADDRESS=0.0.0.0 \
-#               ROCKET_PORT=$FAKE_TREASURY_PORT \
-#               RUST_LOG=info,fake_treasury_service=debug \
-#               RATE=0.1;
-#
-#        start_target "fake_treasury_service";
-#    ); //TODO remove treasury service
 
     BOB_COMIT_NODE_PID=$(
         export BITCOIN_RPC_URL=http://localhost:18443 \
                ETHEREUM_NODE_ENDPOINT=http://localhost:8545 \
-               TREASURY_SERVICE_URL=http://localhost:$FAKE_TREASURY_PORT \
                ROCKET_ADDRESS=0.0.0.0 \
                COMIT_NODE_URL=http://localhost:$ALICE_COMIT_NODE_PORT \
                ROCKET_PORT=$BOB_COMIT_NODE_PORT \
