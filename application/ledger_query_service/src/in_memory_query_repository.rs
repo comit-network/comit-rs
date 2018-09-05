@@ -1,5 +1,5 @@
 use query_repository::{Error, QueryRepository};
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, sync::RwLock};
 
 #[derive(Debug)]
 struct State<T> {
@@ -9,13 +9,13 @@ struct State<T> {
 
 #[derive(Debug)]
 pub struct InMemoryQueryRepository<Q> {
-    state: Mutex<State<Q>>,
+    state: RwLock<State<Q>>,
 }
 
 impl<Q> Default for InMemoryQueryRepository<Q> {
     fn default() -> Self {
         Self {
-            state: Mutex::new(State {
+            state: RwLock::new(State {
                 storage: HashMap::new(),
                 next_index: 1,
             }),
@@ -25,19 +25,19 @@ impl<Q> Default for InMemoryQueryRepository<Q> {
 
 impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepository<T> {
     fn all(&self) -> Box<Iterator<Item = (u32, T)>> {
-        let state = self.state.lock().unwrap();
+        let state = self.state.read().unwrap();
 
         Box::new(state.storage.clone().into_iter())
     }
 
     fn get(&self, id: u32) -> Option<T> {
-        let state = self.state.lock().unwrap();
+        let state = self.state.read().unwrap();
 
         state.storage.get(&id).map(|q| q.clone())
     }
 
     fn save(&self, entity: T) -> Result<u32, Error<T>> {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.write().unwrap();
 
         let id = state.next_index;
 
@@ -48,7 +48,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
     }
 
     fn delete(&self, id: u32) {
-        let mut state = self.state.lock().unwrap();
+        let mut state = self.state.write().unwrap();
 
         state.storage.remove(&id);
     }

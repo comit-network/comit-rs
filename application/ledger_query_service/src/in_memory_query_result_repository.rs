@@ -1,20 +1,20 @@
 use query_result_repository::{QueryResult, QueryResultRepository};
-use std::{collections::HashMap, sync::Mutex};
+use std::{collections::HashMap, sync::RwLock};
 
 #[derive(Debug, Default)]
 pub struct InMemoryQueryResultRepository {
-    storage: Mutex<HashMap<u32, QueryResult>>,
+    storage: RwLock<HashMap<u32, QueryResult>>,
 }
 
 impl QueryResultRepository for InMemoryQueryResultRepository {
     fn get(&self, id: u32) -> Option<QueryResult> {
-        let storage = self.storage.lock().unwrap();
+        let storage = self.storage.read().unwrap();
 
         storage.get(&id).cloned()
     }
 
     fn add_result(&self, id: u32, tx_id: String) {
-        let mut storage = self.storage.lock().unwrap();
+        let mut storage = self.storage.write().unwrap();
 
         let mut query_result = storage.remove(&id).unwrap_or_default();
 
@@ -24,7 +24,7 @@ impl QueryResultRepository for InMemoryQueryResultRepository {
     }
 
     fn delete(&self, id: u32) {
-        let mut storage = self.storage.lock().unwrap();
+        let mut storage = self.storage.write().unwrap();
 
         storage.remove(&id);
     }
