@@ -7,10 +7,9 @@ use ledger_query_service::{InMemoryQueryRepository, InMemoryQueryResultRepositor
 use std::sync::Arc;
 
 fn main() {
-    // TODO: Read that stuff from the environment
-
     let config = rocket::Config::development().unwrap();
 
+    // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(config.port));
     let query_repository = InMemoryQueryRepository::default();
     let query_result_repository = InMemoryQueryResultRepository::default();
