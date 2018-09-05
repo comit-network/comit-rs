@@ -23,8 +23,9 @@ use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
-    ethereum_service, gas_price_service::StaticGasPriceService,
-    rocket_factory::create_rocket_instance, treasury_api_client::FakeApiClient,
+    ethereum_service, exchange_api_client::FakeApiClient as FakeComitNodeApiClient,
+    gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
+    treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
 };
 use mocks::{BitcoinRpcClientMock, StaticEthereumApi};
 use rocket::{
@@ -109,8 +110,10 @@ fn create_rocket_client() -> Client {
         exchange_success_address,
     ));
 
+    let api_client = FakeComitNodeApiClient::new();
+
     let rocket = create_rocket_instance(
-        Arc::new(FakeApiClient),
+        Arc::new(FakeTreasuryApiClient),
         InMemoryEventStore::new(),
         Arc::new(ethereum_service::EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
@@ -127,6 +130,7 @@ fn create_rocket_client() -> Client {
             .clone()
             .into(),
         Network::Regtest,
+        Arc::new(api_client),
     );
     rocket::local::Client::new(rocket).unwrap()
 }
@@ -201,7 +205,6 @@ fn given_an_deployed_htlc_and_a_secret_should_redeem_secret() {
 
     {
         let response = request_order(&mut client, &trade_id);
-        println!("{:?}", response);
         assert_eq!(response.status(), Status::Ok)
     }
 
@@ -212,7 +215,6 @@ fn given_an_deployed_htlc_and_a_secret_should_redeem_secret() {
 
     {
         let response = notify_about_revealed_secret(&mut client, &trade_id);
-        println!("{:?}", response);
 
         assert_eq!(response.status(), Status::Ok)
     }

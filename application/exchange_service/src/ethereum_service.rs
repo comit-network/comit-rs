@@ -15,19 +15,22 @@ use std::{
 use swaps::common::TradeId;
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {
-    fn from(_e: gas_price_service::Error) -> Self {
+    fn from(error: gas_price_service::Error) -> Self {
+        error!("{:?}", error);
         ledger_htlc_service::Error::Internal
     }
 }
 
 impl<'a> From<PoisonError<MutexGuard<'a, U256>>> for ledger_htlc_service::Error {
-    fn from(_e: PoisonError<MutexGuard<'a, U256>>) -> Self {
+    fn from(error: PoisonError<MutexGuard<'a, U256>>) -> Self {
+        error!("{:?}", error);
         ledger_htlc_service::Error::Internal
     }
 }
 
 impl<'a> From<web3::Error> for ledger_htlc_service::Error {
-    fn from(_e: web3::Error) -> Self {
+    fn from(error: web3::Error) -> Self {
+        error!("{:?}", error);
         ledger_htlc_service::Error::NodeConnection
     }
 }

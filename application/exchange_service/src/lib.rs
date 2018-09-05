@@ -23,10 +23,13 @@ extern crate uuid;
 extern crate log;
 extern crate event_store;
 extern crate logging;
+extern crate rand;
+extern crate rustc_hex;
 
 pub mod bitcoin_fee_service;
 pub mod bitcoin_service;
 pub mod ethereum_service;
+pub mod exchange_api_client;
 pub mod gas_price_service;
 pub mod ledger_htlc_service;
 pub mod rocket_factory;

@@ -29,9 +29,10 @@ use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     bitcoin_service::BitcoinService,
     ethereum_service::EthereumService,
+    exchange_api_client::{DefaultApiClient as ComitNodeClient, ExchangeApiUrl},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
-    treasury_api_client::{DefaultApiClient, TreasuryApiUrl},
+    treasury_api_client::{DefaultApiClient as TreasuryApiClient, TreasuryApiUrl},
 };
 use hex::FromHex;
 use secp256k1_support::KeyPair;
@@ -43,7 +44,7 @@ fn main() {
     let treasury_api_url = TreasuryApiUrl(var_or_exit("TREASURY_SERVICE_URL"));
     info!("set TREASURY_SERVICE_URL={:?}", treasury_api_url);
 
-    let api_client = DefaultApiClient {
+    let api_client = TreasuryApiClient {
         client: reqwest::Client::new(),
         url: treasury_api_url,
     };
@@ -152,14 +153,17 @@ fn main() {
         btc_exchange_redeem_address.clone(),
     );
 
+    let exchange_api_url = ExchangeApiUrl(var("EXCHANGE_SERVICE_URL").unwrap());
+
     create_rocket_instance(
-        Arc::new(api_client),
+        Arc::new(api_client), //TODO remove treasury service
         event_store,
         Arc::new(ethereum_service),
         Arc::new(bitcoin_service),
         exchange_refund_address,
         exchange_success_keypair,
         network,
+        Arc::new(ComitNodeClient::new(exchange_api_url)),
     ).launch();
 }
 

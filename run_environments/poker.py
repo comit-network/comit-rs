@@ -61,7 +61,7 @@ def eth_deployed(trading_service_url, trade_id, contract_address):
         sys.exit(2)
 
     data = {'contract_address': contract_address}
-    url = '{t_url}/trades/ETH-BTC/{trade_id}/buy-order-contract-deployed'.format(t_url=trading_service_url, trade_id=trade_id)
+    url = '{t_url}/cli/trades/ETH-BTC/{trade_id}/buy-order-contract-deployed'.format(t_url=trading_service_url, trade_id=trade_id)
 
     response = requests.post(url, headers=HEADERS, data=json.dumps(data))
     print(response)

@@ -34,13 +34,14 @@ use exchange_service::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     bitcoin_service::BitcoinService,
     ethereum_service::{self, BlockingEthereumApi},
+    exchange_api_client::FakeApiClient as FakeComitNodeApiClient,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
     swaps::{
+        bob_events::{OrderTaken, TradeFunded},
         common::TradeId,
-        events::{OrderTaken, TradeFunded},
     },
-    treasury_api_client::FakeApiClient,
+    treasury_api_client::FakeApiClient as FakeTreasuryApiClient,
 };
 use hex::FromHex;
 use mocks::BitcoinRpcClientMock;
@@ -81,8 +82,10 @@ fn create_rocket_client(
     event_store: InMemoryEventStore<TradeId>,
     bitcoin_service: BitcoinService,
 ) -> Client {
+    let api_client = FakeComitNodeApiClient::new();
+
     let rocket = create_rocket_instance(
-        Arc::new(FakeApiClient),
+        Arc::new(FakeTreasuryApiClient),
         event_store,
         Arc::new(ethereum_service::EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
@@ -99,6 +102,7 @@ fn create_rocket_client(
             .clone()
             .into(),
         Network::Regtest,
+        Arc::new(api_client),
     );
     rocket::local::Client::new(rocket).unwrap()
 }

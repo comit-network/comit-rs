@@ -2,10 +2,13 @@ use bitcoin_support::Network;
 use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ethereum_support;
 use event_store::InMemoryEventStore;
+use exchange_api_client::ApiClient as ExchangeApiClient;
 use ledger_htlc_service::LedgerHtlcService;
+use rand::OsRng;
 use rocket;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
+use std::sync::Mutex; //TODO rename
 use swaps::{common::TradeId, eth_btc};
 use treasury_api_client::ApiClient;
 
@@ -17,7 +20,10 @@ pub fn create_rocket_instance(
     exchange_refund_address: ethereum_support::Address,
     exchange_success_keypair: KeyPair,
     network: Network,
+    exchange_client: Arc<ExchangeApiClient>,
 ) -> rocket::Rocket {
+    let rng = OsRng::new().expect("Failed to get randomness from OS");
+
     rocket::ignite()
         .mount(
             "/",
@@ -29,6 +35,17 @@ pub fn create_rocket_instance(
                 eth_btc::sell::routes::post_revealed_secret,
             ],
         )
+        .mount(
+            "/cli/", //todo come up with a better name
+            routes![
+                eth_btc::cli::buy_routes::get_redeem_orders,
+                eth_btc::cli::buy_routes::post_buy_offers,
+                eth_btc::cli::buy_routes::post_buy_orders,
+                eth_btc::cli::sell_routes::post_sell_offers,
+                eth_btc::cli::sell_routes::post_sell_orders,
+                eth_btc::ledger::routes::post_contract_deployed, // TODO uncomment when cli working
+            ],
+        )
         .manage(treasury_api_client)
         .manage(event_store)
         .manage(ethereum_service)
@@ -36,4 +53,6 @@ pub fn create_rocket_instance(
         .manage(exchange_success_keypair)
         .manage(exchange_refund_address)
         .manage(network)
+        .manage(exchange_client)
+        .manage(Mutex::new(rng))
 }

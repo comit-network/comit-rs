@@ -21,7 +21,7 @@ function setup() {
 
     export ETH_HTLC_ADDRESS="0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"
 
-    cli="$PROJECT_ROOT/target/debug/trading_client"
+    cli="$PROJECT_ROOT/target/debug/comit_node_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
@@ -136,7 +136,7 @@ function notify_exchange_service_btc_htlc_funded() {
 
 function notify_trading_service_eth_htlc_funded() {
 
-    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
+    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
 
     echo $result > $OUTPUT
 

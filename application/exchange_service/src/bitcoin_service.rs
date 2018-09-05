@@ -14,25 +14,29 @@ use std::sync::Arc;
 use swaps::common::TradeId;
 
 impl From<reqwest::Error> for Error {
-    fn from(_error: reqwest::Error) -> Self {
+    fn from(error: reqwest::Error) -> Self {
+        error!("{:?}", error);
         Error::NodeConnection
     }
 }
 
 impl From<bitcoin_rpc_client::RpcError> for Error {
-    fn from(_error: bitcoin_rpc_client::RpcError) -> Self {
+    fn from(error: bitcoin_rpc_client::RpcError) -> Self {
+        error!("{:?}", error);
         Error::NodeConnection
     }
 }
 
 impl From<bitcoin_htlc::UnlockingError> for Error {
-    fn from(_error: bitcoin_htlc::UnlockingError) -> Self {
+    fn from(error: bitcoin_htlc::UnlockingError) -> Self {
+        error!("{:?}", error);
         Error::Unlocking
     }
 }
 
 impl From<bitcoin_fee_service::Error> for Error {
-    fn from(_error: bitcoin_fee_service::Error) -> Self {
+    fn from(error: bitcoin_fee_service::Error) -> Self {
+        error!("{:?}", error);
         Error::Internal
     }
 }

@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 
@@ -41,9 +43,10 @@ trap 'END' EXIT;
 
 function start_target() {
     name=$1;
+    log_prefix=$name-$2
     log "Starting $name";
     # Logs prefixes the service name in front of its logs
-    "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed  "s/^/$name: / " >&3 &
+    "${PROJECT_ROOT}/target/debug/$name" 2>&1 | sed  "s/^/$log_prefix: / " >&3 &
     # returns the PID of the process
     jobs -p
 }
@@ -56,7 +59,7 @@ function activate_segwit() {
 
 
 function setup() {
-    log "Starting up ...";
+    log "Starting up ..."; #TODO add cargo build
 
     #### Env variable to run all services
     set -a;
@@ -79,14 +82,14 @@ function setup() {
     EXCHANGE_PORT=8010
     TRADING_SERVICE_PORT=8000
 
-    FAKE_TREASURY_PID=$(
-        export ROCKET_ADDRESS=0.0.0.0 \
-               ROCKET_PORT=$FAKE_TREASURY_PORT \
-               RUST_LOG=info,fake_treasury_service=debug \
-               RATE=0.1;
-
-        start_target "fake_treasury_service";
-    );
+#    FAKE_TREASURY_PID=$(
+#        export ROCKET_ADDRESS=0.0.0.0 \
+#               ROCKET_PORT=$FAKE_TREASURY_PORT \
+#               RUST_LOG=info,fake_treasury_service=debug \
+#               RATE=0.1;
+#
+#        start_target "fake_treasury_service";
+#    ); //TODO remove treasury service
 
     EXCHANGE_SERVICE_PID=$(
         export BITCOIN_RPC_URL=http://localhost:18443 \
@@ -98,18 +101,18 @@ function setup() {
                RUST_BACKTRACE=1 \
                BITCOIN_SATOSHI_PER_KB=50;
 
-        start_target "exchange_service";
+        start_target "exchange_service" "Bob";
     );
 
 
     TRADING_SERVICE_PID=$(
         export  ROCKET_ADDRESS=0.0.0.0 \
-                RUST_LOG=info,fake_treasury_service=debug \
+                RUST_LOG=info,exchange_service=debug,fake_treasury_service=debug \
                 EXCHANGE_SERVICE_URL=http://localhost:$EXCHANGE_PORT \
                 ROCKET_PORT=$TRADING_SERVICE_PORT \
                 RATE=0.1;
 
-        start_target "trading_service";
+        start_target "exchange_service" "Alice";
     );
 }
 

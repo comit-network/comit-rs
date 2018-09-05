@@ -40,7 +40,7 @@ impl<'a> FromParam<'a> for TradeId {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug)] //TODO merge these errors into error
 pub enum Error {
     EventStore(event_store::Error),
     TreasuryService(reqwest::Error),

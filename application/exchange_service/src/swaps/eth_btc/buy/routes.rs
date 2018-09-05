@@ -18,9 +18,11 @@ use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swaps::{
+    bob_events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
     common::{Error, TradeId},
-    events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
 };
+//TODO rename Exchange to Bob
+//TODO rename Client to Alice
 
 impl From<Error> for BadRequest<String> {
     fn from(e: Error) -> Self {
@@ -142,7 +144,7 @@ fn handle_post_buy_orders(
     event_store.add_event(trade_id, order_taken.clone())?;
     Ok(order_taken.into())
 }
-
+//TODO move this into ledger urls
 #[post(
     "/trades/ETH-BTC/<trade_id>/buy-order-htlc-funded",
     format = "application/json",
