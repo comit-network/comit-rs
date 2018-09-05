@@ -33,7 +33,7 @@ hex = "0.3.2"
 tiny-keccak = "1.4.2"
 logging = { path = "../logging" }
 event_store = { path = "../../vendor/event_store" }
-rand = "0.4.2" # TODO update to rand = "0.5.5"
+rand = "0.4.2"
 rustc-hex = "1.0.0"
 
 [dev-dependencies]
