@@ -134,7 +134,7 @@ function notify_bob_comit_node_btc_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    print_blue "Notified exchange about trader's BTC payment (Trader funded BTC HTLC)."
+    print_blue "Notified bob about alice's BTC payment (Alice funded BTC HTLC)."
 }
 
 function notify_alice_comit_node_eth_htlc_funded() {
@@ -143,13 +143,13 @@ function notify_alice_comit_node_eth_htlc_funded() {
 
     echo $result > $OUTPUT
 
-    print_blue "Notified trader about exchange's ETH payment (Exchange funded ETH HTLC)."
+    print_blue "Notified alice about bob's ETH payment (Bob funded ETH HTLC)."
 }
 
 function notify_bob_comit_node_eth_redeemed() {
     $curl -v --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed 2> $OUTPUT
 
-    print_blue "Notified exchange about revealed secret (Trader redeemed ETH funds)."
+    print_blue "Notified Bob about revealed secret (Alice redeemed ETH funds)."
 }
 function get_redeem_details() {
 
@@ -296,7 +296,7 @@ echo "BTC: Total UTXOs before redeem: $old_unspent_num"
 
 step;
 
-# Poke exchange service to redeem BTC
+# Poke bob service to redeem BTC
 notify_bob_comit_node_eth_redeemed;
 
 generate_blocks 2>&1 /dev/null
