@@ -9,19 +9,22 @@ pub struct ShutdownHandle {
 
 impl Drop for ShutdownHandle {
     fn drop(&mut self) {
-        debug!("Shutting down server because handle is dropped.");
-
         let sender = self.sender.take().unwrap();
-        sender.send(()).unwrap()
+        if let Ok(()) = sender.send(()) {
+            debug!("Shut down server because handle is dropped.");
+        }
     }
 }
 
-pub fn new(
-    future: impl Future<Item = (), Error = ()>,
-) -> (impl Future<Item = (), Error = ()>, ShutdownHandle) {
+pub fn new<E>(
+    future: impl Future<Item = (), Error = E>,
+) -> (impl Future<Item = (), Error = E>, ShutdownHandle) {
     let (sender, receiver) = oneshot::channel();
 
-    let combined_future = future.select(receiver.map_err(|_| ())).then(|_| Ok(()));
+    let combined_future = future
+        .select(receiver.map_err(|_| unreachable!()))
+        .and_then(|_| Ok(()))
+        .map_err(|(e, _)| e);
 
     let _self = ShutdownHandle {
         sender: Some(sender),

@@ -43,8 +43,8 @@ fn given_two_servers_both_can_ping_each_other() {
     ).start::<JsonFrameHandler>();
     let (bob_server, _bob_shutdown_handle) = shutdown_handle::new(bob_server);
 
-    runtime.spawn(alice_server);
-    runtime.spawn(bob_server);
+    runtime.spawn(alice_server.map_err(|_| ()));
+    runtime.spawn(bob_server.map_err(|_| ()));
 
     let alice_response = alice_client.send_request(Ping {}.into()).wait();
     let bob_response = bob_client.send_request(Ping {}.into()).wait();

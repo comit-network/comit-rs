@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    Internal,
     UnknownFrameType(String),
     InvalidFieldFormat(String),
     UnexpectedResponse,

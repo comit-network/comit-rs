@@ -139,16 +139,6 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
     }
 }
 
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        error!(
-            "Internal error occurred during conversion of request/response: {:?}",
-            e
-        );
-        Error::Internal
-    }
-}
-
 impl JsonFrameHandler {
     fn dispatch_request(
         &mut self,
