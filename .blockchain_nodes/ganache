@@ -1,3 +1,0 @@
-#!/bin/sh
-
-docker run -d -p 8545:8545 --rm trufflesuite/ganache-cli -a 7 -m supersecure -i 42
