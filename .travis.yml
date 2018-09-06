@@ -10,8 +10,6 @@ addons:
   apt:
     packages:
     - libzmq3-dev
-before_install:
-- openssl aes-256-cbc -K $encrypted_13ab58161701_key -iv $encrypted_13ab58161701_iv -in .travis/gcloud-authentication.json.enc -out .travis/gcloud-authentication.json -d
 install: true
 services:
 - docker
@@ -26,15 +24,12 @@ before_script:
 - docker pull trufflesuite/ganache-cli:v6.1.3
 - docker pull coblox/bitcoin-core:0.16.1-r2
 - "./setup.sh"
-- ".travis/capture-docker-traffic.sh"
 - which sccache || cargo install sccache
 script:
 - "./check-fmt.sh"
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
 - LOG_SERVICES=1 ./run_environments/regtest/harness.sh ./run_environments/regtest/happy_path.sh
-after_script:
-- expr $TRAVIS_TEST_RESULT > /dev/null && .travis/upload-container-logs-to-gcs.sh
 notifications:
   email: false
   slack:
