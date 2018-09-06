@@ -12,10 +12,11 @@ extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate uuid;
-
-mod mocks;
+mod common;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
@@ -24,6 +25,7 @@ use comit_node::{
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient, ethereum_service,
     gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
 };
+use common::mocks;
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use mocks::{BitcoinRpcClientMock, StaticEthereumApi};

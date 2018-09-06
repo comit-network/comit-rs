@@ -1,3 +1,4 @@
+pub mod mocks;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {
     pub uid: String,

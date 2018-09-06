@@ -17,8 +17,10 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
 extern crate uuid;
+#[macro_use]
+extern crate serde_derive;
 
-mod mocks;
+mod common;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Blocks, Network};
@@ -34,6 +36,7 @@ use comit_node::{
         common::TradeId,
     },
 };
+use common::mocks;
 use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     seconds::Seconds,
