@@ -24,7 +24,13 @@ pub fn set_up_logging() {
             formatter(out, message, record)
         )
         //TODO: get level from config file once implemented with #136
-        .level(log::LevelFilter::Debug)
+        .level(log::LevelFilter::Warn)
+        .level_for("comit_node", log::LevelFilter::Trace)
+        .level_for("bitcoin_htlc", log::LevelFilter::Trace)
+        .level_for("bitcoin_wallet", log::LevelFilter::Trace)
+        .level_for("ethereum_htlc", log::LevelFilter::Trace)
+        .level_for("ethereum_wallet", log::LevelFilter::Trace)
+        .level_for("ganp", log::LevelFilter::Trace)
         // output to stdout
         .chain(stdout())
         .apply().unwrap();

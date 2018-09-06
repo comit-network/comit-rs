@@ -89,17 +89,17 @@ function setup() {
                ROCKET_ADDRESS=0.0.0.0 \
                COMIT_NODE_URL=http://localhost:$ALICE_COMIT_NODE_PORT \
                ROCKET_PORT=$BOB_COMIT_NODE_PORT \
-               RUST_LOG=info,comit_node=debug,bitcoin_htlc=debug \
+               RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                RUST_BACKTRACE=1 \
                BITCOIN_SATOSHI_PER_KB=50;
 
-        start_target "comit_node" "Bob";
+        start_target "comit_node" "Bob  ";
     );
 
 
     ALICE_COMIT_NODE_PID=$(
         export  ROCKET_ADDRESS=0.0.0.0 \
-                RUST_LOG=debug,comit_node=debug \
+                RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                 COMIT_NODE_URL=http://localhost:$BOB_COMIT_NODE_PORT \
                 ROCKET_PORT=$ALICE_COMIT_NODE_PORT \
                 RATE=0.1;
