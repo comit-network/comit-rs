@@ -27,7 +27,7 @@ impl fmt::Display for TradeId {
 }
 
 #[derive(Clone)]
-pub struct ComitNodeApiUrl(pub String); //TODO rename this to ComitNodeApiUrl
+pub struct ComitNodeApiUrl(pub String);
 
 #[allow(dead_code)]
 pub struct DefaultApiClient {
