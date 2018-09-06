@@ -1,6 +1,4 @@
-use api_client::{
-    create_client, ApiClient, BuyOfferRequestBody, ComitNodeApiUrl, TradingServiceError,
-};
+use api_client::{ApiClient, BuyOfferRequestBody, TradingServiceError};
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer,
@@ -100,8 +98,8 @@ pub enum OrderType {
     Sell,
 }
 
-pub fn run(
-    trading_api_url: ComitNodeApiUrl,
+pub fn run<C: ApiClient>(
+    client: &C,
     symbol: Symbol,
     order_type: OrderType,
     amount: f64,
@@ -111,7 +109,6 @@ pub fn run(
     match order_type {
         OrderType::Sell => panic!("Only buy orders are currently supported"),
         OrderType::Buy => {
-            let client = create_client(&trading_api_url);
             let offer = client.request_offer(&symbol, &offer_request_body)?;
 
             return Ok(format!(
@@ -129,12 +126,13 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use api_client::FakeApiClient;
 
     #[test]
     fn request_offer_with_supported_currency() {
-        let trading_api_url = ComitNodeApiUrl("stub".to_string());
-        let symbol = Symbol::from_str("ETH-BTC").unwrap();
-        let response = run(trading_api_url, symbol, OrderType::Buy, 12.0).unwrap();
+        let symbol = "ETH-BTC".parse().unwrap();
+
+        let response = run(&FakeApiClient::default(), symbol, OrderType::Buy, 12.0).unwrap();
 
         assert_eq!(
             response,
