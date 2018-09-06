@@ -8,9 +8,12 @@ extern crate http_api_problem;
 extern crate rocket;
 extern crate rocket_contrib;
 
-extern crate bitcoin;
+extern crate bitcoin_support;
 #[cfg(test)]
 extern crate spectral;
+
+#[macro_use]
+extern crate log;
 
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;

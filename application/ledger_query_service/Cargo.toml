@@ -17,7 +17,7 @@ rocket = "=0.3.14"
 rocket_codegen = "=0.3.14"
 rocket_contrib = "=0.3.14"
 http-api-problem = { version = "0.7", features = ["with_rocket"] }
-bitcoin = "0.14"
+bitcoin_support = { path = "../../vendor/bitcoin_support" }
 
 [dev-dependencies]
 spectral = "0.6"

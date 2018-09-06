@@ -1,16 +1,16 @@
 use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 
 pub trait TransactionProcessor<T> {
     fn process(&self, transaction: T);
 }
 
-pub trait Transaction {
+pub trait Transaction: Debug {
     fn txid(&self) -> String;
 }
 
-pub trait Query<T> {
+pub trait Query<T>: Debug {
     fn matches(&self, transaction: &T) -> bool;
 }
 
@@ -25,8 +25,18 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
     fn process(&self, transaction: T) {
         self.queries
             .all()
+            .inspect(|(id, query)| {
+                trace!(
+                    "Checking if query ({:?}) {:#?} matches transaction ({:?}) {:#?}",
+                    id,
+                    query,
+                    transaction.txid(),
+                    transaction
+                )
+            })
             .filter(|(_, query)| query.matches(&transaction))
             .map(|(id, _)| (id, transaction.txid()))
+            .inspect(|(id, txid)| info!("Transaction {} matches query {}", txid, id))
             .for_each(|(query_id, tx_id)| self.results.add_result(query_id, tx_id))
     }
 }
