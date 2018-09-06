@@ -27,8 +27,6 @@ pub fn create_rocket_instance(
             "/",
             routes![
                 eth_btc::buy::routes::post_buy_orders,
-                eth_btc::buy::routes::post_orders_funding,
-                eth_btc::buy::routes::post_revealed_secret,
                 eth_btc::sell::routes::post_orders_funding,
                 eth_btc::sell::routes::post_revealed_secret,
             ],
@@ -41,7 +39,9 @@ pub fn create_rocket_instance(
                 eth_btc::cli::buy_routes::post_buy_orders,
                 eth_btc::cli::sell_routes::post_sell_offers,
                 eth_btc::cli::sell_routes::post_sell_orders,
-                eth_btc::ledger::routes::post_contract_deployed, // TODO uncomment when cli working
+                eth_btc::ledger::routes::post_contract_deployed, // TODO move into own route when cli working
+                eth_btc::ledger::routes::post_orders_funding, // TODO move into own route when cli working
+                eth_btc::ledger::routes::post_revealed_secret, // TODO move into own route when cli working
             ],
         )
         .manage(event_store)

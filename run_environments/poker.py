@@ -49,7 +49,7 @@ def btc_funded(exchange_service_url, trade_id, tx_id, vout):
         sys.exit(2)
 
     data = {'transaction_id': tx_id, 'vout': int(vout)}
-    url = '{ex_url}/trades/ETH-BTC/{trade_id}/buy-order-htlc-funded'.format(ex_url=exchange_service_url, trade_id=trade_id)
+    url = '{ex_url}/cli/trades/ETH-BTC/{trade_id}/buy-order-htlc-funded'.format(ex_url=exchange_service_url, trade_id=trade_id)
 
     response = requests.post(url, headers=HEADERS, data=json.dumps(data))
     print(response)
@@ -73,7 +73,7 @@ def btc_redeem(exchange_service_url, trade_id, secret):
         sys.exit(2)
 
     data = {'secret': secret}
-    url = '{ex_url}/trades/ETH-BTC/{trade_id}/buy-order-secret-revealed'.format(ex_url=exchange_service_url, trade_id=trade_id)
+    url = '{ex_url}/cli/trades/ETH-BTC/{trade_id}/buy-order-secret-revealed'.format(ex_url=exchange_service_url, trade_id=trade_id)
 
     response = requests.post(url, headers=HEADERS, data=json.dumps(data))
     print(response)

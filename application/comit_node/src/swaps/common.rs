@@ -1,9 +1,4 @@
-use bitcoin_fee_service;
-use bitcoin_rpc_client;
-use event_store;
-use ledger_htlc_service;
 use logging;
-use reqwest;
 use rocket::{http::RawStr, request::FromParam};
 use std::fmt;
 use uuid::{self, Uuid};
@@ -38,14 +33,4 @@ impl<'a> FromParam<'a> for TradeId {
             TradeId::from(uid)
         })
     }
-}
-
-#[derive(Debug)] //TODO merge these errors into error
-pub enum Error {
-    EventStore(event_store::Error),
-    FeeService(bitcoin_fee_service::Error),
-    LedgerHtlcService(ledger_htlc_service::Error),
-    BitcoinRpc(bitcoin_rpc_client::RpcError),
-    BitcoinNode(reqwest::Error),
-    Unlocking(String),
 }

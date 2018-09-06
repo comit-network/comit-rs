@@ -10,7 +10,8 @@ use rocket_contrib::Json;
 use std::sync::Arc;
 use swaps::{
     bob_events::{ContractDeployed, ContractRedeemed, OrderTaken, TradeFunded},
-    common::{Error, TradeId},
+    common::TradeId,
+    errors::Error,
 };
 
 impl From<ledger_htlc_service::Error> for Error {
