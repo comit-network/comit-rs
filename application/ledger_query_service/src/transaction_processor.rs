@@ -23,21 +23,19 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
     for DefaultTransactionProcessor<Q>
 {
     fn process(&self, transaction: &T) {
+        trace!("Processing {:?}", transaction);
+
         self.queries
             .all()
-            .inspect(|(id, query)| {
-                trace!(
-                    "Checking if query ({:?}) {:#?} matches transaction ({:?}) {:#?}",
-                    id,
-                    query,
-                    transaction.txid(),
-                    transaction
+            .filter(|(_, query)| query.matches(transaction))
+            .map(|(id, query)| (id, transaction.txid(), query))
+            .inspect(|(id, txid, query)| {
+                info!(
+                    "Transaction {} matches {:#?} Query-ID: {:?}",
+                    txid, query, id
                 )
             })
-            .filter(|(_, query)| query.matches(transaction))
-            .map(|(id, _)| (id, transaction.txid()))
-            .inspect(|(id, txid)| info!("Transaction {} matches query {}", txid, id))
-            .for_each(|(query_id, tx_id)| self.results.add_result(query_id, tx_id))
+            .for_each(|(query_id, tx_id, _)| self.results.add_result(query_id, tx_id))
     }
 }
 

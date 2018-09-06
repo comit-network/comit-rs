@@ -2,30 +2,35 @@ use bitcoin_support::{serialize::deserialize, Block, Transaction};
 use transaction_processor::TransactionProcessor;
 use zmq::{self, Context, Socket};
 
-pub struct BitcoinZmqListener<P> {
-    context: Context,
+pub struct BitcoindZmqListener<P> {
+    _context: Context,
     socket: Socket,
     processor: P,
 }
 
-impl<P: TransactionProcessor<Transaction>> BitcoinZmqListener<P> {
-    pub fn new(endpoint: &str, processor: P) -> Self {
-        let context = Context::new().unwrap();
-        let mut socket = context.socket(zmq::SUB).unwrap();
+impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
+    pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
+        let context = Context::new()?;
+        let mut socket = context.socket(zmq::SUB)?;
 
-        socket.set_subscribe(b"rawblock").unwrap();
-        socket.connect(endpoint).unwrap();
+        socket.set_subscribe(b"rawblock")?;
+        socket.connect(endpoint)?;
 
-        BitcoinZmqListener {
-            context,
+        Ok(BitcoindZmqListener {
+            _context: context,
             socket,
             processor,
-        }
+        })
     }
 
     pub fn start(&mut self) {
+        info!(
+            "Starting ZeroMQ listener for Bitcoin on {} waiting for new blocks.",
+            self.socket.get_last_endpoint().unwrap()
+        );
+
         loop {
-            let result = self.receive_msg();
+            let result = self.receive_block();
 
             if let Ok(Some(block)) = result {
                 block
@@ -36,7 +41,7 @@ impl<P: TransactionProcessor<Transaction>> BitcoinZmqListener<P> {
         }
     }
 
-    fn receive_msg(&mut self) -> Result<Option<Block>, zmq::Error> {
+    fn receive_block(&mut self) -> Result<Option<Block>, zmq::Error> {
         let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
         let bytes: &[u8] = bytes.as_ref();
 
@@ -46,11 +51,11 @@ impl<P: TransactionProcessor<Transaction>> BitcoinZmqListener<P> {
 
                 match deserialize(bytes.as_ref()) {
                     Ok(block) => {
-                        info!("Got new block {:?}", block);
+                        trace!("Got {:?}", block);
                         Ok(Some(block))
                     }
                     Err(e) => {
-                        error!("Got new block but failed to deserialize {:?}", e);
+                        error!("Got new block but failed to deserialize it because {:?}", e);
                         Ok(None)
                     }
                 }
