@@ -60,13 +60,11 @@ fn handle_post_sell_orders(
     let alice_refund_address: ethereum_support::Address =
         order_request_body.alice_refund_address.into();
 
-    //TODO: clean up, should not need to do address>pub_key>address
-    let bob_success_address = bitcoin_support::Address::from(
-        bob_success_keypair
-            .public_key()
-            .clone()
-            .to_p2wpkh_address(*network),
-    );
+    let bob_success_address = bob_success_keypair
+        .public_key()
+        .clone()
+        .to_p2wpkh_address(*network)
+        .into();
 
     let order_taken = OrderTaken {
         uid: trade_id,
