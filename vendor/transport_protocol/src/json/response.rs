@@ -84,6 +84,10 @@ impl Response {
             _ => value,
         }
     }
+
+    fn body(&self) -> &JsonValue {
+        &self.body
+    }
 }
 
 impl IntoFrame<Frame> for Response {

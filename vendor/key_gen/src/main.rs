@@ -6,7 +6,7 @@ extern crate rand;
 extern crate secp256k1_support;
 
 use bitcoin::network::constants::Network;
-use bitcoin_support::{PrivateKey, ToP2wpkhAddress};
+use bitcoin_support::{PrivateKey, PubkeyHash, ToP2wpkhAddress};
 use ethereum_support::ToEthereumAddress;
 use rand::OsRng;
 use secp256k1_support::KeyPair;
@@ -32,4 +32,5 @@ fn main() {
     println!("eth_address: {:?}", eth_address);
     let btc_address_mainnet = public_key.to_p2wpkh_address(Network::Bitcoin);
     println!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
+    println!("pubkey_hash: {:?}", PubkeyHash::from(btc_address_mainnet));
 }

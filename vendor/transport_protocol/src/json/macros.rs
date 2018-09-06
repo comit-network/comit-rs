@@ -25,11 +25,27 @@ macro_rules! header {
 }
 
 #[macro_export]
+macro_rules! body {
+    ($e:expr) => {
+        match $e {
+            Ok(body) => body,
+            Err(e) => {
+                error!("Failed to deserialize body: {:?}", e);
+                return Response::new(Status::SE(0))
+            }
+        }
+    };
+}
+
+#[macro_export]
 macro_rules! header_internal {
     ($e:expr, $none:expr) => {
         match $e {
             Some(Ok(header)) => header,
-            Some(Err(_)) => return Response::new(Status::SE(0)),
+            Some(Err(e)) => {
+                error!("Failed to deserialize header: {:?}", e);
+                return Response::new(Status::SE(0))
+            },
             None => $none,
         }
     };

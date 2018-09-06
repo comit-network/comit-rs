@@ -1,8 +1,9 @@
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Address, BitcoinQuantity, Blocks};
 use ledger::Ledger;
+use secp256k1_support::PublicKey;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Default)]
 pub struct Bitcoin {}
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -17,6 +18,7 @@ impl Ledger for Bitcoin {
     type LockDuration = Blocks;
     type HtlcId = HtlcId;
     type TxId = TransactionId;
+    type Pubkey = PublicKey;
 
     fn symbol() -> String {
         String::from("BTC")

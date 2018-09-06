@@ -12,6 +12,7 @@ members = [
     "application/trading_client",
     "application/trading_service",
     "application/ledger_query_service",
+    "application/ganp",
     "vendor/bitcoin_rpc_test_helpers",
     "vendor/bitcoin_support",
     "vendor/ethereum_support",

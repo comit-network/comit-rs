@@ -4,7 +4,7 @@ use serde::{
 };
 use std::{fmt, time::Duration};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Seconds {
     duration: Duration,
 }
