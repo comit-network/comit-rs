@@ -60,3 +60,9 @@ impl From<bitcoin_rpc_client::RpcError> for Error {
         Error::BitcoinRpc(e)
     }
 }
+
+impl From<ledger_htlc_service::Error> for Error {
+    fn from(e: ledger_htlc_service::Error) -> Self {
+        Error::LedgerHtlcService(e)
+    }
+}

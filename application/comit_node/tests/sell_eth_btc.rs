@@ -171,7 +171,7 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
 
     let response = {
         let request = client
-            .post(format!("/trades/ETH-BTC/{}/sell-order-htlc-funded", trade_id).to_string())
+            .post(format!("/cli/trades/ETH-BTC/{}/sell-order-htlc-funded", trade_id).to_string())
             .header(ContentType::JSON)
             .body(r#" "0x3333333333333333333333333333333333333333" "#);
         request.dispatch()
@@ -216,7 +216,12 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
     let redeem_body = RedeemETHNotificationBody { secret };
     let response = {
         let request = client
-            .post(format!("/trades/ETH-BTC/{}/sell-order-secret-revealed", trade_id).to_string())
+            .post(
+                format!(
+                    "/cli/trades/ETH-BTC/{}/sell-order-secret-revealed",
+                    trade_id
+                ).to_string(),
+            )
             .header(ContentType::JSON)
             .body(serde_json::to_string(&redeem_body).unwrap());
         request.dispatch()

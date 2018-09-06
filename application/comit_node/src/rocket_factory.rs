@@ -25,11 +25,7 @@ pub fn create_rocket_instance(
     rocket::ignite()
         .mount(
             "/", //Endpoints for inbetween the nodes
-            routes![
-                eth_btc::buy::routes::post_buy_orders,
-                eth_btc::sell::routes::post_orders_funding,
-                eth_btc::sell::routes::post_revealed_secret,
-            ],
+            routes![eth_btc::buy::routes::post_buy_orders,],
         )
         .mount(
             "/cli/", //Endpoints for interaction with the CLI
@@ -43,6 +39,8 @@ pub fn create_rocket_instance(
                 eth_btc::ledger::buy_routes::post_contract_deployed, // TODO move into own route when cli working
                 eth_btc::ledger::buy_routes::post_orders_funding, // TODO move into own route when cli working
                 eth_btc::ledger::buy_routes::post_revealed_secret, // TODO move into own route when cli working
+                eth_btc::ledger::sell_routes::post_orders_funding, // TODO move into own route when cli working
+                eth_btc::ledger::sell_routes::post_revealed_secret, // TODO move into own route when cli working
             ],
         )
         .manage(event_store)
