@@ -25,7 +25,10 @@ pub fn create_rocket_instance(
     rocket::ignite()
         .mount(
             "/", //Endpoints for inbetween the nodes
-            routes![eth_btc::buy::routes::post_buy_orders,],
+            routes![
+                eth_btc::buy::routes::post_buy_orders,
+                eth_btc::sell::routes::post_sell_orders,
+            ],
         )
         .mount(
             "/cli/", //Endpoints for interaction with the CLI
