@@ -35,20 +35,16 @@ impl Htlc {
         success_address: Address,
         secret_hash: SecretHash,
     ) -> Self {
-        debug!(
-            "Created HTLC with secret hash {:?} for address {:?}. After {:?}, {:?} can reclaim the funds.",
-            secret_hash,
-            success_address,
-            refund_timeout,
-            refund_address
-        );
-
-        Htlc {
+        let htlc = Htlc {
             refund_timeout,
             refund_address,
             success_address,
             secret_hash,
-        }
+        };
+
+        debug!("Created new HTLC for ethereum: {:#?}", htlc);
+
+        htlc
     }
 
     pub fn compile_to_hex(&self) -> ByteCode {
