@@ -6,8 +6,8 @@ use uuid::{self, Uuid};
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
 
-impl TradeId {
-    pub fn new() -> TradeId {
+impl Default for TradeId {
+    fn default() -> Self {
         TradeId(Uuid::new_v4())
     }
 }

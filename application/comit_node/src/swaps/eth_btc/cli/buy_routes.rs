@@ -17,7 +17,6 @@ use swaps::{
     common::TradeId,
     errors::Error,
 };
-use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct BuyOfferRequestBody {
@@ -68,7 +67,7 @@ fn handle_buy_offer(
     let buy_amount = sell_amount * rate;
 
     let offer: OfferResponseBody<Ethereum, Bitcoin> = OfferResponseBody {
-        uid: TradeId::from(Uuid::new_v4()),
+        uid: Default::default(),
         symbol,
         rate,
         sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),

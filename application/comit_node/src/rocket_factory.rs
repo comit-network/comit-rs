@@ -7,8 +7,7 @@ use ledger_htlc_service::LedgerHtlcService;
 use rand::OsRng;
 use rocket;
 use secp256k1_support::KeyPair;
-use std::sync::Arc;
-use std::sync::Mutex; //TODO rename
+use std::sync::{Arc, Mutex};
 use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(

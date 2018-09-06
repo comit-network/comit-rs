@@ -11,7 +11,6 @@ use ethereum_support;
 use reqwest;
 use std::str::FromStr;
 use swaps::common::TradeId;
-use uuid::Uuid;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
@@ -31,7 +30,7 @@ impl ApiClient for FakeApiClient {
         let rate = 0.1;
         let sell_amount = amount * rate;
         let offer = OfferResponseBody {
-            uid: TradeId::from(Uuid::new_v4()),
+            uid: Default::default(),
             symbol,
             rate,
             sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(sell_amount),
@@ -67,7 +66,7 @@ impl ApiClient for FakeApiClient {
         let rate = 0.1;
         let buy_amount = amount * rate;
         let offer = OfferResponseBody {
-            uid: TradeId::from(Uuid::new_v4()),
+            uid: Default::default(),
             symbol,
             rate,
             sell_amount: ethereum_support::EthereumQuantity::from_eth(amount),

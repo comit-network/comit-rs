@@ -135,7 +135,7 @@ fn happy_path_buy_x_eth_for_btc() {
         "buy-order-contract-deployed call is successful"
     );
 
-    let request = client.get(format!("/cli/trades/ETH-BTC/{}/redeem-orders", uid).to_string());
+    let request = client.get(format!("/cli/trades/ETH-BTC/{}/redeem-orders", uid));
 
     let mut response = request.dispatch();
 
