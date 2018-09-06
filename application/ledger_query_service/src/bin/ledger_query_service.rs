@@ -20,6 +20,8 @@ fn main() {
 
     // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(config.port));
+    let zmq_endpoint = "tcp://127.0.0.1:28332";
+
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
@@ -28,7 +30,7 @@ fn main() {
 
     ::std::thread::spawn(move || {
         let bitcoind_zmq_listener =
-            BitcoindZmqListener::new("tcp://127.0.0.1:28332", bitcoin_transaction_processor);
+            BitcoindZmqListener::new(zmq_endpoint, bitcoin_transaction_processor);
 
         match bitcoind_zmq_listener {
             Ok(mut listener) => listener.start(),
