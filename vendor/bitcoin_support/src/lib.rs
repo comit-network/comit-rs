@@ -6,6 +6,8 @@ extern crate secp256k1_support;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[cfg(test)]
+extern crate spectral;
 
 pub use address::Address;
 pub use bitcoin::{
@@ -24,10 +26,12 @@ pub use bitcoin::{
 pub use bitcoin_quantity::*;
 pub use blocks::*;
 pub use pubkey::*;
+pub use transaction::*;
 pub use weight::*;
 
 mod address;
 mod bitcoin_quantity;
 mod blocks;
 mod pubkey;
+mod transaction;
 mod weight;
