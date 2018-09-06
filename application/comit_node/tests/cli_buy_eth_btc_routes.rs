@@ -121,7 +121,7 @@ fn happy_path_buy_x_eth_for_btc() {
 
     let request = client
         .post(format!(
-            "/cli/trades/ETH-BTC/{}/buy-order-contract-deployed",
+            "/ledger/trades/ETH-BTC/{}/buy-order-contract-deployed",
             uid
         ))
         .header(ContentType::JSON)

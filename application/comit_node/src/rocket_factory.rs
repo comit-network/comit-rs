@@ -36,11 +36,17 @@ pub fn create_rocket_instance(
                 eth_btc::cli::buy_routes::post_buy_orders,
                 eth_btc::cli::sell_routes::post_sell_offers,
                 eth_btc::cli::sell_routes::post_sell_orders,
-                eth_btc::ledger::buy_routes::post_contract_deployed, // TODO move into own route when cli working
-                eth_btc::ledger::buy_routes::post_orders_funding, // TODO move into own route when cli working
-                eth_btc::ledger::buy_routes::post_revealed_secret, // TODO move into own route when cli working
-                eth_btc::ledger::sell_routes::post_orders_funding, // TODO move into own route when cli working
-                eth_btc::ledger::sell_routes::post_revealed_secret, // TODO move into own route when cli working
+            ],
+        )
+        .mount(
+            "/ledger/", //Endpoints for notifying about ledger events
+            routes![
+                // TODO will be removed once we have the Ledger Query Service
+                eth_btc::ledger::buy_routes::post_contract_deployed,
+                eth_btc::ledger::buy_routes::post_orders_funding,
+                eth_btc::ledger::buy_routes::post_revealed_secret,
+                eth_btc::ledger::sell_routes::post_orders_funding,
+                eth_btc::ledger::sell_routes::post_revealed_secret,
             ],
         )
         .manage(event_store)

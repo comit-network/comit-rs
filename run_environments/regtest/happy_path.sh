@@ -130,7 +130,7 @@ function fund_htlc() {
 
 function notify_bob_comit_node_btc_htlc_funded() {
 
-    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
+    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
 
     echo $result > $OUTPUT
 
@@ -139,7 +139,7 @@ function notify_bob_comit_node_btc_htlc_funded() {
 
 function notify_alice_comit_node_eth_htlc_funded() {
 
-    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${ALICE_COMIT_NODE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
+    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${ALICE_COMIT_NODE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
 
     echo $result > $OUTPUT
 
@@ -147,7 +147,7 @@ function notify_alice_comit_node_eth_htlc_funded() {
 }
 
 function notify_bob_comit_node_eth_redeemed() {
-    $curl -v --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-secret-revealed 2> $OUTPUT
+    $curl -v --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${BOB_COMIT_NODE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-secret-revealed 2> $OUTPUT
 
     print_blue "Notified Bob about revealed secret (Alice redeemed ETH funds)."
 }

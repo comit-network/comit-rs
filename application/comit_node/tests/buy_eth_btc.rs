@@ -54,7 +54,7 @@ fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
 
 fn notify_about_funding<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
     let request = client
-            .post(format!("/cli/trades/ETH-BTC/{}/buy-order-htlc-funded", uid).to_string())
+            .post(format!("/ledger/trades/ETH-BTC/{}/buy-order-htlc-funded", uid).to_string())
             .header(ContentType::JSON)
             .body(
                 r#"{
@@ -67,7 +67,7 @@ fn notify_about_funding<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<
 
 fn notify_about_revealed_secret<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
     let request = client
-        .post(format!("/cli/trades/ETH-BTC/{}/buy-order-secret-revealed", uid).to_string())
+        .post(format!("/ledger/trades/ETH-BTC/{}/buy-order-secret-revealed", uid).to_string())
         .header(ContentType::JSON)
         .body(
             r#"{

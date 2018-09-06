@@ -158,7 +158,7 @@ function fund_htlc() {
 
 function notify_exchange_service_btc_htlc_funded() {
 
-    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
+    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
 
     echo $result > $OUTPUT
 
@@ -167,7 +167,7 @@ function notify_exchange_service_btc_htlc_funded() {
 
 function notify_trading_service_eth_htlc_funded() {
 
-    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
+    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
 
     echo $result > $OUTPUT
 
@@ -175,7 +175,7 @@ function notify_trading_service_eth_htlc_funded() {
 }
 
 function notify_exchange_service_eth_redeemed() {
-    $curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/cli/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
+    $curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
 
     print_blue "Notified exchange about revealed secret (Trader redeemed ETH funds)."
 }

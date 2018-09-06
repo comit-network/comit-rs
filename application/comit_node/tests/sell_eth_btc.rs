@@ -218,7 +218,7 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
         let request = client
             .post(
                 format!(
-                    "/cli/trades/ETH-BTC/{}/sell-order-secret-revealed",
+                    "/ledger/trades/ETH-BTC/{}/sell-order-secret-revealed",
                     trade_id
                 ).to_string(),
             )
