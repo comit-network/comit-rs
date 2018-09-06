@@ -55,7 +55,7 @@ function setup() {
     # TODO: This is a manual step until we have the ETH watcher
     export ETH_HTLC_ADDRESS="0x0000000000000000000000000000000000000000"
 
-    cli="$PROJECT_ROOT/target/debug/trading_client"
+    cli="$PROJECT_ROOT/target/debug/comit_node_client"
     curl="curl -s"
 
     symbol_param="--symbol=ETH-BTC"
@@ -109,7 +109,7 @@ function new_offer() {
 
 function new_order() {
 
-    cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${client_refund_address} --success-address=${client_success_address}"
+    cmd="$cli order ${symbol_param} --uid=${uid} --refund-address=${alice_refund_address} --success-address=${alice_success_address}"
     print_green "$cmd"
     output=$($cmd)
     echo "$output"
@@ -158,7 +158,7 @@ function fund_htlc() {
 
 function notify_exchange_service_btc_htlc_funded() {
 
-    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
+    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-htlc-funded )
 
     echo $result > $OUTPUT
 
@@ -167,7 +167,7 @@ function notify_exchange_service_btc_htlc_funded() {
 
 function notify_trading_service_eth_htlc_funded() {
 
-    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
+    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' ${TRADING_SERVICE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-contract-deployed)
 
     echo $result > $OUTPUT
 
@@ -175,7 +175,7 @@ function notify_trading_service_eth_htlc_funded() {
 }
 
 function notify_exchange_service_eth_redeemed() {
-    $curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
+    $curl --data-binary "{\"secret\": \"${secret}\"}" -H 'Content-Type: application/json' ${EXCHANGE_SERVICE_URL}/ledger/trades/ETH-BTC/${uid}/buy-order-secret-revealed > $OUTPUT
 
     print_blue "Notified exchange about revealed secret (Trader redeemed ETH funds)."
 }
@@ -200,7 +200,7 @@ function get_eth_balance() {
       \"jsonrpc\":\"2.0\",\
       \"method\":\"eth_getBalance\",\
       \"params\":[\
-        \"${client_success_address}\",\
+        \"${alice_success_address}\",\
         \"latest\"\
       ],\
       \"id\":1\
@@ -216,7 +216,7 @@ function redeem_eth() {
       \"method\":\"eth_sendTransaction\",\
       \"params\":[\
         {\
-          \"from\": \"${client_sender_address}\",\
+          \"from\": \"${alice_sender_address}\",\
           \"to\": \"${ETH_HTLC_ADDRESS}\",\
           \"gas\": \"0x100000\",\
           \"gasPrice\": \"0x01\",\
@@ -240,7 +240,7 @@ function list_unspent_transactions() {
         0,\
         9999999,\
         [\
-          \"${EXCHANGE_SUCCESS_ADDRESS}\"\
+          \"${BTC_BOB_SUCCESS_ADDRESS}\"\
         ]\
       ],\
       \"id\":1\

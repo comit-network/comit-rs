@@ -314,6 +314,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "comit_node"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_htlc 0.1.0",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_support 0.1.0",
+ "bitcoin_witness 0.1.0",
+ "common_types 0.1.0",
+ "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum_htlc 0.1.0",
+ "ethereum_support 0.1.0",
+ "ethereum_wallet 0.1.0",
+ "event_store 0.1.0",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "logging 0.1.0",
+ "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1_support 0.1.0",
+ "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "comit_node_client"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_support 0.1.0",
+ "common_types 0.1.0",
+ "ethereum_support 0.1.0",
+ "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "common_types"
 version = "0.1.0"
 dependencies = [
@@ -451,11 +503,6 @@ dependencies = [
 [[package]]
 name = "crunchy"
 version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "crypto"
-version = "0.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
@@ -634,37 +681,6 @@ name = "event_store"
 version = "0.1.0"
 
 [[package]]
-name = "exchange_service"
-version = "0.1.0"
-dependencies = [
- "bitcoin_htlc 0.1.0",
- "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_support 0.1.0",
- "bitcoin_witness 0.1.0",
- "common_types 0.1.0",
- "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum_htlc 0.1.0",
- "ethereum_support 0.1.0",
- "ethereum_wallet 0.1.0",
- "event_store 0.1.0",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "logging 0.1.0",
- "reqwest 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "secp256k1_support 0.1.0",
- "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
- "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "failure"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -688,19 +704,6 @@ dependencies = [
 name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "fake_treasury_service"
-version = "0.1.0"
-dependencies = [
- "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "fern"
@@ -2537,54 +2540,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trading_client"
-version = "0.1.0"
-dependencies = [
- "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_support 0.1.0",
- "common_types 0.1.0",
- "ethereum_support 0.1.0",
- "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
- "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "trading_service"
-version = "0.1.0"
-dependencies = [
- "bitcoin_htlc 0.1.0",
- "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_support 0.1.0",
- "common_types 0.1.0",
- "crypto 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum_htlc 0.1.0",
- "ethereum_support 0.1.0",
- "event_store 0.1.0",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "logging 0.1.0",
- "rand 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
- "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "traitobject"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2903,7 +2858,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum crossbeam-utils 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2760899e32a1d58d5abb31129f8fae5de75220bc2176e77ff7c627ae45c918d9"
 "checksum crossbeam-utils 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "d636a8b3bcc1b409d7ffd3facef8f21dcb4009626adbd0c5e6c4305c07253c7b"
 "checksum crunchy 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "a2f4a431c5c9f662e1200b7c7f02c34e91361150e382089a8f2dec3ba680cbda"
-"checksum crypto 0.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "897ed01ef28ee5a50671ea0760e99861c70f5e8b5660cd1a64c8cae9b8908317"
 "checksum crypto-mac 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0999b4ff4d3446d4ddb19a63e9e00c1876e75cd7000d20e57a693b4b3f08d958"
 "checksum digest 0.7.5 (registry+https://github.com/rust-lang/crates.io-index)" = "5b29c278aa8fd30796bd977169e8004b4aa88cdcd2f32a6eb22bc2d5d38df94a"
 "checksum dtoa 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6d301140eb411af13d3115f9a562c85cc6b541ade9dfa314132244aaee7489dd"

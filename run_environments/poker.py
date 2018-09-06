@@ -25,14 +25,14 @@ def main():
     parser.add_argument("-s", "--secret", help="The secret.")
     args = parser.parse_args()
     
-    exchange_service_url = os.environ['EXCHANGE_SERVICE_URL']
+    exchange_service_url = os.environ['BOB_COMIT_NODE_PID']
     if not exchange_service_url:
-        print("EXCHANGE_SERVICE_URL must be set.")
+        print("BOB_COMIT_NODE_PID must be set.")
         sys.exit(1)
 
-    trading_service_url = os.environ['TRADING_SERVICE_URL']
+    trading_service_url = os.environ['ALICE_COMIT_NODE_PID']
     if not trading_service_url:
-        print("TRADING_SERVICE_URL must be set.")
+        print("ALICE_COMIT_NODE_PID must be set.")
         sys.exit(1)
 
     if args.btc_funded:
@@ -49,7 +49,7 @@ def btc_funded(exchange_service_url, trade_id, tx_id, vout):
         sys.exit(2)
 
     data = {'transaction_id': tx_id, 'vout': int(vout)}
-    url = '{ex_url}/trades/ETH-BTC/{trade_id}/buy-order-htlc-funded'.format(ex_url=exchange_service_url, trade_id=trade_id)
+    url = '{ex_url}/ledger/trades/ETH-BTC/{trade_id}/buy-order-htlc-funded'.format(ex_url=exchange_service_url, trade_id=trade_id)
 
     response = requests.post(url, headers=HEADERS, data=json.dumps(data))
     print(response)
@@ -61,7 +61,7 @@ def eth_deployed(trading_service_url, trade_id, contract_address):
         sys.exit(2)
 
     data = {'contract_address': contract_address}
-    url = '{t_url}/trades/ETH-BTC/{trade_id}/buy-order-contract-deployed'.format(t_url=trading_service_url, trade_id=trade_id)
+    url = '{t_url}/ledger/trades/ETH-BTC/{trade_id}/buy-order-contract-deployed'.format(t_url=trading_service_url, trade_id=trade_id)
 
     response = requests.post(url, headers=HEADERS, data=json.dumps(data))
     print(response)
@@ -73,7 +73,7 @@ def btc_redeem(exchange_service_url, trade_id, secret):
         sys.exit(2)
 
     data = {'secret': secret}
-    url = '{ex_url}/trades/ETH-BTC/{trade_id}/buy-order-secret-revealed'.format(ex_url=exchange_service_url, trade_id=trade_id)
+    url = '{ex_url}/ledger/trades/ETH-BTC/{trade_id}/buy-order-secret-revealed'.format(ex_url=exchange_service_url, trade_id=trade_id)
 
     response = requests.post(url, headers=HEADERS, data=json.dumps(data))
     print(response)

@@ -27,14 +27,13 @@ Cryptocurrency keys and addresses needs to be passed as environment variables.
 Please note, `0x` prefix is never needed.
 The following variables need to be set:
 * `ETHEREUM_NODE_ENDPOINT` (url to ethereum node)
-* `ETHEREUM_PRIVATE_KEY` (used by exchange to deploy contract)
-* `ETHEREUM_EXCHANGE_ADDRESS` (must be derived from ETHEREUM_PRIVATE_KEY)
-* `EXCHANGE_REFUND_ADDRESS` (to receive ETH back in case of timeout)
+* `ETHEREUM_PRIVATE_KEY` (used by Bob to deploy contract)
+* `BOB_REFUND_ADDRESS` (to receive ETH back in case of timeout)
 * `BITCOIN_RPC_URL` (used by both)
 * `BITCOIN_RPC_USERNAME` (used by both)
 * `BITCOIN_RPC_PASSWORD` (used by both)
-* `EXCHANGE_SUCCESS_ADDRESS` (used by exchange to receive BTC)
-* `EXCHANGE_SUCCESS_PRIVATE_KEY` (used by exchange to redeem BTC)
+* `BTC_BOB_SUCCESS_ADDRESS` (used by Bob to receive BTC)
+* `BTC_BOB_SUCCESS_PRIVATE_KEY` (used by Bob to redeem BTC)
 
 IF you wish to run the tests, you need to save this values in Docker env_file format (VAR=VAL) in several files.
 - regtest.env: to run systemstests/happy_path.sh
@@ -43,9 +42,9 @@ Save these files in the same folder (let's say ~/swap_env) and set the path in `
 `export SWAP_ENV=$HOME/swap_env`
 
 The following variables are also needed to run automated tests:
-* `client_refund_address` (BTC)
-* `client_success_address` (ETH)
-* `client_sender_address` (ETH, when redeem the ETH HTLC)
+* `alice_refund_address` (BTC)
+* `alice_success_address` (ETH)
+* `alice_sender_address` (ETH, when redeem the ETH HTLC)
 
 ## Testing
 

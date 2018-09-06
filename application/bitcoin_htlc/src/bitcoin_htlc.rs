@@ -23,7 +23,7 @@ pub enum UnlockingError {
 // Create BTC HTLC
 // Returns P2WSH address
 // Input:
-// - BTC address of the exchange to receive the funds (exchange_success_address)
+// - BTC address of Bob to receive the funds (bob_success_address)
 // - BTC timeout
 // - BTC amount
 // - hashed secret
