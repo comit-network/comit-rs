@@ -37,7 +37,6 @@ use common_types::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     seconds::Seconds,
     secret::Secret,
-    TradingSymbol,
 };
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
