@@ -1,4 +1,4 @@
-use bitcoin::{blockdata::transaction::Transaction as BitcoinTransaction, util::address::Address};
+use bitcoin_support::{Address, SpendsTo, Transaction as BitcoinTransaction};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
@@ -11,12 +11,12 @@ use rocket::{
     State,
 };
 use rocket_contrib::Json;
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use transaction_processor::{Query, Transaction};
 
-#[derive(Serialize, Deserialize, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinQuery {
-    to_address: Option<String>,
+    to_address: Option<Address>,
 }
 
 #[post("/queries/bitcoin", format = "application/json", data = "<query>")]
@@ -43,17 +43,11 @@ fn created(url: String) -> Created<Option<()>> {
 
 impl Query<BitcoinTransaction> for BitcoinQuery {
     fn matches(&self, transaction: &BitcoinTransaction) -> bool {
-        if let Some(ref address) = self.to_address {
-            if let Ok(address) = Address::from_str(address) {
-                let address_script_pubkey = address.script_pubkey();
-
-                return transaction
-                    .output
-                    .iter()
-                    .map(|out| &out.script_pubkey)
-                    .find(|script_pub_key| *script_pub_key == &address_script_pubkey)
-                    .is_some();
+        match self.to_address {
+            Some(ref address) => {
+                return transaction.spends_to(address.as_ref());
             }
+            None => trace!("to_address not sent, will not used for comparison"),
         }
 
         false

@@ -3,7 +3,6 @@ use bitcoin_rpc_client;
 use secp256k1_support::PublicKey;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
-    convert::Into,
     fmt,
     hash::{Hash, Hasher},
     str::FromStr,
@@ -19,6 +18,12 @@ pub struct Address(BitcoinAddress);
 // From the moment the program expect to connect to several bitcoind which are connected to
 // different nets, then all hell breaks loose.
 impl Eq for Address {}
+
+impl AsRef<BitcoinAddress> for Address {
+    fn as_ref(&self) -> &BitcoinAddress {
+        &self.0
+    }
+}
 
 impl Hash for Address {
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -52,9 +57,9 @@ impl From<BitcoinAddress> for Address {
     }
 }
 
-impl Into<BitcoinAddress> for Address {
-    fn into(self) -> BitcoinAddress {
-        self.0
+impl From<Address> for BitcoinAddress {
+    fn from(address: Address) -> Self {
+        address.0
     }
 }
 

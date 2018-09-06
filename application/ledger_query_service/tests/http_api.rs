@@ -6,12 +6,9 @@ extern crate serde_json;
 extern crate spectral;
 #[macro_use]
 extern crate serde_derive;
-extern crate bitcoin;
+extern crate bitcoin_support;
 
-use bitcoin::{
-    blockdata::transaction::{Transaction, TxOut},
-    util::address::Address,
-};
+use bitcoin_support::{Address, Transaction, TxOut};
 use http::Uri;
 use ledger_query_service::{
     DefaultTransactionProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
@@ -131,13 +128,13 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
         input: Vec::new(),
         output: vec![TxOut {
             value: 0,
-            script_pubkey: address.script_pubkey(),
+            script_pubkey: address.as_ref().script_pubkey(),
         }],
     };
 
     let tx_id = incoming_transaction.txid();
 
-    transaction_processor.process(incoming_transaction);
+    transaction_processor.process(&incoming_transaction);
 
     let mut get_response = client.get(uri.path()).dispatch();
     assert_that(&get_response.status()).is_equal_to(Status::Ok);
@@ -150,4 +147,29 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     assert_that(body)
         .map(|b| &b.matching_transactions)
         .contains(tx_id.to_string());
+}
+
+#[test]
+fn should_reject_malformed_address() {
+    let _ = pretty_env_logger::try_init();
+
+    let link_factory = LinkFactory::new("http", "localhost", Some(8000));
+    let query_repository = Arc::new(InMemoryQueryRepository::default());
+    let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+
+    let server = ledger_query_service::server::create(
+        rocket::Config::development().unwrap(),
+        link_factory,
+        query_repository,
+        query_result_repository,
+    );
+    let client = Client::new(server).unwrap();
+
+    let response = client
+        .post("/queries/bitcoin")
+        .header(ContentType::JSON)
+        .body(include_str!("bitcoin_query_malformed_to_address.json"))
+        .dispatch();
+
+    assert_that(&response.status()).is_equal_to(Status::BadRequest);
 }
