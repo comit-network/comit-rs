@@ -134,7 +134,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
 
     let tx_id = incoming_transaction.txid();
 
-    transaction_processor.process(incoming_transaction);
+    transaction_processor.process(&incoming_transaction);
 
     let mut get_response = client.get(uri.path()).dispatch();
     assert_that(&get_response.status()).is_equal_to(Status::Ok);

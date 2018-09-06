@@ -3,7 +3,7 @@ use query_result_repository::QueryResultRepository;
 use std::{fmt::Debug, sync::Arc};
 
 pub trait TransactionProcessor<T> {
-    fn process(&self, transaction: T);
+    fn process(&self, transaction: &T);
 }
 
 pub trait Transaction: Debug {
@@ -22,7 +22,7 @@ pub struct DefaultTransactionProcessor<Q> {
 impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
     for DefaultTransactionProcessor<Q>
 {
-    fn process(&self, transaction: T) {
+    fn process(&self, transaction: &T) {
         self.queries
             .all()
             .inspect(|(id, query)| {
@@ -34,7 +34,7 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
                     transaction
                 )
             })
-            .filter(|(_, query)| query.matches(&transaction))
+            .filter(|(_, query)| query.matches(transaction))
             .map(|(id, _)| (id, transaction.txid()))
             .inspect(|(id, txid)| info!("Transaction {} matches query {}", txid, id))
             .for_each(|(query_id, tx_id)| self.results.add_result(query_id, tx_id))
