@@ -6,6 +6,10 @@ cache:
   - "$HOME/.cache/sccache"
 sudo: required
 rust: nightly-2018-06-24
+addons:
+  apt:
+    packages:
+    - libzmq3-dev
 before_install:
 - openssl aes-256-cbc -K $encrypted_13ab58161701_key -iv $encrypted_13ab58161701_iv -in .travis/gcloud-authentication.json.enc -out .travis/gcloud-authentication.json -d
 install: true
