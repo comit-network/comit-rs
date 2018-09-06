@@ -1,11 +1,9 @@
-use api_client::{
-    create_client, ApiClient, BuyOrderRequestBody, ComitNodeApiUrl, TradingServiceError,
-};
+use api_client::{ApiClient, BuyOrderRequestBody, TradingServiceError};
 use offer::Symbol;
 use uuid::Uuid;
 
-pub fn run(
-    trading_api_url: ComitNodeApiUrl,
+pub fn run<C: ApiClient>(
+    client: &C,
     symbol: Symbol,
     uid: Uuid,
     success_address: String,
@@ -13,7 +11,6 @@ pub fn run(
 ) -> Result<String, TradingServiceError> {
     let order_request_body = BuyOrderRequestBody::new(success_address, refund_address);
 
-    let client = create_client(&trading_api_url);
     let request_to_fund = client.request_order(&symbol, uid, &order_request_body)?;
 
     Ok(format!(
@@ -38,16 +35,15 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
+    use api_client::FakeApiClient;
 
     #[test]
     fn accept_order_happy_path() {
-        let trading_api_url = ComitNodeApiUrl("stub".to_string());
-        let symbol = Symbol::from_str("ETH-BTC").unwrap();
-        let uid = Uuid::from_str("27b36adf-eda3-4684-a21c-a08a84f36fb1").unwrap();
+        let symbol = "ETH-BTC".parse().unwrap();
+        let uid = "27b36adf-eda3-4684-a21c-a08a84f36fb1".parse().unwrap();
 
         let response = run(
-            trading_api_url,
+            &FakeApiClient::default(),
             symbol,
             uid,
             "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string(),

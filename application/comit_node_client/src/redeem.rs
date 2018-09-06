@@ -1,4 +1,4 @@
-use api_client::{create_client, ApiClient, ComitNodeApiUrl, TradingServiceError};
+use api_client::{ApiClient, TradingServiceError};
 use common_types;
 use ethereum_support;
 use offer::Symbol;
@@ -49,14 +49,12 @@ impl EthereumPaymentURL {
     }
 }
 
-pub fn run(
-    trading_api_url: ComitNodeApiUrl,
+pub fn run<C: ApiClient>(
+    client: &C,
     symbol: Symbol,
     uid: Uuid,
     output_type: RedeemOutput,
 ) -> Result<String, TradingServiceError> {
-    let client = create_client(&trading_api_url);
-
     let redeem_details = client.request_redeem_details(symbol, uid)?;
 
     match output_type {
@@ -79,16 +77,15 @@ pub fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
+    use api_client::FakeApiClient;
 
     #[test]
     fn redeem_with_valid_uid() {
-        let trading_api_url = ComitNodeApiUrl("stub".to_string());
+        let symbol = "ETH-BTC".parse().unwrap();
+        let uid = "27b36adf-eda3-4684-a21c-a08a84f36fb1".parse().unwrap();
 
-        let uid = Uuid::from_str("27b36adf-eda3-4684-a21c-a08a84f36fb1").unwrap();
-        let symbol = Symbol::from_str("ETH-BTC").unwrap();
-
-        let redeem_details = run(trading_api_url, symbol, uid, RedeemOutput::URL).unwrap();
+        let redeem_details =
+            run(&FakeApiClient::default(), symbol, uid, RedeemOutput::URL).unwrap();
 
         assert_eq!(
             redeem_details,

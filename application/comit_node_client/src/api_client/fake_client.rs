@@ -11,7 +11,7 @@ use offer::Symbol;
 use std::str::FromStr;
 use uuid::Uuid;
 
-#[allow(dead_code)]
+#[derive(Default)]
 pub struct FakeApiClient;
 
 impl ApiClient for FakeApiClient {

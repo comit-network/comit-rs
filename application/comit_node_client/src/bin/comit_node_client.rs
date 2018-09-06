@@ -8,7 +8,7 @@ extern crate comit_node_client;
 extern crate uuid;
 
 use comit_node_client::{
-    api_client::ComitNodeApiUrl,
+    api_client::{ComitNodeApiUrl, DefaultApiClient},
     offer::{self, OrderType, Symbol},
     order,
     redeem::{self, RedeemOutput},
@@ -93,13 +93,18 @@ fn main() {
     let trading_api_url =
         ComitNodeApiUrl(var("COMIT_NODE_URL").expect("env variable COMIT_NODE_URL must be set"));
 
+    let client = DefaultApiClient {
+        url: trading_api_url,
+        client: reqwest::Client::new(),
+    };
+
     let output = match Opt::from_args() {
         Opt::Offer {
             symbol,
             order_type,
             amount,
         } => offer::run(
-            trading_api_url,
+            &client,
             Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
             order_type,
             amount,
@@ -110,7 +115,7 @@ fn main() {
             success_address,
             refund_address,
         } => order::run(
-            trading_api_url,
+            &client,
             Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
             uid,
             success_address,
@@ -121,7 +126,7 @@ fn main() {
             uid,
             console,
         } => redeem::run(
-            trading_api_url,
+            &client,
             Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
             uid,
             RedeemOutput::new(console),
