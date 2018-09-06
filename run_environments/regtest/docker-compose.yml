@@ -42,7 +42,7 @@ services:
     - "8545:8545"
 
   bitcoin:
-    image: ruimarinho/bitcoin-core
+    image: coblox/bitcoin-core:0.16.1-r2
     logging:
         driver: none
     command:
