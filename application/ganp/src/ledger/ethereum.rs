@@ -13,6 +13,7 @@ impl Ledger for Ethereum {
     type HtlcId = Address;
     type TxId = H256;
     type Pubkey = PublicKey;
+    type Identity = Address;
 
     fn symbol() -> String {
         String::from("ETH")

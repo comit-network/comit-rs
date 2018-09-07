@@ -8,6 +8,7 @@ pub trait Ledger: Clone + Debug + Send + Sync + 'static + Default {
     type HtlcId: Clone + DeserializeOwned + Serialize + Send + Sync;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
     type Pubkey: Clone + Debug + Send + Sync + 'static;
+    type Identity: Clone + Debug + Send + Sync + 'static;
 
     fn symbol() -> String;
 }

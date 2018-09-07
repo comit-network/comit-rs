@@ -3,7 +3,12 @@ use bitcoin::{
     network::constants::Network,
     util::{address::Payload, hash::Hash160},
 };
+use hex::{self, FromHex};
 use secp256k1_support::PublicKey;
+use serde::{
+    de::{self, Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
 use std::fmt;
 
 pub trait ToP2wpkhAddress {
@@ -49,6 +54,14 @@ impl<'a> From<&'a [u8]> for PubkeyHash {
     }
 }
 
+impl FromHex for PubkeyHash {
+    type Error = hex::FromHexError;
+
+    fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
+        Ok(PubkeyHash::from(hex::decode(hex)?.as_ref()))
+    }
+}
+
 impl AsRef<[u8]> for PubkeyHash {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
@@ -64,6 +77,41 @@ impl Into<Hash160> for PubkeyHash {
 impl fmt::LowerHex for PubkeyHash {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         f.write_str(format!("{:?}", self.0).as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for PubkeyHash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = PubkeyHash;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("A hex-encoded compressed SECP256k1 public key")
+            }
+
+            fn visit_str<E>(self, hex_pubkey: &str) -> Result<PubkeyHash, E>
+            where
+                E: de::Error,
+            {
+                PubkeyHash::from_hex(hex_pubkey).map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl Serialize for PubkeyHash {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(hex::encode(self.0.to_bytes()).as_str())
     }
 }
 

@@ -2,6 +2,8 @@ extern crate ganp;
 extern crate tokio;
 extern crate transport_protocol;
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate maplit;
 #[macro_use]
 extern crate serde_json;
@@ -15,15 +17,18 @@ extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate spectral;
 use bitcoin_support::{BitcoinQuantity, Blocks};
-use common_types::seconds::Seconds;
-use ethereum_support::EthereumQuantity;
+use common_types::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    seconds::Seconds,
+};
+use ethereum_support::{EthereumQuantity, ToEthereumAddress};
 use futures::future::Future;
 use ganp::*;
 use hex::FromHex;
-use ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use rfc003;
 use secp256k1_support::PublicKey;
 use spectral::prelude::*;
+use std::str::FromStr;
 use swap;
 use tokio::runtime::Runtime;
 use transport_protocol::{
@@ -86,6 +91,17 @@ enum OfferDirection {
     EthToBtc,
 }
 
+lazy_static! {
+    static ref BTC_REFUND_PUBKEYHASH: bitcoin_support::PubkeyHash =
+        bitcoin_support::PubkeyHash::from_hex("875638cac0b0ae9f826575e190f2788918c354c2").unwrap();
+    static ref BTC_SUCCESS_PUBKEYHASH: bitcoin_support::PubkeyHash =
+        bitcoin_support::PubkeyHash::from_hex("30bfdb95f68bfdd558a8dc6deef0da882b0c4866").unwrap();
+    static ref ETH_REFUND_ADDRESS: ethereum_support::Address =
+        ethereum_support::Address::from_str("8457037fcd80a8650c4692d7fcfc1d0a96b92867").unwrap();
+    static ref ETH_SUCCESS_ADDRESS: ethereum_support::Address =
+        ethereum_support::Address::from_str("0ae91a668e3ad094e765ec66f5d5c72e0b82f04d").unwrap();
+}
+
 fn gen_request(direction: OfferDirection) -> Request {
     let bitcoin = json!("Bitcoin");
     let ethereum = json!("Ethereum");
@@ -102,9 +118,30 @@ fn gen_request(direction: OfferDirection) -> Request {
         }
     });
 
-    let (source_ledger, target_ledger, source_asset, target_asset) = match direction {
-        OfferDirection::BtcToEth => (bitcoin, ethereum, bitcoin_asset, ethereum_asset),
-        OfferDirection::EthToBtc => (ethereum, bitcoin, ethereum_asset, bitcoin_asset),
+    let (
+        source_ledger,
+        target_ledger,
+        source_asset,
+        target_asset,
+        source_ledger_refund_identity,
+        target_ledger_success_identity,
+    ) = match direction {
+        OfferDirection::BtcToEth => (
+            bitcoin,
+            ethereum,
+            bitcoin_asset,
+            ethereum_asset,
+            hex::encode(BTC_REFUND_PUBKEYHASH.clone()),
+            format!("0x{}", hex::encode(ETH_SUCCESS_ADDRESS.clone())),
+        ),
+        OfferDirection::EthToBtc => (
+            ethereum,
+            bitcoin,
+            ethereum_asset,
+            bitcoin_asset,
+            format!("0x{}", hex::encode(ETH_REFUND_ADDRESS.clone())),
+            hex::encode(BTC_SUCCESS_PUBKEYHASH.clone()),
+        ),
     };
 
     let headers = convert_args!(hashmap!(
@@ -116,11 +153,13 @@ fn gen_request(direction: OfferDirection) -> Request {
     ));
 
     let body = json!({
-        "source_ledger_refund_pubkey": "0320f775e1e8ff95e58dd1d93ed4a0e99280eeb95ee0329353f9019afb58ad5f4c",
-        "target_ledger_success_pubkey": "02f6638b4e8d649b5ff7461285377806e719c7be37bcae3a5516ba9116d7df2d04",
+        "source_ledger_refund_identity": source_ledger_refund_identity,
+        "target_ledger_success_identity": target_ledger_success_identity,
         "source_ledger_lock_duration": 144,
         "secret_hash": "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5"
     });
+
+    println!("{}", serde_json::to_string(&body).unwrap());
 
     Request::new("SWAP".into(), headers, body)
 }
@@ -184,12 +223,8 @@ fn can_receive_swap_request() {
         source_asset: BitcoinQuantity::from_satoshi(100_000_000),
         target_asset: EthereumQuantity::from_eth(10.0),
         source_ledger_lock_duration: Blocks::from(144),
-        source_ledger_refund_pubkey: PublicKey::from_hex(
-            "0320f775e1e8ff95e58dd1d93ed4a0e99280eeb95ee0329353f9019afb58ad5f4c",
-        ).unwrap(),
-        target_ledger_success_pubkey: PublicKey::from_hex(
-            "02f6638b4e8d649b5ff7461285377806e719c7be37bcae3a5516ba9116d7df2d04",
-        ).unwrap(),
+        source_ledger_refund_identity: BTC_REFUND_PUBKEYHASH.clone(),
+        target_ledger_success_identity: ETH_SUCCESS_ADDRESS.clone(),
         secret_hash: "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5".to_string(),
     };
 
@@ -199,11 +234,6 @@ fn can_receive_swap_request() {
 struct AcceptRate {
     pub btc_to_eth: f64,
 }
-
-const ETH_PUBLIC_KEY: &'static str =
-    "03a7b54296b8472fe75a462a45b5dcb6f9d50e58fb1bd24e88392194247db2805b";
-const BTC_PUBLIC_KEY: &'static str =
-    "02b3c81d42750103faf86ad2c773b0e17128744698a4b22004f9e87e4e5b72fb5b";
 
 impl
     SwapRequestHandler<
@@ -221,8 +251,8 @@ impl
         let requested_rate = bitcoin / ethereum;
         if requested_rate > self.btc_to_eth {
             swap::SwapResponse::Accept(rfc003::AcceptResponse {
-                target_ledger_refund_pubkey: PublicKey::from_hex(BTC_PUBLIC_KEY).unwrap(),
-                source_ledger_success_pubkey: PublicKey::from_hex(ETH_PUBLIC_KEY).unwrap(),
+                target_ledger_refund_identity: ETH_REFUND_ADDRESS.clone(),
+                source_ledger_success_identity: BTC_SUCCESS_PUBKEYHASH.clone(),
                 target_ledger_lock_duration: Seconds::new(4200),
             })
         } else {
@@ -247,8 +277,8 @@ impl
         let requested_rate = bitcoin / ethereum;
         if requested_rate < self.btc_to_eth {
             swap::SwapResponse::Accept(rfc003::AcceptResponse {
-                target_ledger_refund_pubkey: PublicKey::from_hex(ETH_PUBLIC_KEY).unwrap(),
-                source_ledger_success_pubkey: PublicKey::from_hex(BTC_PUBLIC_KEY).unwrap(),
+                target_ledger_refund_identity: BTC_REFUND_PUBKEYHASH.clone(),
+                source_ledger_success_identity: ETH_SUCCESS_ADDRESS.clone(),
                 target_ledger_lock_duration: Blocks::from(144),
             })
         } else {
@@ -290,8 +320,8 @@ fn rate_handler_accept_offer_btc_eth() {
         .wait();
 
     let correct_response_body = json!({
-        "target_ledger_refund_pubkey" : "02b3c81d42750103faf86ad2c773b0e17128744698a4b22004f9e87e4e5b72fb5b",
-        "source_ledger_success_pubkey" : "03a7b54296b8472fe75a462a45b5dcb6f9d50e58fb1bd24e88392194247db2805b",
+        "target_ledger_refund_identity" : format!("0x{}", hex::encode(ETH_REFUND_ADDRESS.clone())),
+        "source_ledger_success_identity" : hex::encode(BTC_SUCCESS_PUBKEYHASH.clone()),
         "target_ledger_lock_duration" : 4200,
     });
 
@@ -333,8 +363,8 @@ fn rate_handler_accept_offer_eth_btc() {
         .wait();
 
     let correct_response_body = json!({
-        "target_ledger_refund_pubkey" : "03a7b54296b8472fe75a462a45b5dcb6f9d50e58fb1bd24e88392194247db2805b",
-        "source_ledger_success_pubkey" : "02b3c81d42750103faf86ad2c773b0e17128744698a4b22004f9e87e4e5b72fb5b",
+        "target_ledger_refund_identity" :  hex::encode(BTC_REFUND_PUBKEYHASH.clone()),
+        "source_ledger_success_identity" : format!("0x{}", hex::encode(ETH_SUCCESS_ADDRESS.clone())),
         "target_ledger_lock_duration" : 144,
     });
 

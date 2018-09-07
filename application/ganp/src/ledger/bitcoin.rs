@@ -1,5 +1,5 @@
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{Address, BitcoinQuantity, Blocks};
+use bitcoin_support::{Address, BitcoinQuantity, Blocks, PubkeyHash};
 use ledger::Ledger;
 use secp256k1_support::PublicKey;
 
@@ -19,6 +19,7 @@ impl Ledger for Bitcoin {
     type HtlcId = HtlcId;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
+    type Identity = PubkeyHash;
 
     fn symbol() -> String {
         String::from("BTC")
