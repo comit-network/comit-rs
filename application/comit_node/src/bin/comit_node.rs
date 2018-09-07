@@ -9,6 +9,7 @@ extern crate ethereum_wallet;
 extern crate hex;
 #[macro_use]
 extern crate log;
+extern crate config;
 extern crate event_store;
 extern crate logging;
 extern crate reqwest;
@@ -21,6 +22,13 @@ extern crate tiny_keccak;
 extern crate tokio;
 extern crate uuid;
 extern crate web3;
+
+#[macro_use]
+extern crate serde_derive;
+
+mod setting;
+
+use setting::Settings;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
@@ -43,17 +51,18 @@ use web3::{transports::Http, Web3};
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     logging::set_up_logging();
+    let settings = Settings::new();
+    // Print out our settings
+    let settings = settings.unwrap();
 
     let event_store = Arc::new(InMemoryEventStore::new());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
 
-    let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
-
+    let network_id = settings.ethereum.network_id;
     let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
-    let secret_key_hex = var_or_exit("ETHEREUM_PRIVATE_KEY");
-
+    let secret_key_hex = settings.ethereum.private_key;
     let secret_key_data =
         <[u8; 32]>::from_hex(secret_key_hex).expect("Private key is not hex_encoded");
 
@@ -63,14 +72,11 @@ fn main() {
     let address = eth_keypair.public_key().to_ethereum_address();
     let wallet = InMemoryWallet::new(eth_keypair, network_id);
 
-    let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
+    let web3 = Web3Client::new(settings.ethereum.node_url);
 
     let (event_loop, transport) = Http::new(&endpoint).unwrap();
     let web3 = Web3::new(transport);
-
-    let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
-        .map(|gas| u64::from_str(gas.as_str()).unwrap())
-        .unwrap_or(2_000_000_000);
+    let gas_price = settings.ethereum.gas_price;
     info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", gas_price);
 
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
@@ -87,21 +93,21 @@ fn main() {
     );
 
     let bob_refund_address =
-        ethereum_support::Address::from_str(var_or_exit("BOB_REFUND_ADDRESS").as_str())
+        ethereum_support::Address::from_str(settings.swap.eth_bob_refund_address.as_str())
             .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
 
     let bob_success_private_key =
-        PrivateKey::from_str(var_or_exit("BTC_BOB_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
+        PrivateKey::from_str(settings.bitcoin.private_key.as_str()).unwrap();
     let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
 
     let btc_bob_redeem_address =
-        bitcoin_support::Address::from_str(var_or_exit("BTC_BOB_REDEEM_ADDRESS").as_str())
+        bitcoin_support::Address::from_str(settings.swap.btc_bob_redeem_address.as_str())
             .expect("BTC Bob Redeem Address is Invalid");
 
     let bitcoin_rpc_client = {
-        let url = var_or_exit("BITCOIN_RPC_URL");
-        let username = var_or_exit("BITCOIN_RPC_USERNAME");
-        let password = var_or_exit("BITCOIN_RPC_PASSWORD");
+        let url = settings.bitcoin.node_url;
+        let username = settings.bitcoin.node_username;
+        let password = settings.bitcoin.node_password;
 
         bitcoin_rpc_client::BitcoinCoreClient::new(
             url.as_str(),
@@ -123,23 +129,20 @@ fn main() {
         Err(e) => error!("Could not connect to Bitcoin RPC:\n{}", e),
     };
 
-    let network = match var("BTC_NETWORK") {
-        Ok(value) => match value.as_str() {
-            "BTC_MAINNET" => Network::Bitcoin,
-            "BTC_TESTNET" => Network::Testnet,
-            "BTCORE_REGTEST" => Network::Regtest,
-            _ => panic!(
-                "Please set environment variable BTC_NETWORK to one of the following values:\n\
-                 - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
-            ),
-        },
-        Err(_) => Network::Regtest,
+    let network = match settings.bitcoin.network_id.as_str() {
+        "BTC_MAINNET" => Network::Bitcoin,
+        "BTC_TESTNET" => Network::Testnet,
+        "BTC_REGTEST" => Network::Regtest,
+        _ => panic!(
+            "Please set environment variable BTC_NETWORK to one of the following values:\n\
+             - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
+        ),
     };
     info!("set BTC_NETWORK={}", network);
 
-    let satoshi_per_kb = var_or_exit("BITCOIN_SATOSHI_PER_KB");
-    let satoshi_per_kb =
-        f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
+    let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;
+    //    let satoshi_per_kb =
+    //        f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
     let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
@@ -151,12 +154,10 @@ fn main() {
     );
 
     let remote_comit_node_socket_addr = {
-        let socket_addr = var_or_exit("REMOTE_COMIT_NODE_SOCKET_ADDR");
-        SocketAddr::from_str(&socket_addr).unwrap()
+        SocketAddr::from_str(&setting.comit.remote_comit_node_url).unwrap()
     };
 
-    let comit_listen = var("COMIT_LISTEN")
-        .unwrap_or("0.0.0.0:8184".into())
+    let comit_listen = settings.comit.comit_listen
         .parse()
         .unwrap();
 
@@ -187,17 +188,4 @@ fn main() {
     tokio::run(server.listen(comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);
     }));
-}
-
-fn var_or_exit(name: &str) -> String {
-    match var(name) {
-        Ok(value) => {
-            info!("Set {}={}", name, value);
-            value
-        }
-        Err(_) => {
-            eprintln!("{} is not set but is required", name);
-            std::process::exit(1);
-        }
-    }
 }
