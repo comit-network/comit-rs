@@ -40,6 +40,7 @@ transport_protocol = { path = "../../vendor/transport_protocol" }
 tokio = "0.1.8"
 futures = "0.1"
 chrono = "0.4.2"
+tokio-timer = "0.2"
 
 [dev-dependencies]
 env_logger = "0.5.11"

@@ -28,6 +28,7 @@ extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
+extern crate tokio_timer;
 extern crate transport_protocol;
 extern crate web3;
 
@@ -38,6 +39,8 @@ pub mod bitcoin_fee_service;
 pub mod comit_node_api_client;
 pub mod comit_server;
 pub mod gas_price_service;
+pub mod jobs;
+pub mod ledger_query_service;
 pub mod rocket_factory;
 pub mod swap_protocols;
 pub mod swaps;
