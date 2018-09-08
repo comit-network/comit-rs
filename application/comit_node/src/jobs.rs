@@ -1,5 +1,6 @@
 use bitcoin_rpc_client::{BitcoinRpcApi, TransactionId};
 use bitcoin_support::{Address, Transaction};
+use future_template::FutureTemplate;
 use futures::{Async, Future};
 use ganp::ledger::{bitcoin::Bitcoin, Ledger};
 use ledger_query_service::{BitcoinQuery, LedgerQueryService, Query};
@@ -10,40 +11,9 @@ use std::{
 use tokio_timer::Delay;
 
 #[derive(Clone)]
-pub struct FutureDependencies {
+pub struct LedgerServices {
     bitcoin_node: Arc<BitcoinRpcApi>,
     ledger_query_service: Arc<LedgerQueryService>,
-}
-
-pub trait FutureTemplate {
-    type Future: Future + Sized;
-
-    fn into_future(self, dependencies: FutureDependencies) -> Self::Future;
-}
-
-pub struct FutureFactory {
-    dependencies: FutureDependencies,
-}
-
-impl FutureFactory {
-    pub fn new(
-        bitcoin_node: Arc<BitcoinRpcApi>,
-        ledger_query_service: Arc<LedgerQueryService>,
-    ) -> Self {
-        FutureFactory {
-            dependencies: FutureDependencies {
-                bitcoin_node,
-                ledger_query_service,
-            },
-        }
-    }
-
-    pub fn create_future_from_template<T: FutureTemplate>(
-        &self,
-        future_template: T,
-    ) -> <T as FutureTemplate>::Future {
-        future_template.into_future(self.dependencies.clone())
-    }
 }
 
 pub struct PaymentToAddress<L: Ledger> {
@@ -104,10 +74,10 @@ impl Future for PaymentToBitcoinAddressFuture {
     }
 }
 
-impl FutureTemplate for PaymentToAddress<Bitcoin> {
+impl FutureTemplate<LedgerServices> for PaymentToAddress<Bitcoin> {
     type Future = PaymentToBitcoinAddressFuture;
 
-    fn into_future(self, dependencies: FutureDependencies) -> <Self as FutureTemplate>::Future {
+    fn into_future(self, dependencies: LedgerServices) -> PaymentToBitcoinAddressFuture {
         PaymentToBitcoinAddressFuture {
             to_address: self.to_address,
             bitcoin_node: dependencies.bitcoin_node,
@@ -123,6 +93,7 @@ mod tests {
     use super::*;
     use bitcoin_rpc_client::{RpcError, SerializedRawTransaction};
     use env_logger;
+    use future_template::FutureFactory;
     use reqwest;
     use spectral::prelude::*;
     use std::sync::Mutex;
@@ -183,8 +154,10 @@ mod tests {
             )],
         });
 
-        let future_factory =
-            FutureFactory::new(Arc::new(bitcoin_rpc_api), ledger_query_service.clone());
+        let future_factory = FutureFactory::new(LedgerServices {
+            bitcoin_node: Arc::new(bitcoin_rpc_api),
+            ledger_query_service: ledger_query_service.clone(),
+        });
 
         let payment_to_address = PaymentToAddress {
             to_address: "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"

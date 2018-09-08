@@ -43,6 +43,7 @@ extern crate spectral;
 pub mod bitcoin_fee_service;
 pub mod comit_node_api_client;
 pub mod comit_server;
+pub mod future_template;
 pub mod gas_price_service;
 pub mod jobs;
 pub mod ledger_query_service;
