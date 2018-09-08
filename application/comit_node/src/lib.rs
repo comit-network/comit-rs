@@ -35,6 +35,11 @@ extern crate web3;
 #[cfg(test)]
 extern crate spectral;
 
+#[cfg(test)]
+extern crate env_logger;
+#[cfg(test)]
+extern crate spectral;
+
 pub mod bitcoin_fee_service;
 pub mod comit_node_api_client;
 pub mod comit_server;

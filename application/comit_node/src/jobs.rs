@@ -23,34 +23,27 @@ pub trait JobDescription {
     fn into_job(self, dependencies: JobDependencies) -> Self::Job;
 }
 
-pub trait JobFactory {
-    fn create_job<J: JobDescription>(&self, job_description: J) -> J::Job;
-}
-
-pub struct DefaultJobFactory {
+pub struct JobFactory {
     dependencies: JobDependencies,
 }
 
-impl DefaultJobFactory {
+impl JobFactory {
     pub fn new(
         bitcoin_node: Arc<BitcoinRpcApi>,
         ledger_query_service: Arc<LedgerQueryService>,
     ) -> Self {
-        DefaultJobFactory {
+        JobFactory {
             dependencies: JobDependencies {
                 bitcoin_node,
                 ledger_query_service,
             },
         }
     }
-}
 
-impl JobFactory for DefaultJobFactory {
-    fn create_job<J: JobDescription>(&self, job_description: J) -> <J as JobDescription>::Job {
+    pub fn create_job<J: JobDescription>(&self, job_description: J) -> <J as JobDescription>::Job {
         job_description.into_job(self.dependencies.clone())
     }
 }
-
 pub struct WaitForContractDeployment<L: Ledger> {
     to_address: L::Address,
 }
@@ -129,6 +122,7 @@ impl JobDescription for WaitForContractDeployment<Bitcoin> {
 mod tests {
     use super::*;
     use bitcoin_rpc_client::{RpcError, SerializedRawTransaction};
+    use env_logger;
     use reqwest;
     use spectral::prelude::*;
     use std::sync::Mutex;
@@ -177,6 +171,8 @@ mod tests {
 
     #[test]
     fn given_future_resolves_to_transaction_eventually() {
+        let _ = env_logger::try_init();
+
         let bitcoin_rpc_api = FakeBitcoinRpcApi;
 
         let ledger_query_service = Arc::new(FakeLedgerQueryService {
@@ -187,8 +183,7 @@ mod tests {
             )],
         });
 
-        let job_factory =
-            DefaultJobFactory::new(Arc::new(bitcoin_rpc_api), ledger_query_service.clone());
+        let job_factory = JobFactory::new(Arc::new(bitcoin_rpc_api), ledger_query_service.clone());
 
         let bitcoin_contract_deployment = WaitForContractDeployment {
             to_address: "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
