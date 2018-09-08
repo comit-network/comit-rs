@@ -1,9 +1,9 @@
 use bitcoin_rpc_client::{BitcoinRpcApi, TransactionId};
-use bitcoin_support::{Address, Transaction};
+use bitcoin_support::Transaction;
 use future_template::FutureTemplate;
 use futures::{Async, Future};
 use ganp::ledger::{bitcoin::Bitcoin, Ledger};
-use ledger_query_service::{BitcoinQuery, LedgerQueryService, Query};
+use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient, Query};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -13,19 +13,67 @@ use tokio_timer::Delay;
 #[derive(Clone)]
 pub struct LedgerServices {
     bitcoin_node: Arc<BitcoinRpcApi>,
-    ledger_query_service: Arc<LedgerQueryService>,
-}
-
-pub struct PaymentToAddress<L: Ledger> {
-    to_address: L::Address,
+    ledger_query_service: AsyncLedgerQueryService,
 }
 
 pub struct PaymentToBitcoinAddressFuture {
-    to_address: Address,
     bitcoin_node: Arc<BitcoinRpcApi>,
-    ledger_query_service: Arc<LedgerQueryService>,
-    query: Option<Query>,
+    inner: FetchResultsFuture,
+}
+
+#[derive(Clone)]
+pub struct AsyncLedgerQueryService {
+    inner: Arc<LedgerQueryServiceApiClient>,
+    poll_interval: Duration,
+}
+
+pub struct FetchResultsFuture {
+    api_client: Arc<LedgerQueryServiceApiClient>,
+    query: Query,
+    poll_interval: Duration,
     next_try: Delay,
+}
+
+impl FetchResultsFuture {
+    fn new(
+        api_client: Arc<LedgerQueryServiceApiClient>,
+        query: Query,
+        poll_interval: Duration,
+    ) -> Self {
+        FetchResultsFuture {
+            api_client,
+            query,
+            poll_interval,
+            next_try: Self::compute_next_try(poll_interval),
+        }
+    }
+
+    fn compute_next_try(interval: Duration) -> Delay {
+        Delay::new(Instant::now() + interval)
+    }
+}
+
+impl Future for FetchResultsFuture {
+    type Item = Vec<String>;
+    type Error = ();
+
+    fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
+        let _ = try_ready!(self.next_try.poll().map_err(|_| ()));
+
+        match self.api_client.fetch_query_results(&self.query) {
+            Ok(ref results) if results.len() > 0 => Ok(Async::Ready(results.clone())),
+            _ => {
+                self.next_try = Self::compute_next_try(self.poll_interval);
+                self.poll()
+            }
+        }
+    }
+}
+
+impl AsyncLedgerQueryService {
+    pub fn fetch_results(&self, query: Query) -> FetchResultsFuture {
+        FetchResultsFuture::new(self.inner.clone(), query, self.poll_interval)
+    }
 }
 
 impl Future for PaymentToBitcoinAddressFuture {
@@ -33,57 +81,25 @@ impl Future for PaymentToBitcoinAddressFuture {
     type Error = ();
 
     fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
-        if let Ok(Async::NotReady) = self.next_try.poll() {
-            return Ok(Async::NotReady);
-        }
+        let results = try_ready!(self.inner.poll());
 
-        let result = match self.query {
-            Some(ref query) => match self.ledger_query_service.fetch_query_results(query) {
-                Ok(ref results) if results.len() > 0 => match self
-                    .bitcoin_node
-                    .get_raw_transaction_serialized(&results.get(0).unwrap().parse().unwrap())
-                {
-                    Ok(Ok(transaction)) => Ok(Async::Ready(transaction.into())),
-                    _ => Ok(Async::NotReady),
-                },
-                _ => Ok(Async::NotReady),
-            },
-            None => match self
-                .ledger_query_service
-                .create_bitcoin_query(BitcoinQuery {
-                    to_address: Some(self.to_address.to_string()),
-                }) {
-                Ok(query) => {
-                    self.query = Some(query);
-                    Ok(Async::NotReady)
-                }
-                Err(e) => {
-                    warn!("Failed to create query: {:?}", e);
-                    Ok(Async::NotReady)
-                }
-            },
-        };
-
-        match result {
-            Ok(Async::NotReady) => {
-                self.next_try = Delay::new(Instant::now() + Duration::from_millis(500));
-                self.poll()
-            }
-            _ => result,
+        match self
+            .bitcoin_node
+            .get_raw_transaction_serialized(&results.get(0).unwrap().parse().unwrap())
+        {
+            Ok(Ok(transaction)) => Ok(Async::Ready(transaction.into())),
+            _ => Ok(Async::NotReady),
         }
     }
 }
 
-impl FutureTemplate<LedgerServices> for PaymentToAddress<Bitcoin> {
+impl FutureTemplate<LedgerServices> for Query {
     type Future = PaymentToBitcoinAddressFuture;
 
     fn into_future(self, dependencies: LedgerServices) -> PaymentToBitcoinAddressFuture {
         PaymentToBitcoinAddressFuture {
-            to_address: self.to_address,
             bitcoin_node: dependencies.bitcoin_node,
-            ledger_query_service: dependencies.ledger_query_service,
-            query: None,
-            next_try: Delay::new(Instant::now() + Duration::from_millis(500)),
+            inner: dependencies.ledger_query_service.fetch_results(self),
         }
     }
 }
@@ -116,7 +132,7 @@ mod tests {
         results: Vec<String>,
     }
 
-    impl LedgerQueryService for FakeLedgerQueryService {
+    impl LedgerQueryServiceApiClient for FakeLedgerQueryService {
         fn create_bitcoin_query(&self, _query: BitcoinQuery) -> Result<Query, ()> {
             Ok(Query {
                 location: String::new(),
@@ -156,16 +172,15 @@ mod tests {
 
         let future_factory = FutureFactory::new(LedgerServices {
             bitcoin_node: Arc::new(bitcoin_rpc_api),
-            ledger_query_service: ledger_query_service.clone(),
+            ledger_query_service: AsyncLedgerQueryService {
+                inner: ledger_query_service.clone(),
+                poll_interval: Duration::from_millis(100),
+            },
         });
 
-        let payment_to_address = PaymentToAddress {
-            to_address: "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
-                .parse()
-                .unwrap(),
-        };
-
-        let future = future_factory.create_future_from_template(payment_to_address);
+        let future = future_factory.create_future_from_template(Query {
+            location: String::new(),
+        });
 
         let mut runtime = Runtime::new().unwrap();
 

@@ -22,6 +22,7 @@ extern crate uuid;
 #[macro_use]
 extern crate log;
 extern crate event_store;
+#[macro_use]
 extern crate futures;
 extern crate ganp;
 extern crate hex;
