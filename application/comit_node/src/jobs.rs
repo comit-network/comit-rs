@@ -97,7 +97,7 @@ mod tests {
     use reqwest;
     use spectral::prelude::*;
     use std::sync::Mutex;
-    use tokio;
+    use tokio::runtime::Runtime;
 
     struct FakeBitcoinRpcApi;
 
@@ -167,10 +167,13 @@ mod tests {
 
         let future = future_factory.create_future_from_template(payment_to_address);
 
-        tokio::run(future.map(|_| ()));
+        let mut runtime = Runtime::new().unwrap();
+
+        let result = runtime.block_on(future);
 
         let invocations = ledger_query_service.invocations.lock().unwrap();
 
         assert_that(&*invocations).is_equal_to(5);
+        assert_that(&result).is_ok();
     }
 }
