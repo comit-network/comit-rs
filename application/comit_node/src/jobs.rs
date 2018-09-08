@@ -10,45 +10,47 @@ use std::{
 use tokio_timer::Delay;
 
 #[derive(Clone)]
-pub struct JobDependencies {
+pub struct FutureDependencies {
     bitcoin_node: Arc<BitcoinRpcApi>,
     ledger_query_service: Arc<LedgerQueryService>,
 }
 
-pub trait Job: Future {}
+pub trait FutureTemplate {
+    type Future: Future + Sized;
 
-pub trait JobDescription {
-    type Job;
-
-    fn into_job(self, dependencies: JobDependencies) -> Self::Job;
+    fn into_future(self, dependencies: FutureDependencies) -> Self::Future;
 }
 
-pub struct JobFactory {
-    dependencies: JobDependencies,
+pub struct FutureFactory {
+    dependencies: FutureDependencies,
 }
 
-impl JobFactory {
+impl FutureFactory {
     pub fn new(
         bitcoin_node: Arc<BitcoinRpcApi>,
         ledger_query_service: Arc<LedgerQueryService>,
     ) -> Self {
-        JobFactory {
-            dependencies: JobDependencies {
+        FutureFactory {
+            dependencies: FutureDependencies {
                 bitcoin_node,
                 ledger_query_service,
             },
         }
     }
 
-    pub fn create_job<J: JobDescription>(&self, job_description: J) -> <J as JobDescription>::Job {
-        job_description.into_job(self.dependencies.clone())
+    pub fn create_future_from_template<T: FutureTemplate>(
+        &self,
+        future_template: T,
+    ) -> <T as FutureTemplate>::Future {
+        future_template.into_future(self.dependencies.clone())
     }
 }
-pub struct WaitForContractDeployment<L: Ledger> {
+
+pub struct PaymentToAddress<L: Ledger> {
     to_address: L::Address,
 }
 
-pub struct WaitForBitcoinContractDeployment {
+pub struct PaymentToBitcoinAddressFuture {
     to_address: Address,
     bitcoin_node: Arc<BitcoinRpcApi>,
     ledger_query_service: Arc<LedgerQueryService>,
@@ -56,9 +58,7 @@ pub struct WaitForBitcoinContractDeployment {
     next_try: Delay,
 }
 
-impl Job for WaitForBitcoinContractDeployment {}
-
-impl Future for WaitForBitcoinContractDeployment {
+impl Future for PaymentToBitcoinAddressFuture {
     type Item = Transaction;
     type Error = ();
 
@@ -104,11 +104,11 @@ impl Future for WaitForBitcoinContractDeployment {
     }
 }
 
-impl JobDescription for WaitForContractDeployment<Bitcoin> {
-    type Job = WaitForBitcoinContractDeployment;
+impl FutureTemplate for PaymentToAddress<Bitcoin> {
+    type Future = PaymentToBitcoinAddressFuture;
 
-    fn into_job(self, dependencies: JobDependencies) -> <Self as JobDescription>::Job {
-        WaitForBitcoinContractDeployment {
+    fn into_future(self, dependencies: FutureDependencies) -> <Self as FutureTemplate>::Future {
+        PaymentToBitcoinAddressFuture {
             to_address: self.to_address,
             bitcoin_node: dependencies.bitcoin_node,
             ledger_query_service: dependencies.ledger_query_service,
@@ -183,17 +183,18 @@ mod tests {
             )],
         });
 
-        let job_factory = JobFactory::new(Arc::new(bitcoin_rpc_api), ledger_query_service.clone());
+        let future_factory =
+            FutureFactory::new(Arc::new(bitcoin_rpc_api), ledger_query_service.clone());
 
-        let bitcoin_contract_deployment = WaitForContractDeployment {
+        let payment_to_address = PaymentToAddress {
             to_address: "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap"
                 .parse()
                 .unwrap(),
         };
 
-        let job = job_factory.create_job(bitcoin_contract_deployment);
+        let future = future_factory.create_future_from_template(payment_to_address);
 
-        tokio::run(job.map(|_| ()));
+        tokio::run(future.map(|_| ()));
 
         let invocations = ledger_query_service.invocations.lock().unwrap();
 
