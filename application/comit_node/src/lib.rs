@@ -29,12 +29,6 @@ extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
-extern crate tokio_timer;
-extern crate transport_protocol;
-extern crate web3;
-
-#[cfg(test)]
-extern crate spectral;
 
 #[cfg(test)]
 extern crate env_logger;

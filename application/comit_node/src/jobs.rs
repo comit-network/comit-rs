@@ -1,14 +1,12 @@
 use bitcoin_rpc_client::{BitcoinRpcApi, TransactionId};
 use bitcoin_support::Transaction;
 use future_template::FutureTemplate;
-use futures::{Async, Future};
 use ganp::ledger::{bitcoin::Bitcoin, Ledger};
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient, Query};
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
+use ledger_query_service::{
+    AsyncLedgerQueryService, BitcoinQuery, FetchResultsFuture, LedgerQueryServiceApiClient, Query,
 };
-use tokio_timer::Delay;
+use std::{sync::Arc, time::Duration};
+use tokio::prelude::*;
 
 #[derive(Clone)]
 pub struct LedgerServices {
@@ -19,61 +17,6 @@ pub struct LedgerServices {
 pub struct PaymentToBitcoinAddressFuture {
     bitcoin_node: Arc<BitcoinRpcApi>,
     inner: FetchResultsFuture,
-}
-
-#[derive(Clone)]
-pub struct AsyncLedgerQueryService {
-    inner: Arc<LedgerQueryServiceApiClient>,
-    poll_interval: Duration,
-}
-
-pub struct FetchResultsFuture {
-    api_client: Arc<LedgerQueryServiceApiClient>,
-    query: Query,
-    poll_interval: Duration,
-    next_try: Delay,
-}
-
-impl FetchResultsFuture {
-    fn new(
-        api_client: Arc<LedgerQueryServiceApiClient>,
-        query: Query,
-        poll_interval: Duration,
-    ) -> Self {
-        FetchResultsFuture {
-            api_client,
-            query,
-            poll_interval,
-            next_try: Self::compute_next_try(poll_interval),
-        }
-    }
-
-    fn compute_next_try(interval: Duration) -> Delay {
-        Delay::new(Instant::now() + interval)
-    }
-}
-
-impl Future for FetchResultsFuture {
-    type Item = Vec<String>;
-    type Error = ();
-
-    fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
-        let _ = try_ready!(self.next_try.poll().map_err(|_| ()));
-
-        match self.api_client.fetch_query_results(&self.query) {
-            Ok(ref results) if results.len() > 0 => Ok(Async::Ready(results.clone())),
-            _ => {
-                self.next_try = Self::compute_next_try(self.poll_interval);
-                self.poll()
-            }
-        }
-    }
-}
-
-impl AsyncLedgerQueryService {
-    pub fn fetch_results(&self, query: Query) -> FetchResultsFuture {
-        FetchResultsFuture::new(self.inner.clone(), query, self.poll_interval)
-    }
 }
 
 impl Future for PaymentToBitcoinAddressFuture {
@@ -172,10 +115,10 @@ mod tests {
 
         let future_factory = FutureFactory::new(LedgerServices {
             bitcoin_node: Arc::new(bitcoin_rpc_api),
-            ledger_query_service: AsyncLedgerQueryService {
-                inner: ledger_query_service.clone(),
-                poll_interval: Duration::from_millis(100),
-            },
+            ledger_query_service: AsyncLedgerQueryService::new(
+                ledger_query_service.clone(),
+                Duration::from_millis(100),
+            ),
         });
 
         let future = future_factory.create_future_from_template(Query {
