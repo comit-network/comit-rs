@@ -15,14 +15,12 @@ extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate spectral;
 use bitcoin_support::{BitcoinQuantity, Blocks};
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    seconds::Seconds,
-};
+use common_types::seconds::Seconds;
 use ethereum_support::EthereumQuantity;
 use futures::future::Future;
 use ganp::*;
 use hex::FromHex;
+use ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use rfc003;
 use secp256k1_support::PublicKey;
 use spectral::prelude::*;

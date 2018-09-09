@@ -1,4 +1,4 @@
-use common_types::ledger::Ledger;
+use ledger::Ledger;
 
 #[derive(Debug, PartialEq)]
 pub struct Request<SL: Ledger, TL: Ledger, SA, TA> {

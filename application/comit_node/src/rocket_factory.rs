@@ -1,8 +1,8 @@
 use bitcoin_support::Network;
 use comit_node_api_client::ApiClient;
-use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ethereum_support;
 use event_store::InMemoryEventStore;
+use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ledger_htlc_service::LedgerHtlcService;
 use rand::OsRng;
 use rocket;

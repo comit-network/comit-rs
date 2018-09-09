@@ -1,5 +1,6 @@
-use common_types::{ledger::Ledger, secret::Secret, TradingSymbol};
+use common_types::{secret::Secret, TradingSymbol};
 use event_store::Event;
+use ganp::ledger::Ledger;
 use std::marker::PhantomData;
 use swaps::common::TradeId;
 

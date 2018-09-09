@@ -1,7 +1,7 @@
 use bitcoin_support::BitcoinQuantity;
-use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use ethereum_support::EthereumQuantity;
 use handler::SwapRequestHandler;
+use ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use rfc003;
 use transport_protocol::{
     config::Config,

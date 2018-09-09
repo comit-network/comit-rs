@@ -1,14 +1,10 @@
 use bitcoin_support::{self, BitcoinQuantity};
 use comit_node_api_client::{ApiClient, OrderRequestBody};
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    seconds::Seconds,
-    secret::Secret,
-    TradingSymbol,
-};
+use common_types::{seconds::Seconds, secret::Secret, TradingSymbol};
 use ethereum_htlc;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
+use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;

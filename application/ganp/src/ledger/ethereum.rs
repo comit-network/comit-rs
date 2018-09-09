@@ -1,6 +1,6 @@
+use common_types::seconds::Seconds;
 use ethereum_support::{Address, EthereumQuantity, H256};
 use ledger::Ledger;
-use seconds::Seconds;
 use secp256k1_support::PublicKey;
 
 #[derive(Clone, Debug, PartialEq, Default)]
