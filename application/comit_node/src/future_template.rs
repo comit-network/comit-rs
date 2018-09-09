@@ -1,4 +1,4 @@
-use futures::Future;
+use tokio::prelude::*;
 
 pub trait FutureTemplate<D> {
     type Future: Future + Sized;
