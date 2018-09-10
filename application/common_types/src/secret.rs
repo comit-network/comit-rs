@@ -2,12 +2,21 @@ use crypto::{digest::Digest, sha2::Sha256};
 use hex;
 use rand::{OsRng, Rng};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt, str::FromStr};
+use std::{
+    fmt::{self, Debug},
+    str::FromStr,
+};
 
 const SHA256_DIGEST_LENGTH: usize = 32;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, PartialEq)]
 pub struct SecretHash(pub Vec<u8>);
+
+impl Debug for SecretHash {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&format!("SecretHash({:x})", self))
+    }
+}
 
 impl<'a> From<&'a SecretHash> for SecretHash {
     fn from(s: &'a SecretHash) -> Self {
