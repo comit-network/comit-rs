@@ -10,7 +10,7 @@ extern crate secp256k1_support;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-pub mod ledger;
+
 pub mod secret;
 mod trading_symbol;
 pub use trading_symbol::TradingSymbol;

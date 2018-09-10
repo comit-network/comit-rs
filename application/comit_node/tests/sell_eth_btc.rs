@@ -9,6 +9,7 @@ extern crate env_logger;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
+extern crate ganp;
 extern crate hex;
 extern crate reqwest;
 extern crate rocket;
@@ -37,14 +38,11 @@ use comit_node::{
     },
 };
 use common::mocks;
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    seconds::Seconds,
-    secret::Secret,
-};
+use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::{EventStore, InMemoryEventStore};
+use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use hex::FromHex;
 use mocks::BitcoinRpcClientMock;
 use rocket::{

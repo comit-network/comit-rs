@@ -1,8 +1,5 @@
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    secret::SecretHash,
-    TradingSymbol,
-};
+use common_types::{secret::SecretHash, TradingSymbol};
+use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use reqwest;
 use swaps::common::TradeId;
 

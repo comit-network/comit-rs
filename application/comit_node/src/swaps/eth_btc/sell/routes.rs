@@ -1,8 +1,8 @@
 use bitcoin_support::{self, Network, ToP2wpkhAddress};
 use comit_node_api_client::OrderRequestBody;
-use common_types::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
+use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
