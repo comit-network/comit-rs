@@ -1,10 +1,8 @@
-use common_types::{
-    ledger::{ethereum::Ethereum, Ledger},
-    secret::{Secret, SecretHash},
-};
+use common_types::secret::{Secret, SecretHash};
 use ethereum_htlc::Htlc;
 use ethereum_support::*;
 use ethereum_wallet;
+use ganp::ledger::{ethereum::Ethereum, Ledger};
 use gas_price_service::{self, GasPriceService};
 use ledger_htlc_service::{self, LedgerHtlcService};
 use secp256k1_support::KeyPair;

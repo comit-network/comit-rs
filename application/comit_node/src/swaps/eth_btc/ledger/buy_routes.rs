@@ -1,12 +1,10 @@
-use common_types::{
-    ledger::{
-        bitcoin::{self, Bitcoin},
-        ethereum::Ethereum,
-    },
-    secret::Secret,
-};
+use common_types::secret::Secret;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
+use ganp::ledger::{
+    bitcoin::{self, Bitcoin},
+    ethereum::Ethereum,
+};
 use ledger_htlc_service::LedgerHtlcService;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;

@@ -328,6 +328,7 @@ dependencies = [
  "ethereum_support 0.1.0",
  "ethereum_wallet 0.1.0",
  "event_store 0.1.0",
+ "ganp 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -795,6 +796,7 @@ dependencies = [
 name = "ganp"
 version = "0.1.0"
 dependencies = [
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "common_types 0.1.0",
  "ethereum_support 0.1.0",

@@ -2,12 +2,9 @@ use bitcoin_support;
 use comit_node_api_client::{
     client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
 };
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    seconds::Seconds,
-    TradingSymbol,
-};
+use common_types::{seconds::Seconds, TradingSymbol};
 use ethereum_support;
+use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use reqwest;
 use std::str::FromStr;
 use swaps::common::TradeId;

@@ -3,10 +3,8 @@ use bitcoin_htlc::bitcoin_htlc;
 use bitcoin_rpc_client;
 use bitcoin_support::{self, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
-use common_types::{
-    ledger::{bitcoin::Bitcoin, Ledger},
-    secret::{Secret, SecretHash},
-};
+use common_types::secret::{Secret, SecretHash};
+use ganp::ledger::{bitcoin::Bitcoin, Ledger};
 use ledger_htlc_service::{Error, LedgerHtlcService};
 use reqwest;
 use secp256k1_support::KeyPair;
