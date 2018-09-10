@@ -1,7 +1,5 @@
 use bitcoin_support;
-use comit_node_api_client::{
-    client::OrderResponseBody, ApiClient, OfferResponseBody, OrderRequestBody,
-};
+use comit_node_api_client::{client::OrderResponseBody, ApiClient, OrderRequestBody};
 use common_types::{seconds::Seconds, TradingSymbol};
 use ethereum_support;
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
@@ -19,23 +17,6 @@ impl FakeApiClient {
 }
 
 impl ApiClient for FakeApiClient {
-    fn create_buy_offer(
-        &self,
-        symbol: TradingSymbol,
-        amount: f64,
-    ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
-        let rate = 0.1;
-        let sell_amount = amount * rate;
-        let offer = OfferResponseBody {
-            uid: Default::default(),
-            symbol,
-            rate,
-            sell_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(sell_amount),
-            buy_amount: ethereum_support::EthereumQuantity::from_eth(amount),
-        };
-        Ok(offer)
-    }
-
     fn create_buy_order(
         &self,
         _symbol: TradingSymbol,
@@ -53,23 +34,6 @@ impl ApiClient for FakeApiClient {
         };
 
         Ok(accept)
-    }
-
-    fn create_sell_offer(
-        &self,
-        symbol: TradingSymbol,
-        amount: f64,
-    ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
-        let rate = 0.1;
-        let buy_amount = amount * rate;
-        let offer = OfferResponseBody {
-            uid: Default::default(),
-            symbol,
-            rate,
-            sell_amount: ethereum_support::EthereumQuantity::from_eth(amount),
-            buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
-        };
-        Ok(offer)
     }
 
     fn create_sell_order(
