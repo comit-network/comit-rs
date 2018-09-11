@@ -23,28 +23,44 @@ const ONE_HOUR: Duration = Duration::from_secs(60 * 60);
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let _ = env_logger::try_init();
 
-    let alice: Address = "147ba99ef89c152f8004e91999fee87bda6cbc3e".into();
+    let alice: Address = "3Db7fb2CFD319F4a9225E1EF875796e62007e185".into();
     let bob: Address = "96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e".into();
-    let contract_owner: Address = "03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into();
+    //    let contract_owner: Address = "03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into();
+    let htlc_contract: Address = "597a51103e68b98797f0676ff7dcd92eec40d7e6".into();
 
     let secret = Secret::from(SECRET.clone());
 
     let mut client = GanacheClient::new();
 
-    let contract = client.deploy_token_contract(contract_owner);
-    client.mint_1000_tokens(contract_owner, contract, alice);
+    let contract = client.deploy_token_contract(alice);
+    let contract = client.deploy_token_contract(alice);
 
-    let bob_balance_before = client.get_token_balance(contract, bob);
-    assert_eq!(bob_balance_before, U256::from(0));
+    assert_eq!(contract, "ec686ae6454cdfe16fe9196b69183d10423ec787".into());
 
-    // create HTLC
+    client.mint_1000_tokens(alice, contract, alice);
 
-    // deploy HTLC
+    let alice_balance = client.get_token_balance(contract, alice);
+    assert_eq!(alice_balance, U256::from(1000));
+
+    let htlc = ethereum_htlc::Erc20Htlc::new(
+        ONE_HOUR,
+        alice,
+        bob,
+        secret.hash(),
+        htlc_contract,
+        contract,
+        U256::from(500),
+    );
+
+    let gas_used = client.deploy(alice, htlc, 0);
+
+    let contract_token_balance = client.get_token_balance(contract, htlc_contract);
+    assert_eq!(contract_token_balance, U256::from(500));
 
     // redeem HTLC
-
-    let bob_balance_before = client.get_token_balance(contract, bob);
-    assert_eq!(bob_balance_before, U256::from(500));
+    //
+    //    let bob_balance_after = client.get_token_balance(contract, bob);
+    //    assert_eq!(bob_balance_after, U256::from(500));
 }
 //
 //#[test]
