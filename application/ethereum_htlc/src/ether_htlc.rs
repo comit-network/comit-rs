@@ -4,7 +4,7 @@ use hex;
 use std::time::Duration;
 
 #[derive(Debug)]
-pub struct Htlc {
+pub struct EtherHtlc {
     refund_timeout: Duration,
     refund_address: Address,
     success_address: Address,
@@ -20,7 +20,7 @@ impl Into<Bytes> for ByteCode {
     }
 }
 
-impl Htlc {
+impl EtherHtlc {
     const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../ether_contract.asm.hex");
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
@@ -38,7 +38,7 @@ impl Htlc {
         success_address: Address,
         secret_hash: SecretHash,
     ) -> Self {
-        let htlc = Htlc {
+        let htlc = EtherHtlc {
             refund_timeout,
             refund_address,
             success_address,
@@ -96,7 +96,7 @@ mod tests {
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
-        let htlc = Htlc::new(
+        let htlc = EtherHtlc::new(
             Duration::from_secs(100),
             Address::new(),
             Address::new(),
@@ -107,14 +107,14 @@ mod tests {
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
             htlc_hex.0.len(),
-            Htlc::CONTRACT_CODE_TEMPLATE.len() + Htlc::DEPLOY_HEADER_TEMPLATE.len(),
+            EtherHtlc::CONTRACT_CODE_TEMPLATE.len() + EtherHtlc::DEPLOY_HEADER_TEMPLATE.len(),
             "HTLC is the same length as template plus deploy code"
         );
     }
 
     #[test]
     fn given_input_data_when_compiled_should_no_longer_contain_placeholders() {
-        let htlc = Htlc::new(
+        let htlc = EtherHtlc::new(
             Duration::from_secs(100),
             Address::new(),
             Address::new(),
@@ -125,9 +125,9 @@ mod tests {
 
         let compiled_code = htlc.compile_to_hex().0;
 
-        assert!(!compiled_code.contains(Htlc::REFUND_TIMEOUT_PLACEHOLDER));
-        assert!(!compiled_code.contains(Htlc::SUCCESS_ADDRESS_PLACEHOLDER));
-        assert!(!compiled_code.contains(Htlc::REFUND_ADDRESS_PLACEHOLDER));
-        assert!(!compiled_code.contains(Htlc::SECRET_HASH_PLACEHOLDER));
+        assert!(!compiled_code.contains(EtherHtlc::REFUND_TIMEOUT_PLACEHOLDER));
+        assert!(!compiled_code.contains(EtherHtlc::SUCCESS_ADDRESS_PLACEHOLDER));
+        assert!(!compiled_code.contains(EtherHtlc::REFUND_ADDRESS_PLACEHOLDER));
+        assert!(!compiled_code.contains(EtherHtlc::SECRET_HASH_PLACEHOLDER));
     }
 }

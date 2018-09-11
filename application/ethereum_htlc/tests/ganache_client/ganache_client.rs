@@ -74,7 +74,12 @@ impl GanacheClient {
         receipt.contract_address.unwrap()
     }
 
-    pub fn deploy(&self, from: Address, htlc: ethereum_htlc::Htlc, htlc_value: i32) -> Address {
+    pub fn deploy(
+        &self,
+        from: Address,
+        htlc: ethereum_htlc::EtherHtlc,
+        htlc_value: i32,
+    ) -> Address {
         let compiled_contract = htlc.compile_to_hex();
 
         let contract_tx_id = self

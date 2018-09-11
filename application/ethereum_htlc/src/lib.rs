@@ -8,6 +8,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-pub use htlc::*;
+pub use ether_htlc::*;
 
-mod htlc;
+mod ether_htlc;
