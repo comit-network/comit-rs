@@ -21,7 +21,7 @@ impl Into<Bytes> for ByteCode {
 }
 
 impl Htlc {
-    const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../contract.asm.hex");
+    const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../ether_contract.asm.hex");
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
