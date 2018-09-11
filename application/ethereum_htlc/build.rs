@@ -8,7 +8,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-const CONTRACT: &str = include_str!("./contract.asm");
+const CONTRACT: &str = include_str!("./ether_contract.asm");
 
 fn main() -> std::io::Result<()> {
     let solc_bin = var("SOLC_BIN");
@@ -45,10 +45,10 @@ fn main() -> std::io::Result<()> {
 
     let hexcode = captures.name("hexcode").unwrap();
 
-    let mut file = File::create("contract.asm.hex")?;
+    let mut file = File::create("ether_contract.asm.hex")?;
     file.write_all(hexcode.as_str().as_bytes())?;
 
-    println!("cargo:rerun-if-changed=./contract.asm");
+    println!("cargo:rerun-if-changed=./ether_contract.asm");
 
     Ok(())
 }
