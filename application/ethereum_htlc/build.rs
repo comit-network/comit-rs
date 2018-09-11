@@ -8,9 +8,24 @@ use std::{
     process::{Command, Stdio},
 };
 
-const CONTRACT: &str = include_str!("./ether_contract.asm");
-
 fn main() -> std::io::Result<()> {
+    compile(include_str!("./ether_contract.asm"), "./ether_contract.asm")?;
+    compile(
+        include_str!("./ether_deploy_header.asm"),
+        "./ether_deploy_header.asm",
+    )
+}
+
+fn check_bin_in_path(bin: &str) {
+    let output = Command::new("which").arg(bin).output().unwrap();
+    if output.stdout.is_empty() {
+        let mut msg = format!("`{}` cannot be found, check your path", bin);
+        msg = format!("{}\nPATH: {:?}", msg, var("PATH"));
+        panic!(msg);
+    }
+}
+
+fn compile(code: &str, file_name: &'static str) -> std::io::Result<()> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -33,7 +48,7 @@ fn main() -> std::io::Result<()> {
         }
     };
 
-    solc.stdin.as_mut().unwrap().write_all(CONTRACT.as_bytes())?;
+    solc.stdin.as_mut().unwrap().write_all(code.as_bytes())?;
 
     let output = solc.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -45,19 +60,10 @@ fn main() -> std::io::Result<()> {
 
     let hexcode = captures.name("hexcode").unwrap();
 
-    let mut file = File::create("ether_contract.asm.hex")?;
+    let mut file = File::create(format!("{}.hex", file_name).as_str())?;
     file.write_all(hexcode.as_str().as_bytes())?;
 
-    println!("cargo:rerun-if-changed=./ether_contract.asm");
+    println!("cargo:rerun-if-changed={}", file_name);
 
     Ok(())
-}
-
-fn check_bin_in_path(bin: &str) {
-    let output = Command::new("which").arg(bin).output().unwrap();
-    if output.stdout.is_empty() {
-        let mut msg = format!("`{}` cannot be found, check your path", bin);
-        msg = format!("{}\nPATH: {:?}", msg, var("PATH"));
-        panic!(msg);
-    }
 }

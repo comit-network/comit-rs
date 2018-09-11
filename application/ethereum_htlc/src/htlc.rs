@@ -27,7 +27,10 @@ impl Htlc {
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
-    const DEPLOY_CODE_LENGTH: usize = 21;
+
+    const DEPLOY_HEADER_TEMPLATE: &'static str = include_str!("../ether_deploy_header.asm.hex");
+    const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
+    const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
 
     pub fn new(
         refund_timeout: Duration,
@@ -60,7 +63,20 @@ impl Htlc {
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash);
 
-        let deploy_header = self.generate_deploy_header(&contract_code);
+        let code_length = contract_code.len() / 2; // In hex, each byte is two chars
+
+        let code_length_as_hex = format!("{:0>4x}", code_length);
+
+        let header_length = Self::DEPLOY_HEADER_TEMPLATE.len() / 2;
+        let header_length_as_hex = format!("{:0>4x}", header_length);
+
+        let deploy_header = Self::DEPLOY_HEADER_TEMPLATE
+            .to_string()
+            .replace(
+                Self::CONTRACT_START_POSITION_PLACEHOLDER,
+                &header_length_as_hex,
+            )
+            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
         debug!("Final contract code: {}", &contract_code);
         debug!("Deploy header: {}", &deploy_header);
@@ -70,61 +86,6 @@ impl Htlc {
         debug!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
-    }
-
-    /// Don't touch this unless you know what you are doing!
-    #[allow(non_snake_case)]
-    fn generate_deploy_header(&self, code: &str) -> String {
-        // Necessary op codes
-        let PUSH1 = "60";
-        let CODE_COPY = "39";
-        let RETURN = "F3";
-        let TIMESTAMP = "42";
-        let MSTORE = "52";
-        let MSTORE8 = "53";
-
-        // Variables
-        let deploy_timestamp_memory_start_address = "1B";
-        let contract_code_memory_start_address = "20";
-        let timestamp_start_address = "00";
-        let push4_opcode_value = "63";
-
-        let deploy_timestamp_length = 1 + 4; // PUSH4 + TIMESTAMP
-        let code_length = code.len() / 2; // In hex, each byte is two chars
-
-        let code_length_as_hex = format!("{:2X}", code_length);
-        let size_of_code_to_copy_in_hex = format!("{:2X}", code_length - deploy_timestamp_length);
-
-        let program_counter_code_start_address =
-            format!("{:2X}", Htlc::DEPLOY_CODE_LENGTH + deploy_timestamp_length);
-
-        let op_codes = &[
-            TIMESTAMP,
-            PUSH1,
-            timestamp_start_address,
-            MSTORE,
-            PUSH1,
-            push4_opcode_value,
-            PUSH1,
-            deploy_timestamp_memory_start_address,
-            MSTORE8,
-            PUSH1,
-            size_of_code_to_copy_in_hex.as_str(),
-            PUSH1,
-            program_counter_code_start_address.as_str(),
-            PUSH1,
-            contract_code_memory_start_address,
-            CODE_COPY,
-            PUSH1,
-            code_length_as_hex.as_str(),
-            PUSH1,
-            deploy_timestamp_memory_start_address,
-            RETURN,
-        ];
-
-        debug_assert_eq!(op_codes.len(), Htlc::DEPLOY_CODE_LENGTH);
-
-        op_codes.join("")
     }
 }
 
@@ -146,7 +107,7 @@ mod tests {
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
             htlc_hex.0.len(),
-            Htlc::CONTRACT_CODE_TEMPLATE.len() + Htlc::DEPLOY_CODE_LENGTH * 2,
+            Htlc::CONTRACT_CODE_TEMPLATE.len() + Htlc::DEPLOY_HEADER_TEMPLATE.len(),
             "HTLC is the same length as template plus deploy code"
         );
     }
@@ -168,18 +129,5 @@ mod tests {
         assert!(!compiled_code.contains(Htlc::SUCCESS_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(Htlc::REFUND_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(Htlc::SECRET_HASH_PLACEHOLDER));
-    }
-
-    #[test]
-    fn should_generate_correct_deploy_header() {
-        let htlc = Htlc::new(
-            Duration::from_secs(100),
-            Address::new(),
-            Address::new(),
-            SecretHash::from_str("").unwrap(),
-        );
-        let deploy_header = htlc.generate_deploy_header(Htlc::CONTRACT_CODE_TEMPLATE);
-
-        assert_eq!(&deploy_header, "426000526063601B53607D601A6020396082601BF3");
     }
 }
