@@ -13,6 +13,11 @@ fn main() -> std::io::Result<()> {
     compile(
         include_str!("./ether_deploy_header.asm"),
         "./ether_deploy_header.asm",
+    )?;
+    compile(include_str!("./erc20_contract.asm"), "./erc20_contract.asm")?;
+    compile(
+        include_str!("./erc20_deploy_header.asm"),
+        "./erc20_deploy_header.asm",
     )
 }
 
