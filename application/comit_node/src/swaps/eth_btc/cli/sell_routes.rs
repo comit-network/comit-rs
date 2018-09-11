@@ -163,7 +163,7 @@ fn handle_sell_orders(
         )
         .map_err(Error::ComitNode)?;
 
-    let htlc = ethereum_htlc::Htlc::new(
+    let htlc = ethereum_htlc::EtherHtlc::new(
         lock_duration.into(),
         alice_refund_address,
         order_response.bob_success_address,

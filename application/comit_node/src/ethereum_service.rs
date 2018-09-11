@@ -1,5 +1,5 @@
 use common_types::secret::{Secret, SecretHash};
-use ethereum_htlc::Htlc;
+use ethereum_htlc::EtherHtlc;
 use ethereum_support::*;
 use ethereum_wallet;
 use ganp::ledger::{ethereum::Ethereum, Ledger};
@@ -61,7 +61,7 @@ impl LedgerHtlcService<Ethereum> for EthereumService {
         amount: <Ethereum as Ledger>::Quantity,
         secret: SecretHash,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
-        let contract = Htlc::new(time_lock.into(), refund_address, success_address, secret);
+        let contract = EtherHtlc::new(time_lock.into(), refund_address, success_address, secret);
 
         let funding = amount.wei();
 
@@ -207,7 +207,7 @@ mod tests {
 
         let result = service.sign_and_send(|nonce, gas_price| {
             ethereum_wallet::UnsignedTransaction::new_contract_deployment(
-                Htlc::new(
+                EtherHtlc::new(
                     Duration::from_secs(100),
                     ethereum_support::Address::new(),
                     ethereum_support::Address::new(),
@@ -242,7 +242,7 @@ mod tests {
 
         let result = service.sign_and_send(|nonce, gas_price| {
             ethereum_wallet::UnsignedTransaction::new_contract_deployment(
-                Htlc::new(
+                EtherHtlc::new(
                     Duration::from_secs(100),
                     ethereum_support::Address::new(),
                     ethereum_support::Address::new(),
