@@ -29,9 +29,11 @@ mod common;
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
 use comit_node::{
-    bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
-    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient, ethereum_service,
-    gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
+    bitcoin_fee_service::StaticBitcoinFeeService,
+    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
+    gas_price_service::StaticGasPriceService,
+    rocket_factory::create_rocket_instance,
+    swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use common::mocks;
 use ethereum_wallet::fake::StaticFakeWallet;
@@ -123,7 +125,7 @@ fn create_rocket_client() -> Client {
 
     let rocket = create_rocket_instance(
         InMemoryEventStore::new(),
-        Arc::new(ethereum_service::EthereumService::new(
+        Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),
             Arc::new(StaticEthereumApi),

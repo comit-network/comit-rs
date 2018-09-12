@@ -5,10 +5,10 @@ use ganp::ledger::{
     bitcoin::{self, Bitcoin},
     ethereum::Ethereum,
 };
-use ledger_htlc_service::LedgerHtlcService;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
+use swap_protocols::rfc003::ledger_htlc_service::LedgerHtlcService;
 use swaps::{
     alice_events::ContractDeployed as AliceContractDeployed,
     bob_events::{

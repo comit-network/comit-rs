@@ -33,11 +33,12 @@ use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Blocks, Network};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::BitcoinService,
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
-    ethereum_service::{self, BlockingEthereumApi},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
+    swap_protocols::rfc003::ledger_htlc_service::{
+        BitcoinService, BlockingEthereumApi, EthereumService,
+    },
     swaps::{
         bob_events::{OrderTaken, TradeFunded},
         common::TradeId,
@@ -93,7 +94,7 @@ fn create_rocket_client(
 
     let rocket = create_rocket_instance(
         event_store,
-        Arc::new(ethereum_service::EthereumService::new(
+        Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),
             Arc::new(StaticEthereumApi),

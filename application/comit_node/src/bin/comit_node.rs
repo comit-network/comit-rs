@@ -24,11 +24,10 @@ use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::BitcoinService,
     comit_node_api_client::{ComitNodeUrl, DefaultApiClient as ComitNodeClient},
-    ethereum_service::EthereumService,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
+    swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;

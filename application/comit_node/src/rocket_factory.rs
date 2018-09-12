@@ -3,11 +3,11 @@ use comit_node_api_client::ApiClient;
 use ethereum_support;
 use event_store::InMemoryEventStore;
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
-use ledger_htlc_service::LedgerHtlcService;
 use rand::OsRng;
 use rocket;
 use secp256k1_support::KeyPair;
 use std::sync::{Arc, Mutex};
+use swap_protocols::rfc003::ledger_htlc_service::LedgerHtlcService;
 use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(

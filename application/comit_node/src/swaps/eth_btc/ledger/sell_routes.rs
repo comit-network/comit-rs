@@ -2,10 +2,10 @@ use common_types::secret::Secret;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
-use ledger_htlc_service::LedgerHtlcService;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
+use swap_protocols::rfc003::ledger_htlc_service::LedgerHtlcService;
 use swaps::{
     bob_events::{
         ContractDeployed as BobContractDeployed, ContractRedeemed as BobContractRedeemed,

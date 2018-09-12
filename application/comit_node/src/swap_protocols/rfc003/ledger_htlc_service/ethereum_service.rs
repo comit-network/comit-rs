@@ -11,7 +11,10 @@ use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
-use swap_protocols::rfc003::ethereum::{EtherHtlc, Htlc};
+use swap_protocols::rfc003::{
+    ethereum::{EtherHtlc, Htlc},
+    ledger_htlc_service::{self, api::LedgerHtlcService},
+};
 use swaps::common::TradeId;
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {
