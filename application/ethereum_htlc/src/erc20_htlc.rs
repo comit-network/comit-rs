@@ -27,12 +27,14 @@ impl Erc20Htlc {
     const DEPLOY_HEADER_TEMPLATE: &'static str = include_str!("../erc20_deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
-    const HTLC_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
+    const TRANSFER_FROM_ADDRESS_PLACEHOLDER: &'static str =
         "3000000000000000000000000000000000000000000000000000000000000003";
-    const AMOUNT_PLACEHOLDER: &'static str =
+    const TRANSFER_TO_ADDRESS_PLACEHOLDER: &'static str =
         "4000000000000000000000000000000000000000000000000000000000000004";
+    const AMOUNT_PLACEHOLDER: &'static str =
+        "5000000000000000000000000000000000000000000000000000000000000005";
     const TOKEN_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
-        "5000000000000000000000000000000000000005";
+        "6000000000000000000000000000000000000006";
 
     pub fn new(
         refund_timeout: Duration,
@@ -67,6 +69,7 @@ impl Htlc for Erc20Htlc {
         let secret_hash = format!("{:x}", self.secret_hash);
 
         let htlc_contract_address = format!("{:0>64}", format!("{:x}", self.htlc_contract_address));
+        let refund_address_32_bytes = format!("{:0>64}", format!("{:x}", self.refund_address));
         let token_contract_address = format!("{:x}", self.token_contract_address);
         let amount = format!("{:0>64}", format!("{:x}", self.amount));
 
@@ -91,7 +94,11 @@ impl Htlc for Erc20Htlc {
             )
             .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex)
             .replace(
-                Self::HTLC_CONTRACT_ADDRESS_PLACEHOLDER,
+                Self::TRANSFER_FROM_ADDRESS_PLACEHOLDER,
+                &refund_address_32_bytes,
+            )
+            .replace(
+                Self::TRANSFER_TO_ADDRESS_PLACEHOLDER,
                 &htlc_contract_address,
             )
             .replace(

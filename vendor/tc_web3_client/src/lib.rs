@@ -21,6 +21,10 @@ impl Web3Client {
         let port = container.get_host_port(8545).unwrap();
         let endpoint = format!("http://localhost:{}", port);
 
+        Self::connect(&endpoint)
+    }
+
+    pub fn connect(endpoint: &str) -> Self {
         let (_event_loop, transport) = Http::new(&endpoint).unwrap();
         let web3 = Web3::new(transport);
 
