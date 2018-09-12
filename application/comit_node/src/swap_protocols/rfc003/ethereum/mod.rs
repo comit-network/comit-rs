@@ -1,17 +1,7 @@
-extern crate chrono;
-extern crate common_types;
-extern crate ethereum_support;
-extern crate hex;
-#[macro_use]
-extern crate log;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-
 use ethereum_support::Bytes;
+use hex;
 
-pub use erc20_htlc::*;
-pub use ether_htlc::*;
+pub use self::{erc20_htlc::*, ether_htlc::*};
 
 mod erc20_htlc;
 mod ether_htlc;

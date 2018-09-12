@@ -1,5 +1,4 @@
 use common_types::secret::{Secret, SecretHash};
-use ethereum_htlc::EtherHtlc;
 use ethereum_support::*;
 use ethereum_wallet;
 use ganp::ledger::{ethereum::Ethereum, Ledger};
@@ -12,6 +11,7 @@ use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
+use swap_protocols::rfc003::ethereum::{EtherHtlc, Htlc};
 use swaps::common::TradeId;
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {

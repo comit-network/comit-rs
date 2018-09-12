@@ -1,16 +1,30 @@
-extern crate env_logger;
-extern crate ethereum_htlc;
+extern crate bitcoin_htlc;
+extern crate bitcoin_support;
 extern crate ethereum_support;
+extern crate event_store;
+extern crate rocket;
+extern crate rocket_contrib;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
+extern crate bitcoin_rpc_client;
+extern crate comit_node;
+extern crate common_types;
+extern crate env_logger;
+extern crate ethereum_wallet;
 extern crate ganache_rust_web3;
 extern crate hex;
-extern crate tc_trufflesuite_ganachecli;
-extern crate tc_web3_client;
 #[macro_use]
 extern crate log;
-extern crate common_types;
+extern crate reqwest;
+extern crate serde_json;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
 extern crate testcontainers;
+extern crate uuid;
 
 mod common;
+use comit_node::swap_protocols::rfc003::ethereum::Erc20Htlc;
 use common::GanacheClient;
 use common_types::secret::Secret;
 use ethereum_support::*;
@@ -40,7 +54,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let alice_balance = client.get_token_balance(contract, alice);
     assert_eq!(alice_balance, U256::from(1000));
 
-    let htlc = ethereum_htlc::Erc20Htlc::new(
+    let htlc = Erc20Htlc::new(
         ONE_HOUR,
         alice,
         bob,
@@ -70,7 +84,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 //
 //    let secret = Secret::from(SECRET.clone());
 //
-//    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
+//    let htlc = Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
 //
 //}
 //

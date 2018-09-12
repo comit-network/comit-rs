@@ -9,15 +9,25 @@ use std::{
 };
 
 fn main() -> std::io::Result<()> {
-    compile(include_str!("./ether_contract.asm"), "./ether_contract.asm")?;
     compile(
-        include_str!("./ether_deploy_header.asm"),
-        "./ether_deploy_header.asm",
+        include_str!("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm"),
+        "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm",
     )?;
-    compile(include_str!("./erc20_contract.asm"), "./erc20_contract.asm")?;
     compile(
-        include_str!("./erc20_deploy_header.asm"),
-        "./erc20_deploy_header.asm",
+        include_str!(
+            "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm"
+        ),
+        "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm",
+    )?;
+    compile(
+        include_str!("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm"),
+        "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm",
+    )?;
+    compile(
+        include_str!(
+            "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm"
+        ),
+        "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm",
     )
 }
 

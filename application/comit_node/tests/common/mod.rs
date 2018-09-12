@@ -1,4 +1,8 @@
+pub mod ganache_client;
 pub mod mocks;
+
+pub use self::ganache_client::*;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {
     pub uid: String,

@@ -17,9 +17,15 @@ extern crate rocket_contrib;
 extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
+#[macro_use]
+extern crate log;
 extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
+extern crate ganache_rust_web3;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
+extern crate testcontainers;
 
 mod common;
 

@@ -1,9 +1,7 @@
 use common_types::secret::SecretHash;
-use ethereum_support::{Address, Bytes};
-use hex;
+use ethereum_support::Address;
 use std::time::Duration;
-use ByteCode;
-use Htlc;
+use swap_protocols::rfc003::ethereum::{ByteCode, Htlc};
 
 #[derive(Debug)]
 pub struct EtherHtlc {
@@ -14,14 +12,16 @@ pub struct EtherHtlc {
 }
 
 impl EtherHtlc {
-    const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../ether_contract.asm.hex");
+    const CONTRACT_CODE_TEMPLATE: &'static str =
+        include_str!("./contract_templates/ether_contract.asm.hex");
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
 
-    const DEPLOY_HEADER_TEMPLATE: &'static str = include_str!("../ether_deploy_header.asm.hex");
+    const DEPLOY_HEADER_TEMPLATE: &'static str =
+        include_str!("./contract_templates/ether_deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
 

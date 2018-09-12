@@ -1,9 +1,7 @@
 use common_types::secret::SecretHash;
-use ethereum_support::{Address, Bytes, U256};
-use hex;
+use ethereum_support::{Address, U256};
 use std::time::Duration;
-use ByteCode;
-use Htlc;
+use swap_protocols::rfc003::ethereum::{ByteCode, Htlc};
 
 #[derive(Debug)]
 pub struct Erc20Htlc {
@@ -17,14 +15,16 @@ pub struct Erc20Htlc {
 }
 
 impl Erc20Htlc {
-    const CONTRACT_CODE_TEMPLATE: &'static str = include_str!("../erc20_contract.asm.hex");
+    const CONTRACT_CODE_TEMPLATE: &'static str =
+        include_str!("./contract_templates/erc20_contract.asm.hex");
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
 
-    const DEPLOY_HEADER_TEMPLATE: &'static str = include_str!("../erc20_deploy_header.asm.hex");
+    const DEPLOY_HEADER_TEMPLATE: &'static str =
+        include_str!("./contract_templates/erc20_deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
     const TRANSFER_FROM_ADDRESS_PLACEHOLDER: &'static str =
