@@ -1,10 +1,10 @@
-use ethereum_htlc;
+use ethereum_htlc::{self, Htlc};
 use ethereum_support::*;
 use ganache_rust_web3;
 use hex;
-use tc_trufflesuite_ganachecli::GanacheCli;
+use tc_trufflesuite_ganachecli::{GanacheCli, GanacheCliArgs};
 use tc_web3_client::Web3Client;
-use testcontainers::{clients::DockerCli, Container, Docker};
+use testcontainers::{clients::DockerCli, Container, Docker, Image};
 
 const TOKEN_CONTRACT_CODE: &'static str = include_str!("standard_erc20_token_contract.asm.hex");
 
@@ -17,6 +17,7 @@ pub struct GanacheClient {
 impl GanacheClient {
     pub fn new() -> Self {
         let container = DockerCli::new().run(GanacheCli::default());
+
         let client = Web3Client::new(&container);
 
         GanacheClient {
@@ -74,12 +75,7 @@ impl GanacheClient {
         receipt.contract_address.unwrap()
     }
 
-    pub fn deploy(
-        &self,
-        from: Address,
-        htlc: ethereum_htlc::EtherHtlc,
-        htlc_value: i32,
-    ) -> Address {
+    pub fn deploy<H: Htlc>(&self, from: Address, htlc: H, htlc_value: i32) -> Address {
         let compiled_contract = htlc.compile_to_hex();
 
         let contract_tx_id = self
@@ -95,8 +91,9 @@ impl GanacheClient {
                 nonce: None,
                 condition: None,
             })
-            .wait()
-            .unwrap();
+            .wait();
+
+        let contract_tx_id = contract_tx_id.unwrap();
 
         let receipt = self
             .client
@@ -125,6 +122,25 @@ impl GanacheClient {
 
         self.send_data(
             contract_owner,
+            contract,
+            Some(Bytes(hex::decode(payload).unwrap())),
+        )
+    }
+
+    pub fn approve_transfer(
+        &self,
+        token_owner: Address,
+        contract: Address,
+        to: Address,
+    ) -> U256 {
+        let function_identifier = "095ea7b3";
+        let address = format!("000000000000000000000000{}", hex::encode(to));
+        let amount = format!("00000000000000000000000000000000000000000000000000000000000003e8");
+
+        let payload = format!("{}{}{}", function_identifier, address, amount);
+
+        self.send_data(
+            token_owner,
             contract,
             Some(Bytes(hex::decode(payload).unwrap())),
         )
