@@ -68,6 +68,15 @@ pub struct EtherHtlcParams {
     pub secret_hash: SecretHash,
 }
 
+pub struct Erc20HtlcParams {
+    pub refund_address: Address,
+    pub success_address: Address,
+    pub time_lock: Seconds,
+    pub amount: U256,
+    pub secret_hash: SecretHash,
+    pub token_contract_address: Address,
+}
+
 impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
     fn deploy_htlc(
         &self,
@@ -128,6 +137,29 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
         );
 
         Ok(tx_id)
+    }
+}
+
+impl LedgerHtlcService<Etherem, Erc20HtlcParams> for EthereumService {
+    fn deploy_htlc(
+        &self,
+        htlc_params: Erc20HtlcParams,
+    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+
+    }
+
+    fn redeem_htlc(
+        &self,
+        secret: Secret,
+        _trade_id: TradeId,
+        _bob_success_address: <Ethereum as Ledger>::Address,
+        _bob_success_keypair: KeyPair,
+        _alice_refund_address: <Ethereum as Ledger>::Address,
+        contract_address: <Ethereum as Ledger>::HtlcId,
+        _sell_amount: <Ethereum as Ledger>::Quantity,
+        _lock_time: <Ethereum as Ledger>::LockDuration,
+    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        unimplemented!()
     }
 }
 
@@ -278,4 +310,5 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(*nonce, U256::from(1))
     }
+
 }
