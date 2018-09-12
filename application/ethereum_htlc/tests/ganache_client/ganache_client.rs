@@ -127,12 +127,7 @@ impl GanacheClient {
         )
     }
 
-    pub fn approve_transfer(
-        &self,
-        token_owner: Address,
-        contract: Address,
-        to: Address,
-    ) -> U256 {
+    pub fn approve_transfer(&self, token_owner: Address, contract: Address, to: Address) -> U256 {
         let function_identifier = "095ea7b3";
         let address = format!("000000000000000000000000{}", hex::encode(to));
         let amount = format!("00000000000000000000000000000000000000000000000000000000000003e8");

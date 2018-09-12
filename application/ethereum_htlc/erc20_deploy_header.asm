@@ -7,8 +7,8 @@
 
     // TODO: Change gas
     call(4000000, 0x6000000000000000000000000000000000000006, 0, 28, 100, 128, 32) // Token Contract address
-    // mload(96)
-    // and
+    mload(128)
+    and
     success
     jumpi
     revert(0,0)
@@ -18,5 +18,5 @@ success:
     mstore(0, timestamp)
     mstore8(27, 0x63)
     codecopy(32, add(0x1001, 5), 0x2002)
-    return(0, 0)
+    return(0, 0x2002)
 }
