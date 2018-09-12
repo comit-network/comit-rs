@@ -1,4 +1,7 @@
-use common_types::secret::{Secret, SecretHash};
+use common_types::{
+    seconds::Seconds,
+    secret::{Secret, SecretHash},
+};
 use ethereum_support::*;
 use ethereum_wallet;
 use ganp::ledger::{ethereum::Ethereum, Ledger};
@@ -57,18 +60,27 @@ pub struct EthereumService {
     web3: Arc<BlockingEthereumApi>,
 }
 
-impl LedgerHtlcService<Ethereum> for EthereumService {
+pub struct EtherHtlcParams {
+    pub refund_address: Address,
+    pub success_address: Address,
+    pub time_lock: Seconds,
+    pub amount: EthereumQuantity,
+    pub secret_hash: SecretHash,
+}
+
+impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
     fn deploy_htlc(
         &self,
-        refund_address: <Ethereum as Ledger>::Address,
-        success_address: <Ethereum as Ledger>::Address,
-        time_lock: <Ethereum as Ledger>::LockDuration,
-        amount: <Ethereum as Ledger>::Quantity,
-        secret: SecretHash,
+        htlc_params: EtherHtlcParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
-        let contract = EtherHtlc::new(time_lock.into(), refund_address, success_address, secret);
+        let contract = EtherHtlc::new(
+            htlc_params.time_lock.into(),
+            htlc_params.refund_address,
+            htlc_params.success_address,
+            htlc_params.secret_hash,
+        );
 
-        let funding = amount.wei();
+        let funding = htlc_params.amount.wei();
 
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             ethereum_wallet::UnsignedTransaction::new_contract_deployment(

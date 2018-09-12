@@ -10,15 +10,8 @@ pub enum Error {
     Internal,
 }
 
-pub trait LedgerHtlcService<B: Ledger>: Send + Sync {
-    fn deploy_htlc(
-        &self,
-        refund_address: B::Address,
-        success_address: B::Address,
-        time_lock: B::LockDuration,
-        amount: B::Quantity,
-        secret: SecretHash,
-    ) -> Result<B::TxId, Error>;
+pub trait LedgerHtlcService<B: Ledger, H>: Send + Sync {
+    fn deploy_htlc(&self, htlc_params: H) -> Result<B::TxId, Error>;
 
     fn redeem_htlc(
         &self,

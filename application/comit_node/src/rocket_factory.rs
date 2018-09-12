@@ -7,13 +7,15 @@ use rand::OsRng;
 use rocket;
 use secp256k1_support::KeyPair;
 use std::sync::{Arc, Mutex};
-use swap_protocols::rfc003::ledger_htlc_service::LedgerHtlcService;
+use swap_protocols::rfc003::ledger_htlc_service::{
+    BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
+};
 use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(
     event_store: InMemoryEventStore<TradeId>,
-    ethereum_service: Arc<LedgerHtlcService<Ethereum>>,
-    bitcoin_service: Arc<LedgerHtlcService<Bitcoin>>,
+    ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
+    bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
     bob_refund_address: ethereum_support::Address,
     bob_success_keypair: KeyPair,
     network: Network,

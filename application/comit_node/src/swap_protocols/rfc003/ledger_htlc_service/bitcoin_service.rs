@@ -46,23 +46,33 @@ pub struct BitcoinService {
     btc_bob_redeem_address: bitcoin_support::Address,
 }
 
-impl LedgerHtlcService<Bitcoin> for BitcoinService {
+use bitcoin_support::{Address, BitcoinQuantity, Blocks};
+
+pub struct BitcoinHtlcParams {
+    pub refund_address: Address,
+    pub success_address: Address,
+    pub time_lock: Blocks,
+    pub amount: BitcoinQuantity,
+    pub secret_hash: SecretHash,
+}
+
+impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
     fn deploy_htlc(
         &self,
-        refund_address: <Bitcoin as Ledger>::Address,
-        success_address: <Bitcoin as Ledger>::Address,
-        time_lock: <Bitcoin as Ledger>::LockDuration,
-        amount: <Bitcoin as Ledger>::Quantity,
-        secret: SecretHash,
+        htlc_params: BitcoinHtlcParams,
     ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
-        let htlc =
-            bitcoin_htlc::Htlc::new(success_address, refund_address, secret, time_lock.into());
+        let htlc = bitcoin_htlc::Htlc::new(
+            htlc_params.success_address,
+            htlc_params.refund_address,
+            htlc_params.secret_hash,
+            htlc_params.time_lock.into(),
+        );
 
         let htlc_address = htlc.compute_address(self.network);
 
         let tx_id = self
             .client
-            .send_to_address(&htlc_address.clone().into(), amount.bitcoin())??;
+            .send_to_address(&htlc_address.clone().into(), htlc_params.amount.bitcoin())??;
 
         Ok(tx_id)
     }
