@@ -97,7 +97,7 @@ impl ParityClient {
         self.send_data(contract, Some(Bytes(hex::decode(payload).unwrap())))
     }
 
-    pub fn get_token_balance(&self, contract: Address, address: Address) -> U256 {
+    pub fn balance_of(&self, contract: Address, address: Address) -> U256 {
         let function_identifier = "70a08231";
         let address_hex = format!("000000000000000000000000{}", hex::encode(address));
 
