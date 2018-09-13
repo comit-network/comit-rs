@@ -14,65 +14,99 @@ extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate ganache_rust_web3;
 extern crate hex;
+extern crate secp256k1_support;
+extern crate tc_parity_parity;
 #[macro_use]
 extern crate log;
 extern crate reqwest;
 extern crate serde_json;
+extern crate spectral;
 extern crate tc_trufflesuite_ganachecli;
 extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate uuid;
+#[macro_use]
+extern crate lazy_static;
 
-mod common;
-use comit_node::swap_protocols::rfc003::ethereum::Erc20Htlc;
-use common::GanacheClient;
-use common_types::secret::Secret;
+mod parity_client;
+use comit_node::{
+    gas_price_service::StaticGasPriceService,
+    swap_protocols::rfc003::ledger_htlc_service::{
+        Erc20HtlcParams, EthereumService, LedgerHtlcService,
+    },
+};
+use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::*;
-use std::time::Duration;
+use ethereum_wallet::fake::StaticFakeWallet;
+use parity_client::ParityClient;
+use secp256k1_support::KeyPair;
+use spectral::prelude::*;
+use std::sync::Arc;
+use tc_parity_parity::ParityEthereum;
+use testcontainers::{clients::DockerCli, Docker};
 
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
-const ONE_HOUR: Duration = Duration::from_secs(60 * 60);
 
 #[test]
-fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
+fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let _ = env_logger::try_init();
 
-    let alice: Address = "147ba99ef89c152f8004e91999fee87bda6cbc3e".into();
-    let bob: Address = "96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e".into();
-    //    let contract_owner: Address = "03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into();
-    let htlc_contract: Address = "1e637bb1935f820390d746b241df4f6a0347884f".into();
+    let container = DockerCli::new().run(ParityEthereum::default());
+
+    let client = ParityClient::new(tc_web3_client::Web3Client::new(&container));
+
+    let token_contract = client.deploy_token_contract();
+
+    let alice_keypair = KeyPair::from_secret_key_hex(
+        "63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992",
+    ).unwrap();
+    let alice = alice_keypair.public_key().to_ethereum_address();
+
+    let bob_keypair = KeyPair::from_secret_key_hex(
+        "f8218ebf6e2626bd1415c18321496e0c5725f0e1d774c7c2eab69f7650ad6e82",
+    ).unwrap();
+    let bob = bob_keypair.public_key().to_ethereum_address();
+
+    client.mint_1000_tokens(token_contract, alice);
+    client.give_eth_to(alice, EthereumQuantity::from_eth(1.0));
+
+    let service = EthereumService::new(
+        Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
+        Arc::new(StaticGasPriceService::default()),
+        Arc::new(Web3Client::new(format!(
+            "http://localhost:{}",
+            container.get_host_port(8545).unwrap()
+        ))),
+        0,
+    );
 
     let secret = Secret::from(SECRET.clone());
 
-    let mut client = GanacheClient::new();
+    let htlc_params = Erc20HtlcParams {
+        refund_address: alice,
+        success_address: bob,
+        time_lock: Seconds::new(60 * 60),
+        amount: U256::from(400),
+        secret_hash: secret.hash(),
+        token_contract_address: token_contract,
+    };
 
-    let contract = client.deploy_token_contract(alice);
+    let result = service.deploy_htlc(htlc_params);
 
-    client.mint_1000_tokens(alice, contract, alice);
-    client.approve_transfer(alice, contract, htlc_contract);
+    assert_that(&result).is_ok();
 
-    let alice_balance = client.get_token_balance(contract, alice);
-    assert_eq!(alice_balance, U256::from(1000));
+    let contract_address = client.get_contract_address(result.unwrap());
 
-    let htlc = Erc20Htlc::new(
-        ONE_HOUR,
-        alice,
-        bob,
-        secret.hash(),
-        htlc_contract,
-        contract,
-        U256::from(400),
-    );
+    let bob_balance_before = client.get_token_balance(token_contract, bob);
+    assert_eq!(bob_balance_before, U256::from(0));
 
-    let gas_used = client.deploy(alice, htlc, 0);
+    let contract_balance = client.get_token_balance(token_contract, contract_address);
+    assert_eq!(contract_balance, U256::from(400));
 
-    let contract_token_balance = client.get_token_balance(contract, htlc_contract);
-    assert_eq!(contract_token_balance, U256::from(400));
+    let _ = client.send_data(contract_address, Some(Bytes(SECRET.to_vec())));
 
-    // redeem HTLC
-    //
-    //    let bob_balance_after = client.get_token_balance(contract, bob);
-    //    assert_eq!(bob_balance_after, U256::from(500));
+    let bob_balance_after = client.get_token_balance(token_contract, bob);
+    assert_eq!(bob_balance_after, U256::from(400));
 }
 //
 //#[test]

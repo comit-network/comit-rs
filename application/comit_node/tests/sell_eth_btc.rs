@@ -27,7 +27,7 @@ extern crate tc_trufflesuite_ganachecli;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
-mod common;
+mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Blocks, Network};
@@ -44,7 +44,6 @@ use comit_node::{
         common::TradeId,
     },
 };
-use common::mocks;
 use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;

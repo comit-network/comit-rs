@@ -90,10 +90,10 @@ impl Htlc for Erc20Htlc {
 
         let code_length_as_hex = format!("{:0>4x}", code_length);
 
-        let header_length = Self::TEMPLATE.len() / 2;
+        let header_length = Self::DEPLOY_HEADER_TEMPLATE.len() / 2;
         let header_length_as_hex = format!("{:0>4x}", header_length);
 
-        let deploy_header = Self::TEMPLATE
+        let deploy_header = Self::DEPLOY_HEADER_TEMPLATE
             .to_string()
             .replace(
                 Self::CONTRACT_START_POSITION_PLACEHOLDER,
@@ -112,7 +112,7 @@ impl Htlc for Erc20Htlc {
                 Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
                 &token_contract_address,
             )
-            .replace(Self::CONTRACT_AMOUNT_PLACEHOLDER, &amount);
+            .replace(Self::AMOUNT_PLACEHOLDER, &amount);
 
         debug!("Final contract code: {}", &contract_code);
         debug!("Deploy header: {}", &deploy_header);

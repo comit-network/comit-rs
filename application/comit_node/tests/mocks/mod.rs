@@ -1,7 +1,6 @@
-pub mod ganache_client;
 pub mod mocks;
 
-pub use self::ganache_client::*;
+pub use self::mocks::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {

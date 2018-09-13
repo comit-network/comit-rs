@@ -23,7 +23,7 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate uuid;
 
-mod common;
+mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
@@ -34,10 +34,9 @@ use comit_node::{
     rocket_factory::create_rocket_instance,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
-use common::{mocks, OfferResponseBody};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
-use mocks::{BitcoinRpcClientMock, StaticEthereumApi};
+use mocks::{BitcoinRpcClientMock, OfferResponseBody, StaticEthereumApi};
 use rocket::{
     http::{ContentType, Status},
     local::Client,

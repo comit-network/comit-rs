@@ -23,8 +23,9 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate uuid;
 
-use comit_node::swap_protocols::rfc003::ethereum::EtherHtlc;
 mod ganache_client;
+
+use comit_node::swap_protocols::rfc003::ethereum::EtherHtlc;
 use common_types::secret::Secret;
 use ethereum_support::*;
 use ganache_client::GanacheClient;

@@ -76,12 +76,13 @@ finishTransferTokens:
 	call(
 	  sub(gas,100000), 
 	  0x6000000000000000000000000000000000000006,
-	  00, // Ether to transfer
+	  0, // Ether to transfer
 	  28, // = 32-4
 	  68, // = 2*32+4
 	  96, // return location
 	  32  // return size
 	) // Token Contract address
+	pop
 
 	selfdestruct(mload(32)) 
 }
