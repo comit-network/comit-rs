@@ -120,7 +120,7 @@ fn arrange() -> (
     let client = ParityClient::new(web3);
     client.give_eth_to(alice, EthereumQuantity::from_eth(1.0));
 
-    let token_contract = client.deploy_token_contract();
+    let token_contract = client.deploy_standard_erc20_token_contract();
     client.mint_1000_tokens(token_contract, alice);
 
     let ethereum_service = EthereumService::new(

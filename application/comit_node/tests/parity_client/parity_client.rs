@@ -4,7 +4,6 @@ use ethereum_support::{
 };
 use hex;
 
-#[allow(dead_code)]
 pub struct ParityClient {
     client: Web3<Http>,
 }
@@ -16,16 +15,13 @@ lazy_static! {
 
 const TOKEN_CONTRACT_CODE: &'static str = include_str!("standard_erc20_token_contract.asm.hex");
 
-#[allow(dead_code)]
 const PARITY_DEV_PASSWORD: &str = "";
 
 impl ParityClient {
-    #[allow(dead_code)]
     pub fn new(client: Web3<Http>) -> Self {
         ParityClient { client }
     }
 
-    #[allow(dead_code)]
     pub fn give_eth_to(&self, to: Address, amount: EthereumQuantity) {
         self.client
             .personal()
@@ -46,7 +42,6 @@ impl ParityClient {
             .unwrap();
     }
 
-    #[allow(dead_code)]
     pub fn deploy_token_contract(&self) -> Address {
         let contract_tx_id = self
             .client
@@ -80,7 +75,6 @@ impl ParityClient {
         receipt.contract_address.unwrap()
     }
 
-    #[allow(dead_code)]
     pub fn get_contract_address(&self, txid: H256) -> Address {
         let receipt = self
             .client
@@ -93,7 +87,6 @@ impl ParityClient {
         receipt.contract_address.unwrap()
     }
 
-    #[allow(dead_code)]
     pub fn mint_1000_tokens(&self, contract: Address, to: Address) -> U256 {
         let function_identifier = "40c10f19";
         let address = format!("000000000000000000000000{}", hex::encode(to));
@@ -104,7 +97,6 @@ impl ParityClient {
         self.send_data(contract, Some(Bytes(hex::decode(payload).unwrap())))
     }
 
-    #[allow(dead_code)]
     pub fn balance_of(&self, contract: Address, address: Address) -> U256 {
         let function_identifier = "70a08231";
         let address_hex = format!("000000000000000000000000{}", hex::encode(address));
@@ -131,7 +123,6 @@ impl ParityClient {
         U256::from(result.0.as_slice())
     }
 
-    #[allow(dead_code)]
     pub fn send_data(&self, to: Address, data: Option<Bytes>) -> U256 {
         let result_tx = self
             .client
