@@ -3,19 +3,16 @@ use common_types::{
     secret::{Secret, SecretHash},
 };
 use ethereum_support::*;
-use ethereum_wallet;
+use ethereum_wallet::{UnsignedTransaction, Wallet};
 use ganp::ledger::{ethereum::Ethereum, Ledger};
 use gas_price_service::{self, GasPriceService};
-use keccak;
-use ledger_htlc_service::{self, LedgerHtlcService};
-use rlp::{Encodable, RlpStream};
 use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
 use swap_protocols::rfc003::{
-    ethereum::{EtherHtlc, Htlc},
+    ethereum::{Erc20Htlc, EtherHtlc, Htlc},
     ledger_htlc_service::{self, api::LedgerHtlcService},
 };
 use swaps::common::TradeId;
@@ -55,7 +52,7 @@ impl BlockingEthereumApi for Web3Client {
 
 pub struct EthereumService {
     nonce: Mutex<U256>,
-    wallet: Arc<ethereum_wallet::Wallet>,
+    wallet: Arc<Wallet>,
     gas_price_service: Arc<GasPriceService>,
     web3: Arc<BlockingEthereumApi>,
 }
@@ -68,6 +65,7 @@ pub struct EtherHtlcParams {
     pub secret_hash: SecretHash,
 }
 
+#[derive(Clone)]
 pub struct Erc20HtlcParams {
     pub refund_address: Address,
     pub success_address: Address,
@@ -92,7 +90,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
         let funding = htlc_params.amount.wei();
 
         let tx_id = self.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+            UnsignedTransaction::new_contract_deployment(
                 contract.compile_to_hex(),
                 865780, //TODO: calculate the gas consumption based on 32k + 200*bytes
                 gas_price,
@@ -121,7 +119,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
         _lock_time: <Ethereum as Ledger>::LockDuration,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
         let tx_id = self.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_invocation(
+            UnsignedTransaction::new_contract_invocation(
                 secret.raw_secret().to_vec(),
                 contract_address,
                 10000,
@@ -140,12 +138,67 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
     }
 }
 
-impl LedgerHtlcService<Etherem, Erc20HtlcParams> for EthereumService {
+impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
     fn deploy_htlc(
         &self,
         htlc_params: Erc20HtlcParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        let gas_price = self.gas_price_service.get_gas_price()?;
 
+        let tx_id = {
+            let mut lock = self.nonce.lock()?;
+
+            let nonce = lock.deref_mut();
+
+            let htlc_address = self
+                .wallet
+                .calculate_contract_address(*nonce + U256::from(1));
+
+            let approval_transaction = UnsignedTransaction::new_erc20_approval(
+                htlc_params.token_contract_address,
+                htlc_address,
+                htlc_params.amount,
+                200_000,
+                gas_price,
+                *nonce,
+            );
+
+            let signed_approval_transaction = self.wallet.sign(&approval_transaction);
+
+            let tx_id = self
+                .web3
+                .send_raw_transaction(signed_approval_transaction.into())?;
+
+            EthereumService::increment_nonce(nonce);
+
+            let htlc = Erc20Htlc::new(
+                htlc_params.time_lock.into(),
+                htlc_params.refund_address,
+                htlc_params.success_address,
+                htlc_params.secret_hash,
+                htlc_address,
+                htlc_params.token_contract_address,
+                htlc_params.amount,
+            );
+
+            let htlc_code = htlc.compile_to_hex();
+
+            let deployment_transaction = UnsignedTransaction::new_contract_deployment(
+                htlc_code, 200_000, gas_price, 0, *nonce,
+            );
+
+            let signed_deployment_transaction = self.wallet.sign(&deployment_transaction);
+
+            let tx_id = self
+                .web3
+                .send_raw_transaction(signed_deployment_transaction.into())?;
+
+            EthereumService::increment_nonce(nonce);
+
+            tx_id
+        };
+
+        Ok(tx_id)
     }
 
     fn redeem_htlc(
@@ -165,7 +218,7 @@ impl LedgerHtlcService<Etherem, Erc20HtlcParams> for EthereumService {
 
 impl EthereumService {
     pub fn new<N: Into<U256>>(
-        wallet: Arc<ethereum_wallet::Wallet>,
+        wallet: Arc<Wallet>,
         gas_price_service: Arc<GasPriceService>,
         web3: Arc<BlockingEthereumApi>,
         current_nonce: N,
@@ -178,7 +231,7 @@ impl EthereumService {
         }
     }
 
-    fn sign_and_send<T: Fn(U256, U256) -> ethereum_wallet::UnsignedTransaction>(
+    fn sign_and_send<T: Fn(U256, U256) -> UnsignedTransaction>(
         &self,
         transaction_fn: T,
     ) -> Result<H256, ledger_htlc_service::Error> {
@@ -216,36 +269,42 @@ impl EthereumService {
 mod tests {
     use super::*;
     use common_types::secret::SecretHash;
-    use ethereum_support;
+    use ethereum_wallet::{fake::StaticFakeWallet, Wallet};
+    use hex;
+    use spectral::prelude::*;
     use std::{ops::Deref, str::FromStr, time::Duration};
 
-    struct EthereumApiMock {
-        result: Result<H256, web3::Error>,
+    struct MockEthereumApi {
+        send_raw_transaction_results: Mutex<Vec<Result<H256, web3::Error>>>,
+        sent_bytes: Mutex<Vec<Bytes>>,
     }
 
-    impl EthereumApiMock {
-        fn with_result(result: Result<H256, web3::Error>) -> Self {
-            EthereumApiMock { result }
+    impl MockEthereumApi {
+        fn with_result(results: Vec<Result<H256, web3::Error>>) -> Self {
+            MockEthereumApi {
+                send_raw_transaction_results: Mutex::new(results),
+                sent_bytes: Mutex::new(Vec::new()),
+            }
         }
     }
 
-    impl BlockingEthereumApi for EthereumApiMock {
-        fn send_raw_transaction(&self, _rlp: Bytes) -> Result<H256, web3::Error> {
-            self.result.clone()
+    impl BlockingEthereumApi for MockEthereumApi {
+        fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
+            let mut results = self.send_raw_transaction_results.lock().unwrap();
+            let mut sent_bytes = self.sent_bytes.lock().unwrap();
+
+            sent_bytes.push(rlp);
+
+            results.remove(0)
         }
     }
-
-    // This is a test where we know that the instance is always accessed only from one thread.
-    // Thus it is safe although the mock takes a mutable reference.
-    unsafe impl Send for EthereumApiMock {}
-
-    unsafe impl Sync for EthereumApiMock {}
 
     #[test]
     fn given_a_transaction_when_deployment_fails_nonce_is_not_updated() {
-        let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
+        let wallet = StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
-        let ethereum_api = EthereumApiMock::with_result(Err(web3::ErrorKind::Internal.into()));
+        let ethereum_api =
+            MockEthereumApi::with_result(vec![Err(web3::ErrorKind::Internal.into())]);
 
         let service = EthereumService::new(
             Arc::new(wallet),
@@ -255,11 +314,11 @@ mod tests {
         );
 
         let result = service.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+            UnsignedTransaction::new_contract_deployment(
                 EtherHtlc::new(
                     Duration::from_secs(100),
-                    ethereum_support::Address::new(),
-                    ethereum_support::Address::new(),
+                    Address::new(),
+                    Address::new(),
                     SecretHash::from_str("").unwrap(),
                 ).compile_to_hex(),
                 86578,
@@ -278,9 +337,9 @@ mod tests {
 
     #[test]
     fn given_a_transaction_when_deployment_succeeds_nonce_should_be_updated() {
-        let wallet = ethereum_wallet::fake::StaticFakeWallet::account0();
+        let wallet = StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
-        let ethereum_api = EthereumApiMock::with_result(Ok(H256::new()));
+        let ethereum_api = MockEthereumApi::with_result(vec![Ok(H256::new())]);
 
         let service = EthereumService::new(
             Arc::new(wallet),
@@ -290,11 +349,11 @@ mod tests {
         );
 
         let result = service.sign_and_send(|nonce, gas_price| {
-            ethereum_wallet::UnsignedTransaction::new_contract_deployment(
+            UnsignedTransaction::new_contract_deployment(
                 EtherHtlc::new(
                     Duration::from_secs(100),
-                    ethereum_support::Address::new(),
-                    ethereum_support::Address::new(),
+                    Address::new(),
+                    Address::new(),
                     SecretHash::from_str("").unwrap(),
                 ).compile_to_hex(),
                 86578,
@@ -311,4 +370,75 @@ mod tests {
         assert_eq!(*nonce, U256::from(1))
     }
 
+    #[test]
+    fn given_erc20htlcparams_when_deploy_htlc_is_called_sends_two_transactions() {
+        // First, initialize the wallet with a known secret key. This way, we know the address of this account. It is: 0x94e4782ae2db9bce7ac1920869f420026ca58f33
+        let keypair = KeyPair::from_secret_key_slice(
+            &hex::decode("29b7de7fed2f25726c247b70fc51e73ab03398d230da42e8a550e405e744ed7a")
+                .unwrap(),
+        ).unwrap();
+        let wallet = Arc::new(StaticFakeWallet::from_key_pair(keypair));
+
+        let gas_price_service = gas_price_service::StaticGasPriceService::new(1000);
+        let tx_1 = H256::from("0000000000000000000000000000000000000000000000000000000000000001");
+        let tx_2 = H256::from("0000000000000000000000000000000000000000000000000000000000000002");
+        let ethereum_api = Arc::new(MockEthereumApi::with_result(vec![Ok(tx_1), Ok(tx_2)]));
+        let service = EthereumService::new(
+            wallet.clone(),
+            Arc::new(gas_price_service),
+            ethereum_api.clone(),
+            0,
+        );
+
+        let params = Erc20HtlcParams {
+            refund_address: Address::from("0000000000000000000000000000000000000001"),
+            success_address: Address::from("0000000000000000000000000000000000000002"),
+            time_lock: Seconds::new(100),
+            amount: U256::from(10),
+            secret_hash: SecretHash::from_str("").unwrap(),
+            token_contract_address: Address::from("0000000000000000000000000000000000000003"),
+        };
+
+        // Act
+        let result = service.deploy_htlc(params.clone());
+
+        // Assert
+        let sent_bytes = ethereum_api.sent_bytes.lock().unwrap();
+
+        assert_that(&result).is_ok().is_equal_to(&tx_2);
+
+        // The first transaction needs to approve the to-be-deployed contract which already includes the contract address.
+        // The contract will be deployed next. Therefore the contract address will be derived from the account address + (current_nonce + 1).
+        let erc20_approval = UnsignedTransaction::new_erc20_approval(
+            Address::from("0000000000000000000000000000000000000003"),
+            Address::from("97a561cef28e387e726378bb41d89b13e5a940ba"),
+            10,
+            200_000,
+            1000,
+            0,
+        );
+
+        assert_that(&*sent_bytes).contains(&Bytes::from(wallet.sign(&erc20_approval)));
+
+        let htlc_deployment = UnsignedTransaction::new_contract_deployment(
+            Erc20Htlc::new(
+                params.time_lock.into(),
+                params.refund_address,
+                params.success_address,
+                params.secret_hash,
+                Address::from("97a561cef28e387e726378bb41d89b13e5a940ba"),
+                params.token_contract_address,
+                params.amount,
+            ).compile_to_hex(),
+            200_000,
+            1000,
+            0,
+            1,
+        );
+
+        assert_that(&*sent_bytes).contains(&Bytes::from(wallet.sign(&htlc_deployment)));
+
+        let nonce = service.nonce.lock().unwrap();
+        assert_that(&*nonce).is_equal_to(&U256::from(2));
+    }
 }

@@ -1,4 +1,4 @@
-use common_types::secret::{Secret, SecretHash};
+use common_types::secret::Secret;
 use ganp::ledger::Ledger;
 use secp256k1_support::KeyPair;
 use swaps::common::TradeId;

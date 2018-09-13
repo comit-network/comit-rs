@@ -27,6 +27,9 @@ extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
 
+#[cfg(test)]
+extern crate spectral;
+
 pub mod bitcoin_fee_service;
 pub mod comit_node_api_client;
 pub mod gas_price_service;

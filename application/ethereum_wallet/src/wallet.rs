@@ -1,8 +1,6 @@
-use ethereum_support::{Address, H160, ToEthereumAddress, U256};
-use hex::FromHex;
+use ethereum_support::{Address, ToEthereumAddress, U256};
 use rlp::RlpStream;
 use secp256k1_support::{KeyPair, RecoverableSignature};
-use std::str::FromStr;
 use tiny_keccak;
 use SignedTransaction;
 use UnsignedTransaction;

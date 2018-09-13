@@ -1,6 +1,6 @@
 use hex::FromHex;
 
-use ethereum_support::{H160, U256};
+use ethereum_support::{Address, U256};
 use secp256k1_support::KeyPair;
 use InMemoryWallet;
 use SignedTransaction;
@@ -15,8 +15,8 @@ impl Wallet for StaticFakeWallet {
         self.0.sign(tx)
     }
 
-    fn calculate_contract_address(&self, _nonce: U256) -> H160 {
-        unimplemented!()
+    fn calculate_contract_address(&self, nonce: U256) -> Address {
+        self.0.calculate_contract_address(nonce)
     }
 }
 
@@ -27,6 +27,10 @@ impl StaticFakeWallet {
         ).unwrap();
 
         let keypair = KeyPair::from_secret_key_slice(&secret_key_data).unwrap();
+        StaticFakeWallet(InMemoryWallet::new(keypair, 1))
+    }
+
+    pub fn from_key_pair(keypair: KeyPair) -> Self {
         StaticFakeWallet(InMemoryWallet::new(keypair, 1))
     }
 }
