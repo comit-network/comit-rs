@@ -1,12 +1,12 @@
 {
-    mstore(0, 0x23b872dd) // Transfer function identifier
+    mstore(0, 0x23b872dd) // first 4bytes of keccak256("transferFrom(address,address,uint256)")
     mstore(32, 0x3000000000000000000000000000000000000000000000000000000000000003) // From
     mstore(64, 0x4000000000000000000000000000000000000000000000000000000000000004) // To
     mstore(96, 0x5000000000000000000000000000000000000000000000000000000000000005) // Amount
     mstore(128, 1)
 
-    // TODO: Change gas
-    call(4000000, 0x6000000000000000000000000000000000000006, 0, 28, 100, 128, 32) // Token Contract address
+    // TODO: Change gas for contract deployment
+    call(sub(gas,1000000), 0x6000000000000000000000000000000000000006, 0, 28, 100, 128, 32) // Token Contract address
     mload(128)
     and
     success
