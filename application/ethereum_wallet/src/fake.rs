@@ -1,5 +1,6 @@
 use hex::FromHex;
 
+use ethereum_support::{H160, U256};
 use secp256k1_support::KeyPair;
 use InMemoryWallet;
 use SignedTransaction;
@@ -12,6 +13,10 @@ pub struct StaticFakeWallet(InMemoryWallet);
 impl Wallet for StaticFakeWallet {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a> {
         self.0.sign(tx)
+    }
+
+    fn calculate_contract_address(&self, _nonce: U256) -> H160 {
+        unimplemented!()
     }
 }
 

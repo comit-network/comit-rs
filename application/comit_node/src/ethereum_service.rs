@@ -4,7 +4,9 @@ use ethereum_support::*;
 use ethereum_wallet;
 use ganp::ledger::{ethereum::Ethereum, Ledger};
 use gas_price_service::{self, GasPriceService};
+use keccak;
 use ledger_htlc_service::{self, LedgerHtlcService};
+use rlp::{Encodable, RlpStream};
 use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
