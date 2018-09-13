@@ -32,6 +32,7 @@ impl BitcoinRpcApi for BitcoinRpcClientMock {
     }
 }
 
+#[allow(dead_code)]
 pub struct StaticEthereumApi;
 
 impl BlockingEthereumApi for StaticEthereumApi {
