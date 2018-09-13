@@ -169,7 +169,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
 
             let signed_approval_transaction = self.wallet.sign(&approval_transaction);
 
-            let tx_id = self
+            let _tx_id = self
                 .web3
                 .send_raw_transaction(signed_approval_transaction.into())?;
 
@@ -207,12 +207,12 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
 
     fn redeem_htlc(
         &self,
-        secret: Secret,
+        _secret: Secret,
         _trade_id: TradeId,
         _bob_success_address: <Ethereum as Ledger>::Address,
         _bob_success_keypair: KeyPair,
         _alice_refund_address: <Ethereum as Ledger>::Address,
-        contract_address: <Ethereum as Ledger>::HtlcId,
+        _contract_address: <Ethereum as Ledger>::HtlcId,
         _sell_amount: <Ethereum as Ledger>::Quantity,
         _lock_time: <Ethereum as Ledger>::LockDuration,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {

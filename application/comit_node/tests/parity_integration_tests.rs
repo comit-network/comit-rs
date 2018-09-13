@@ -13,8 +13,6 @@ extern crate testcontainers;
 extern crate lazy_static;
 
 mod parity_client;
-use ethereum_support::{Address, EthereumQuantity};
-use parity_client::ParityClient;
 
 #[test]
 fn give_someone_ether() {

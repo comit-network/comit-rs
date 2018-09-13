@@ -14,8 +14,6 @@ extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate ganache_rust_web3;
 extern crate hex;
-#[macro_use]
-extern crate log;
 extern crate reqwest;
 extern crate serde_json;
 extern crate tc_trufflesuite_ganachecli;

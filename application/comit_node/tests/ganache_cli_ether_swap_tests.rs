@@ -1,25 +1,22 @@
-extern crate bitcoin_support;
-extern crate ethereum_support;
-extern crate event_store;
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate bitcoin_rpc_client;
+extern crate bitcoin_support;
 extern crate comit_node;
 extern crate common_types;
 extern crate env_logger;
+extern crate ethereum_support;
 extern crate ethereum_wallet;
+extern crate event_store;
 extern crate ganache_rust_web3;
 extern crate hex;
+extern crate rocket;
+extern crate rocket_contrib;
+extern crate serde;
 #[macro_use]
 extern crate log;
 extern crate reqwest;
 extern crate serde_json;
 extern crate tc_trufflesuite_ganachecli;
 extern crate tc_web3_client;
-#[macro_use]
 extern crate testcontainers;
 extern crate uuid;
 

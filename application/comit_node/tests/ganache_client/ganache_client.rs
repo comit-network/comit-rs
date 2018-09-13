@@ -7,10 +7,9 @@ use ethereum_support::{
     *,
 };
 use ganache_rust_web3;
-use hex;
-use tc_trufflesuite_ganachecli::{GanacheCli, GanacheCliArgs};
+use tc_trufflesuite_ganachecli::GanacheCli;
 use tc_web3_client;
-use testcontainers::{clients::DockerCli, Container, Docker, Image};
+use testcontainers::{clients::DockerCli, Container, Docker};
 
 pub struct GanacheClient {
     _container: Container<DockerCli, GanacheCli>,

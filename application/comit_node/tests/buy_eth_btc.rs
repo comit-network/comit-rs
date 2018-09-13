@@ -15,14 +15,12 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate ganache_rust_web3;
+extern crate hex;
 extern crate serde_json;
 extern crate tc_trufflesuite_ganachecli;
 extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate uuid;
-#[macro_use]
-extern crate log;
-extern crate hex;
 
 mod mocks;
 

@@ -13,7 +13,6 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate secp256k1_support;
 extern crate serde;
-extern crate serde_derive;
 extern crate tc_parity_parity;
 #[macro_use]
 extern crate log;

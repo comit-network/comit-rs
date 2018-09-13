@@ -2,7 +2,6 @@ extern crate tc_trufflesuite_ganachecli;
 extern crate testcontainers;
 extern crate web3;
 
-use std::ops::Deref;
 use web3::{
     api::Web3,
     transports::{EventLoopHandle, Http},
