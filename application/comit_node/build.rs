@@ -5,6 +5,7 @@ use std::{
     env::var,
     fs::File,
     io::Write,
+    path::Path,
     process::{Command, Stdio},
 };
 
@@ -17,7 +18,7 @@ fn main() -> std::io::Result<()> {
     Ok(())
 }
 
-fn compile(file_name: &'static str) -> std::io::Result<()> {
+fn compile(file_path: &'static str) -> std::io::Result<()> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -40,7 +41,7 @@ fn compile(file_name: &'static str) -> std::io::Result<()> {
         }
     };
 
-    let mut file = ::std::fs::File::open(file_name)?;
+    let mut file = ::std::fs::File::open(file_path)?;
 
     ::std::io::copy(&mut file, solc.stdin.as_mut().unwrap())?;
 
@@ -54,10 +55,14 @@ fn compile(file_name: &'static str) -> std::io::Result<()> {
 
     let hexcode = captures.name("hexcode").unwrap();
 
-    let mut file = File::create(format!("{}.hex", file_name).as_str())?;
+    let path = Path::new(file_path);
+    let folder = path.parent().unwrap().to_str().unwrap();
+    let file_name = path.file_name().unwrap().to_str().unwrap();
+
+    let mut file = File::create(format!("{}/out/{}.hex", folder, file_name).as_str())?;
     file.write_all(hexcode.as_str().as_bytes())?;
 
-    println!("cargo:rerun-if-changed={}", file_name);
+    println!("cargo:rerun-if-changed={}", file_path);
 
     Ok(())
 }

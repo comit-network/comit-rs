@@ -16,7 +16,7 @@ pub struct Erc20Htlc {
 
 impl Erc20Htlc {
     const CONTRACT_CODE_TEMPLATE: &'static str =
-        include_str!("./contract_templates/erc20_contract.asm.hex");
+        include_str!("./contract_templates/out/erc20_contract.asm.hex");
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
@@ -24,7 +24,7 @@ impl Erc20Htlc {
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
 
     const DEPLOY_HEADER_TEMPLATE: &'static str =
-        include_str!("./contract_templates/erc20_deploy_header.asm.hex");
+        include_str!("./contract_templates/out/erc20_deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
     const TRANSFER_FROM_ADDRESS_PLACEHOLDER: &'static str =
