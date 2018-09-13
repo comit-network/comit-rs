@@ -17,7 +17,7 @@ tiny-keccak = "1.4.2"
 
 [dev-dependencies]
 hex = "0.3.1"
-testcontainers = "0.1"
-tc_trufflesuite_ganachecli = "0.1"
+testcontainers = { git = "https://github.com/coblox/testcontainers-rs" }
+tc_trufflesuite_ganachecli = { git = "https://github.com/coblox/testcontainers-rs" }
 tc_web3_client = { path = "../../vendor/tc_web3_client" }
 env_logger = "0.5.11"

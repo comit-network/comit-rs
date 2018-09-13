@@ -139,8 +139,8 @@ dependencies = [
  "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "tc_bitcoincore_client 0.1.0",
- "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -163,7 +163,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -209,8 +209,8 @@ dependencies = [
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "tc_bitcoincore_client 0.1.0",
- "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -663,9 +663,9 @@ dependencies = [
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
- "tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -777,9 +777,9 @@ dependencies = [
  "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
  "web3 0.4.0 (git+https://github.com/tomusdrw/rust-web3)",
 ]
 
@@ -2093,8 +2093,21 @@ name = "tc_bitcoincore_client"
 version = "0.1.0"
 dependencies = [
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
+]
+
+[[package]]
+name = "tc_coblox_bitcoincore"
+version = "0.1.0"
+source = "git+https://github.com/coblox/testcontainers-rs#46d1ba949eb9485b4593ca9005bb7416a47cb95e"
+dependencies = [
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hmac 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -2125,14 +2138,6 @@ version = "0.1.0"
 source = "git+https://github.com/coblox/testcontainers-rs#46d1ba949eb9485b4593ca9005bb7416a47cb95e"
 dependencies = [
  "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
-]
-
-[[package]]
-name = "tc_trufflesuite_ganachecli"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3043,10 +3048,10 @@ dependencies = [
 "checksum syn 0.14.8 (registry+https://github.com/rust-lang/crates.io-index)" = "b7bfcbb0c068d0f642a0ffbd5c604965a360a61f99e8add013cef23a838614f3"
 "checksum synstructure 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "85bb9b7550d063ea184027c9b8c20ac167cd36d3e06b3a40bceb9d746dc1a7b7"
 "checksum take 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b157868d8ac1f56b64604539990685fa7611d8fa9e5476cf0c02cf34d32917c5"
+"checksum tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
 "checksum tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dca2c2a6c77ef6e66ce5db9135de5a026e00e86d53ddc7d5e3e15ab9b5b16006"
 "checksum tc_parity_parity 0.1.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
 "checksum tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
-"checksum tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "804f3fb41ad354248db271bc8ebe7ffbcee35694db34d5ccac8cf045f70bf2c4"
 "checksum tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
 "checksum tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c4b103c6d08d323b92ff42c8ce62abcd83ca8efa7fd5bf7927efefec75f58c76"
 "checksum termcolor 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "722426c4a0539da2c4ffd9b419d90ad540b4cff4a053be9069c908d4d07e2836"
