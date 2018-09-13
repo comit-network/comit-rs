@@ -8,8 +8,6 @@ extern crate hex;
 extern crate rand;
 extern crate secp256k1_support;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 
 pub mod secret;
 mod trading_symbol;
