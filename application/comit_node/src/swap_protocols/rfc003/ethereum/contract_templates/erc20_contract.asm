@@ -1,7 +1,6 @@
 {
     // Placeholder for deployment timestamp
     0x50000005
-    pop
 
     // Load secret into memory
     calldatacopy(0, 0, 32)
@@ -73,15 +72,15 @@ refund:
 
 finishTransferTokens:
     mstore(0, 0xa9059cbb) // first 4bytes of keccak256("transfer(address,uint256)")
-    mstore(64, 0x6000000000000000000000000000000000000000000000000000000000000006) // Amount
+    mstore(64, 0x5000000000000000000000000000000000000000000000000000000000000005) // Amount
 	call(
 	  sub(gas,100000), 
-	  0x7000000000000000000000000000000000000007, 
-	  0, //eth send
-	  28, // =32-4  
-	  68, // =2*32+4  
-	  96, //return location
-	  32 //return size
+	  0x6000000000000000000000000000000000000006,
+	  00, // Ether to transfer
+	  28, // = 32-4
+	  68, // = 2*32+4
+	  96, // return location
+	  32  // return size
 	) // Token Contract address
 
 	selfdestruct(mload(32)) 
