@@ -10,10 +10,10 @@ extern crate log;
 extern crate common_types;
 extern crate testcontainers;
 
-mod common;
-use common::GanacheClient;
+mod ganache_client;
 use common_types::secret::Secret;
 use ethereum_support::*;
+use ganache_client::GanacheClient;
 use std::time::Duration;
 
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";

@@ -9,7 +9,7 @@ authors = [
 ]
 
 [dependencies]
-web3 = "0.3.0"
+web3 = { git = "https://github.com/tomusdrw/rust-web3" }
 secp256k1_support = { path = "../secp256k1_support" }
 tiny-keccak = "1.4.2"
 serde = "1.0.70"

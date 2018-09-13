@@ -9,7 +9,7 @@ authors = [
 ]
 
 [dependencies]
-testcontainers = "0.1"
+testcontainers = { git = "https://github.com/coblox/testcontainers-rs" }
 bitcoin_rpc_client = "0.1"
 bitcoin_support = { path = "../bitcoin_support" }
 

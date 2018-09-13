@@ -8,8 +8,7 @@ use web3::{
     transports::{EventLoopHandle, Http},
 };
 
-use tc_trufflesuite_ganachecli::GanacheCli;
-use testcontainers::{Container, Docker};
+use testcontainers::{Container, Docker, Image};
 
 pub struct Web3Client {
     _event_loop: EventLoopHandle,
@@ -17,7 +16,7 @@ pub struct Web3Client {
 }
 
 impl Web3Client {
-    pub fn new<D: Docker>(container: &Container<D, GanacheCli>) -> Self {
+    pub fn new<D: Docker, E: Image>(container: &Container<D, E>) -> Self {
         let port = container.get_host_port(8545).unwrap();
         let endpoint = format!("http://localhost:{}", port);
 

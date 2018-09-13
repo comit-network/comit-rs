@@ -139,8 +139,8 @@ dependencies = [
  "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "tc_bitcoincore_client 0.1.0",
- "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -163,7 +163,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -209,8 +209,8 @@ dependencies = [
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "tc_bitcoincore_client 0.1.0",
- "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -364,7 +364,6 @@ dependencies = [
  "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -563,14 +562,6 @@ dependencies = [
 
 [[package]]
 name = "error-chain"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "backtrace 0.3.9 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "error-chain"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
@@ -579,12 +570,12 @@ dependencies = [
 
 [[package]]
 name = "ethabi"
-version = "5.1.1"
+version = "6.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -605,16 +596,15 @@ dependencies = [
 
 [[package]]
 name = "ethereum-types"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crunchy 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethbloom 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum-types-serialize 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "fixed-hash 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "uint 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uint 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -635,13 +625,15 @@ dependencies = [
  "ethereum_support 0.1.0",
  "ganache_rust_web3 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_parity_parity 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -659,7 +651,7 @@ dependencies = [
  "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "web3 0.4.0 (git+https://github.com/tomusdrw/rust-web3)",
 ]
 
 [[package]]
@@ -669,11 +661,11 @@ dependencies = [
  "env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum_support 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rlp 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rlp 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
- "tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -785,10 +777,10 @@ dependencies = [
  "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "web3 0.4.0 (git+https://github.com/tomusdrw/rust-web3)",
 ]
 
 [[package]]
@@ -1761,13 +1753,13 @@ dependencies = [
 
 [[package]]
 name = "rlp"
-version = "0.2.2"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1839,17 +1831,14 @@ version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "rustc-serialize"
-version = "0.3.24"
+name = "rustc-hex"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "rustc_version"
-version = "0.2.3"
+name = "rustc-serialize"
+version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "ryu"
@@ -1942,19 +1931,6 @@ dependencies = [
  "core-foundation-sys 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
-
-[[package]]
-name = "semver"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "semver-parser"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "serde"
@@ -2117,8 +2093,21 @@ name = "tc_bitcoincore_client"
 version = "0.1.0"
 dependencies = [
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
+]
+
+[[package]]
+name = "tc_coblox_bitcoincore"
+version = "0.1.0"
+source = "git+https://github.com/coblox/testcontainers-rs#46d1ba949eb9485b4593ca9005bb7416a47cb95e"
+dependencies = [
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hmac 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "sha2 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
@@ -2135,20 +2124,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "tc_parity_parity"
+version = "0.1.0"
+source = "git+https://github.com/coblox/testcontainers-rs#46d1ba949eb9485b4593ca9005bb7416a47cb95e"
+dependencies = [
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
+]
+
+[[package]]
 name = "tc_trufflesuite_ganachecli"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/coblox/testcontainers-rs#46d1ba949eb9485b4593ca9005bb7416a47cb95e"
 dependencies = [
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
 ]
 
 [[package]]
 name = "tc_web3_client"
 version = "0.1.0"
 dependencies = [
- "tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)",
+ "web3 0.4.0 (git+https://github.com/tomusdrw/rust-web3)",
 ]
 
 [[package]]
@@ -2194,6 +2192,17 @@ dependencies = [
 name = "testcontainers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "testcontainers"
+version = "0.2.0"
+source = "git+https://github.com/coblox/testcontainers-rs#46d1ba949eb9485b4593ca9005bb7416a47cb95e"
 dependencies = [
  "log 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2586,13 +2595,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "uint"
-version = "0.2.1"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byteorder 1.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "crunchy 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "heapsize 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2709,13 +2718,13 @@ dependencies = [
 
 [[package]]
 name = "web3"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "0.4.0"
+source = "git+https://github.com/tomusdrw/rust-web3#37d0cb422edeae7f64184346854e5b7587ae85b1"
 dependencies = [
  "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethabi 5.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethabi 6.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.11.27 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper-tls 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2886,11 +2895,10 @@ dependencies = [
 "checksum elastic-array 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "88d4851b005ef16de812ea9acdb7bece2f0a40dd86c07b85631d7dafa54537bb"
 "checksum encoding_rs 0.8.6 (registry+https://github.com/rust-lang/crates.io-index)" = "2a91912d6f37c6a8fef8a2316a862542d036f13c923ad518b5aca7bcaac7544c"
 "checksum env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)" = "f4d7e69c283751083d53d01eac767407343b8b69c4bd70058e08adc2637cb257"
-"checksum error-chain 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ff511d5dc435d703f4971bc399647c9bc38e20cb41452e3b9feb4765419ed3f3"
 "checksum error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)" = "07e791d3be96241c77c43846b665ef1384606da2cd2a48730abe606a12906e02"
-"checksum ethabi 5.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "05e33a914b94b763f0a92333e4e5c95c095563f06ef7d6b295b3d3c2cf31e21f"
+"checksum ethabi 6.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "36c7bf66bd7ff02c3bc512a276a0f95300e3abb87060704fddf588ae11b86d99"
 "checksum ethbloom 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1a93a43ce2e9f09071449da36bfa7a1b20b950ee344b6904ff23de493b03b386"
-"checksum ethereum-types 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9c48729b8aea8aedb12cf4cb2e5cef439fdfe2dda4a89e47eeebd15778ef53b6"
+"checksum ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "35b3c5a18bc5e73a32a110ac743ec04b02bbbcd3b71d3118d40a6113d509378a"
 "checksum ethereum-types-serialize 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4ac59a21a9ce98e188f3dace9eb67a6c4a3c67ec7fbc7218cb827852679dc002"
 "checksum failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7efb22686e4a466b1ec1a15c2898f91fa9cb340452496dca654032de20ff95b9"
 "checksum failure_derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "946d0e98a50d9831f5d589038d2ca7f8f455b1c21028c0db0e84116a12696426"
@@ -3000,15 +3008,15 @@ dependencies = [
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum reqwest 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)" = "738769ec83daf6c1929dc9dae7d69ed3779b55ae5c356e989dcd3aa677d8486e"
 "checksum ring 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1f2a6dc7fc06a05e6de183c5b97058582e9da2de0c136eafe49609769c507724"
-"checksum rlp 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "89db7f8dfdd5eb7ab3ac3ece7a07fd273a680b4b224cb231181280e8996f9f0b"
+"checksum rlp 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "524c5ad554859785dfc8469df3ed5e0b5784d4d335877ed47c8d90fc0eb238fe"
 "checksum rocket 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "798935129effaaf50a4647dbd96bf48cedb3d06c16ab645405d9f02fb90a29d0"
 "checksum rocket_codegen 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "dca5401b057885267f9b0d81138b7f0b926549261b5cc429ee5535166c47b8e8"
 "checksum rocket_contrib 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "f04b11a285fb5b0ce426241468aa0494f0b5ca981bda5198facd0106d8edd731"
 "checksum rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)" = "f76d05d3993fd5f4af9434e8e436db163a12a9d40e1a58a726f27a01dfd12a2a"
 "checksum rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "bcfe5b13211b4d78e5c2cadfebd7769197d95c639c35a50057eb4c05de811395"
 "checksum rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0ceb8ce7a5e520de349e1fa172baeba4a9e8d5ef06c47471863530bc4972ee1e"
+"checksum rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "403bb3a286107a04825a5f82e1270acc1e14028d3d554d7a1e08914549575ab8"
 "checksum rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)" = "dcf128d1287d2ea9d80910b5f1120d0b8eede3fbf1abe91c40d39ea7d51e6fda"
-"checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum ryu 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "fd0568787116e13c652377b6846f5931454a363a8fdf8ae50463ee40935b278b"
 "checksum safemem 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e27a8b19b835f7aea908818e871f5cc3a5a186550c30773be987e155e8163d8f"
 "checksum schannel 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)" = "dc1fabf2a7b6483a141426e1afd09ad543520a77ac49bd03c286e7696ccfd77f"
@@ -3019,8 +3027,6 @@ dependencies = [
 "checksum security-framework 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "697d3f3c23a618272ead9e1fb259c1411102b31c6af8b93f1d64cca9c3b0e8e0"
 "checksum security-framework-sys 0.1.16 (registry+https://github.com/rust-lang/crates.io-index)" = "5421621e836278a0b139268f36eee0dc7e389b784dc3f79d8f11aabadf41bead"
 "checksum security-framework-sys 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "ab01dfbe5756785b5b4d46e0289e5a18071dfa9a7c2b24213ea00b9ef9b665bf"
-"checksum semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"
-"checksum semver-parser 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 "checksum serde 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)" = "98b72cb11d2f90a50789254281aac9211092fd1ba87e067b45c94652fffe1cf1"
 "checksum serde_derive 1.0.72 (registry+https://github.com/rust-lang/crates.io-index)" = "ccb40724ad173e215530b5217ffba55cdf34ef811e90023a43c948c5b04dc41f"
 "checksum serde_json 1.0.26 (registry+https://github.com/rust-lang/crates.io-index)" = "44dd2cfde475037451fa99b7e5df77aa3cfd1536575fa8e7a538ab36dcde49ae"
@@ -3042,13 +3048,16 @@ dependencies = [
 "checksum syn 0.14.8 (registry+https://github.com/rust-lang/crates.io-index)" = "b7bfcbb0c068d0f642a0ffbd5c604965a360a61f99e8add013cef23a838614f3"
 "checksum synstructure 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "85bb9b7550d063ea184027c9b8c20ac167cd36d3e06b3a40bceb9d746dc1a7b7"
 "checksum take 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b157868d8ac1f56b64604539990685fa7611d8fa9e5476cf0c02cf34d32917c5"
+"checksum tc_coblox_bitcoincore 0.1.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
 "checksum tc_coblox_bitcoincore 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dca2c2a6c77ef6e66ce5db9135de5a026e00e86d53ddc7d5e3e15ab9b5b16006"
-"checksum tc_trufflesuite_ganachecli 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "804f3fb41ad354248db271bc8ebe7ffbcee35694db34d5ccac8cf045f70bf2c4"
+"checksum tc_parity_parity 0.1.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
+"checksum tc_trufflesuite_ganachecli 0.1.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
 "checksum tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "15f2b5fb00ccdf689e0149d1b1b3c03fead81c2b37735d812fa8bddbbf41b6d8"
 "checksum tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c4b103c6d08d323b92ff42c8ce62abcd83ca8efa7fd5bf7927efefec75f58c76"
 "checksum termcolor 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "722426c4a0539da2c4ffd9b419d90ad540b4cff4a053be9069c908d4d07e2836"
 "checksum termion 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"
 "checksum testcontainers 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ed8ae0ce4854f96019a33e1e727113cddbb634e17ea354f222561535e4c6d2a0"
+"checksum testcontainers 0.2.0 (git+https://github.com/coblox/testcontainers-rs)" = "<none>"
 "checksum textwrap 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "307686869c93e71f94da64286f9a9524c0f308a9e1c87a583de8e9c9039ad3f6"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "d825be0eb33fda1a7e68012d51e9c7f451dc1a69391e7fdc197060bb8c56667b"
@@ -3085,7 +3094,7 @@ dependencies = [
 "checksum typeable 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1410f6f91f21d1612654e7cc69193b0334f909dcf2c790c4826254fbb86f8887"
 "checksum typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "612d636f949607bdf9b123b4a6f6d966dedf3ff669f7f045890d3a4a73948169"
 "checksum ucd-util 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "fd2be2d6639d0f8fe6cdda291ad456e23629558d466e2789d2c3e9892bda285d"
-"checksum uint 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "38051a96565903d81c9a9210ce11076b2218f3b352926baa1f5f6abbdfce8273"
+"checksum uint 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "754ba11732b9161b94c41798e5197e5e75388d012f760c42adb5000353e98646"
 "checksum unicase 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7f4765f83163b74f957c797ad9253caf97f103fb064d3999aea9568d09fc8a33"
 "checksum unicase 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "284b6d3db520d67fbe88fd778c21510d1b0ba4a551e5d0fbb023d33405f6de8a"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
@@ -3103,7 +3112,7 @@ dependencies = [
 "checksum version_check 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "7716c242968ee87e5542f8021178248f267f295a5c4803beae8b8b7fd9bc6051"
 "checksum void 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6a02e4885ed3bc0f2de90ea6dd45ebcbb66dacffe03547fadbb0eeae2770887d"
 "checksum want 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a05d9d966753fa4b5c8db73fcab5eed4549cfe0e1e4e66911e5564a0085c35d1"
-"checksum web3 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "12b1b305116d55e140bdc18560e101320c67600508174fbe9e0b83995c6d163d"
+"checksum web3 0.4.0 (git+https://github.com/tomusdrw/rust-web3)" = "<none>"
 "checksum websocket 0.20.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9234b4e667c19995475227172446884f516ec0963380afa960d962ab9f4c0bfa"
 "checksum which 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49c4f580e93079b70ac522e7bdebbe1568c8afa7d8d05ee534ee737ca37d2f51"
 "checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
