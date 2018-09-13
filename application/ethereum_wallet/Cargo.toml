@@ -12,7 +12,7 @@ authors = [
 ethereum_support = { path = "../../vendor/ethereum_support" }
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 hex = "0.3.2"
-rlp = "0.2.2"
+rlp = "0.2.4"
 tiny-keccak = "1.4.2"
 
 [dev-dependencies]
