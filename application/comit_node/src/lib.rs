@@ -26,6 +26,7 @@ extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
+extern crate web3;
 
 #[cfg(test)]
 extern crate spectral;

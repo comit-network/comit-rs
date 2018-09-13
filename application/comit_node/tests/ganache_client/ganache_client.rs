@@ -1,14 +1,21 @@
 use comit_node::swap_protocols::rfc003::ethereum::Htlc;
-use ethereum_support::*;
+use ethereum_support::{
+    web3::{
+        transports::{EventLoopHandle, Http},
+        Web3,
+    },
+    *,
+};
 use ganache_rust_web3;
 use hex;
 use tc_trufflesuite_ganachecli::{GanacheCli, GanacheCliArgs};
-use tc_web3_client::Web3Client;
+use tc_web3_client;
 use testcontainers::{clients::DockerCli, Container, Docker, Image};
 
 pub struct GanacheClient {
     _container: Container<DockerCli, GanacheCli>,
-    client: Web3Client,
+    _event_loop: EventLoopHandle,
+    client: Web3<Http>,
     snapshot_id: Option<ganache_rust_web3::SnapshotId>,
 }
 
@@ -16,11 +23,12 @@ impl GanacheClient {
     pub fn new() -> Self {
         let container = DockerCli::new().run(GanacheCli::default());
 
-        let client = Web3Client::new(&container);
+        let (event_loop, web3) = tc_web3_client::new(&container);
 
         GanacheClient {
             _container: container,
-            client,
+            _event_loop: event_loop,
+            client: web3,
             snapshot_id: None,
         }
     }

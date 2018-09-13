@@ -52,8 +52,9 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_money_is_transferred
     let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(ParityEthereum::default());
+    let (_event_loop, web3) = tc_web3_client::new(&container);
 
-    let client = ParityClient::new(tc_web3_client::Web3Client::new(&container));
+    let client = ParityClient::new(web3);
 
     let token_contract = client.deploy_token_contract();
 
@@ -73,10 +74,7 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_money_is_transferred
     let service = EthereumService::new(
         Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
         Arc::new(StaticGasPriceService::default()),
-        Arc::new(Web3Client::new(format!(
-            "http://localhost:{}",
-            container.get_host_port(8545).unwrap()
-        ))),
+        Arc::new(tc_web3_client::new(&container)),
         0,
     );
 

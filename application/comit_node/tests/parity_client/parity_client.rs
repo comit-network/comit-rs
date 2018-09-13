@@ -1,11 +1,11 @@
 use ethereum_support::{
+    web3::{transports::Http, Web3},
     Address, Bytes, CallRequest, EthereumQuantity, Future, H256, TransactionRequest, U256,
 };
 use hex;
-use tc_web3_client::Web3Client;
 
 pub struct ParityClient {
-    client: Web3Client,
+    client: Web3<Http>,
 }
 
 lazy_static! {
@@ -18,7 +18,7 @@ const TOKEN_CONTRACT_CODE: &'static str = include_str!("standard_erc20_token_con
 const PARITY_DEV_PASSWORD: &str = "";
 
 impl ParityClient {
-    pub fn new(client: Web3Client) -> Self {
+    pub fn new(client: Web3<Http>) -> Self {
         ParityClient { client }
     }
 

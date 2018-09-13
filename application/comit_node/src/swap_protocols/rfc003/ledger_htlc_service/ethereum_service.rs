@@ -16,6 +16,10 @@ use swap_protocols::rfc003::{
     ledger_htlc_service::{self, api::LedgerHtlcService},
 };
 use swaps::common::TradeId;
+use web3::{
+    transports::{EventLoopHandle, Http},
+    Web3,
+};
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {
     fn from(error: gas_price_service::Error) -> Self {
@@ -42,9 +46,9 @@ pub trait BlockingEthereumApi: Send + Sync {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error>;
 }
 
-impl BlockingEthereumApi for Web3Client {
+impl BlockingEthereumApi for (EventLoopHandle, Web3<Http>) {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
-        let result = self.eth().send_raw_transaction(rlp).wait();
+        let result = self.1.eth().send_raw_transaction(rlp).wait();
 
         result
     }
