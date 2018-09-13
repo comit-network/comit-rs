@@ -9,12 +9,11 @@
     call(sub(gas,1000000), 0x6000000000000000000000000000000000000006, 0, 28, 100, 128, 32) // Token Contract address
     mload(128)
     and
-    success
+    deploy
     jumpi
     revert(0,0)
 
-
-success:
+deploy:
     mstore(0, timestamp)
     mstore8(27, 0x63)
     codecopy(32, add(0x1001, 5), 0x2002)
