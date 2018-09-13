@@ -9,38 +9,15 @@ use std::{
 };
 
 fn main() -> std::io::Result<()> {
-    compile(
-        include_str!("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm"),
-        "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm",
-    )?;
-    compile(
-        include_str!(
-            "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm"
-        ),
-        "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm",
-    )?;
-    compile(
-        include_str!("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm"),
-        "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm",
-    )?;
-    compile(
-        include_str!(
-            "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm"
-        ),
-        "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm",
-    )
+    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm")?;
+    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm")?;
+    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm")?;
+    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm")?;
+
+    Ok(())
 }
 
-fn check_bin_in_path(bin: &str) {
-    let output = Command::new("which").arg(bin).output().unwrap();
-    if output.stdout.is_empty() {
-        let mut msg = format!("`{}` cannot be found, check your path", bin);
-        msg = format!("{}\nPATH: {:?}", msg, var("PATH"));
-        panic!(msg);
-    }
-}
-
-fn compile(code: &str, file_name: &'static str) -> std::io::Result<()> {
+fn compile(file_name: &'static str) -> std::io::Result<()> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -63,7 +40,9 @@ fn compile(code: &str, file_name: &'static str) -> std::io::Result<()> {
         }
     };
 
-    solc.stdin.as_mut().unwrap().write_all(code.as_bytes())?;
+    let mut file = ::std::fs::File::open(file_name)?;
+
+    ::std::io::copy(&mut file, solc.stdin.as_mut().unwrap())?;
 
     let output = solc.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -81,4 +60,13 @@ fn compile(code: &str, file_name: &'static str) -> std::io::Result<()> {
     println!("cargo:rerun-if-changed={}", file_name);
 
     Ok(())
+}
+
+fn check_bin_in_path(bin: &str) {
+    let output = Command::new("which").arg(bin).output().unwrap();
+    if output.stdout.is_empty() {
+        let mut msg = format!("`{}` cannot be found, check your path", bin);
+        msg = format!("{}\nPATH: {:?}", msg, var("PATH"));
+        panic!(msg);
+    }
 }
