@@ -122,7 +122,7 @@ fn arrange() -> (
     client.give_eth_to(alice, EthereumQuantity::from_eth(1.0));
 
     let token_contract = client.deploy_non_standard_erc20_token_contract();
-    client.mint_1000_tokens(token_contract, alice);
+    client.mint_tokens(token_contract, U256::from(1000), alice);
 
     let ethereum_service = EthereumService::new(
         Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),

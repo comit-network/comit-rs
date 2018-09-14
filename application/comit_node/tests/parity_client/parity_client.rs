@@ -87,10 +87,10 @@ impl ParityClient {
         receipt.contract_address.unwrap()
     }
 
-    pub fn mint_1000_tokens(&self, contract: Address, to: Address) -> U256 {
+    pub fn mint_tokens(&self, contract: Address, amount: U256, to: Address) -> U256 {
         let function_identifier = "40c10f19";
         let address = format!("000000000000000000000000{}", hex::encode(to));
-        let amount = format!("00000000000000000000000000000000000000000000000000000000000003e8");
+        let amount = format!("{:0>64}", format!("{:x}", amount));
 
         let payload = format!("{}{}{}", function_identifier, address, amount);
 
