@@ -18,9 +18,9 @@ lazy_static = "1"
 log = "0.4.3"
 web3 = "0.4"
 uuid = { version = "0.6.5", features = ["serde", "v4"] }
-rocket = "=0.3.14"
-rocket_contrib = "=0.3.14"
-rocket_codegen = "=0.3.14"
+rocket = "0.3"
+rocket_contrib = "0.3"
+rocket_codegen = "0.3"
 common_types = { path = "../common_types" }
 bitcoin_support  = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
