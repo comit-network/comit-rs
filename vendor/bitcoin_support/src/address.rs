@@ -1,5 +1,10 @@
-use bitcoin::{self, blockdata::script, util::address::Address as BitcoinAddress};
+use bitcoin::{
+    self,
+    blockdata::script,
+    util::address::{Address as BitcoinAddress, Payload},
+};
 use bitcoin_rpc_client;
+use pubkey::PubkeyHash;
 use secp256k1_support::PublicKey;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -60,6 +65,15 @@ impl From<BitcoinAddress> for Address {
 impl From<Address> for BitcoinAddress {
     fn from(address: Address) -> Self {
         address.0
+    }
+}
+
+impl From<PubkeyHash> for Address {
+    fn from(pubkeyhash: PubkeyHash) -> Self {
+        BitcoinAddress {
+            payload: Payload::PubkeyHash(pubkeyhash.into()),
+            network: Network::Regtest,
+        }.into()
     }
 }
 

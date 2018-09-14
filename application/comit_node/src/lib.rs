@@ -3,10 +3,12 @@
 #![cfg_attr(test, deny(warnings))]
 
 extern crate bitcoin_rpc_client;
+extern crate ganp;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
+extern crate tokio;
 #[macro_use]
 extern crate serde_derive;
 extern crate bitcoin_htlc;
@@ -22,14 +24,16 @@ extern crate uuid;
 #[macro_use]
 extern crate log;
 extern crate event_store;
-extern crate ganp;
+extern crate futures;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
+extern crate transport_protocol;
 
 pub mod bitcoin_fee_service;
 pub mod bitcoin_service;
 pub mod comit_node_api_client;
+pub mod comit_server;
 pub mod ethereum_service;
 pub mod gas_price_service;
 pub mod ledger_htlc_service;

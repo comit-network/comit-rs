@@ -18,6 +18,7 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
 extern crate tiny_keccak;
+extern crate tokio;
 extern crate uuid;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -26,6 +27,7 @@ use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     bitcoin_service::BitcoinService,
     comit_node_api_client::{ComitNodeUrl, DefaultApiClient as ComitNodeClient},
+    comit_server::ComitServer,
     ethereum_service::EthereumService,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
@@ -35,7 +37,12 @@ use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
-use std::{env::var, str::FromStr, sync::Arc};
+use std::{
+    env::var,
+    net::{SocketAddr, ToSocketAddrs},
+    str::FromStr,
+    sync::Arc,
+};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
@@ -145,16 +152,28 @@ fn main() {
     );
 
     let comit_node_api_url = ComitNodeUrl(var("COMIT_NODE_URL").unwrap());
+    let ganp_host_addr = var_or_exit("GANP_HOST_ADDR");
+    let ganp_socket_addr: SocketAddr = ganp_host_addr.parse().unwrap();
 
-    create_rocket_instance(
-        event_store,
-        Arc::new(ethereum_service),
-        Arc::new(bitcoin_service),
-        bob_refund_address,
-        bob_success_keypair,
-        network,
-        Arc::new(ComitNodeClient::new(comit_node_api_url)),
-    ).launch();
+    let ganp_list_port = var_or_exit("GANP_PORT");
+
+    std::thread::spawn(move || {
+        create_rocket_instance(
+            event_store,
+            Arc::new(ethereum_service),
+            Arc::new(bitcoin_service),
+            bob_refund_address,
+            bob_success_keypair,
+            network,
+            Arc::new(ComitNodeClient::new(comit_node_api_url, ganp_socket_addr)),
+        ).launch();
+    });
+
+    let server = ComitServer::listen(format!("0.0.0.0:{}", ganp_list_port).parse().unwrap());
+
+    tokio::run(server.map_err(|e| {
+        error!("ComitServer shutdown: {:?}", e);
+    }));
 }
 
 fn var_or_exit(name: &str) -> String {

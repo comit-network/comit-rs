@@ -81,27 +81,34 @@ function setup() {
     activate_segwit;
 
     BOB_COMIT_NODE_PORT=8010
+    BOB_GANP_PORT=8011
     ALICE_COMIT_NODE_PORT=8000
+    ALICE_GANP_PORT=8001
 
     BOB_COMIT_NODE_PID=$(
         export BITCOIN_RPC_URL=http://localhost:18443 \
                ETHEREUM_NODE_ENDPOINT=http://localhost:8545 \
                ROCKET_ADDRESS=0.0.0.0 \
                COMIT_NODE_URL=http://localhost:$ALICE_COMIT_NODE_PORT \
+               GANP_HOST_ADDR=127.0.0.1:$ALICE_GANP_PORT \
                ROCKET_PORT=$BOB_COMIT_NODE_PORT \
                RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                RUST_BACKTRACE=1 \
+               GANP_PORT=$BOB_GANP_PORT \
                BITCOIN_SATOSHI_PER_KB=50;
 
         start_target "comit_node" "Bob  ";
     );
 
 
+
     ALICE_COMIT_NODE_PID=$(
         export  ROCKET_ADDRESS=0.0.0.0 \
                 RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                 COMIT_NODE_URL=http://localhost:$BOB_COMIT_NODE_PORT \
+                GANP_HOST_ADDR=127.0.0.1:$BOB_GANP_PORT \
                 ROCKET_PORT=$ALICE_COMIT_NODE_PORT \
+                GANP_PORT=$ALICE_GANP_PORT \
                 RATE=0.1;
 
         start_target "comit_node" "Alice";

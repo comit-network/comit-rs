@@ -86,7 +86,7 @@ pub fn json_config<
                         );
                         handler.handle(request).into()
                     }
-                    _ => Response::new(Status::OK(21)),
+                    _ => Response::new(Status::SE(21)),
                 },
             }
         },

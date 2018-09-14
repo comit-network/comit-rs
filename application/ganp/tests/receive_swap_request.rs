@@ -17,13 +17,13 @@ extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate spectral;
 use bitcoin_support::{BitcoinQuantity, Blocks};
-use common_types::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    seconds::Seconds,
-};
+use common_types::seconds::Seconds;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
 use futures::future::Future;
-use ganp::*;
+use ganp::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    *,
+};
 use hex::FromHex;
 use rfc003;
 use secp256k1_support::PublicKey;
@@ -213,7 +213,7 @@ fn can_receive_swap_request() {
     assert_that(&_response)
         .is_ok()
         .map(|r| r.status())
-        .is_equal_to(Status::OK(21));
+        .is_equal_to(Status::SE(21));
 
     let result = receiver.wait();
 
@@ -303,7 +303,7 @@ fn rate_handler_reject_offer_btc_eth() {
     assert_that(&response)
         .is_ok()
         .map(|r| r.status())
-        .is_equal_to(Status::OK(21));
+        .is_equal_to(Status::SE(21));
 }
 
 #[test]
@@ -346,7 +346,7 @@ fn rate_handler_reject_offer_eth_btc() {
     assert_that(&response)
         .is_ok()
         .map(|r| r.status())
-        .is_equal_to(Status::OK(21));
+        .is_equal_to(Status::SE(21));
 }
 
 #[test]

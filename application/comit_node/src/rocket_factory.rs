@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(
-    event_store: InMemoryEventStore<TradeId>,
+    event_store: Arc<InMemoryEventStore<TradeId>>,
     ethereum_service: Arc<LedgerHtlcService<Ethereum>>,
     bitcoin_service: Arc<LedgerHtlcService<Bitcoin>>,
     bob_refund_address: ethereum_support::Address,

@@ -2,6 +2,7 @@ use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Address, BitcoinQuantity, Blocks, PubkeyHash};
 use ledger::Ledger;
 use secp256k1_support::PublicKey;
+use swap;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Bitcoin {}
@@ -23,5 +24,11 @@ impl Ledger for Bitcoin {
 
     fn symbol() -> String {
         String::from("BTC")
+    }
+}
+
+impl Into<swap::Ledger> for Bitcoin {
+    fn into(self) -> swap::Ledger {
+        swap::Ledger::Bitcoin
     }
 }
