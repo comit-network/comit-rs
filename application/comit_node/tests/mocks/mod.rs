@@ -1,4 +1,7 @@
 pub mod mocks;
+
+pub use self::mocks::*;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OfferResponseBody {
     pub uid: String,

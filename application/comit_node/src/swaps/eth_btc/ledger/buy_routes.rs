@@ -5,10 +5,12 @@ use ganp::ledger::{
     bitcoin::{self, Bitcoin},
     ethereum::Ethereum,
 };
-use ledger_htlc_service::LedgerHtlcService;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
+use swap_protocols::rfc003::ledger_htlc_service::{
+    BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
+};
 use swaps::{
     alice_events::ContractDeployed as AliceContractDeployed,
     bob_events::{
@@ -65,7 +67,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<bitcoin::HtlcId>,
     event_store: State<InMemoryEventStore<TradeId>>,
-    ethereum_service: State<Arc<LedgerHtlcService<Ethereum>>>,
+    ethereum_service: State<Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -80,7 +82,7 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: bitcoin::HtlcId,
     event_store: &InMemoryEventStore<TradeId>,
-    ethereum_service: &Arc<LedgerHtlcService<Ethereum>>,
+    ethereum_service: &Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
 ) -> Result<(), Error> {
     let trade_funded: BobTradeFunded<Ethereum, Bitcoin> =
         BobTradeFunded::new(trade_id, htlc_identifier);
@@ -89,13 +91,13 @@ fn handle_post_orders_funding(
 
     let order_taken = event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
-    let tx_id = ethereum_service.deploy_htlc(
-        order_taken.bob_refund_address,
-        order_taken.alice_success_address,
-        order_taken.bob_contract_time_lock,
-        order_taken.buy_amount,
-        order_taken.contract_secret_lock.clone().into(),
-    )?;
+    let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
+        refund_address: order_taken.bob_refund_address,
+        success_address: order_taken.alice_success_address,
+        time_lock: order_taken.bob_contract_time_lock,
+        amount: order_taken.buy_amount,
+        secret_hash: order_taken.contract_secret_lock.clone().into(),
+    })?;
 
     let deployed: BobContractDeployed<Ethereum, Bitcoin> =
         BobContractDeployed::new(trade_id, tx_id.to_string());
@@ -119,7 +121,7 @@ pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
     event_store: State<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
-    bitcoin_htlc_service: State<Arc<LedgerHtlcService<Bitcoin>>>,
+    bitcoin_htlc_service: State<Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_revealed_secret(
         redeem_btc_notification_body.into_inner(),
@@ -134,7 +136,7 @@ fn handle_post_revealed_secret(
     redeem_btc_notification_body: RedeemBTCNotificationBody,
     event_store: &InMemoryEventStore<TradeId>,
     trade_id: TradeId,
-    bitcoin_htlc_service: &Arc<LedgerHtlcService<Bitcoin>>,
+    bitcoin_htlc_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
 ) -> Result<(), Error> {
     let order_taken_event =
         event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;

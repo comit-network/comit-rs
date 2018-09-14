@@ -19,16 +19,16 @@ extern crate serde;
 extern crate serde_json;
 extern crate tiny_keccak;
 extern crate uuid;
+extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::BitcoinService,
     comit_node_api_client::{ComitNodeUrl, DefaultApiClient as ComitNodeClient},
-    ethereum_service::EthereumService,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
+    swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
@@ -36,6 +36,7 @@ use event_store::InMemoryEventStore;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
 use std::{env::var, str::FromStr, sync::Arc};
+use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
@@ -60,7 +61,8 @@ fn main() {
 
     let endpoint = var_or_exit("ETHEREUM_NODE_ENDPOINT");
 
-    let web3 = Web3Client::new(endpoint);
+    let (event_loop, transport) = Http::new(&endpoint).unwrap();
+    let web3 = Web3::new(transport);
 
     let gas_price = var("ETHEREUM_GAS_PRICE_IN_WEI")
         .map(|gas| u64::from_str(gas.as_str()).unwrap())
@@ -76,7 +78,7 @@ fn main() {
     let ethereum_service = EthereumService::new(
         Arc::new(wallet),
         Arc::new(StaticGasPriceService::new(gas_price)),
-        Arc::new(web3),
+        Arc::new((event_loop, web3)),
         nonce,
     );
 

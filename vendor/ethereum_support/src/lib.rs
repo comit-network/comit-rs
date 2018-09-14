@@ -14,18 +14,17 @@ pub use web3_crate::types::*;
 
 mod ethereum_quantity;
 mod key;
-mod web3_client;
 
 pub use ethereum_quantity::*;
 pub use key::*;
-pub use web3_client::*;
 
 pub use web3_crate::futures::Future;
 
 pub mod web3 {
     pub use web3_crate::error::{Error, ErrorKind};
 
+    pub use web3_crate::Web3;
     pub mod transports {
-        pub use web3_crate::transports::Http;
+        pub use web3_crate::transports::{EventLoopHandle, Http};
     }
 }

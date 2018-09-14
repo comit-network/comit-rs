@@ -1,16 +1,28 @@
+extern crate bitcoin_rpc_client;
+extern crate bitcoin_support;
+extern crate comit_node;
+extern crate common_types;
 extern crate env_logger;
-extern crate ethereum_htlc;
 extern crate ethereum_support;
+extern crate ethereum_wallet;
+extern crate event_store;
 extern crate ganache_rust_web3;
 extern crate hex;
-extern crate tc_trufflesuite_ganachecli;
-extern crate tc_web3_client;
+extern crate rocket;
+extern crate rocket_contrib;
+extern crate serde;
 #[macro_use]
 extern crate log;
-extern crate common_types;
+extern crate reqwest;
+extern crate serde_json;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
 extern crate testcontainers;
+extern crate uuid;
 
 mod ganache_client;
+
+use comit_node::swap_protocols::rfc003::ethereum::EtherHtlc;
 use common_types::secret::Secret;
 use ethereum_support::*;
 use ganache_client::GanacheClient;
@@ -28,7 +40,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 
     let secret = Secret::from(SECRET.clone());
 
-    let htlc = ethereum_htlc::Htlc::new(
+    let htlc = EtherHtlc::new(
         ONE_HOUR * 12,
         refund_address,
         success_address,
@@ -74,7 +86,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 
     let secret = Secret::from(SECRET.clone());
 
-    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
+    let htlc = EtherHtlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
 
     let mut client = GanacheClient::new();
 
@@ -110,7 +122,7 @@ fn given_advanced_timestamp_when_deployed_contract_cannot_yet_be_refunded() {
 
     let secret = Secret::from(SECRET.clone());
 
-    let htlc = ethereum_htlc::Htlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
+    let htlc = EtherHtlc::new(ONE_HOUR, refund_address, success_address, secret.hash());
 
     let mut client = GanacheClient::new();
 
@@ -151,7 +163,7 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
     // we can remove this because then https://github.com/trufflesuite/ganache-core/pull/2 is included in the release.
     let stupid_offset = 2;
 
-    let htlc = ethereum_htlc::Htlc::new(
+    let htlc = EtherHtlc::new(
         ONE_HOUR * (1 + stupid_offset),
         refund_address,
         success_address,

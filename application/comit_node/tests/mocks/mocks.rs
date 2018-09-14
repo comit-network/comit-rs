@@ -1,7 +1,7 @@
 use bitcoin_rpc_client::{
     Address, BitcoinRpcApi, RpcError, SerializedRawTransaction, TransactionId,
 };
-use comit_node::ethereum_service::BlockingEthereumApi;
+use comit_node::swap_protocols::rfc003::ledger_htlc_service::BlockingEthereumApi;
 use ethereum_support::{web3, Bytes, H256};
 use reqwest;
 

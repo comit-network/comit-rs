@@ -4,7 +4,6 @@ members = [
     "application/bitcoin_htlc",
     "application/bitcoin_wallet",
     "application/common_types",
-    "application/ethereum_htlc",
     "application/ethereum_wallet",
     "application/comit_node",
     "application/logging",

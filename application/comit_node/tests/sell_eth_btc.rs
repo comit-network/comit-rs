@@ -20,24 +20,28 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
+extern crate ganache_rust_web3;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
+extern crate testcontainers;
 
-mod common;
+mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Blocks, Network};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::BitcoinService,
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
-    ethereum_service::{self, BlockingEthereumApi},
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
+    swap_protocols::rfc003::ledger_htlc_service::{
+        BitcoinService, BlockingEthereumApi, EthereumService,
+    },
     swaps::{
         bob_events::{OrderTaken, TradeFunded},
         common::TradeId,
     },
 };
-use common::mocks;
 use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
@@ -87,7 +91,7 @@ fn create_rocket_client(
 
     let rocket = create_rocket_instance(
         event_store,
-        Arc::new(ethereum_service::EthereumService::new(
+        Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),
             Arc::new(StaticEthereumApi),
