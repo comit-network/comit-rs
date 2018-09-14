@@ -4,7 +4,6 @@ use ethereum_support::{
 };
 use hex;
 
-#[allow(dead_code)]
 pub struct ParityClient {
     client: Web3<Http>,
 }
@@ -14,18 +13,15 @@ lazy_static! {
         "00a329c0648769a73afac7f9381e08fb43dbea72".parse().unwrap();
 }
 
-const TOKEN_CONTRACT_CODE: &'static str = include_str!("standard_erc20_token_contract.asm.hex");
+const ERC20_TOKEN_CONTRACT_CODE: &'static str = include_str!("erc20_token_contract.asm.hex");
 
-#[allow(dead_code)]
 const PARITY_DEV_PASSWORD: &str = "";
 
 impl ParityClient {
-    #[allow(dead_code)]
     pub fn new(client: Web3<Http>) -> Self {
         ParityClient { client }
     }
 
-    #[allow(dead_code)]
     pub fn give_eth_to(&self, to: Address, amount: EthereumQuantity) {
         self.client
             .personal()
@@ -46,8 +42,7 @@ impl ParityClient {
             .unwrap();
     }
 
-    #[allow(dead_code)]
-    pub fn deploy_token_contract(&self) -> Address {
+    pub fn deploy_erc20_token_contract(&self) -> Address {
         let contract_tx_id = self
             .client
             .personal()
@@ -58,7 +53,9 @@ impl ParityClient {
                     gas: Some(U256::from(4_000_000u64)),
                     gas_price: None,
                     value: None,
-                    data: Some(Bytes(hex::decode(TOKEN_CONTRACT_CODE.trim()).unwrap())),
+                    data: Some(Bytes(
+                        hex::decode(ERC20_TOKEN_CONTRACT_CODE.trim()).unwrap(),
+                    )),
                     nonce: None,
                     condition: None,
                 },
@@ -80,7 +77,10 @@ impl ParityClient {
         receipt.contract_address.unwrap()
     }
 
-    #[allow(dead_code)]
+    pub fn get_contract_code(&self, address: Address) -> Bytes {
+        self.client.eth().code(address, None).wait().unwrap()
+    }
+
     pub fn get_contract_address(&self, txid: H256) -> Address {
         let receipt = self
             .client
@@ -93,18 +93,16 @@ impl ParityClient {
         receipt.contract_address.unwrap()
     }
 
-    #[allow(dead_code)]
-    pub fn mint_1000_tokens(&self, contract: Address, to: Address) -> U256 {
+    pub fn mint_tokens(&self, contract: Address, amount: U256, to: Address) -> U256 {
         let function_identifier = "40c10f19";
         let address = format!("000000000000000000000000{}", hex::encode(to));
-        let amount = format!("00000000000000000000000000000000000000000000000000000000000003e8");
+        let amount = format!("{:0>64}", format!("{:x}", amount));
 
         let payload = format!("{}{}{}", function_identifier, address, amount);
 
         self.send_data(contract, Some(Bytes(hex::decode(payload).unwrap())))
     }
 
-    #[allow(dead_code)]
     pub fn balance_of(&self, contract: Address, address: Address) -> U256 {
         let function_identifier = "70a08231";
         let address_hex = format!("000000000000000000000000{}", hex::encode(address));
@@ -131,7 +129,6 @@ impl ParityClient {
         U256::from(result.0.as_slice())
     }
 
-    #[allow(dead_code)]
     pub fn send_data(&self, to: Address, data: Option<Bytes>) -> U256 {
         let result_tx = self
             .client
