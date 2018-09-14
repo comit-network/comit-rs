@@ -64,7 +64,7 @@ pub fn harness(
         refund_address: alice,
         success_address: bob,
         time_lock: Seconds::from(params.htlc_timeout),
-        amount: U256::from(400),
+        amount: params.htlc_value,
         secret_hash: Secret::from(params.htlc_secret).hash(),
         token_contract_address: token_contract,
     };
