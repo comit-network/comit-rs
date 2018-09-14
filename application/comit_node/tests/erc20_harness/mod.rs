@@ -29,6 +29,7 @@ pub struct Erc20TestHarnessParams {
     pub alice_tokens: U256,
     pub contract_kind: TokenContractKind,
     pub htlc_timeout: Duration,
+    pub htlc_value: U256,
     pub htlc_secret: [u8; 32],
 }
 
