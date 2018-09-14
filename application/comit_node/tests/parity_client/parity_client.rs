@@ -42,7 +42,25 @@ impl ParityClient {
             .unwrap();
     }
 
-    pub fn deploy_token_contract(&self) -> Address {
+    pub fn deploy_standard_erc20_token_contract(&self) -> Address {
+        self.deploy_contract(STANDARD_ERC20_TOKEN_CONTRACT_CODE)
+    }
+
+    pub fn deploy_non_standard_erc20_token_contract(&self) -> Address {
+        let address = self.deploy_contract(NON_STANDARD_ERC20_TOKEN_CONTRACT_CODE);
+
+        self.activate_trading_phase(address);
+
+        address
+    }
+
+    // This activates the trading phase of the PAY token contract!
+    // After this, we can call transferFrom
+    fn activate_trading_phase(&self, address: Address) {
+        self.send_data(address, Some(Bytes(hex::decode("293230b8").unwrap())));
+    }
+
+    fn deploy_contract(&self, code: &str) -> Address {
         let contract_tx_id = self
             .client
             .personal()
