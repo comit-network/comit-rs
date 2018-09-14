@@ -131,4 +131,5 @@ fn given_no_enough_tokens_token_balances_dont_change() {
     assert_eq!(client.balance_of(token_contract, bob), U256::from(0));
     assert_eq!(client.balance_of(token_contract, alice), U256::from(200));
     assert_eq!(client.balance_of(token_contract, htlc), U256::from(0));
+    assert_eq!(client.get_contract_code(htlc), Bytes::default());
 }

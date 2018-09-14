@@ -116,7 +116,7 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
 }
 
 #[test]
-fn given_no_enough_tokens_token_balances_dont_change() {
+fn given_no_enough_tokens_token_balances_dont_change_and_contract_is_not_deployed() {
     let (alice, bob, htlc, token_contract, client, _handle, _container) =
         harness(Erc20TestHarnessParams {
             alice_tokens: U256::from(200),
@@ -131,4 +131,5 @@ fn given_no_enough_tokens_token_balances_dont_change() {
     assert_eq!(client.balance_of(token_contract, bob), U256::from(0));
     assert_eq!(client.balance_of(token_contract, alice), U256::from(200));
     assert_eq!(client.balance_of(token_contract, htlc), U256::from(0));
+    assert_eq!(client.get_contract_code(htlc), Bytes::default());
 }

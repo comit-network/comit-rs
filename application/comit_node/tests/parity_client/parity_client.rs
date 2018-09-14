@@ -93,6 +93,10 @@ impl ParityClient {
         receipt.contract_address.unwrap()
     }
 
+    pub fn get_contract_code(&self, address: Address) -> Bytes {
+        self.client.eth().code(address, None).wait().unwrap()
+    }
+
     pub fn get_contract_address(&self, txid: H256) -> Address {
         let receipt = self
             .client
