@@ -3,7 +3,7 @@ extern crate regex;
 use regex::Regex;
 use std::{
     env::var,
-    fs::File,
+    fs::{DirBuilder, File},
     io::Write,
     path::Path,
     process::{Command, Stdio},
@@ -57,9 +57,12 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
 
     let path = Path::new(file_path);
     let folder = path.parent().unwrap().to_str().unwrap();
+    let folder = format!("{}/out", folder);
     let file_name = path.file_name().unwrap().to_str().unwrap();
 
-    let mut file = File::create(format!("{}/out/{}.hex", folder, file_name).as_str())?;
+    DirBuilder::new().recursive(true).create(&folder).unwrap();
+
+    let mut file = File::create(format!("{}/{}.hex", folder, file_name).as_str())?;
     file.write_all(hexcode.as_str().as_bytes())?;
 
     println!("cargo:rerun-if-changed={}", file_path);
