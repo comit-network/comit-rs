@@ -72,9 +72,9 @@ fn create_rocket_client() -> Client {
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
         ).unwrap()
-            .secret_key()
-            .clone()
-            .into(),
+        .secret_key()
+        .clone()
+        .into(),
         Network::Testnet,
         Arc::new(api_client),
     );
@@ -132,8 +132,7 @@ fn happy_path_buy_x_eth_for_btc() {
         .post(format!(
             "/ledger/trades/ETH-BTC/{}/buy-order-contract-deployed",
             uid
-        ))
-        .header(ContentType::JSON)
+        )).header(ContentType::JSON)
         .body(r#"{ "contract_address" : "0x00a329c0648769a73afac7f9381e08fb43dbea72" }"#);
 
     let response = request.dispatch();

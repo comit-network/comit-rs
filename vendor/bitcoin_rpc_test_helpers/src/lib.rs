@@ -34,13 +34,13 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         txid: &TransactionId,
         address: &Address,
     ) -> Option<UnspentTransactionOutput> {
-        let unspent =
-            self.list_unspent(
+        let unspent = self
+            .list_unspent(
                 TxOutConfirmations::AtLeast(1),
                 None,
                 Some(vec![address.clone().into()]),
             ).unwrap()
-                .unwrap();
+            .unwrap();
 
         unspent.into_iter().find(|utxo| utxo.txid == *txid)
     }

@@ -5,7 +5,7 @@ use web3::{
     api::BaseFilter,
     futures::{Future, Stream},
     transports::{EventLoopHandle, Http},
-    types::{BlockId, H256, Transaction as EthereumTransaction, TransactionId},
+    types::{BlockId, Transaction as EthereumTransaction, TransactionId, H256},
     Web3,
 };
 

@@ -42,7 +42,11 @@ impl<Buy: Ledger, Sell: Ledger> From<OfferResponseBody<Buy, Sell>> for OfferCrea
     }
 }
 
-#[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
+#[post(
+    "/trades/ETH-BTC/buy-offers",
+    format = "application/json",
+    data = "<offer_request_body>"
+)]
 pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
     event_store: State<Arc<InMemoryEventStore<TradeId>>>,
@@ -74,7 +78,9 @@ fn handle_buy_offer(
     let id = offer.uid.clone();
     let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer.clone());
 
-    event_store.add_event(id, event).map_err(Error::EventStore)?;
+    event_store
+        .add_event(id, event)
+        .map_err(Error::EventStore)?;
     Ok(offer)
 }
 
@@ -158,8 +164,7 @@ fn handle_buy_orders(
             alice_contract_time_lock: lock_duration.clone(),
             buy_amount: offer.buy_amount,
             sell_amount: offer.sell_amount,
-        })
-        .map_err(Error::ComitNode)?;
+        }).map_err(Error::ComitNode)?;
 
     let bob_success_pubkey_hash = PubkeyHash::from(order_response.bob_success_address.clone());
     let alice_refund_pubkey_hash = PubkeyHash::from(alice_refund_address);

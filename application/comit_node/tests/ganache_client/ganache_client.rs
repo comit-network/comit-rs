@@ -65,8 +65,7 @@ impl GanacheClient {
                 data: Some(compiled_contract.into()),
                 nonce: None,
                 condition: None,
-            })
-            .wait();
+            }).wait();
 
         let contract_tx_id = contract_tx_id.unwrap();
 
@@ -96,8 +95,7 @@ impl GanacheClient {
                 data: data,
                 nonce: None,
                 condition: None,
-            })
-            .wait()
+            }).wait()
             .unwrap();
 
         let receipt = self

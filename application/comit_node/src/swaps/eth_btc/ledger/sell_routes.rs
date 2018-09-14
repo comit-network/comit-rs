@@ -49,7 +49,8 @@ fn handle_post_orders_funding(
     bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
-    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken =
+        event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     //create new event
     let trade_funded = BobTradeFunded::<Bitcoin, Ethereum>::new(trade_id, htlc_identifier);
@@ -105,7 +106,8 @@ fn handle_post_revealed_secret(
 ) -> Result<(), Error> {
     let trade_funded =
         event_store.get_event::<BobTradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
-    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken =
+        event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,

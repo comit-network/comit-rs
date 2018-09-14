@@ -8,7 +8,7 @@ extern crate spectral;
 extern crate serde_derive;
 extern crate ethereum_support;
 
-use ethereum_support::web3::types::{Address, Bytes, H256, Transaction, U256};
+use ethereum_support::web3::types::{Address, Bytes, Transaction, H256, U256};
 use http::Uri;
 use ledger_query_service::{
     DefaultTransactionProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
@@ -33,7 +33,7 @@ fn can_access_query_resource_after_creation() {
         rocket::Config::development().unwrap(),
         link_factory,
     ).register_ethereum(query_repository, query_result_repository)
-        .build();
+    .build();
     let client = Client::new(server).unwrap();
 
     let response = client
@@ -69,7 +69,7 @@ fn given_created_query_when_deleted_is_no_longer_available() {
         rocket::Config::development().unwrap(),
         link_factory,
     ).register_ethereum(query_repository, query_result_repository)
-        .build();
+    .build();
     let client = Client::new(server).unwrap();
 
     let response = client
@@ -107,7 +107,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
         rocket::Config::development().unwrap(),
         link_factory,
     ).register_ethereum(query_repository, query_result_repository)
-        .build();
+    .build();
     let client = Client::new(server).unwrap();
 
     let response = client
@@ -162,7 +162,7 @@ fn should_reject_malformed_address() {
         rocket::Config::development().unwrap(),
         link_factory,
     ).register_ethereum(query_repository, query_result_repository)
-        .build();
+    .build();
     let client = Client::new(server).unwrap();
 
     let response = client

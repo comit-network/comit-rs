@@ -19,7 +19,11 @@ pub struct BitcoinQuery {
     to_address: Option<Address>,
 }
 
-#[post("/queries/bitcoin", format = "application/json", data = "<query>")]
+#[post(
+    "/queries/bitcoin",
+    format = "application/json",
+    data = "<query>"
+)]
 pub fn handle_new_bitcoin_query<'r>(
     query: Json<BitcoinQuery>,
     link_factory: State<LinkFactory>,
@@ -38,9 +42,10 @@ pub fn handle_new_bitcoin_query<'r>(
         Ok(id) => Ok(created(
             link_factory.create_link(format!("/queries/bitcoin/{}", id)),
         )),
-        Err(_) => Err(
-            HttpApiProblem::with_title_from_status(500).set_detail("Failed to create new query")
-        ),
+        Err(_) => {
+            Err(HttpApiProblem::with_title_from_status(500)
+                .set_detail("Failed to create new query"))
+        }
     }
 }
 

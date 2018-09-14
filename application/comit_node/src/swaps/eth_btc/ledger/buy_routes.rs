@@ -93,7 +93,8 @@ fn handle_post_orders_funding(
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
-    let order_taken = event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
+    let order_taken =
+        event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
         refund_address: order_taken.bob_refund_address,

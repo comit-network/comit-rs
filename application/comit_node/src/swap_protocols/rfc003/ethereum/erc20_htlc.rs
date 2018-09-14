@@ -95,18 +95,15 @@ impl Htlc for Erc20Htlc {
             .replace(
                 Self::CONTRACT_START_POSITION_PLACEHOLDER,
                 &header_length_as_hex,
-            )
-            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex)
+            ).replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(
                 Self::TRANSFER_TO_ADDRESS_PLACEHOLDER,
                 &htlc_contract_address,
-            )
-            .replace(
+            ).replace(
                 Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
                 &token_contract_address,
-            )
-            .replace(Self::AMOUNT_PLACEHOLDER, &amount);
+            ).replace(Self::AMOUNT_PLACEHOLDER, &amount);
 
         debug!("Final contract code: {}", &contract_code);
         debug!("Deploy header: {}", &deploy_header);

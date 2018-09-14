@@ -93,8 +93,7 @@ fn handle_unknown_frame_type() {
             alice
                 .send_with_newline(r#"{"type":"I_DONT_EXIST","id":10,"payload":{"type":"PING"}}"#)
                 .map_err(|_e| unreachable!()),
-        )
-        .and_then(|_| Ok(()))
+        ).and_then(|_| Ok(()))
         .or_else(|bob_error| Err(bob_error))
         .wait();
 
@@ -174,8 +173,7 @@ fn request_and_response_with_compact_string_headers() {
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
             "say_hello_to_world_compact_header_request.json"
-        ))
-        .and_then(|_| alice.receive())
+        )).and_then(|_| alice.receive())
         .wait();
 
     assert_that(&actual_response_from_bob)
@@ -221,8 +219,7 @@ fn can_parse_json_integer_value_in_header() {
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
             "say_hello_to_world_2_times_request.json"
-        ))
-        .and_then(|_| alice.receive())
+        )).and_then(|_| alice.receive())
         .wait();
 
     assert_that(&actual_response_from_bob)
@@ -263,8 +260,7 @@ fn unknown_mandatory_header_triggers_error_response() {
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
             "say_hello_with_unknown_mandatory_header.json"
-        ))
-        .and_then(|_| alice.receive())
+        )).and_then(|_| alice.receive())
         .wait();
 
     assert_that(&actual_response_from_bob)
@@ -295,8 +291,7 @@ fn handle_malformed_headers() {
     let actual_response_from_bob = alice
         .send_with_newline(include_json_line!(
             "say_hello_to_world_malformed_header_request.json"
-        ))
-        .and_then(|_| alice.receive())
+        )).and_then(|_| alice.receive())
         .wait();
 
     assert_that(&actual_response_from_bob)

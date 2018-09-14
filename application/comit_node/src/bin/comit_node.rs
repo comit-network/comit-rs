@@ -86,17 +86,17 @@ fn main() {
         nonce,
     );
 
-    let bob_refund_address = ethereum_support::Address::from_str(
-        var_or_exit("BOB_REFUND_ADDRESS").as_str(),
-    ).expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
+    let bob_refund_address =
+        ethereum_support::Address::from_str(var_or_exit("BOB_REFUND_ADDRESS").as_str())
+            .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
 
     let bob_success_private_key =
         PrivateKey::from_str(var_or_exit("BTC_BOB_SUCCESS_PRIVATE_KEY").as_str()).unwrap();
     let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
 
-    let btc_bob_redeem_address = bitcoin_support::Address::from_str(
-        var_or_exit("BTC_BOB_REDEEM_ADDRESS").as_str(),
-    ).expect("BTC Bob Redeem Address is Invalid");
+    let btc_bob_redeem_address =
+        bitcoin_support::Address::from_str(var_or_exit("BTC_BOB_REDEEM_ADDRESS").as_str())
+            .expect("BTC Bob Redeem Address is Invalid");
 
     let bitcoin_rpc_client = {
         let url = var_or_exit("BITCOIN_RPC_URL");
