@@ -13,7 +13,7 @@ lazy_static! {
         "00a329c0648769a73afac7f9381e08fb43dbea72".parse().unwrap();
 }
 
-const TOKEN_CONTRACT_CODE: &'static str = include_str!("standard_erc20_token_contract.asm.hex");
+const ERC20_TOKEN_CONTRACT_CODE: &'static str = include_str!("erc20_token_contract.asm.hex");
 
 const PARITY_DEV_PASSWORD: &str = "";
 
@@ -42,25 +42,7 @@ impl ParityClient {
             .unwrap();
     }
 
-    pub fn deploy_standard_erc20_token_contract(&self) -> Address {
-        self.deploy_contract(STANDARD_ERC20_TOKEN_CONTRACT_CODE)
-    }
-
-    pub fn deploy_non_standard_erc20_token_contract(&self) -> Address {
-        let address = self.deploy_contract(NON_STANDARD_ERC20_TOKEN_CONTRACT_CODE);
-
-        self.activate_trading_phase(address);
-
-        address
-    }
-
-    // This activates the trading phase of the PAY token contract!
-    // After this, we can call transferFrom
-    fn activate_trading_phase(&self, address: Address) {
-        self.send_data(address, Some(Bytes(hex::decode("293230b8").unwrap())));
-    }
-
-    fn deploy_contract(&self, code: &str) -> Address {
+    pub fn deploy_erc20_token_contract(&self) -> Address {
         let contract_tx_id = self
             .client
             .personal()
@@ -71,7 +53,9 @@ impl ParityClient {
                     gas: Some(U256::from(4_000_000u64)),
                     gas_price: None,
                     value: None,
-                    data: Some(Bytes(hex::decode(TOKEN_CONTRACT_CODE.trim()).unwrap())),
+                    data: Some(Bytes(
+                        hex::decode(ERC20_TOKEN_CONTRACT_CODE.trim()).unwrap(),
+                    )),
                     nonce: None,
                     condition: None,
                 },

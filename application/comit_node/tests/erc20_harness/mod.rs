@@ -19,15 +19,8 @@ use web3::{
     types::{Address, U256},
 };
 
-#[allow(dead_code)]
-pub enum TokenContractKind {
-    StandardErc20,
-    NonStandardErc20,
-}
-
 pub struct Erc20TestHarnessParams {
     pub alice_tokens: U256,
-    pub contract_kind: TokenContractKind,
     pub htlc_timeout: Duration,
     pub htlc_value: U256,
     pub htlc_secret: [u8; 32],
@@ -56,10 +49,7 @@ pub fn harness(
     let client = ParityClient::new(web3);
     client.give_eth_to(alice, EthereumQuantity::from_eth(1.0));
 
-    let token_contract = match params.contract_kind {
-        TokenContractKind::StandardErc20 => client.deploy_standard_erc20_token_contract(),
-        TokenContractKind::NonStandardErc20 => client.deploy_non_standard_erc20_token_contract(),
-    };
+    let token_contract = client.deploy_erc20_token_contract();
 
     client.mint_tokens(token_contract, params.alice_tokens, alice);
 

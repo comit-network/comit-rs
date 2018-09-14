@@ -43,7 +43,6 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferr
     let (alice, bob, htlc, token_contract, client, _handle, _container) =
         harness(Erc20TestHarnessParams {
             alice_tokens: U256::from(1000),
-            contract_kind: TokenContractKind::StandardErc20,
             htlc_timeout: HTLC_TIMEOUT,
             htlc_value: U256::from(400),
             htlc_secret: SECRET.clone(),
@@ -68,7 +67,6 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
     let (alice, bob, htlc, token_contract, client, _handle, _container) =
         harness(Erc20TestHarnessParams {
             alice_tokens: U256::from(1000),
-            contract_kind: TokenContractKind::StandardErc20,
             htlc_timeout: HTLC_TIMEOUT,
             htlc_value: U256::from(400),
             htlc_secret: SECRET.clone(),
@@ -95,7 +93,6 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
     let (alice, bob, htlc, token_contract, client, _handle, _container) =
         harness(Erc20TestHarnessParams {
             alice_tokens: U256::from(1000),
-            contract_kind: TokenContractKind::StandardErc20,
             htlc_timeout: HTLC_TIMEOUT,
             htlc_value: U256::from(400),
             htlc_secret: SECRET.clone(),
@@ -120,7 +117,6 @@ fn given_no_enough_tokens_token_balances_dont_change_and_contract_is_not_deploye
     let (alice, bob, htlc, token_contract, client, _handle, _container) =
         harness(Erc20TestHarnessParams {
             alice_tokens: U256::from(200),
-            contract_kind: TokenContractKind::StandardErc20,
             htlc_timeout: HTLC_TIMEOUT,
             htlc_value: U256::from(400),
             htlc_secret: SECRET.clone(),
