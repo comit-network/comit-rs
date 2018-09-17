@@ -1,11 +1,18 @@
+use hex;
 use public_key::PublicKey;
 use rand::Rng;
-use secp256k1::{self, Error, Message, RecoverableSignature, SecretKey, Signature};
+use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
     secret_key: SecretKey,
     public_key: PublicKey,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    Secp256k1(secp256k1::Error),
+    Hex(hex::FromHexError),
 }
 
 impl KeyPair {
@@ -18,7 +25,14 @@ impl KeyPair {
     }
 
     pub fn from_secret_key_slice(data: &[u8]) -> Result<KeyPair, Error> {
-        SecretKey::from_slice(&*super::SECP, data).map(|secret_key| secret_key.into())
+        SecretKey::from_slice(&*super::SECP, data)
+            .map(|secret_key| secret_key.into())
+            .map_err(Error::Secp256k1)
+    }
+
+    pub fn from_secret_key_hex(key: &str) -> Result<KeyPair, Error> {
+        let bytes = hex::decode(key).map_err(Error::Hex)?;
+        KeyPair::from_secret_key_slice(&bytes[..])
     }
 
     pub fn public_key(&self) -> &PublicKey {

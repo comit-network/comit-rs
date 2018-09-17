@@ -9,24 +9,32 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bitcoin_rpc_client;
 extern crate comit_node;
+extern crate common_types;
+extern crate env_logger;
 extern crate ethereum_wallet;
+extern crate ganache_rust_web3;
+extern crate hex;
 extern crate reqwest;
 extern crate serde_json;
+extern crate tc_trufflesuite_ganachecli;
+extern crate tc_web3_client;
+extern crate testcontainers;
 extern crate uuid;
 
-mod common;
+mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
 use comit_node::{
-    bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
-    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient, ethereum_service,
-    gas_price_service::StaticGasPriceService, rocket_factory::create_rocket_instance,
+    bitcoin_fee_service::StaticBitcoinFeeService,
+    comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
+    gas_price_service::StaticGasPriceService,
+    rocket_factory::create_rocket_instance,
+    swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
-use common::{mocks, OfferResponseBody};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
-use mocks::{BitcoinRpcClientMock, StaticEthereumApi};
+use mocks::{BitcoinRpcClientMock, OfferResponseBody, StaticEthereumApi};
 use rocket::{
     http::{ContentType, Status},
     local::Client,
@@ -71,7 +79,7 @@ fn create_rocket_client() -> Client {
 
     let rocket = create_rocket_instance(
         Arc::new(InMemoryEventStore::new()),
-        Arc::new(ethereum_service::EthereumService::new(
+        Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),
             Arc::new(StaticEthereumApi),

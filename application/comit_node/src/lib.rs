@@ -3,7 +3,6 @@
 #![cfg_attr(test, deny(warnings))]
 
 extern crate bitcoin_rpc_client;
-extern crate ganp;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -15,7 +14,6 @@ extern crate bitcoin_htlc;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
 extern crate common_types;
-extern crate ethereum_htlc;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate secp256k1_support;
@@ -25,17 +23,21 @@ extern crate uuid;
 extern crate log;
 extern crate event_store;
 extern crate futures;
+extern crate ganp;
+extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
 extern crate transport_protocol;
+extern crate web3;
+
+#[cfg(test)]
+extern crate spectral;
 
 pub mod bitcoin_fee_service;
-pub mod bitcoin_service;
 pub mod comit_node_api_client;
 pub mod comit_server;
-pub mod ethereum_service;
 pub mod gas_price_service;
-pub mod ledger_htlc_service;
 pub mod rocket_factory;
+pub mod swap_protocols;
 pub mod swaps;

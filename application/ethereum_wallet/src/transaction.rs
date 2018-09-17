@@ -1,4 +1,5 @@
 use ethereum_support::{Address, Bytes, H256, U256};
+use hex;
 use rlp::{Encodable, RlpStream};
 use tiny_keccak::keccak256;
 
@@ -145,6 +146,39 @@ impl UnsignedTransaction {
         }
     }
 
+    pub fn new_erc20_approval<
+        TokenContract: Into<Address>,
+        To: Into<Address>,
+        Amount: Into<U256>,
+        G: Into<U256>,
+        GP: Into<U256>,
+        N: Into<U256>,
+    >(
+        token_contract: TokenContract,
+        to: To,
+        amount: Amount,
+        gas: G,
+        gas_price: GP,
+        nonce: N,
+    ) -> Self {
+        let function_identifier = "095ea7b3";
+        let address = format!("000000000000000000000000{}", hex::encode(to.into()));
+        let amount = format!("{:0>64}", format!("{:x}", amount.into()));
+
+        let payload = format!("{}{}{}", function_identifier, address, amount);
+
+        let data = Bytes::from(hex::decode(payload).unwrap());
+
+        UnsignedTransaction {
+            nonce: nonce.into(),
+            gas_price: gas_price.into(),
+            gas: gas.into(),
+            to: Some(token_contract.into()),
+            value: U256::from(0),
+            data: Some(data.into()),
+        }
+    }
+
     pub(crate) fn hash(&self, chain_id: u8) -> H256 {
         let mut stream = RlpStream::new();
 
@@ -244,6 +278,24 @@ mod tests {
                 161, 44, 128, 172, 193, 117, 230, 52, 200, 119, 125, 10, 192, 190, 228, 153, 205,
                 209, 81, 123, 160, 70, 77, 10, 229,
             ]
+        );
+    }
+
+    #[test]
+    fn erc20_contract_allowance_should_have_correct_representation() {
+        let transaction = UnsignedTransaction::new_erc20_approval(
+            "03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c",
+            "96984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e",
+            1000,
+            0,
+            0,
+            0,
+        );
+
+        assert_eq!(transaction.data, Some(Bytes(hex::decode("095ea7b300000000000000000000000096984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e00000000000000000000000000000000000000000000000000000000000003e8").unwrap())));
+        assert_eq!(
+            transaction.to,
+            Some("03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into())
         );
     }
 }

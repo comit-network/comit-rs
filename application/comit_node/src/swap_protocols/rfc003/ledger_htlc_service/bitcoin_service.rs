@@ -5,37 +5,37 @@ use bitcoin_support::{self, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
 use ganp::ledger::{bitcoin::Bitcoin, Ledger};
-use ledger_htlc_service::{Error, LedgerHtlcService};
 use reqwest;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
+use swap_protocols::rfc003::ledger_htlc_service::{self, LedgerHtlcService};
 use swaps::common::TradeId;
 
-impl From<reqwest::Error> for Error {
+impl From<reqwest::Error> for ledger_htlc_service::Error {
     fn from(error: reqwest::Error) -> Self {
         error!("{:?}", error);
-        Error::NodeConnection
+        ledger_htlc_service::Error::NodeConnection
     }
 }
 
-impl From<bitcoin_rpc_client::RpcError> for Error {
+impl From<bitcoin_rpc_client::RpcError> for ledger_htlc_service::Error {
     fn from(error: bitcoin_rpc_client::RpcError) -> Self {
         error!("{:?}", error);
-        Error::NodeConnection
+        ledger_htlc_service::Error::NodeConnection
     }
 }
 
-impl From<bitcoin_htlc::UnlockingError> for Error {
+impl From<bitcoin_htlc::UnlockingError> for ledger_htlc_service::Error {
     fn from(error: bitcoin_htlc::UnlockingError) -> Self {
         error!("{:?}", error);
-        Error::Unlocking
+        ledger_htlc_service::Error::Unlocking
     }
 }
 
-impl From<bitcoin_fee_service::Error> for Error {
+impl From<bitcoin_fee_service::Error> for ledger_htlc_service::Error {
     fn from(error: bitcoin_fee_service::Error) -> Self {
         error!("{:?}", error);
-        Error::Internal
+        ledger_htlc_service::Error::Internal
     }
 }
 
@@ -46,23 +46,33 @@ pub struct BitcoinService {
     btc_bob_redeem_address: bitcoin_support::Address,
 }
 
-impl LedgerHtlcService<Bitcoin> for BitcoinService {
+use bitcoin_support::{Address, BitcoinQuantity, Blocks};
+
+pub struct BitcoinHtlcParams {
+    pub refund_address: Address,
+    pub success_address: Address,
+    pub time_lock: Blocks,
+    pub amount: BitcoinQuantity,
+    pub secret_hash: SecretHash,
+}
+
+impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
     fn deploy_htlc(
         &self,
-        refund_address: <Bitcoin as Ledger>::Address,
-        success_address: <Bitcoin as Ledger>::Address,
-        time_lock: <Bitcoin as Ledger>::LockDuration,
-        amount: <Bitcoin as Ledger>::Quantity,
-        secret: SecretHash,
-    ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
-        let htlc =
-            bitcoin_htlc::Htlc::new(success_address, refund_address, secret, time_lock.into());
+        htlc_params: BitcoinHtlcParams,
+    ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
+        let htlc = bitcoin_htlc::Htlc::new(
+            htlc_params.success_address,
+            htlc_params.refund_address,
+            htlc_params.secret_hash,
+            htlc_params.time_lock.into(),
+        );
 
         let htlc_address = htlc.compute_address(self.network);
 
         let tx_id = self
             .client
-            .send_to_address(&htlc_address.clone().into(), amount.bitcoin())??;
+            .send_to_address(&htlc_address.clone().into(), htlc_params.amount.bitcoin())??;
 
         Ok(tx_id)
     }
@@ -77,7 +87,7 @@ impl LedgerHtlcService<Bitcoin> for BitcoinService {
         htlc_identifier: <Bitcoin as Ledger>::HtlcId,
         sell_amount: <Bitcoin as Ledger>::Quantity,
         lock_time: <Bitcoin as Ledger>::LockDuration,
-    ) -> Result<<Bitcoin as Ledger>::TxId, Error> {
+    ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
         let bob_success_pubkey_hash: PubkeyHash = bob_success_address.into();
 
         let alice_refund_pubkey_hash: PubkeyHash = alice_refund_address.into();

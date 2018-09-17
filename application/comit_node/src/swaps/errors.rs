@@ -3,10 +3,10 @@ use bitcoin_rpc_client;
 use bitcoin_support;
 use comit_node_api_client::SwapRequestError;
 use event_store;
-use ledger_htlc_service;
 use reqwest;
 use rocket::response::status::BadRequest;
 use rustc_hex;
+use swap_protocols::rfc003::ledger_htlc_service;
 
 #[derive(Debug)] //TODO merge these errors into error
 pub enum Error {

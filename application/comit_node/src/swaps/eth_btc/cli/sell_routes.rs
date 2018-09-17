@@ -1,7 +1,6 @@
 use bitcoin_support::{self, BitcoinQuantity};
 use comit_node_api_client::{ApiClient, OrderRequestBody};
 use common_types::{seconds::Seconds, secret::Secret, TradingSymbol};
-use ethereum_htlc;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
@@ -9,6 +8,7 @@ use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::{Arc, Mutex};
+use swap_protocols::rfc003::ethereum::{ByteCode, EtherHtlc, Htlc};
 use swaps::{
     alice_events::{OfferCreated, OrderCreated, OrderTaken},
     common::TradeId,
@@ -31,7 +31,7 @@ pub struct RequestToFund {
     address_to_fund: ethereum_support::Address,
     btc_amount: BitcoinQuantity,
     eth_amount: EthereumQuantity,
-    data: ethereum_htlc::ByteCode,
+    data: ByteCode,
     gas: u64,
 }
 
@@ -163,7 +163,7 @@ fn handle_sell_orders(
         )
         .map_err(Error::ComitNode)?;
 
-    let htlc = ethereum_htlc::Htlc::new(
+    let htlc = EtherHtlc::new(
         lock_duration.into(),
         alice_refund_address,
         order_response.bob_success_address,

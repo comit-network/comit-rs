@@ -1,6 +1,5 @@
 extern crate bitcoin;
 extern crate bitcoin_rpc_client;
-extern crate common_types;
 extern crate crypto;
 #[macro_use]
 extern crate lazy_static;

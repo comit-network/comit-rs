@@ -16,6 +16,7 @@ serde = "1.0.66"
 serde_derive = "1.0.66"
 lazy_static = "1"
 log = "0.4.3"
+web3 = "0.4"
 uuid = { version = "0.6.5", features = ["serde", "v4"] }
 rocket = "=0.3.14"
 rocket_contrib = "=0.3.14"
@@ -26,7 +27,6 @@ bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 http-api-problem = { version = "0.7.0", features = ["with_rocket"] }
 serde_json = "1.0.22"
-ethereum_htlc = { path = "../ethereum_htlc" }
 ethereum_wallet = { path = "../ethereum_wallet" }
 ethereum_support = { path = "../../vendor/ethereum_support" }
 hex = "0.3.2"
@@ -39,6 +39,17 @@ ganp = { path = "../ganp" }
 transport_protocol = { path = "../../vendor/transport_protocol" }
 tokio = "0.1.8"
 futures = "0.1"
+chrono = "0.4.2"
 
 [dev-dependencies]
 env_logger = "0.5.11"
+tc_trufflesuite_ganachecli = { git = "https://github.com/coblox/testcontainers-rs" }
+tc_parity_parity = { git = "https://github.com/coblox/testcontainers-rs" }
+tc_web3_client = { path = "../../vendor/tc_web3_client" }
+testcontainers = { git = "https://github.com/coblox/testcontainers-rs" }
+ganache_rust_web3 = { path = "../../vendor/ganache_rust_web3" }
+spectral = "0.6"
+lazy_static = "1"
+
+[build-dependencies]
+regex = "1.0.0"
