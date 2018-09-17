@@ -172,6 +172,7 @@ version = "0.1.0"
 dependencies = [
  "bigdecimal 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin-bech32 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",

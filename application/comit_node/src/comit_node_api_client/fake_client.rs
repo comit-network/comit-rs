@@ -1,9 +1,11 @@
 use bitcoin_support;
-use comit_node_api_client::{client::OrderResponseBody, ApiClient, OrderRequestBody};
+use comit_node_api_client::{
+    client::{OrderResponseBody, SwapRequestError},
+    ApiClient, OrderRequestBody,
+};
 use common_types::{seconds::Seconds, TradingSymbol};
 use ethereum_support;
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
-use reqwest;
 use std::str::FromStr;
 use swaps::common::TradeId;
 
@@ -22,7 +24,7 @@ impl ApiClient for FakeApiClient {
         _symbol: TradingSymbol,
         _uid: TradeId,
         _trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
-    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
+    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
         let accept = OrderResponseBody {
             bob_refund_address: ethereum_support::Address::from_str(
                 "34b19d15e793883d840c563d7dbc8a6723465146",
@@ -41,7 +43,7 @@ impl ApiClient for FakeApiClient {
         _symbol: TradingSymbol,
         _uid: TradeId,
         _trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
-    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
+    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
         let accept = OrderResponseBody {
             bob_refund_address: bitcoin_support::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",

@@ -24,12 +24,9 @@ extern crate uuid;
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use comit_node::{
-    bitcoin_fee_service::StaticBitcoinFeeService,
-    bitcoin_service::BitcoinService,
-    comit_node_api_client::{ComitNodeUrl, DefaultApiClient as ComitNodeClient},
-    comit_server::ComitServer,
-    ethereum_service::EthereumService,
-    gas_price_service::StaticGasPriceService,
+    bitcoin_fee_service::StaticBitcoinFeeService, bitcoin_service::BitcoinService,
+    comit_node_api_client::DefaultApiClient as ComitNodeClient, comit_server::ComitServer,
+    ethereum_service::EthereumService, gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
 };
 use ethereum_support::*;
@@ -37,12 +34,7 @@ use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
-use std::{
-    env::var,
-    net::{SocketAddr, ToSocketAddrs},
-    str::FromStr,
-    sync::Arc,
-};
+use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
@@ -50,6 +42,7 @@ fn main() {
 
     let event_store = Arc::new(InMemoryEventStore::new());
     let rocket_event_store = event_store.clone();
+    let comit_server_event_store = event_store.clone();
 
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 
@@ -152,29 +145,41 @@ fn main() {
         btc_bob_redeem_address.clone(),
     );
 
-    let comit_node_api_url = ComitNodeUrl(var("COMIT_NODE_URL").unwrap());
-    let ganp_host_addr = var_or_exit("GANP_HOST_ADDR");
-    let ganp_socket_addr: SocketAddr = ganp_host_addr.parse().unwrap();
+    let ganp_host_addr = var_or_exit("COMIT_NODE_SOCKET_ADDR");
+    let comit_node_socket_addr: SocketAddr = ganp_host_addr.parse().unwrap();
+    let comit_listen_port = var_or_exit("COMIT_PORT");
 
-    let ganp_list_port = var_or_exit("GANP_PORT");
+    {
+        let bob_refund_address = bob_refund_address.clone();
+        let bob_success_keypair = bob_success_keypair.clone();
+        let network = network.clone();
 
-    std::thread::spawn(move || {
-        create_rocket_instance(
-            event_store,
-            Arc::new(ethereum_service),
-            Arc::new(bitcoin_service),
-            bob_refund_address,
-            bob_success_keypair,
-            network,
-            Arc::new(ComitNodeClient::new(comit_node_api_url, ganp_socket_addr)),
-        ).launch();
-    });
+        std::thread::spawn(move || {
+            create_rocket_instance(
+                rocket_event_store,
+                Arc::new(ethereum_service),
+                Arc::new(bitcoin_service),
+                bob_refund_address,
+                bob_success_keypair,
+                network,
+                Arc::new(ComitNodeClient::new(comit_node_socket_addr)),
+            ).launch();
+        });
+    }
 
-    let server = ComitServer::listen(format!("0.0.0.0:{}", ganp_list_port).parse().unwrap());
+    let server = ComitServer::new(
+        comit_server_event_store,
+        bob_refund_address,
+        bob_success_keypair,
+    );
 
-    tokio::run(server.map_err(|e| {
-        error!("ComitServer shutdown: {:?}", e);
-    }));
+    tokio::run(
+        server
+            .listen(format!("0.0.0.0:{}", comit_listen_port).parse().unwrap())
+            .map_err(|e| {
+                error!("ComitServer shutdown: {:?}", e);
+            }),
+    );
 }
 
 fn var_or_exit(name: &str) -> String {

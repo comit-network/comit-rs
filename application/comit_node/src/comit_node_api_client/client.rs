@@ -4,12 +4,18 @@ use ganp::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     rfc003, swap,
 };
-use reqwest;
-use serde_json::{self, Value as JsonValue};
-use std::{collections::HashMap, net::SocketAddr, sync::Mutex};
+use serde_json;
+use std::{io, net::SocketAddr};
 use swaps::common::TradeId;
-use tokio::{self, net::TcpStream, runtime::Runtime};
-use transport_protocol::{client::Client, config::Config, connection::Connection, json, Status};
+use tokio::{net::TcpStream, runtime::Runtime};
+use transport_protocol::{
+    client::Client,
+    config::Config,
+    connection::Connection,
+    json,
+    shutdown_handle::{self, ShutdownHandle},
+    Status,
+};
 
 #[derive(Clone)]
 pub struct ComitNodeUrl(pub String);
@@ -78,25 +84,24 @@ pub trait ApiClient: Send + Sync {
         symbol: TradingSymbol,
         uid: TradeId,
         trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
-    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, reqwest::Error>;
+    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError>;
     fn create_sell_order(
         &self,
         symbol: TradingSymbol,
         uid: TradeId,
         trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
-    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, reqwest::Error>;
+    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError>;
 }
 
 pub struct DefaultApiClient {
-    client: reqwest::Client,
-    url: ComitNodeUrl,
-    ganp_socket_addr: SocketAddr,
+    comit_node_socket_addr: SocketAddr,
 }
 
 #[derive(Debug)]
-enum SwapRequestError {
+pub enum SwapRequestError {
     Rejected,
-    FailedToConnect,
+    FailedToConnect(io::Error),
+    ReceiverError,
     Json(serde_json::Error),
 }
 
@@ -107,55 +112,61 @@ impl From<serde_json::Error> for SwapRequestError {
 }
 
 impl DefaultApiClient {
-    pub fn new(url: ComitNodeUrl, ganp_socket_addr: SocketAddr) -> Self {
+    pub fn new(comit_node_socket_addr: SocketAddr) -> Self {
         DefaultApiClient {
-            url,
-            client: reqwest::Client::new(),
-            ganp_socket_addr,
+            comit_node_socket_addr,
         }
+    }
+
+    fn connect_to_comit_node(
+        &self,
+        runtime: &mut Runtime,
+    ) -> (Result<
+        (
+            Client<json::Frame, json::Request, json::Response>,
+            ShutdownHandle,
+        ),
+        io::Error,
+    >) {
+        info!(
+            "Connecting to {} to make request",
+            &self.comit_node_socket_addr
+        );
+        let socket = TcpStream::connect(&self.comit_node_socket_addr).wait()?;
+        let codec = json::JsonFrameCodec::default();
+        let config: Config<json::Request, json::Response> = Config::new();
+        let connection = Connection::new(config, codec, socket);
+
+        let (connection_future, client) = connection.start::<json::JsonFrameHandler>();
+        let (connection_future, shutdown_handle) = shutdown_handle::new(connection_future);
+        let socket_addr = self.comit_node_socket_addr.clone();
+
+        runtime.spawn(connection_future.map_err(move |e| {
+            error!(
+                "Connection to {:?} prematurely closed: {:?}",
+                socket_addr, e
+            )
+        }));
+
+        Ok((client, shutdown_handle))
     }
 
     fn send_swap_request<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>>(
         &self,
-        message: rfc003::Request<SL, TL, SA, TA>,
+        request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Result<rfc003::AcceptResponse<SL, TL>, SwapRequestError> {
-        debug!("connecting to {} to make request", &self.ganp_socket_addr);
-        let socket = match TcpStream::connect(&self.ganp_socket_addr).wait() {
-            Ok(socket) => socket,
-            Err(e) => return Err(SwapRequestError::FailedToConnect),
-        };
+        let mut runtime = Runtime::new().expect("creating a tokio runtime should never fail");
 
-        let codec = json::JsonFrameCodec::default();
-        let config: Config<json::Request, json::Response> = Config::new();
-        let connection = Connection::new(config, codec, socket);
-        let (headers, body) = message.into_headers_and_body();
+        let (mut client, _shutdown_handle) = self
+            .connect_to_comit_node(&mut runtime)
+            .map_err(SwapRequestError::FailedToConnect)?;
 
-        let headers_json = serde_json::to_value(headers).unwrap();
-        let mut headers_hashmap = HashMap::new();
+        let (headers, body) = request.into_headers_and_body();
+        let request = json::Request::from_headers_and_body("SWAP".into(), headers, body)?;
 
-        match headers_json {
-            JsonValue::Object(map) => {
-                for (k, v) in map {
-                    headers_hashmap.insert(k, v);
-                }
-            }
-            _ => unreachable!(),
-        }
-
-        let request = json::Request::new(
-            "SWAP".into(),
-            headers_hashmap,
-            serde_json::to_value(body).unwrap(),
-        );
-
-        let (connection_future, mut client) = connection.start::<json::JsonFrameHandler>();
-        let socket_addr = self.ganp_socket_addr.clone();
-
-        let mut runtime = Runtime::new().unwrap();
-
-        runtime.spawn(
-            connection_future
-                .map_err(move |e| error!("connection to {:?} closed: {:?}", socket_addr, e)),
+        debug!(
+            "Making swap request to {}: {:?}",
+            &self.comit_node_socket_addr, request
         );
 
         let response = match client.send_request(request).wait() {
@@ -165,15 +176,25 @@ impl DefaultApiClient {
 
         match response.status() {
             Status::OK(_) => {
-                info!("GOT RESPONSE: {:?}", response);
+                info!(
+                    "{} accepted swap request: {:?}",
+                    &self.comit_node_socket_addr, response
+                );
                 Ok(serde_json::from_value(response.body().clone())?)
             }
-            _ => {
-                error!(
-                    "{} rejected the swap request with: {:?}",
-                    &self.ganp_socket_addr, response
+            Status::SE(_) => {
+                info!(
+                    "{} rejected swap request: {:?}",
+                    &self.comit_node_socket_addr, response
                 );
                 Err(SwapRequestError::Rejected)
+            }
+            Status::RE(_) => {
+                error!(
+                    "{} rejected swap request because of an interanl error: {:?}",
+                    &self.comit_node_socket_addr, response
+                );
+                Err(SwapRequestError::ReceiverError)
             }
         }
     }
@@ -182,39 +203,21 @@ impl DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn create_buy_order(
         &self,
-        symbol: TradingSymbol,
-        uid: TradeId,
+        _symbol: TradingSymbol,
+        _uid: TradeId,
         trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
-    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, reqwest::Error> {
-        match self.send_swap_request(trade_request.clone().into()) {
-            Ok(rfc_accept) => Ok(rfc_accept.into()),
-            Err(e) => {
-                match e {
-                    SwapRequestError::FailedToConnect => {
-                        error!("Failed to connect to: {}", &self.ganp_socket_addr)
-                    }
-                    e => error!("something bad: {:?}", e),
-                }
-                panic!("request failed");
-            }
-        }
-        // self.client
-        //     .post(format!("{}/trades/{}/{}/buy-orders", self.url.0, symbol, uid).as_str())
-        //     .json(trade_request)
-        //     .send()
-        //     .and_then(|mut res| res.json::<OrderResponseBody<Ethereum, Bitcoin>>())
+    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
+        self.send_swap_request(trade_request.clone().into())
+            .map(|x| x.into())
     }
 
     fn create_sell_order(
         &self,
-        symbol: TradingSymbol,
-        uid: TradeId,
+        _symbol: TradingSymbol,
+        _uid: TradeId,
         trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
-    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, reqwest::Error> {
-        self.client
-            .post(format!("{}/trades/{}/{}/sell-orders", self.url.0, symbol, uid).as_str())
-            .json(trade_request)
-            .send()
-            .and_then(|mut res| res.json::<OrderResponseBody<Bitcoin, Ethereum>>())
+    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
+        self.send_swap_request(trade_request.clone().into())
+            .map(|x| x.into())
     }
 }
