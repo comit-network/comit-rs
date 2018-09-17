@@ -1,5 +1,5 @@
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{Address, BitcoinQuantity, Blocks, PubkeyHash};
+use bitcoin_support::{Address, BitcoinQuantity, Blocks, Network, PubkeyHash};
 use ledger::Ledger;
 use secp256k1_support::PublicKey;
 use swap;
@@ -30,5 +30,11 @@ impl Ledger for Bitcoin {
 impl Into<swap::Ledger> for Bitcoin {
     fn into(self) -> swap::Ledger {
         swap::Ledger::Bitcoin
+    }
+}
+
+impl Bitcoin {
+    pub fn network(&self) -> Network {
+        Network::Regtest
     }
 }
