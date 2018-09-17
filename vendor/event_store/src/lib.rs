@@ -1,8 +1,9 @@
 use std::{
     any::{Any, TypeId},
     borrow::Borrow,
-    collections::HashMap,
+    collections::{hash_map::RandomState, HashMap, HashSet},
     hash::Hash,
+    iter::FromIterator,
     sync::Mutex,
 };
 
@@ -30,7 +31,7 @@ pub struct InMemoryEventStore<K: Hash + Eq> {
     events: Mutex<HashMap<(TypeId, K), Box<Any + Send>>>,
 }
 
-impl<K: Hash + Eq> InMemoryEventStore<K> {
+impl<K: Hash + Eq + Clone> InMemoryEventStore<K> {
     pub fn new() -> Self {
         InMemoryEventStore {
             events: Mutex::new(HashMap::new()),
@@ -51,6 +52,12 @@ impl<K: Hash + Eq> InMemoryEventStore<K> {
         let value = Box::new(event);
 
         events.insert(key, value);
+    }
+
+    pub fn keys(&self) -> impl Iterator<Item = K> {
+        let events = self.events.lock().unwrap();
+        // get all the unique ids
+        HashSet::<K, RandomState>::from_iter(events.keys().map(|e| e.1.clone())).into_iter()
     }
 
     fn is_initial_event<E: Event>() -> bool {
