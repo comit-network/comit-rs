@@ -129,6 +129,10 @@ impl ParityClient {
         U256::from(result.0.as_slice())
     }
 
+    pub fn eth_balance_of(&self, address: Address) -> U256 {
+        self.client.eth().balance(address, None).wait().unwrap()
+    }
+
     pub fn send_data(&self, to: Address, data: Option<Bytes>) -> U256 {
         let result_tx = self
             .client
