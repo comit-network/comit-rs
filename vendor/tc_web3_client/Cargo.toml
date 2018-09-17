@@ -11,4 +11,4 @@ authors = [
 [dependencies]
 testcontainers = { git = "https://github.com/coblox/testcontainers-rs" }
 tc_trufflesuite_ganachecli = { git = "https://github.com/coblox/testcontainers-rs" }
-web3 = { git = "https://github.com/tomusdrw/rust-web3" }
+web3 = "0.4"

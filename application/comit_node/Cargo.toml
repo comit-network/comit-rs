@@ -16,7 +16,7 @@ serde = "1.0.66"
 serde_derive = "1.0.66"
 lazy_static = "1"
 log = "0.4.3"
-web3 = { git = "https://github.com/tomusdrw/rust-web3" }
+web3 = "0.4"
 uuid = { version = "0.6.5", features = ["serde", "v4"] }
 rocket = "=0.3.14"
 rocket_contrib = "=0.3.14"
