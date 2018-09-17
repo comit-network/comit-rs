@@ -30,7 +30,18 @@ fn main() {
     );
     let eth_address = public_key.to_ethereum_address();
     println!("eth_address: {:?}", eth_address);
-    let btc_address_mainnet = public_key.to_p2wpkh_address(Network::Bitcoin);
-    println!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
-    println!("pubkey_hash: {:?}", PubkeyHash::from(btc_address_mainnet));
+    {
+        let btc_address_mainnet = public_key.to_p2wpkh_address(Network::Bitcoin);
+        println!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
+    }
+
+    {
+        let btc_address_testnet = public_key.to_p2wpkh_address(Network::Testnet);
+        println!("btc_address_p2wpkh_testnet: {:?}", btc_address_testnet);
+    }
+    {
+        let btc_address_regtest = public_key.to_p2wpkh_address(Network::Regtest);
+        println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
+    }
+    println!("pubkey_hash: {:?}", PubkeyHash::from(public_key.clone()));
 }
