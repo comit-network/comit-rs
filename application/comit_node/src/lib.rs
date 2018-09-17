@@ -36,11 +36,11 @@ extern crate env_logger;
 extern crate spectral;
 
 pub mod bitcoin_fee_service;
+pub mod bitcoin_payment_future;
 pub mod comit_node_api_client;
 pub mod comit_server;
 pub mod future_template;
 pub mod gas_price_service;
-pub mod jobs;
 pub mod ledger_query_service;
 pub mod rocket_factory;
 pub mod swap_protocols;
