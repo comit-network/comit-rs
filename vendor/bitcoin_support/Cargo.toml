@@ -17,6 +17,7 @@ lazy_static = "1"
 serde = "1.0.64"
 serde_derive = "1"
 hex = "0.3.2"
+bitcoin-bech32 = "0.8"
 
 [dev-dependencies]
 

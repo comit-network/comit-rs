@@ -3,6 +3,7 @@ use bitcoin::{
     blockdata::script,
     util::address::{Address as BitcoinAddress, Payload},
 };
+use bitcoin_bech32::{self, WitnessProgram};
 use bitcoin_rpc_client;
 use pubkey::PubkeyHash;
 use secp256k1_support::PublicKey;
@@ -68,10 +69,19 @@ impl From<Address> for BitcoinAddress {
     }
 }
 
+//FIXME: remove this from implementation that stupidly assumes Regtest
+// as the network. Can be removed when we remove Address everwhere and
+// just use pubkey hashes (remove test below too).
 impl From<PubkeyHash> for Address {
     fn from(pubkeyhash: PubkeyHash) -> Self {
         BitcoinAddress {
-            payload: Payload::PubkeyHash(pubkeyhash.into()),
+            payload: Payload::WitnessProgram(
+                WitnessProgram::new(
+                    bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
+                    pubkeyhash.as_ref().to_vec(),
+                    bitcoin_bech32::constants::Network::Regtest,
+                ).expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
+            ),
             network: Network::Regtest,
         }.into()
     }
@@ -154,5 +164,22 @@ impl fmt::Display for Error {
         match self {
             &Error::BitcoinError(_) => write!(f, "address is not in bitcoin format"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use hex::FromHex;
+
+    #[test]
+    fn pubkeyhash_to_address() {
+        let pubkey_hash = PubkeyHash::from_hex("9a5b5cc47ed3ff2f65295c3563d9cb8f8db5e400").unwrap();
+        let address: Address = pubkey_hash.into();
+        assert_eq!(
+            address,
+            Address::from_str("bcrt1qnfd4e3r760lj7effts6k8kwt37xmteqq58q6ad").unwrap()
+        );
     }
 }

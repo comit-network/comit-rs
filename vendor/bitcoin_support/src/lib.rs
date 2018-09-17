@@ -1,6 +1,7 @@
 #![feature(const_fn)]
 extern crate bigdecimal;
 extern crate bitcoin;
+extern crate bitcoin_bech32;
 extern crate bitcoin_rpc_client;
 extern crate hex;
 extern crate secp256k1_support;
