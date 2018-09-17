@@ -48,7 +48,8 @@ use std::{
 fn main() {
     logging::set_up_logging();
 
-    let event_store = InMemoryEventStore::new();
+    let event_store = Arc::new(InMemoryEventStore::new());
+    let rocket_event_store = event_store.clone();
 
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 

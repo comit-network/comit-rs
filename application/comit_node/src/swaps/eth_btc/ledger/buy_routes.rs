@@ -32,7 +32,7 @@ pub struct AliceContractDeployedRequestBody {
 pub fn post_contract_deployed(
     trade_id: TradeId,
     contract_deployed_request_body: Json<AliceContractDeployedRequestBody>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_contract_deployed(
         event_store.inner(),
@@ -44,7 +44,7 @@ pub fn post_contract_deployed(
 }
 
 fn handle_post_contract_deployed(
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     uid: TradeId,
     address: ethereum_support::Address,
 ) -> Result<(), Error> {
@@ -64,7 +64,7 @@ fn handle_post_contract_deployed(
 pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<bitcoin::HtlcId>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     ethereum_service: State<Arc<LedgerHtlcService<Ethereum>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
@@ -79,7 +79,7 @@ pub fn post_orders_funding(
 fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: bitcoin::HtlcId,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     ethereum_service: &Arc<LedgerHtlcService<Ethereum>>,
 ) -> Result<(), Error> {
     let trade_funded: BobTradeFunded<Ethereum, Bitcoin> =
@@ -117,7 +117,7 @@ pub struct RedeemBTCNotificationBody {
 )]
 pub fn post_revealed_secret(
     redeem_btc_notification_body: Json<RedeemBTCNotificationBody>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     trade_id: TradeId,
     bitcoin_htlc_service: State<Arc<LedgerHtlcService<Bitcoin>>>,
 ) -> Result<(), BadRequest<String>> {
@@ -132,7 +132,7 @@ pub fn post_revealed_secret(
 
 fn handle_post_revealed_secret(
     redeem_btc_notification_body: RedeemBTCNotificationBody,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
     bitcoin_htlc_service: &Arc<LedgerHtlcService<Bitcoin>>,
 ) -> Result<(), Error> {

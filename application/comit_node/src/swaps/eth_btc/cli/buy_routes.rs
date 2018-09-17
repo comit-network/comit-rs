@@ -45,7 +45,7 @@ impl<Buy: Ledger, Sell: Ledger> From<OfferResponseBody<Buy, Sell>> for OfferCrea
 #[post("/trades/ETH-BTC/buy-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_buy_offers(
     offer_request_body: Json<BuyOfferRequestBody>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
 ) -> Result<Json<OfferResponseBody<Ethereum, Bitcoin>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_BTC;
 
@@ -55,7 +55,7 @@ pub fn post_buy_offers(
 }
 
 fn handle_buy_offer(
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     offer_request_body: BuyOfferRequestBody,
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, Error> {
@@ -103,7 +103,7 @@ pub fn post_buy_orders(
     buy_order_request_body: Json<BuyOrderRequestBody>,
     client: State<Arc<ApiClient>>,
     network: State<Network>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
     let request_to_fund = handle_buy_orders(
@@ -120,7 +120,7 @@ pub fn post_buy_orders(
 
 fn handle_buy_orders(
     client: &Arc<ApiClient>,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     rng: &Mutex<OsRng>,
     network: &Network,
     trade_id: TradeId,
@@ -205,7 +205,7 @@ pub struct RedeemDetails {
 #[get("/trades/ETH-BTC/<trade_id>/redeem-orders")]
 pub fn get_redeem_orders(
     trade_id: TradeId,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
 ) -> Result<Json<RedeemDetails>, BadRequest<String>> {
     let details = handle_get_redeem_orders(event_store.inner(), trade_id)?;
 
@@ -213,7 +213,7 @@ pub fn get_redeem_orders(
 }
 
 fn handle_get_redeem_orders(
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
 ) -> Result<RedeemDetails, Error> {
     let address = event_store
