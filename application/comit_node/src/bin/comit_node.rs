@@ -150,8 +150,11 @@ fn main() {
         btc_bob_redeem_address.clone(),
     );
 
-    let ganp_host_addr = var_or_exit("COMIT_NODE_SOCKET_ADDR");
-    let comit_node_socket_addr: SocketAddr = ganp_host_addr.parse().unwrap();
+    let comit_node_socket_addr = {
+        let socket_addr = var_or_exit("COMIT_NODE_SOCKET_ADDR");
+        SocketAddr::from_str(&socket_addr).unwrap()
+    };
+
     let comit_listen_port = var_or_exit("COMIT_PORT");
 
     {
