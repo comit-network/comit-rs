@@ -17,9 +17,6 @@ use transport_protocol::{
     Status,
 };
 
-#[derive(Clone)]
-pub struct ComitNodeUrl(pub String);
-
 #[derive(Serialize, Deserialize)]
 struct OfferRequestBody {
     amount: f64,
