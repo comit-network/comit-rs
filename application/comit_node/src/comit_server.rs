@@ -33,20 +33,16 @@ impl ComitServer {
         }
     }
 
-    pub fn listen(&self, addr: SocketAddr) -> impl Future<Item = (), Error = io::Error> {
+    pub fn listen(self, addr: SocketAddr) -> impl Future<Item = (), Error = io::Error> {
         info!("ComitServer listening at {:?}", addr);
         let socket = TcpListener::bind(&addr).unwrap();
-
-        let my_refund_address = self.my_refund_address.clone();
-        let my_success_keypair = self.my_success_keypair.clone();
-        let event_store = self.event_store.clone();
 
         socket.incoming().for_each(move |connection| {
             let codec = json::JsonFrameCodec::default();
             let swap_handler = MySwapHandler::new(
-                my_refund_address.clone(),
-                my_success_keypair.clone(),
-                event_store.clone(),
+                self.my_refund_address.clone(),
+                self.my_success_keypair.clone(),
+                self.event_store.clone(),
             );
             let config = ganp::json_config(swap_handler);
             let connection = Connection::new(config, codec, connection);
