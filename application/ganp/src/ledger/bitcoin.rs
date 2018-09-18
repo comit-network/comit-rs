@@ -27,8 +27,8 @@ impl Ledger for Bitcoin {
     }
 }
 
-impl Into<swap::Ledger> for Bitcoin {
-    fn into(self) -> swap::Ledger {
+impl From<Bitcoin> for swap::Ledger {
+    fn from(_: Bitcoin) -> Self {
         swap::Ledger::Bitcoin
     }
 }

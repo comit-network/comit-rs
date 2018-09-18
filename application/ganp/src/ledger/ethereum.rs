@@ -21,8 +21,8 @@ impl Ledger for Ethereum {
     }
 }
 
-impl Into<swap::Ledger> for Ethereum {
-    fn into(self) -> swap::Ledger {
+impl From<Ethereum> for swap::Ledger {
+    fn from(_: Ethereum) -> Self {
         swap::Ledger::Ethereum
     }
 }
