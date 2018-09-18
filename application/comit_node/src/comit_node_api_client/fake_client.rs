@@ -3,11 +3,10 @@ use comit_node_api_client::{
     client::{OrderResponseBody, SwapRequestError},
     ApiClient, OrderRequestBody,
 };
-use common_types::{seconds::Seconds, TradingSymbol};
+use common_types::seconds::Seconds;
 use ethereum_support;
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use std::str::FromStr;
-use swaps::common::TradeId;
 
 #[allow(dead_code)]
 pub struct FakeApiClient;
@@ -21,8 +20,6 @@ impl FakeApiClient {
 impl ApiClient for FakeApiClient {
     fn create_buy_order(
         &self,
-        _symbol: TradingSymbol,
-        _uid: TradeId,
         _trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
     ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
         let accept = OrderResponseBody {
@@ -40,8 +37,6 @@ impl ApiClient for FakeApiClient {
 
     fn create_sell_order(
         &self,
-        _symbol: TradingSymbol,
-        _uid: TradeId,
         _trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
     ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
         let accept = OrderResponseBody {

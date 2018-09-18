@@ -78,14 +78,10 @@ impl<SL: Ledger, TL: Ledger> From<rfc003::AcceptResponse<SL, TL>> for OrderRespo
 pub trait ApiClient: Send + Sync {
     fn create_buy_order(
         &self,
-        symbol: TradingSymbol,
-        uid: TradeId,
         trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
     ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError>;
     fn create_sell_order(
         &self,
-        symbol: TradingSymbol,
-        uid: TradeId,
         trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
     ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError>;
 }
@@ -200,8 +196,6 @@ impl DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn create_buy_order(
         &self,
-        _symbol: TradingSymbol,
-        _uid: TradeId,
         trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
     ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
         self.send_swap_request(trade_request.clone().into())
@@ -210,8 +204,6 @@ impl ApiClient for DefaultApiClient {
 
     fn create_sell_order(
         &self,
-        _symbol: TradingSymbol,
-        _uid: TradeId,
         trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
     ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
         self.send_swap_request(trade_request.clone().into())

@@ -149,18 +149,14 @@ fn handle_sell_orders(
     event_store.add_event(trade_id, order_created_event.clone())?;
 
     let order_response = client
-        .create_sell_order(
-            offer.symbol,
-            trade_id,
-            &OrderRequestBody {
-                contract_secret_lock: secret.hash(),
-                alice_refund_address: alice_refund_address,
-                alice_success_address: alice_success_address,
-                alice_contract_time_lock: lock_duration,
-                buy_amount: offer.buy_amount,
-                sell_amount: offer.sell_amount,
-            },
-        )
+        .create_sell_order(&OrderRequestBody {
+            contract_secret_lock: secret.hash(),
+            alice_refund_address: alice_refund_address,
+            alice_success_address: alice_success_address,
+            alice_contract_time_lock: lock_duration,
+            buy_amount: offer.buy_amount,
+            sell_amount: offer.sell_amount,
+        })
         .map_err(Error::ComitNode)?;
 
     let htlc = EtherHtlc::new(

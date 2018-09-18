@@ -151,18 +151,14 @@ fn handle_buy_orders(
     event_store.add_event(trade_id, order_created_event.clone())?;
 
     let order_response = client
-        .create_buy_order(
-            offer.symbol,
-            trade_id,
-            &OrderRequestBody {
-                contract_secret_lock: secret.hash(),
-                alice_refund_address: alice_refund_address.clone(),
-                alice_success_address: alice_success_address.clone(),
-                alice_contract_time_lock: lock_duration.clone(),
-                buy_amount: offer.buy_amount,
-                sell_amount: offer.sell_amount,
-            },
-        )
+        .create_buy_order(&OrderRequestBody {
+            contract_secret_lock: secret.hash(),
+            alice_refund_address: alice_refund_address.clone(),
+            alice_success_address: alice_success_address.clone(),
+            alice_contract_time_lock: lock_duration.clone(),
+            buy_amount: offer.buy_amount,
+            sell_amount: offer.sell_amount,
+        })
         .map_err(Error::ComitNode)?;
 
     let bob_success_pubkey_hash = PubkeyHash::from(order_response.bob_success_address.clone());
