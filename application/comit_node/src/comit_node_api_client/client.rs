@@ -9,7 +9,7 @@ use std::{io, net::SocketAddr};
 use swaps::common::TradeId;
 use tokio::{net::TcpStream, runtime::Runtime};
 use transport_protocol::{
-    client::Client,
+    client::{self, Client},
     config::Config,
     connection::Connection,
     json,
@@ -86,22 +86,30 @@ pub trait ApiClient: Send + Sync {
     ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError>;
 }
 
-pub struct DefaultApiClient {
-    comit_node_socket_addr: SocketAddr,
-}
-
 #[derive(Debug)]
 pub enum SwapRequestError {
+    /// The other node received our request but rejected it
     Rejected,
+    /// The connection failed to open
     FailedToConnect(io::Error),
+    /// The other node had an internal error while processing our request
     ReceiverError,
-    Json(serde_json::Error),
+    /// A JSON error occurred during serialization of request
+    JsonSer(serde_json::Error),
+    /// A JSON error occurred during deserialization of response
+    JsonDe(serde_json::Error),
+    /// The transport layer had a problem sending the frame or receiving a response frame
+    ClientError(client::Error<json::Frame>),
 }
 
-impl From<serde_json::Error> for SwapRequestError {
-    fn from(e: serde_json::Error) -> Self {
-        SwapRequestError::Json(e)
+impl From<client::Error<json::Frame>> for SwapRequestError {
+    fn from(e: client::Error<json::Frame>) -> Self {
+        SwapRequestError::ClientError(e)
     }
+}
+
+pub struct DefaultApiClient {
+    comit_node_socket_addr: SocketAddr,
 }
 
 impl DefaultApiClient {
@@ -155,17 +163,15 @@ impl DefaultApiClient {
             .map_err(SwapRequestError::FailedToConnect)?;
 
         let (headers, body) = request.into_headers_and_body();
-        let request = json::Request::from_headers_and_body("SWAP".into(), headers, body)?;
+        let request = json::Request::from_headers_and_body("SWAP".into(), headers, body)
+            .map_err(SwapRequestError::JsonSer)?;
 
         debug!(
             "Making swap request to {}: {:?}",
             &self.comit_node_socket_addr, request
         );
 
-        let response = match client.send_request(request).wait() {
-            Ok(response) => response,
-            Err(e) => panic!("request failed!: {:?}", e),
-        };
+        let response = client.send_request(request).wait()?;
 
         match response.status() {
             Status::OK(_) => {
@@ -173,7 +179,8 @@ impl DefaultApiClient {
                     "{} accepted swap request: {:?}",
                     &self.comit_node_socket_addr, response
                 );
-                Ok(serde_json::from_value(response.body().clone())?)
+                Ok(serde_json::from_value(response.body().clone())
+                    .map_err(SwapRequestError::JsonDe)?)
             }
             Status::SE(_) => {
                 info!(
