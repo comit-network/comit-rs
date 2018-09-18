@@ -38,6 +38,7 @@ impl ComitServer {
         let socket = TcpListener::bind(&addr).unwrap();
 
         socket.incoming().for_each(move |connection| {
+            let peer_addr = connection.peer_addr();
             let codec = json::JsonFrameCodec::default();
             let swap_handler = MySwapHandler::new(
                 self.my_refund_address.clone(),
@@ -47,8 +48,11 @@ impl ComitServer {
             let config = ganp::json_config(swap_handler);
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
-            tokio::spawn(close_future.map_err(|e| {
-                error!("closing connection with client: {:?}", e);
+            tokio::spawn(close_future.map_err(move |e| {
+                error!(
+                    "Unexpected error in connection with {:?}: {:?}",
+                    peer_addr, e
+                );
             }));
             Ok(())
         })
