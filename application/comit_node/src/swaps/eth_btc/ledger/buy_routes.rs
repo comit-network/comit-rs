@@ -58,7 +58,6 @@ fn handle_post_contract_deployed(
     Ok(())
 }
 
-//TODO move this into ledger urls
 #[post(
     "/trades/ETH-BTC/<_trade_id>/buy-order-htlc-funded",
     format = "application/json",
