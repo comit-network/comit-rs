@@ -150,12 +150,15 @@ fn main() {
         btc_bob_redeem_address.clone(),
     );
 
-    let comit_node_socket_addr = {
-        let socket_addr = var_or_exit("COMIT_NODE_SOCKET_ADDR");
+    let remote_comit_node_socket_addr = {
+        let socket_addr = var_or_exit("REMOTE_COMIT_NODE_SOCKET_ADDR");
         SocketAddr::from_str(&socket_addr).unwrap()
     };
 
-    let comit_listen_port = var_or_exit("COMIT_PORT");
+    let comit_listen: SocketAddr = var("COMIT_LISTEN")
+        .unwrap_or("0.0.0.0:8184".into())
+        .parse()
+        .unwrap();
 
     {
         let bob_refund_address = bob_refund_address.clone();
@@ -170,7 +173,7 @@ fn main() {
                 bob_refund_address,
                 bob_success_keypair,
                 network,
-                Arc::new(ComitNodeClient::new(comit_node_socket_addr)),
+                Arc::new(ComitNodeClient::new(remote_comit_node_socket_addr)),
             ).launch();
         });
     }
@@ -181,13 +184,9 @@ fn main() {
         bob_success_keypair,
     );
 
-    tokio::run(
-        server
-            .listen(format!("0.0.0.0:{}", comit_listen_port).parse().unwrap())
-            .map_err(|e| {
-                error!("ComitServer shutdown: {:?}", e);
-            }),
-    );
+    tokio::run(server.listen(comit_listen).map_err(|e| {
+        error!("ComitServer shutdown: {:?}", e);
+    }));
 }
 
 fn var_or_exit(name: &str) -> String {
