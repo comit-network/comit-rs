@@ -103,7 +103,7 @@ impl
 
         let order_taken = OrderTaken::<Ethereum, Bitcoin> {
             uid: TradeId::default(),
-            contract_secret_lock: request.secret_hash.parse().unwrap(),
+            contract_secret_lock: request.secret_hash,
             alice_contract_time_lock: request.source_ledger_lock_duration,
             bob_contract_time_lock: twelve_hours,
             alice_refund_address,

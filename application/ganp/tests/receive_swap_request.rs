@@ -225,7 +225,9 @@ fn can_receive_swap_request() {
         source_ledger_lock_duration: Blocks::from(144),
         source_ledger_refund_identity: BTC_REFUND_PUBKEYHASH.clone(),
         target_ledger_success_identity: ETH_SUCCESS_ADDRESS.clone(),
-        secret_hash: "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5".to_string(),
+        secret_hash: "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5"
+            .parse()
+            .unwrap(),
     };
 
     assert_that(&result).is_ok().is_equal_to(&expected_request)

@@ -1,3 +1,4 @@
+use common_types::secret::SecretHash;
 use ledger::Ledger;
 use swap::{self, SwapProtocol, SwapRequestHeaders};
 
@@ -10,7 +11,7 @@ pub struct Request<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_ledger_refund_identity: SL::Identity,
     pub target_ledger_success_identity: TL::Identity,
     pub source_ledger_lock_duration: SL::LockDuration,
-    pub secret_hash: String,
+    pub secret_hash: SecretHash,
 }
 
 impl<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>> Request<SL, TL, SA, TA> {
@@ -66,5 +67,5 @@ pub struct RequestBody<SL: Ledger, TL: Ledger> {
     pub source_ledger_refund_identity: SL::Identity,
     pub target_ledger_success_identity: TL::Identity,
     pub source_ledger_lock_duration: SL::LockDuration,
-    pub secret_hash: String,
+    pub secret_hash: SecretHash,
 }

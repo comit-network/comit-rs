@@ -60,7 +60,7 @@ impl<SL: Ledger, TL: Ledger> Into<rfc003::Request<SL, TL, SL::Quantity, TL::Quan
             source_ledger_refund_identity: self.alice_refund_address.into(),
             target_ledger_success_identity: self.alice_success_address.into(),
             source_ledger_lock_duration: self.alice_contract_time_lock,
-            secret_hash: self.contract_secret_lock.to_string(),
+            secret_hash: self.contract_secret_lock,
         }
     }
 }
