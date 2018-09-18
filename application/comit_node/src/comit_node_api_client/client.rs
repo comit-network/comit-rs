@@ -188,7 +188,7 @@ impl DefaultApiClient {
             }
             Status::RE(_) => {
                 error!(
-                    "{} rejected swap request because of an interanl error: {:?}",
+                    "{} rejected swap request because of an internal error: {:?}",
                     &self.comit_node_socket_addr, response
                 );
                 Err(SwapRequestError::ReceiverError)
