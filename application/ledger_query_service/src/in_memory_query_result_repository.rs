@@ -1,12 +1,15 @@
 use query_result_repository::{QueryResult, QueryResultRepository};
-use std::{collections::HashMap, sync::RwLock};
+use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 
 #[derive(Debug, Default)]
-pub struct InMemoryQueryResultRepository {
+pub struct InMemoryQueryResultRepository<Q> {
     storage: RwLock<HashMap<u32, QueryResult>>,
+    phantom: PhantomData<Q>,
 }
 
-impl QueryResultRepository for InMemoryQueryResultRepository {
+impl<Q: Send + Sync + Clone + 'static> QueryResultRepository<Q>
+    for InMemoryQueryResultRepository<Q>
+{
     fn get(&self, id: u32) -> Option<QueryResult> {
         let storage = self.storage.read().unwrap();
 
@@ -37,7 +40,7 @@ mod tests {
 
     #[test]
     fn given_no_entry_can_add_result() {
-        let repository = InMemoryQueryResultRepository::default();
+        let repository = InMemoryQueryResultRepository::<()>::default();
 
         assert_that(&repository.get(1)).is_none();
 
@@ -51,7 +54,7 @@ mod tests {
 
     #[test]
     fn given_existing_entry_adds_result() {
-        let repository = InMemoryQueryResultRepository::default();
+        let repository = InMemoryQueryResultRepository::<()>::default();
 
         repository.add_result(1, String::from("foobar"));
         repository.add_result(1, String::from("baz"));

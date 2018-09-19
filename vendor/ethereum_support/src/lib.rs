@@ -21,7 +21,11 @@ pub use key::*;
 pub use web3_crate::futures::Future;
 
 pub mod web3 {
-    pub use web3_crate::error::{Error, ErrorKind};
+
+    pub use web3_crate::{
+        error::{Error, ErrorKind},
+        futures,
+    };
 
     pub use web3_crate::Web3;
     pub mod transports {

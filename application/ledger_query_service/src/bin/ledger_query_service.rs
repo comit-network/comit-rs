@@ -7,11 +7,14 @@ extern crate pretty_env_logger;
 extern crate rocket;
 #[macro_use]
 extern crate log;
+extern crate web3;
+
 use ledger_query_service::{
-    BitcoindZmqListener, DefaultTransactionProcessor, InMemoryQueryRepository,
-    InMemoryQueryResultRepository, LinkFactory,
+    bitcoin_query::BitcoinQuery, ethereum_query::EthereumQuery, BitcoindZmqListener,
+    DefaultTransactionProcessor, EthereumSimpleListener, InMemoryQueryRepository,
+    InMemoryQueryResultRepository, LinkFactory, QueryRepository, QueryResultRepository,
 };
-use std::sync::Arc;
+use std::{env::var, sync::Arc};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
@@ -20,28 +23,68 @@ fn main() {
 
     // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(config.port));
-    let zmq_endpoint = "tcp://127.0.0.1:28332";
+    let mut bitcoin_repositories: Option<(
+        Arc<QueryRepository<BitcoinQuery>>,
+        Arc<QueryResultRepository<BitcoinQuery>>,
+    )> = None;
+    let mut ethereum_repositories: Option<(
+        Arc<QueryRepository<EthereumQuery>>,
+        Arc<QueryResultRepository<EthereumQuery>>,
+    )> = None;
 
-    let query_repository = Arc::new(InMemoryQueryRepository::default());
-    let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    if let Ok(zmq_endpoint) = var("BITCOIN_ZMQ_ENDPOINT") {
+        //e.g. tcp://127.0.0.1:28332
+        info!("Starting BitcoinZmqListener on {}", zmq_endpoint);
 
-    let bitcoin_transaction_processor =
-        DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
+        let query_repository = Arc::new(InMemoryQueryRepository::default());
+        let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    ::std::thread::spawn(move || {
-        let bitcoind_zmq_listener =
-            BitcoindZmqListener::new(zmq_endpoint, bitcoin_transaction_processor);
+        let bitcoin_transaction_processor = DefaultTransactionProcessor::new(
+            query_repository.clone(),
+            query_result_repository.clone(),
+        );
 
-        match bitcoind_zmq_listener {
-            Ok(mut listener) => listener.start(),
-            Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
-        }
-    });
+        bitcoin_repositories = Some((query_repository, query_result_repository));
+
+        ::std::thread::spawn(move || {
+            let bitcoind_zmq_listener =
+                BitcoindZmqListener::new(zmq_endpoint.as_str(), bitcoin_transaction_processor);
+
+            match bitcoind_zmq_listener {
+                Ok(mut listener) => listener.start(),
+                Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
+            }
+        });
+    }
+
+    if let Ok(web3_endpoint) = var("ETHEREUM_WEB3_ENDPOINT") {
+        info!("Starting EthereumSimpleListener on {}", web3_endpoint);
+
+        let query_repository = Arc::new(InMemoryQueryRepository::default());
+        let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+
+        let ethereum_transaction_processor = DefaultTransactionProcessor::new(
+            query_repository.clone(),
+            query_result_repository.clone(),
+        );
+
+        ethereum_repositories = Some((query_repository, query_result_repository));
+
+        ::std::thread::spawn(move || {
+            let ethereum_simple_listener =
+                EthereumSimpleListener::new(web3_endpoint.as_str(), ethereum_transaction_processor);
+
+            match ethereum_simple_listener {
+                Ok(listener) => listener.start(),
+                Err(e) => error!("Failed to start EthereumSimpleListener! {:?}", e),
+            }
+        });
+    }
 
     ledger_query_service::server::create(
         config,
         link_factory,
-        query_repository,
-        query_result_repository,
+        bitcoin_repositories,
+        ethereum_repositories,
     ).launch();
 }

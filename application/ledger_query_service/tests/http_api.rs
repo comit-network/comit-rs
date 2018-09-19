@@ -32,8 +32,8 @@ fn can_access_query_resource_after_creation() {
     let server = ledger_query_service::server::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        query_repository,
-        query_result_repository,
+        Some((query_repository, query_result_repository)),
+        None,
     );
     let client = Client::new(server).unwrap();
 
@@ -69,8 +69,8 @@ fn given_created_query_when_deleted_is_no_longer_available() {
     let server = ledger_query_service::server::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        query_repository,
-        query_result_repository,
+        Some((query_repository, query_result_repository)),
+        None,
     );
     let client = Client::new(server).unwrap();
 
@@ -107,8 +107,8 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let server = ledger_query_service::server::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        query_repository,
-        query_result_repository,
+        Some((query_repository, query_result_repository)),
+        None,
     );
     let client = Client::new(server).unwrap();
 
@@ -160,8 +160,8 @@ fn should_reject_malformed_address() {
     let server = ledger_query_service::server::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        query_repository,
-        query_result_repository,
+        Some((query_repository, query_result_repository)),
+        None,
     );
     let client = Client::new(server).unwrap();
 
