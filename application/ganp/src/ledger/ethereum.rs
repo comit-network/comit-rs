@@ -19,6 +19,10 @@ impl Ledger for Ethereum {
     fn symbol() -> String {
         String::from("ETH")
     }
+
+    fn address_for_identity(&self, address: Address) -> Address {
+        address
+    }
 }
 
 impl From<Ethereum> for swap::Ledger {

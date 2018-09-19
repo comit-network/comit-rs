@@ -1,10 +1,13 @@
 use bitcoin_htlc::{self, Htlc as BtcHtlc};
-use bitcoin_support::{self, BitcoinQuantity, Blocks, Network, PubkeyHash};
-use comit_node_api_client::{ApiClient, OrderRequestBody};
+use bitcoin_support::{self, BitcoinQuantity, Blocks, Network};
+use comit_node_api_client::ApiClient;
 use common_types::{secret::Secret, TradingSymbol};
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
+use ganp::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    rfc003,
+};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
@@ -129,7 +132,8 @@ fn handle_buy_orders(
     let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
     let alice_success_address = buy_order.alice_success_address;
     let alice_refund_address = buy_order.alice_refund_address;
-
+    let source_ledger = Bitcoin::new(network.clone());
+    let target_ledger = Ethereum::default();
     let secret = {
         let mut rng = rng.lock().unwrap();
         Secret::generate(&mut *rng)
@@ -150,32 +154,33 @@ fn handle_buy_orders(
 
     event_store.add_event(trade_id, order_created_event.clone())?;
 
-    let order_response = client
-        .create_buy_order(&OrderRequestBody {
-            contract_secret_lock: secret.hash(),
-            alice_refund_address: alice_refund_address.clone(),
-            alice_success_address: alice_success_address.clone(),
-            alice_contract_time_lock: lock_duration.clone(),
-            buy_amount: offer.buy_amount,
-            sell_amount: offer.sell_amount,
+    let accept_response = client
+        .create_buy_order(rfc003::Request {
+            secret_hash: secret.hash(),
+            source_ledger_refund_identity: alice_refund_address.clone().into(),
+            target_ledger_success_identity: alice_success_address.clone(),
+            source_ledger_lock_duration: lock_duration.clone(),
+            source_ledger: source_ledger.clone(),
+            target_ledger: target_ledger.clone(),
+            target_asset: offer.buy_amount,
+            source_asset: offer.sell_amount,
         })
         .map_err(Error::ComitNode)?;
 
-    let bob_success_pubkey_hash = PubkeyHash::from(order_response.bob_success_address.clone());
-    let alice_refund_pubkey_hash = PubkeyHash::from(alice_refund_address);
-
     let htlc: BtcHtlc = BtcHtlc::new(
-        bob_success_pubkey_hash,
-        alice_refund_pubkey_hash,
+        accept_response.source_ledger_success_identity.clone(),
+        alice_refund_address,
         secret.hash(),
         lock_duration.into(),
     );
 
     let order_taken_event: OrderTaken<Ethereum, Bitcoin> = OrderTaken {
         uid: trade_id,
-        bob_contract_time_lock: order_response.bob_contract_time_lock,
-        bob_refund_address: order_response.bob_refund_address,
-        bob_success_address: order_response.bob_success_address,
+        bob_contract_time_lock: accept_response.target_ledger_lock_duration,
+        bob_refund_address: target_ledger
+            .address_for_identity(accept_response.target_ledger_refund_identity),
+        bob_success_address: source_ledger
+            .address_for_identity(accept_response.source_ledger_success_identity),
     };
 
     event_store.add_event(trade_id, order_taken_event)?;

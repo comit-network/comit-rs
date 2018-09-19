@@ -5,7 +5,7 @@ use event_store::{EventStore, InMemoryEventStore};
 use futures::{Future, Stream};
 use ganp::{
     self,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     rfc003, swap, SwapRequestHandler,
 };
 use secp256k1_support::KeyPair;
@@ -89,7 +89,9 @@ impl
         &mut self,
         request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
     ) -> swap::SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
-        let alice_refund_address = request.source_ledger_refund_identity.clone().into();
+        let alice_refund_address = request
+            .source_ledger
+            .address_for_identity(request.source_ledger_refund_identity);
 
         let bob_success_address = self
             .my_success_keypair

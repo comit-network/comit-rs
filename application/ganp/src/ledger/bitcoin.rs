@@ -4,8 +4,30 @@ use ledger::Ledger;
 use secp256k1_support::PublicKey;
 use swap;
 
-#[derive(Clone, Debug, PartialEq, Default)]
-pub struct Bitcoin {}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Bitcoin {
+    network: Network,
+}
+
+impl Bitcoin {
+    pub fn new(network: Network) -> Self {
+        Bitcoin { network }
+    }
+
+    pub fn regtest() -> Self {
+        Bitcoin {
+            network: Network::Regtest,
+        }
+    }
+}
+
+impl Default for Bitcoin {
+    fn default() -> Self {
+        Bitcoin {
+            network: Network::Regtest,
+        }
+    }
+}
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct HtlcId {
@@ -25,6 +47,10 @@ impl Ledger for Bitcoin {
     fn symbol() -> String {
         String::from("BTC")
     }
+
+    fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
+        Address::from_pubkeyhash_and_network(pubkeyhash, self.network)
+    }
 }
 
 impl From<Bitcoin> for swap::Ledger {
@@ -35,6 +61,6 @@ impl From<Bitcoin> for swap::Ledger {
 
 impl Bitcoin {
     pub fn network(&self) -> Network {
-        Network::Regtest
+        self.network
     }
 }

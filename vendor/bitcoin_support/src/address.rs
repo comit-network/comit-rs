@@ -69,24 +69,6 @@ impl From<Address> for BitcoinAddress {
     }
 }
 
-//FIXME: remove this from implementation that stupidly assumes Regtest
-// as the network. Can be removed when we remove Address everwhere and
-// just use pubkey hashes (remove test below too).
-impl From<PubkeyHash> for Address {
-    fn from(pubkeyhash: PubkeyHash) -> Self {
-        BitcoinAddress {
-            payload: Payload::WitnessProgram(
-                WitnessProgram::new(
-                    bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
-                    pubkeyhash.as_ref().to_vec(),
-                    bitcoin_bech32::constants::Network::Regtest,
-                ).expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
-            ),
-            network: Network::Regtest,
-        }.into()
-    }
-}
-
 impl Serialize for Address {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -140,6 +122,18 @@ impl Address {
     pub fn p2wpkh(pk: &PublicKey, network: Network) -> Address {
         Address::from(BitcoinAddress::p2wpkh(pk.inner(), network))
     }
+    pub fn from_pubkeyhash_and_network(pubkeyhash: PubkeyHash, network: Network) -> Self {
+        BitcoinAddress {
+            payload: Payload::WitnessProgram(
+                WitnessProgram::new(
+                    bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
+                    pubkeyhash.as_ref().to_vec(),
+                    bitcoin_bech32::constants::Network::Regtest,
+                ).expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
+            ),
+            network,
+        }.into()
+    }
 }
 
 impl fmt::Display for Address {
@@ -174,9 +168,9 @@ mod tests {
     use hex::FromHex;
 
     #[test]
-    fn pubkeyhash_to_address() {
+    fn from_pubkeyhash_and_network() {
         let pubkey_hash = PubkeyHash::from_hex("9a5b5cc47ed3ff2f65295c3563d9cb8f8db5e400").unwrap();
-        let address: Address = pubkey_hash.into();
+        let address = Address::from_pubkeyhash_and_network(pubkey_hash, Network::Regtest);
         assert_eq!(
             address,
             Address::from_str("bcrt1qnfd4e3r760lj7effts6k8kwt37xmteqq58q6ad").unwrap()

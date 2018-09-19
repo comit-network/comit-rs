@@ -1,4 +1,5 @@
-use common_types::secret::SecretHash;
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::EthereumQuantity;
 use futures::Future;
 use ganp::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
@@ -16,59 +17,15 @@ use transport_protocol::{
     Status,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
-    pub contract_secret_lock: SecretHash,
-    pub alice_refund_address: Sell::Address,
-    pub alice_success_address: Buy::Address,
-    pub alice_contract_time_lock: Sell::LockDuration,
-    pub buy_amount: Buy::Quantity,
-    pub sell_amount: Sell::Quantity,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderResponseBody<Buy: Ledger, Sell: Ledger> {
-    pub bob_refund_address: Buy::Address,
-    pub bob_contract_time_lock: Buy::LockDuration,
-    pub bob_success_address: Sell::Address,
-}
-
-impl<SL: Ledger, TL: Ledger> Into<rfc003::Request<SL, TL, SL::Quantity, TL::Quantity>>
-    for OrderRequestBody<TL, SL>
-{
-    fn into(self) -> rfc003::Request<SL, TL, SL::Quantity, TL::Quantity> {
-        rfc003::Request {
-            source_asset: self.sell_amount,
-            target_asset: self.buy_amount,
-            source_ledger: SL::default(),
-            target_ledger: TL::default(),
-            source_ledger_refund_identity: self.alice_refund_address.into(),
-            target_ledger_success_identity: self.alice_success_address.into(),
-            source_ledger_lock_duration: self.alice_contract_time_lock,
-            secret_hash: self.contract_secret_lock,
-        }
-    }
-}
-
-impl<SL: Ledger, TL: Ledger> From<rfc003::AcceptResponse<SL, TL>> for OrderResponseBody<TL, SL> {
-    fn from(accept_response: rfc003::AcceptResponse<SL, TL>) -> Self {
-        OrderResponseBody {
-            bob_refund_address: accept_response.target_ledger_refund_identity.into(),
-            bob_success_address: accept_response.source_ledger_success_identity.into(),
-            bob_contract_time_lock: accept_response.target_ledger_lock_duration,
-        }
-    }
-}
-
 pub trait ApiClient: Send + Sync {
     fn create_buy_order(
         &self,
-        trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
-    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError>;
+        swap_request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+    ) -> Result<rfc003::AcceptResponse<Bitcoin, Ethereum>, SwapRequestError>;
     fn create_sell_order(
         &self,
-        trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
-    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError>;
+        swap_request: rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
+    ) -> Result<rfc003::AcceptResponse<Ethereum, Bitcoin>, SwapRequestError>;
 }
 
 #[derive(Debug)]
@@ -188,17 +145,15 @@ impl DefaultApiClient {
 impl ApiClient for DefaultApiClient {
     fn create_buy_order(
         &self,
-        trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
-    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
-        self.send_swap_request(trade_request.clone().into())
-            .map(Into::into)
+        swap_request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+    ) -> Result<rfc003::AcceptResponse<Bitcoin, Ethereum>, SwapRequestError> {
+        self.send_swap_request(swap_request)
     }
 
     fn create_sell_order(
         &self,
-        trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
-    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
-        self.send_swap_request(trade_request.clone().into())
-            .map(Into::into)
+        swap_request: rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
+    ) -> Result<rfc003::AcceptResponse<Ethereum, Bitcoin>, SwapRequestError> {
+        self.send_swap_request(swap_request)
     }
 }

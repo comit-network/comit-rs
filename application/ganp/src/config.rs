@@ -56,8 +56,8 @@ pub fn json_config<
                         ..
                     } => {
                         let request = rfc003::Request::new(
-                            Bitcoin {},
-                            Ethereum {},
+                            Bitcoin::default(),
+                            Ethereum::default(),
                             source_quantity,
                             target_quantity,
                             body!(request.get_body()),
@@ -78,8 +78,8 @@ pub fn json_config<
                         ..
                     } => {
                         let request = rfc003::Request::new(
-                            Ethereum {},
-                            Bitcoin {},
+                            Ethereum::default(),
+                            Bitcoin::default(),
                             source_quantity,
                             target_quantity,
                             body!(request.get_body()),

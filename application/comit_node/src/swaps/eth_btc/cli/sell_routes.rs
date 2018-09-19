@@ -1,5 +1,5 @@
 use bitcoin_support::{self, BitcoinQuantity};
-use comit_node_api_client::{ApiClient, OrderRequestBody};
+use comit_node_api_client::ApiClient;
 use common_types::{seconds::Seconds, secret::Secret, TradingSymbol};
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};

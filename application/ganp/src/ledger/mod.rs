@@ -15,11 +15,11 @@ pub trait Ledger: Clone + Debug + Send + Sync + 'static + Default + Into<swap::L
         + Sync
         + 'static
         + From<Self::Address>
-        + Into<Self::Address>
         + Serialize
         + DeserializeOwned;
 
     fn symbol() -> String;
+    fn address_for_identity(&self, Self::Identity) -> Self::Address;
 }
 
 pub mod bitcoin;

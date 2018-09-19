@@ -31,8 +31,8 @@ pub fn create_rocket_instance(
                 eth_btc::cli::buy_routes::get_redeem_orders,
                 eth_btc::cli::buy_routes::post_buy_offers,
                 eth_btc::cli::buy_routes::post_buy_orders,
-                eth_btc::cli::sell_routes::post_sell_offers,
-                eth_btc::cli::sell_routes::post_sell_orders,
+                // eth_btc::cli::sell_routes::post_sell_offers,
+                // eth_btc::cli::sell_routes::post_sell_orders,
             ],
         )
         .mount(
@@ -42,8 +42,8 @@ pub fn create_rocket_instance(
                 eth_btc::ledger::buy_routes::post_contract_deployed,
                 eth_btc::ledger::buy_routes::post_orders_funding,
                 eth_btc::ledger::buy_routes::post_revealed_secret,
-                eth_btc::ledger::sell_routes::post_orders_funding,
-                eth_btc::ledger::sell_routes::post_revealed_secret,
+                // eth_btc::ledger::sell_routes::post_orders_funding,
+                // eth_btc::ledger::sell_routes::post_revealed_secret,
             ],
         )
         .manage(event_store)

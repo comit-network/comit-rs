@@ -218,8 +218,8 @@ fn can_receive_swap_request() {
     let result = receiver.wait();
 
     let expected_request = rfc003::Request {
-        source_ledger: Bitcoin {},
-        target_ledger: Ethereum {},
+        source_ledger: Bitcoin::regtest(),
+        target_ledger: Ethereum::default(),
         source_asset: BitcoinQuantity::from_satoshi(100_000_000),
         target_asset: EthereumQuantity::from_eth(10.0),
         source_ledger_lock_duration: Blocks::from(144),

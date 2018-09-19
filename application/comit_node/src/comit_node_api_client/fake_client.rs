@@ -1,11 +1,11 @@
-use bitcoin_support;
-use comit_node_api_client::{
-    client::{OrderResponseBody, SwapRequestError},
-    ApiClient, OrderRequestBody,
-};
+use bitcoin_support::{self, BitcoinQuantity};
+use comit_node_api_client::{ApiClient, SwapRequestError};
 use common_types::seconds::Seconds;
-use ethereum_support;
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
+use ethereum_support::{self, EthereumQuantity};
+use ganp::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003,
+};
 use std::str::FromStr;
 
 #[allow(dead_code)]
@@ -20,16 +20,17 @@ impl FakeApiClient {
 impl ApiClient for FakeApiClient {
     fn create_buy_order(
         &self,
-        _trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
-    ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
-        let accept = OrderResponseBody {
-            bob_refund_address: ethereum_support::Address::from_str(
+        _swap_request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+    ) -> Result<rfc003::AcceptResponse<Bitcoin, Ethereum>, SwapRequestError> {
+        let accept = rfc003::AcceptResponse {
+            target_ledger_refund_identity: ethereum_support::Address::from_str(
                 "34b19d15e793883d840c563d7dbc8a6723465146",
             ).unwrap(),
-            bob_contract_time_lock: Seconds::new(43200),
-            bob_success_address: bitcoin_support::Address::from_str(
+            target_ledger_lock_duration: Seconds::new(43200),
+            source_ledger_success_identity: bitcoin_support::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-            ).unwrap(),
+            ).unwrap()
+                .into(),
         };
 
         Ok(accept)
@@ -37,14 +38,15 @@ impl ApiClient for FakeApiClient {
 
     fn create_sell_order(
         &self,
-        _trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
-    ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
-        let accept = OrderResponseBody {
-            bob_refund_address: bitcoin_support::Address::from_str(
+        _swap_request: rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
+    ) -> Result<rfc003::AcceptResponse<Ethereum, Bitcoin>, SwapRequestError> {
+        let accept = rfc003::AcceptResponse {
+            target_ledger_refund_identity: bitcoin_support::Address::from_str(
                 "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-            ).unwrap(),
-            bob_contract_time_lock: 43200.into(),
-            bob_success_address: ethereum_support::Address::from_str(
+            ).unwrap()
+                .into(),
+            target_ledger_lock_duration: 43200.into(),
+            source_ledger_success_identity: ethereum_support::Address::from_str(
                 "34b19d15e793883d840c563d7dbc8a6723465146",
             ).unwrap(),
         };
