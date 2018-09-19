@@ -19,3 +19,8 @@ comit_node_url = "http://localhost:8010"
 [swap]
 btc_redeem_address="bc1qzqvpwc0an990n84turgphzruhaqsjmefxxkugs"
 eth_refund_address="3853005576eeca2ba7ec579ce04c1ce2f4cd162e"
+
+[http_api]
+address="0.0.0.0"
+port=8000
+logging=true

@@ -26,7 +26,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 Cryptocurrency keys and addresses needs to be passed as environment variables.
 Please note, `0x` prefix is never needed.
 The following variables need to be set:
-* `COMIT_NODE_CONFIG` (the path to a folder containing COMIT Node config files, examples can be found in ./application/comit_node/config/ )
+* `COMIT_NODE_CONFIG_PATH` (the path to a folder containing COMIT Node config files, examples can be found in ./application/comit_node/config)
 
 IF you wish to run the tests, you need to save this values in Docker env_file format (VAR=VAL) in several files.
 - regtest.env: to run systemstests/happy_path.sh

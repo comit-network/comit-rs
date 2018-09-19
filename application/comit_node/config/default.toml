@@ -14,3 +14,8 @@ node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 [comit]
 comit_node_url = "http://localhost:8010"
 comit_listen = "0.0.0.0:8184"
+
+[http_api]
+address="0.0.0.0"
+port=8000
+logging=true

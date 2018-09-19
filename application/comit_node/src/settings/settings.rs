@@ -1,7 +1,5 @@
 use config::{Config, ConfigError, File};
-use std::{
-    path::Path,
-};
+use std::path::Path;
 
 #[derive(Debug, Deserialize)]
 pub struct Ethereum {
@@ -34,15 +32,23 @@ pub struct Comit {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct HttpApi {
+    pub address: String,
+    pub port: u16,
+    pub logging: bool,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
     pub ethereum: Ethereum,
     pub bitcoin: Bitcoin,
     pub swap: Swap,
     pub comit: Comit,
+    pub http_api: HttpApi,
 }
 
 impl ComitNodeSettings {
-    pub fn new(default_config : String, run_mode_config: String) -> Result<Self, ConfigError> {
+    pub fn new(default_config: String, run_mode_config: String) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
         let default_config_file = Path::new(default_config.as_str());

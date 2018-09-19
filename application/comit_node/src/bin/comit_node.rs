@@ -41,24 +41,18 @@ use secp256k1_support::KeyPair;
 use std::{str::FromStr, sync::Arc};
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};
-use std::env::var;
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     logging::set_up_logging();
-    let default_config = var_or_default("COMIT_NODE_CONFIG", "~/.config/comit_node/default.toml".into());
-    let run_mode_config = var_or_default("RUN_MODE_CONFIG", "~/.config/comit_node/development.toml".into());
-
-    let settings = ComitNodeSettings::new(default_config, run_mode_config);
-    let settings = settings.unwrap();
+    let settings = load_settings();
 
     let event_store = Arc::new(InMemoryEventStore::new());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
 
-    let secret_key_hex = settings.ethereum.private_key;
-    let secret_key_data =
-        <[u8; 32]>::from_hex(secret_key_hex).expect("Private key is not hex_encoded");
+    let secret_key_data = <[u8; 32]>::from_hex(settings.ethereum.private_key)
+        .expect("Private key is not hex_encoded");
 
     let eth_keypair: KeyPair =
         KeyPair::from_secret_key_slice(&secret_key_data).expect("Private key isn't valid");
@@ -68,7 +62,10 @@ fn main() {
 
     let (event_loop, transport) = Http::new(&settings.ethereum.node_url).unwrap();
     let web3 = Web3::new(transport);
-    info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", settings.ethereum.gas_price);
+    info!(
+        "set ETHEREUM_GAS_PRICE_IN_WEI={}",
+        settings.ethereum.gas_price
+    );
 
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
     info!(
@@ -128,8 +125,6 @@ fn main() {
     info!("set BTC_NETWORK={}", network);
 
     let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;
-    //    let satoshi_per_kb =
-    //        f64::from_str(&satoshi_per_kb).expect("Given value for rate cannot be parsed into f64");
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
     let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
@@ -162,8 +157,10 @@ fn main() {
                 bob_success_keypair,
                 network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_socket_addr)),
-            ).launch();
-        });
+        settings.http_api.address.into(),
+        settings.http_api.port,
+        settings.http_api.logging,
+    ).launch();});
     }
 
     let server = ComitServer::new(
@@ -177,6 +174,16 @@ fn main() {
     }));
 }
 
+fn load_settings() -> ComitNodeSettings {
+    let comit_config_path = var_or_default("COMIT_NODE_CONFIG_PATH", "~/.config/comit_node".into());
+    let run_mode_config = var_or_default("RUN_MODE", "development".into());
+    let default_config = format!("{}/{}", comit_config_path.trim(), "default");
+    let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
+
+    let settings = ComitNodeSettings::new(default_config, run_mode_config);
+    settings.unwrap()
+}
+
 fn var_or_default(name: &str, default: String) -> String {
     match var(name) {
         Ok(value) => {
@@ -184,7 +191,10 @@ fn var_or_default(name: &str, default: String) -> String {
             value
         }
         Err(_) => {
-            eprintln!("{} is not set, falling back to default: '{}' ", name, default);
+            eprintln!(
+                "{} is not set, falling back to default: '{}' ",
+                name, default
+            );
             default
         }
     }

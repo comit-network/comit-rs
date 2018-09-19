@@ -3,7 +3,11 @@ use comit_node_api_client::ApiClient;
 use ethereum_support;
 use event_store::InMemoryEventStore;
 use rand::OsRng;
-use rocket;
+use rocket::{
+    self,
+    config::{Config, Environment},
+    Rocket,
+};
 use secp256k1_support::KeyPair;
 use std::sync::{Arc, Mutex};
 use swap_protocols::{
@@ -20,10 +24,13 @@ pub fn create_rocket_instance(
     bob_success_keypair: KeyPair,
     network: Network,
     bob_client: Arc<ApiClient>,
+    address: String,
+    port: u16,
+    logging: bool,
 ) -> rocket::Rocket {
     let rng = OsRng::new().expect("Failed to get randomness from OS");
 
-    rocket::ignite()
+    try_config(address, port, logging)
         .mount(
             "/cli/", //Endpoints for interaction with the CLI
             //todo come up with a better name
@@ -52,4 +59,23 @@ pub fn create_rocket_instance(
         .manage(network)
         .manage(bob_client)
         .manage(Mutex::new(rng))
+}
+
+fn try_config(address: String, port: u16, logging: bool) -> Rocket {
+    //TODO change environment?
+    let config = Config::build(Environment::Development)
+        .address(address.clone())
+        .port(port)
+        .finalize();
+    match config {
+        Ok(config) => rocket::custom(config, logging),
+        Err(error) => {
+            error!("{:?}", error);
+            error!(
+                "Could not start rocket with {}:{}, falling back to default",
+                address, port
+            );
+            rocket::ignite()
+        }
+    }
 }
