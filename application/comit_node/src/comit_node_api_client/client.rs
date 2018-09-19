@@ -1,4 +1,4 @@
-use common_types::{secret::SecretHash, TradingSymbol};
+use common_types::secret::SecretHash;
 use futures::Future;
 use ganp::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
@@ -6,7 +6,6 @@ use ganp::{
 };
 use serde_json;
 use std::{io, net::SocketAddr};
-use swaps::common::TradeId;
 use tokio::{net::TcpStream, runtime::Runtime};
 use transport_protocol::{
     client::{self, Client},
@@ -16,20 +15,6 @@ use transport_protocol::{
     shutdown_handle::{self, ShutdownHandle},
     Status,
 };
-
-#[derive(Serialize, Deserialize)]
-struct OfferRequestBody {
-    amount: f64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferResponseBody<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
-    pub symbol: TradingSymbol,
-    pub rate: f64,
-    pub buy_amount: Buy::Quantity,
-    pub sell_amount: Sell::Quantity,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OrderRequestBody<Buy: Ledger, Sell: Ledger> {
