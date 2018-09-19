@@ -29,6 +29,7 @@ extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
+extern crate transport_protocol;
 
 #[cfg(test)]
 extern crate env_logger;

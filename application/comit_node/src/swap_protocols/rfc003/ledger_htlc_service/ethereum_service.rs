@@ -2,7 +2,13 @@ use common_types::{
     seconds::Seconds,
     secret::{Secret, SecretHash},
 };
-use ethereum_support::*;
+use ethereum_support::{
+    web3::{
+        transports::{EventLoopHandle, Http},
+        Web3,
+    },
+    *,
+};
 use ethereum_wallet::{UnsignedTransaction, Wallet};
 use ganp::ledger::{ethereum::Ethereum, Ledger};
 use gas_price_service::{self, GasPriceService};
@@ -16,10 +22,6 @@ use swap_protocols::rfc003::{
     ledger_htlc_service::{self, api::LedgerHtlcService},
 };
 use swaps::common::TradeId;
-use web3::{
-    transports::{EventLoopHandle, Http},
-    Web3,
-};
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {
     fn from(error: gas_price_service::Error) -> Self {
