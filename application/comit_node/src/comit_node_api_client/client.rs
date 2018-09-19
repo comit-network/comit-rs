@@ -206,7 +206,7 @@ impl ApiClient for DefaultApiClient {
         trade_request: &OrderRequestBody<Ethereum, Bitcoin>,
     ) -> Result<OrderResponseBody<Ethereum, Bitcoin>, SwapRequestError> {
         self.send_swap_request(trade_request.clone().into())
-            .map(|x| x.into())
+            .map(Into::into)
     }
 
     fn create_sell_order(
@@ -214,6 +214,6 @@ impl ApiClient for DefaultApiClient {
         trade_request: &OrderRequestBody<Bitcoin, Ethereum>,
     ) -> Result<OrderResponseBody<Bitcoin, Ethereum>, SwapRequestError> {
         self.send_swap_request(trade_request.clone().into())
-            .map(|x| x.into())
+            .map(Into::into)
     }
 }
