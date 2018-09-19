@@ -1,7 +1,6 @@
 use bitcoin_rpc_client::{BitcoinRpcApi, TransactionId};
 use bitcoin_support::Transaction;
-use future_template::FutureTemplate;
-use ganp::ledger::{bitcoin::Bitcoin, Ledger};
+use futures_ext::{FutureTemplate, PollingFuture};
 use ledger_query_service::{
     AsyncLedgerQueryService, BitcoinQuery, FetchResultsFuture, LedgerQueryServiceApiClient, Query,
 };
@@ -16,7 +15,7 @@ pub struct LedgerServices {
 
 pub struct PaymentToBitcoinAddressFuture {
     bitcoin_node: Arc<BitcoinRpcApi>,
-    inner: FetchResultsFuture,
+    inner: PollingFuture<FetchResultsFuture>,
 }
 
 impl Future for PaymentToBitcoinAddressFuture {
@@ -52,7 +51,7 @@ mod tests {
     use super::*;
     use bitcoin_rpc_client::{RpcError, SerializedRawTransaction};
     use env_logger;
-    use future_template::FutureFactory;
+    use futures_ext::FutureFactory;
     use reqwest;
     use spectral::prelude::*;
     use std::sync::Mutex;
