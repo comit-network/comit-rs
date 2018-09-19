@@ -41,20 +41,20 @@ use secp256k1_support::KeyPair;
 use std::{str::FromStr, sync::Arc};
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};
+use std::env::var;
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     logging::set_up_logging();
-    let settings = ComitNodeSettings::new();
-    // Print out our settings
+    let default_config = var_or_default("COMIT_NODE_CONFIG", "~/.config/comit_node/default.toml".into());
+    let run_mode_config = var_or_default("RUN_MODE_CONFIG", "~/.config/comit_node/development.toml".into());
+
+    let settings = ComitNodeSettings::new(default_config, run_mode_config);
     let settings = settings.unwrap();
 
     let event_store = Arc::new(InMemoryEventStore::new());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
-
-    let network_id = settings.ethereum.network_id;
-    let network_id = u8::from_str(network_id.as_ref()).expect("Failed to parse network id");
 
     let secret_key_hex = settings.ethereum.private_key;
     let secret_key_data =
@@ -64,12 +64,11 @@ fn main() {
         KeyPair::from_secret_key_slice(&secret_key_data).expect("Private key isn't valid");
 
     let address = eth_keypair.public_key().to_ethereum_address();
-    let wallet = InMemoryWallet::new(eth_keypair, network_id);
+    let wallet = InMemoryWallet::new(eth_keypair, settings.ethereum.network_id);
 
     let (event_loop, transport) = Http::new(&settings.ethereum.node_url).unwrap();
     let web3 = Web3::new(transport);
-    let gas_price = settings.ethereum.gas_price;
-    info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", gas_price);
+    info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", settings.ethereum.gas_price);
 
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
     info!(
@@ -79,7 +78,7 @@ fn main() {
 
     let ethereum_service = EthereumService::new(
         Arc::new(wallet),
-        Arc::new(StaticGasPriceService::new(gas_price)),
+        Arc::new(StaticGasPriceService::new(settings.ethereum.gas_price)),
         Arc::new((event_loop, web3)),
         nonce,
     );
@@ -97,14 +96,10 @@ fn main() {
             .expect("BTC Bob Redeem Address is Invalid");
 
     let bitcoin_rpc_client = {
-        let url = settings.bitcoin.node_url;
-        let username = settings.bitcoin.node_username;
-        let password = settings.bitcoin.node_password;
-
         bitcoin_rpc_client::BitcoinCoreClient::new(
-            url.as_str(),
-            username.as_str(),
-            password.as_str(),
+            settings.bitcoin.node_url.as_str(),
+            settings.bitcoin.node_username.as_str(),
+            settings.bitcoin.node_password.as_str(),
         )
     };
 
@@ -180,4 +175,17 @@ fn main() {
     tokio::run(server.listen(comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);
     }));
+}
+
+fn var_or_default(name: &str, default: String) -> String {
+    match var(name) {
+        Ok(value) => {
+            info!("Set {}={}", name, value);
+            value
+        }
+        Err(_) => {
+            eprintln!("{} is not set, falling back to default: '{}' ", name, default);
+            default
+        }
+    }
 }

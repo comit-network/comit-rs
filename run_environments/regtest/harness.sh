@@ -88,7 +88,7 @@ function setup() {
                ROCKET_PORT=$BOB_COMIT_NODE_PORT \
                RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                RUST_BACKTRACE=1 \
-               COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/bob;
+               COMIT_NODE_CONFIG=$(pwd)/run_environments/regtest/bob/default;
 
         start_target "comit_node" "Bob  ";
     );
@@ -98,7 +98,7 @@ function setup() {
         export  ROCKET_ADDRESS=0.0.0.0 \
                 RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                 ROCKET_PORT=$ALICE_COMIT_NODE_PORT \
-                COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/alice;
+                COMIT_NODE_CONFIG=$(pwd)/run_environments/regtest/alice/default;
 
         start_target "comit_node" "Alice";
     );
