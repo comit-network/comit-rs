@@ -80,38 +80,25 @@ function setup() {
 
     activate_segwit;
 
-    BOB_ROCKET_PORT=8010
-    ALICE_ROCKET_PORT=8000
-
-    BOB_COMIT_PORT=8011
-    ALICE_COMIT_PORT=8001
-
-    BOB_COMIT_LISTEN="0.0.0.0:$BOB_COMIT_PORT";
-    ALICE_COMIT_LISTEN="0.0.0.0:$ALICE_COMIT_PORT";
+    BOB_COMIT_NODE_PORT=8010
+    ALICE_COMIT_NODE_PORT=8000
 
     BOB_COMIT_NODE_PID=$(
-        export BITCOIN_RPC_URL=http://localhost:18443 \
-               ETHEREUM_NODE_ENDPOINT=http://localhost:8545 \
-               ROCKET_ADDRESS=0.0.0.0 \
-               REMOTE_COMIT_NODE_SOCKET_ADDR=127.0.0.1:$ALICE_COMIT_PORT \
-               ROCKET_PORT=$BOB_ROCKET_PORT \
+        export ROCKET_ADDRESS=0.0.0.0 \
+               ROCKET_PORT=$BOB_COMIT_NODE_PORT \
                RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
                RUST_BACKTRACE=1 \
-               COMIT_LISTEN=$BOB_COMIT_LISTEN
-               BITCOIN_SATOSHI_PER_KB=50;
+               COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/bob;
 
         start_target "comit_node" "Bob  ";
     );
 
 
-
     ALICE_COMIT_NODE_PID=$(
         export  ROCKET_ADDRESS=0.0.0.0 \
                 RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
-                REMOTE_COMIT_NODE_SOCKET_ADDR=127.0.0.1:$BOB_COMIT_PORT \
-                ROCKET_PORT=$ALICE_ROCKET_PORT \
-                COMIT_LISTEN=$ALICE_COMIT_LISTEN
-                RATE=0.1;
+                ROCKET_PORT=$ALICE_COMIT_NODE_PORT \
+                COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/alice;
 
         start_target "comit_node" "Alice";
     );

@@ -1,0 +1,21 @@
+# This is should not be used in production
+[ethereum]
+network_id = 1
+node_url = "http://localhost:8545"
+gas_price=2_000_000_000
+private_key="3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59"
+
+[bitcoin]
+network_id = "BTC_REGTEST"
+satoshi_per_byte = 50 # used for calculating transaction fees
+node_url = "http://localhost:18443"
+node_username = "bitcoin"
+node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+private_key="cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8"
+
+[comit]
+comit_node_url = "http://localhost:8000"
+
+[swap]
+btc_redeem_address="2NBNQWga7p2yEZmk1m5WuMxK5SyXM5cBZSL"
+eth_refund_address="147ba99ef89c152f8004e91999fee87bda6cbc3e"
