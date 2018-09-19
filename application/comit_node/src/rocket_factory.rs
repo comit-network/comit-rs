@@ -13,7 +13,7 @@ use swap_protocols::rfc003::ledger_htlc_service::{
 use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(
-    event_store: InMemoryEventStore<TradeId>,
+    event_store: Arc<InMemoryEventStore<TradeId>>,
     ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
     bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
     bob_refund_address: ethereum_support::Address,
@@ -24,13 +24,6 @@ pub fn create_rocket_instance(
     let rng = OsRng::new().expect("Failed to get randomness from OS");
 
     rocket::ignite()
-        .mount(
-            "/", //Endpoints for inbetween the nodes
-            routes![
-                eth_btc::buy::routes::post_buy_orders,
-                eth_btc::sell::routes::post_sell_orders,
-            ],
-        )
         .mount(
             "/cli/", //Endpoints for interaction with the CLI
             //todo come up with a better name

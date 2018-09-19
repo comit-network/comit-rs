@@ -90,7 +90,7 @@ fn create_rocket_client(
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
-        event_store,
+        Arc::new(event_store),
         Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),
@@ -152,23 +152,6 @@ fn mock_trade_funded(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeI
     event_store.add_event(trade_id, trade_funded).unwrap();
 }
 
-fn request_order<'a>(client: &'a mut Client, uid: &str) -> LocalResponse<'a> {
-    let request = client
-        .post(format!("/trades/ETH-BTC/{}/sell-orders", uid).to_string())
-        .header(ContentType::JSON)
-        .body(
-            r#"{
-                    "contract_secret_lock": "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec",
-                    "alice_refund_address": "0x956abb53d3ccbf24cf2f8c6e334a56d4b6c50440",
-                    "alice_success_address": "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap",
-                    "alice_contract_time_lock": 24,
-                    "buy_amount" : "1000000",
-                    "sell_amount" : "10000000"
-                  }"#,
-        );
-    request.dispatch()
-}
-
 fn create_bitcoin_service() -> BitcoinService {
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
     let bob_success_address =
@@ -186,61 +169,11 @@ fn create_bitcoin_service() -> BitcoinService {
 }
 
 #[test]
-fn given_a_trade_request_when_sell_offer_was_done_then_return_valid_trade_response() {
-    let _ = env_logger::try_init();
-
-    let bitcoin_service = create_bitcoin_service();
-    let event_store = InMemoryEventStore::new();
-
-    let mut client = create_rocket_client(event_store, bitcoin_service);
-
-    let uid = Uuid::new_v4().to_string();
-
-    {
-        let mut response = request_order(&mut client, &uid);
-        assert_eq!(response.status(), Status::Ok);
-
-        #[derive(Deserialize)]
-        #[allow(dead_code)]
-        struct Response {
-            bob_refund_address: String,
-            bob_success_address: String,
-            bob_contract_time_lock: u32,
-        }
-
-        serde_json::from_str::<Response>(&response.body_string().unwrap()).unwrap();
-    }
-}
-
-#[test]
-fn given_two_orders_request_with_same_uid_should_fail() {
-    let _ = env_logger::try_init();
-
-    let bitcoin_service = create_bitcoin_service();
-    let event_store = InMemoryEventStore::new();
-
-    let mut client = create_rocket_client(event_store, bitcoin_service);
-
-    let uid = Uuid::new_v4().to_string();
-
-    {
-        let response = request_order(&mut client, &uid);
-        assert_eq!(response.status(), Status::Ok);
-    }
-
-    {
-        let response = request_order(&mut client, &uid);
-        assert_eq!(response.status(), Status::BadRequest);
-    }
-}
-
-#[test]
 fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
     let _ = env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
     let event_store = InMemoryEventStore::new();
-
     let trade_id = Default::default();
 
     mock_order_taken(&event_store, trade_id);

@@ -36,6 +36,9 @@ event_store = { path = "../../vendor/event_store" }
 rand = "0.4.2"
 rustc-hex = "1.0.0"
 ganp = { path = "../ganp" }
+transport_protocol = { path = "../../vendor/transport_protocol" }
+tokio = "0.1.8"
+futures = "0.1"
 chrono = "0.4.2"
 
 [dev-dependencies]

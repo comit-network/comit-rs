@@ -3,28 +3,40 @@ use ethereum_support::EthereumQuantity;
 use serde::Serialize;
 use transport_protocol::{json, Status};
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value", content = "parameters")]
 pub enum Ledger {
     Bitcoin,
     Ethereum,
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value", content = "parameters")]
 pub enum Asset {
     Bitcoin { quantity: BitcoinQuantity },
     Ether { quantity: EthereumQuantity },
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+impl From<BitcoinQuantity> for Asset {
+    fn from(quantity: BitcoinQuantity) -> Self {
+        Asset::Bitcoin { quantity }
+    }
+}
+
+impl From<EthereumQuantity> for Asset {
+    fn from(quantity: EthereumQuantity) -> Self {
+        Asset::Ether { quantity }
+    }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value", content = "parameters")]
 pub enum SwapProtocol {
     #[serde(rename = "COMIT-RFC-003")]
     ComitRfc003,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Serialize)]
 pub struct SwapRequestHeaders {
     pub source_ledger: Ledger,
     pub target_ledger: Ledger,
@@ -42,7 +54,7 @@ impl<T> SwapResponse<T> {
     pub fn status(&self) -> Status {
         match *self {
             SwapResponse::Accept(_) => Status::OK(20),
-            SwapResponse::Decline => Status::OK(21),
+            SwapResponse::Decline => Status::SE(21),
         }
     }
 }

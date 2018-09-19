@@ -62,7 +62,7 @@ fn create_rocket_client() -> Client {
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
-        InMemoryEventStore::new(),
+        Arc::new(InMemoryEventStore::new()),
         Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),

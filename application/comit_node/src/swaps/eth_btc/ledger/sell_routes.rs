@@ -30,7 +30,7 @@ pub struct SellOrderHtlcDeployedNotification {
 pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<<Ethereum as Ledger>::HtlcId>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     bitcoin_service: State<Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
@@ -45,7 +45,7 @@ pub fn post_orders_funding(
 fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: <Ethereum as Ledger>::HtlcId,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
@@ -83,7 +83,7 @@ pub struct RedeemETHNotificationBody {
 )]
 pub fn post_revealed_secret(
     redeem_eth_notification_body: Json<RedeemETHNotificationBody>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     trade_id: TradeId,
     ethereum_service: State<Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>>,
 ) -> Result<(), BadRequest<String>> {
@@ -99,7 +99,7 @@ pub fn post_revealed_secret(
 
 fn handle_post_revealed_secret(
     redeem_eth_notification_body: RedeemETHNotificationBody,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     trade_id: TradeId,
     ethereum_service: &Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
 ) -> Result<(), Error> {

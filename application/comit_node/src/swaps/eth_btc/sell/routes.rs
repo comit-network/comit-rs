@@ -6,6 +6,7 @@ use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use secp256k1_support::KeyPair;
+use std::sync::Arc;
 use swaps::{bob_events::OrderTaken, common::TradeId, errors::Error};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -33,7 +34,7 @@ impl<Buy: Ledger, Sell: Ledger> From<OrderTaken<Buy, Sell>> for OrderTakenRespon
 pub fn post_sell_orders(
     trade_id: TradeId,
     order_request_body: Json<OrderRequestBody<Bitcoin, Ethereum>>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     bob_success_keypair: State<KeyPair>,
     bob_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
@@ -52,7 +53,7 @@ pub fn post_sell_orders(
 fn handle_post_sell_orders(
     trade_id: TradeId,
     order_request_body: OrderRequestBody<Bitcoin, Ethereum>,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     bob_success_keypair: &KeyPair,
     bob_refund_address: &ethereum_support::Address,
     network: &Network,

@@ -7,6 +7,7 @@ extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
+extern crate tokio;
 #[macro_use]
 extern crate serde_derive;
 extern crate bitcoin_htlc;
@@ -21,11 +22,13 @@ extern crate uuid;
 #[macro_use]
 extern crate log;
 extern crate event_store;
+extern crate futures;
 extern crate ganp;
 extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
+extern crate transport_protocol;
 extern crate web3;
 
 #[cfg(test)]
@@ -33,6 +36,7 @@ extern crate spectral;
 
 pub mod bitcoin_fee_service;
 pub mod comit_node_api_client;
+pub mod comit_server;
 pub mod gas_price_service;
 pub mod rocket_factory;
 pub mod swap_protocols;
