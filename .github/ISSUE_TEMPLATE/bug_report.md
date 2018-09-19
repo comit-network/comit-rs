@@ -5,9 +5,11 @@ about: Create a report to help us improve
 ---
 
 **Describe the bug**
+
 A clear and concise description of what the bug is.
 
 **To Reproduce**
+
 Steps to reproduce the behavior:
 1. Go to '...'
 2. Click on '....'
@@ -15,6 +17,7 @@ Steps to reproduce the behavior:
 4. See error
 
 **Expected behavior**
+
 A clear and concise description of what you expected to happen.
 
 **Environment (please complete the following information):**
@@ -23,7 +26,10 @@ A clear and concise description of what you expected to happen.
  - CoBloX Version [e.g. git-commit id: 6cdb142f7202a0d6bb3edae4c5742ba8837bf61e]
  
 **Logs, Screenshots**
+
 If applicable, add logfiles and/or screenshots to help explain your problem.
+This could include links to the related blockchain transactions (used for funding or redeem) in a web block explorer.
 
 **Additional context**
+
 Add any other context about the problem here.
