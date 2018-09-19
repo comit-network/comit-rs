@@ -21,6 +21,7 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate log;
+extern crate config;
 extern crate event_store;
 extern crate futures;
 extern crate hex;
@@ -39,5 +40,6 @@ pub mod comit_node_api_client;
 pub mod comit_server;
 pub mod gas_price_service;
 pub mod rocket_factory;
+pub mod settings;
 pub mod swap_protocols;
 pub mod swaps;

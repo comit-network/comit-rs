@@ -9,7 +9,6 @@ extern crate ethereum_wallet;
 extern crate hex;
 #[macro_use]
 extern crate log;
-extern crate config;
 extern crate event_store;
 extern crate logging;
 extern crate reqwest;
@@ -23,13 +22,6 @@ extern crate tokio;
 extern crate uuid;
 extern crate web3;
 
-#[macro_use]
-extern crate serde_derive;
-
-mod setting;
-
-use setting::Settings;
-
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
 use comit_node::{
@@ -38,6 +30,7 @@ use comit_node::{
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
+    settings::settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use ethereum_support::*;
@@ -45,13 +38,14 @@ use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
+use std::{str::FromStr, sync::Arc};
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     logging::set_up_logging();
-    let settings = Settings::new();
+    let settings = ComitNodeSettings::new();
     // Print out our settings
     let settings = settings.unwrap();
 
@@ -72,9 +66,7 @@ fn main() {
     let address = eth_keypair.public_key().to_ethereum_address();
     let wallet = InMemoryWallet::new(eth_keypair, network_id);
 
-    let web3 = Web3Client::new(settings.ethereum.node_url);
-
-    let (event_loop, transport) = Http::new(&endpoint).unwrap();
+    let (event_loop, transport) = Http::new(&settings.ethereum.node_url).unwrap();
     let web3 = Web3::new(transport);
     let gas_price = settings.ethereum.gas_price;
     info!("set ETHEREUM_GAS_PRICE_IN_WEI={}", gas_price);
@@ -93,7 +85,7 @@ fn main() {
     );
 
     let bob_refund_address =
-        ethereum_support::Address::from_str(settings.swap.eth_bob_refund_address.as_str())
+        ethereum_support::Address::from_str(settings.swap.eth_refund_address.as_str())
             .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
 
     let bob_success_private_key =
@@ -101,7 +93,7 @@ fn main() {
     let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
 
     let btc_bob_redeem_address =
-        bitcoin_support::Address::from_str(settings.swap.btc_bob_redeem_address.as_str())
+        bitcoin_support::Address::from_str(settings.swap.btc_redeem_address.as_str())
             .expect("BTC Bob Redeem Address is Invalid");
 
     let bitcoin_rpc_client = {

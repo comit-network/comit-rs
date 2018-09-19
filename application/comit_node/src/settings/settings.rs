@@ -1,5 +1,9 @@
-use config::{Config, ConfigError, Environment, File};
-use std::{env, path::Path};
+use config::{Config, ConfigError, File};
+use std::{
+    self,
+    env::{self, var},
+    path::Path,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct Ethereum {
@@ -21,11 +25,8 @@ pub struct Bitcoin {
 
 #[derive(Debug, Deserialize)]
 pub struct Swap {
-    pub btc_bob_redeem_address: String,
-    pub eth_bob_refund_address: String,
-    pub alice_refund_address: String,
-    pub alice_success_address: String,
-    pub alice_sender_address: String,
+    pub btc_redeem_address: String, //TODO this should be generated on the fly per swap from the master key
+    pub eth_refund_address: String, //TODO this should be generated on the fly per swap from the master key
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,27 +36,32 @@ pub struct Comit {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Settings {
+pub struct ComitNodeSettings {
     pub ethereum: Ethereum,
     pub bitcoin: Bitcoin,
     pub swap: Swap,
     pub comit: Comit,
 }
 
-impl Settings {
+impl ComitNodeSettings {
     pub fn new() -> Result<Self, ConfigError> {
         let mut s = Config::new();
 
-        let defaul_config_file = Path::new("./application/comit_node/config/default.toml");
+        let config_path = var_or_exit("COMIT_NODE_CONFIG_PATH");
+        let default_settings = format!("{}/{}", config_path.trim(), "default");
+        //"./application/comit_node/config/default.toml"
+
+        let default_config_file = Path::new(default_settings.as_str());
+
         // Add in the current environment file
         // Default to 'development' env
-        // Note that this file is _optional, in our case this holds all the keys
-        let env = env::var("RUN_MODE").unwrap_or("development".into()); //add new file for the keys
-        let path = format!("./application/comit_node/config/{}", env);
-        let environment_config_file = Path::new(path.as_str());
+        // Note that this file is optional, and can be used to hold keys by run_mode
+        let env = env::var("RUN_MODE").unwrap_or("development".into()); //add new file for the keysc
+        let environment_settings = format!("{}/{}", config_path.trim(), env);
+        let environment_config_file = Path::new(environment_settings.as_str());
 
         // Start off by merging in the "default" configuration file
-        s.merge(File::from(defaul_config_file))?;
+        s.merge(File::from(default_config_file))?;
 
         // Add in the current environment file
         // Default to 'development' env
@@ -68,5 +74,18 @@ impl Settings {
 
         // You can deserialize (and thus freeze) the entire configuration as
         s.try_into()
+    }
+}
+
+fn var_or_exit(name: &str) -> String {
+    match var(name) {
+        Ok(value) => {
+            info!("Set {}={}", name, value);
+            value
+        }
+        Err(_) => {
+            eprintln!("{} is not set but is required", name);
+            std::process::exit(1)
+        }
     }
 }
