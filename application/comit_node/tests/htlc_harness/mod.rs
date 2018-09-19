@@ -20,13 +20,18 @@ use web3::{
 };
 
 pub enum HtlcType {
-    Erc20 { alice_tokens: U256 },
-    Eth,
+    Erc20 {
+        alice_initial_tokens: U256,
+        htlc_token_value: U256,
+    },
+    Eth {
+        htlc_eth_value: EthereumQuantity,
+    },
 }
 
 pub struct TestHarnessParams {
+    pub alice_initial_ether: EthereumQuantity,
     pub htlc_timeout: Duration,
-    pub htlc_value: U256,
     pub htlc_secret: [u8; 32],
     pub htlc_type: HtlcType,
 }
@@ -37,7 +42,7 @@ pub fn harness(
     Address,
     Address,
     Result<Address, ledger_htlc_service::Error>,
-    Address,
+    Option<Address>,
     ParityClient,
     EventLoopHandle,
     Container<DockerCli, ParityEthereum>,
@@ -52,9 +57,7 @@ pub fn harness(
     let (event_loop, web3) = tc_web3_client::new(&container);
 
     let client = ParityClient::new(web3);
-    client.give_eth_to(alice, EthereumQuantity::from_eth(1.0));
-
-    let token_contract = client.deploy_erc20_token_contract();
+    client.give_eth_to(alice, params.alice_initial_ether);
 
     let ethereum_service = EthereumService::new(
         Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
@@ -63,33 +66,42 @@ pub fn harness(
         0,
     );
 
-    let htlc = match params.htlc_type {
-        HtlcType::Erc20 { alice_tokens } => {
-            client.mint_tokens(token_contract, alice_tokens, alice);
+    let (token_contract, htlc) = match params.htlc_type {
+        HtlcType::Erc20 {
+            alice_initial_tokens,
+            htlc_token_value,
+        } => {
+            let token_contract = client.deploy_erc20_token_contract();
+
+            client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
             let htlc_params = Erc20HtlcParams {
                 refund_address: alice,
                 success_address: bob,
                 time_lock: Seconds::from(params.htlc_timeout),
-                amount: params.htlc_value,
+                amount: htlc_token_value,
                 secret_hash: Secret::from(params.htlc_secret).hash(),
                 token_contract_address: token_contract,
             };
-            ethereum_service
+            let deployment_result = ethereum_service
                 .deploy_htlc(htlc_params)
-                .map(|tx_id| client.get_contract_address(tx_id.clone()))
+                .map(|tx_id| client.get_contract_address(tx_id.clone()));
+
+            (Some(token_contract), deployment_result)
         }
-        HtlcType::Eth => {
+        HtlcType::Eth { htlc_eth_value } => {
             let htlc_params = EtherHtlcParams {
                 refund_address: alice,
                 success_address: bob,
                 time_lock: Seconds::from(params.htlc_timeout),
-                amount: EthereumQuantity::from_eth(1.0),
+                amount: htlc_eth_value,
                 secret_hash: Secret::from(params.htlc_secret).hash(),
             };
-            ethereum_service
+            let deployment_result = ethereum_service
                 .deploy_htlc(htlc_params)
-                .map(|tx_id| client.get_contract_address(tx_id.clone()))
+                .map(|tx_id| client.get_contract_address(tx_id.clone()));
+
+            (None, deployment_result)
         }
     };
 

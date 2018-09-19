@@ -3,7 +3,12 @@ use bitcoin::{
     network::constants::Network,
     util::{address::Payload, hash::Hash160},
 };
+use hex::{self, FromHex};
 use secp256k1_support::PublicKey;
+use serde::{
+    de::{self, Deserialize, Deserializer},
+    ser::{Serialize, Serializer},
+};
 use std::fmt;
 
 pub trait ToP2wpkhAddress {
@@ -49,6 +54,14 @@ impl<'a> From<&'a [u8]> for PubkeyHash {
     }
 }
 
+impl FromHex for PubkeyHash {
+    type Error = hex::FromHexError;
+
+    fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
+        Ok(PubkeyHash::from(hex::decode(hex)?.as_ref()))
+    }
+}
+
 impl AsRef<[u8]> for PubkeyHash {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]
@@ -67,9 +80,45 @@ impl fmt::LowerHex for PubkeyHash {
     }
 }
 
+impl<'de> Deserialize<'de> for PubkeyHash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = PubkeyHash;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                formatter.write_str("A hex-encoded compressed SECP256k1 public key")
+            }
+
+            fn visit_str<E>(self, hex_pubkey: &str) -> Result<PubkeyHash, E>
+            where
+                E: de::Error,
+            {
+                PubkeyHash::from_hex(hex_pubkey).map_err(E::custom)
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl Serialize for PubkeyHash {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(hex::encode(self.0.to_bytes()).as_str())
+    }
+}
+
 #[cfg(test)]
 mod test {
     extern crate hex;
+    extern crate serde_json;
     use super::*;
     use bitcoin::util::privkey::Privkey as PrivateKey;
     use secp256k1_support::KeyPair;
@@ -123,6 +172,18 @@ mod test {
             address,
             Address::from_str("bc1qmxq0cu0jktxyy2tz3je7675eca0ydcevgqlpgh").unwrap()
         );
+    }
+
+    #[test]
+    fn roudtrip_serialization_of_pubkeyhash() {
+        let public_key = PublicKey::from_hex(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
+        ).unwrap();
+        let pubkey_hash: PubkeyHash = public_key.into();
+        let serialized = serde_json::to_string(&pubkey_hash).unwrap();
+        assert_eq!(serialized, "\"ac2db2f2615c81b83fe9366450799b4992931575\"");
+        let deserialized = serde_json::from_str::<PubkeyHash>(serialized.as_str()).unwrap();
+        assert_eq!(deserialized, pubkey_hash);
     }
 
 }

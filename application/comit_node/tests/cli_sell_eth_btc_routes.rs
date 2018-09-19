@@ -12,11 +12,9 @@ extern crate comit_node;
 extern crate common_types;
 extern crate env_logger;
 extern crate ethereum_wallet;
-extern crate ganache_rust_web3;
 extern crate hex;
 extern crate reqwest;
 extern crate serde_json;
-extern crate tc_trufflesuite_ganachecli;
 extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate uuid;
@@ -78,7 +76,7 @@ fn create_rocket_client() -> Client {
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
-        InMemoryEventStore::new(),
+        Arc::new(InMemoryEventStore::new()),
         Arc::new(EthereumService::new(
             Arc::new(StaticFakeWallet::account0()),
             Arc::new(StaticGasPriceService::default()),

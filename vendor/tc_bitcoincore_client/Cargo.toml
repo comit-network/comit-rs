@@ -9,6 +9,6 @@ authors = [
 ]
 
 [dependencies]
-testcontainers = { git = "https://github.com/coblox/testcontainers-rs" }
-tc_coblox_bitcoincore = { git = "https://github.com/coblox/testcontainers-rs" }
+testcontainers = "0.2"
+tc_coblox_bitcoincore = "0.2"
 bitcoin_rpc_client = "0.1"

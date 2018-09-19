@@ -62,7 +62,7 @@ const ETH_HTLC_TIMEOUT_IN_SECONDS: Seconds = Seconds::new(12 * 60 * 60);
 #[post("/trades/ETH-BTC/sell-offers", format = "application/json", data = "<offer_request_body>")]
 pub fn post_sell_offers(
     offer_request_body: Json<SellOfferRequestBody>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
 ) -> Result<Json<OfferResponseBody<Bitcoin, Ethereum>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_BTC;
 
@@ -73,7 +73,7 @@ pub fn post_sell_offers(
 }
 
 fn handle_sell_offer(
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     offer_request_body: SellOfferRequestBody,
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, Error> {
@@ -103,7 +103,7 @@ pub fn post_sell_orders(
     trade_id: TradeId,
     sell_order_request_body: Json<SellOrderRequestBody>,
     client: State<Arc<ApiClient>>,
-    event_store: State<InMemoryEventStore<TradeId>>,
+    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
     rng: State<Mutex<OsRng>>,
 ) -> Result<Json<RequestToFund>, BadRequest<String>> {
     let request_to_fund = handle_sell_orders(
@@ -119,7 +119,7 @@ pub fn post_sell_orders(
 
 fn handle_sell_orders(
     client: &Arc<ApiClient>,
-    event_store: &InMemoryEventStore<TradeId>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     rng: &Mutex<OsRng>,
     trade_id: TradeId,
     sell_order: SellOrderRequestBody,
@@ -149,18 +149,14 @@ fn handle_sell_orders(
     event_store.add_event(trade_id, order_created_event.clone())?;
 
     let order_response = client
-        .create_sell_order(
-            offer.symbol,
-            trade_id,
-            &OrderRequestBody {
-                contract_secret_lock: secret.hash(),
-                alice_refund_address: alice_refund_address,
-                alice_success_address: alice_success_address,
-                alice_contract_time_lock: lock_duration,
-                buy_amount: offer.buy_amount,
-                sell_amount: offer.sell_amount,
-            },
-        )
+        .create_sell_order(&OrderRequestBody {
+            contract_secret_lock: secret.hash(),
+            alice_refund_address: alice_refund_address,
+            alice_success_address: alice_success_address,
+            alice_contract_time_lock: lock_duration,
+            buy_amount: offer.buy_amount,
+            sell_amount: offer.sell_amount,
+        })
         .map_err(Error::ComitNode)?;
 
     let htlc = EtherHtlc::new(
