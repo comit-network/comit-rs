@@ -118,6 +118,7 @@ impl Serialize for PubkeyHash {
 #[cfg(test)]
 mod test {
     extern crate hex;
+    extern crate serde_json;
     use super::*;
     use bitcoin::util::privkey::Privkey as PrivateKey;
     use secp256k1_support::KeyPair;
@@ -171,6 +172,18 @@ mod test {
             address,
             Address::from_str("bc1qmxq0cu0jktxyy2tz3je7675eca0ydcevgqlpgh").unwrap()
         );
+    }
+
+    #[test]
+    fn roudtrip_serialization_of_pubkeyhash() {
+        let public_key = PublicKey::from_hex(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
+        ).unwrap();
+        let pubkey_hash: PubkeyHash = public_key.into();
+        let serialized = serde_json::to_string(&pubkey_hash).unwrap();
+        assert_eq!(serialized, "\"ac2db2f2615c81b83fe9366450799b4992931575\"");
+        let deserialized = serde_json::from_str::<PubkeyHash>(serialized.as_str()).unwrap();
+        assert_eq!(deserialized, pubkey_hash);
     }
 
 }
