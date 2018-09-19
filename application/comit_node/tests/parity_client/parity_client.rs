@@ -103,7 +103,7 @@ impl ParityClient {
         self.send_data(contract, Some(Bytes(hex::decode(payload).unwrap())))
     }
 
-    pub fn balance_of(&self, contract: Address, address: Address) -> U256 {
+    pub fn token_balance_of(&self, contract: Address, address: Address) -> U256 {
         let function_identifier = "70a08231";
         let address_hex = format!("000000000000000000000000{}", hex::encode(address));
 
@@ -127,6 +127,10 @@ impl ParityClient {
             .unwrap();
 
         U256::from(result.0.as_slice())
+    }
+
+    pub fn eth_balance_of(&self, address: Address) -> U256 {
+        self.client.eth().balance(address, None).wait().unwrap()
     }
 
     pub fn send_data(&self, to: Address, data: Option<Bytes>) -> U256 {

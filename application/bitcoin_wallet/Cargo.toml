@@ -14,5 +14,5 @@ secp256k1_support = { path = "../../vendor/secp256k1_support" }
 
 [dev-dependencies]
 bitcoin_htlc =  { path = "../bitcoin_htlc" }
-tc_coblox_bitcoincore = "0.1"
+tc_coblox_bitcoincore = "0.2"
 
