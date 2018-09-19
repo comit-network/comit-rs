@@ -1,4 +1,4 @@
-use bitcoin_support::{self, BitcoinQuantity, ToP2wpkhAddress};
+use bitcoin_support::{BitcoinQuantity, ToP2wpkhAddress};
 use common_types::seconds::Seconds;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
@@ -89,10 +89,9 @@ impl
         &mut self,
         request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
     ) -> swap::SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
-        let alice_refund_address: bitcoin_support::Address =
-            request.source_ledger_refund_identity.clone().into();
+        let alice_refund_address = request.source_ledger_refund_identity.clone().into();
 
-        let bob_success_address: bitcoin_support::Address = self
+        let bob_success_address = self
             .my_success_keypair
             .public_key()
             .clone()

@@ -155,7 +155,7 @@ fn main() {
         SocketAddr::from_str(&socket_addr).unwrap()
     };
 
-    let comit_listen: SocketAddr = var("COMIT_LISTEN")
+    let comit_listen = var("COMIT_LISTEN")
         .unwrap_or("0.0.0.0:8184".into())
         .parse()
         .unwrap();
