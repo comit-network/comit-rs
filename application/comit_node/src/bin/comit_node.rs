@@ -38,7 +38,6 @@ use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
-use std::{str::FromStr, sync::Arc};
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};
 
@@ -51,8 +50,10 @@ fn main() {
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
 
-    let secret_key_data = <[u8; 32]>::from_hex(settings.ethereum.private_key)
-        .expect("Private key is not hex_encoded");
+    let secret_key_hex = settings.ethereum.private_key;
+
+    let secret_key_data =
+        <[u8; 32]>::from_hex(secret_key_hex).expect("Private key is not hex_encoded");
 
     let eth_keypair: KeyPair =
         KeyPair::from_secret_key_slice(&secret_key_data).expect("Private key isn't valid");
@@ -135,18 +136,17 @@ fn main() {
         btc_bob_redeem_address.clone(),
     );
 
-    let remote_comit_node_socket_addr = {
-        SocketAddr::from_str(&setting.comit.remote_comit_node_url).unwrap()
-    };
-
-    let comit_listen = settings.comit.comit_listen
-        .parse()
-        .unwrap();
+    let remote_comit_node_socket_addr =
+        { SocketAddr::from_str(&settings.comit.remote_comit_node_url).unwrap() };
 
     {
         let bob_refund_address = bob_refund_address.clone();
         let bob_success_keypair = bob_success_keypair.clone();
         let network = network.clone();
+
+        let http_api_address = settings.http_api.address;
+        let http_api_port = settings.http_api.port;
+        let http_api_logging = settings.http_api.logging;
 
         std::thread::spawn(move || {
             create_rocket_instance(
@@ -157,11 +157,14 @@ fn main() {
                 bob_success_keypair,
                 network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_socket_addr)),
-        settings.http_api.address.into(),
-        settings.http_api.port,
-        settings.http_api.logging,
-    ).launch();});
+                http_api_address.into(),
+                http_api_port,
+                http_api_logging,
+            ).launch();
+        });
     }
+
+    let comit_listen = settings.comit.comit_listen.parse().unwrap();
 
     let server = ComitServer::new(
         comit_server_event_store,

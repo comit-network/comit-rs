@@ -13,12 +13,13 @@ node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 private_key="L5GTDDmtZiGKsxypQQuaT8zxMGUxvrRhZFYUkzGLgeExBgoK9phG"
 
-[comit]
-comit_node_url = "http://localhost:8010"
-
 [swap]
 btc_redeem_address="bc1qzqvpwc0an990n84turgphzruhaqsjmefxxkugs"
 eth_refund_address="3853005576eeca2ba7ec579ce04c1ce2f4cd162e"
+
+[comit]
+remote_comit_node_url = "127.0.0.1:8011"
+comit_listen = "0.0.0.0:8001"
 
 [http_api]
 address="0.0.0.0"
