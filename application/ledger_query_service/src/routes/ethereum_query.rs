@@ -129,6 +129,7 @@ pub fn delete_ethereum_query(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use spectral::prelude::*;
     use web3::types::{Bytes, H256, Transaction, U256};
 
     #[test]
@@ -156,7 +157,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert!(query.matches(&transaction));
+        assert_that(&query.matches(&transaction)).is_true();
     }
 
     #[test]
@@ -182,7 +183,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert!(!(query.matches(&transaction)));
+        assert_that(&query.matches(&transaction)).is_false();
     }
 
     #[test]
@@ -210,7 +211,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert!(query.matches(&transaction));
+        assert_that(&query.matches(&transaction)).is_true();
     }
 
     #[test]
@@ -238,7 +239,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert!(!(query.matches(&transaction)));
+        assert_that(&query.matches(&transaction)).is_false();
     }
 
     #[test]
@@ -264,7 +265,7 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert!(query.matches(&transaction));
+        assert_that(&query.matches(&transaction)).is_true();
     }
 
     #[test]
@@ -290,6 +291,6 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert!(query.matches(&transaction));
+        assert_that(&query.matches(&transaction)).is_true();
     }
 }
