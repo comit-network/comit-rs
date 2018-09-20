@@ -7,7 +7,7 @@ pub trait TransactionProcessor<T> {
 }
 
 pub trait Transaction: Debug {
-    fn txid(&self) -> String;
+    fn transaction_id(&self) -> String;
 }
 
 pub trait Query<T>: Debug {
@@ -16,7 +16,7 @@ pub trait Query<T>: Debug {
 
 pub struct DefaultTransactionProcessor<Q> {
     queries: Arc<QueryRepository<Q>>,
-    results: Arc<QueryResultRepository>,
+    results: Arc<QueryResultRepository<Q>>,
 }
 
 impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
@@ -27,22 +27,24 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
 
         self.queries
             .all()
-            .filter(|(_, query)| query.matches(transaction))
-            .map(|(id, query)| (id, transaction.txid(), query))
-            .inspect(|(id, txid, query)| {
-                info!(
-                    "Transaction {} matches {:#?} Query-ID: {:?}",
-                    txid, query, id
-                )
+            .filter(|(_, query)| {
+                trace!(
+                    "Matching query {:#?} against transaction {:#?}",
+                    query,
+                    transaction
+                );
+                query.matches(transaction)
             })
-            .for_each(|(query_id, tx_id, _)| self.results.add_result(query_id, tx_id))
+            .map(|(id, _)| (id, transaction.transaction_id()))
+            .inspect(|(id, txid)| info!("Transaction {} matches Query-ID: {:?}", txid, id))
+            .for_each(|(query_id, tx_id)| self.results.add_result(query_id, tx_id))
     }
 }
 
 impl<Q> DefaultTransactionProcessor<Q> {
     pub fn new(
         query_repository: Arc<QueryRepository<Q>>,
-        query_result_repository: Arc<QueryResultRepository>,
+        query_result_repository: Arc<QueryResultRepository<Q>>,
     ) -> Self {
         Self {
             queries: query_repository,
