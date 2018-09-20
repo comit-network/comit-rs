@@ -7,6 +7,7 @@ extern crate pretty_env_logger;
 extern crate rocket;
 #[macro_use]
 extern crate log;
+extern crate futures;
 extern crate web3;
 
 use ledger_query_service::{

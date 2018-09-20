@@ -9,6 +9,8 @@ use web3::{
     Web3,
 };
 
+use futures::stream::iter_ok;
+
 pub struct EthereumWeb3BlockPoller<P> {
     _event_loop: EventLoopHandle,
     client: Web3<Http>,
@@ -53,26 +55,17 @@ impl<P: TransactionProcessor<EthereumTransaction>> EthereumWeb3BlockPoller<P> {
         let result = self
             .filter
             .stream(self.polling_interval)
-            .for_each(move |block_hash| {
-                let block_id = BlockId::from(block_hash);
-
-                //TODO: remove some unwraps
-                let block = client.eth().block(block_id).wait().unwrap().unwrap();
-
-                for &transaction_hash in block.transactions.iter() {
-                    let transaction_id = TransactionId::Hash(transaction_hash);
-                    //TODO: remove some unwraps
-                    let transaction = client
-                        .eth()
-                        .transaction(transaction_id)
-                        .wait()
-                        .unwrap()
-                        .unwrap();
-                    processor.process(&transaction);
-                }
-                Ok(())
-            })
+            .and_then(|block_hash| client.eth().block(BlockId::from(block_hash)))
+            .filter(Option::is_some)
+            .map(|block| iter_ok(block.unwrap().transactions))
+            .flatten()
+            .map(TransactionId::Hash)
+            .and_then(|transaction_id| client.eth().transaction(transaction_id))
+            .filter(Option::is_some)
+            .map(Option::unwrap)
+            .for_each(|transaction| Ok(processor.process(&transaction)))
             .wait();
+
         info!("Ethereum block polling has stopped: {:?}", result);
     }
 }
