@@ -73,13 +73,13 @@ fn main() {
             );
 
             ::std::thread::spawn(move || {
-                let ethereum_simple_listener = EthereumWeb3BlockPoller::new(
+                let ethereum_web3_poller = EthereumWeb3BlockPoller::new(
                     web3_endpoint.as_str(),
                     polling_wait_time,
                     ethereum_transaction_processor,
                 );
 
-                match ethereum_simple_listener {
+                match ethereum_web3_poller {
                     Ok(listener) => listener.start(),
                     Err(e) => error!("Failed to start EthereumSimpleListener! {:?}", e),
                 }
