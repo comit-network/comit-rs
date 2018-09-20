@@ -1,4 +1,5 @@
 mod api;
-mod async;
+mod bitcoin;
+mod client;
 
-pub use self::{api::*, async::*};
+pub use self::{api::*, bitcoin::*, client::*};

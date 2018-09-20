@@ -1,47 +1,84 @@
-use bitcoin_rpc_client::{BitcoinRpcApi, TransactionId};
-use bitcoin_support::Transaction;
-use futures_ext::{FutureTemplate, PollingFuture};
-use ledger_query_service::{
-    AsyncLedgerQueryService, BitcoinQuery, FetchResultsFuture, LedgerQueryServiceApiClient, Query,
-};
+use bitcoin_rpc_client::TransactionId;
+use failure::Error;
+use futures_ext::{PollUntilReady, StreamTemplate};
+use ganp::ledger::bitcoin::Bitcoin;
+use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
 use std::{sync::Arc, time::Duration};
 use tokio::prelude::*;
 
 #[derive(Clone)]
 pub struct LedgerServices {
-    bitcoin_node: Arc<BitcoinRpcApi>,
-    ledger_query_service: AsyncLedgerQueryService,
+    bitcoin_poll_interval: Duration,
+    api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
 }
 
-pub struct PaymentToBitcoinAddressFuture {
-    bitcoin_node: Arc<BitcoinRpcApi>,
-    inner: PollingFuture<FetchResultsFuture>,
+pub struct PaymentsToBitcoinAddressStream<F> {
+    inner: F,
+    transactions: Vec<TransactionId>,
+    next_index: usize,
 }
 
-impl Future for PaymentToBitcoinAddressFuture {
-    type Item = Transaction;
-    type Error = ();
+impl<F: Future<Item = Vec<TransactionId>, Error = Error>> Stream
+    for PaymentsToBitcoinAddressStream<F>
+{
+    type Item = TransactionId;
+    type Error = Error;
 
-    fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
-        let results = try_ready!(self.inner.poll());
+    fn poll(&mut self) -> Result<Async<Option<<Self as Stream>::Item>>, <Self as Stream>::Error> {
+        if let Some(transaction) = self.transactions.get(self.next_index) {
+            self.next_index += 1;
+            return Ok(Async::Ready(Some(transaction.clone())));
+        }
 
-        match self
-            .bitcoin_node
-            .get_raw_transaction_serialized(&results.get(0).unwrap().parse().unwrap())
-        {
-            Ok(Ok(transaction)) => Ok(Async::Ready(transaction.into())),
-            _ => Ok(Async::NotReady),
+        let inner_result = self.inner.poll();
+
+        match inner_result {
+            Ok(Async::Ready(transactions)) => {
+                self.transactions = transactions;
+                self.poll()
+            }
+            Ok(Async::NotReady) => Ok(Async::NotReady),
+            Err(e) => Err(e),
         }
     }
 }
 
-impl FutureTemplate<LedgerServices> for Query {
-    type Future = PaymentToBitcoinAddressFuture;
+pub struct FetchBitcoinQueryResultsFuture {
+    query_id: QueryId<Bitcoin>,
+    api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
+}
 
-    fn into_future(self, dependencies: LedgerServices) -> PaymentToBitcoinAddressFuture {
-        PaymentToBitcoinAddressFuture {
-            bitcoin_node: dependencies.bitcoin_node,
-            inner: dependencies.ledger_query_service.fetch_results(self),
+impl Future for FetchBitcoinQueryResultsFuture {
+    type Item = Vec<TransactionId>;
+    type Error = Error;
+
+    fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
+        self.api_client
+            .fetch_results(&self.query_id)
+            .into_future()
+            .poll()
+    }
+}
+
+impl StreamTemplate<LedgerServices> for QueryId<Bitcoin> {
+    type Stream = PaymentsToBitcoinAddressStream<PollUntilReady<FetchBitcoinQueryResultsFuture>>;
+
+    fn into_stream(
+        self,
+        dependencies: LedgerServices,
+    ) -> PaymentsToBitcoinAddressStream<PollUntilReady<FetchBitcoinQueryResultsFuture>> {
+        PaymentsToBitcoinAddressStream {
+            inner: {
+                PollUntilReady::new(
+                    FetchBitcoinQueryResultsFuture {
+                        query_id: self,
+                        api_client: dependencies.api_client,
+                    },
+                    dependencies.bitcoin_poll_interval,
+                )
+            },
+            transactions: Vec::new(),
+            next_index: 0,
         }
     }
 }
@@ -49,39 +86,24 @@ impl FutureTemplate<LedgerServices> for Query {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_rpc_client::{RpcError, SerializedRawTransaction};
     use env_logger;
     use futures_ext::FutureFactory;
-    use reqwest;
     use spectral::prelude::*;
     use std::sync::Mutex;
     use tokio::runtime::Runtime;
 
-    struct FakeBitcoinRpcApi;
-
-    impl BitcoinRpcApi for FakeBitcoinRpcApi {
-        fn get_raw_transaction_serialized(
-            &self,
-            _tx: &TransactionId,
-        ) -> Result<Result<SerializedRawTransaction, RpcError>, reqwest::Error> {
-            Ok(Ok(SerializedRawTransaction::from("0200000000010144af9381cd3cb3d14d549b27c8d8a4c87d1d58e501df656342363886277f62e10000000000feffffff02aba9ac0300000000160014908abcc05defb6ba5630268b395b1fab19ad50d760566c0000000000220020c39353c0df01296ab055e83b701715b765636cf91c795deb7573e4b055ada53302473044022010d3b0f0e48977b5c7af7f6a0839a8ed24cd760c4e95668ed7b3275fca727360022007a27825d82a1e69bff2e8cbf195aa4280c214f1cf7650afb6fa2eb49a9765040121036bc4598b0de6ac9c560f1322ce86a0bf27e934837ac86196337db06002c3a352f83a1400")))
-        }
-    }
-
     struct FakeLedgerQueryService {
         number_of_invocations_before_result: u32,
         invocations: Mutex<u32>,
-        results: Vec<String>,
+        results: Vec<TransactionId>,
     }
 
-    impl LedgerQueryServiceApiClient for FakeLedgerQueryService {
-        fn create_bitcoin_query(&self, _query: BitcoinQuery) -> Result<Query, ()> {
-            Ok(Query {
-                location: String::new(),
-            })
+    impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for FakeLedgerQueryService {
+        fn create(&self, _query: BitcoinQuery) -> Result<QueryId<Bitcoin>, Error> {
+            Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
         }
 
-        fn fetch_query_results(&self, _query: &Query) -> Result<Vec<String>, ()> {
+        fn fetch_results(&self, _query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, Error> {
             let mut invocations = self.invocations.lock().unwrap();
 
             *invocations += 1;
@@ -93,7 +115,7 @@ mod tests {
             }
         }
 
-        fn delete_query(&self, _query: &Query) {
+        fn delete(&self, _query: &QueryId<Bitcoin>) {
             unimplemented!()
         }
     }
@@ -102,35 +124,33 @@ mod tests {
     fn given_future_resolves_to_transaction_eventually() {
         let _ = env_logger::try_init();
 
-        let bitcoin_rpc_api = FakeBitcoinRpcApi;
-
         let ledger_query_service = Arc::new(FakeLedgerQueryService {
             number_of_invocations_before_result: 5,
             invocations: Mutex::new(0),
-            results: vec![String::from(
-                "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4",
-            )],
+            results: vec![
+                "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4"
+                    .parse()
+                    .unwrap(),
+            ],
         });
 
         let future_factory = FutureFactory::new(LedgerServices {
-            bitcoin_node: Arc::new(bitcoin_rpc_api),
-            ledger_query_service: AsyncLedgerQueryService::new(
-                ledger_query_service.clone(),
-                Duration::from_millis(100),
-            ),
+            api_client: ledger_query_service.clone(),
+            bitcoin_poll_interval: Duration::from_millis(100),
         });
 
-        let future = future_factory.create_future_from_template(Query {
-            location: String::new(),
-        });
+        let stream = future_factory.create_stream_from_template(QueryId::new(
+            "http://localhost/results/1".parse().unwrap(),
+        ));
 
-        let mut runtime = Runtime::new().unwrap();
+        let mut _runtime = Runtime::new().unwrap();
 
-        let result = runtime.block_on(future);
+        let result = _runtime.block_on(stream.into_future());
+        let result = result.map(|(item, _stream)| item).map_err(|(e1, _e2)| e1);
 
         let invocations = ledger_query_service.invocations.lock().unwrap();
 
         assert_that(&*invocations).is_equal_to(5);
-        assert_that(&result).is_ok();
+        assert_that(&result).is_ok().is_some();
     }
 }

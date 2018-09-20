@@ -1,10 +1,17 @@
-use std::time::{Duration, Instant};
-use tokio::{prelude::*, timer::Delay};
+use std::time::Duration;
+use tokio::prelude::*;
+use tokio_timer::{self, Delay};
 
 pub trait FutureTemplate<D> {
     type Future: Future + Sized;
 
     fn into_future(self, dependencies: D) -> Self::Future;
+}
+
+pub trait StreamTemplate<D> {
+    type Stream: Stream + Sized;
+
+    fn into_stream(self, dependencies: D) -> Self::Stream;
 }
 
 pub struct FutureFactory<D> {
@@ -22,18 +29,25 @@ impl<D: Clone> FutureFactory<D> {
     ) -> <T as FutureTemplate<D>>::Future {
         future_template.into_future(self.dependencies.clone())
     }
+
+    pub fn create_stream_from_template<T: StreamTemplate<D>>(
+        &self,
+        stream_template: T,
+    ) -> <T as StreamTemplate<D>>::Stream {
+        stream_template.into_stream(self.dependencies.clone())
+    }
 }
 
 /// A future that polls the inner future in the given interval until it returns Ready
-pub struct PollingFuture<F> {
+pub struct PollUntilReady<F> {
     inner: F,
     poll_interval: Duration,
     next_try: Delay,
 }
 
-impl<F> PollingFuture<F> {
+impl<F> PollUntilReady<F> {
     pub fn new(inner: F, poll_interval: Duration) -> Self {
-        PollingFuture {
+        PollUntilReady {
             inner,
             poll_interval,
             next_try: Self::compute_next_try(poll_interval),
@@ -41,11 +55,11 @@ impl<F> PollingFuture<F> {
     }
 
     fn compute_next_try(interval: Duration) -> Delay {
-        Delay::new(Instant::now() + interval)
+        tokio_timer::sleep(interval)
     }
 }
 
-impl<F: Future> Future for PollingFuture<F> {
+impl<F: Future> Future for PollUntilReady<F> {
     type Item = F::Item;
     type Error = F::Error;
 
@@ -53,7 +67,7 @@ impl<F: Future> Future for PollingFuture<F> {
         let _ = try_ready!(
             self.next_try
                 .poll()
-                .map_err(|_| panic!("Unable to poll timer of PollingFuture"))
+                .map_err(|e| panic!("Unable to poll timer of PollUntilReady: {:?}", e))
         );
 
         let inner = self.inner.poll();

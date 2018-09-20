@@ -1,16 +1,26 @@
+use failure::Error;
+use ganp::ledger::Ledger;
+use reqwest::Url;
+use std::marker::PhantomData;
+
 #[allow(dead_code)]
 #[derive(Clone)]
-pub struct Query {
-    pub(crate) location: String,
+pub struct QueryId<L: Ledger> {
+    location: Url,
+    ledger_type: PhantomData<L>,
 }
 
-#[derive(Serialize)]
-pub struct BitcoinQuery {
-    pub to_address: Option<String>,
+impl<L: Ledger> QueryId<L> {
+    pub fn new(location: Url) -> Self {
+        QueryId {
+            location,
+            ledger_type: PhantomData,
+        }
+    }
 }
 
-pub trait LedgerQueryServiceApiClient: Send + Sync {
-    fn create_bitcoin_query(&self, query: BitcoinQuery) -> Result<Query, ()>;
-    fn fetch_query_results(&self, query: &Query) -> Result<Vec<String>, ()>;
-    fn delete_query(&self, query: &Query);
+pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: Send + Sync {
+    fn create(&self, query: Q) -> Result<QueryId<L>, Error>;
+    fn fetch_results(&self, query: &QueryId<L>) -> Result<Vec<L::TxId>, Error>;
+    fn delete(&self, query: &QueryId<L>);
 }

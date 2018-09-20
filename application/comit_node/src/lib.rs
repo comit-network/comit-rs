@@ -8,6 +8,7 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate tokio;
+extern crate tokio_timer;
 #[macro_use]
 extern crate serde_derive;
 extern crate bitcoin_htlc;
@@ -30,6 +31,8 @@ extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
 extern crate transport_protocol;
+#[macro_use]
+extern crate failure;
 
 #[cfg(test)]
 extern crate env_logger;
