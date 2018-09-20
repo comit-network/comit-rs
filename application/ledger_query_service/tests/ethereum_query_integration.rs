@@ -13,11 +13,7 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 
 use ethereum_support::{
-    web3::{
-        transports::{EventLoopHandle, Http},
-        types::{Address, TransactionRequest, U256},
-        Web3,
-    },
+    web3::types::{Address, TransactionRequest, U256},
     Future, ToEthereumAddress,
 };
 use http::Uri;
