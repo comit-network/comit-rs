@@ -129,7 +129,7 @@ pub fn delete_ethereum_query(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use web3::types::{Bytes, H256, Transaction, U256};
+    use ethereum_support::web3::types::{Bytes, H256, Transaction, U256};
 
     #[test]
     fn given_query_from_address_contract_creation_transaction_matches() {

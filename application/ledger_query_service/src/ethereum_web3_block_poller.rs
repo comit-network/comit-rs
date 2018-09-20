@@ -1,6 +1,4 @@
-use std::time::Duration;
-use transaction_processor::TransactionProcessor;
-use web3::{
+use ethereum_support::web3::{
     self,
     api::BaseFilter,
     futures::{Future, Stream},
@@ -8,6 +6,8 @@ use web3::{
     types::{BlockId, H256, Transaction as EthereumTransaction, TransactionId},
     Web3,
 };
+use std::time::Duration;
+use transaction_processor::TransactionProcessor;
 
 use futures::stream::iter_ok;
 

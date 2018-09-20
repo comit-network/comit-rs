@@ -23,8 +23,9 @@ pub use web3_crate::futures::Future;
 pub mod web3 {
 
     pub use web3_crate::{
+        api,
         error::{Error, ErrorKind},
-        futures,
+        futures, types,
     };
 
     pub use web3_crate::Web3;

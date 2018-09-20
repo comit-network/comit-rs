@@ -8,7 +8,6 @@ extern crate rocket;
 #[macro_use]
 extern crate log;
 extern crate futures;
-extern crate web3;
 
 use ledger_query_service::{
     BitcoindZmqListener, DefaultTransactionProcessor, EthereumWeb3BlockPoller,

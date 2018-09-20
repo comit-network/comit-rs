@@ -14,7 +14,6 @@ extern crate spectral;
 #[macro_use]
 extern crate log;
 extern crate futures;
-extern crate web3;
 extern crate zmq_rs as zmq;
 
 mod bitcoind_zmq_listener;

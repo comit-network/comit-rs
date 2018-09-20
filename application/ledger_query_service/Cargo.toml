@@ -21,7 +21,6 @@ bitcoin_support = { path = "../../vendor/bitcoin_support" }
 ethereum_support = { path = "../../vendor/ethereum_support" }
 zmq-rs = "0.1"
 pretty_env_logger = "0.2"
-web3 = "0.4"
 futures = "0.1"
 
 

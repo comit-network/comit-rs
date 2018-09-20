@@ -7,8 +7,8 @@ extern crate spectral;
 #[macro_use]
 extern crate serde_derive;
 extern crate ethereum_support;
-extern crate web3;
 
+use ethereum_support::web3::types::{Address, Bytes, H256, Transaction, U256};
 use http::Uri;
 use ledger_query_service::{
     DefaultTransactionProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
@@ -20,7 +20,6 @@ use rocket::{
 };
 use spectral::prelude::*;
 use std::sync::Arc;
-use web3::types::{Address, Bytes, H256, Transaction, U256};
 
 #[test]
 fn can_access_query_resource_after_creation() {
