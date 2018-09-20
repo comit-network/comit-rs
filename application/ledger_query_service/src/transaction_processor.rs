@@ -35,14 +35,9 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
                 );
                 query.matches(transaction)
             })
-            .map(|(id, query)| (id, transaction.transaction_id(), query))
-            .inspect(|(id, txid, query)| {
-                info!(
-                    "Transaction {} matches {:#?} Query-ID: {:?}",
-                    txid, query, id
-                )
-            })
-            .for_each(|(query_id, tx_id, _)| self.results.add_result(query_id, tx_id))
+            .map(|(id, _)| (id, transaction.transaction_id()))
+            .inspect(|(id, txid)| info!("Transaction {} matches Query-ID: {:?}", txid, id))
+            .for_each(|(query_id, tx_id)| self.results.add_result(query_id, tx_id))
     }
 }
 
