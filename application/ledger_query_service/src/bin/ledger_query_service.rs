@@ -11,9 +11,8 @@ extern crate futures;
 extern crate web3;
 
 use ledger_query_service::{
-    bitcoin_query::BitcoinQuery, ethereum_query::EthereumQuery, BitcoindZmqListener,
-    DefaultTransactionProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
-    InMemoryQueryResultRepository, LinkFactory, QueryRepository, QueryResultRepository,
+    BitcoindZmqListener, DefaultTransactionProcessor, EthereumWeb3BlockPoller,
+    InMemoryQueryRepository, InMemoryQueryResultRepository, LinkFactory,
 };
 use std::{env::var, sync::Arc, time::Duration};
 
@@ -24,77 +23,71 @@ fn main() {
 
     // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(config.port));
-    let mut bitcoin_repositories: Option<(
-        Arc<QueryRepository<BitcoinQuery>>,
-        Arc<QueryResultRepository<BitcoinQuery>>,
-    )> = None;
-    let mut ethereum_repositories: Option<(
-        Arc<QueryRepository<EthereumQuery>>,
-        Arc<QueryResultRepository<EthereumQuery>>,
-    )> = None;
 
-    if let Ok(zmq_endpoint) = var("BITCOIN_ZMQ_ENDPOINT") {
-        //e.g. tcp://127.0.0.1:28332
-        info!("Starting BitcoinZmqListener on {}", zmq_endpoint);
+    let server_builder =
+        ledger_query_service::server_builder::ServerBuilder::create(config, link_factory);
 
-        let query_repository = Arc::new(InMemoryQueryRepository::default());
-        let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    let server_builder = match var("BITCOIN_ZMQ_ENDPOINT") {
+        Err(_) => server_builder,
+        Ok(zmq_endpoint) => {
+            //e.g. tcp://127.0.0.1:28332
+            info!("Starting BitcoinZmqListener on {}", zmq_endpoint);
 
-        let bitcoin_transaction_processor = DefaultTransactionProcessor::new(
-            query_repository.clone(),
-            query_result_repository.clone(),
-        );
+            let query_repository = Arc::new(InMemoryQueryRepository::default());
+            let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-        bitcoin_repositories = Some((query_repository, query_result_repository));
-
-        ::std::thread::spawn(move || {
-            let bitcoind_zmq_listener =
-                BitcoindZmqListener::new(zmq_endpoint.as_str(), bitcoin_transaction_processor);
-
-            match bitcoind_zmq_listener {
-                Ok(mut listener) => listener.start(),
-                Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
-            }
-        });
-    }
-
-    if let Ok(web3_endpoint) = var("ETHEREUM_WEB3_ENDPOINT") {
-        info!("Starting EthereumSimpleListener on {}", web3_endpoint);
-
-        let polling_wait_time = match var("ETHEREUM_POLLING_TIME_SEC") {
-            Err(_) => 17,
-            Ok(var) => var.parse().unwrap(),
-        };
-        let polling_wait_time = Duration::from_secs(polling_wait_time);
-
-        let query_repository = Arc::new(InMemoryQueryRepository::default());
-        let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-
-        let ethereum_transaction_processor = DefaultTransactionProcessor::new(
-            query_repository.clone(),
-            query_result_repository.clone(),
-        );
-
-        ethereum_repositories = Some((query_repository, query_result_repository));
-
-        ::std::thread::spawn(move || {
-            let ethereum_simple_listener = EthereumWeb3BlockPoller::new(
-                web3_endpoint.as_str(),
-                polling_wait_time,
-                ethereum_transaction_processor,
+            let bitcoin_transaction_processor = DefaultTransactionProcessor::new(
+                query_repository.clone(),
+                query_result_repository.clone(),
             );
 
-            match ethereum_simple_listener {
-                Ok(listener) => listener.start(),
-                Err(e) => error!("Failed to start EthereumSimpleListener! {:?}", e),
-            }
-        });
-    }
+            ::std::thread::spawn(move || {
+                let bitcoind_zmq_listener =
+                    BitcoindZmqListener::new(zmq_endpoint.as_str(), bitcoin_transaction_processor);
 
-    ledger_query_service::server::create(
-        config,
-        link_factory,
-        bitcoin_repositories,
-        ethereum_repositories,
-    ).launch();
+                match bitcoind_zmq_listener {
+                    Ok(mut listener) => listener.start(),
+                    Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
+                }
+            });
+            server_builder.register_bitcoin(query_repository, query_result_repository)
+        }
+    };
+
+    let server_builder = match var("ETHEREUM_WEB3_ENDPOINT") {
+        Err(_) => server_builder,
+        Ok(web3_endpoint) => {
+            info!("Starting EthereumSimpleListener on {}", web3_endpoint);
+
+            let polling_wait_time = match var("ETHEREUM_POLLING_TIME_SEC") {
+                Err(_) => 17,
+                Ok(var) => var.parse().unwrap(),
+            };
+            let polling_wait_time = Duration::from_secs(polling_wait_time);
+
+            let query_repository = Arc::new(InMemoryQueryRepository::default());
+            let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+
+            let ethereum_transaction_processor = DefaultTransactionProcessor::new(
+                query_repository.clone(),
+                query_result_repository.clone(),
+            );
+
+            ::std::thread::spawn(move || {
+                let ethereum_simple_listener = EthereumWeb3BlockPoller::new(
+                    web3_endpoint.as_str(),
+                    polling_wait_time,
+                    ethereum_transaction_processor,
+                );
+
+                match ethereum_simple_listener {
+                    Ok(listener) => listener.start(),
+                    Err(e) => error!("Failed to start EthereumSimpleListener! {:?}", e),
+                }
+            });
+            server_builder.register_ethereum(query_repository, query_result_repository)
+        }
+    };
+
+    server_builder.build().launch();
 }

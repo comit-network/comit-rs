@@ -25,7 +25,7 @@ mod link_factory;
 mod query_repository;
 mod query_result_repository;
 mod routes;
-pub mod server;
+pub mod server_builder;
 mod transaction_processor;
 
 pub use bitcoind_zmq_listener::*;

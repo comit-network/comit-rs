@@ -8,22 +8,27 @@ use routes::{
 };
 use std::sync::Arc;
 
-pub fn create(
-    config: rocket::Config,
-    link_factory: LinkFactory,
-    bitcoin_repositories: Option<(
-        Arc<QueryRepository<BitcoinQuery>>,
-        Arc<QueryResultRepository<BitcoinQuery>>,
-    )>,
-    ethereum_repositories: Option<(
-        Arc<QueryRepository<EthereumQuery>>,
-        Arc<QueryResultRepository<EthereumQuery>>,
-    )>,
-) -> rocket::Rocket {
-    let mut rocket = rocket::custom(config, true);
+pub struct ServerBuilder {
+    rocket: rocket::Rocket,
+}
 
-    if let Some((query_repository, query_result_repository)) = bitcoin_repositories {
-        rocket = rocket
+impl ServerBuilder {
+    pub fn create(config: rocket::Config, link_factory: LinkFactory) -> ServerBuilder {
+        let rocket = rocket::custom(config, true).manage(link_factory);
+        ServerBuilder { rocket }
+    }
+
+    pub fn build(self) -> rocket::Rocket {
+        self.rocket
+    }
+
+    pub fn register_bitcoin(
+        self,
+        query_repository: Arc<QueryRepository<BitcoinQuery>>,
+        query_result_repository: Arc<QueryResultRepository<BitcoinQuery>>,
+    ) -> ServerBuilder {
+        let rocket = self
+            .rocket
             .mount(
                 "/",
                 routes![
@@ -34,10 +39,16 @@ pub fn create(
             )
             .manage(query_repository)
             .manage(query_result_repository);
+        ServerBuilder { rocket }
     }
 
-    if let Some((query_repository, query_result_repository)) = ethereum_repositories {
-        rocket = rocket
+    pub fn register_ethereum(
+        self,
+        query_repository: Arc<QueryRepository<EthereumQuery>>,
+        query_result_repository: Arc<QueryResultRepository<EthereumQuery>>,
+    ) -> ServerBuilder {
+        let rocket = self
+            .rocket
             .mount(
                 "/",
                 routes![
@@ -48,7 +59,6 @@ pub fn create(
             )
             .manage(query_repository)
             .manage(query_result_repository);
+        ServerBuilder { rocket }
     }
-
-    rocket.manage(link_factory)
 }

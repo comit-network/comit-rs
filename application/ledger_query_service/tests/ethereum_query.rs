@@ -30,12 +30,11 @@ fn can_access_query_resource_after_creation() {
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    let server = ledger_query_service::server::create(
+    let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        None,
-        Some((query_repository, query_result_repository)),
-    );
+    ).register_ethereum(query_repository, query_result_repository)
+        .build();
     let client = Client::new(server).unwrap();
 
     let response = client
@@ -67,12 +66,11 @@ fn given_created_query_when_deleted_is_no_longer_available() {
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    let server = ledger_query_service::server::create(
+    let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        None,
-        Some((query_repository, query_result_repository)),
-    );
+    ).register_ethereum(query_repository, query_result_repository)
+        .build();
     let client = Client::new(server).unwrap();
 
     let response = client
@@ -106,12 +104,11 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let transaction_processor =
         DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
 
-    let server = ledger_query_service::server::create(
+    let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        None,
-        Some((query_repository, query_result_repository)),
-    );
+    ).register_ethereum(query_repository, query_result_repository)
+        .build();
     let client = Client::new(server).unwrap();
 
     let response = client
@@ -162,12 +159,11 @@ fn should_reject_malformed_address() {
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    let server = ledger_query_service::server::create(
+    let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
         link_factory,
-        None,
-        Some((query_repository, query_result_repository)),
-    );
+    ).register_ethereum(query_repository, query_result_repository)
+        .build();
     let client = Client::new(server).unwrap();
 
     let response = client
