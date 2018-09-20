@@ -19,22 +19,13 @@ pub struct EthereumSimpleListener<P> {
     processor: P,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    Web3InitFail(web3::Error),
-    FilterFail(web3::Error),
-}
-
 impl<P: TransactionProcessor<EthereumTransaction>> EthereumSimpleListener<P> {
-    pub fn new(endpoint: &str, processor: P) -> Result<Self, Error> {
-        let (event_loop, transport) = Http::new(&endpoint).map_err(Error::Web3InitFail)?;
+    pub fn new(endpoint: &str, processor: P) -> Result<Self, web3::Error> {
+        let (event_loop, transport) = Http::new(&endpoint)?;
         let client = Web3::new(transport);
 
         let filter = client.eth_filter();
-        let filter = filter
-            .create_blocks_filter()
-            .wait()
-            .map_err(Error::FilterFail)?;
+        let filter = filter.create_blocks_filter().wait()?;
 
         Ok(EthereumSimpleListener {
             _event_loop: event_loop,

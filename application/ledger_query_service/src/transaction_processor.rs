@@ -27,7 +27,14 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
 
         self.queries
             .all()
-            .filter(|(_, query)| query.matches(transaction))
+            .filter(|(_, query)| {
+                trace!(
+                    "Matching query {:#?} against transaction {:#?}",
+                    query,
+                    transaction
+                );
+                query.matches(transaction)
+            })
             .map(|(id, query)| (id, transaction.transaction_id(), query))
             .inspect(|(id, txid, query)| {
                 info!(
