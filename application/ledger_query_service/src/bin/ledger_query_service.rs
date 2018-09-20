@@ -14,7 +14,7 @@ use ledger_query_service::{
     DefaultTransactionProcessor, EthereumSimpleListener, InMemoryQueryRepository,
     InMemoryQueryResultRepository, LinkFactory, QueryRepository, QueryResultRepository,
 };
-use std::{env::var, sync::Arc};
+use std::{env::var, sync::Arc, time::Duration};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
@@ -60,6 +60,12 @@ fn main() {
     if let Ok(web3_endpoint) = var("ETHEREUM_WEB3_ENDPOINT") {
         info!("Starting EthereumSimpleListener on {}", web3_endpoint);
 
+        let polling_wait_time = match var("ETHEREUM_POLLING_TIME_SEC") {
+            Err(_) => 17,
+            Ok(var) => var.parse().unwrap(),
+        };
+        let polling_wait_time = Duration::from_secs(polling_wait_time);
+
         let query_repository = Arc::new(InMemoryQueryRepository::default());
         let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
@@ -71,8 +77,11 @@ fn main() {
         ethereum_repositories = Some((query_repository, query_result_repository));
 
         ::std::thread::spawn(move || {
-            let ethereum_simple_listener =
-                EthereumSimpleListener::new(web3_endpoint.as_str(), ethereum_transaction_processor);
+            let ethereum_simple_listener = EthereumSimpleListener::new(
+                web3_endpoint.as_str(),
+                polling_wait_time,
+                ethereum_transaction_processor,
+            );
 
             match ethereum_simple_listener {
                 Ok(listener) => listener.start(),

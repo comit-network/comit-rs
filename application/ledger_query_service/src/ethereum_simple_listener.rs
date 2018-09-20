@@ -9,18 +9,20 @@ use web3::{
     Web3,
 };
 
-// TODO: make it configurable as for production you may want to wait a bit longer
-const POLLING_WAIT_TIME: Duration = Duration::from_secs(1);
-
 pub struct EthereumSimpleListener<P> {
     _event_loop: EventLoopHandle,
     client: Web3<Http>,
     filter: BaseFilter<Http, H256>,
+    polling_interval: Duration,
     processor: P,
 }
 
 impl<P: TransactionProcessor<EthereumTransaction>> EthereumSimpleListener<P> {
-    pub fn new(endpoint: &str, processor: P) -> Result<Self, web3::Error> {
+    pub fn new(
+        endpoint: &str,
+        polling_wait_time: Duration,
+        processor: P,
+    ) -> Result<Self, web3::Error> {
         let (event_loop, transport) = Http::new(&endpoint)?;
         let client = Web3::new(transport);
 
@@ -31,6 +33,7 @@ impl<P: TransactionProcessor<EthereumTransaction>> EthereumSimpleListener<P> {
             _event_loop: event_loop,
             client,
             filter,
+            polling_interval: polling_wait_time,
             processor,
         })
     }
@@ -49,7 +52,7 @@ impl<P: TransactionProcessor<EthereumTransaction>> EthereumSimpleListener<P> {
 
         let result = self
             .filter
-            .stream(POLLING_WAIT_TIME)
+            .stream(self.polling_interval)
             .for_each(move |block_hash| {
                 let block_id = BlockId::from(block_hash);
 
