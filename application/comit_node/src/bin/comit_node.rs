@@ -36,7 +36,6 @@ use comit_node::{
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
-use hex::FromHex;
 use secp256k1_support::KeyPair;
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};
@@ -50,13 +49,7 @@ fn main() {
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
 
-    let secret_key_hex = settings.ethereum.private_key;
-
-    let secret_key_data =
-        <[u8; 32]>::from_hex(secret_key_hex).expect("Private key is not hex_encoded");
-
-    let eth_keypair: KeyPair =
-        KeyPair::from_secret_key_slice(&secret_key_data).expect("Private key isn't valid");
+    let eth_keypair = settings.ethereum.private_key;
 
     let address = eth_keypair.public_key().to_ethereum_address();
     let wallet = InMemoryWallet::new(eth_keypair, settings.ethereum.network_id);
@@ -85,9 +78,7 @@ fn main() {
         ethereum_support::Address::from_str(settings.swap.eth_refund_address.as_str())
             .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
 
-    let bob_success_private_key =
-        PrivateKey::from_str(settings.bitcoin.private_key.as_str()).unwrap();
-    let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
+    let bob_success_keypair = settings.bitcoin.private_key;
 
     let btc_bob_redeem_address =
         bitcoin_support::Address::from_str(settings.swap.btc_redeem_address.as_str())

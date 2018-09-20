@@ -1,4 +1,6 @@
 use config::{Config, ConfigError, File};
+use secp256k1_support::{serde_support::keypair, KeyPair};
+use serde::Deserialize;
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -6,7 +8,8 @@ pub struct Ethereum {
     pub network_id: u8,
     pub node_url: String,
     pub gas_price: u64,
-    pub private_key: String,
+    #[serde(with = "keypair")]
+    pub private_key: KeyPair,
 }
 
 #[derive(Debug, Deserialize)]
@@ -16,12 +19,14 @@ pub struct Bitcoin {
     pub node_url: String,
     pub node_username: String,
     pub node_password: String,
-    pub private_key: String,
+    #[serde(with = "keypair")]
+    pub private_key: KeyPair,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Swap {
-    pub btc_redeem_address: String, //TODO this should be generated on the fly per swap from the master key
+    pub btc_redeem_address: String,
+    //TODO this should be generated on the fly per swap from the master key
     pub eth_refund_address: String, //TODO this should be generated on the fly per swap from the master key
 }
 

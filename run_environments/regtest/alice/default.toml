@@ -11,10 +11,10 @@ satoshi_per_byte = 50 # used for calculating transaction fees
 node_url = "http://localhost:18443"
 node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-private_key="L5GTDDmtZiGKsxypQQuaT8zxMGUxvrRhZFYUkzGLgeExBgoK9phG"
+private_key="d14645573802900964c63e00e9e238aef9152b95e2f9aa1b534323951258d7fc"
 
 [swap]
-btc_redeem_address="bc1qzqvpwc0an990n84turgphzruhaqsjmefxxkugs"
+btc_redeem_address="bc1qzgj3he4cld0zd3rrvz4ph9j566emvse8g9y25m"
 eth_refund_address="3853005576eeca2ba7ec579ce04c1ce2f4cd162e"
 
 [comit]
