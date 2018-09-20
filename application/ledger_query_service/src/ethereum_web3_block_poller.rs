@@ -9,7 +9,7 @@ use web3::{
     Web3,
 };
 
-pub struct EthereumSimpleListener<P> {
+pub struct EthereumWeb3BlockPoller<P> {
     _event_loop: EventLoopHandle,
     client: Web3<Http>,
     filter: BaseFilter<Http, H256>,
@@ -17,7 +17,7 @@ pub struct EthereumSimpleListener<P> {
     processor: P,
 }
 
-impl<P: TransactionProcessor<EthereumTransaction>> EthereumSimpleListener<P> {
+impl<P: TransactionProcessor<EthereumTransaction>> EthereumWeb3BlockPoller<P> {
     pub fn new(
         endpoint: &str,
         polling_wait_time: Duration,
@@ -29,7 +29,7 @@ impl<P: TransactionProcessor<EthereumTransaction>> EthereumSimpleListener<P> {
         let filter = client.eth_filter();
         let filter = filter.create_blocks_filter().wait()?;
 
-        Ok(EthereumSimpleListener {
+        Ok(EthereumWeb3BlockPoller {
             _event_loop: event_loop,
             client,
             filter,

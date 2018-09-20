@@ -17,7 +17,7 @@ extern crate web3;
 extern crate zmq_rs as zmq;
 
 mod bitcoind_zmq_listener;
-mod ethereum_simple_listener;
+mod ethereum_web3_block_poller;
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;
 mod link_factory;
@@ -28,7 +28,7 @@ pub mod server;
 mod transaction_processor;
 
 pub use bitcoind_zmq_listener::*;
-pub use ethereum_simple_listener::*;
+pub use ethereum_web3_block_poller::*;
 //TODO: remove web3 dependency
 //pub use ethereum_support::web3;
 pub use in_memory_query_repository::*;

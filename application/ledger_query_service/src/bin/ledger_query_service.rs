@@ -11,7 +11,7 @@ extern crate web3;
 
 use ledger_query_service::{
     bitcoin_query::BitcoinQuery, ethereum_query::EthereumQuery, BitcoindZmqListener,
-    DefaultTransactionProcessor, EthereumSimpleListener, InMemoryQueryRepository,
+    DefaultTransactionProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
     InMemoryQueryResultRepository, LinkFactory, QueryRepository, QueryResultRepository,
 };
 use std::{env::var, sync::Arc, time::Duration};
@@ -77,7 +77,7 @@ fn main() {
         ethereum_repositories = Some((query_repository, query_result_repository));
 
         ::std::thread::spawn(move || {
-            let ethereum_simple_listener = EthereumSimpleListener::new(
+            let ethereum_simple_listener = EthereumWeb3BlockPoller::new(
                 web3_endpoint.as_str(),
                 polling_wait_time,
                 ethereum_transaction_processor,
