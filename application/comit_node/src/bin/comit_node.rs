@@ -119,7 +119,7 @@ fn main() {
         "BTC_TESTNET" => Network::Testnet,
         "BTC_REGTEST" => Network::Regtest,
         _ => panic!(
-            "Please set environment variable BTC_NETWORK to one of the following values:\n\
+            "Please set bitcoin.network_id to one of the following values:\n\
              - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
         ),
     };
