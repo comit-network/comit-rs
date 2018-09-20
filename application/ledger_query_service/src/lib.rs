@@ -28,9 +28,8 @@ pub mod server_builder;
 mod transaction_processor;
 
 pub use bitcoind_zmq_listener::*;
+pub use ethereum_support::web3;
 pub use ethereum_web3_block_poller::*;
-//TODO: remove web3 dependency
-//pub use ethereum_support::web3;
 pub use in_memory_query_repository::*;
 pub use in_memory_query_result_repository::*;
 pub use link_factory::*;
