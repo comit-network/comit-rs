@@ -1,12 +1,12 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::fmt::Debug;
+use std::{fmt::Debug, str::FromStr};
 use swap;
 
 pub trait Ledger: Clone + Debug + Send + Sync + 'static + Default + Into<swap::Ledger> {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type LockDuration: Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static;
     type HtlcId: Clone + DeserializeOwned + Serialize + Send + Sync;
-    type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
+    type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + FromStr + 'static;
     type Pubkey: Clone + Debug + Send + Sync + 'static;
     type Address: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
     type Identity: Clone

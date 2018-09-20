@@ -1,17 +1,32 @@
+use bitcoin_payment_future::LedgerServices;
+use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{BitcoinQuantity, ToP2wpkhAddress};
 use common_types::seconds::Seconds;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
 use futures::{Future, Stream};
+use futures_ext::FutureFactory;
 use ganp::{
     self,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{
+        bitcoin::{Bitcoin, HtlcId},
+        ethereum::Ethereum,
+    },
     rfc003, swap, SwapRequestHandler,
 };
+use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
 use secp256k1_support::KeyPair;
 use std::{io, net::SocketAddr, sync::Arc};
-use swaps::{bob_events::OrderTaken, common::TradeId};
-use tokio::{self, net::TcpListener};
+use swaps::{
+    alice_events::ContractDeployed as AliceContractDeployed,
+    bob_events::{
+        ContractDeployed as BobContractDeployed, ContractRedeemed as BobContractRedeemed,
+        OrderTaken, OrderTaken as BobOrderTaken, TradeFunded as BobTradeFunded,
+    },
+    common::TradeId,
+    errors::Error,
+};
+use tokio::{self, net::TcpListener, runtime::Runtime};
 use transport_protocol::{connection::Connection, json};
 
 pub struct ComitServer {
@@ -59,31 +74,46 @@ impl ComitServer {
     }
 }
 
-struct MySwapHandler {
+struct MySwapHandler<C> {
     my_refund_address: ethereum_support::Address,
     my_success_keypair: KeyPair,
     event_store: Arc<InMemoryEventStore<TradeId>>,
+    runtime: Runtime,
+    future_factory: FutureFactory<LedgerServices>,
+    ledger_query_service_api_client: C,
+    bitcoin_node: Arc<BitcoinRpcApi>,
+    ethereum_service: Arc<EthereumService>,
 }
 
-impl MySwapHandler {
+impl<C: LedgerQueryServiceApiClient> MySwapHandler<C> {
     pub fn new(
         my_refund_address: ethereum_support::Address,
         my_success_keypair: KeyPair,
         event_store: Arc<InMemoryEventStore<TradeId>>,
+        runtime: Runtime,
+        future_factory: FutureFactory<LedgerServices>,
+        client: C,
+        bitcoin_node: Arc<BitcoinRpcApi>,
+        ethereum_service: Arc<EthereumService>,
     ) -> Self {
         MySwapHandler {
             my_refund_address,
             my_success_keypair,
             event_store,
+            runtime,
+            future_factory,
+            ledger_query_service_api_client,
+            bitcoin_node,
+            ethereum_service,
         }
     }
 }
 
-impl
+impl<C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>
     SwapRequestHandler<
         rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
         rfc003::AcceptResponse<Bitcoin, Ethereum>,
-    > for MySwapHandler
+    > for MySwapHandler<C>
 {
     fn handle(
         &mut self,
