@@ -6,7 +6,7 @@ use tiny_keccak::keccak256;
 pub struct UnsignedTransaction {
     nonce: U256,
     gas_price: U256,
-    gas: U256,
+    gas_limit: U256,
     to: Option<Address>,
     value: U256,
     data: Option<Bytes>,
@@ -62,7 +62,7 @@ impl Encodable for UnsignedTransaction {
 
         s.append(&self.nonce);
         s.append(&self.gas_price);
-        s.append(&self.gas);
+        s.append(&self.gas_limit);
 
         match self.to {
             Some(ref address) => s.append(address),
@@ -75,26 +75,31 @@ impl Encodable for UnsignedTransaction {
 }
 
 impl UnsignedTransaction {
-    pub fn new_contract_deployment<
-        B: Into<Bytes>,
-        G: Into<U256>,
-        GP: Into<U256>,
-        V: Into<U256>,
-        N: Into<U256>,
-    >(
+    pub fn new_contract_deployment<B: Into<Bytes>, GP: Into<U256>, V: Into<U256>, N: Into<U256>>(
         contract: B,
-        gas: G,
         gas_price: GP,
         value: V,
         nonce: N,
+        extra_gas_limit: Option<u32>,
     ) -> Self {
+        let contract_data = contract.into();
+        let data_bytes = contract_data.0.len();
+        let contract_creation_fee = 32000;
+        let base_tx_fee = 21000;
+        let gas_limit = contract_creation_fee + base_tx_fee + data_bytes * 200;
+
+        let buffer: U256 = 10000.into();
+        let buffered_gas_limit = U256::from(gas_limit)
+            + buffer
+            + extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
+
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: buffered_gas_limit,
             to: None,
             value: value.into(),
-            data: Some(contract.into()),
+            data: Some(contract_data),
         }
     }
 
@@ -114,7 +119,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: gas.into(),
             to: Some(to.into()),
             value: value.into(),
             data: None,
@@ -139,7 +144,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: gas.into(),
             to: Some(to.into()),
             value: value.into(),
             data: Some(data.into()),
@@ -172,7 +177,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: gas.into(),
             to: Some(token_contract.into()),
             value: U256::from(0),
             data: Some(data.into()),
@@ -198,88 +203,6 @@ impl UnsignedTransaction {
 mod tests {
 
     use super::*;
-    use hex::FromHex;
-    use secp256k1_support::KeyPair;
-    use wallet::Wallet;
-    use InMemoryWallet;
-
-    #[test]
-    fn contract_deployment_transaction_should_have_correct_binary_representation() {
-        let tx = UnsignedTransaction::new_contract_deployment(Bytes(Vec::new()), 500, 2, 10, 1);
-
-        let mut stream = RlpStream::new();
-
-        tx.rlp_append(&mut stream);
-        stream.append(&1u8);
-        stream.append(&0u8);
-        stream.append(&0u8);
-
-        let bytes = stream.as_raw();
-
-        assert_eq!(bytes, &[203, 1, 2, 130, 1, 244, 128, 10, 128, 1, 128, 128]);
-    }
-
-    #[test]
-    fn payment_transaction_should_have_correct_binary_representation() {
-        let tx = UnsignedTransaction::new_payment(
-            "147ba99ef89c152f8004e91999fee87bda6cbc3e",
-            500,
-            2,
-            10,
-            1,
-        );
-
-        let mut stream = RlpStream::new();
-
-        tx.rlp_append(&mut stream);
-        stream.append(&1u8);
-        stream.append(&0u8);
-        stream.append(&0u8);
-
-        let bytes = stream.as_raw();
-
-        assert_eq!(
-            bytes,
-            &[
-                223, 1, 2, 130, 1, 244, 148, 20, 123, 169, 158, 248, 156, 21, 47, 128, 4, 233, 25,
-                153, 254, 232, 123, 218, 108, 188, 62, 10, 128, 1, 128, 128,
-            ]
-        );
-    }
-
-    #[test]
-    fn signed_transaction_should_have_correct_binary_representation() {
-        let secret_key_data = <[u8; 32]>::from_hex(
-            "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
-        ).unwrap();
-        let keypair = KeyPair::from_secret_key_slice(&secret_key_data).unwrap();
-        let account0 = InMemoryWallet::new(keypair, 1);
-
-        let tx = UnsignedTransaction::new_payment(
-            "147ba99ef89c152f8004e91999fee87bda6cbc3e",
-            500,
-            2,
-            10,
-            1,
-        );
-
-        let transaction = account0.sign(&tx);
-
-        let bytes: Bytes = transaction.into();
-        let bytes = bytes.0;
-
-        assert_eq!(
-            bytes,
-            vec![
-                248, 95, 1, 2, 130, 1, 244, 148, 20, 123, 169, 158, 248, 156, 21, 47, 128, 4, 233,
-                25, 153, 254, 232, 123, 218, 108, 188, 62, 10, 128, 37, 160, 28, 83, 76, 32, 152,
-                243, 119, 249, 92, 41, 113, 205, 218, 84, 153, 100, 194, 227, 142, 156, 175, 193,
-                100, 142, 204, 2, 237, 132, 47, 44, 156, 101, 160, 3, 102, 136, 243, 157, 29, 196,
-                161, 44, 128, 172, 193, 117, 230, 52, 200, 119, 125, 10, 192, 190, 228, 153, 205,
-                209, 81, 123, 160, 70, 77, 10, 229,
-            ]
-        );
-    }
 
     #[test]
     fn erc20_contract_allowance_should_have_correct_representation() {
@@ -296,6 +219,24 @@ mod tests {
         assert_eq!(
             transaction.to,
             Some("03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into())
+        );
+    }
+
+    #[test]
+    fn gas_limit_is_computed_based_on_contract_size() {
+        let transaction = UnsignedTransaction::new_contract_deployment(
+            // contract occupying 5 bytes
+            Bytes(vec![0_u8; 5]),
+            0,
+            0,
+            0,
+            // extra_gas_limit
+            Some(10),
+        );
+
+        assert_eq!(
+            transaction.gas_limit,
+            U256::from(32000 + (5 * 200)) + 10000 + 10
         );
     }
 }
