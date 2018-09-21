@@ -1,15 +1,15 @@
 use common_types::secret::Secret;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
-use ganp::ledger::{
-    bitcoin::{self, Bitcoin},
-    ethereum::Ethereum,
-};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
-use swap_protocols::rfc003::ledger_htlc_service::{
-    BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
+use swap_protocols::{
+    ledger::{
+        bitcoin::{self, Bitcoin},
+        ethereum::Ethereum,
+    },
+    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
 };
 use swaps::{
     alice_events::ContractDeployed as AliceContractDeployed,

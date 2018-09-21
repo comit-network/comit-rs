@@ -1,11 +1,12 @@
 use common_types::secret::SecretHash;
 use futures::Future;
-use ganp::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    rfc003, swap,
-};
 use serde_json;
 use std::{io, net::SocketAddr};
+use swap_protocols::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    rfc003,
+    wire_types::Asset,
+};
 use tokio::{net::TcpStream, runtime::Runtime};
 use transport_protocol::{
     client::{self, Client},
@@ -137,7 +138,7 @@ impl DefaultApiClient {
         Ok((client, shutdown_handle))
     }
 
-    fn send_swap_request<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>>(
+    fn send_swap_request<SL: Ledger, TL: Ledger, SA: Into<Asset>, TA: Into<Asset>>(
         &self,
         request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Result<rfc003::AcceptResponse<SL, TL>, SwapRequestError> {

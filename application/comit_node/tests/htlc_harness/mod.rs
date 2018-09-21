@@ -5,10 +5,10 @@ use comit_node::{
     },
 };
 use common_types::{seconds::Seconds, secret::Secret};
-use env_logger;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
 use ethereum_wallet::fake::StaticFakeWallet;
 use parity_client::ParityClient;
+use pretty_env_logger;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::Duration};
 use tc_parity_parity::ParityEthereum;
@@ -47,7 +47,7 @@ pub fn harness(
     EventLoopHandle,
     Container<DockerCli, ParityEthereum>,
 ) {
-    let _ = env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let (alice_keypair, alice) =
         new_account("63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992");

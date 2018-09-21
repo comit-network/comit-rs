@@ -3,13 +3,15 @@ use common_types::seconds::Seconds;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
 use futures::{Future, Stream};
-use ganp::{
-    self,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003, swap, SwapRequestHandler,
-};
 use secp256k1_support::KeyPair;
 use std::{io, net::SocketAddr, sync::Arc};
+use swap_protocols::{
+    json_config,
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003,
+    wire_types::SwapResponse,
+    SwapRequestHandler,
+};
 use swaps::{bob_events::OrderTaken, common::TradeId};
 use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
@@ -45,7 +47,7 @@ impl ComitServer {
                 self.my_success_keypair.clone(),
                 self.event_store.clone(),
             );
-            let config = ganp::json_config(swap_handler);
+            let config = json_config(swap_handler);
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
             tokio::spawn(close_future.map_err(move |e| {
@@ -88,7 +90,7 @@ impl
     fn handle(
         &mut self,
         request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
-    ) -> swap::SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
+    ) -> SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
         let alice_refund_address = request.source_ledger_refund_identity.clone().into();
 
         let bob_success_address = self
@@ -128,14 +130,14 @@ impl
                         .into(),
                     target_ledger_lock_duration: twelve_hours,
                 };
-                swap::SwapResponse::Accept(response)
+                SwapResponse::Accept(response)
             }
             Err(e) => {
                 error!(
                     "Declining trade because of problem with event store {:?}",
                     e
                 );
-                swap::SwapResponse::Decline
+                SwapResponse::Decline
             }
         }
     }

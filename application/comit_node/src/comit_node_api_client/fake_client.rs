@@ -5,8 +5,8 @@ use comit_node_api_client::{
 };
 use common_types::seconds::Seconds;
 use ethereum_support;
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use std::str::FromStr;
+use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 
 #[allow(dead_code)]
 pub struct FakeApiClient;

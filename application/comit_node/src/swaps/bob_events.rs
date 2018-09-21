@@ -1,8 +1,8 @@
 use common_types::secret::SecretHash;
 use event_store::Event;
-use ganp::ledger::Ledger;
 use secp256k1_support::KeyPair;
 use std::marker::PhantomData;
+use swap_protocols::ledger::Ledger;
 use swaps::common::TradeId;
 
 #[derive(Clone, Debug)]

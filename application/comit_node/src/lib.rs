@@ -23,11 +23,11 @@ extern crate uuid;
 extern crate log;
 extern crate event_store;
 extern crate futures;
-extern crate ganp;
 extern crate hex;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
+#[macro_use]
 extern crate transport_protocol;
 extern crate web3;
 
