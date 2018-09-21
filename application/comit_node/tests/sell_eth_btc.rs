@@ -5,12 +5,11 @@ extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
 extern crate common_types;
-extern crate env_logger;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
-extern crate ganp;
 extern crate hex;
+extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate rocket;
 extern crate rocket_contrib;
@@ -32,8 +31,9 @@ use comit_node::{
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
-    swap_protocols::rfc003::ledger_htlc_service::{
-        BitcoinService, BlockingEthereumApi, EthereumService,
+    swap_protocols::{
+        ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+        rfc003::ledger_htlc_service::{BitcoinService, BlockingEthereumApi, EthereumService},
     },
     swaps::{
         bob_events::{OrderTaken, TradeFunded},
@@ -44,7 +44,6 @@ use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::{EventStore, InMemoryEventStore};
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use hex::FromHex;
 use mocks::BitcoinRpcClientMock;
 use rocket::{
@@ -54,7 +53,6 @@ use rocket::{
 use secp256k1_support::KeyPair;
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};
-use uuid::Uuid;
 
 trait DeserializeAsJson {
     fn body_json<T>(&mut self) -> T
@@ -168,7 +166,7 @@ fn create_bitcoin_service() -> BitcoinService {
 
 #[test]
 fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
-    let _ = env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
     let event_store = InMemoryEventStore::new();
@@ -195,7 +193,7 @@ pub struct RedeemETHNotificationBody {
 
 #[test]
 fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
-    let _ = env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
     let event_store = InMemoryEventStore::new();

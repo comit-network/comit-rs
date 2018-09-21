@@ -4,11 +4,13 @@ use bitcoin_rpc_client;
 use bitcoin_support::{self, PubkeyHash};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
-use ganp::ledger::{bitcoin::Bitcoin, Ledger};
 use reqwest;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
-use swap_protocols::rfc003::ledger_htlc_service::{self, LedgerHtlcService};
+use swap_protocols::{
+    ledger::{bitcoin::Bitcoin, Ledger},
+    rfc003::ledger_htlc_service::{self, LedgerHtlcService},
+};
 use swaps::common::TradeId;
 
 impl From<reqwest::Error> for ledger_htlc_service::Error {

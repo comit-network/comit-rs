@@ -10,9 +10,9 @@ extern crate serde_derive;
 extern crate bitcoin_rpc_client;
 extern crate comit_node;
 extern crate common_types;
-extern crate env_logger;
 extern crate ethereum_wallet;
 extern crate hex;
+extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate serde_json;
 extern crate tc_web3_client;
@@ -99,6 +99,8 @@ fn create_rocket_client() -> Client {
 
 #[test]
 fn post_sell_offer_of_x_eth_for_btc() {
+    let _ = pretty_env_logger::try_init();
+
     let client = create_rocket_client();
 
     let request = client

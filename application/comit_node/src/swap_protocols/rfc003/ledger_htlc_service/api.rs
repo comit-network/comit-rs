@@ -1,6 +1,6 @@
 use common_types::secret::Secret;
-use ganp::ledger::Ledger;
 use secp256k1_support::KeyPair;
+use swap_protocols::ledger::Ledger;
 use swaps::common::TradeId;
 
 #[derive(Debug)]
