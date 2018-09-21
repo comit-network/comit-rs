@@ -189,9 +189,9 @@ mod tests {
         let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
         let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
 
-        let secret_hash: Vec<u8> = hex::decode(
-            "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
-        ).unwrap();
+        let secret_hash: Vec<u8> =
+            hex::decode("51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c")
+                .unwrap();
 
         let htlc = Htlc::new(
             recipient_pubkey_hash,
@@ -220,9 +220,9 @@ mod tests {
         let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
         let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
 
-        let secret_hash: Vec<u8> = hex::decode(
-            "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c",
-        ).unwrap();
+        let secret_hash: Vec<u8> =
+            hex::decode("51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c")
+                .unwrap();
 
         let htlc = Htlc::new(
             recipient_pubkey_hash,

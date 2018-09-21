@@ -44,8 +44,7 @@ fn setup<
     H: SwapRequestHandler<
             rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
             rfc003::AcceptResponse<Bitcoin, Ethereum>,
-        >
-        + SwapRequestHandler<
+        > + SwapRequestHandler<
             rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
             rfc003::AcceptResponse<Ethereum, Bitcoin>,
         >,

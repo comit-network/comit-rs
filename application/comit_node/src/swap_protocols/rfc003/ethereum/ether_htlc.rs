@@ -70,8 +70,7 @@ impl Htlc for EtherHtlc {
             .replace(
                 Self::CONTRACT_START_POSITION_PLACEHOLDER,
                 &header_length_as_hex,
-            )
-            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
+            ).replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
         debug!("Final contract code: {}", &contract_code);
         debug!("Deploy header: {}", &deploy_header);

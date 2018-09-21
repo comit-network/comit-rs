@@ -34,8 +34,7 @@ pub fn create_rocket_instance(
                 eth_btc::cli::sell_routes::post_sell_offers,
                 eth_btc::cli::sell_routes::post_sell_orders,
             ],
-        )
-        .mount(
+        ).mount(
             "/ledger/", //Endpoints for notifying about ledger events
             routes![
                 // TODO will be removed once we have the Ledger Query Service
@@ -45,8 +44,7 @@ pub fn create_rocket_instance(
                 eth_btc::ledger::sell_routes::post_orders_funding,
                 eth_btc::ledger::sell_routes::post_revealed_secret,
             ],
-        )
-        .manage(event_store)
+        ).manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_service)
         .manage(bob_success_keypair)

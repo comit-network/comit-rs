@@ -71,9 +71,9 @@ impl BuyOrderRequestBody {
 
         let alice_success_address = ethereum_support::Address::from_str(&alice_success_address)
             .expect("Could not convert the success address");
-        let alice_refund_address = bitcoin_rpc_client::Address::from_str(
-            alice_refund_address.as_str(),
-        ).expect("Could not convert the Bitcoin refund address");
+        let alice_refund_address =
+            bitcoin_rpc_client::Address::from_str(alice_refund_address.as_str())
+                .expect("Could not convert the Bitcoin refund address");
 
         BuyOrderRequestBody {
             alice_success_address,
@@ -178,9 +178,9 @@ mod tests {
         let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
         let order_request_body = BuyOrderRequestBody::new(address, refund_address);
 
-        let eth_address = ethereum_support::Address::from_str(
-            "00a329c0648769a73afac7f9381e08fb43dbea72",
-        ).unwrap();
+        let eth_address =
+            ethereum_support::Address::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
+                .unwrap();
         assert_eq!(order_request_body.alice_success_address, eth_address)
     }
 
@@ -190,9 +190,9 @@ mod tests {
         let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
         let order_request_body = BuyOrderRequestBody::new(address, refund_address);
 
-        let eth_address = ethereum_support::Address::from_str(
-            "00a329c0648769a73afac7f9381e08fb43dbea72",
-        ).unwrap();
+        let eth_address =
+            ethereum_support::Address::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
+                .unwrap();
         assert_eq!(order_request_body.alice_success_address, eth_address)
     }
 

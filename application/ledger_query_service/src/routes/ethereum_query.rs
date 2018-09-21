@@ -22,7 +22,11 @@ pub struct EthereumQuery {
     transaction_data: Option<Bytes>,
 }
 
-#[post("/queries/ethereum", format = "application/json", data = "<query>")]
+#[post(
+    "/queries/ethereum",
+    format = "application/json",
+    data = "<query>"
+)]
 pub fn handle_new_ethereum_query<'r>(
     query: Json<EthereumQuery>,
     link_factory: State<LinkFactory>,
@@ -47,9 +51,10 @@ pub fn handle_new_ethereum_query<'r>(
         Ok(id) => Ok(created(
             link_factory.create_link(format!("/queries/ethereum/{}", id)),
         )),
-        Err(_) => Err(
-            HttpApiProblem::with_title_from_status(500).set_detail("Failed to create new query")
-        ),
+        Err(_) => {
+            Err(HttpApiProblem::with_title_from_status(500)
+                .set_detail("Failed to create new query"))
+        }
     }
 }
 
@@ -130,7 +135,7 @@ pub fn delete_ethereum_query(
 mod tests {
     use super::*;
     use spectral::prelude::*;
-    use web3::types::{Bytes, H256, Transaction, U256};
+    use web3::types::{Bytes, Transaction, H256, U256};
 
     #[test]
     fn given_query_from_address_contract_creation_transaction_matches() {

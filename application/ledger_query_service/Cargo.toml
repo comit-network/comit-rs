@@ -13,9 +13,9 @@ serde = "1"
 serde_derive = "1"
 serde_json = "1"
 log = "0.4"
-rocket = "=0.3.14"
-rocket_codegen = "=0.3.14"
-rocket_contrib = "=0.3.14"
+rocket = "0.3"
+rocket_codegen = "0.3"
+rocket_contrib = "0.3"
 http-api-problem = { version = "0.7", features = ["with_rocket"] }
 bitcoin_support = { path = "../../vendor/bitcoin_support" }
 ethereum_support = { path = "../../vendor/ethereum_support" }

@@ -60,7 +60,7 @@ fn given_to_address_query_when_matching_transaction_is_processed_returns_result(
         rocket::Config::development().unwrap(),
         link_factory,
     ).register_ethereum(query_repository, query_result_repository)
-        .build();
+    .build();
     let client = Client::new(server).unwrap();
 
     let (_alice_keypair, alice) =
@@ -111,8 +111,7 @@ fn given_to_address_query_when_matching_transaction_is_processed_returns_result(
                 condition: None,
             },
             "",
-        )
-        .wait()
+        ).wait()
         .unwrap();
 
     let dev_to_bob_hash = web3
@@ -129,8 +128,7 @@ fn given_to_address_query_when_matching_transaction_is_processed_returns_result(
                 condition: None,
             },
             "",
-        )
-        .wait()
+        ).wait()
         .unwrap();
 
     // Wait for the polling to happen on the other thread

@@ -88,9 +88,9 @@ fn create_rocket_client() -> Client {
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
         ).unwrap()
-            .secret_key()
-            .clone()
-            .into(),
+        .secret_key()
+        .clone()
+        .into(),
         Network::Testnet,
         Arc::new(api_client),
     );

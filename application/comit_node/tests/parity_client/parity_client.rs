@@ -1,6 +1,6 @@
 use ethereum_support::{
     web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, EthereumQuantity, Future, H256, TransactionRequest, U256,
+    Address, Bytes, CallRequest, EthereumQuantity, Future, TransactionRequest, H256, U256,
 };
 use hex;
 
@@ -37,8 +37,7 @@ impl ParityClient {
                     condition: None,
                 },
                 PARITY_DEV_PASSWORD,
-            )
-            .wait()
+            ).wait()
             .unwrap();
     }
 
@@ -60,8 +59,7 @@ impl ParityClient {
                     condition: None,
                 },
                 "",
-            )
-            .wait()
+            ).wait()
             .unwrap();
 
         let receipt = self
@@ -122,8 +120,7 @@ impl ParityClient {
                     data: Some(Bytes(hex::decode(payload).unwrap())),
                 },
                 None,
-            )
-            .wait()
+            ).wait()
             .unwrap();
 
         U256::from(result.0.as_slice())
@@ -149,8 +146,7 @@ impl ParityClient {
                     condition: None,
                 },
                 "",
-            )
-            .wait()
+            ).wait()
             .unwrap();
 
         let receipt = self

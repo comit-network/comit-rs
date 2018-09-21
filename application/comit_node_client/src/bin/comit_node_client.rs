@@ -18,13 +18,20 @@ use structopt::StructOpt;
 use uuid::Uuid;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "Comit Node Client", about = "CLI for the COMIT Node.")]
+#[structopt(
+    name = "Comit Node Client",
+    about = "CLI for the COMIT Node."
+)]
 enum Opt {
     /// Request an offer
     #[structopt(name = "offer")]
     Offer {
         /// The symbol you want to trade (e.g. ETH-BTC)
-        #[structopt(short = "S", long = "symbol", name = "symbol to trade (e.g. ETH-BTC)")]
+        #[structopt(
+            short = "S",
+            long = "symbol",
+            name = "symbol to trade (e.g. ETH-BTC)"
+        )]
         symbol: String,
         /// The type of trade
         #[structopt(subcommand)]
@@ -41,14 +48,20 @@ enum Opt {
     #[structopt(name = "order")]
     Order {
         /// The symbol you want to trade (e.g. ETH-BTC)
-        #[structopt(short = "S", long = "symbol", name = "symbol to trade (e.g. ETH-BTC)")]
+        #[structopt(
+            short = "S",
+            long = "symbol",
+            name = "symbol to trade (e.g. ETH-BTC)"
+        )]
         symbol: String,
         /// The trade id
         #[structopt(short = "u", long = "uid", name = "trade id")]
         uid: Uuid,
         /// The address to receive the traded currency
         #[structopt(
-            short = "d", long = "success-address", name = "address to receive the traded currency"
+            short = "d",
+            long = "success-address",
+            name = "address to receive the traded currency"
         )]
         success_address: String,
         /// The address to receive a refund in the original currency in case the trade is cancelled
@@ -63,7 +76,11 @@ enum Opt {
     #[structopt(name = "redeem")]
     Redeem {
         /// The symbol you want to trade (e.g. ETH-BTC)
-        #[structopt(short = "S", long = "symbol", name = "symbol to trade (e.g. ETH-BTC)")]
+        #[structopt(
+            short = "S",
+            long = "symbol",
+            name = "symbol to trade (e.g. ETH-BTC)"
+        )]
         symbol: String,
         /// The trade id
         #[structopt(short = "u", long = "uid", name = "trade id")]

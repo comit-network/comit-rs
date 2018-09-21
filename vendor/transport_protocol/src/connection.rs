@@ -70,8 +70,7 @@ impl<
                 };
 
                 result.map_err(ClosedReason::InvalidFrame)
-            })
-            .then(|result| {
+            }).then(|result| {
                 match result {
                     // Stream is fine and we could handle the frame => flatten one layer
                     Ok(Ok(maybe_frame)) => Ok(maybe_frame),
@@ -80,8 +79,7 @@ impl<
                     // Stream is already fucked, continue
                     Err(e) => Err(e),
                 }
-            })
-            .filter(Option::is_some)
+            }).filter(Option::is_some)
             .map(Option::unwrap)
             .select(request_stream.map_err(|_| ClosedReason::InternalError))
             .inspect(|frame| trace!("---> Outgoing {:?}", frame))

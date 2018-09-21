@@ -100,9 +100,9 @@ fn create_rocket_client(
         bitcoin_support::PrivateKey::from_str(
             "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
         ).unwrap()
-            .secret_key()
-            .clone()
-            .into(),
+        .secret_key()
+        .clone()
+        .into(),
         Network::Regtest,
         Arc::new(api_client),
     );
@@ -113,9 +113,9 @@ fn mock_order_taken(event_store: &InMemoryEventStore<TradeId>, trade_id: TradeId
     let bytes = b"hello world, you are beautiful!!";
     let secret = Secret::from(*bytes);
 
-    let secret_key_data = <[u8; 32]>::from_hex(
-        "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
-    ).unwrap();
+    let secret_key_data =
+        <[u8; 32]>::from_hex("e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b")
+            .unwrap();
     let keypair = KeyPair::from_secret_key_slice(&secret_key_data).unwrap();
 
     let order_taken: OrderTaken<Bitcoin, Ethereum> = OrderTaken {
@@ -215,8 +215,7 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
             .post(format!(
                 "/ledger/trades/ETH-BTC/{}/sell-order-secret-revealed",
                 trade_id
-            ))
-            .header(ContentType::JSON)
+            )).header(ContentType::JSON)
             .body(serde_json::to_string(&redeem_body).unwrap());
         request.dispatch()
     };

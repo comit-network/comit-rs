@@ -36,8 +36,7 @@ impl ServerBuilder {
                     bitcoin_query::retrieve_bitcoin_query,
                     bitcoin_query::delete_bitcoin_query,
                 ],
-            )
-            .manage(query_repository)
+            ).manage(query_repository)
             .manage(query_result_repository);
         ServerBuilder { rocket }
     }
@@ -56,8 +55,7 @@ impl ServerBuilder {
                     ethereum_query::retrieve_ethereum_query,
                     ethereum_query::delete_ethereum_query,
                 ],
-            )
-            .manage(query_repository)
+            ).manage(query_repository)
             .manage(query_result_repository);
         ServerBuilder { rocket }
     }

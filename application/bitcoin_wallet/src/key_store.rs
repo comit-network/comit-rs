@@ -53,7 +53,8 @@ impl KeyStore {
         // Then we just assume that we use account 0' (like bitcoind), hence we derive m/0'
         // and create our child keys from there.
 
-        let account_0_privkey = master_privkey.ckd_priv(&*SECP, ChildNumber::from_hardened_idx(0))?;
+        let account_0_privkey =
+            master_privkey.ckd_priv(&*SECP, ChildNumber::from_hardened_idx(0))?;
 
         let internal_root_privkey =
             account_0_privkey.ckd_priv(&*SECP, ChildNumber::from_normal_idx(1))?;
