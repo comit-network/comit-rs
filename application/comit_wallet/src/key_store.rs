@@ -3,7 +3,6 @@ use bitcoin::util::bip32::{self, ChildNumber, ExtendedPrivKey, ExtendedPubKey};
 use crypto::{digest::Digest, sha2::Sha256};
 use secp256k1_support::{KeyPair, SECRET_KEY_SIZE};
 use std::{
-    collections::HashMap,
     ops::DerefMut,
     sync::{Mutex, MutexGuard, PoisonError},
 };
@@ -38,7 +37,8 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    transient_keys: HashMap<Uuid, KeyPair>,
+    // TODO: Cache if needed
+    // transient_keys: HashMap<Uuid, KeyPair>,
 }
 
 impl KeyStore {
@@ -53,6 +53,9 @@ impl KeyStore {
         // Then we just assume that we use account 0' (like bitcoind), hence we derive m/0'
         // and create our child keys from there.
 
+        // TODO: set derivation path for Ethereum to m/44'/60'/a'/0/n, see #291
+        // see https://github.com/ethereum/EIPs/issues/85 https://github.com/ethereum/EIPs/pull/600/files
+
         let account_0_privkey =
             master_privkey.ckd_priv(&*SECP, ChildNumber::from_hardened_idx(0))?;
 
@@ -63,10 +66,10 @@ impl KeyStore {
 
         Ok(KeyStore {
             _master_privkey: master_privkey,
-            transient_root_privkey: transient_root_privkey,
-            internal_root_privkey: internal_root_privkey,
+            transient_root_privkey,
+            internal_root_privkey,
             last_internal_index: Mutex::new(0),
-            transient_keys: HashMap::new(),
+            //transient_keys: HashMap::new(),
         })
     }
 
@@ -90,31 +93,37 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&*SECP, &priv_key))
     }
 
-    pub fn get_transient_keypair(&mut self, id: &Uuid) -> KeyPair {
-        if let Some(keypair) = self.transient_keys.get(id) {
-            return keypair.clone();
-        }
+    pub fn get_transient_keypair(&mut self, id: &Uuid, data: &[u8]) -> KeyPair {
+        //        if let Some(keypair) = self.transient_keys.get(id) {
+        //            return keypair.clone();
+        //        }
 
-        let transient_keypair = Self::new_transient_keypair(&self.transient_root_privkey, id);
-        self.transient_keys
-            .insert(id.clone(), transient_keypair.clone());
+        let transient_keypair = Self::new_transient_keypair(&self.transient_root_privkey, id, data);
+        //        self.transient_keys
+        //            .insert(id.clone(), transient_keypair.clone());
         transient_keypair
     }
 
-    fn new_secret_from_concat(data1: &[u8], data2: &[u8], secret: &mut [u8]) {
+    fn new_secret_from_concat(data1: &[u8], data2: &[u8], data3: &[u8], secret: &mut [u8]) {
         let mut sha = Sha256::new();
         sha.input(data1);
         sha.input(data2);
+        sha.input(data3);
         sha.result(secret);
     }
 
-    fn new_transient_keypair(transient_root_privkey: &ExtendedPrivKey, uid: &Uuid) -> KeyPair {
+    fn new_transient_keypair(
+        transient_root_privkey: &ExtendedPrivKey,
+        uid: &Uuid,
+        data: &[u8],
+    ) -> KeyPair {
         // SecretKey = SHA256(transient_root_privkey + id)
         let mut result: [u8; SECRET_KEY_SIZE] = [0; SECRET_KEY_SIZE];
 
         Self::new_secret_from_concat(
             &transient_root_privkey.secret_key[..],
             &uid.as_bytes()[..],
+            &data[..],
             &mut result,
         );
         // This returns a result as it can fail if the slice is empty which is very unlikely hence the expect.
@@ -218,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn generate_diff_transient_keys() {
+    fn given_different_uid_same_data_generate_diff_transient_keys() {
         let master_priv_key = ExtendedPrivKey::from_str(
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
@@ -227,9 +236,28 @@ mod tests {
 
         let uid0 = Uuid::new_v4();
         let uid1 = Uuid::new_v4();
+        let data = vec![1u8];
 
-        let transient_keypair0 = keystore.get_transient_keypair(&uid0);
-        let transient_keypair1 = keystore.get_transient_keypair(&uid1);
+        let transient_keypair0 = keystore.get_transient_keypair(&uid0, &data);
+        let transient_keypair1 = keystore.get_transient_keypair(&uid1, &data);
+
+        assert_ne!(transient_keypair0, transient_keypair1);
+    }
+
+    #[test]
+    fn given_same_uid_different_data_generate_diff_transient_keys() {
+        let master_priv_key = ExtendedPrivKey::from_str(
+            "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
+        ).unwrap();
+
+        let mut keystore = KeyStore::new(master_priv_key).unwrap();
+
+        let uid = Uuid::new_v4();
+        let data0 = vec![0u8];
+        let data1 = vec![1u8];
+
+        let transient_keypair0 = keystore.get_transient_keypair(&uid, &data0);
+        let transient_keypair1 = keystore.get_transient_keypair(&uid, &data1);
 
         assert_ne!(transient_keypair0, transient_keypair1);
     }

@@ -1,6 +1,11 @@
 [package]
-authors = ["LLFourn <lloyd.fourn@gmail.com>"]
-name = "bitcoin_wallet"
+authors = [
+    "Franck Royer <franck@coblox.tech>",
+    "Lloyd Fournier <lloyd@coblox.tech>",
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+]
+name = "comit_wallet"
 version = "0.1.0"
 
 [dependencies]
