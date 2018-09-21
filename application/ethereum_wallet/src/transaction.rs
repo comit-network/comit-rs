@@ -3,6 +3,11 @@ use hex;
 use rlp::{Encodable, RlpStream};
 use tiny_keccak::keccak256;
 
+const CONTRACT_CREATION_FEE: usize = 32_000;
+const BASE_TX_FEE: usize = 21_000;
+const GAS_COST_PER_BYTE: usize = 200;
+const GAS_BUFFER: usize = 10_000;
+
 pub struct UnsignedTransaction {
     nonce: U256,
     gas_price: U256,
@@ -84,13 +89,9 @@ impl UnsignedTransaction {
     ) -> Self {
         let contract_data = contract.into();
         let data_bytes = contract_data.0.len();
-        let contract_creation_fee = 32000;
-        let base_tx_fee = 21000;
-        let gas_limit = contract_creation_fee + base_tx_fee + data_bytes * 200;
-
-        let buffer: U256 = 10000.into();
+        let gas_limit = CONTRACT_CREATION_FEE + BASE_TX_FEE + data_bytes * GAS_COST_PER_BYTE;
         let buffered_gas_limit = U256::from(gas_limit)
-            + buffer
+            + U256::from(GAS_BUFFER)
             + extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
 
         UnsignedTransaction {
@@ -103,23 +104,19 @@ impl UnsignedTransaction {
         }
     }
 
-    pub fn new_payment<
-        A: Into<Address>,
-        G: Into<U256>,
-        GP: Into<U256>,
-        V: Into<U256>,
-        N: Into<U256>,
-    >(
+    pub fn new_payment<A: Into<Address>, GP: Into<U256>, V: Into<U256>, N: Into<U256>>(
         to: A,
-        gas: G,
         gas_price: GP,
         value: V,
         nonce: N,
+        extra_gas_limit: Option<u32>,
     ) -> Self {
+        let extra_gas_limit = extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
+
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas_limit: gas.into(),
+            gas_limit: U256::from(BASE_TX_FEE) + extra_gas_limit,
             to: Some(to.into()),
             value: value.into(),
             data: None,
@@ -129,14 +126,14 @@ impl UnsignedTransaction {
     pub fn new_contract_invocation<
         B: Into<Bytes>,
         A: Into<Address>,
-        G: Into<U256>,
+        GL: Into<U256>,
         GP: Into<U256>,
         V: Into<U256>,
         N: Into<U256>,
     >(
         data: B,
         to: A,
-        gas: G,
+        gas_limit: GL,
         gas_price: GP,
         value: V,
         nonce: N,
@@ -144,7 +141,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas_limit: gas.into(),
+            gas_limit: gas_limit.into(),
             to: Some(to.into()),
             value: value.into(),
             data: Some(data.into()),
@@ -155,14 +152,12 @@ impl UnsignedTransaction {
         TokenContract: Into<Address>,
         To: Into<Address>,
         Amount: Into<U256>,
-        G: Into<U256>,
         GP: Into<U256>,
         N: Into<U256>,
     >(
         token_contract: TokenContract,
         to: To,
         amount: Amount,
-        gas: G,
         gas_price: GP,
         nonce: N,
     ) -> Self {
@@ -177,7 +172,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas_limit: gas.into(),
+            gas_limit: 200_000.into(),
             to: Some(token_contract.into()),
             value: U256::from(0),
             data: Some(data.into()),
@@ -212,7 +207,6 @@ mod tests {
             1000,
             0,
             0,
-            0,
         );
 
         assert_eq!(transaction.data, Some(Bytes(hex::decode("095ea7b300000000000000000000000096984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e00000000000000000000000000000000000000000000000000000000000003e8").unwrap())));
@@ -224,19 +218,22 @@ mod tests {
 
     #[test]
     fn gas_limit_is_computed_based_on_contract_size() {
+        let extra_gas_limit = 10;
+
         let transaction = UnsignedTransaction::new_contract_deployment(
             // contract occupying 5 bytes
             Bytes(vec![0_u8; 5]),
             0,
             0,
             0,
-            // extra_gas_limit
-            Some(10),
+            Some(extra_gas_limit),
         );
 
         assert_eq!(
             transaction.gas_limit,
-            U256::from(32000 + (5 * 200)) + 10000 + 10
+            U256::from(CONTRACT_CREATION_FEE + BASE_TX_FEE + (5 * GAS_COST_PER_BYTE))
+                + GAS_BUFFER
+                + extra_gas_limit
         );
     }
 }

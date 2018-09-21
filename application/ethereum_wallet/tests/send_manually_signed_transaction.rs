@@ -59,10 +59,10 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
 
     let tx = UnsignedTransaction::new_payment(
         "73782035b894ed39985fbf4062e695b8e524ca4e",
-        1000000,
         1,
         0,
         get_nonce(),
+        None,
     );
 
     let tx = wallet.sign(&tx);

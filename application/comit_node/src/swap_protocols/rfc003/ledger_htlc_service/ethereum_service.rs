@@ -164,7 +164,6 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
                 htlc_params.token_contract_address,
                 htlc_address,
                 htlc_params.amount,
-                200_000,
                 gas_price,
                 *nonce,
             );
@@ -423,7 +422,6 @@ mod tests {
             Address::from("0000000000000000000000000000000000000003"),
             Address::from("97a561cef28e387e726378bb41d89b13e5a940ba"),
             10,
-            200_000,
             1000,
             0,
         );
