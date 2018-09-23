@@ -23,7 +23,6 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
-use bitcoin_support::{Network, PrivateKey};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_node_api_client::DefaultApiClient as ComitNodeClient,
@@ -36,14 +35,16 @@ use comit_node::{
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
-use secp256k1_support::KeyPair;
-use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
+use std::{env::var, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.)
 fn main() {
     logging::set_up_logging();
     let settings = load_settings();
+
+    // TODO: Maybe not print settings becaues of private keys?
+    info!("Starting up with {:#?}", settings);
 
     let event_store = Arc::new(InMemoryEventStore::new());
     let rocket_event_store = event_store.clone();
@@ -56,10 +57,6 @@ fn main() {
 
     let (event_loop, transport) = Http::new(&settings.ethereum.node_url).unwrap();
     let web3 = Web3::new(transport);
-    info!(
-        "set ETHEREUM_GAS_PRICE_IN_WEI={}",
-        settings.ethereum.gas_price
-    );
 
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
     info!(
@@ -74,15 +71,10 @@ fn main() {
         nonce,
     );
 
-    let bob_refund_address =
-        ethereum_support::Address::from_str(settings.swap.eth_refund_address.as_str())
-            .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
+    let bob_refund_address = settings.swap.eth_refund_address;
+    let btc_bob_redeem_address = settings.swap.btc_redeem_address;
 
     let bob_success_keypair = settings.bitcoin.private_key;
-
-    let btc_bob_redeem_address =
-        bitcoin_support::Address::from_str(settings.swap.btc_redeem_address.as_str())
-            .expect("BTC Bob Redeem Address is Invalid");
 
     let bitcoin_rpc_client = {
         bitcoin_rpc_client::BitcoinCoreClient::new(
@@ -105,39 +97,26 @@ fn main() {
         Err(e) => error!("Could not connect to Bitcoin RPC:\n{}", e),
     };
 
-    let network = match settings.bitcoin.network_id.as_str() {
-        "BTC_MAINNET" => Network::Bitcoin,
-        "BTC_TESTNET" => Network::Testnet,
-        "BTC_REGTEST" => Network::Regtest,
-        _ => panic!(
-            "Please set bitcoin.network_id to one of the following values:\n\
-             - BTC_MAINNET\n- BTC_TESTNET\n- BTCORE_REGTEST"
-        ),
-    };
-    info!("set BTC_NETWORK={}", network);
-
     let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
     let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
     let bitcoin_service = BitcoinService::new(
         bitcoin_rpc_client.clone(),
-        network,
+        settings.bitcoin.network.clone(),
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
     );
 
-    let remote_comit_node_socket_addr =
-        { SocketAddr::from_str(&settings.comit.remote_comit_node_url).unwrap() };
-
     {
         let bob_refund_address = bob_refund_address.clone();
         let bob_success_keypair = bob_success_keypair.clone();
-        let network = network.clone();
 
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
+        let network = settings.bitcoin.network;
+        let remote_comit_node_url = settings.comit.remote_comit_node_url;
 
         std::thread::spawn(move || {
             create_rocket_instance(
@@ -147,7 +126,7 @@ fn main() {
                 bob_refund_address,
                 bob_success_keypair,
                 network,
-                Arc::new(ComitNodeClient::new(remote_comit_node_socket_addr)),
+                Arc::new(ComitNodeClient::new(remote_comit_node_url)),
                 http_api_address.into(),
                 http_api_port,
                 http_api_logging,
@@ -155,15 +134,13 @@ fn main() {
         });
     }
 
-    let comit_listen = settings.comit.comit_listen.parse().unwrap();
-
     let server = ComitServer::new(
         comit_server_event_store,
         bob_refund_address,
         bob_success_keypair,
     );
 
-    tokio::run(server.listen(comit_listen).map_err(|e| {
+    tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);
     }));
 }

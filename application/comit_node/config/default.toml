@@ -5,7 +5,7 @@ node_url = "http://localhost:8545"
 gas_price=2_000_000_000
 
 [bitcoin]
-network_id = "BTC_REGTEST"
+network = "regtest"
 satoshi_per_byte = 50 # used for calculating transaction fees
 node_url = "http://localhost:18443"
 node_username = "bitcoin"

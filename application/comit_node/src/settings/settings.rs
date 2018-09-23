@@ -1,47 +1,10 @@
+use super::serde;
+use bitcoin_support::{self, Network};
 use config::{Config, ConfigError, File};
-use secp256k1_support::{serde_support::keypair, KeyPair};
+use ethereum_support;
+use secp256k1_support::KeyPair;
 use serde::Deserialize;
-use std::path::Path;
-
-#[derive(Debug, Deserialize)]
-pub struct Ethereum {
-    pub network_id: u8,
-    pub node_url: String,
-    pub gas_price: u64,
-    #[serde(with = "keypair")]
-    pub private_key: KeyPair,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Bitcoin {
-    pub network_id: String,
-    pub satoshi_per_byte: f64,
-    pub node_url: String,
-    pub node_username: String,
-    pub node_password: String,
-    #[serde(with = "keypair")]
-    pub private_key: KeyPair,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Swap {
-    pub btc_redeem_address: String,
-    //TODO this should be generated on the fly per swap from the master key
-    pub eth_refund_address: String, //TODO this should be generated on the fly per swap from the master key
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Comit {
-    pub remote_comit_node_url: String,
-    pub comit_listen: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct HttpApi {
-    pub address: String,
-    pub port: u16,
-    pub logging: bool,
-}
+use std::{ffi::OsStr, net::SocketAddr, path::Path};
 
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
@@ -52,15 +15,60 @@ pub struct ComitNodeSettings {
     pub http_api: HttpApi,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Ethereum {
+    pub network_id: u8,
+    pub node_url: String,
+    pub gas_price: u64,
+    #[serde(with = "serde::keypair")]
+    pub private_key: KeyPair,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Bitcoin {
+    pub network: Network,
+    pub satoshi_per_byte: f64,
+    pub node_url: String,
+    pub node_username: String,
+    pub node_password: String,
+    #[serde(with = "serde::keypair")]
+    pub private_key: KeyPair,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Swap {
+    pub btc_redeem_address: bitcoin_support::Address,
+    //TODO this should be generated on the fly per swap from the master key
+    pub eth_refund_address: ethereum_support::Address, //TODO this should be generated on the fly per swap from the master key
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Comit {
+    #[serde(with = "serde::socket_addr")]
+    pub remote_comit_node_url: SocketAddr,
+    #[serde(with = "serde::socket_addr")]
+    pub comit_listen: SocketAddr,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HttpApi {
+    pub address: String,
+    pub port: u16,
+    pub logging: bool,
+}
+
 impl ComitNodeSettings {
-    pub fn new(default_config: String, run_mode_config: String) -> Result<Self, ConfigError> {
+    pub fn new<D: AsRef<OsStr>, R: AsRef<OsStr>>(
+        default_config: D,
+        run_mode_config: R,
+    ) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
-        let default_config_file = Path::new(default_config.as_str());
+        let default_config_file = Path::new(&default_config);
 
         // Add in the current environment file
         // Note that this file is optional, and can be used to hold keys by run_mode
-        let environment_config_file = Path::new(run_mode_config.as_str());
+        let environment_config_file = Path::new(&run_mode_config);
 
         // Start off by merging in the "default" configuration file
         config.merge(File::from(default_config_file))?;
@@ -77,4 +85,19 @@ impl ComitNodeSettings {
         // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use spectral::prelude::*;
+
+    #[test]
+    fn can_read_default_config() {
+        let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
+
+        assert_that(&settings).is_ok();
+    }
+
 }
