@@ -30,7 +30,7 @@ pub struct KeyStore {
     _master_privkey: ExtendedPrivKey,
     transient_root_privkey: ExtendedPrivKey,
     internal_root_privkey: ExtendedPrivKey,
-    last_internal_index: Mutex<u32>,
+    next_internal_index: Mutex<u32>,
     // Do we want to remember already generated addresses or regenerate them?
     // Memory vs CPU -> could be a switch/option
     // Common practice for wallets is to pre-generate some addresses, hence:
@@ -68,7 +68,7 @@ impl KeyStore {
             _master_privkey: master_privkey,
             transient_root_privkey,
             internal_root_privkey,
-            last_internal_index: Mutex::new(0),
+            next_internal_index: Mutex::new(0),
             //transient_keys: HashMap::new(),
         })
     }
@@ -81,15 +81,15 @@ impl KeyStore {
     }
 
     pub fn get_new_internal_privkey(&self) -> Result<ExtendedPrivKey, Error> {
-        let mut last_internal_index = self.last_internal_index.lock()?;
-        let index = last_internal_index.deref_mut();
+        let mut next_internal_index = self.next_internal_index.lock()?;
+        let next_internal_index = next_internal_index.deref_mut();
 
         let res = self
             .internal_root_privkey
-            .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(*index + 1))?;
+            .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(*next_internal_index))?;
 
         // If we reach here, res is Ok
-        *index += 1;
+        *next_internal_index += 1;
         Ok(res)
     }
 
@@ -240,7 +240,7 @@ mod tests {
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
 
-        let mut keystore = KeyStore::new(master_priv_key).unwrap();
+        let keystore = KeyStore::new(master_priv_key).unwrap();
 
         let uid0 = Uuid::new_v4();
         let uid1 = Uuid::new_v4();
@@ -258,7 +258,7 @@ mod tests {
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         ).unwrap();
 
-        let mut keystore = KeyStore::new(master_priv_key).unwrap();
+        let keystore = KeyStore::new(master_priv_key).unwrap();
 
         let uid = Uuid::new_v4();
         let data0 = vec![0u8];
