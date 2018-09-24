@@ -1,5 +1,5 @@
 use super::serde;
-use bitcoin_support::{self, Network};
+use bitcoin_support::{self, ExtendedPrivKey, Network};
 use config::{Config, ConfigError, File};
 use ethereum_support;
 use secp256k1_support::KeyPair;
@@ -31,8 +31,8 @@ pub struct Bitcoin {
     pub node_url: String,
     pub node_username: String,
     pub node_password: String,
-    #[serde(with = "serde::keypair")]
-    pub private_key: KeyPair,
+    #[serde(with = "serde::extended_privkey")]
+    pub extended_private_key: ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]

@@ -73,13 +73,20 @@ impl KeyStore {
         })
     }
 
+    pub fn get_new_internal_keypair(&self) -> Result<KeyPair, Error> {
+        let priv_key = self.get_new_internal_privkey()?;
+        let secret_key = priv_key.secret_key;
+
+        Ok(KeyPair::from(secret_key))
+    }
+
     pub fn get_new_internal_privkey(&self) -> Result<ExtendedPrivKey, Error> {
-        let mut lock = self.last_internal_index.lock()?;
-        let index = lock.deref_mut();
+        let mut last_internal_index = self.last_internal_index.lock()?;
+        let index = last_internal_index.deref_mut();
 
         let res = self
             .internal_root_privkey
-            .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(*index))?;
+            .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(*index + 1))?;
 
         // If we reach here, res is Ok
         *index += 1;
@@ -93,7 +100,8 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&*SECP, &priv_key))
     }
 
-    pub fn get_transient_keypair(&mut self, id: &Uuid, data: &[u8]) -> KeyPair {
+    pub fn get_transient_keypair(&self, id: &Uuid, data: &[u8]) -> KeyPair {
+        // If you want to cache, that's how to do it
         //        if let Some(keypair) = self.transient_keys.get(id) {
         //            return keypair.clone();
         //        }

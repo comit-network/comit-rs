@@ -8,7 +8,6 @@ extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
-extern crate hex;
 extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate rocket;
@@ -19,13 +18,15 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
+extern crate comit_wallet;
+extern crate hex;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
 mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{Blocks, Network};
+use bitcoin_support::{Blocks, ChainCode, ChildNumber, ExtendedPrivKey, Fingerprint, Network};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
@@ -40,6 +41,7 @@ use comit_node::{
         common::TradeId,
     },
 };
+use comit_wallet::KeyStore;
 use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
@@ -50,7 +52,7 @@ use rocket::{
     http::{ContentType, Status},
     local::{Client, LocalResponse},
 };
-use secp256k1_support::KeyPair;
+use secp256k1_support::{All, KeyPair, Secp256k1, SecretKey};
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};
 
@@ -83,6 +85,28 @@ fn create_rocket_client(
     event_store: InMemoryEventStore<TradeId>,
     bitcoin_service: BitcoinService,
 ) -> Client {
+    let secret_key_data = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0,
+        1, 2,
+    ];
+    let secp: Secp256k1<All> = Secp256k1::new();
+    let bob_secret_key = SecretKey::from_slice(&secp, &secret_key_data).unwrap();
+    let chain_code = ChainCode::from(&[0u8; 32][..]);
+
+    let bob_master_private_key = ExtendedPrivKey {
+        network: bitcoin_support::Network::Regtest,
+        depth: 0,
+        parent_fingerprint: Fingerprint::default(),
+        child_number: ChildNumber::from(0),
+        secret_key: bob_secret_key,
+        chain_code,
+    };
+
+    let bob_key_store = Arc::new(
+        KeyStore::new(bob_master_private_key)
+            .expect("Could not HD derive keys from the private key"),
+    );
+
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
@@ -94,13 +118,8 @@ fn create_rocket_client(
             0,
         )),
         Arc::new(bitcoin_service),
-        "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
-        bitcoin_support::PrivateKey::from_str(
-            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
-        ).unwrap()
-        .secret_key()
-        .clone()
-        .into(),
+        //"e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
+        bob_key_store,
         Network::Regtest,
         Arc::new(api_client),
         "0.0.0.0".into(),

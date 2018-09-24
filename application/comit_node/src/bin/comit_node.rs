@@ -3,6 +3,7 @@
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
+extern crate comit_wallet;
 extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
@@ -32,6 +33,7 @@ use comit_node::{
     settings::settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
+use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
@@ -71,10 +73,22 @@ fn main() {
         nonce,
     );
 
-    let bob_refund_address = settings.swap.eth_refund_address;
-    let btc_bob_redeem_address = settings.swap.btc_redeem_address;
+    // TODO: decomission from config file
+    //    let bob_refund_address =
+    //        ethereum_support::Address::from_str(var_or_exit("BOB_REFUND_ADDRESS").as_str())
+    //            .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
 
-    let bob_success_keypair = settings.bitcoin.private_key;
+    //TODO: change env/config name
+    let bob_master_private_key = settings.bitcoin.extended_private_key;
+
+    let bob_key_store = Arc::new(
+        KeyStore::new(bob_master_private_key)
+            .expect("Could not HD derive keys from the private key"),
+    );
+
+    //    let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
+
+    let btc_bob_redeem_address = settings.swap.btc_redeem_address;
 
     let bitcoin_rpc_client = {
         bitcoin_rpc_client::BitcoinCoreClient::new(
@@ -109,8 +123,7 @@ fn main() {
     );
 
     {
-        let bob_refund_address = bob_refund_address.clone();
-        let bob_success_keypair = bob_success_keypair.clone();
+        let bob_key_store = bob_key_store.clone();
 
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
@@ -123,8 +136,7 @@ fn main() {
                 rocket_event_store,
                 Arc::new(ethereum_service),
                 Arc::new(bitcoin_service),
-                bob_refund_address,
-                bob_success_keypair,
+                bob_key_store,
                 network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_url)),
                 http_api_address.into(),
@@ -134,11 +146,7 @@ fn main() {
         });
     }
 
-    let server = ComitServer::new(
-        comit_server_event_store,
-        bob_refund_address,
-        bob_success_keypair,
-    );
+    let server = ComitServer::new(comit_server_event_store, bob_key_store);
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);
