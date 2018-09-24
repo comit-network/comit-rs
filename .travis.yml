@@ -35,7 +35,7 @@ notifications:
   email: false
   slack:
     rooms:
-    - tenx-company:buMm6Pg6Sbhljx2HRLwNC44z#coblox-swap-bots
-    on_success: always
+    - tenx-company:buMm6Pg6Sbhljx2HRLwNC44z#coblox-bots
+    on_success: never
     on_failure: always
     on_pull_requests: true
