@@ -77,6 +77,9 @@ fn create_rocket_client() -> Client {
         .into(),
         Network::Testnet,
         Arc::new(api_client),
+        "0.0.0.0".into(),
+        8080,
+        true,
     );
     rocket::local::Client::new(rocket).unwrap()
 }

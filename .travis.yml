@@ -15,6 +15,7 @@ services:
 - docker
 env:
   global:
+  - COMIT_NODE_CONFIG_PATH=./application/comit_node/config #TODO rethink if this is here needed
   - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
   - RUST_BACKTRACE=full
   - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
