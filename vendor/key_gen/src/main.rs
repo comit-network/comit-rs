@@ -5,11 +5,13 @@ extern crate hex;
 extern crate rand;
 extern crate secp256k1_support;
 
-use bitcoin::network::constants::Network;
-use bitcoin_support::{PrivateKey, PubkeyHash, ToP2wpkhAddress};
+use bitcoin::{network::constants::Network, util::bip32::ExtendedPubKey};
+use bitcoin_support::{
+    ChainCode, ChildNumber, ExtendedPrivKey, Fingerprint, PrivateKey, PubkeyHash, ToP2wpkhAddress,
+};
 use ethereum_support::ToEthereumAddress;
 use rand::OsRng;
-use secp256k1_support::KeyPair;
+use secp256k1_support::{KeyPair, SecretKey, SECP};
 
 fn main() {
     let mut rng = OsRng::new().unwrap();
@@ -44,4 +46,38 @@ fn main() {
         println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
     }
     println!("pubkey_hash: {:?}", PubkeyHash::from(public_key.clone()));
+
+    {
+        let extended_privkey = create_extended_privkey(secret_key, Network::Bitcoin);
+        let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
+        println!("btc_extended_privkey_mainnet: {}", extended_privkey);
+        println!("btc_extended_pubkey_mainnet: {}", extended_pubkey);
+    }
+    {
+        let extended_privkey = create_extended_privkey(secret_key, Network::Testnet);
+        let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
+        println!("btc_extended_privkey_testnet: {}", extended_privkey);
+        println!("btc_extended_pubkey_testnet: {}", extended_pubkey);
+    }
+    {
+        let extended_privkey = create_extended_privkey(secret_key, Network::Regtest);
+        let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
+        println!("btc_extended_privkey_regtest: {}", extended_privkey);
+        println!("btc_extended_pubkey_regtest: {}", extended_pubkey);
+    }
+}
+
+fn create_extended_privkey(
+    secret_key: &SecretKey,
+    network: bitcoin_support::Network,
+) -> ExtendedPrivKey {
+    let chain_code = ChainCode::from(&[0u8; 32][..]);
+    ExtendedPrivKey {
+        network,
+        depth: 0,
+        parent_fingerprint: Fingerprint::default(),
+        child_number: ChildNumber::from(0),
+        secret_key: secret_key.clone(),
+        chain_code,
+    }
 }

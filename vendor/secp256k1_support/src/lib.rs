@@ -14,5 +14,5 @@ mod public_key;
 pub use public_key::*;
 
 lazy_static! {
-    static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
+    pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
 }
