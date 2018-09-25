@@ -46,7 +46,7 @@ fn main() {
     logging::set_up_logging();
     let settings = load_settings();
 
-    // TODO: Maybe not print settings becaues of private keys?
+    // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
     let event_store = Arc::new(InMemoryEventStore::new());
@@ -78,8 +78,7 @@ fn main() {
 
     let btc_network = settings.bitcoin.network;
 
-    //TODO: This should only be the btc keystore and a separate keystore should be created
-    // For ethereum. For now we use the same from both on bob side. To be split with #185/#291
+    //TODO: Integrate all Ethereum keys in this keystore. See #185/#291
     let bob_key_store = Arc::new(
         KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),
