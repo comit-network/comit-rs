@@ -39,6 +39,7 @@ transport_protocol = { path = "../../vendor/transport_protocol" }
 tokio = "0.1.8"
 futures = "0.1"
 chrono = "0.4.2"
+comit_wallet = { path = "../comit_wallet" }
 config = "0.9"
 tokio-timer = "0.2"
 failure = "0.1"
@@ -52,6 +53,7 @@ tc_web3_client = { path = "../../vendor/tc_web3_client" }
 testcontainers = "0.2"
 spectral = "0.6"
 lazy_static = "1"
+key_gen = { path = "../../vendor/key_gen"}
 
 [build-dependencies]
 regex = "1.0.0"

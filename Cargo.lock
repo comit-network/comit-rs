@@ -193,21 +193,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitcoin_wallet"
-version = "0.1.0"
-dependencies = [
- "bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_htlc 0.1.0",
- "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "secp256k1_support 0.1.0",
- "tc_coblox_bitcoincore 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "bitcoin_witness"
 version = "0.1.0"
 dependencies = [
@@ -332,6 +317,7 @@ dependencies = [
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "comit_wallet 0.1.0",
  "common_types 0.1.0",
  "config 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum_support 0.1.0",
@@ -341,6 +327,7 @@ dependencies = [
  "futures 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "key_gen 0.1.0",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "logging 0.1.0",
@@ -385,6 +372,22 @@ dependencies = [
  "serde_derive 1.0.79 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "comit_wallet"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_htlc 0.1.0",
+ "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_support 0.1.0",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1_support 0.1.0",
+ "tc_coblox_bitcoincore 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -1032,7 +1035,6 @@ dependencies = [
 name = "key_gen"
 version = "0.1.0"
 dependencies = [
- "bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "ethereum_support 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",

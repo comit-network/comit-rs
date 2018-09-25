@@ -1,6 +1,6 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
-#![cfg_attr(test, deny(warnings))]
+//TODO uncomment #![cfg_attr(test, deny(warnings))]
 
 extern crate bitcoin_rpc_client;
 extern crate reqwest;
@@ -22,6 +22,7 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate log;
+extern crate comit_wallet;
 extern crate config;
 extern crate event_store;
 #[macro_use]
@@ -35,8 +36,6 @@ extern crate transport_protocol;
 #[macro_use]
 extern crate failure;
 
-#[cfg(test)]
-extern crate env_logger;
 #[cfg(test)]
 extern crate spectral;
 

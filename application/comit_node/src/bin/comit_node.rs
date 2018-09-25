@@ -3,6 +3,7 @@
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
+extern crate comit_wallet;
 extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
@@ -23,6 +24,7 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_support::Address as BitcoinAddress;
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_node_api_client::DefaultApiClient as ComitNodeClient,
@@ -32,18 +34,19 @@ use comit_node::{
     settings::settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
+use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use std::{env::var, sync::Arc};
 use web3::{transports::Http, Web3};
 
-// TODO: Make a nice command line interface here (using StructOpt f.e.)
+// TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
 fn main() {
     logging::set_up_logging();
     let settings = load_settings();
 
-    // TODO: Maybe not print settings becaues of private keys?
+    // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
     let event_store = Arc::new(InMemoryEventStore::new());
@@ -64,25 +67,35 @@ fn main() {
         address, nonce
     );
 
-    let ethereum_service = EthereumService::new(
+    let ethereum_service = Arc::new(EthereumService::new(
         Arc::new(wallet),
         Arc::new(StaticGasPriceService::new(settings.ethereum.gas_price)),
         Arc::new((event_loop, web3)),
         nonce,
+    ));
+
+    let _eth_refund_address = settings.swap.eth_refund_address;
+
+    let btc_network = settings.bitcoin.network;
+
+    //TODO: Integrate all Ethereum keys in this keystore. See #185/#291
+    let bob_key_store = Arc::new(
+        KeyStore::new(settings.bitcoin.extended_private_key)
+            .expect("Could not HD derive keys from the private key"),
     );
 
-    let bob_refund_address = settings.swap.eth_refund_address;
-    let btc_bob_redeem_address = settings.swap.btc_redeem_address;
+    //TODO: make it dynamically generated every X BTC. Could be done with #296
+    let btc_bob_redeem_keypair = bob_key_store.get_new_internal_keypair();
+    let btc_bob_redeem_address =
+        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key().into(), btc_network);
 
-    let bob_success_keypair = settings.bitcoin.private_key;
+    info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 
-    let bitcoin_rpc_client = {
-        bitcoin_rpc_client::BitcoinCoreClient::new(
-            settings.bitcoin.node_url.as_str(),
-            settings.bitcoin.node_username.as_str(),
-            settings.bitcoin.node_password.as_str(),
-        )
-    };
+    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client::BitcoinCoreClient::new(
+        settings.bitcoin.node_url.as_str(),
+        settings.bitcoin.node_username.as_str(),
+        settings.bitcoin.node_password.as_str(),
+    ));
 
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
@@ -99,33 +112,30 @@ fn main() {
 
     let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
-    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
-    let bitcoin_service = BitcoinService::new(
+    let bitcoin_service = Arc::new(BitcoinService::new(
         bitcoin_rpc_client.clone(),
         settings.bitcoin.network.clone(),
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
-    );
+    ));
 
     {
-        let bob_refund_address = bob_refund_address.clone();
-        let bob_success_keypair = bob_success_keypair.clone();
-
+        let ethereum_service = ethereum_service.clone();
+        let bitcoin_service = bitcoin_service.clone();
+        let bob_key_store = bob_key_store.clone();
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
-        let network = settings.bitcoin.network;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
 
         std::thread::spawn(move || {
             create_rocket_instance(
                 rocket_event_store,
-                Arc::new(ethereum_service),
-                Arc::new(bitcoin_service),
-                bob_refund_address,
-                bob_success_keypair,
-                network,
+                ethereum_service,
+                bitcoin_service,
+                bob_key_store,
+                btc_network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_url)),
                 http_api_address.into(),
                 http_api_port,
@@ -134,15 +144,18 @@ fn main() {
         });
     }
 
-    let server = ComitServer::new(
-        comit_server_event_store,
-        bob_refund_address,
-        bob_success_keypair,
-    );
+    let server = ComitServer::new(comit_server_event_store, bob_key_store);
 
-    tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
-        error!("ComitServer shutdown: {:?}", e);
-    }));
+    tokio::run(
+        server
+            .listen(
+                settings.comit.comit_listen,
+                bitcoin_rpc_client.clone(),
+                ethereum_service.clone(),
+            ).map_err(|e| {
+                error!("ComitServer shutdown: {:?}", e);
+            }),
+    );
 }
 
 fn load_settings() -> ComitNodeSettings {

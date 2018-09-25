@@ -18,6 +18,12 @@ impl From<Uuid> for TradeId {
     }
 }
 
+impl From<TradeId> for Uuid {
+    fn from(trade_id: TradeId) -> Self {
+        trade_id.0
+    }
+}
+
 impl fmt::Display for TradeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.0.fmt(f)

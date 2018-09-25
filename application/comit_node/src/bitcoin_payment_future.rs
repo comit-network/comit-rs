@@ -8,8 +8,20 @@ use tokio::prelude::*;
 
 #[derive(Clone)]
 pub struct LedgerServices {
-    bitcoin_poll_interval: Duration,
     api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
+    bitcoin_poll_interval: Duration,
+}
+
+impl LedgerServices {
+    pub fn new(
+        api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
+        bitcoin_poll_interval: Duration,
+    ) -> LedgerServices {
+        LedgerServices {
+            api_client,
+            bitcoin_poll_interval,
+        }
+    }
 }
 
 pub struct PaymentsToBitcoinAddressStream<F> {
@@ -86,7 +98,6 @@ impl StreamTemplate<LedgerServices> for QueryId<Bitcoin> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use env_logger;
     use futures_ext::FutureFactory;
     use spectral::prelude::*;
     use std::sync::Mutex;
@@ -122,8 +133,6 @@ mod tests {
 
     #[test]
     fn given_future_resolves_to_transaction_eventually() {
-        let _ = env_logger::try_init();
-
         let ledger_query_service = Arc::new(FakeLedgerQueryService {
             number_of_invocations_before_result: 5,
             invocations: Mutex::new(0),
@@ -134,10 +143,10 @@ mod tests {
             ],
         });
 
-        let future_factory = FutureFactory::new(LedgerServices {
-            api_client: ledger_query_service.clone(),
-            bitcoin_poll_interval: Duration::from_millis(100),
-        });
+        let future_factory = FutureFactory::new(LedgerServices::new(
+            ledger_query_service.clone(),
+            Duration::from_millis(100),
+        ));
 
         let stream = future_factory.create_stream_from_template(QueryId::new(
             "http://localhost/results/1".parse().unwrap(),

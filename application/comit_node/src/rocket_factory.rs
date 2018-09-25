@@ -1,6 +1,6 @@
 use bitcoin_support::Network;
 use comit_node_api_client::ApiClient;
-use ethereum_support;
+use comit_wallet::KeyStore;
 use event_store::InMemoryEventStore;
 use rand::OsRng;
 use rocket::{
@@ -8,7 +8,6 @@ use rocket::{
     config::{Config, Environment},
     Rocket,
 };
-use secp256k1_support::KeyPair;
 use std::sync::{Arc, Mutex};
 use swap_protocols::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -20,8 +19,7 @@ pub fn create_rocket_instance(
     event_store: Arc<InMemoryEventStore<TradeId>>,
     ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
     bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
-    bob_refund_address: ethereum_support::Address,
-    bob_success_keypair: KeyPair,
+    my_keystore: Arc<KeyStore>,
     network: Network,
     bob_client: Arc<ApiClient>,
     address: String,
@@ -54,8 +52,7 @@ pub fn create_rocket_instance(
         ).manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_service)
-        .manage(bob_success_keypair)
-        .manage(bob_refund_address)
+        .manage(my_keystore)
         .manage(network)
         .manage(bob_client)
         .manage(Mutex::new(rng))

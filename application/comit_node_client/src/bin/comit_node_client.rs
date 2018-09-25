@@ -1,10 +1,9 @@
 extern crate bitcoin_rpc_client;
+extern crate comit_node_client;
 extern crate common_types;
 extern crate reqwest;
 extern crate serde;
-#[macro_use]
 extern crate structopt;
-extern crate comit_node_client;
 extern crate uuid;
 
 use comit_node_client::{
