@@ -78,6 +78,8 @@ fn main() {
 
     let btc_network = settings.bitcoin.network;
 
+    //TODO: This should only be the btc keystore and a separate keystore should be created
+    // For ethereum. For now we use the same from both on bob side. To be split with #185/#291
     let bob_key_store = Arc::new(
         KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),

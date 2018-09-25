@@ -78,7 +78,7 @@ impl
         &mut self,
         request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
     ) -> SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
-        // TODO: need to remove confusion as bob/my are interchangeable and interchanged
+        // TODO: need to remove confusion as bob/my are interchangeable and interchanged. See #297
         // TODO: Prefer "redeem vs refund vs final" terminology than the "success" that may be misleading
         let alice_refund_address = request.source_ledger_refund_identity.clone().into();
 
