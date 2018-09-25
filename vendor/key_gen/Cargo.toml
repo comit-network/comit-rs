@@ -1,9 +1,12 @@
 [package]
-authors = ["LLFourn <lloyd.fourn@gmail.com>"]
+authors = [
+    "Lloyd Fournier <lloyd@coblox.tech>",
+    "Franck Royer <franck@coblox.tech>",
+]
 name = "key_gen"
 version = "0.1.0"
+
 [dependencies]
-bitcoin = "0.14"
 ethereum_support = { path = "../ethereum_support" }
 bitcoin_support  = { path = "../bitcoin_support" }
 secp256k1_support = { path = "../secp256k1_support" }

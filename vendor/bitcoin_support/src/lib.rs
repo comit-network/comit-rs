@@ -21,7 +21,7 @@ pub use bitcoin::{
     network::{constants::Network, serialize},
     util::{
         bip143::SighashComponents,
-        bip32::{ChainCode, ChildNumber, ExtendedPrivKey, Fingerprint},
+        bip32::{ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
         hash::{Hash160, Sha256dHash},
         privkey::Privkey as PrivateKey,
         Error,

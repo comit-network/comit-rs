@@ -20,13 +20,14 @@ extern crate uuid;
 extern crate serde_derive;
 extern crate comit_wallet;
 extern crate hex;
+extern crate key_gen;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
 mod mocks;
 
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{Blocks, ChainCode, ChildNumber, ExtendedPrivKey, Fingerprint, Network};
+use bitcoin_support::{Blocks, Network};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
@@ -47,12 +48,13 @@ use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::{EventStore, InMemoryEventStore};
 use hex::FromHex;
+use key_gen::extended_privkey_from_array;
 use mocks::BitcoinRpcClientMock;
 use rocket::{
     http::{ContentType, Status},
     local::{Client, LocalResponse},
 };
-use secp256k1_support::{All, KeyPair, Secp256k1, SecretKey};
+use secp256k1_support::KeyPair;
 use serde::{Deserialize, Serialize};
 use std::{str::FromStr, sync::Arc};
 
@@ -85,22 +87,13 @@ fn create_rocket_client(
     event_store: InMemoryEventStore<TradeId>,
     bitcoin_service: BitcoinService,
 ) -> Client {
-    let secret_key_data = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0,
-        1, 2,
-    ];
-    let secp: Secp256k1<All> = Secp256k1::new();
-    let bob_secret_key = SecretKey::from_slice(&secp, &secret_key_data).unwrap();
-    let chain_code = ChainCode::from(&[0u8; 32][..]);
-
-    let bob_master_private_key = ExtendedPrivKey {
-        network: bitcoin_support::Network::Regtest,
-        depth: 0,
-        parent_fingerprint: Fingerprint::default(),
-        child_number: ChildNumber::from(0),
-        secret_key: bob_secret_key,
-        chain_code,
-    };
+    let bob_master_private_key = extended_privkey_from_array(
+        &[
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+            0, 1, 2,
+        ],
+        bitcoin_support::Network::Regtest,
+    );
 
     let bob_key_store = Arc::new(
         KeyStore::new(bob_master_private_key)

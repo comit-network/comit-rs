@@ -1,17 +1,15 @@
-extern crate bitcoin;
 extern crate bitcoin_support;
 extern crate ethereum_support;
 extern crate hex;
+extern crate key_gen;
 extern crate rand;
 extern crate secp256k1_support;
 
-use bitcoin::{network::constants::Network, util::bip32::ExtendedPubKey};
-use bitcoin_support::{
-    ChainCode, ChildNumber, ExtendedPrivKey, Fingerprint, PrivateKey, PubkeyHash, ToP2wpkhAddress,
-};
+use bitcoin_support::{ExtendedPubKey, Network, PrivateKey, PubkeyHash, ToP2wpkhAddress};
 use ethereum_support::ToEthereumAddress;
+use key_gen::extended_privkey_from_secret_key;
 use rand::OsRng;
-use secp256k1_support::{KeyPair, SecretKey, SECP};
+use secp256k1_support::{KeyPair, SECP};
 
 fn main() {
     let mut rng = OsRng::new().unwrap();
@@ -48,36 +46,21 @@ fn main() {
     println!("pubkey_hash: {:?}", PubkeyHash::from(public_key.clone()));
 
     {
-        let extended_privkey = create_extended_privkey(secret_key, Network::Bitcoin);
+        let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Bitcoin);
         let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
         println!("btc_extended_privkey_mainnet: {}", extended_privkey);
         println!("btc_extended_pubkey_mainnet: {}", extended_pubkey);
     }
     {
-        let extended_privkey = create_extended_privkey(secret_key, Network::Testnet);
+        let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Testnet);
         let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
         println!("btc_extended_privkey_testnet: {}", extended_privkey);
         println!("btc_extended_pubkey_testnet: {}", extended_pubkey);
     }
     {
-        let extended_privkey = create_extended_privkey(secret_key, Network::Regtest);
+        let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Regtest);
         let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
         println!("btc_extended_privkey_regtest: {}", extended_privkey);
         println!("btc_extended_pubkey_regtest: {}", extended_pubkey);
-    }
-}
-
-fn create_extended_privkey(
-    secret_key: &SecretKey,
-    network: bitcoin_support::Network,
-) -> ExtendedPrivKey {
-    let chain_code = ChainCode::from(&[0u8; 32][..]);
-    ExtendedPrivKey {
-        network,
-        depth: 0,
-        parent_fingerprint: Fingerprint::default(),
-        child_number: ChildNumber::from(0),
-        secret_key: secret_key.clone(),
-        chain_code,
     }
 }
