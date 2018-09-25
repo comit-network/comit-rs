@@ -10,16 +10,18 @@ use ethereum_support::{
     *,
 };
 use ethereum_wallet::{UnsignedTransaction, Wallet};
-use ganp::ledger::{ethereum::Ethereum, Ledger};
 use gas_price_service::{self, GasPriceService};
 use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
-use swap_protocols::rfc003::{
-    ethereum::{Erc20Htlc, EtherHtlc, Htlc},
-    ledger_htlc_service::{self, api::LedgerHtlcService},
+use swap_protocols::{
+    ledger::{ethereum::Ethereum, Ledger},
+    rfc003::{
+        ethereum::{Erc20Htlc, EtherHtlc, Htlc},
+        ledger_htlc_service::{self, api::LedgerHtlcService},
+    },
 };
 use swaps::common::TradeId;
 

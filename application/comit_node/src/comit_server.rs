@@ -6,17 +6,16 @@ use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
-use ganp::{
-    self,
-    ledger::{
-        bitcoin::{Bitcoin, HtlcId},
-        ethereum::Ethereum,
-    },
-    rfc003, swap, SwapRequestHandler,
-};
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use ledger_query_service::LedgerQueryServiceApiClient;
 use secp256k1_support::KeyPair;
 use std::{io, net::SocketAddr, sync::Arc};
+use swap_protocols::{
+    json_config,
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003::{self, ledger_htlc_service::EthereumService},
+    wire_types::SwapResponse,
+    SwapRequestHandler,
+};
 use swaps::{
     alice_events::ContractDeployed as AliceContractDeployed,
     bob_events::{
@@ -60,7 +59,7 @@ impl ComitServer {
                 self.my_success_keypair.clone(),
                 self.event_store.clone(),
             );
-            let config = ganp::json_config(swap_handler);
+            let config = json_config(swap_handler);
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
             tokio::spawn(close_future.map_err(move |e| {
@@ -118,7 +117,7 @@ impl<C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>
     fn handle(
         &mut self,
         request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
-    ) -> swap::SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
+    ) -> SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
         let alice_refund_address = request.source_ledger_refund_identity.clone().into();
 
         let bob_success_address = self
@@ -158,14 +157,14 @@ impl<C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>
                         .into(),
                     target_ledger_lock_duration: twelve_hours,
                 };
-                swap::SwapResponse::Accept(response)
+                SwapResponse::Accept(response)
             }
             Err(e) => {
                 error!(
                     "Declining trade because of problem with event store {:?}",
                     e
                 );
-                swap::SwapResponse::Decline
+                SwapResponse::Decline
             }
         }
     }

@@ -1,11 +1,11 @@
 use bitcoin_rpc_client::TransactionId;
 use failure::Error;
-use ganp::ledger::bitcoin::Bitcoin;
 use ledger_query_service::{
     api::{LedgerQueryServiceApiClient, QueryId},
     bitcoin::BitcoinQuery,
 };
 use reqwest::{self, header::Location, Client, Url, UrlError};
+use swap_protocols::ledger::bitcoin::Bitcoin;
 
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
@@ -51,7 +51,10 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
             .send()
             .map_err(FailedRequest)?;
 
-        let location = response.headers().get::<Location>().ok_or(MissingLocation)?;
+        let location = response
+            .headers()
+            .get::<Location>()
+            .ok_or(MissingLocation)?;
 
         let url = Url::parse(location).map_err(MalformedLocation)?;
 

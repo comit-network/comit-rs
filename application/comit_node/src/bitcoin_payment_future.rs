@@ -1,9 +1,9 @@
 use bitcoin_rpc_client::TransactionId;
 use failure::Error;
 use futures_ext::{PollUntilReady, StreamTemplate};
-use ganp::ledger::bitcoin::Bitcoin;
 use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
 use std::{sync::Arc, time::Duration};
+use swap_protocols::ledger::bitcoin::Bitcoin;
 use tokio::prelude::*;
 
 #[derive(Clone)]

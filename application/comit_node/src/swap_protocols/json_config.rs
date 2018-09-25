@@ -1,8 +1,11 @@
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
-use handler::SwapRequestHandler;
-use ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
-use rfc003;
+use swap_protocols::{
+    handler::SwapRequestHandler,
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003,
+    wire_types::{Asset, Ledger, SwapProtocol, SwapRequestHeaders},
+};
 use transport_protocol::{
     config::Config,
     json::{Request, Response},
@@ -30,7 +33,6 @@ pub fn json_config<
             "swap_protocol",
         ],
         move |request: Request| {
-            use swap::*;
             let headers = SwapRequestHeaders {
                 source_ledger: header!(request.get_header("source_ledger")),
                 target_ledger: header!(request.get_header("target_ledger")),

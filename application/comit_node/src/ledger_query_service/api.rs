@@ -1,7 +1,7 @@
 use failure::Error;
-use ganp::ledger::Ledger;
 use reqwest::Url;
 use std::marker::PhantomData;
+use swap_protocols::ledger::Ledger;
 
 #[allow(dead_code)]
 #[derive(Clone)]
