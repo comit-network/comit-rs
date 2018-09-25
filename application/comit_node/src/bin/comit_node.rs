@@ -86,9 +86,7 @@ fn main() {
     );
 
     //TODO: make it dynamically generated every X BTC. Could be done with #296
-    let btc_bob_redeem_keypair = bob_key_store
-        .get_new_internal_keypair()
-        .expect("Could not generate keypair");
+    let btc_bob_redeem_keypair = bob_key_store.get_new_internal_keypair();
     let btc_bob_redeem_address =
         BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key().into(), btc_network);
 

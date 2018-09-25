@@ -97,8 +97,7 @@ impl
             bob_success_address
         );
 
-        //TODO: remove unwrap (which is statically near impossible to panic)
-        let bob_refund_keypair = self.my_keystore.get_new_internal_keypair().unwrap();
+        let bob_refund_keypair = self.my_keystore.get_new_internal_keypair();
 
         let bob_refund_address = bob_refund_keypair.public_key().to_ethereum_address();
         debug!(

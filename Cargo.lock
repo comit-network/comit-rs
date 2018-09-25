@@ -382,6 +382,7 @@ dependencies = [
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "tc_coblox_bitcoincore 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
