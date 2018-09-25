@@ -51,7 +51,7 @@ pub struct BitcoinService {
 use bitcoin_support::{Address, BitcoinQuantity, Blocks};
 
 // TODO: Maybe interesting to refactor and have the bitcoin service generate the
-// transient/redeem keypairs transparently (ie, receiving the keystore)
+// transient/redeem keypairs transparently (ie, receiving the keystore) see #296
 pub struct BitcoinHtlcParams {
     pub refund_address: Address,
     pub success_address: Address,

@@ -24,6 +24,7 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_support::Address as BitcoinAddress;
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_node_api_client::DefaultApiClient as ComitNodeClient,
@@ -40,7 +41,7 @@ use event_store::InMemoryEventStore;
 use std::{env::var, sync::Arc};
 use web3::{transports::Http, Web3};
 
-// TODO: Make a nice command line interface here (using StructOpt f.e.)
+// TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
 fn main() {
     logging::set_up_logging();
     let settings = load_settings();
@@ -73,22 +74,23 @@ fn main() {
         nonce,
     );
 
-    // TODO: decomission from config file
-    //    let bob_refund_address =
-    //        ethereum_support::Address::from_str(var_or_exit("BOB_REFUND_ADDRESS").as_str())
-    //            .expect("BOB_REFUND_ADDRESS wasn't a valid ethereum address");
+    let _eth_refund_address = settings.swap.eth_refund_address;
 
-    //TODO: change env/config name
-    let bob_master_private_key = settings.bitcoin.extended_private_key;
+    let btc_network = settings.bitcoin.network;
 
     let bob_key_store = Arc::new(
-        KeyStore::new(bob_master_private_key)
+        KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),
     );
 
-    //    let bob_success_keypair: KeyPair = bob_success_private_key.secret_key().clone().into();
+    //TODO: make it dynamically generated every X BTC. Could be done with #296
+    let btc_bob_redeem_keypair = bob_key_store
+        .get_new_internal_keypair()
+        .expect("Could not generate keypair");
+    let btc_bob_redeem_address =
+        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key().into(), btc_network);
 
-    let btc_bob_redeem_address = settings.swap.btc_redeem_address;
+    info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 
     let bitcoin_rpc_client = {
         bitcoin_rpc_client::BitcoinCoreClient::new(
@@ -128,7 +130,6 @@ fn main() {
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
-        let network = settings.bitcoin.network;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
 
         std::thread::spawn(move || {
@@ -137,7 +138,7 @@ fn main() {
                 Arc::new(ethereum_service),
                 Arc::new(bitcoin_service),
                 bob_key_store,
-                network,
+                btc_network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_url)),
                 http_api_address.into(),
                 http_api_port,
