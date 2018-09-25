@@ -6,12 +6,14 @@ use gotham::{
     middleware::{Middleware, NewMiddleware},
     pipeline::{new_pipeline, single::single_pipeline},
     router::{builder::*, Router},
-    state::State,
+    state::{State, StateData},
 };
 use http_api;
 use rand::OsRng;
 use std::{
+    net::SocketAddr,
     ops::Deref,
+    panic::RefUnwindSafe,
     sync::{Arc, Mutex},
 };
 use swaps::common::TradeId;
@@ -22,49 +24,57 @@ pub struct SwapId {
 }
 
 #[derive(Clone, NewMiddleware)]
-struct SwapMiddleware {
+struct SwapMiddleware<F: Clone + StateData + Sync + RefUnwindSafe> {
     pub swap_state: SwapState,
-    //    pub client_factory: ClientFactory<C>,
+    pub client_factory: F,
 }
 
 #[derive(StateData, Clone)]
 pub struct SwapState {
     pub event_store: Arc<InMemoryEventStore<TradeId>>,
     pub rng: Arc<Mutex<OsRng>>,
+    pub remote_comit_node_socket_addr: SocketAddr,
 }
 
-#[derive(StateData, Clone)]
-pub struct ClientFactory<C: 'static>(pub Arc<comit_client::Factory<C>>);
-
-impl<C> Deref for ClientFactory<C> {
-    type Target = comit_client::Factory<C>;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.deref()
+impl<C> Clone for ClientFactory<C> {
+    fn clone(&self) -> Self {
+        ClientFactory(self.0.clone())
     }
 }
 
-impl Middleware for SwapMiddleware {
+#[derive(StateData)]
+pub struct ClientFactory<C: 'static>(pub Arc<comit_client::Factory<C>>);
+
+impl<F: StateData + Clone + Sync + RefUnwindSafe> Middleware for SwapMiddleware<F> {
     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
     where
         Chain: FnOnce(State) -> Box<HandlerFuture>,
     {
         state.put(self.swap_state);
-        //        state.put(self.client_factory);
+        state.put(self.client_factory);
         chain(state)
     }
 }
 
-pub fn create_gotham_router<C: comit_client::Client + 'static>(
+pub fn create_gotham_router<
+    C: comit_client::Client + 'static,
+    F: comit_client::Factory<C> + 'static,
+>(
     event_store: Arc<InMemoryEventStore<TradeId>>,
-    //    client_factory: comit_client::Factory<C>,
+    client_factory: Arc<F>,
+    remote_comit_node_socket_addr: SocketAddr,
 ) -> Router {
     let rng = Arc::new(Mutex::new(
         OsRng::new().expect("Failed to get randomness from OS"),
     ));
+
     let middleware = SwapMiddleware {
-        swap_state: SwapState { event_store, rng },
-        //        client_factory: ClientFactory(Arc::new(client_factory)),
+        swap_state: SwapState {
+            event_store,
+            rng,
+            remote_comit_node_socket_addr,
+        },
+        client_factory: ClientFactory(client_factory),
     };
 
     let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());

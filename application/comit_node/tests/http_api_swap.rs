@@ -37,6 +37,7 @@ use comit_node::{
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
     swaps::common::TradeId,
 };
+use common_types::seconds::Seconds;
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use futures::{
@@ -44,21 +45,31 @@ use futures::{
     sync::oneshot::{self, Receiver},
     Future,
 };
+use ganp::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003,
+};
 use gotham::test::TestServer;
+use hex::FromHex;
 use hyper::{header::ContentType, mime::APPLICATION_JSON, StatusCode};
 use mocks::{BitcoinRpcClientMock, OfferResponseBody, RedeemDetails, StaticEthereumApi};
-use std::{str::FromStr, sync::Arc};
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
-fn build_test_server() -> TestServer {
+fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
     use ganp::{ledger::Ledger, rfc003, swap};
     let event_store = Arc::new(InMemoryEventStore::new());
-    let router = create_gotham_router::<comit_client::FakeClient>(event_store);
-    TestServer::new(router).unwrap()
+    let fake_factory = Arc::new(FakeFactory::new());
+    let router = create_gotham_router(
+        event_store,
+        fake_factory.clone(),
+        SocketAddr::from_str("127.0.0.1:4242").unwrap(),
+    );
+    (TestServer::new(router).unwrap(), fake_factory)
 }
 
 #[test]
 fn get_non_existent_swap() {
-    let test_server = build_test_server();
+    let (test_server, _) = build_test_server();
     let id = TradeId::default();
 
     let response = test_server
@@ -73,7 +84,7 @@ fn get_non_existent_swap() {
 #[test]
 fn api_http_api_swap() {
     let _ = env_logger::try_init();
-    let test_server = build_test_server();
+    let (test_server, fake_factory) = build_test_server();
 
     let response = test_server
         .client()
@@ -125,52 +136,54 @@ fn api_http_api_swap() {
 
     let swap_created = swap_created.unwrap();
 
-    let response = test_server
-        .client()
-        .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
-        .perform()
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::Ok);
-
     #[derive(Deserialize)]
     struct GetSwap {
         pub status: String,
     }
 
-    let get_swap =
-        serde_json::from_slice::<GetSwap>(response.read_body().unwrap().as_ref()).unwrap();
+    {
+        let response = test_server
+            .client()
+            .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
+            .perform()
+            .unwrap();
 
-    assert_eq!(get_swap.status, "pending");
+        assert_eq!(response.status(), StatusCode::Ok);
 
-    // let mut response = request.dispatch();
+        let get_swap =
+            serde_json::from_slice::<GetSwap>(response.read_body().unwrap().as_ref()).unwrap();
 
-    // assert_eq!(response.status(), Status::Created);
+        assert_eq!(get_swap.status, "pending");
+    }
 
-    // let request = client
-    //     .post(format!(
-    //         "/ledger/trades/ETH-BTC/{}/buy-order-contract-deployed",
-    //         uid
-    //     ))
-    //     .header(ContentType::JSON)
-    //     .body(r#"{ "contract_address" : "0x00a329c0648769a73afac7f9381e08fb43dbea72" }"#);
+    //=== SIMULATE THE RESPONSE ===
 
-    // let response = request.dispatch();
+    fake_factory
+        .fake_client
+        .resolve_request(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
+            target_ledger_refund_identity: ethereum_support::Address::from_str(
+                "b3474ca43d419fc54110f7dbc4626f1a2f86b4ab",
+            ).unwrap(),
+            source_ledger_success_identity: bitcoin_support::PubkeyHash::from_hex(
+                "2107b76566056263e6f281f3a991b6651284bc76",
+            ).unwrap(),
+            target_ledger_lock_duration: Seconds::new(60 * 60 * 24),
+        });
 
-    // assert_eq!(
-    //     response.status(),
-    //     Status::Ok,
-    //     "buy-order-contract-deployed call is successful"
-    // );
+    {
+        let response = test_server
+            .client()
+            .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
+            .perform()
+            .unwrap();
 
-    // let request = client.get(format!("/cli/trades/ETH-BTC/{}/redeem-orders", uid));
+        assert_eq!(response.status(), StatusCode::Ok);
 
-    // let mut response = request.dispatch();
+        let get_swap =
+            serde_json::from_slice::<GetSwap>(response.read_body().unwrap().as_ref()).unwrap();
 
-    // assert_eq!(response.status(), Status::Ok);
-
-    // let _redeem_details =
-    //     serde_json::from_str::<RedeemDetails>(&response.body_string().unwrap()).unwrap();
+        assert_eq!(get_swap.status, "accepted");
+    }
 }
 
 // sha256 of htlc script: e6877a670b46b9913bdaed47084f2db8983c2a22c473f0aea1fa5c2ebc4fd8d4

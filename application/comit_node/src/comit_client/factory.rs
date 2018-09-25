@@ -1,13 +1,13 @@
 use comit_client::{client::Client, DefaultClient, FakeClient};
-use std::{io, marker::PhantomData, net::SocketAddr};
+use std::{io, marker::PhantomData, net::SocketAddr, panic::RefUnwindSafe, sync::Arc};
 
 #[derive(Debug)]
 pub enum FactoryError {
     Connection(io::Error),
 }
 
-pub trait Factory<C: Client>: Send + Sync {
-    fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<C, FactoryError>;
+pub trait Factory<C: Client>: Send + Sync + RefUnwindSafe {
+    fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<&C, FactoryError>;
 }
 
 pub struct DefaultFactory {}
@@ -22,18 +22,30 @@ impl Factory<DefaultClient> for DefaultFactory {
     fn client_for(
         &self,
         comit_node_socket_addr: SocketAddr,
-    ) -> Result<DefaultClient, FactoryError> {
+    ) -> Result<&DefaultClient, FactoryError> {
         unimplemented!()
     }
 }
 
-pub struct FakeFactory<F> {
-    phantom: PhantomData<F>,
+pub struct FakeFactory {
+    pub fake_client: FakeClient,
 }
 
-impl<C: Default + Client + Send + Sync> Factory<C> for FakeFactory<C> {
-    fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<C, FactoryError> {
-        Ok(C::default())
+impl FakeFactory {
+    pub fn new() -> Self {
+        FakeFactory {
+            fake_client: FakeClient::new(),
+        }
+    }
+
+    pub fn fake_client(&self) -> &FakeClient {
+        &self.fake_client
+    }
+}
+
+impl Factory<FakeClient> for FakeFactory {
+    fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<&FakeClient, FactoryError> {
+        Ok(&self.fake_client)
     }
 }
 
@@ -70,6 +82,5 @@ impl<C: Default + Client + Send + Sync> Factory<C> for FakeFactory<C> {
 //             socket_addr, e
 //         )
 //     }));
-
 //     Ok((client, shutdown_handle))
 // }

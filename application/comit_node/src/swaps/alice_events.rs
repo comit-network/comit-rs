@@ -12,7 +12,7 @@ pub struct SentSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_asset: SA,
     pub secret: Secret,
     pub target_ledger_success_identity: TL::Identity,
-    pub source_ledger_success_identity: SL::Identity,
+    pub source_ledger_refund_identity: SL::Identity,
     pub source_ledger_lock_duration: SL::LockDuration,
 }
 
@@ -28,21 +28,21 @@ impl<
 
 #[derive(Clone, Debug)]
 pub struct SwapRequestAccepted<SL: Ledger, TL: Ledger, SA, TA> {
-    pub target_ledger_refund_address: TL::Address,
-    pub source_ledger_success_address: SL::Address,
+    pub target_ledger_refund_identity: TL::Identity,
+    pub source_ledger_success_identity: SL::Identity,
     pub target_ledger_lock_duration: TL::LockDuration,
     phantom: PhantomData<(SA, TA)>,
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestAccepted<SL, TL, SA, TA> {
     pub fn new(
-        target_ledger_refund_address: TL::Address,
-        source_ledger_success_address: SL::Address,
+        target_ledger_refund_identity: TL::Identity,
+        source_ledger_success_identity: SL::Identity,
         target_ledger_lock_duration: TL::LockDuration,
     ) -> Self {
         SwapRequestAccepted {
-            target_ledger_refund_address,
-            source_ledger_success_address,
+            target_ledger_refund_identity,
+            source_ledger_success_identity,
             target_ledger_lock_duration,
             phantom: PhantomData,
         }
@@ -74,7 +74,7 @@ impl<
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
-    pub fn new(uid: TradeId, address: TL::Address) -> SwapRequestRejected<SL, TL, SA, TA> {
+    pub fn new() -> Self {
         SwapRequestRejected {
             phantom: PhantomData,
         }

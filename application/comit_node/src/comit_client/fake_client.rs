@@ -1,43 +1,74 @@
-use bitcoin_support::{self, BitcoinQuantity};
 use comit_client::{Client, SwapReject};
 use common_types::seconds::Seconds;
-use ethereum_support::{self, EthereumQuantity};
-use futures::{future, Future};
+use futures::{
+    future,
+    sync::oneshot::{self, Sender},
+    Future,
+};
 use ganp::{ledger::Ledger, rfc003, swap};
 use std::{
     any::{Any, TypeId},
+    borrow::Borrow,
     collections::HashMap,
     str::FromStr,
+    sync::Mutex,
 };
 use transport_protocol::{self, json};
 
-// #[allow(dead_code)]
-// pub struct FakeClient {
-//     pending_requests: HashMap<TypeId, Sender>;
-// }
-
-pub struct FakeClient {}
+#[allow(dead_code)]
+pub struct FakeClient {
+    pending_requests: Mutex<HashMap<TypeId, Sender<Box<Any + Send>>>>,
+}
 
 impl FakeClient {
     pub fn new() -> Self {
-        FakeClient {}
+        FakeClient {
+            pending_requests: Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn resolve_request<SL: Ledger, TL: Ledger>(
+        &self,
+        response: rfc003::AcceptResponse<SL, TL>,
+    ) {
+        let type_id = TypeId::of::<rfc003::AcceptResponse<SL, TL>>();
+        let mut pending_requests = self.pending_requests.lock().unwrap();
+        pending_requests
+            .remove(&type_id)
+            .unwrap()
+            .send(Box::new(response))
+            .unwrap()
     }
 }
 
 impl Client for FakeClient {
     fn send_swap_request<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>>(
         &self,
-        request: rfc003::Request<SL, TL, SA, TA>,
+        _request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
-            Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
-            Error = transport_protocol::client::Error<json::Frame>,
-        >,
+                Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
+                Error = transport_protocol::client::Error<json::Frame>,
+            >
+            + Send,
     > {
-        Box::new(future::ok(Ok(rfc003::AcceptResponse {
-            target_ledger_refund_identity: Default::default(),
-            target_ledger_lock_duration: Default::default(),
-            source_ledger_success_identity: Default::default(),
-        })))
+        let type_id = TypeId::of::<rfc003::AcceptResponse<SL, TL>>();
+        let (sender, receiver) = oneshot::channel::<Box<Any + Send>>();
+
+        {
+            self.pending_requests
+                .lock()
+                .unwrap()
+                .insert(type_id, sender);
+        }
+
+        Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
+            let _any: &(Any + Send) = response.borrow();
+            let rfc003_response: rfc003::AcceptResponse<SL, TL> = _any
+                .downcast_ref::<rfc003::AcceptResponse<SL, TL>>()
+                .unwrap()
+                .clone();
+            Ok(rfc003_response)
+        }))
     }
 }

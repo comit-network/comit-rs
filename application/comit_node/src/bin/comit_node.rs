@@ -171,8 +171,11 @@ fn main() {
 
         let client_factory = comit_client::DefaultFactory::new();
 
-        let gotham_router =
-            gotham_factory::create_gotham_router::<comit_client::DefaultClient>(gotham_event_store);
+        let gotham_router = gotham_factory::create_gotham_router(
+            gotham_event_store,
+            Arc::new(client_factory),
+            remote_comit_node_socket_addr,
+        );
 
         std::thread::spawn(move || {
             gotham::start(

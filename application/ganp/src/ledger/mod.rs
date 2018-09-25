@@ -4,14 +4,7 @@ use swap;
 
 pub trait Ledger: Clone + Debug + Send + Sync + 'static + Default + Into<swap::Ledger> {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
-    type LockDuration: Debug
-        + Clone
-        + Send
-        + Sync
-        + Serialize
-        + DeserializeOwned
-        + Default
-        + 'static;
+    type LockDuration: Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static;
     type HtlcId: Clone + DeserializeOwned + Serialize + Send + Sync;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
     type Pubkey: Clone + Debug + Send + Sync + 'static;
@@ -20,7 +13,6 @@ pub trait Ledger: Clone + Debug + Send + Sync + 'static + Default + Into<swap::L
         + Debug
         + Send
         + Sync
-        + Default
         + 'static
         + From<Self::Address>
         + Serialize

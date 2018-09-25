@@ -20,9 +20,10 @@ pub trait Client {
         request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
-            Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
-            Error = transport_protocol::client::Error<json::Frame>,
-        >,
+                Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
+                Error = transport_protocol::client::Error<json::Frame>,
+            >
+            + Send,
     >;
 }
 
@@ -61,9 +62,10 @@ impl Client for DefaultClient {
         request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
-            Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
-            Error = transport_protocol::client::Error<json::Frame>,
-        >,
+                Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
+                Error = transport_protocol::client::Error<json::Frame>,
+            >
+            + Send,
     > {
         unimplemented!()
 
