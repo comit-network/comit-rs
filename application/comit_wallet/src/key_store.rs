@@ -37,8 +37,6 @@ pub struct KeyStore {
     // TODO: manage a key pool
     // - key ready for use (pool)
     // - key already used
-    // TODO: Cache if needed
-    // transient_keys: HashMap<Uuid, KeyPair>,
 }
 
 impl KeyStore {
@@ -100,18 +98,6 @@ impl KeyStore {
         Ok(ExtendedPubKey::from_private(&*SECP, &priv_key))
     }
 
-    pub fn get_transient_keypair(&self, id: &Uuid, data: &[u8]) -> KeyPair {
-        // If you want to cache, that's how to do it
-        //        if let Some(keypair) = self.transient_keys.get(id) {
-        //            return keypair.clone();
-        //        }
-
-        let transient_keypair = Self::new_transient_keypair(&self.transient_root_privkey, id, data);
-        //        self.transient_keys
-        //            .insert(id.clone(), transient_keypair.clone());
-        transient_keypair
-    }
-
     fn new_secret_from_concat(data1: &[u8], data2: &[u8], data3: &[u8], secret: &mut [u8]) {
         let mut sha = Sha256::new();
         sha.input(data1);
@@ -120,16 +106,12 @@ impl KeyStore {
         sha.result(secret);
     }
 
-    fn new_transient_keypair(
-        transient_root_privkey: &ExtendedPrivKey,
-        uid: &Uuid,
-        data: &[u8],
-    ) -> KeyPair {
+    pub fn get_transient_keypair(&self, uid: &Uuid, data: &[u8]) -> KeyPair {
         // SecretKey = SHA256(transient_root_privkey + id)
         let mut result: [u8; SECRET_KEY_SIZE] = [0; SECRET_KEY_SIZE];
 
         Self::new_secret_from_concat(
-            &transient_root_privkey.secret_key[..],
+            &self.transient_root_privkey.secret_key[..],
             &uid.as_bytes()[..],
             &data[..],
             &mut result,
