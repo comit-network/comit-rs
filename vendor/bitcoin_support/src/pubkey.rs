@@ -42,6 +42,13 @@ impl From<Address> for PubkeyHash {
     }
 }
 
+//XXX: Only to be used for testing!
+impl Default for PubkeyHash {
+    fn default() -> Self {
+        Self::from_hex("2107b76566056263e6f281f3a991b6651284bc76").unwrap()
+    }
+}
+
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(Hash160::from_data(&public_key.inner().serialize()))

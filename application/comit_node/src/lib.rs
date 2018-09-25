@@ -1,6 +1,5 @@
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
-#![cfg_attr(test, deny(warnings))]
 
 extern crate bitcoin_rpc_client;
 extern crate reqwest;
@@ -24,20 +23,27 @@ extern crate log;
 extern crate event_store;
 extern crate futures;
 extern crate ganp;
+extern crate gotham;
 extern crate hex;
+extern crate http_api_problem;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
 extern crate transport_protocol;
 extern crate web3;
+#[macro_use]
+extern crate gotham_derive;
+extern crate hyper;
 
 #[cfg(test)]
 extern crate spectral;
 
 pub mod bitcoin_fee_service;
-pub mod comit_node_api_client;
+pub mod comit_client;
 pub mod comit_server;
 pub mod gas_price_service;
+pub mod gotham_factory;
+pub mod http_api;
 pub mod rocket_factory;
 pub mod swap_protocols;
 pub mod swaps;

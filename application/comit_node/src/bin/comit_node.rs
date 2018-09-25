@@ -10,6 +10,7 @@ extern crate hex;
 #[macro_use]
 extern crate log;
 extern crate event_store;
+extern crate gotham;
 extern crate logging;
 extern crate reqwest;
 extern crate rocket;
@@ -24,11 +25,13 @@ extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{Network, PrivateKey};
+
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    comit_node_api_client::DefaultApiClient as ComitNodeClient,
+    comit_client,
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
+    gotham_factory,
     rocket_factory::create_rocket_instance,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
@@ -47,6 +50,7 @@ fn main() {
     let event_store = Arc::new(InMemoryEventStore::new());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
+    let gotham_event_store = event_store.clone();
 
     let network_id = var_or_exit("ETHEREUM_NETWORK_ID");
 
@@ -165,17 +169,30 @@ fn main() {
         let bob_success_keypair = bob_success_keypair.clone();
         let network = network.clone();
 
+        let client_factory = comit_client::DefaultFactory::new();
+
+        let gotham_router =
+            gotham_factory::create_gotham_router::<comit_client::DefaultClient>(gotham_event_store);
+
         std::thread::spawn(move || {
-            create_rocket_instance(
-                rocket_event_store,
-                Arc::new(ethereum_service),
-                Arc::new(bitcoin_service),
-                bob_refund_address,
-                bob_success_keypair,
-                network,
-                Arc::new(ComitNodeClient::new(remote_comit_node_socket_addr)),
-            ).launch();
+            gotham::start(
+                SocketAddr::from_str("127.0.0.0:8000").unwrap(),
+                gotham_router,
+            );
         });
+
+        // std::thread::spawn(move || {
+        //     create_rocket_instance(
+        //         rocket_event_store,
+        //         Arc::new(ethereum_service),
+        //         Arc::new(bitcoin_service),
+        //         bob_refund_address,
+        //         bob_success_keypair,
+        //         network,
+        //         Arc::new(client_factory),
+        //         remote_comit_node_socket_addr,
+        //     ).launch();
+        // });
     }
 
     let server = ComitServer::new(

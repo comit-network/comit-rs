@@ -11,20 +11,9 @@ pub struct OfferResponseBody {
     pub sell_amount: String,
 }
 
-impl PartialEq for OfferResponseBody {
-    fn eq(&self, other: &OfferResponseBody) -> bool {
-        self.symbol == other.symbol
-            && self.rate == other.rate
-            && self.buy_amount == other.buy_amount
-            && self.sell_amount == other.sell_amount
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RequestToFund {
     pub address_to_fund: String,
-    pub btc_amount: String,
-    pub eth_amount: String,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

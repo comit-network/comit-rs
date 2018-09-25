@@ -9,6 +9,12 @@ pub struct Seconds {
     duration: Duration,
 }
 
+impl Default for Seconds {
+    fn default() -> Seconds {
+        Seconds::new(60 * 60 * 24)
+    }
+}
+
 impl Seconds {
     pub const fn new(seconds: u64) -> Self {
         Seconds {

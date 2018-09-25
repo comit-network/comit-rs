@@ -1,12 +1,16 @@
 use bitcoin_support::Network;
-use comit_node_api_client::ApiClient;
+use comit_client;
 use ethereum_support;
 use event_store::InMemoryEventStore;
 use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
+use http_api;
 use rand::OsRng;
 use rocket;
 use secp256k1_support::KeyPair;
-use std::sync::{Arc, Mutex};
+use std::{
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 use swap_protocols::rfc003::ledger_htlc_service::{
     BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
 };
@@ -19,22 +23,12 @@ pub fn create_rocket_instance(
     bob_refund_address: ethereum_support::Address,
     bob_success_keypair: KeyPair,
     network: Network,
-    bob_client: Arc<ApiClient>,
+    client_factory: Arc<comit_client::DefaultFactory>,
+    remote_comit_node_socket_addr: SocketAddr,
 ) -> rocket::Rocket {
     let rng = OsRng::new().expect("Failed to get randomness from OS");
 
     rocket::ignite()
-        .mount(
-            "/cli/", //Endpoints for interaction with the CLI
-            //todo come up with a better name
-            routes![
-                eth_btc::cli::buy_routes::get_redeem_orders,
-                eth_btc::cli::buy_routes::post_buy_offers,
-                eth_btc::cli::buy_routes::post_buy_orders,
-                // eth_btc::cli::sell_routes::post_sell_offers,
-                // eth_btc::cli::sell_routes::post_sell_orders,
-            ],
-        )
         .mount(
             "/ledger/", //Endpoints for notifying about ledger events
             routes![
@@ -52,6 +46,7 @@ pub fn create_rocket_instance(
         .manage(bob_success_keypair)
         .manage(bob_refund_address)
         .manage(network)
-        .manage(bob_client)
+        .manage(client_factory)
+        .manage(remote_comit_node_socket_addr)
         .manage(Mutex::new(rng))
 }
