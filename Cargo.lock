@@ -377,9 +377,9 @@ dependencies = [
 name = "comit_wallet"
 version = "0.1.0"
 dependencies = [
- "bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_htlc 0.1.0",
  "bitcoin_rpc_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_support 0.1.0",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -1,5 +1,5 @@
-extern crate bitcoin;
 extern crate bitcoin_rpc_client;
+extern crate bitcoin_support;
 extern crate crypto;
 #[macro_use]
 extern crate lazy_static;
@@ -14,6 +14,7 @@ lazy_static! {
     static ref SECP: Secp256k1<All> = Secp256k1::new();
 }
 
+pub mod fake_key_store;
 mod key_store;
 
 pub use key_store::*;

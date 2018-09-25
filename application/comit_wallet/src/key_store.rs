@@ -1,5 +1,5 @@
 use super::SECP;
-use bitcoin::util::bip32::{self, ChildNumber, ExtendedPrivKey};
+use bitcoin_support::{bip32, ChildNumber, ExtendedPrivKey};
 use crypto::{digest::Digest, sha2::Sha256};
 use secp256k1_support::{KeyPair, SECRET_KEY_SIZE};
 use std::{

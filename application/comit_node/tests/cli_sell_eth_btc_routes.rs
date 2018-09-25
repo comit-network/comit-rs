@@ -12,7 +12,6 @@ extern crate comit_node;
 extern crate comit_wallet;
 extern crate common_types;
 extern crate ethereum_wallet;
-extern crate key_gen;
 extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate secp256k1_support;
@@ -32,10 +31,9 @@ use comit_node::{
     rocket_factory::create_rocket_instance,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
-use comit_wallet::KeyStore;
+use comit_wallet::fake_key_store::FakeKeyStoreFactory;
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
-use key_gen::extended_privkey_from_array;
 use mocks::{BitcoinRpcClientMock, OfferResponseBody, StaticEthereumApi};
 use rocket::{
     http::{ContentType, Status},
@@ -77,18 +75,7 @@ fn create_rocket_client() -> Client {
         bob_success_address,
     ));
 
-    let bob_master_private_key = extended_privkey_from_array(
-        &[
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-            0, 1, 2,
-        ],
-        bitcoin_support::Network::Regtest,
-    );
-
-    let bob_key_store = Arc::new(
-        KeyStore::new(bob_master_private_key)
-            .expect("Could not HD derive keys from the private key"),
-    );
+    let bob_key_store = Arc::new(FakeKeyStoreFactory::create());
 
     let api_client = FakeComitNodeApiClient::new();
 
@@ -101,7 +88,6 @@ fn create_rocket_client() -> Client {
             0,
         )),
         bitcoin_service,
-        //"e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
         bob_key_store,
         Network::Testnet,
         Arc::new(api_client),
