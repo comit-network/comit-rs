@@ -136,12 +136,11 @@ fn api_http_api_swap() {
 
     let swap_created = swap_created.unwrap();
 
-    #[derive(Deserialize)]
-    struct GetSwap {
-        pub status: String,
-    }
-
     {
+        #[derive(Deserialize)]
+        struct SwapPending {
+            pub status: String,
+        }
         let response = test_server
             .client()
             .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
@@ -151,7 +150,7 @@ fn api_http_api_swap() {
         assert_eq!(response.status(), StatusCode::Ok);
 
         let get_swap =
-            serde_json::from_slice::<GetSwap>(response.read_body().unwrap().as_ref()).unwrap();
+            serde_json::from_slice::<SwapPending>(response.read_body().unwrap().as_ref()).unwrap();
 
         assert_eq!(get_swap.status, "pending");
     }
@@ -171,6 +170,12 @@ fn api_http_api_swap() {
         });
 
     {
+        #[derive(Deserialize)]
+        struct SwapAccepted {
+            pub status: String,
+            pub to_fund: bitcoin_support::Address,
+        }
+
         let response = test_server
             .client()
             .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
@@ -180,7 +185,7 @@ fn api_http_api_swap() {
         assert_eq!(response.status(), StatusCode::Ok);
 
         let get_swap =
-            serde_json::from_slice::<GetSwap>(response.read_body().unwrap().as_ref()).unwrap();
+            serde_json::from_slice::<SwapAccepted>(response.read_body().unwrap().as_ref()).unwrap();
 
         assert_eq!(get_swap.status, "accepted");
     }

@@ -1,3 +1,4 @@
+use bitcoin_htlc;
 use bitcoin_support::{self, BTC_BLOCKS_IN_24H, BitcoinQuantity, Blocks};
 use comit_client::{self, FakeClient};
 use common_types::secret::Secret;
@@ -211,7 +212,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                                         ),
                                     )
                                     .unwrap(),
-                                Err(rejected) => event_store
+                                Err(_rejected) => event_store
                                     .add_event(
                                         id,
                                         alice_events::SwapRequestRejected::<
@@ -223,7 +224,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                                     )
                                     .unwrap(),
                             },
-                            Err(frame_error) => event_store
+                            Err(_frame_error) => event_store
                                 .add_event(
                                     id,
                                     alice_events::SwapRequestRejected::<
@@ -252,11 +253,15 @@ enum SwapStatus {
     #[serde(rename = "pending")]
     Pending,
     #[serde(rename = "accepted")]
-    Accepted,
+    Accepted { to_fund: bitcoin_support::Address },
     #[serde(rename = "rejected")]
     Rejected,
     #[serde(rename = "redeemable")]
-    Redeemable,
+    Redeemable {
+        from: ethereum_support::Address,
+        data: Secret,
+        gas: u64,
+    },
 }
 
 pub fn get_swap(state: State) -> Box<HandlerFuture> {
@@ -288,7 +293,7 @@ fn handle_get_swap(
     >>(id);
 
     match requested {
-        Ok(_requested) => {
+        Ok(requested) => {
             let accepted = event_store.get_event::<alice_events::SwapRequestAccepted<
                 Bitcoin,
                 Ethereum,
@@ -297,7 +302,7 @@ fn handle_get_swap(
             >>(id);
 
             match accepted {
-                Ok(_accepted) => {
+                Ok(accepted) => {
                     let contract_deployed = event_store.get_event::<alice_events::ContractDeployed<
                         Bitcoin,
                         Ethereum,
@@ -306,8 +311,25 @@ fn handle_get_swap(
                     >>(id);
 
                     match contract_deployed {
-                        Ok(_deployed) => Some(SwapStatus::Redeemable),
-                        Err(_) => Some(SwapStatus::Accepted),
+                        Ok(contract_deployed) => {
+                            Some(SwapStatus::Redeemable {
+                                from: contract_deployed.address.clone(),
+                                data: requested.secret.clone(),
+                                // TODO: check how much gas we should tell the customer to pay
+                                gas: 3500,
+                            })
+                        }
+                        Err(_) => {
+                            let htlc = bitcoin_htlc::Htlc::new(
+                                accepted.source_ledger_success_identity.clone(),
+                                accepted.source_ledger_success_identity,
+                                requested.secret.hash(),
+                                requested.source_ledger_lock_duration.clone().into(),
+                            );
+                            Some(SwapStatus::Accepted {
+                                to_fund: htlc.compute_address(requested.source_ledger.network()),
+                            })
+                        }
                     }
                 }
                 Err(_) => {
