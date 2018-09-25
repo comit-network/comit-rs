@@ -8,7 +8,6 @@ extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;
-extern crate hex;
 extern crate pretty_env_logger;
 extern crate reqwest;
 extern crate rocket;
@@ -19,6 +18,8 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate serde_derive;
+extern crate comit_wallet;
+extern crate hex;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
@@ -40,6 +41,7 @@ use comit_node::{
         common::TradeId,
     },
 };
+use comit_wallet::fake_key_store::FakeKeyStoreFactory;
 use common_types::{seconds::Seconds, secret::Secret};
 use ethereum_support::{web3, Bytes, H256};
 use ethereum_wallet::fake::StaticFakeWallet;
@@ -83,6 +85,8 @@ fn create_rocket_client(
     event_store: InMemoryEventStore<TradeId>,
     bitcoin_service: BitcoinService,
 ) -> Client {
+    let bob_key_store = Arc::new(FakeKeyStoreFactory::create());
+
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
@@ -94,13 +98,7 @@ fn create_rocket_client(
             0,
         )),
         Arc::new(bitcoin_service),
-        "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
-        bitcoin_support::PrivateKey::from_str(
-            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
-        ).unwrap()
-        .secret_key()
-        .clone()
-        .into(),
+        bob_key_store,
         Network::Regtest,
         Arc::new(api_client),
         "0.0.0.0".into(),

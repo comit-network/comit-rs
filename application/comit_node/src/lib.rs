@@ -21,6 +21,7 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate log;
+extern crate comit_wallet;
 extern crate config;
 extern crate event_store;
 extern crate futures;

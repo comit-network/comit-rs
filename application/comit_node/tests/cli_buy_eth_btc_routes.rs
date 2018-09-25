@@ -9,11 +9,12 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bitcoin_rpc_client;
 extern crate comit_node;
+extern crate comit_wallet;
 extern crate common_types;
 extern crate ethereum_wallet;
-extern crate hex;
 extern crate pretty_env_logger;
 extern crate reqwest;
+extern crate secp256k1_support;
 extern crate serde_json;
 extern crate tc_web3_client;
 extern crate testcontainers;
@@ -23,7 +24,6 @@ use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::Network;
 
 mod mocks;
-
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_node_api_client::FakeApiClient as FakeComitNodeApiClient,
@@ -31,6 +31,7 @@ use comit_node::{
     rocket_factory::create_rocket_instance,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
+use comit_wallet::fake_key_store::FakeKeyStoreFactory;
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use mocks::{
@@ -41,6 +42,8 @@ use rocket::{
     local::Client,
 };
 use std::{str::FromStr, sync::Arc};
+
+// Secret: 12345678901234567890123456789012
 
 fn create_rocket_client() -> Client {
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
@@ -57,6 +60,8 @@ fn create_rocket_client() -> Client {
         bob_success_address,
     ));
 
+    let bob_key_store = Arc::new(FakeKeyStoreFactory::create());
+
     let api_client = FakeComitNodeApiClient::new();
 
     let rocket = create_rocket_instance(
@@ -68,13 +73,7 @@ fn create_rocket_client() -> Client {
             0,
         )),
         bitcoin_service,
-        "e7b6bfabddfaeb2c016b334a5322e4327dc5e499".into(),
-        bitcoin_support::PrivateKey::from_str(
-            "cR6U4gNiCQsPo5gLNP2w6QsLTZkvCGEijhYVPZVhnePQKjMwmas8",
-        ).unwrap()
-        .secret_key()
-        .clone()
-        .into(),
+        bob_key_store,
         Network::Testnet,
         Arc::new(api_client),
         "0.0.0.0".into(),
@@ -83,8 +82,6 @@ fn create_rocket_client() -> Client {
     );
     rocket::local::Client::new(rocket).unwrap()
 }
-
-// Secret: 12345678901234567890123456789012
 // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
 
 // Sender address: bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg

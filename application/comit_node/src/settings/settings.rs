@@ -1,5 +1,5 @@
 use super::serde;
-use bitcoin_support::{self, Network};
+use bitcoin_support::{ExtendedPrivKey, Network};
 use config::{Config, ConfigError, File};
 use ethereum_support;
 use secp256k1_support::KeyPair;
@@ -21,6 +21,7 @@ pub struct Ethereum {
     pub node_url: String,
     pub gas_price: u64,
     #[serde(with = "serde::keypair")]
+    // TODO: Replace with mnemonics and derive keys. See #185
     pub private_key: KeyPair,
 }
 
@@ -31,15 +32,14 @@ pub struct Bitcoin {
     pub node_url: String,
     pub node_username: String,
     pub node_password: String,
-    #[serde(with = "serde::keypair")]
-    pub private_key: KeyPair,
+    #[serde(with = "serde::extended_privkey")]
+    pub extended_private_key: ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Swap {
-    pub btc_redeem_address: bitcoin_support::Address,
-    //TODO this should be generated on the fly per swap from the master key
-    pub eth_refund_address: ethereum_support::Address, //TODO this should be generated on the fly per swap from the master key
+    //TODO this should be generated on the fly per swap from the ethereum private key with #185
+    pub eth_refund_address: ethereum_support::Address,
 }
 
 #[derive(Debug, Deserialize)]

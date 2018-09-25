@@ -1,16 +1,22 @@
 [package]
-authors = ["LLFourn <lloyd.fourn@gmail.com>"]
-name = "bitcoin_wallet"
+authors = [
+    "Franck Royer <franck@coblox.tech>",
+    "Lloyd Fournier <lloyd@coblox.tech>",
+    "Thomas Eizinger <thomas@coblox.tech>",
+    "Philipp Hoenisch <philipp@coblox.tech>",
+]
+name = "comit_wallet"
 version = "0.1.0"
 
 [dependencies]
 hex = "0.3.2"
 lazy_static = "1"
-bitcoin = "0.14"
 bitcoin_rpc_client = "0.1"
 uuid = { version = "0.6.5", features = ["v4"] }
 rust-crypto = "0.2.36"
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
+log = "0.4"
+bitcoin_support = { path = "../../vendor/bitcoin_support"}
 
 [dev-dependencies]
 bitcoin_htlc =  { path = "../bitcoin_htlc" }
