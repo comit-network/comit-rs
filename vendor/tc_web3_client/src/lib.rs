@@ -1,4 +1,10 @@
-extern crate tc_trufflesuite_ganachecli;
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
+
 extern crate testcontainers;
 extern crate web3;
 

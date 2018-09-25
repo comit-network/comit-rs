@@ -37,8 +37,8 @@ pub fn handle_new_ethereum_query<'r>(
     if let EthereumQuery {
         from_address: None,
         to_address: None,
-        is_contract_creation: _, // Not enough by itself
         transaction_data: None,
+        .. // Not enough by itself
     } = query
     {
         return Err(HttpApiProblem::with_title_from_status(400)
@@ -95,7 +95,7 @@ impl Transaction for EthereumTransaction {
     }
 }
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Clone, Default, Debug)]
 pub struct RetrieveEthereumQueryResponse {
     query: EthereumQuery,
     matching_transactions: QueryResult,

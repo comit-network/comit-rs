@@ -8,6 +8,7 @@ use UnsignedTransaction;
 use Wallet;
 
 /// A wallet with static private-keys that can be used for testing purposes.
+#[derive(Debug)]
 pub struct StaticFakeWallet(InMemoryWallet);
 
 impl Wallet for StaticFakeWallet {

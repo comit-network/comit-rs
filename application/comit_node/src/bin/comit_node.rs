@@ -1,3 +1,9 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 extern crate bitcoin_rpc_client;
@@ -12,15 +18,8 @@ extern crate hex;
 extern crate log;
 extern crate event_store;
 extern crate logging;
-extern crate reqwest;
-extern crate rocket;
-extern crate rocket_contrib;
 extern crate secp256k1_support;
-extern crate serde;
-extern crate serde_json;
-extern crate tiny_keccak;
 extern crate tokio;
-extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -131,8 +130,8 @@ fn main() {
         let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
 
-        std::thread::spawn(move || {
-            create_rocket_instance(
+        let _ = std::thread::spawn(move || {
+            let _ = create_rocket_instance(
                 rocket_event_store,
                 Arc::new(ethereum_service),
                 Arc::new(bitcoin_service),

@@ -62,7 +62,7 @@ fn setup<
     let mut runtime = Runtime::new().unwrap();
 
     let (alice_server, bob_client) =
-        Connection::new(Config::new(), JsonFrameCodec::default(), alice)
+        Connection::new(Config::default(), JsonFrameCodec::default(), alice)
             .start::<JsonFrameHandler>();
     let (alice_server, alice_shutdown_handle) = shutdown_handle::new(alice_server);
 

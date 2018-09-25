@@ -1,3 +1,10 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
+
 extern crate bitcoin_rpc_client;
 extern crate tc_coblox_bitcoincore;
 extern crate testcontainers;

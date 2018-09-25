@@ -1,7 +1,14 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
-extern crate serde;
+#[macro_use]
+extern crate debug_stub_derive;
 #[macro_use]
 extern crate serde_derive;
 extern crate bitcoin_support;

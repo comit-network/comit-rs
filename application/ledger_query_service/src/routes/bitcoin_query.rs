@@ -72,7 +72,7 @@ impl Transaction for BitcoinTransaction {
     }
 }
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct RetrieveBitcoinQueryResponse {
     query: BitcoinQuery,
     matching_transactions: QueryResult,

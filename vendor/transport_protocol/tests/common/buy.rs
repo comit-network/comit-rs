@@ -4,7 +4,7 @@ use transport_protocol::config::Config;
 use transport_protocol::{json::*, *};
 
 pub fn config() -> Config<Request, Response> {
-    Config::new().on_request("BUY", &["THING"], |request: Request| {
+    Config::default().on_request("BUY", &["THING"], |request: Request| {
         let thing = header!(request.get_header("THING"));
 
         let price = match thing {

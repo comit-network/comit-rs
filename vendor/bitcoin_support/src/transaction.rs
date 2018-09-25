@@ -11,8 +11,7 @@ impl SpendsTo for Transaction {
         self.output
             .iter()
             .map(|out| &out.script_pubkey)
-            .find(|script_pub_key| *script_pub_key == &address_script_pubkey)
-            .is_some()
+            .any(|script_pub_key| script_pub_key == &address_script_pubkey)
     }
 }
 

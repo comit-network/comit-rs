@@ -19,8 +19,8 @@ pub struct OrderTakenResponseBody<Buy: Ledger, Sell: Ledger> {
 impl<Buy: Ledger, Sell: Ledger> From<OrderTaken<Buy, Sell>> for OrderTakenResponseBody<Buy, Sell> {
     fn from(order_taken_event: OrderTaken<Buy, Sell>) -> Self {
         OrderTakenResponseBody {
-            bob_refund_address: order_taken_event.bob_refund_address.into(),
-            bob_success_address: order_taken_event.bob_success_address.into(),
+            bob_refund_address: order_taken_event.bob_refund_address,
+            bob_success_address: order_taken_event.bob_success_address,
             bob_contract_time_lock: order_taken_event.bob_contract_time_lock,
         }
     }
@@ -45,7 +45,7 @@ pub fn post_sell_orders(
         event_store.inner(),
         bob_success_keypair.inner(),
         bob_refund_address.inner(),
-        network.inner(),
+        *network.inner(),
     )?;
     Ok(Json(order_taken_response_body))
 }
@@ -56,16 +56,14 @@ fn handle_post_sell_orders(
     event_store: &Arc<InMemoryEventStore<TradeId>>,
     bob_success_keypair: &KeyPair,
     bob_refund_address: &ethereum_support::Address,
-    network: &Network,
+    network: Network,
 ) -> Result<OrderTakenResponseBody<Bitcoin, Ethereum>, Error> {
-    let alice_refund_address: ethereum_support::Address =
-        order_request_body.alice_refund_address.into();
+    let alice_refund_address: ethereum_support::Address = order_request_body.alice_refund_address;
 
     let bob_success_address = bob_success_keypair
         .public_key()
         .clone()
-        .to_p2wpkh_address(*network)
-        .into();
+        .to_p2wpkh_address(network);
 
     let order_taken = OrderTaken {
         uid: trade_id,

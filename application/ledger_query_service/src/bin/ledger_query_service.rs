@@ -1,19 +1,23 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 
-extern crate bitcoin_support;
 extern crate ledger_query_service;
 extern crate pretty_env_logger;
 extern crate rocket;
 #[macro_use]
 extern crate log;
-extern crate futures;
 
 use ledger_query_service::{
     BitcoindZmqListener, DefaultTransactionProcessor, EthereumWeb3BlockPoller,
     InMemoryQueryRepository, InMemoryQueryResultRepository, LinkFactory,
 };
-use std::{env::var, sync::Arc, time::Duration};
+use std::{env::var, sync::Arc, thread, time::Duration};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
@@ -40,7 +44,7 @@ fn main() {
                 query_result_repository.clone(),
             );
 
-            ::std::thread::spawn(move || {
+            let _ = thread::spawn(move || {
                 let bitcoind_zmq_listener =
                     BitcoindZmqListener::new(zmq_endpoint.as_str(), bitcoin_transaction_processor);
 
@@ -72,7 +76,7 @@ fn main() {
                 query_result_repository.clone(),
             );
 
-            ::std::thread::spawn(move || {
+            let _ = thread::spawn(move || {
                 let ethereum_web3_poller = EthereumWeb3BlockPoller::new(
                     web3_endpoint.as_str(),
                     polling_wait_time,
@@ -88,5 +92,5 @@ fn main() {
         }
     };
 
-    server_builder.build().launch();
+    let _ = server_builder.build().launch();
 }

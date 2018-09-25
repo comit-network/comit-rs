@@ -32,7 +32,7 @@ impl Request {
         match headers_json {
             JsonValue::Object(map) => {
                 for (k, v) in map {
-                    headers_hashmap.insert(k, v);
+                    let _ = headers_hashmap.insert(k, v);
                 }
             }
             _ => unreachable!(),

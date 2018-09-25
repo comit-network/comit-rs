@@ -5,6 +5,7 @@ use offer::Symbol;
 use std::{fmt, ops::Add};
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub enum RedeemOutput {
     URL,
     CONSOLE,
@@ -20,6 +21,7 @@ impl RedeemOutput {
     }
 }
 
+#[derive(Debug)]
 pub struct EthereumPaymentURL(String);
 
 impl fmt::Display for EthereumPaymentURL {
@@ -66,11 +68,11 @@ pub fn run<C: ApiClient>(
                 redeem_details.gas,
                 redeem_details.data,
             );
-            return Ok(format!(
+            Ok(format!(
                 "#### Trade id: {} ####\n\
                  In order to complete the trade, please sign and send the following transaction:\n{}",
                 uid, url
-            ));
+            ))
         }
         RedeemOutput::CONSOLE => unimplemented!(),
     }

@@ -13,6 +13,7 @@ pub enum Error {
 pub trait LedgerHtlcService<B: Ledger, H>: Send + Sync {
     fn deploy_htlc(&self, htlc_params: H) -> Result<B::TxId, Error>;
 
+    #[allow(clippy::too_many_arguments)]
     fn redeem_htlc(
         &self,
         secret: Secret,

@@ -9,13 +9,8 @@ use std::str::FromStr;
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 
 #[allow(dead_code)]
+#[derive(Default, Debug)]
 pub struct FakeApiClient;
-
-impl FakeApiClient {
-    pub fn new() -> Self {
-        FakeApiClient {}
-    }
-}
 
 impl ApiClient for FakeApiClient {
     fn create_buy_order(

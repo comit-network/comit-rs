@@ -30,14 +30,14 @@ fn given_two_servers_both_can_ping_each_other() {
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
     let (alice_server, mut bob_client) = Connection::new(
-        Config::new().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))),
+        Config::default().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))),
         JsonFrameCodec::default(),
         alice,
     ).start::<JsonFrameHandler>();
     let (alice_server, _alice_shutdown_handle) = shutdown_handle::new(alice_server);
 
     let (bob_server, mut alice_client) = Connection::new(
-        Config::new().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))),
+        Config::default().on_request("PING", &[], |_: Request| Response::new(Status::OK(0))),
         JsonFrameCodec::default(),
         bob,
     ).start::<JsonFrameHandler>();

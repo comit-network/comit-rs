@@ -73,7 +73,7 @@ pub fn harness(
         } => {
             let token_contract = client.deploy_erc20_token_contract();
 
-            client.mint_tokens(token_contract, alice_initial_tokens, alice);
+            let _ = client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
             let htlc_params = Erc20HtlcParams {
                 refund_address: alice,

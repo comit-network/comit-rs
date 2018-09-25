@@ -1,3 +1,10 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
+#![feature(tool_lints)]
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
@@ -9,11 +16,9 @@ extern crate bytes;
 extern crate futures;
 extern crate tokio;
 extern crate tokio_codec;
+#[macro_use]
+extern crate debug_stub_derive;
 
-#[cfg(test)]
-extern crate memsocket;
-#[cfg(test)]
-extern crate pretty_env_logger;
 #[cfg(test)]
 extern crate spectral;
 

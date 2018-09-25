@@ -41,8 +41,11 @@ impl From<bitcoin_fee_service::Error> for ledger_htlc_service::Error {
     }
 }
 
+#[derive(DebugStub)]
 pub struct BitcoinService {
+    #[debug_stub = "BitcoinRpcClient"]
     client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
+    #[debug_stub = "FeeService"]
     fee_service: Arc<BitcoinFeeService>,
     network: bitcoin_support::Network,
     btc_bob_redeem_address: bitcoin_support::Address,
@@ -52,6 +55,7 @@ use bitcoin_support::{Address, BitcoinQuantity, Blocks};
 
 // TODO: Maybe interesting to refactor and have the bitcoin service generate the
 // transient/redeem keypairs transparently (ie, receiving the keystore) see #296
+#[derive(Debug)]
 pub struct BitcoinHtlcParams {
     pub refund_address: Address,
     pub success_address: Address,
@@ -107,7 +111,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
 
         htlc.can_be_unlocked_with(&secret, &bob_success_keypair)?;
 
-        let unlocking_parameters = htlc.unlock_with_secret(bob_success_keypair.clone(), secret);
+        let unlocking_parameters = htlc.unlock_with_secret(bob_success_keypair.clone(), &secret);
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(

@@ -50,19 +50,22 @@ pub trait BlockingEthereumApi: Send + Sync {
 
 impl BlockingEthereumApi for (EventLoopHandle, Web3<Http>) {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
-        let result = self.1.eth().send_raw_transaction(rlp).wait();
-
-        result
+        self.1.eth().send_raw_transaction(rlp).wait()
     }
 }
 
+#[derive(DebugStub)]
 pub struct EthereumService {
     nonce: Mutex<U256>,
+    #[debug_stub = "Wallet"]
     wallet: Arc<Wallet>,
+    #[debug_stub = "GasPriceService"]
     gas_price_service: Arc<GasPriceService>,
+    #[debug_stub = "Web3"]
     web3: Arc<BlockingEthereumApi>,
 }
 
+#[derive(Debug)]
 pub struct EtherHtlcParams {
     pub refund_address: Address,
     pub success_address: Address,
@@ -71,7 +74,7 @@ pub struct EtherHtlcParams {
     pub secret_hash: SecretHash,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Erc20HtlcParams {
     pub refund_address: Address,
     pub success_address: Address,

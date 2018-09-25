@@ -3,6 +3,7 @@ use futures::{
     Future,
 };
 
+#[derive(Debug)]
 pub struct ShutdownHandle {
     sender: Option<Sender<()>>,
 }

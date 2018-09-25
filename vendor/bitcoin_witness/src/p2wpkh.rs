@@ -40,10 +40,9 @@ impl UnlockP2wpkh for KeyPair {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use bitcoin_support::PrivateKey;
     use std::str::FromStr;
-    extern crate hex;
-    use super::*;
     #[test]
     fn correct_prev_script() {
         let private_key =

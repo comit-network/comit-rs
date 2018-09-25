@@ -11,6 +11,7 @@ authors = [
 [dependencies]
 bitcoin_rpc_client = "0.1"
 bitcoin_htlc = { path = "../bitcoin_htlc" }
+debug_stub_derive = "0.3.0"
 reqwest = "0.8.6"
 serde = "1.0.66"
 serde_derive = "1.0.66"

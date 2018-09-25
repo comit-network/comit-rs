@@ -22,6 +22,7 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+#[derive(Debug)]
 pub struct JsonFrameCodec;
 
 impl Default for JsonFrameCodec {
@@ -117,7 +118,7 @@ mod tests {
         bytes.extend(remaining_bytes);
         bytes.extend(b"\n");
 
-        assert_that(&codec.decode(&mut bytes)).is_ok().is_some();
+        let _ = assert_that(&codec.decode(&mut bytes)).is_ok().is_some();
     }
 
     #[test]

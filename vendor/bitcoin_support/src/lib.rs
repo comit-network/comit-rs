@@ -1,3 +1,9 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
 #![feature(const_fn)]
 extern crate bigdecimal;
 extern crate bitcoin;

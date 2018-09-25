@@ -9,7 +9,7 @@ pub fn run<C: ApiClient>(
     success_address: String,
     refund_address: String,
 ) -> Result<String, TradingServiceError> {
-    let order_request_body = BuyOrderRequestBody::new(success_address, refund_address);
+    let order_request_body = BuyOrderRequestBody::new(&success_address, &refund_address);
 
     let request_to_fund = client.request_order(&symbol, uid, &order_request_body)?;
 

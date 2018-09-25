@@ -3,7 +3,6 @@ use bitcoin_support::BitcoinQuantity;
 use common_types;
 use ethereum_support::{self, EthereumQuantity};
 use offer::Symbol;
-use regex::Regex;
 use reqwest;
 use std::{fmt, str::FromStr};
 use uuid::{ParseError, Uuid};
@@ -26,16 +25,17 @@ impl fmt::Display for TradeId {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ComitNodeApiUrl(pub String);
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct DefaultApiClient {
     pub url: ComitNodeApiUrl,
     pub client: reqwest::Client,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BuyOfferRequestBody {
     amount: f64,
 }
@@ -56,24 +56,20 @@ pub struct OfferResponseBody {
     pub sell_amount: BitcoinQuantity,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BuyOrderRequestBody {
     alice_success_address: ethereum_support::Address,
     alice_refund_address: bitcoin_rpc_client::Address,
 }
 
 impl BuyOrderRequestBody {
-    pub fn new(alice_success_address: String, alice_refund_address: String) -> BuyOrderRequestBody {
-        let alice_success_address = alice_success_address.clone();
-
-        let re = Regex::new("^0x").unwrap();
-        let alice_success_address = re.replace(&alice_success_address.as_str(), "");
+    pub fn new(alice_success_address: &str, alice_refund_address: &str) -> BuyOrderRequestBody {
+        let alice_success_address = alice_success_address.trim_left_matches("0x");
 
         let alice_success_address = ethereum_support::Address::from_str(&alice_success_address)
             .expect("Could not convert the success address");
-        let alice_refund_address =
-            bitcoin_rpc_client::Address::from_str(alice_refund_address.as_str())
-                .expect("Could not convert the Bitcoin refund address");
+        let alice_refund_address = bitcoin_rpc_client::Address::from_str(alice_refund_address)
+            .expect("Could not convert the Bitcoin refund address");
 
         BuyOrderRequestBody {
             alice_success_address,
@@ -89,7 +85,7 @@ pub struct RequestToFund {
     pub eth_amount: EthereumQuantity,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct RedeemDetails {
     pub address: ethereum_support::Address,
     pub data: common_types::secret::Secret,
@@ -151,7 +147,7 @@ impl ApiClient for DefaultApiClient {
             .json(request)
             .send()
             .and_then(|mut res| res.json::<RequestToFund>())
-            .map_err(|err| TradingServiceError::OrderAborted(err))
+            .map_err(TradingServiceError::OrderAborted)
     }
 
     fn request_redeem_details(
@@ -164,7 +160,7 @@ impl ApiClient for DefaultApiClient {
             .get(format!("{}/cli/trades/{}/{}/redeem-orders", self.url.0, symbol, uid).as_str())
             .send()
             .and_then(|mut res| res.json::<RedeemDetails>())
-            .map_err(|err| TradingServiceError::RedeemAborted(err))
+            .map_err(TradingServiceError::RedeemAborted)
     }
 }
 
@@ -176,7 +172,7 @@ mod tests {
     fn given_an_hex_address_with_0x_should_remove_0x() {
         let address = "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
         let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
-        let order_request_body = BuyOrderRequestBody::new(address, refund_address);
+        let order_request_body = BuyOrderRequestBody::new(&address, &refund_address);
 
         let eth_address =
             ethereum_support::Address::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
@@ -188,7 +184,7 @@ mod tests {
     fn given_an_hex_address_without_0x_should_return_same_address() {
         let address = "00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
         let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
-        let order_request_body = BuyOrderRequestBody::new(address, refund_address);
+        let order_request_body = BuyOrderRequestBody::new(&address, &refund_address);
 
         let eth_address =
             ethereum_support::Address::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")

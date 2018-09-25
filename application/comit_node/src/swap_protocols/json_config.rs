@@ -23,7 +23,7 @@ pub fn json_config<
 >(
     mut handler: H,
 ) -> Config<Request, Response> {
-    Config::new().on_request(
+    Config::default().on_request(
         "SWAP",
         &[
             "target_ledger",

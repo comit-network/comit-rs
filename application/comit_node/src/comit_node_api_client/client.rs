@@ -94,6 +94,7 @@ impl From<client::Error<json::Frame>> for SwapRequestError {
     }
 }
 
+#[derive(Debug)]
 pub struct DefaultApiClient {
     comit_node_socket_addr: SocketAddr,
 }
@@ -121,14 +122,14 @@ impl DefaultApiClient {
         );
         let socket = TcpStream::connect(&self.comit_node_socket_addr).wait()?;
         let codec = json::JsonFrameCodec::default();
-        let config: Config<json::Request, json::Response> = Config::new();
+        let config: Config<json::Request, json::Response> = Config::default();
         let connection = Connection::new(config, codec, socket);
 
         let (connection_future, client) = connection.start::<json::JsonFrameHandler>();
         let (connection_future, shutdown_handle) = shutdown_handle::new(connection_future);
-        let socket_addr = self.comit_node_socket_addr.clone();
+        let socket_addr = self.comit_node_socket_addr;
 
-        runtime.spawn(connection_future.map_err(move |e| {
+        let _ = runtime.spawn(connection_future.map_err(move |e| {
             error!(
                 "Connection to {:?} prematurely closed: {:?}",
                 socket_addr, e

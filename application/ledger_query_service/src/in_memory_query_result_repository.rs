@@ -23,13 +23,13 @@ impl<Q: Send + Sync + Clone + 'static> QueryResultRepository<Q>
 
         query_result.0.push(tx_id);
 
-        storage.insert(id, query_result);
+        let _ = storage.insert(id, query_result);
     }
 
     fn delete(&self, id: u32) {
         let mut storage = self.storage.write().unwrap();
 
-        storage.remove(&id);
+        let _ = storage.remove(&id);
     }
 }
 

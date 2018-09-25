@@ -1,6 +1,7 @@
 use ethereum_support::{Address, Bytes, H256, U256};
 use hex;
 use rlp::{Encodable, RlpStream};
+use std::fmt;
 use tiny_keccak::keccak256;
 
 const CONTRACT_CREATION_FEE: usize = 32_000;
@@ -8,6 +9,7 @@ const BASE_TX_FEE: usize = 21_000;
 const GAS_COST_PER_BYTE: usize = 200;
 const GAS_BUFFER: usize = 10_000;
 
+#[derive(Debug)]
 pub struct UnsignedTransaction {
     nonce: U256,
     gas_price: U256,
@@ -17,10 +19,19 @@ pub struct UnsignedTransaction {
     data: Option<Bytes>,
 }
 
+struct Signature([u8; 64]);
+
+impl fmt::Debug for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&&self.0[..], f)
+    }
+}
+
+#[derive(Debug)]
 pub struct SignedTransaction<'a> {
     unsigned_transaction: &'a UnsignedTransaction,
     v: u8,
-    signature: [u8; 64],
+    signature: Signature,
 }
 
 impl<'a> SignedTransaction<'a> {
@@ -32,20 +43,21 @@ impl<'a> SignedTransaction<'a> {
         SignedTransaction {
             unsigned_transaction,
             v,
-            signature,
+            signature: Signature(signature),
         }
     }
 }
 
 impl<'a> Encodable for SignedTransaction<'a> {
     fn rlp_append(&self, stream: &mut RlpStream) {
-        let r = &self.signature[0..32];
-        let s = &self.signature[32..64];
+        let r = &self.signature.0[0..32];
+        let s = &self.signature.0[32..64];
 
-        self.unsigned_transaction.rlp_append(stream);
-        stream.append(&self.v);
-        stream.append(&r);
-        stream.append(&s);
+        let _ = stream
+            .append_internal(self.unsigned_transaction)
+            .append(&self.v)
+            .append(&r)
+            .append(&s);
     }
 }
 
@@ -53,9 +65,7 @@ impl<'a> From<SignedTransaction<'a>> for Bytes {
     fn from(s: SignedTransaction) -> Self {
         let mut stream = RlpStream::new();
 
-        stream.append(&s);
-
-        let bytes = stream.as_raw();
+        let bytes = stream.append(&s).as_raw();
 
         Bytes(bytes.to_vec())
     }
@@ -63,7 +73,11 @@ impl<'a> From<SignedTransaction<'a>> for Bytes {
 
 impl Encodable for UnsignedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        s.begin_list(9);
+        let _ = s
+            .begin_list(9)
+            .append(&self.nonce)
+            .append(&self.gas_price)
+            .append(&self.gas_limit);
 
         s.append(&self.nonce);
         s.append(&self.gas_price);
@@ -74,8 +88,13 @@ impl Encodable for UnsignedTransaction {
             None => s.append(&""),
         };
 
-        s.append(&self.value);
-        s.append(&self.data.clone().map(|b| b.0).unwrap_or([].to_vec()));
+        let _ = s.append(&self.value).append(
+            &self
+                .data
+                .clone()
+                .map(|b| b.0)
+                .unwrap_or_else(|| [].to_vec()),
+        );
     }
 }
 
@@ -175,19 +194,19 @@ impl UnsignedTransaction {
             gas_limit: 200_000.into(),
             to: Some(token_contract.into()),
             value: U256::from(0),
-            data: Some(data.into()),
+            data: Some(data),
         }
     }
 
     pub(crate) fn hash(&self, chain_id: u8) -> H256 {
         let mut stream = RlpStream::new();
+        let bytes = stream
+            .append_internal(self)
+            .append(&chain_id)
+            .append(&0u8)
+            .append(&0u8)
+            .as_raw();
 
-        self.rlp_append(&mut stream);
-        stream.append(&chain_id);
-        stream.append(&0u8);
-        stream.append(&0u8);
-
-        let bytes = stream.as_raw();
         let tx_hash = keccak256(bytes);
 
         H256(tx_hash)

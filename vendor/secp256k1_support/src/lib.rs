@@ -1,3 +1,10 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
+
 extern crate secp256k1;
 #[macro_use]
 extern crate lazy_static;

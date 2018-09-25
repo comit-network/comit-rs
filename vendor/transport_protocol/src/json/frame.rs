@@ -32,24 +32,26 @@ impl From<Frame> for Response {
     }
 }
 
+#[derive(DebugStub)]
 pub struct JsonFrameHandler {
     next_expected_id: u32,
+    #[debug_stub = "ResponseSource"]
     response_source: Arc<Mutex<JsonResponseSource>>,
     config: Config<json::Request, json::Response>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct JsonResponseSource {
     awaiting_responses: HashMap<u32, Sender<json::Frame>>,
 }
 
 impl ResponseFrameSource<json::Frame> for JsonResponseSource {
     fn on_response_frame(&mut self, frame_id: u32) -> Box<Future<Item = json::Frame, Error = ()>> {
-        let (sender, recevier) = oneshot::channel();
+        let (sender, receiver) = oneshot::channel();
 
-        self.awaiting_responses.insert(frame_id, sender);
+        let _ = self.awaiting_responses.insert(frame_id, sender);
 
-        Box::new(recevier.map_err(|_| {
+        Box::new(receiver.map_err(|_| {
             warn!(
                 "Sender of response future was unexpectedly dropped before response was received."
             )
@@ -66,14 +68,14 @@ impl JsonResponseSource {
 impl From<HeaderErrors> for RequestError {
     fn from(header_errors: HeaderErrors) -> Self {
         let unknown_mandatory_headers =
-            header_errors.get_error_of_kind(HeaderErrorKind::UnknownMandatoryHeader);
+            header_errors.get_error_of_kind(&HeaderErrorKind::UnknownMandatoryHeader);
         if !unknown_mandatory_headers.is_empty() {
-            return RequestError::UnknownMandatoryHeaders(
+            RequestError::UnknownMandatoryHeaders(
                 unknown_mandatory_headers
                     .iter()
                     .map(|e| e.key.clone())
                     .collect(),
-            );
+            )
         } else {
             header_errors.all()[0].clone().into_request_error()
         }
@@ -113,7 +115,7 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
                 self.next_expected_id = frame.id + 1;
 
                 let response = self
-                    .dispatch_request(_type, headers, body)
+                    .dispatch_request(&_type, headers, body)
                     .unwrap_or_else(Self::response_from_error);
 
                 // TODO: Validate generated response here
@@ -142,13 +144,14 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 impl JsonFrameHandler {
     fn dispatch_request(
         &mut self,
-        _type: JsonValue,
+        _type: &JsonValue,
         headers: JsonValue,
         body: JsonValue,
     ) -> Result<json::Response, RequestError> {
         let _type = _type
             .as_str()
-            .ok_or(RequestError::MalformedField("type".to_string()))?;
+            .ok_or_else(|| RequestError::MalformedField("type".to_string()))?;
+        //.ok_or(RequestError::MalformedField("type".to_string()))?;
 
         let request_headers = match headers {
             serde_json::Value::Object(map) => map,
@@ -159,7 +162,7 @@ impl JsonFrameHandler {
         let parsed_headers = self
             .config
             .known_headers_for(_type)
-            .ok_or(RequestError::UnknownRequestType(_type.into()))
+            .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))
             .and_then(|known_headers| {
                 Self::parse_headers(known_headers, request_headers).map_err(From::from)
             })?;
@@ -169,7 +172,7 @@ impl JsonFrameHandler {
         let request_handler = self
             .config
             .request_handler_for(_type)
-            .ok_or(RequestError::UnknownRequestType(_type.into()))?;
+            .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))?;
 
         Ok(request_handler(request))
     }
@@ -190,14 +193,12 @@ impl JsonFrameHandler {
             let value = Self::normalize_compact_header(value);
             let (key, must_understand) = Self::normalize_non_mandatory_header_key(key);
 
-            if !known_headers.contains(key.as_str()) {
-                if must_understand {
-                    header_errors.add_error(key.clone(), HeaderErrorKind::UnknownMandatoryHeader)
-                    // TODO test for continue
-                }
+            if !known_headers.contains(key.as_str()) && must_understand {
+                header_errors.add_error(key.clone(), HeaderErrorKind::UnknownMandatoryHeader)
+                // TODO test for continue
             }
 
-            parsed_headers.insert(key, value);
+            let _ = parsed_headers.insert(key, value);
         }
 
         if !header_errors.is_empty() {
@@ -238,10 +239,10 @@ impl JsonFrameHandler {
     }
 
     fn normalize_non_mandatory_header_key(mut key: String) -> (String, bool) {
-        let non_mandatory = key.starts_with("_");
+        let non_mandatory = key.starts_with('_');
 
         if non_mandatory {
-            key.remove(0);
+            let _ = key.remove(0);
         }
 
         let must_understand = !non_mandatory;
@@ -304,7 +305,7 @@ impl HeaderErrors {
         self.errors.is_empty()
     }
 
-    fn get_error_of_kind(&self, kind: HeaderErrorKind) -> Vec<&HeaderError> {
-        self.errors.iter().filter(|x| x.kind == kind).collect()
+    fn get_error_of_kind(&self, kind: &HeaderErrorKind) -> Vec<&HeaderError> {
+        self.errors.iter().filter(|x| x.kind == *kind).collect()
     }
 }

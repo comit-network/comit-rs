@@ -1,3 +1,10 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
+
 extern crate chrono;
 extern crate fern;
 pub extern crate log;
@@ -49,7 +56,7 @@ fn formatter(out: FormatCallback, message: &Arguments, record: &Record) {
     // configure colors for the name of the level.
     // since almost all of them are the some as the color for the whole line, we
     // just clone `colors_line` and overwrite our changes
-    let colors_level = colors_line.clone().info(Color::Green);
+    let colors_level = colors_line.info(Color::Green);
 
     LOG_CONTEXT.with(|context| {
         let context = {

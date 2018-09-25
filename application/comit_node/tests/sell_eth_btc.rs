@@ -87,7 +87,7 @@ fn create_rocket_client(
 ) -> Client {
     let bob_key_store = Arc::new(FakeKeyStoreFactory::create());
 
-    let api_client = FakeComitNodeApiClient::new();
+    let api_client = FakeComitNodeApiClient::default();
 
     let rocket = create_rocket_instance(
         Arc::new(event_store),
@@ -170,7 +170,7 @@ fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
     let _ = pretty_env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
-    let event_store = InMemoryEventStore::new();
+    let event_store = InMemoryEventStore::default();
     let trade_id = Default::default();
 
     mock_order_taken(&event_store, trade_id);
@@ -197,7 +197,7 @@ fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
     let _ = pretty_env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
-    let event_store = InMemoryEventStore::new();
+    let event_store = InMemoryEventStore::default();
 
     let trade_id = Default::default();
 

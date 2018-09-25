@@ -16,6 +16,7 @@ use swaps::{bob_events::OrderTaken, common::TradeId};
 use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
 
+#[derive(Debug)]
 pub struct ComitServer {
     event_store: Arc<InMemoryEventStore<TradeId>>,
     my_keystore: Arc<KeyStore>,
@@ -41,7 +42,7 @@ impl ComitServer {
             let config = json_config(swap_handler);
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
-            tokio::spawn(close_future.map_err(move |e| {
+            let _ = tokio::spawn(close_future.map_err(move |e| {
                 error!(
                     "Unexpected error in connection with {:?}: {:?}",
                     peer_addr, e

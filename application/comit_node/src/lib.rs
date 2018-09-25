@@ -1,7 +1,16 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 #![cfg_attr(test, deny(warnings))]
+#![feature(tool_lints)]
 
+#[macro_use]
+extern crate debug_stub_derive;
 extern crate bitcoin_rpc_client;
 extern crate reqwest;
 extern crate rocket;

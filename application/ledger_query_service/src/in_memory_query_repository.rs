@@ -33,7 +33,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
     fn get(&self, id: u32) -> Option<T> {
         let state = self.state.read().unwrap();
 
-        state.storage.get(&id).map(|q| q.clone())
+        state.storage.get(&id).cloned()
     }
 
     fn save(&self, entity: T) -> Result<u32, Error<T>> {
@@ -41,7 +41,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
 
         let id = state.next_index;
 
-        state.storage.insert(id, entity);
+        let _ = state.storage.insert(id, entity);
         state.next_index += 1;
 
         Ok(id)
@@ -50,7 +50,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
     fn delete(&self, id: u32) {
         let mut state = self.state.write().unwrap();
 
-        state.storage.remove(&id);
+        let _ = state.storage.remove(&id);
     }
 }
 

@@ -1,3 +1,10 @@
+#![warn(
+    unused_results,
+    unused_extern_crates,
+    missing_debug_implementations
+)]
+#![deny(unsafe_code)]
+
 use std::{
     any::{Any, TypeId},
     borrow::Borrow,
@@ -27,17 +34,12 @@ pub trait EventStore<K> {
     fn get_event<E: Event>(&self, key: K) -> Result<E, Error>;
 }
 
+#[derive(Default, Debug)]
 pub struct InMemoryEventStore<K: Hash + Eq> {
     events: Mutex<HashMap<(TypeId, K), Box<Any + Send>>>,
 }
 
 impl<K: Hash + Eq + Clone> InMemoryEventStore<K> {
-    pub fn new() -> Self {
-        InMemoryEventStore {
-            events: Mutex::new(HashMap::new()),
-        }
-    }
-
     fn _get_event<E: Event>(events: &HashMap<(TypeId, K), Box<Any + Send>>, key: K) -> Option<E> {
         let key = (TypeId::of::<E>(), key);
 
@@ -51,7 +53,8 @@ impl<K: Hash + Eq + Clone> InMemoryEventStore<K> {
         let key = (TypeId::of::<E>(), key);
         let value = Box::new(event);
 
-        events.insert(key, value);
+        let old_event = events.insert(key, value);
+        debug_assert!(old_event.is_none());
     }
 
     pub fn keys(&self) -> impl Iterator<Item = K> {
@@ -104,10 +107,10 @@ mod tests {
     }
     #[test]
     fn add_single_event() {
-        let event_store = InMemoryEventStore::new();
-        assert!(event_store.add_event(&42, Init {}).is_ok());
-        assert_eq!(event_store.get_event::<Init>(&42).unwrap(), Init {});
-        assert!(event_store.get_event::<Init>(&32).is_err());
+        let event_store = InMemoryEventStore::default();
+        assert!(event_store.add_event(42, Init {}).is_ok());
+        assert_eq!(event_store.get_event::<Init>(42).unwrap(), Init {});
+        assert!(event_store.get_event::<Init>(32).is_err());
     }
 
     #[test]
@@ -118,18 +121,18 @@ mod tests {
         impl Event for Second {
             type Prev = Init;
         }
-        let event_store = InMemoryEventStore::new();
+        let event_store = InMemoryEventStore::default();
 
-        assert!(event_store.add_event(&42, Second {}).is_err());
+        assert!(event_store.add_event(42, Second {}).is_err());
 
-        event_store.add_event(&42, Init {}).unwrap();
-        assert!(event_store.add_event(&42, Second {}).is_ok())
+        event_store.add_event(42, Init {}).unwrap();
+        assert!(event_store.add_event(42, Second {}).is_ok())
     }
 
     #[test]
     fn add_event_twice_fails() {
-        let event_store = InMemoryEventStore::new();
-        event_store.add_event(&42, Init {}).unwrap();
-        assert!(event_store.add_event(&42, Init {}).is_err());
+        let event_store = InMemoryEventStore::default();
+        event_store.add_event(42, Init {}).unwrap();
+        assert!(event_store.add_event(42, Init {}).is_err());
     }
 }

@@ -6,7 +6,7 @@ use swap_protocols::ledger::Ledger;
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Bitcoin {}
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug)]
 pub struct HtlcId {
     pub transaction_id: TransactionId,
     pub vout: u32,

@@ -45,7 +45,7 @@ impl FromStr for Symbol {
     type Err = ParseSymbolErr;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let currencies: Vec<&str> = s.split("-").collect();
+        let currencies: Vec<&str> = s.split('-').collect();
 
         if currencies.len() != 2 {
             return Err(ParseSymbolErr::BadFormat);
@@ -100,7 +100,7 @@ pub enum OrderType {
 
 pub fn run<C: ApiClient>(
     client: &C,
-    symbol: Symbol,
+    symbol: &Symbol,
     order_type: OrderType,
     amount: f64,
 ) -> Result<String, TradingServiceError> {
@@ -111,14 +111,14 @@ pub fn run<C: ApiClient>(
         OrderType::Buy => {
             let offer = client.request_offer(&symbol, &offer_request_body)?;
 
-            return Ok(format!(
+            Ok(format!(
                 "#### Trade id: {} ####\n\
                  The offered exchange rate is {} {}\n\
                  Sell {} for {}\n\
                  To accept the offer, run:\n\
                  comit_node_client order --symbol=ETH-BTC --uid={} --refund-address=<your BTC address> --success-address=<your ETH address>",
                 offer.uid, offer.rate, symbol, offer.sell_amount, offer.buy_amount, offer.uid,
-            ));
+            ))
         }
     }
 }
@@ -132,7 +132,7 @@ mod tests {
     fn request_offer_with_supported_currency() {
         let symbol = "ETH-BTC".parse().unwrap();
 
-        let response = run(&FakeApiClient::default(), symbol, OrderType::Buy, 12.0).unwrap();
+        let response = run(&FakeApiClient::default(), &symbol, OrderType::Buy, 12.0).unwrap();
 
         assert_eq!(
             response,
