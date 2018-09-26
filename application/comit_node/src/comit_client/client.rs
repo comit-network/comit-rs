@@ -31,6 +31,7 @@ pub trait Client {
     >;
 }
 
+#[derive(Clone, Debug)]
 pub enum SwapReject {
     /// The counterparty produced an invalid response to the request
     InvalidResponse,

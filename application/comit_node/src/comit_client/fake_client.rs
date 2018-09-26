@@ -29,7 +29,7 @@ impl FakeClient {
 
     pub fn resolve_request<SL: Ledger, TL: Ledger>(
         &self,
-        response: rfc003::AcceptResponse<SL, TL>,
+        response: Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
     ) {
         let type_id = TypeId::of::<rfc003::AcceptResponse<SL, TL>>();
         let mut pending_requests = self.pending_requests.lock().unwrap();
@@ -68,11 +68,9 @@ impl Client for FakeClient {
 
         Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
             let _any: &(Any + Send) = response.borrow();
-            let rfc003_response: rfc003::AcceptResponse<SL, TL> = _any
-                .downcast_ref::<rfc003::AcceptResponse<SL, TL>>()
+            _any.downcast_ref::<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>>()
                 .unwrap()
-                .clone();
-            Ok(rfc003_response)
+                .to_owned()
         }))
     }
 }
