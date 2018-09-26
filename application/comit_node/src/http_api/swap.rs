@@ -12,7 +12,10 @@ use gotham::{
 };
 use gotham_factory::{ClientFactory, SwapId, SwapState};
 use http_api_problem::HttpApiProblem;
-use hyper::{header::ContentType, Body, Response, StatusCode};
+use hyper::{
+    header::{ContentType, Location},
+    Body, Response, StatusCode,
+};
 use rand::OsRng;
 use rocket_contrib::Json;
 use serde_json;
@@ -117,7 +120,10 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
                                 let response = Response::new()
                                     .with_status(StatusCode::Created)
                                     .with_header(ContentType::json())
-                                    .with_body(serde_json::to_string(&swap_created).unwrap());
+                                    .with_header(Location::new(format!(
+                                        "/swap/{}",
+                                        swap_created.id
+                                    ))).with_body(serde_json::to_string(&swap_created).unwrap());
                                 Ok((state, response))
                             }
                             Err(e) => {

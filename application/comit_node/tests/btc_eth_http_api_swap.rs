@@ -35,7 +35,11 @@ use common_types::seconds::Seconds;
 use event_store::InMemoryEventStore;
 use gotham::test::TestServer;
 use hex::FromHex;
-use hyper::{header::ContentType, mime::APPLICATION_JSON, StatusCode};
+use hyper::{
+    header::{ContentType, Location},
+    mime::APPLICATION_JSON,
+    StatusCode,
+};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
 fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
@@ -108,12 +112,15 @@ fn swap_accepted_btc_eth() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::Created);
-    {
+    let location = {
         let headers = response.headers();
         assert!(headers.has::<ContentType>());
         let content_type = headers.get::<ContentType>().unwrap();
         assert_eq!(content_type, &ContentType::json());
-    }
+
+        assert!(headers.has::<Location>());
+        headers.get::<Location>().unwrap().clone()
+    };
 
     let swap_created =
         serde_json::from_slice::<SwapCreated>(response.read_body().unwrap().as_ref());
@@ -122,6 +129,8 @@ fn swap_accepted_btc_eth() {
 
     let swap_created = swap_created.unwrap();
 
+    assert_eq!(format!("/swap/{}", &swap_created.id), location.to_string());
+
     {
         #[derive(Deserialize)]
         struct SwapPending {
@@ -129,7 +138,7 @@ fn swap_accepted_btc_eth() {
         }
         let response = test_server
             .client()
-            .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
+            .get(format!("http://localhost/{}", location).as_str())
             .perform()
             .unwrap();
 
@@ -158,7 +167,7 @@ fn swap_accepted_btc_eth() {
         #[derive(Deserialize)]
         struct SwapAccepted {
             pub status: String,
-            pub to_fund: bitcoin_support::Address,
+            pub funding_required: bitcoin_support::Address,
         }
 
         let response = test_server
