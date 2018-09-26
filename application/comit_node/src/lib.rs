@@ -6,7 +6,6 @@
 #![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
-#![cfg_attr(test, deny(warnings))]
 #![feature(tool_lints)]
 
 #[macro_use]
