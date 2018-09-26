@@ -19,8 +19,8 @@ hex = "0.3.2"
 log = "0.4.3"
 
 [dev-dependencies]
-tc_coblox_bitcoincore = { git = "https://github.com/coblox/testcontainers-rs" }
-testcontainers = { git = "https://github.com/coblox/testcontainers-rs" }
+tc_coblox_bitcoincore = "0.2"
+testcontainers = "0.2"
 bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
 tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
 env_logger = "0.5.11"

@@ -1,12 +1,12 @@
 use common_types::secret::Secret;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
-use swap_protocols::rfc003::ledger_htlc_service::{
-    BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
+use swap_protocols::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
 };
 use swaps::{
     bob_events::{
@@ -49,7 +49,8 @@ fn handle_post_orders_funding(
     bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
-    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken =
+        event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     //create new event
     let trade_funded = BobTradeFunded::<Bitcoin, Ethereum>::new(trade_id, htlc_identifier);
@@ -105,7 +106,8 @@ fn handle_post_revealed_secret(
 ) -> Result<(), Error> {
     let trade_funded =
         event_store.get_event::<BobTradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
-    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken =
+        event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,

@@ -2,6 +2,7 @@ use hex;
 use public_key::PublicKey;
 use rand::Rng;
 use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
+use std::fmt;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct KeyPair {
@@ -13,6 +14,15 @@ pub struct KeyPair {
 pub enum Error {
     Secp256k1(secp256k1::Error),
     Hex(hex::FromHexError),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match self {
+            Error::Secp256k1(_) => write!(f, "Not a secp256k1 private key"),
+            Error::Hex(_) => write!(f, "Invalid hex value"),
+        }
+    }
 }
 
 impl KeyPair {

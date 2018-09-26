@@ -19,21 +19,33 @@ pub struct BitcoinQuery {
     to_address: Option<Address>,
 }
 
-#[post("/queries/bitcoin", format = "application/json", data = "<query>")]
+#[post(
+    "/queries/bitcoin",
+    format = "application/json",
+    data = "<query>"
+)]
 pub fn handle_new_bitcoin_query<'r>(
     query: Json<BitcoinQuery>,
     link_factory: State<LinkFactory>,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
 ) -> Result<impl Responder<'r>, HttpApiProblem> {
-    let result = query_repository.save(query.into_inner());
+    let query = query.into_inner();
+
+    if let BitcoinQuery { to_address: None } = query {
+        return Err(HttpApiProblem::with_title_from_status(400)
+            .set_detail("Query needs at least one condition"));
+    }
+
+    let result = query_repository.save(query);
 
     match result {
         Ok(id) => Ok(created(
             link_factory.create_link(format!("/queries/bitcoin/{}", id)),
         )),
-        Err(_) => Err(
-            HttpApiProblem::with_title_from_status(500).set_detail("Failed to create new query")
-        ),
+        Err(_) => {
+            Err(HttpApiProblem::with_title_from_status(500)
+                .set_detail("Failed to create new query"))
+        }
     }
 }
 
@@ -55,7 +67,7 @@ impl Query<BitcoinTransaction> for BitcoinQuery {
 }
 
 impl Transaction for BitcoinTransaction {
-    fn txid(&self) -> String {
+    fn transaction_id(&self) -> String {
         self.txid().to_string()
     }
 }
@@ -70,7 +82,7 @@ pub struct RetrieveBitcoinQueryResponse {
 pub fn retrieve_bitcoin_query(
     id: u32,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository>>,
+    query_result_repository: State<Arc<QueryResultRepository<BitcoinQuery>>>,
 ) -> Result<Json<RetrieveBitcoinQueryResponse>, HttpApiProblem> {
     let query = query_repository.get(id).ok_or_else(|| {
         HttpApiProblem::with_title_from_status(404).set_detail("The requested query does not exist")
@@ -88,7 +100,7 @@ pub fn retrieve_bitcoin_query(
 pub fn delete_bitcoin_query(
     id: u32,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository>>,
+    query_result_repository: State<Arc<QueryResultRepository<BitcoinQuery>>>,
 ) -> impl Responder<'static> {
     query_repository.delete(id);
     query_result_repository.delete(id);

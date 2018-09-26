@@ -1,7 +1,7 @@
 use common_types::secret::Secret;
 use event_store::Event;
-use ganp::ledger::Ledger;
 use std::marker::PhantomData;
+use swap_protocols::ledger::Ledger;
 use swaps::common::TradeId;
 
 #[derive(Clone, Debug)]

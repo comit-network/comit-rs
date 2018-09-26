@@ -26,25 +26,12 @@ Contains crates specific to our application. Can depend on libraries located in 
 Cryptocurrency keys and addresses needs to be passed as environment variables.
 Please note, `0x` prefix is never needed.
 The following variables need to be set:
-* `ETHEREUM_NODE_ENDPOINT` (url to ethereum node)
-* `ETHEREUM_PRIVATE_KEY` (used by Bob to deploy contract)
-* `BOB_REFUND_ADDRESS` (to receive ETH back in case of timeout)
-* `BITCOIN_RPC_URL` (used by both)
-* `BITCOIN_RPC_USERNAME` (used by both)
-* `BITCOIN_RPC_PASSWORD` (used by both)
-* `BTC_BOB_SUCCESS_ADDRESS` (used by Bob to receive BTC)
-* `BTC_BOB_SUCCESS_PRIVATE_KEY` (used by Bob to redeem BTC)
+* `COMIT_NODE_CONFIG_PATH` (the path to a folder containing COMIT Node config files, examples can be found in ./application/comit_node/config)
 
 IF you wish to run the tests, you need to save this values in Docker env_file format (VAR=VAL) in several files.
 - regtest.env: to run systemstests/happy_path.sh
-- testnet.env: to run scripts/testnet/*.sh
 Save these files in the same folder (let's say ~/swap_env) and set the path in `$SWAP_ENV`:
 `export SWAP_ENV=$HOME/swap_env`
-
-The following variables are also needed to run automated tests:
-* `alice_refund_address` (BTC)
-* `alice_success_address` (ETH)
-* `alice_sender_address` (ETH, when redeem the ETH HTLC)
 
 ## Testing
 
@@ -64,5 +51,4 @@ The base image caches the compilation of the binaries and all its dependencies. 
 
 ## Contributing
 
-- Follow these commit guidelines: https://chris.beams.io/posts/git-commit/
-- Always run [`cargo fmt`](https://github.com/rust-lang-nursery/rustfmt) as PART of your change. Do not format the code after you are done, as this makes the history useless (git blame will only show the formatting commit).
+Contributions are welcome, please see [CONTRIBUTING](CONTRIBUTING.md) for more details

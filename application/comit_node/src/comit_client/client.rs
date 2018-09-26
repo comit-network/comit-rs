@@ -1,9 +1,9 @@
 use futures::Future;
-use ganp::{ledger::Ledger, rfc003, swap};
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
+use swap_protocols::{ledger::Ledger, rfc003, wire_types};
 //use tokio::{net::TcpStream, runtime::Runtime};
 use transport_protocol::{
     self,
@@ -15,15 +15,19 @@ use transport_protocol::{
 };
 
 pub trait Client {
-    fn send_swap_request<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>>(
+    fn send_swap_request<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Into<wire_types::Asset>,
+        TA: Into<wire_types::Asset>,
+    >(
         &self,
         request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
                 Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
                 Error = transport_protocol::client::Error<json::Frame>,
-            >
-            + Send,
+            > + Send,
     >;
 }
 
@@ -57,15 +61,19 @@ impl DefaultClient {
 }
 
 impl Client for DefaultClient {
-    fn send_swap_request<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>>(
+    fn send_swap_request<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Into<wire_types::Asset>,
+        TA: Into<wire_types::Asset>,
+    >(
         &self,
         request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
                 Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
                 Error = transport_protocol::client::Error<json::Frame>,
-            >
-            + Send,
+            > + Send,
     > {
         unimplemented!()
 

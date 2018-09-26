@@ -1,14 +1,10 @@
 use bitcoin_htlc;
-use bitcoin_support::{self, BTC_BLOCKS_IN_24H, BitcoinQuantity, Blocks};
+use bitcoin_support::{self, BitcoinQuantity, Blocks, BTC_BLOCKS_IN_24H};
 use comit_client::{self, FakeClient};
 use common_types::secret::Secret;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{self, EventStore, InMemoryEventStore};
 use futures::{future, Future, Stream};
-use ganp::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003,
-};
 use gotham::{
     handler::{HandlerFuture, IntoHandlerError},
     state::{FromState, State},
@@ -22,6 +18,10 @@ use serde_json;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
+};
+use swap_protocols::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003,
 };
 use swaps::{alice_events, common::TradeId};
 use tokio;
@@ -210,8 +210,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                                             accepted.source_ledger_success_identity,
                                             accepted.target_ledger_lock_duration,
                                         ),
-                                    )
-                                    .unwrap(),
+                                    ).unwrap(),
                                 Err(_rejected) => event_store
                                     .add_event(
                                         id,
@@ -221,8 +220,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                                             BitcoinQuantity,
                                             EthereumQuantity,
                                         >::new(),
-                                    )
-                                    .unwrap(),
+                                    ).unwrap(),
                             },
                             Err(_frame_error) => event_store
                                 .add_event(
@@ -233,8 +231,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                                         BitcoinQuantity,
                                         EthereumQuantity,
                                     >::new(),
-                                )
-                                .unwrap(),
+                                ).unwrap(),
                         }
                         Ok(())
                     }));

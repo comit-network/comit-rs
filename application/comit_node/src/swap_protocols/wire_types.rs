@@ -1,6 +1,7 @@
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
 use serde::Serialize;
+use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
 use transport_protocol::{json, Status};
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
@@ -26,6 +27,18 @@ impl From<BitcoinQuantity> for Asset {
 impl From<EthereumQuantity> for Asset {
     fn from(quantity: EthereumQuantity) -> Self {
         Asset::Ether { quantity }
+    }
+}
+
+impl From<Bitcoin> for Ledger {
+    fn from(_: Bitcoin) -> Self {
+        Ledger::Bitcoin
+    }
+}
+
+impl From<Ethereum> for Ledger {
+    fn from(_: Ethereum) -> Self {
+        Ledger::Ethereum
     }
 }
 

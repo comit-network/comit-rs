@@ -2,15 +2,15 @@ use bitcoin_support::BitcoinQuantity;
 use common_types::secret::Secret;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
-use ganp::ledger::{
-    bitcoin::{self, Bitcoin},
-    ethereum::Ethereum,
-};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
-use swap_protocols::rfc003::ledger_htlc_service::{
-    BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
+use swap_protocols::{
+    ledger::{
+        bitcoin::{self, Bitcoin},
+        ethereum::Ethereum,
+    },
+    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
 };
 use swaps::{
     alice_events::ContractDeployed as AliceContractDeployed,
@@ -94,7 +94,8 @@ fn handle_post_orders_funding(
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
-    let order_taken = event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
+    let order_taken =
+        event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
     let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
         refund_address: order_taken.bob_refund_address,

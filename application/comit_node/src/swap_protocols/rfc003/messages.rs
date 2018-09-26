@@ -1,6 +1,8 @@
 use common_types::secret::SecretHash;
-use ledger::Ledger;
-use swap::{self, SwapProtocol, SwapRequestHeaders};
+use swap_protocols::{
+    ledger::Ledger,
+    wire_types::{Asset, SwapProtocol, SwapRequestHeaders},
+};
 
 #[derive(Debug, PartialEq)]
 pub struct Request<SL: Ledger, TL: Ledger, SA, TA> {
@@ -14,7 +16,7 @@ pub struct Request<SL: Ledger, TL: Ledger, SA, TA> {
     pub secret_hash: SecretHash,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Into<swap::Asset>, TA: Into<swap::Asset>> Request<SL, TL, SA, TA> {
+impl<SL: Ledger, TL: Ledger, SA: Into<Asset>, TA: Into<Asset>> Request<SL, TL, SA, TA> {
     pub fn into_headers_and_body(self) -> (SwapRequestHeaders, RequestBody<SL, TL>) {
         (
             SwapRequestHeaders {

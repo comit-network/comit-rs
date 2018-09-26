@@ -8,19 +8,15 @@ extern crate serde_derive;
 extern crate bitcoin_rpc_client;
 extern crate comit_node;
 extern crate common_types;
-extern crate env_logger;
 extern crate ethereum_wallet;
-extern crate ganache_rust_web3;
 extern crate hex;
+extern crate pretty_env_logger;
 extern crate reqwest;
 #[macro_use]
 extern crate serde_json;
 extern crate futures;
-extern crate ganp;
 extern crate gotham;
 extern crate hyper;
-extern crate tc_trufflesuite_ganachecli;
-extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate uuid;
 use bitcoin_rpc_client::TransactionId;
@@ -34,7 +30,13 @@ use comit_node::{
     gas_price_service::StaticGasPriceService,
     gotham_factory::create_gotham_router,
     rocket_factory::create_rocket_instance,
-    swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
+    swap_protocols::{
+        ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+        rfc003::{
+            self,
+            ledger_htlc_service::{BitcoinService, EthereumService},
+        },
+    },
     swaps::common::TradeId,
 };
 use common_types::seconds::Seconds;
@@ -45,10 +47,6 @@ use futures::{
     sync::oneshot::{self, Receiver},
     Future,
 };
-use ganp::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003,
-};
 use gotham::test::TestServer;
 use hex::FromHex;
 use hyper::{header::ContentType, mime::APPLICATION_JSON, StatusCode};
@@ -56,7 +54,7 @@ use mocks::{BitcoinRpcClientMock, OfferResponseBody, RedeemDetails, StaticEthere
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
 fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
-    use ganp::{ledger::Ledger, rfc003, swap};
+    let _ = pretty_env_logger::try_init();
     let event_store = Arc::new(InMemoryEventStore::new());
     let fake_factory = Arc::new(FakeFactory::new());
     let router = create_gotham_router(
@@ -82,8 +80,7 @@ fn get_non_existent_swap() {
 }
 
 #[test]
-fn api_http_api_swap() {
-    let _ = env_logger::try_init();
+fn swap_accepted() {
     let (test_server, fake_factory) = build_test_server();
 
     let response = test_server
@@ -111,8 +108,7 @@ fn api_http_api_swap() {
             }
         ).to_string(),
             APPLICATION_JSON,
-        )
-        .perform()
+        ).perform()
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::Created);

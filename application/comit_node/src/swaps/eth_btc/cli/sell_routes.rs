@@ -3,12 +3,14 @@ use comit_node_api_client::ApiClient;
 use common_types::{seconds::Seconds, secret::Secret, TradingSymbol};
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{EventStore, InMemoryEventStore};
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use rand::OsRng;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::{Arc, Mutex};
-use swap_protocols::rfc003::ethereum::{ByteCode, EtherHtlc, Htlc};
+use swap_protocols::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    rfc003::ethereum::{ByteCode, EtherHtlc, Htlc},
+};
 use swaps::{
     alice_events::{OfferCreated, OrderCreated, OrderTaken},
     common::TradeId,
@@ -59,7 +61,11 @@ impl<Buy: Ledger, Sell: Ledger> From<OfferResponseBody<Buy, Sell>> for OfferCrea
 
 const ETH_HTLC_TIMEOUT_IN_SECONDS: Seconds = Seconds::new(12 * 60 * 60);
 
-#[post("/trades/ETH-BTC/sell-offers", format = "application/json", data = "<offer_request_body>")]
+#[post(
+    "/trades/ETH-BTC/sell-offers",
+    format = "application/json",
+    data = "<offer_request_body>"
+)]
 pub fn post_sell_offers(
     offer_request_body: Json<SellOfferRequestBody>,
     event_store: State<Arc<InMemoryEventStore<TradeId>>>,
@@ -156,8 +162,7 @@ fn handle_sell_orders(
             alice_contract_time_lock: lock_duration,
             buy_amount: offer.buy_amount,
             sell_amount: offer.sell_amount,
-        })
-        .map_err(Error::ComitNode)?;
+        }).map_err(Error::ComitNode)?;
 
     let htlc = EtherHtlc::new(
         lock_duration.into(),

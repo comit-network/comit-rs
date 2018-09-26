@@ -1,4 +1,3 @@
-extern crate ganp;
 extern crate tokio;
 extern crate transport_protocol;
 #[macro_use]
@@ -8,6 +7,7 @@ extern crate maplit;
 #[macro_use]
 extern crate serde_json;
 extern crate bitcoin_support;
+extern crate comit_node;
 extern crate common_types;
 extern crate ethereum_support;
 extern crate futures;
@@ -16,20 +16,21 @@ extern crate memsocket;
 extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate spectral;
+
 use bitcoin_support::{BitcoinQuantity, Blocks};
-use common_types::seconds::Seconds;
-use ethereum_support::{EthereumQuantity, ToEthereumAddress};
-use futures::future::Future;
-use ganp::{
+use comit_node::swap_protocols::{
+    json_config,
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    *,
+    rfc003,
+    wire_types::SwapResponse,
+    SwapRequestHandler,
 };
+use common_types::seconds::Seconds;
+use ethereum_support::EthereumQuantity;
+use futures::future::Future;
 use hex::FromHex;
-use rfc003;
-use secp256k1_support::PublicKey;
 use spectral::prelude::*;
 use std::str::FromStr;
-use swap;
 use tokio::runtime::Runtime;
 use transport_protocol::{
     client::*,
@@ -44,8 +45,7 @@ fn setup<
     H: SwapRequestHandler<
             rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
             rfc003::AcceptResponse<Bitcoin, Ethereum>,
-        >
-        + SwapRequestHandler<
+        > + SwapRequestHandler<
             rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
             rfc003::AcceptResponse<Ethereum, Bitcoin>,
         >,
@@ -183,9 +183,9 @@ fn can_receive_swap_request() {
         fn handle(
             &mut self,
             request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
-        ) -> swap::SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
+        ) -> SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
             self.sender.take().unwrap().send(request).unwrap();
-            swap::SwapResponse::Decline
+            SwapResponse::Decline
         }
     }
 
@@ -246,19 +246,19 @@ impl
     fn handle(
         &mut self,
         request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
-    ) -> swap::SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
+    ) -> SwapResponse<rfc003::AcceptResponse<Bitcoin, Ethereum>> {
         let bitcoin = request.source_asset.bitcoin();
         let ethereum = request.target_asset.ethereum();
 
         let requested_rate = bitcoin / ethereum;
         if requested_rate > self.btc_to_eth {
-            swap::SwapResponse::Accept(rfc003::AcceptResponse {
+            SwapResponse::Accept(rfc003::AcceptResponse {
                 target_ledger_refund_identity: ETH_REFUND_ADDRESS.clone(),
                 source_ledger_success_identity: BTC_SUCCESS_PUBKEYHASH.clone(),
                 target_ledger_lock_duration: Seconds::new(4200),
             })
         } else {
-            swap::SwapResponse::Decline
+            SwapResponse::Decline
         }
     }
 }
@@ -272,19 +272,19 @@ impl
     fn handle(
         &mut self,
         request: rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
-    ) -> swap::SwapResponse<rfc003::AcceptResponse<Ethereum, Bitcoin>> {
+    ) -> SwapResponse<rfc003::AcceptResponse<Ethereum, Bitcoin>> {
         let bitcoin = request.target_asset.bitcoin();
         let ethereum = request.source_asset.ethereum();
 
         let requested_rate = bitcoin / ethereum;
         if requested_rate < self.btc_to_eth {
-            swap::SwapResponse::Accept(rfc003::AcceptResponse {
+            SwapResponse::Accept(rfc003::AcceptResponse {
                 target_ledger_refund_identity: BTC_REFUND_PUBKEYHASH.clone(),
                 source_ledger_success_identity: ETH_SUCCESS_ADDRESS.clone(),
                 target_ledger_lock_duration: Blocks::from(144),
             })
         } else {
-            swap::SwapResponse::Decline
+            SwapResponse::Decline
         }
     }
 }

@@ -1,0 +1,9 @@
+# This is should not be used in production
+[ethereum]
+private_key="3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59"
+
+[bitcoin]
+extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSAKhBzPJuE3CA2JAD79JGohP7F6x3TeXehf4rrMdLAD7cbwaWJ1f"
+
+[swap]
+eth_refund_address="0x147ba99ef89c152f8004e91999fee87bda6cbc3e"

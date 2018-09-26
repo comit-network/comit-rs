@@ -1,8 +1,7 @@
 use common_types::seconds::Seconds;
 use ethereum_support::{Address, EthereumQuantity, H256};
-use ledger::Ledger;
 use secp256k1_support::PublicKey;
-use swap;
+use swap_protocols::ledger::Ledger;
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Ethereum {}
@@ -22,11 +21,5 @@ impl Ledger for Ethereum {
 
     fn address_for_identity(&self, address: Address) -> Address {
         address
-    }
-}
-
-impl From<Ethereum> for swap::Ledger {
-    fn from(_: Ethereum) -> Self {
-        swap::Ledger::Ethereum
     }
 }

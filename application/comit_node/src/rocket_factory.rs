@@ -1,18 +1,16 @@
 use bitcoin_support::Network;
-use comit_client;
-use ethereum_support;
+use comit_wallet::KeyStore;
 use event_store::InMemoryEventStore;
-use ganp::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
-use http_api;
 use rand::OsRng;
-use rocket;
-use secp256k1_support::KeyPair;
-use std::{
-    net::SocketAddr,
-    sync::{Arc, Mutex},
+use rocket::{
+    self,
+    config::{Config, Environment},
+    Rocket,
 };
-use swap_protocols::rfc003::ledger_htlc_service::{
-    BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService,
+use std::sync::{Arc, Mutex};
+use swap_protocols::{
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
 };
 use swaps::{common::TradeId, eth_btc};
 
@@ -20,15 +18,15 @@ pub fn create_rocket_instance(
     event_store: Arc<InMemoryEventStore<TradeId>>,
     ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
     bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
-    bob_refund_address: ethereum_support::Address,
-    bob_success_keypair: KeyPair,
+    my_keystore: Arc<KeyStore>,
     network: Network,
-    client_factory: Arc<comit_client::DefaultFactory>,
-    remote_comit_node_socket_addr: SocketAddr,
+    address: String,
+    port: u16,
+    logging: bool,
 ) -> rocket::Rocket {
     let rng = OsRng::new().expect("Failed to get randomness from OS");
 
-    rocket::ignite()
+    try_config(address, port, logging)
         .mount(
             "/ledger/", //Endpoints for notifying about ledger events
             routes![
@@ -39,14 +37,29 @@ pub fn create_rocket_instance(
                 // eth_btc::ledger::sell_routes::post_orders_funding,
                 // eth_btc::ledger::sell_routes::post_revealed_secret,
             ],
-        )
-        .manage(event_store)
+        ).manage(event_store)
         .manage(ethereum_service)
         .manage(bitcoin_service)
-        .manage(bob_success_keypair)
-        .manage(bob_refund_address)
+        .manage(my_keystore)
         .manage(network)
-        .manage(client_factory)
-        .manage(remote_comit_node_socket_addr)
         .manage(Mutex::new(rng))
+}
+
+fn try_config(address: String, port: u16, logging: bool) -> Rocket {
+    //TODO change environment?
+    let config = Config::build(Environment::Development)
+        .address(address.clone())
+        .port(port)
+        .finalize();
+    match config {
+        Ok(config) => rocket::custom(config, logging),
+        Err(error) => {
+            error!("{:?}", error);
+            error!(
+                "Could not start rocket with {}:{}, falling back to default",
+                address, port
+            );
+            rocket::ignite()
+        }
+    }
 }
