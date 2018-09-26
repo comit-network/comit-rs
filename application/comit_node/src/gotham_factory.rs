@@ -1,4 +1,5 @@
 use comit_client;
+use comit_wallet::KeyStore;
 use event_store::{EventStore, InMemoryEventStore};
 use gotham::{
     self,
@@ -34,6 +35,7 @@ pub struct SwapState {
     pub event_store: Arc<InMemoryEventStore<TradeId>>,
     pub rng: Arc<Mutex<OsRng>>,
     pub remote_comit_node_socket_addr: SocketAddr,
+    pub key_store: Arc<KeyStore>,
 }
 
 impl<C> Clone for ClientFactory<C> {
@@ -63,6 +65,7 @@ pub fn create_gotham_router<
     event_store: Arc<InMemoryEventStore<TradeId>>,
     client_factory: Arc<F>,
     remote_comit_node_socket_addr: SocketAddr,
+    key_store: Arc<KeyStore>,
 ) -> Router {
     let rng = Arc::new(Mutex::new(
         OsRng::new().expect("Failed to get randomness from OS"),
@@ -73,6 +76,7 @@ pub fn create_gotham_router<
             event_store,
             rng,
             remote_comit_node_socket_addr,
+            key_store,
         },
         client_factory: ClientFactory(client_factory),
     };

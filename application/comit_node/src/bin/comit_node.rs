@@ -83,13 +83,13 @@ fn main() {
     let btc_network = settings.bitcoin.network;
 
     //TODO: Integrate all Ethereum keys in this keystore. See #185/#291
-    let bob_key_store = Arc::new(
+    let key_store = Arc::new(
         KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),
     );
 
     //TODO: make it dynamically generated every X BTC. Could be done with #296
-    let btc_bob_redeem_keypair = bob_key_store.get_new_internal_keypair();
+    let btc_bob_redeem_keypair = key_store.get_new_internal_keypair();
     let btc_bob_redeem_address =
         BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key().into(), btc_network);
 
@@ -128,8 +128,6 @@ fn main() {
     );
 
     {
-        let bob_key_store = bob_key_store.clone();
-
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
@@ -141,6 +139,7 @@ fn main() {
             gotham_event_store,
             Arc::new(client_factory),
             remote_comit_node_url,
+            key_store.clone(),
         );
 
         std::thread::spawn(move || {
@@ -165,7 +164,7 @@ fn main() {
         // });
     }
 
-    let server = ComitServer::new(comit_server_event_store, bob_key_store);
+    let server = ComitServer::new(comit_server_event_store, key_store);
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);

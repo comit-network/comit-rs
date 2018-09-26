@@ -1,6 +1,7 @@
 use bitcoin_htlc;
-use bitcoin_support::{self, BitcoinQuantity, Blocks, BTC_BLOCKS_IN_24H};
+use bitcoin_support::{self, BitcoinQuantity, Blocks, PubkeyHash, BTC_BLOCKS_IN_24H};
 use comit_client::{self, FakeClient};
+use comit_wallet::KeyStore;
 use common_types::secret::Secret;
 use ethereum_support::{self, EthereumQuantity};
 use event_store::{self, EventStore, InMemoryEventStore};
@@ -108,6 +109,7 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
                                 &swap_state.rng,
                                 &client_factory.0,
                                 swap_state.remote_comit_node_socket_addr,
+                                &swap_state.key_store,
                             )
                         };
                         match result {
@@ -139,6 +141,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
     rng: &Mutex<OsRng>,
     client_factory: &Arc<comit_client::Factory<C>>,
     comit_node_addr: SocketAddr,
+    key_store: &Arc<KeyStore>,
 ) -> Result<SwapCreated, SwapError> {
     let id = TradeId::default();
     let secret = {
@@ -150,10 +153,11 @@ pub fn handle_post_swap<C: comit_client::Client>(
     match (swap.source_ledger, swap.target_ledger) {
         (
             Ledger::Bitcoin {
-                identity: source_ledger_refund_identity,
+                //XXX: Not used for now
+                identity: _source_ledger_final_identity,
             },
             Ledger::Ethereum {
-                identity: target_ledger_success_identity,
+                identity: target_ledger_final_identity,
             },
         ) => {
             let source_ledger = Bitcoin::regtest();
@@ -167,6 +171,13 @@ pub fn handle_post_swap<C: comit_client::Client>(
                         quantity: target_asset,
                     },
                 ) => {
+                    let source_ledger_refund_identity: PubkeyHash = key_store
+                        .get_transient_keypair(&id.clone().into(), b"REFUND")
+                        .public_key()
+                        .clone()
+                        .into();
+                    let target_ledger_success_identity = target_ledger_final_identity;
+
                     let source_ledger_lock_duration = BTC_BLOCKS_IN_24H;
                     let secret_hash = secret.hash();
                     let sent_event = alice_events::SentSwapRequest {
@@ -175,13 +186,13 @@ pub fn handle_post_swap<C: comit_client::Client>(
                         source_asset,
                         target_asset,
                         secret,
-                        target_ledger_success_identity: target_ledger_success_identity.clone(),
+                        target_ledger_success_identity,
                         source_ledger_refund_identity: source_ledger_refund_identity.clone(),
                         source_ledger_lock_duration: source_ledger_lock_duration.clone(),
                     };
 
                     event_store.add_event(id, sent_event)?;
-                    let future = client.send_swap_request(rfc003::Request {
+                    let response_future = client.send_swap_request(rfc003::Request {
                         secret_hash,
                         source_ledger_refund_identity,
                         target_ledger_success_identity,
@@ -194,7 +205,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
 
                     let event_store = event_store.clone();
 
-                    tokio::spawn(future.then(move |result| {
+                    tokio::spawn(response_future.then(move |result| {
                         match result {
                             Ok(response) => match response {
                                 Ok(accepted) => event_store
@@ -222,6 +233,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                                         >::new(),
                                     ).unwrap(),
                             },
+                            // just treat transport level problems as a rejection for now
                             Err(_frame_error) => event_store
                                 .add_event(
                                     id,
@@ -318,8 +330,8 @@ fn handle_get_swap(
                         }
                         Err(_) => {
                             let htlc = bitcoin_htlc::Htlc::new(
-                                accepted.source_ledger_success_identity.clone(),
                                 accepted.source_ledger_success_identity,
+                                requested.source_ledger_refund_identity,
                                 requested.secret.hash(),
                                 requested.source_ledger_lock_duration.clone().into(),
                             );

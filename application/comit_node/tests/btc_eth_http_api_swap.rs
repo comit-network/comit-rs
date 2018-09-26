@@ -14,50 +14,44 @@ extern crate pretty_env_logger;
 extern crate reqwest;
 #[macro_use]
 extern crate serde_json;
+extern crate comit_wallet;
 extern crate futures;
 extern crate gotham;
 extern crate hyper;
 extern crate testcontainers;
 extern crate uuid;
-use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::Network;
-
-mod mocks;
 
 use comit_node::{
     comit_client::{self, FakeClient, FakeFactory, SwapReject},
     gotham_factory::create_gotham_router,
     swap_protocols::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-        rfc003::{
-            self,
-            ledger_htlc_service::{BitcoinService, EthereumService},
-        },
+        rfc003,
     },
     swaps::common::TradeId,
 };
+use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
-use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
-use futures::{
-    stream::Stream,
-    sync::oneshot::{self, Receiver},
-    Future,
-};
 use gotham::test::TestServer;
 use hex::FromHex;
 use hyper::{header::ContentType, mime::APPLICATION_JSON, StatusCode};
-use mocks::{BitcoinRpcClientMock, OfferResponseBody, RedeemDetails, StaticEthereumApi};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
 fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
     let _ = pretty_env_logger::try_init();
     let event_store = Arc::new(InMemoryEventStore::new());
     let fake_factory = Arc::new(FakeFactory::new());
+    let master_priv_key =
+        "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
+        .parse().unwrap();
+
+    let key_store = KeyStore::new(master_priv_key).unwrap();
     let router = create_gotham_router(
         event_store,
         fake_factory.clone(),
         SocketAddr::from_str("127.0.0.1:4242").unwrap(),
+        Arc::new(key_store),
     );
     (TestServer::new(router).unwrap(), fake_factory)
 }
