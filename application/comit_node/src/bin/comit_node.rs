@@ -48,7 +48,7 @@ fn main() {
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
-    let event_store = Arc::new(InMemoryEventStore::new());
+    let event_store = Arc::new(InMemoryEventStore::default());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
 
