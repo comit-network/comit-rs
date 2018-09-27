@@ -21,7 +21,7 @@ use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
 fn redeem_single_p2wpkh() {
-    let _ = env_logger::try_init();
+    env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);

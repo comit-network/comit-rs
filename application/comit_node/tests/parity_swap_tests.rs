@@ -1,8 +1,4 @@
-#![warn(
-    unused_results,
-    unused_extern_crates,
-    missing_debug_implementations
-)]
+#![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
 extern crate comit_node;
@@ -61,7 +57,7 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     );
 
     // Send correct secret to contract
-    let _ = client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
+    client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
 
     assert_eq!(
         client.eth_balance_of(bob),
@@ -106,7 +102,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     // Wait for the contract to expire
     ::std::thread::sleep(HTLC_TIMEOUT);
     ::std::thread::sleep(HTLC_TIMEOUT);
-    let _ = client.send_data(htlc, None);
+    client.send_data(htlc, None);
 
     assert_eq!(
         client.eth_balance_of(bob),
@@ -149,7 +145,7 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
     );
 
     // Wait for the contract to expire
-    let _ = client.send_data(htlc, None);
+    client.send_data(htlc, None);
 
     assert_eq!(
         client.eth_balance_of(bob),
@@ -188,7 +184,7 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferr
     assert_eq!(client.token_balance_of(token, htlc), U256::from(400));
 
     // Send correct secret to contract
-    let _ = client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
+    client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
 
     assert_eq!(client.token_balance_of(token, bob), U256::from(400));
     assert_eq!(client.token_balance_of(token, alice), U256::from(600));
@@ -218,7 +214,7 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
     // Wait for the contract to expire
     ::std::thread::sleep(HTLC_TIMEOUT);
     ::std::thread::sleep(HTLC_TIMEOUT);
-    let _ = client.send_data(htlc, None);
+    client.send_data(htlc, None);
 
     assert_eq!(client.token_balance_of(token, bob), U256::from(0));
     assert_eq!(client.token_balance_of(token, alice), U256::from(1000));
@@ -246,7 +242,7 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
     assert_eq!(client.token_balance_of(token, htlc), U256::from(400));
 
     // Don't wait for the timeout and don't send a secret
-    let _ = client.send_data(htlc, None);
+    client.send_data(htlc, None);
 
     assert_eq!(client.token_balance_of(token, bob), U256::from(0));
     assert_eq!(client.token_balance_of(token, alice), U256::from(600));

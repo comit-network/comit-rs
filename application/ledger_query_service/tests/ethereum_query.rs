@@ -23,7 +23,7 @@ use std::sync::Arc;
 
 #[test]
 fn can_access_query_resource_after_creation() {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
 
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
@@ -59,7 +59,7 @@ fn can_access_query_resource_after_creation() {
 
 #[test]
 fn given_created_query_when_deleted_is_no_longer_available() {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
 
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
@@ -95,7 +95,7 @@ struct QueryResponse {
 
 #[test]
 fn given_query_when_matching_transaction_is_processed_returns_result() {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
 
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
@@ -152,7 +152,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
 
 #[test]
 fn should_reject_malformed_address() {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
 
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());

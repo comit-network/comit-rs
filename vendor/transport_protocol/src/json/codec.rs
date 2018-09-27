@@ -118,7 +118,7 @@ mod tests {
         bytes.extend(remaining_bytes);
         bytes.extend(b"\n");
 
-        let _ = assert_that(&codec.decode(&mut bytes)).is_ok().is_some();
+        assert_that(&codec.decode(&mut bytes)).is_ok().is_some();
     }
 
     #[test]

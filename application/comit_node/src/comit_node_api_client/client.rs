@@ -129,7 +129,7 @@ impl DefaultApiClient {
         let (connection_future, shutdown_handle) = shutdown_handle::new(connection_future);
         let socket_addr = self.comit_node_socket_addr;
 
-        let _ = runtime.spawn(connection_future.map_err(move |e| {
+        runtime.spawn(connection_future.map_err(move |e| {
             error!(
                 "Connection to {:?} prematurely closed: {:?}",
                 socket_addr, e

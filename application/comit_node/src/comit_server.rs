@@ -42,7 +42,7 @@ impl ComitServer {
             let config = json_config(swap_handler);
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
-            let _ = tokio::spawn(close_future.map_err(move |e| {
+            tokio::spawn(close_future.map_err(move |e| {
                 error!(
                     "Unexpected error in connection with {:?}: {:?}",
                     peer_addr, e

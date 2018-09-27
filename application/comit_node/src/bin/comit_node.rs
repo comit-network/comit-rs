@@ -1,8 +1,4 @@
-#![warn(
-    unused_results,
-    unused_extern_crates,
-    missing_debug_implementations
-)]
+#![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
@@ -10,15 +6,12 @@ extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
 extern crate comit_wallet;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
-extern crate hex;
 #[macro_use]
 extern crate log;
 extern crate event_store;
 extern crate logging;
-extern crate secp256k1_support;
 extern crate tokio;
 extern crate web3;
 
@@ -130,8 +123,8 @@ fn main() {
         let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
 
-        let _ = std::thread::spawn(move || {
-            let _ = create_rocket_instance(
+        std::thread::spawn(move || {
+            create_rocket_instance(
                 rocket_event_store,
                 Arc::new(ethereum_service),
                 Arc::new(bitcoin_service),

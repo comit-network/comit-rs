@@ -12,7 +12,7 @@ use transport_protocol::{
 };
 
 pub fn start_server_with(config: Config<Request, Response>) -> (Runtime, Alice, Bob) {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
     let mut runtime = Runtime::new().unwrap();
 
     let (alice, bob_server, alice_client) = alice_and_bob::create(config);
@@ -33,7 +33,7 @@ pub fn create_server_with(
     Alice,
     impl Future<Item = (), Error = connection::ClosedReason<json::Error>>,
 ) {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
     let (alice, bob_server, _alice_client) = alice_and_bob::create(config);
     (alice, bob_server)
 }

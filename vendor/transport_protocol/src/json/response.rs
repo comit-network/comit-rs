@@ -68,7 +68,7 @@ impl Response {
     }
 
     fn insert<S: Into<String>>(&mut self, key: S, header: JsonValue) {
-        let _ = self.headers.insert(key.into(), Self::compact_value(header));
+        self.headers.insert(key.into(), Self::compact_value(header));
     }
 
     fn compact_value(value: JsonValue) -> JsonValue {

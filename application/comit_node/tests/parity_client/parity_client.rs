@@ -23,8 +23,7 @@ impl ParityClient {
     }
 
     pub fn give_eth_to(&self, to: Address, amount: EthereumQuantity) {
-        let _ = self
-            .client
+        self.client
             .personal()
             .send_transaction(
                 TransactionRequest {
@@ -82,7 +81,6 @@ impl ParityClient {
 
     pub fn get_contract_address(&self, txid: H256) -> Address {
         let receipt = self.client.eth().transaction_receipt(txid).wait();
-        debug!("{:?}", receipt);
         receipt.unwrap().unwrap().contract_address.unwrap()
     }
 

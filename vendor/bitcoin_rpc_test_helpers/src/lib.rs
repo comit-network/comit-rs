@@ -1,8 +1,4 @@
-#![warn(
-    unused_results,
-    unused_extern_crates,
-    missing_debug_implementations
-)]
+#![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
 // Place for putting common queries needed in tests
@@ -33,7 +29,7 @@ pub trait RegtestHelperClient {
 
 impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
     fn enable_segwit(&self) {
-        let _ = self.generate(432).unwrap().unwrap();
+        self.generate(432).unwrap().unwrap();
     }
 
     fn find_utxo_at_tx_for_address(
@@ -80,7 +76,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
             .unwrap()
             .unwrap();
 
-        let _ = self.generate(1).unwrap().unwrap();
+        self.generate(1).unwrap().unwrap();
 
         let vout = self.find_vout_for_address(&txid, &address);
 

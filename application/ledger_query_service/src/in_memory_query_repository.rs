@@ -41,7 +41,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
 
         let id = state.next_index;
 
-        let _ = state.storage.insert(id, entity);
+        state.storage.insert(id, entity);
         state.next_index += 1;
 
         Ok(id)
@@ -50,7 +50,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
     fn delete(&self, id: u32) {
         let mut state = self.state.write().unwrap();
 
-        let _ = state.storage.remove(&id);
+        state.storage.remove(&id);
     }
 }
 

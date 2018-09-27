@@ -53,7 +53,7 @@ impl<'a> Encodable for SignedTransaction<'a> {
         let r = &self.signature.0[0..32];
         let s = &self.signature.0[32..64];
 
-        let _ = stream
+        stream
             .append_internal(self.unsigned_transaction)
             .append(&self.v)
             .append(&r)
@@ -73,8 +73,7 @@ impl<'a> From<SignedTransaction<'a>> for Bytes {
 
 impl Encodable for UnsignedTransaction {
     fn rlp_append(&self, s: &mut RlpStream) {
-        let _ = s
-            .begin_list(9)
+        s.begin_list(9)
             .append(&self.nonce)
             .append(&self.gas_price)
             .append(&self.gas_limit);
@@ -88,7 +87,7 @@ impl Encodable for UnsignedTransaction {
             None => s.append(&""),
         };
 
-        let _ = s.append(&self.value).append(
+        s.append(&self.value).append(
             &self
                 .data
                 .clone()

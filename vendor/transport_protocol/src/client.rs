@@ -99,7 +99,7 @@ mod tests {
         }
 
         fn add_response(&mut self, id: u32, response_frame: json::Frame) {
-            let _ = self.responses.insert(id, response_frame);
+            self.responses.insert(id, response_frame);
         }
     }
 

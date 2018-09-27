@@ -1,8 +1,4 @@
-#![warn(
-    unused_results,
-    unused_extern_crates,
-    missing_debug_implementations
-)]
+#![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![feature(custom_attribute)]
 #![feature(const_fn)]

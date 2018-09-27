@@ -22,7 +22,7 @@ use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
 fn sign_with_rate() {
-    let _ = env_logger::try_init();
+    env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);

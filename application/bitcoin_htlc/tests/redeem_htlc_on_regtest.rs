@@ -83,7 +83,7 @@ fn fund_htlc(
 
 #[test]
 fn redeem_htlc_with_secret() {
-    let _ = env_logger::try_init();
+    env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
@@ -129,7 +129,7 @@ fn redeem_htlc_with_secret() {
 
 #[test]
 fn redeem_refund_htlc() {
-    let _ = env_logger::try_init();
+    env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);

@@ -1,8 +1,4 @@
-#![warn(
-    unused_results,
-    unused_extern_crates,
-    missing_debug_implementations
-)]
+#![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
@@ -20,7 +16,7 @@ use ledger_query_service::{
 use std::{env::var, sync::Arc, thread, time::Duration};
 
 fn main() {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
 
     let config = rocket::Config::development().unwrap();
 
@@ -44,7 +40,7 @@ fn main() {
                 query_result_repository.clone(),
             );
 
-            let _ = thread::spawn(move || {
+            thread::spawn(move || {
                 let bitcoind_zmq_listener =
                     BitcoindZmqListener::new(zmq_endpoint.as_str(), bitcoin_transaction_processor);
 
@@ -76,7 +72,7 @@ fn main() {
                 query_result_repository.clone(),
             );
 
-            let _ = thread::spawn(move || {
+            thread::spawn(move || {
                 let ethereum_web3_poller = EthereumWeb3BlockPoller::new(
                     web3_endpoint.as_str(),
                     polling_wait_time,
@@ -92,5 +88,5 @@ fn main() {
         }
     };
 
-    let _ = server_builder.build().launch();
+    server_builder.build().launch();
 }

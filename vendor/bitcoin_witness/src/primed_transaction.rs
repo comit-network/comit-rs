@@ -60,7 +60,6 @@ impl PrimedInput {
 /// A transaction that's ready for signing
 #[derive(DebugStub)]
 pub struct PrimedTransaction {
-    #[debug_stub = "Inputs"]
     pub inputs: Vec<PrimedInput>,
     pub output_address: Address,
     pub locktime: u32,

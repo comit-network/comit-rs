@@ -47,7 +47,7 @@ pub fn harness(
     EventLoopHandle,
     Container<DockerCli, ParityEthereum>,
 ) {
-    let _ = pretty_env_logger::try_init();
+    pretty_env_logger::try_init();
 
     let (alice_keypair, alice) =
         new_account("63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992");
@@ -73,7 +73,7 @@ pub fn harness(
         } => {
             let token_contract = client.deploy_erc20_token_contract();
 
-            let _ = client.mint_tokens(token_contract, alice_initial_tokens, alice);
+            client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
             let htlc_params = Erc20HtlcParams {
                 refund_address: alice,

@@ -16,7 +16,7 @@ use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
-    let _ = env_logger::try_init();
+    env_logger::try_init();
 
     // Arrange
 

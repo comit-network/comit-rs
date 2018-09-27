@@ -29,9 +29,8 @@ impl<Req, Res> Config<Req, Res> {
         let header_keys = header_keys.into_iter().map(|key| (*key).into()).collect();
         let request_handler = Box::new(request_handler);
 
-        let _ = self.known_headers.insert(request_type.into(), header_keys);
-        let _ = self
-            .request_handlers
+        self.known_headers.insert(request_type.into(), header_keys);
+        self.request_handlers
             .insert(request_type.into(), request_handler);
 
         self

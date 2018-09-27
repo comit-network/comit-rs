@@ -49,7 +49,7 @@ impl ResponseFrameSource<json::Frame> for JsonResponseSource {
     fn on_response_frame(&mut self, frame_id: u32) -> Box<Future<Item = json::Frame, Error = ()>> {
         let (sender, receiver) = oneshot::channel();
 
-        let _ = self.awaiting_responses.insert(frame_id, sender);
+        self.awaiting_responses.insert(frame_id, sender);
 
         Box::new(receiver.map_err(|_| {
             warn!(
@@ -151,7 +151,6 @@ impl JsonFrameHandler {
         let _type = _type
             .as_str()
             .ok_or_else(|| RequestError::MalformedField("type".to_string()))?;
-        //.ok_or(RequestError::MalformedField("type".to_string()))?;
 
         let request_headers = match headers {
             serde_json::Value::Object(map) => map,
@@ -198,7 +197,7 @@ impl JsonFrameHandler {
                 // TODO test for continue
             }
 
-            let _ = parsed_headers.insert(key, value);
+            parsed_headers.insert(key, value);
         }
 
         if !header_errors.is_empty() {
@@ -242,7 +241,7 @@ impl JsonFrameHandler {
         let non_mandatory = key.starts_with('_');
 
         if non_mandatory {
-            let _ = key.remove(0);
+            key.remove(0);
         }
 
         let must_understand = !non_mandatory;

@@ -38,7 +38,7 @@ pub fn handle_new_ethereum_query<'r>(
         from_address: None,
         to_address: None,
         transaction_data: None,
-        .. // Not enough by itself
+        ..
     } = query
     {
         return Err(HttpApiProblem::with_title_from_status(400)
