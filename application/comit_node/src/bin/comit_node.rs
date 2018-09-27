@@ -67,12 +67,12 @@ fn main() {
         address, nonce
     );
 
-    let ethereum_service = EthereumService::new(
+    let ethereum_service = Arc::new(EthereumService::new(
         Arc::new(wallet),
         Arc::new(StaticGasPriceService::new(settings.ethereum.gas_price)),
         Arc::new((event_loop, web3)),
         nonce,
-    );
+    ));
 
     let _eth_refund_address = settings.swap.eth_refund_address;
 
@@ -91,13 +91,11 @@ fn main() {
 
     info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 
-    let bitcoin_rpc_client = {
-        bitcoin_rpc_client::BitcoinCoreClient::new(
-            settings.bitcoin.node_url.as_str(),
-            settings.bitcoin.node_username.as_str(),
-            settings.bitcoin.node_password.as_str(),
-        )
-    };
+    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client::BitcoinCoreClient::new(
+        settings.bitcoin.node_url.as_str(),
+        settings.bitcoin.node_username.as_str(),
+        settings.bitcoin.node_password.as_str(),
+    ));
 
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
@@ -114,18 +112,18 @@ fn main() {
 
     let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
-    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
-    let bitcoin_service = BitcoinService::new(
+    let bitcoin_service = Arc::new(BitcoinService::new(
         bitcoin_rpc_client.clone(),
         settings.bitcoin.network.clone(),
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
-    );
+    ));
 
     {
+        let ethereum_service = ethereum_service.clone();
+        let bitcoin_service = bitcoin_service.clone();
         let bob_key_store = bob_key_store.clone();
-
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
@@ -134,8 +132,8 @@ fn main() {
         std::thread::spawn(move || {
             create_rocket_instance(
                 rocket_event_store,
-                Arc::new(ethereum_service),
-                Arc::new(bitcoin_service),
+                ethereum_service,
+                bitcoin_service,
                 bob_key_store,
                 btc_network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_url)),
@@ -148,9 +146,16 @@ fn main() {
 
     let server = ComitServer::new(comit_server_event_store, bob_key_store);
 
-    tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
-        error!("ComitServer shutdown: {:?}", e);
-    }));
+    tokio::run(
+        server
+            .listen(
+                settings.comit.comit_listen,
+                bitcoin_rpc_client.clone(),
+                ethereum_service.clone(),
+            ).map_err(|e| {
+                error!("ComitServer shutdown: {:?}", e);
+            }),
+    );
 }
 
 fn load_settings() -> ComitNodeSettings {

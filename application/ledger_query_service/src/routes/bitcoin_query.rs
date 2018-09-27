@@ -16,7 +16,7 @@ use transaction_processor::{Query, Transaction};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinQuery {
-    to_address: Option<Address>,
+    pub to_address: Option<Address>,
 }
 
 #[post(

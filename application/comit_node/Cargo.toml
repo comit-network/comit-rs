@@ -41,6 +41,8 @@ futures = "0.1"
 chrono = "0.4.2"
 comit_wallet = { path = "../comit_wallet" }
 config = "0.9"
+tokio-timer = "0.2"
+failure = "0.1"
 
 [dev-dependencies]
 maplit = "1"
