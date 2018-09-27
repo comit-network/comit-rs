@@ -98,10 +98,10 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_deployment(
                 contract.compile_to_hex(),
-                865780, //TODO: calculate the gas consumption based on 32k + 200*bytes
                 gas_price,
                 funding,
                 nonce,
+                None,
             )
         })?;
 
@@ -164,7 +164,6 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
                 htlc_params.token_contract_address,
                 htlc_address,
                 htlc_params.amount,
-                200_000,
                 gas_price,
                 *nonce,
             );
@@ -190,7 +189,11 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
             let htlc_code = htlc.compile_to_hex();
 
             let deployment_transaction = UnsignedTransaction::new_contract_deployment(
-                htlc_code, 200_000, gas_price, 0, *nonce,
+                htlc_code,
+                gas_price,
+                0,
+                *nonce,
+                Some(100_000),
             );
 
             let signed_deployment_transaction = self.wallet.sign(&deployment_transaction);
@@ -327,10 +330,10 @@ mod tests {
                     Address::new(),
                     SecretHash::from_str("").unwrap(),
                 ).compile_to_hex(),
-                86578,
                 gas_price,
                 U256::from(10),
                 nonce,
+                None,
             )
         });
 
@@ -362,10 +365,10 @@ mod tests {
                     Address::new(),
                     SecretHash::from_str("").unwrap(),
                 ).compile_to_hex(),
-                86578,
                 gas_price,
                 U256::from(10),
                 nonce,
+                None,
             )
         });
 
@@ -419,7 +422,6 @@ mod tests {
             Address::from("0000000000000000000000000000000000000003"),
             Address::from("97a561cef28e387e726378bb41d89b13e5a940ba"),
             10,
-            200_000,
             1000,
             0,
         );
@@ -436,10 +438,10 @@ mod tests {
                 params.token_contract_address,
                 params.amount,
             ).compile_to_hex(),
-            200_000,
             1000,
             0,
             1,
+            Some(100_000),
         );
 
         assert_that(&*sent_bytes).contains(&Bytes::from(wallet.sign(&htlc_deployment)));

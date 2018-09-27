@@ -3,10 +3,15 @@ use hex;
 use rlp::{Encodable, RlpStream};
 use tiny_keccak::keccak256;
 
+const CONTRACT_CREATION_FEE: usize = 32_000;
+const BASE_TX_FEE: usize = 21_000;
+const GAS_COST_PER_BYTE: usize = 200;
+const GAS_BUFFER: usize = 10_000;
+
 pub struct UnsignedTransaction {
     nonce: U256,
     gas_price: U256,
-    gas: U256,
+    gas_limit: U256,
     to: Option<Address>,
     value: U256,
     data: Option<Bytes>,
@@ -62,7 +67,7 @@ impl Encodable for UnsignedTransaction {
 
         s.append(&self.nonce);
         s.append(&self.gas_price);
-        s.append(&self.gas);
+        s.append(&self.gas_limit);
 
         match self.to {
             Some(ref address) => s.append(address),
@@ -75,46 +80,43 @@ impl Encodable for UnsignedTransaction {
 }
 
 impl UnsignedTransaction {
-    pub fn new_contract_deployment<
-        B: Into<Bytes>,
-        G: Into<U256>,
-        GP: Into<U256>,
-        V: Into<U256>,
-        N: Into<U256>,
-    >(
+    pub fn new_contract_deployment<B: Into<Bytes>, GP: Into<U256>, V: Into<U256>, N: Into<U256>>(
         contract: B,
-        gas: G,
         gas_price: GP,
         value: V,
         nonce: N,
+        extra_gas_limit: Option<u32>,
     ) -> Self {
+        let contract_data = contract.into();
+        let data_bytes = contract_data.0.len();
+        let gas_limit = CONTRACT_CREATION_FEE + BASE_TX_FEE + data_bytes * GAS_COST_PER_BYTE;
+        let buffered_gas_limit = U256::from(gas_limit)
+            + U256::from(GAS_BUFFER)
+            + extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
+
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: buffered_gas_limit,
             to: None,
             value: value.into(),
-            data: Some(contract.into()),
+            data: Some(contract_data),
         }
     }
 
-    pub fn new_payment<
-        A: Into<Address>,
-        G: Into<U256>,
-        GP: Into<U256>,
-        V: Into<U256>,
-        N: Into<U256>,
-    >(
+    pub fn new_payment<A: Into<Address>, GP: Into<U256>, V: Into<U256>, N: Into<U256>>(
         to: A,
-        gas: G,
         gas_price: GP,
         value: V,
         nonce: N,
+        extra_gas_limit: Option<u32>,
     ) -> Self {
+        let extra_gas_limit = extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
+
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: U256::from(BASE_TX_FEE) + extra_gas_limit,
             to: Some(to.into()),
             value: value.into(),
             data: None,
@@ -124,14 +126,14 @@ impl UnsignedTransaction {
     pub fn new_contract_invocation<
         B: Into<Bytes>,
         A: Into<Address>,
-        G: Into<U256>,
+        GL: Into<U256>,
         GP: Into<U256>,
         V: Into<U256>,
         N: Into<U256>,
     >(
         data: B,
         to: A,
-        gas: G,
+        gas_limit: GL,
         gas_price: GP,
         value: V,
         nonce: N,
@@ -139,7 +141,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: gas_limit.into(),
             to: Some(to.into()),
             value: value.into(),
             data: Some(data.into()),
@@ -150,14 +152,12 @@ impl UnsignedTransaction {
         TokenContract: Into<Address>,
         To: Into<Address>,
         Amount: Into<U256>,
-        G: Into<U256>,
         GP: Into<U256>,
         N: Into<U256>,
     >(
         token_contract: TokenContract,
         to: To,
         amount: Amount,
-        gas: G,
         gas_price: GP,
         nonce: N,
     ) -> Self {
@@ -172,7 +172,7 @@ impl UnsignedTransaction {
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas: gas.into(),
+            gas_limit: 200_000.into(),
             to: Some(token_contract.into()),
             value: U256::from(0),
             data: Some(data.into()),
@@ -198,88 +198,6 @@ impl UnsignedTransaction {
 mod tests {
 
     use super::*;
-    use hex::FromHex;
-    use secp256k1_support::KeyPair;
-    use wallet::Wallet;
-    use InMemoryWallet;
-
-    #[test]
-    fn contract_deployment_transaction_should_have_correct_binary_representation() {
-        let tx = UnsignedTransaction::new_contract_deployment(Bytes(Vec::new()), 500, 2, 10, 1);
-
-        let mut stream = RlpStream::new();
-
-        tx.rlp_append(&mut stream);
-        stream.append(&1u8);
-        stream.append(&0u8);
-        stream.append(&0u8);
-
-        let bytes = stream.as_raw();
-
-        assert_eq!(bytes, &[203, 1, 2, 130, 1, 244, 128, 10, 128, 1, 128, 128]);
-    }
-
-    #[test]
-    fn payment_transaction_should_have_correct_binary_representation() {
-        let tx = UnsignedTransaction::new_payment(
-            "147ba99ef89c152f8004e91999fee87bda6cbc3e",
-            500,
-            2,
-            10,
-            1,
-        );
-
-        let mut stream = RlpStream::new();
-
-        tx.rlp_append(&mut stream);
-        stream.append(&1u8);
-        stream.append(&0u8);
-        stream.append(&0u8);
-
-        let bytes = stream.as_raw();
-
-        assert_eq!(
-            bytes,
-            &[
-                223, 1, 2, 130, 1, 244, 148, 20, 123, 169, 158, 248, 156, 21, 47, 128, 4, 233, 25,
-                153, 254, 232, 123, 218, 108, 188, 62, 10, 128, 1, 128, 128,
-            ]
-        );
-    }
-
-    #[test]
-    fn signed_transaction_should_have_correct_binary_representation() {
-        let secret_key_data = <[u8; 32]>::from_hex(
-            "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
-        ).unwrap();
-        let keypair = KeyPair::from_secret_key_slice(&secret_key_data).unwrap();
-        let account0 = InMemoryWallet::new(keypair, 1);
-
-        let tx = UnsignedTransaction::new_payment(
-            "147ba99ef89c152f8004e91999fee87bda6cbc3e",
-            500,
-            2,
-            10,
-            1,
-        );
-
-        let transaction = account0.sign(&tx);
-
-        let bytes: Bytes = transaction.into();
-        let bytes = bytes.0;
-
-        assert_eq!(
-            bytes,
-            vec![
-                248, 95, 1, 2, 130, 1, 244, 148, 20, 123, 169, 158, 248, 156, 21, 47, 128, 4, 233,
-                25, 153, 254, 232, 123, 218, 108, 188, 62, 10, 128, 37, 160, 28, 83, 76, 32, 152,
-                243, 119, 249, 92, 41, 113, 205, 218, 84, 153, 100, 194, 227, 142, 156, 175, 193,
-                100, 142, 204, 2, 237, 132, 47, 44, 156, 101, 160, 3, 102, 136, 243, 157, 29, 196,
-                161, 44, 128, 172, 193, 117, 230, 52, 200, 119, 125, 10, 192, 190, 228, 153, 205,
-                209, 81, 123, 160, 70, 77, 10, 229,
-            ]
-        );
-    }
 
     #[test]
     fn erc20_contract_allowance_should_have_correct_representation() {
@@ -289,13 +207,33 @@ mod tests {
             1000,
             0,
             0,
-            0,
         );
 
         assert_eq!(transaction.data, Some(Bytes(hex::decode("095ea7b300000000000000000000000096984c3e77f38ed01d1c3d98f4bd7c8b11d51d7e00000000000000000000000000000000000000000000000000000000000003e8").unwrap())));
         assert_eq!(
             transaction.to,
             Some("03744e31a6b9e6c6f604ff5d8ce1caef1c7bb58c".into())
+        );
+    }
+
+    #[test]
+    fn gas_limit_is_computed_based_on_contract_size() {
+        let extra_gas_limit = 10;
+
+        let transaction = UnsignedTransaction::new_contract_deployment(
+            // contract occupying 5 bytes
+            Bytes(vec![0_u8; 5]),
+            0,
+            0,
+            0,
+            Some(extra_gas_limit),
+        );
+
+        assert_eq!(
+            transaction.gas_limit,
+            U256::from(CONTRACT_CREATION_FEE + BASE_TX_FEE + (5 * GAS_COST_PER_BYTE))
+                + GAS_BUFFER
+                + extra_gas_limit
         );
     }
 }
