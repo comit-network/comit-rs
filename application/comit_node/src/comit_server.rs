@@ -6,9 +6,7 @@ use ethereum_support::EthereumQuantity;
 use event_store::InMemoryEventStore;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
-use ledger_query_service::{
-    BitcoinQuery, DefaultLedgerQueryServiceApiClient, LedgerQueryServiceApiClient,
-};
+use ledger_query_service::DefaultLedgerQueryServiceApiClient;
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     json_config,
@@ -59,22 +57,19 @@ impl ComitServer {
             let ledger_services =
                 LedgerServices::new(ledger_query_service.clone(), Duration::from_millis(100));
 
-            let future_factory = FutureFactory::new(ledger_services);
+            //TODO: not sure this Arc is needed but getting an "outer capture error" in json_config
+            let future_factory = Arc::new(FutureFactory::new(ledger_services));
 
-            let swap_handler = MySwapHandler::new(
-                self.my_keystore.clone(),
-                self.event_store.clone(),
-                runtime,
-                future_factory,
-                ledger_query_service.clone(),
-                bitcoin_node.clone(),
-                ethereum_service.clone(),
-            );
+            let swap_handler = MySwapHandler::new();
 
             let config = json_config(
                 swap_handler,
                 self.my_keystore.clone(),
                 self.event_store.clone(),
+                future_factory.clone(),
+                ledger_query_service.clone(),
+                bitcoin_node.clone(),
+                ethereum_service.clone(),
             );
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
@@ -89,42 +84,16 @@ impl ComitServer {
     }
 }
 
-struct MySwapHandler<C> {
-    my_keystore: Arc<KeyStore>,
-    event_store: Arc<InMemoryEventStore<TradeId>>,
-    runtime: Runtime,
-    future_factory: FutureFactory<LedgerServices>,
-    // TODO: Do we really need that as it is inside the factory?
-    ledger_query_service_api_client: Arc<C>,
-    bitcoin_node: Arc<BitcoinRpcApi>,
-    ethereum_service: Arc<EthereumService>,
-}
+struct MySwapHandler {}
 
-impl<C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>> MySwapHandler<C> {
-    pub fn new(
-        my_keystore: Arc<KeyStore>,
-        event_store: Arc<InMemoryEventStore<TradeId>>,
-        runtime: Runtime,
-        future_factory: FutureFactory<LedgerServices>,
-        ledger_query_service_api_client: Arc<C>,
-        bitcoin_node: Arc<BitcoinRpcApi>,
-        ethereum_service: Arc<EthereumService>,
-    ) -> Self {
-        MySwapHandler {
-            my_keystore,
-            event_store,
-            runtime,
-            future_factory,
-            ledger_query_service_api_client,
-            bitcoin_node,
-            ethereum_service,
-        }
+impl MySwapHandler {
+    pub fn new() -> Self {
+        MySwapHandler {}
     }
 }
 
-impl<C: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>
-    SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
-    for MySwapHandler<C>
+impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
+    for MySwapHandler
 {
     fn handle(
         &mut self,
@@ -138,9 +107,8 @@ impl<C: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>
 }
 
 //TODO: Should be Ethereum, EthereumQuery
-impl<C: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>
-    SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>
-    for MySwapHandler<C>
+impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>
+    for MySwapHandler
 {
     fn handle(
         &mut self,
