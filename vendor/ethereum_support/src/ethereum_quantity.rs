@@ -23,9 +23,8 @@ impl EthereumQuantity {
     }
 
     pub fn from_eth(eth: f64) -> Self {
-        let dec =
-            //.unwrap_or_else(|| panic!(format!("{} is an invalid eth value", eth).as_str()));;
-            BigDecimal::from_f64(eth).expect(format!("{} is an invalid eth value", eth).as_str());
+        let dec = BigDecimal::from_f64(eth)
+            .unwrap_or_else(|| panic!("{} is an invalid eth value !", eth));
         Self::from_eth_bigdec(&dec)
     }
 
