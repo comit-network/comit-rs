@@ -9,3 +9,4 @@ authors = [
 ]
 
 [dependencies]
+failure = "0.1"

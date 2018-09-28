@@ -4,7 +4,8 @@ use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Network, ToP2w
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
-use event_store::{Error as EventError, EventStore, InMemoryEventStore};
+use event_store::EventStore;
+use failure::Error;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
 use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
@@ -36,12 +37,12 @@ pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
         + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
     //TODO: Remove 'static?
-    C: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, //        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
+    E: 'static + EventStore<TradeId> + Send + Sync,
+    C: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
 >(
     mut handler: H,
     key_store: Arc<KeyStore>,
-    //TODO: should EventStore type parameter be passed as type parameter?
-    event_store: Arc<InMemoryEventStore<TradeId>>,
+    event_store: Arc<E>,
     future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
@@ -255,24 +256,24 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
     ethereum_service: Arc<EthereumService>,
     htlc_identifier: HtlcId,
     //TODO: EventError is probably inappropriate. Needs to understand how Failure works
-) -> Result<(), EventError> {
+) -> Result<(), Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
     event_store.add_event(trade_id.clone(), trade_funded)?;
 
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
 
-    let tx_id = ethereum_service
-        .deploy_htlc(EtherHtlcParams {
-            refund_address: order_taken.bob_refund_address,
-            success_address: order_taken.alice_success_address,
-            time_lock: order_taken.bob_contract_time_lock,
-            amount: order_taken.buy_amount,
-            secret_hash: order_taken.contract_secret_lock.clone().into(),
-        }).unwrap();
+    let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
+        refund_address: order_taken.bob_refund_address,
+        success_address: order_taken.alice_success_address,
+        time_lock: order_taken.bob_contract_time_lock,
+        amount: order_taken.buy_amount,
+        secret_hash: order_taken.contract_secret_lock.clone().into(),
+    })?;
 
     let deployed: ContractDeployed<Ethereum, Bitcoin> =
         ContractDeployed::new(trade_id, tx_id.to_string());
 
-    event_store.add_event(trade_id, deployed)
+    let result = event_store.add_event(trade_id, deployed)?;
+    Ok(result)
 }

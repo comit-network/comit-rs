@@ -3,10 +3,13 @@ use secp256k1_support::KeyPair;
 use swap_protocols::ledger::Ledger;
 use swaps::common::TradeId;
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "Cannot unlock HTLC")]
     Unlocking,
+    #[fail(display = "Node connection issue")]
     NodeConnection,
+    #[fail(display = "Internal Error")]
     Internal,
 }
 
