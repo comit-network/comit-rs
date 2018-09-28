@@ -69,7 +69,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         dest: D,
         value: BitcoinQuantity,
     ) -> (Sha256dHash, TransactionOutput) {
-        let address = dest.to_p2wpkh_address(Network::Regtest);
+        let address = dest.into_p2wpkh_address(Network::Regtest);
 
         let txid = self
             .send_to_address(&address.clone().into(), value.bitcoin())

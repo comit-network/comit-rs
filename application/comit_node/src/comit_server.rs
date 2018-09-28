@@ -91,7 +91,7 @@ impl
         let bob_success_address = bob_success_keypair
             .public_key()
             .clone()
-            .to_p2wpkh_address(request.source_ledger.network())
+            .into_p2wpkh_address(request.source_ledger.network())
             .into();
         debug!(
             "Generated transient success address for Bob is {}",

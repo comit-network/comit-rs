@@ -63,7 +63,7 @@ fn handle_post_sell_orders(
     let bob_success_address = bob_success_keypair
         .public_key()
         .clone()
-        .to_p2wpkh_address(network);
+        .into_p2wpkh_address(network);
 
     let order_taken = OrderTaken {
         uid: trade_id,

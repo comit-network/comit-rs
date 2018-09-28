@@ -4,7 +4,7 @@ use rand::Rng;
 use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct KeyPair {
     secret_key: SecretKey,
     public_key: PublicKey,
@@ -30,8 +30,12 @@ impl KeyPair {
         SecretKey::new(&*super::SECP, rng).into()
     }
 
-    pub fn secret_key(&self) -> &SecretKey {
-        &self.secret_key
+    pub fn secret_key(self) -> SecretKey {
+        self.secret_key
+    }
+
+    pub fn public_key(self) -> PublicKey {
+        self.public_key
     }
 
     pub fn from_secret_key_slice(data: &[u8]) -> Result<KeyPair, Error> {
@@ -43,10 +47,6 @@ impl KeyPair {
     pub fn from_secret_key_hex(key: &str) -> Result<KeyPair, Error> {
         let bytes = hex::decode(key).map_err(Error::Hex)?;
         KeyPair::from_secret_key_slice(&bytes[..])
-    }
-
-    pub fn public_key(&self) -> &PublicKey {
-        &self.public_key
     }
 
     pub fn sign_ecdsa(&self, message: Message) -> Signature {
@@ -76,9 +76,9 @@ impl From<(SecretKey, PublicKey)> for KeyPair {
     }
 }
 
-impl Into<(SecretKey, PublicKey)> for KeyPair {
-    fn into(self) -> (SecretKey, PublicKey) {
-        (self.secret_key, self.public_key)
+impl From<KeyPair> for (SecretKey, PublicKey) {
+    fn from(keypair: KeyPair) -> (SecretKey, PublicKey) {
+        (keypair.secret_key, keypair.public_key)
     }
 }
 
@@ -97,7 +97,7 @@ mod test {
         ).unwrap();
 
         assert_eq!(
-            *keypair.public_key(),
+            keypair.public_key(),
             PublicKey::from_hex(
                 "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352"
             ).unwrap(),
