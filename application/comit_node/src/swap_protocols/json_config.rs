@@ -1,26 +1,34 @@
 use bitcoin_payment_future::LedgerServices;
-use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::{BitcoinQuantity, ToP2wpkhAddress};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
-use event_store::{EventStore, InMemoryEventStore};
+use event_store::{Error as EventError, EventStore, InMemoryEventStore};
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
 use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
 use std::sync::Arc;
 use swap_protocols::{
     handler::SwapRequestHandler,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003::{self, ledger_htlc_service::EthereumService},
+    ledger::{
+        bitcoin::{Bitcoin, HtlcId},
+        ethereum::Ethereum,
+    },
+    rfc003::{
+        self,
+        ledger_htlc_service::{EtherHtlcParams, EthereumService, LedgerHtlcService},
+    },
     wire_types::{Asset, Ledger, SwapProtocol, SwapRequestHeaders, SwapResponse},
 };
-use swaps::{bob_events::OrderTaken, common::TradeId};
+use swaps::{
+    bob_events::{ContractDeployed, OrderTaken, TradeFunded},
+    common::TradeId,
+};
 use tokio;
 use transport_protocol::{
     config::Config,
     json::{self, Request, Response},
-    RequestError, Status,
+    Status,
 };
 
 pub fn json_config<
@@ -35,7 +43,6 @@ pub fn json_config<
     event_store: Arc<InMemoryEventStore<TradeId>>,
     future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
-    bitcoin_node: Arc<BitcoinRpcApi>,
     ethereum_service: Arc<EthereumService>,
 ) -> Config<Request, Response> {
     Config::new().on_request(
@@ -79,15 +86,14 @@ pub fn json_config<
                             body!(request.get_body()),
                         );
                         match handler.handle(request.clone()) {
-                            SwapResponse::Decline => {
-                                Response::new(RequestError::TradeDeclined {}.status())
-                            }
+                            SwapResponse::Decline => Response::new(Status::SE(21)),
                             SwapResponse::Accept => build_response(
                                 request,
                                 key_store.clone(),
                                 event_store.clone(),
                                 future_factory.clone(),
                                 ledger_query_service_api_client.clone(),
+                                ethereum_service.clone(),
                             ),
                         }
                     }
@@ -112,12 +118,8 @@ pub fn json_config<
                             body!(request.get_body()),
                         );
                         match handler.handle(request.clone()) {
-                            SwapResponse::Decline => {
-                                Response::new(RequestError::TradeDeclined {}.status())
-                            }
-                            SwapResponse::Accept => {
-                                Response::new(RequestError::UnsupportedLedger {}.status())
-                            }
+                            SwapResponse::Decline => Response::new(Status::SE(21)),
+                            SwapResponse::Accept => Response::new(Status::SE(22)),
                         }
                     }
                     _ => Response::new(Status::SE(22)), // 22 = unsupported pair or source/target combination
@@ -130,12 +132,16 @@ pub fn json_config<
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
 // TODO: Probably split this in 3: save event, setup future, build response
-fn build_response<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>(
+fn build_response<
+    E: 'static + EventStore<TradeId> + Send + Sync,
+    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>,
+>(
     request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
     key_store: Arc<KeyStore>,
     event_store: Arc<E>,
     future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
+    ethereum_service: Arc<EthereumService>,
 ) -> Response {
     // TODO: need to remove confusion as bob/my are interchangeable and interchanged. See #297
     // TODO: Prefer "redeem vs refund vs final" terminology than the "success" that may be misleading
@@ -184,7 +190,7 @@ fn build_response<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin
             "Declining trade because of problem with event store {:?}",
             e
         );
-        return json::Response::new(Status::SE(99));
+        return json::Response::new(Status::RE(0));
     };
 
     //TODO: needs to be Some()
@@ -198,9 +204,19 @@ fn build_response<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin
     tokio::run(
         stream
             .take(1)
-            .for_each(|tx| {
-                // TODO: actually do something with the tx
-                println!("Tx: {}", tx);
+            .for_each(move |transaction_id| {
+                // TODO: Proceed with sanity checks (issue to be open)
+                println!("Tx: {}", transaction_id);
+                // TODO: Analyse the transaction to get the exact vout
+                let _ = deploy_eth_htlc(
+                    uid,
+                    event_store.clone(),
+                    ethereum_service.clone(),
+                    HtlcId {
+                        transaction_id,
+                        vout: 0,
+                    },
+                );
                 Ok(())
             }).map_err(|e| {
                 error!("Ledger Query Service Failure: {:#?}", e);
@@ -214,4 +230,32 @@ fn build_response<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin
         source_ledger_success_identity: bob_success_keypair.public_key().clone().into(),
         target_ledger_lock_duration: twelve_hours,
     })
+}
+
+fn deploy_eth_htlc<E: EventStore<TradeId>>(
+    trade_id: TradeId,
+    event_store: Arc<E>,
+    ethereum_service: Arc<EthereumService>,
+    htlc_identifier: HtlcId,
+    //TODO: EventError is probably inappropriate. Needs to understand how Failure works
+) -> Result<(), EventError> {
+    let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
+
+    event_store.add_event(trade_id.clone(), trade_funded)?;
+
+    let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
+
+    let tx_id = ethereum_service
+        .deploy_htlc(EtherHtlcParams {
+            refund_address: order_taken.bob_refund_address,
+            success_address: order_taken.alice_success_address,
+            time_lock: order_taken.bob_contract_time_lock,
+            amount: order_taken.buy_amount,
+            secret_hash: order_taken.contract_secret_lock.clone().into(),
+        }).unwrap();
+
+    let deployed: ContractDeployed<Ethereum, Bitcoin> =
+        ContractDeployed::new(trade_id, tx_id.to_string());
+
+    event_store.add_event(trade_id, deployed)
 }

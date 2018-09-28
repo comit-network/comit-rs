@@ -1,5 +1,4 @@
 use bitcoin_payment_future::LedgerServices;
-use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::BitcoinQuantity;
 use comit_wallet::KeyStore;
 use ethereum_support::EthereumQuantity;
@@ -16,28 +15,29 @@ use swap_protocols::{
     SwapRequestHandler,
 };
 use swaps::common::TradeId;
-use tokio::{self, net::TcpListener, runtime::Runtime};
+use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
 
 pub struct ComitServer {
     event_store: Arc<InMemoryEventStore<TradeId>>,
     my_keystore: Arc<KeyStore>,
+    ethereum_service: Arc<EthereumService>,
 }
 
 impl ComitServer {
-    pub fn new(event_store: Arc<InMemoryEventStore<TradeId>>, my_keystore: Arc<KeyStore>) -> Self {
+    pub fn new(
+        event_store: Arc<InMemoryEventStore<TradeId>>,
+        my_keystore: Arc<KeyStore>,
+        ethereum_service: Arc<EthereumService>,
+    ) -> Self {
         Self {
             event_store,
             my_keystore,
+            ethereum_service,
         }
     }
 
-    pub fn listen(
-        self,
-        addr: SocketAddr,
-        bitcoin_node: Arc<BitcoinRpcApi>,
-        ethereum_service: Arc<EthereumService>,
-    ) -> impl Future<Item = (), Error = io::Error> {
+    pub fn listen(self, addr: SocketAddr) -> impl Future<Item = (), Error = io::Error> {
         info!("ComitServer listening at {:?}", addr);
         let socket = TcpListener::bind(&addr).unwrap();
 
@@ -45,10 +45,7 @@ impl ComitServer {
             let peer_addr = connection.peer_addr();
             let codec = json::JsonFrameCodec::default();
 
-            // TODO: Apparently Runtime::run() is better
-            let runtime = Runtime::new().unwrap();
-
-            //TODO: obviously need to get url from parameters
+            //TODO: Pass ledger query service in Comitserver
             let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
                 "http://bitcoin_ledger_service.com/".parse().unwrap(),
             ));
@@ -60,7 +57,7 @@ impl ComitServer {
             //TODO: not sure this Arc is needed but getting an "outer capture error" in json_config
             let future_factory = Arc::new(FutureFactory::new(ledger_services));
 
-            let swap_handler = MySwapHandler::new();
+            let swap_handler = MySwapHandler::default();
 
             let config = json_config(
                 swap_handler,
@@ -68,8 +65,7 @@ impl ComitServer {
                 self.event_store.clone(),
                 future_factory.clone(),
                 ledger_query_service.clone(),
-                bitcoin_node.clone(),
-                ethereum_service.clone(),
+                self.ethereum_service.clone(),
             );
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
@@ -84,13 +80,8 @@ impl ComitServer {
     }
 }
 
+#[derive(Default)]
 struct MySwapHandler {}
-
-impl MySwapHandler {
-    pub fn new() -> Self {
-        MySwapHandler {}
-    }
-}
 
 impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
     for MySwapHandler

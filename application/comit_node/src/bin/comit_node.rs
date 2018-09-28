@@ -144,18 +144,15 @@ fn main() {
         });
     }
 
-    let server = ComitServer::new(comit_server_event_store, bob_key_store);
-
-    tokio::run(
-        server
-            .listen(
-                settings.comit.comit_listen,
-                bitcoin_rpc_client.clone(),
-                ethereum_service.clone(),
-            ).map_err(|e| {
-                error!("ComitServer shutdown: {:?}", e);
-            }),
+    let server = ComitServer::new(
+        comit_server_event_store,
+        bob_key_store,
+        ethereum_service.clone(),
     );
+
+    tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
+        error!("ComitServer shutdown: {:?}", e);
+    }));
 }
 
 fn load_settings() -> ComitNodeSettings {

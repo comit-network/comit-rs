@@ -82,6 +82,7 @@ pub fn post_orders_funding(
     Ok(())
 }
 
+//TODO: this can be removed
 fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: bitcoin::HtlcId,

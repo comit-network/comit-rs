@@ -1,3 +1,4 @@
+/* TODO uncomment
 extern crate tokio;
 extern crate transport_protocol;
 #[macro_use]
@@ -18,22 +19,33 @@ extern crate memsocket;
 extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate spectral;
+extern crate web3;
+extern crate failure;
 
 use bitcoin_support::{BitcoinQuantity, Blocks};
-use comit_node::swap_protocols::{
-    json_config,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003,
-    wire_types::SwapResponse,
-    SwapRequestHandler,
+use comit_node::{
+    bitcoin_payment_future::LedgerServices,
+    futures_ext::FutureFactory,
+    swap_protocols::{
+        json_config,
+        ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+        rfc003,
+        wire_types::SwapResponse,
+        SwapRequestHandler,
+    },
 };
 use comit_wallet::fake_key_store::FakeKeyStoreFactory;
 use ethereum_support::EthereumQuantity;
 use event_store::InMemoryEventStore;
+use failure::Error as FailureError;
 use futures::future::Future;
 use hex::FromHex;
 use spectral::prelude::*;
-use std::{str::FromStr, sync::Arc};
+use std::{
+    str::FromStr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use tokio::runtime::Runtime;
 use transport_protocol::{
     client::*,
@@ -43,6 +55,37 @@ use transport_protocol::{
     shutdown_handle::{self, ShutdownHandle},
     Status,
 };
+use web3::types::TransactionId;
+
+//TODO: This is code duplication
+struct FakeLedgerQueryService {
+    number_of_invocations_before_result: u32,
+    invocations: Mutex<u32>,
+    results: Vec<TransactionId>,
+}
+
+//TODO: This is code duplication
+impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for FakeLedgerQueryService {
+    fn create(&self, _query: BitcoinQuery) -> Result<QueryId<Bitcoin>, FailureError> {
+        Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
+    }
+
+    fn fetch_results(&self, _query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, FailureError> {
+        let mut invocations = self.invocations.lock().unwrap();
+
+        *invocations += 1;
+
+        if *invocations >= self.number_of_invocations_before_result {
+            Ok(self.results.clone())
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    fn delete(&self, _query: &QueryId<Bitcoin>) {
+        unimplemented!()
+    }
+}
 
 fn setup<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
@@ -64,11 +107,32 @@ fn setup<
             .start::<JsonFrameHandler>();
     let (alice_server, alice_shutdown_handle) = shutdown_handle::new(alice_server);
 
+    let ledger_query_service = Arc::new(FakeLedgerQueryService {
+        number_of_invocations_before_result: 5,
+        invocations: Mutex::new(0),
+        results: vec![
+            "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4"
+                .parse()
+                .unwrap(),
+        ],
+    });
+
+    // TODO: Duration to come from somewhere else
+    let ledger_services =
+        LedgerServices::new(ledger_query_service.clone(), Duration::from_millis(100));
+
+    //TODO: not sure this Arc is needed but getting an "outer capture error" in json_config
+    let future_factory = Arc::new(FutureFactory::new(ledger_services));
+
     let (bob_server, alice_client) = Connection::new(
         json_config(
             swap_request_handler,
             Arc::new(FakeKeyStoreFactory::create()),
             Arc::new(InMemoryEventStore::new()),
+            future_factory,
+            ledger_query_service,
+            bitcoin_node,
+            ethereum_service,
         ),
         JsonFrameCodec::default(),
         bob,
@@ -346,3 +410,4 @@ fn rate_handler_accept_offer_eth_btc() {
         .is_ok()
         .is_equal_to(&Response::new(Status::SE(22)));
 }
+*/

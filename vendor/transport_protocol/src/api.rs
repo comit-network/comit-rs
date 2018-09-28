@@ -16,9 +16,6 @@ pub enum RequestError {
     UnknownMandatoryHeaders(Vec<String>),
     MalformedHeader(String),
     MalformedField(String),
-    TradeDeclined,
-    UnsupportedLedger,
-    InternalError,
 }
 
 impl RequestError {
@@ -28,9 +25,6 @@ impl RequestError {
             RequestError::UnknownMandatoryHeaders(_) => Status::SE(01),
             RequestError::MalformedHeader(_) => Status::SE(00),
             RequestError::MalformedField(_) => Status::SE(00),
-            RequestError::TradeDeclined => Status::SE(21),
-            RequestError::UnsupportedLedger => Status::SE(22),
-            RequestError::InternalError => Status::SE(99),
         }
     }
 }
@@ -54,7 +48,6 @@ pub trait IntoFrame<F> {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-//TODO: Force users to use a specific type instead of u8.
 pub enum Status {
     OK(u8),
     SE(u8),
