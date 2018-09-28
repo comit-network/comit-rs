@@ -104,9 +104,8 @@ impl UnsignedTransaction {
         let contract_data = contract.into();
         let data_bytes = contract_data.0.len();
         let gas_limit = CONTRACT_CREATION_FEE + BASE_TX_FEE + data_bytes * GAS_COST_PER_BYTE;
-        let buffered_gas_limit = U256::from(gas_limit)
-            + U256::from(GAS_BUFFER)
-            + extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
+        let buffered_gas_limit =
+            U256::from(gas_limit) + U256::from(GAS_BUFFER) + extra_gas_limit.unwrap_or(0);
 
         UnsignedTransaction {
             nonce: nonce.into(),
@@ -125,12 +124,10 @@ impl UnsignedTransaction {
         nonce: N,
         extra_gas_limit: Option<u32>,
     ) -> Self {
-        let extra_gas_limit = extra_gas_limit.map(Into::into).unwrap_or(U256::from(0));
-
         UnsignedTransaction {
             nonce: nonce.into(),
             gas_price: gas_price.into(),
-            gas_limit: U256::from(BASE_TX_FEE) + extra_gas_limit,
+            gas_limit: U256::from(BASE_TX_FEE) + extra_gas_limit.unwrap_or(0),
             to: Some(to.into()),
             value: value.into(),
             data: None,
