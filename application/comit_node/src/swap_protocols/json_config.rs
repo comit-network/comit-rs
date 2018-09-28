@@ -1,5 +1,6 @@
+use bitcoin_htlc;
 use bitcoin_payment_future::LedgerServices;
-use bitcoin_support::{BitcoinQuantity, ToP2wpkhAddress};
+use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Network, ToP2wpkhAddress};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
@@ -44,6 +45,7 @@ pub fn json_config<
     future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_network: Network,
 ) -> Config<Request, Response> {
     Config::new().on_request(
         "SWAP",
@@ -87,13 +89,14 @@ pub fn json_config<
                         );
                         match handler.handle(request.clone()) {
                             SwapResponse::Decline => Response::new(Status::SE(21)),
-                            SwapResponse::Accept => build_response(
+                            SwapResponse::Accept => process(
                                 request,
                                 key_store.clone(),
                                 event_store.clone(),
                                 future_factory.clone(),
                                 ledger_query_service_api_client.clone(),
                                 ethereum_service.clone(),
+                                bitcoin_network,
                             ),
                         }
                     }
@@ -131,8 +134,7 @@ pub fn json_config<
 
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
-// TODO: Probably split this in 3: save event, setup future, build response
-fn build_response<
+fn process<
     E: 'static + EventStore<TradeId> + Send + Sync,
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>,
 >(
@@ -142,16 +144,15 @@ fn build_response<
     future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_network: Network,
 ) -> Response {
-    // TODO: need to remove confusion as bob/my are interchangeable and interchanged. See #297
-    // TODO: Prefer "redeem vs refund vs final" terminology than the "success" that may be misleading
-    let alice_refund_address = request.source_ledger_refund_identity.clone().into();
+    let alice_refund_address: BitcoinAddress = request.source_ledger_refund_identity.clone().into();
 
     let uid = TradeId::default();
 
     let bob_success_keypair =
         key_store.get_transient_keypair(&uid.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
-    let bob_success_address = bob_success_keypair
+    let bob_success_address: BitcoinAddress = bob_success_keypair
         .public_key()
         .clone()
         .to_p2wpkh_address(request.source_ledger.network())
@@ -173,13 +174,13 @@ fn build_response<
 
     let order_taken = OrderTaken::<Ethereum, Bitcoin> {
         uid,
-        contract_secret_lock: request.secret_hash,
+        contract_secret_lock: request.secret_hash.clone(),
         alice_contract_time_lock: request.source_ledger_lock_duration,
         bob_contract_time_lock: twelve_hours,
-        alice_refund_address,
+        alice_refund_address: alice_refund_address.clone(),
         alice_success_address: request.target_ledger_success_identity.into(),
         bob_refund_address: bob_refund_address.clone(),
-        bob_success_address,
+        bob_success_address: bob_success_address.clone(),
         bob_success_keypair: bob_success_keypair.clone(),
         buy_amount: request.target_asset,
         sell_amount: request.source_asset,
@@ -187,17 +188,35 @@ fn build_response<
 
     if let Err(e) = event_store.add_event(order_taken.uid, order_taken.clone()) {
         error!(
-            "Declining trade because of problem with event store {:?}",
+            "Declining trade because of problem with event store: {:?}",
             e
         );
         return json::Response::new(Status::RE(0));
     };
 
-    //TODO: needs to be Some()
-    let query = BitcoinQuery { to_address: None };
+    let btc_lock_time = (60 * 24) / 10;
 
-    //TODO: remove unwrap
-    let query_id = ledger_query_service_api_client.create(query).unwrap();
+    let htlc = bitcoin_htlc::Htlc::new(
+        bob_success_address,
+        alice_refund_address,
+        request.secret_hash,
+        btc_lock_time,
+    );
+
+    let query = BitcoinQuery {
+        to_address: Some(htlc.compute_address(bitcoin_network)),
+    };
+
+    let query_id = match ledger_query_service_api_client.create(query) {
+        Ok(query_id) => query_id,
+        Err(e) => {
+            error!(
+                "Declining trade because of problem with Bitcoin Ledger Query Service: {:?}",
+                e
+            );
+            return json::Response::new(Status::RE(0));
+        }
+    };
 
     let stream = future_factory.create_stream_from_template(query_id);
 
@@ -205,9 +224,8 @@ fn build_response<
         stream
             .take(1)
             .for_each(move |transaction_id| {
-                // TODO: Proceed with sanity checks (issue to be open)
-                println!("Tx: {}", transaction_id);
-                // TODO: Analyse the transaction to get the exact vout
+                // TODO: Proceed with sanity checks & Analyze the tx to get vout. See #302
+                debug!("Ledger Query Service returned tx: {}", transaction_id);
                 let _ = deploy_eth_htlc(
                     uid,
                     event_store.clone(),
@@ -223,7 +241,6 @@ fn build_response<
             }),
     );
 
-    // TODO: probably need to put 20 in an enum?
     let response = json::Response::new(Status::OK(20));
     response.with_body(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
         target_ledger_refund_identity: bob_refund_address.into(),

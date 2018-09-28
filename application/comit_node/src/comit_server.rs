@@ -1,5 +1,5 @@
 use bitcoin_payment_future::LedgerServices;
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::{BitcoinQuantity, Network};
 use comit_wallet::KeyStore;
 use ethereum_support::EthereumQuantity;
 use event_store::InMemoryEventStore;
@@ -22,6 +22,7 @@ pub struct ComitServer {
     event_store: Arc<InMemoryEventStore<TradeId>>,
     my_keystore: Arc<KeyStore>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_network: Network,
 }
 
 impl ComitServer {
@@ -29,11 +30,13 @@ impl ComitServer {
         event_store: Arc<InMemoryEventStore<TradeId>>,
         my_keystore: Arc<KeyStore>,
         ethereum_service: Arc<EthereumService>,
+        bitcoin_network: Network,
     ) -> Self {
         Self {
             event_store,
             my_keystore,
             ethereum_service,
+            bitcoin_network,
         }
     }
 
@@ -66,6 +69,7 @@ impl ComitServer {
                 future_factory.clone(),
                 ledger_query_service.clone(),
                 self.ethereum_service.clone(),
+                self.bitcoin_network,
             );
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();

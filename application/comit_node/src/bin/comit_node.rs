@@ -148,6 +148,7 @@ fn main() {
         comit_server_event_store,
         bob_key_store,
         ethereum_service.clone(),
+        btc_network,
     );
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
