@@ -75,12 +75,12 @@ impl Htlc {
 
     pub fn can_be_unlocked_with(
         &self,
-        got_secret: &Secret,
-        got_keypair: &KeyPair,
+        got_secret: Secret,
+        got_keypair: KeyPair,
     ) -> Result<(), UnlockingError> {
-        let got_pubkey_hash: PubkeyHash = got_keypair.public_key().clone().into();
+        let got_pubkey_hash: PubkeyHash = got_keypair.public_key().into();
         let got_secret_hash = got_secret.hash();
-        let expected_pubkey_hash = &self.recipient_success_pubkey_hash;
+        let expected_pubkey_hash = self.recipient_success_pubkey_hash;
         let expected_secret_hash = &self.secret_hash;
 
         if *expected_secret_hash != got_secret_hash {
@@ -90,11 +90,11 @@ impl Htlc {
             });
         }
 
-        if *expected_pubkey_hash != got_pubkey_hash {
+        if expected_pubkey_hash != got_pubkey_hash {
             return Err(UnlockingError::WrongKeyPair {
-                keypair: got_keypair.clone(),
+                keypair: got_keypair,
                 got: got_pubkey_hash,
-                expected: expected_pubkey_hash.clone(),
+                expected: expected_pubkey_hash,
             });
         }
 
@@ -102,7 +102,7 @@ impl Htlc {
     }
 
     pub fn unlock_with_secret(&self, keypair: KeyPair, secret: &Secret) -> UnlockParameters {
-        let public_key = keypair.public_key().clone();
+        let public_key = keypair.public_key();
         UnlockParameters {
             witness: vec![
                 Witness::Signature(keypair),
@@ -117,7 +117,7 @@ impl Htlc {
     }
 
     pub fn unlock_after_timeout(&self, keypair: KeyPair) -> UnlockParameters {
-        let public_key = keypair.public_key().clone();
+        let public_key = keypair.public_key();
         UnlockParameters {
             witness: vec![
                 Witness::Signature(keypair),

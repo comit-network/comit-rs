@@ -81,7 +81,7 @@ impl FromStr for SecretHash {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Secret([u8; SHA256_DIGEST_LENGTH]);
 
 impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {

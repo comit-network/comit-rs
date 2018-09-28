@@ -44,7 +44,7 @@ fn main() {
         let btc_address_regtest = public_key.into_p2wpkh_address(Network::Regtest);
         println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
     }
-    println!("pubkey_hash: {:?}", PubkeyHash::from(public_key.clone()));
+    println!("pubkey_hash: {:?}", PubkeyHash::from(public_key));
 
     {
         let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Bitcoin);

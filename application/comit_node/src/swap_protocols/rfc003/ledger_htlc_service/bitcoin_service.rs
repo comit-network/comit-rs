@@ -105,13 +105,13 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
         let htlc = bitcoin_htlc::Htlc::new(
             bob_success_pubkey_hash,
             alice_refund_pubkey_hash,
-            secret.hash().clone(),
+            secret.hash(),
             lock_time.clone().into(),
         );
 
-        htlc.can_be_unlocked_with(&secret, &bob_success_keypair)?;
+        htlc.can_be_unlocked_with(secret, bob_success_keypair)?;
 
-        let unlocking_parameters = htlc.unlock_with_secret(bob_success_keypair.clone(), &secret);
+        let unlocking_parameters = htlc.unlock_with_secret(bob_success_keypair, &secret);
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(
