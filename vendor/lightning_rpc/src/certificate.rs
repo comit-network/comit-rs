@@ -3,6 +3,8 @@ use std::{fs, io, path::Path};
 use tls_api::{self, Certificate as TlsCertificate};
 use FromFile;
 
+// tls_api::Certificate doesn't implement Debug.
+#[allow(missing_debug_implementations)]
 pub struct Certificate(tls_api::Certificate);
 
 impl FromFile for Certificate {
