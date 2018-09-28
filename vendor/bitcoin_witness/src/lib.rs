@@ -3,8 +3,6 @@
 
 extern crate bitcoin_support;
 extern crate secp256k1_support;
-#[macro_use]
-extern crate debug_stub_derive;
 
 //https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
 //Wallets that don't want to signal replaceability should use either a
