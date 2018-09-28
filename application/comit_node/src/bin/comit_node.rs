@@ -23,7 +23,7 @@ use comit_node::{
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
-    settings::settings::ComitNodeSettings,
+    settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use comit_wallet::KeyStore;
