@@ -47,7 +47,7 @@ pub fn harness(
     EventLoopHandle,
     Container<DockerCli, ParityEthereum>,
 ) {
-    pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let (alice_keypair, alice) =
         new_account("63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992");

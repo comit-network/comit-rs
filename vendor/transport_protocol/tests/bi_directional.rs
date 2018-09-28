@@ -23,7 +23,7 @@ impl From<Ping> for Request {
 
 #[test]
 fn given_two_servers_both_can_ping_each_other() {
-    ::pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let (alice, bob) = memsocket::unbounded();
 

@@ -22,7 +22,6 @@ use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
-
 use tc_coblox_bitcoincore::BitcoinCore;
 use testcontainers::{clients::DockerCli, Docker};
 
@@ -83,7 +82,7 @@ fn fund_htlc(
 
 #[test]
 fn redeem_htlc_with_secret() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
@@ -129,7 +128,7 @@ fn redeem_htlc_with_secret() {
 
 #[test]
 fn redeem_refund_htlc() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);

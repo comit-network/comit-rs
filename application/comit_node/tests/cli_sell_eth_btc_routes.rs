@@ -100,7 +100,7 @@ fn create_rocket_client() -> Client {
 
 #[test]
 fn post_sell_offer_of_x_eth_for_btc() {
-    pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let client = create_rocket_client();
 

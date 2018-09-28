@@ -196,7 +196,7 @@ fn can_receive_swap_request() {
         > for CaptureSwapMessage
     {}
 
-    ::pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let (sender, receiver) = futures::sync::oneshot::channel();
 

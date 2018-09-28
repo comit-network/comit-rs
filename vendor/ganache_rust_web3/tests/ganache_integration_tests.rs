@@ -12,7 +12,7 @@ use web3::{futures::Future, transports};
 
 #[test]
 fn evm_snapshot() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
     let (_event_loop, client) = tc_web3_client::new(&container);
@@ -26,7 +26,7 @@ fn evm_snapshot() {
 
 #[test]
 fn evm_revert() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
     let (_event_loop, client) = tc_web3_client::new(&container);
@@ -46,7 +46,7 @@ fn evm_revert() {
 
 #[test]
 fn evm_increase_time() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
 
@@ -69,7 +69,7 @@ fn evm_increase_time() {
 
 #[test]
 fn evm_mine() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(GanacheCli::default());
     let (_event_loop, client) = tc_web3_client::new(&container);

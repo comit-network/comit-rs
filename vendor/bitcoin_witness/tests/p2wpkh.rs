@@ -15,13 +15,12 @@ use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, Privat
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
-
 use tc_coblox_bitcoincore::BitcoinCore;
 use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
 fn redeem_single_p2wpkh() {
-    env_logger::try_init();
+    let _ = env_logger::try_init();
 
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);

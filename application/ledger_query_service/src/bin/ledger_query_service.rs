@@ -16,7 +16,7 @@ use ledger_query_service::{
 use std::{env::var, sync::Arc, thread, time::Duration};
 
 fn main() {
-    pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let config = rocket::Config::development().unwrap();
 

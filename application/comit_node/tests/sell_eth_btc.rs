@@ -167,7 +167,7 @@ fn create_bitcoin_service() -> BitcoinService {
 
 #[test]
 fn given_an_accepted_trade_when_provided_with_funding_tx_should_deploy_htlc() {
-    pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
     let event_store = InMemoryEventStore::default();
@@ -194,7 +194,7 @@ pub struct RedeemETHNotificationBody {
 
 #[test]
 fn given_an_deployed_htlc_and_secret_should_redeem_htlc() {
-    pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
     let bitcoin_service = create_bitcoin_service();
 
     let event_store = InMemoryEventStore::default();

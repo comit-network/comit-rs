@@ -45,7 +45,7 @@ fn new_account(secret_key: &str) -> (KeyPair, Address) {
 
 #[test]
 fn given_to_address_query_when_matching_transaction_is_processed_returns_result() {
-    pretty_env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let container = DockerCli::new().run(ParityEthereum::default());
     let (_event_loop, web3) = tc_web3_client::new(&container);
