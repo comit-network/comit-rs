@@ -2,6 +2,7 @@
 #![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
+#![feature(tool_lints)]
 
 #[macro_use]
 extern crate debug_stub_derive;
