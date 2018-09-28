@@ -78,10 +78,6 @@ impl Encodable for UnsignedTransaction {
             .append(&self.gas_price)
             .append(&self.gas_limit);
 
-        s.append(&self.nonce);
-        s.append(&self.gas_price);
-        s.append(&self.gas_limit);
-
         match self.to {
             Some(ref address) => s.append(address),
             None => s.append(&""),
