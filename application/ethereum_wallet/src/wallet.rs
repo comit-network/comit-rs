@@ -10,6 +10,7 @@ pub trait Wallet: Send + Sync {
     fn calculate_contract_address(&self, nonce: U256) -> Address;
 }
 
+#[derive(Debug)]
 pub struct InMemoryWallet {
     keypair: KeyPair,
     chain_id: u8,
@@ -44,10 +45,9 @@ impl Wallet for InMemoryWallet {
         let h160 = self.keypair.public_key().to_ethereum_address();
         let ethereum_address: &[u8] = h160.as_ref();
 
-        stream.append(&ethereum_address);
-        stream.append(&nonce);
+        let raw_stream = stream.append(&ethereum_address).append(&nonce).as_raw();
 
-        let value = tiny_keccak::keccak256(stream.as_raw());
+        let value = tiny_keccak::keccak256(raw_stream);
 
         let mut address = Address::default();
         address.copy_from_slice(&value[12..]);

@@ -5,6 +5,7 @@ use bitcoin_support::{
 use secp256k1_support::{DerSerializableSignature, Message};
 use witness::{UnlockParameters, Witness};
 
+#[derive(Debug)]
 pub struct PrimedInput {
     input_parameters: UnlockParameters,
     value: BitcoinQuantity,
@@ -57,6 +58,7 @@ impl PrimedInput {
 }
 
 /// A transaction that's ready for signing
+#[derive(Debug)]
 pub struct PrimedTransaction {
     pub inputs: Vec<PrimedInput>,
     pub output_address: Address,

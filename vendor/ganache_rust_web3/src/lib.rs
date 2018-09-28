@@ -1,3 +1,6 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
+
 extern crate web3;
 #[macro_use]
 extern crate serde_derive;
@@ -10,7 +13,7 @@ pub struct Ganache<T: Transport> {
     transport: T,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SnapshotId(U256);
 
 impl<T: Transport> Ganache<T> {

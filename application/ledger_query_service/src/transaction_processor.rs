@@ -14,8 +14,11 @@ pub trait Query<T>: Debug {
     fn matches(&self, transaction: &T) -> bool;
 }
 
+#[derive(DebugStub)]
 pub struct DefaultTransactionProcessor<Q> {
+    #[debug_stub = "Queries"]
     queries: Arc<QueryRepository<Q>>,
+    #[debug_stub = "Results"]
     results: Arc<QueryResultRepository<Q>>,
 }
 

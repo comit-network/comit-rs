@@ -1,6 +1,7 @@
 use ethereum_support::U256;
 use gas_price_service::{Error, GasPriceService};
 
+#[derive(Debug)]
 pub struct StaticGasPriceService(U256);
 
 impl Default for StaticGasPriceService {

@@ -17,12 +17,12 @@ use swaps::{
     errors::Error,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct SellOfferRequestBody {
     amount: f64,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct SellOrderRequestBody {
     alice_success_address: bitcoin_support::Address,
     alice_refund_address: ethereum_support::Address,
@@ -72,15 +72,18 @@ pub fn post_sell_offers(
 ) -> Result<Json<OfferResponseBody<Bitcoin, Ethereum>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_BTC;
 
-    let offer_response_body =
-        handle_sell_offer(event_store.inner(), offer_request_body.into_inner(), symbol)?;
+    let offer_response_body = handle_sell_offer(
+        event_store.inner(),
+        &offer_request_body.into_inner(),
+        symbol,
+    )?;
 
     Ok(Json(offer_response_body))
 }
 
 fn handle_sell_offer(
     event_store: &Arc<InMemoryEventStore<TradeId>>,
-    offer_request_body: SellOfferRequestBody,
+    offer_request_body: &SellOfferRequestBody,
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody<Bitcoin, Ethereum>, Error> {
     let rate = 0.1; //TODO export this somewhere
@@ -94,7 +97,7 @@ fn handle_sell_offer(
         sell_amount: ethereum_support::EthereumQuantity::from_eth(sell_amount),
         buy_amount: bitcoin_support::BitcoinQuantity::from_bitcoin(buy_amount),
     };
-    let id = offer.uid.clone();
+    let id = offer.uid;
     let event: OfferCreated<Bitcoin, Ethereum> = OfferCreated::from(offer.clone());
     event_store.add_event(id, event)?;
     Ok(offer)
@@ -148,7 +151,7 @@ fn handle_sell_orders(
         uid: trade_id,
         secret: secret.clone(),
         alice_success_address: alice_success_address.clone(),
-        alice_refund_address: alice_refund_address.clone(),
+        alice_refund_address,
         long_relative_timelock: lock_duration,
     };
 
@@ -157,8 +160,8 @@ fn handle_sell_orders(
     let order_response = client
         .create_sell_order(&OrderRequestBody {
             contract_secret_lock: secret.hash(),
-            alice_refund_address: alice_refund_address,
-            alice_success_address: alice_success_address,
+            alice_refund_address,
+            alice_success_address,
             alice_contract_time_lock: lock_duration,
             buy_amount: offer.buy_amount,
             sell_amount: offer.sell_amount,

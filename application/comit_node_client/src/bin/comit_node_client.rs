@@ -1,10 +1,9 @@
-extern crate bitcoin_rpc_client;
-extern crate common_types;
-extern crate reqwest;
-extern crate serde;
-#[macro_use]
-extern crate structopt;
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
+
 extern crate comit_node_client;
+extern crate reqwest;
+extern crate structopt;
 extern crate uuid;
 
 use comit_node_client::{
@@ -122,7 +121,7 @@ fn main() {
             amount,
         } => offer::run(
             &client,
-            Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
+            &Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
             order_type,
             amount,
         ),

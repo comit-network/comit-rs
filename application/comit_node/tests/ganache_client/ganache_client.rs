@@ -110,8 +110,7 @@ impl GanacheClient {
     }
 
     pub fn activate_flux_capacitor(&self, hours: u64) {
-        let _ = self
-            .client
+        self.client
             .api::<ganache_rust_web3::Ganache<web3::transports::Http>>()
             .evm_increase_time(60 * 60 * hours)
             .wait()

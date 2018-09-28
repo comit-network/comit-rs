@@ -35,7 +35,7 @@ pub fn post_orders_funding(
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
-        htlc_identifier.into_inner(),
+        &htlc_identifier.into_inner(),
         event_store.inner(),
         bitcoin_service.inner(),
     )?;
@@ -44,17 +44,16 @@ pub fn post_orders_funding(
 
 fn handle_post_orders_funding(
     trade_id: TradeId,
-    htlc_identifier: <Ethereum as Ledger>::HtlcId,
+    htlc_identifier: &<Ethereum as Ledger>::HtlcId,
     event_store: &Arc<InMemoryEventStore<TradeId>>,
     bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
-    let order_taken =
-        event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id)?;
 
     //create new event
-    let trade_funded = BobTradeFunded::<Bitcoin, Ethereum>::new(trade_id, htlc_identifier);
-    event_store.add_event(trade_id.clone(), trade_funded)?;
+    let trade_funded = BobTradeFunded::<Bitcoin, Ethereum>::new(trade_id, *htlc_identifier);
+    event_store.add_event(trade_id, trade_funded)?;
 
     let tx_id = bitcoin_service.deploy_htlc(BitcoinHtlcParams {
         refund_address: order_taken.bob_refund_address,
@@ -72,7 +71,7 @@ fn handle_post_orders_funding(
     Ok(())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct RedeemETHNotificationBody {
     pub secret: Secret,
 }
@@ -104,10 +103,8 @@ fn handle_post_revealed_secret(
     trade_id: TradeId,
     ethereum_service: &Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
 ) -> Result<(), Error> {
-    let trade_funded =
-        event_store.get_event::<BobTradeFunded<Bitcoin, Ethereum>>(trade_id.clone())?;
-    let order_taken =
-        event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id.clone())?;
+    let trade_funded = event_store.get_event::<BobTradeFunded<Bitcoin, Ethereum>>(trade_id)?;
+    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id)?;
 
     let tx_id = ethereum_service.redeem_htlc(
         redeem_eth_notification_body.secret,

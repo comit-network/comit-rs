@@ -6,6 +6,8 @@ use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};
 
+pub type ConnectionLoop<E> = Box<Future<Item = (), Error = ClosedReason<E>> + Send>;
+
 #[derive(Debug)]
 pub enum ClosedReason<C> {
     CodecError(C),
@@ -13,6 +15,7 @@ pub enum ClosedReason<C> {
     InvalidFrame(::api::Error),
 }
 
+#[derive(Debug)]
 pub struct Connection<Req, Res, Codec, Socket> {
     config: Config<Req, Res>,
     codec: Codec,
@@ -41,10 +44,7 @@ impl<
 
     pub fn start<FH: FrameHandler<Frame, Req, Res> + Send + 'static>(
         self,
-    ) -> (
-        Box<Future<Item = (), Error = ClosedReason<CodecErr>> + Send>,
-        Client<Frame, Req, Res>,
-    ) {
+    ) -> (ConnectionLoop<CodecErr>, Client<Frame, Req, Res>) {
         let (sink, stream) = self.codec.framed(self.socket).split();
 
         let (mut frame_handler, response_source) = FH::new(self.config);

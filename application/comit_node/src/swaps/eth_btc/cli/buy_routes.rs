@@ -15,7 +15,7 @@ use swaps::{
     errors::Error,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct BuyOfferRequestBody {
     amount: f64,
 }
@@ -53,14 +53,18 @@ pub fn post_buy_offers(
 ) -> Result<Json<OfferResponseBody<Ethereum, Bitcoin>>, BadRequest<String>> {
     let symbol = TradingSymbol::ETH_BTC;
 
-    let offer = handle_buy_offer(event_store.inner(), offer_request_body.into_inner(), symbol)?;
+    let offer = handle_buy_offer(
+        event_store.inner(),
+        &offer_request_body.into_inner(),
+        symbol,
+    )?;
 
     Ok(Json(offer))
 }
 
 fn handle_buy_offer(
     event_store: &Arc<InMemoryEventStore<TradeId>>,
-    offer_request_body: BuyOfferRequestBody,
+    offer_request_body: &BuyOfferRequestBody,
     symbol: TradingSymbol,
 ) -> Result<OfferResponseBody<Ethereum, Bitcoin>, Error> {
     let rate = 0.1; //TODO export this somewhere
@@ -75,7 +79,7 @@ fn handle_buy_offer(
         buy_amount: ethereum_support::EthereumQuantity::from_eth(sell_amount),
     };
 
-    let id = offer.uid.clone();
+    let id = offer.uid;
     let event: OfferCreated<Ethereum, Bitcoin> = OfferCreated::from(offer.clone());
 
     event_store
@@ -84,7 +88,7 @@ fn handle_buy_offer(
     Ok(offer)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct BuyOrderRequestBody {
     alice_success_address: ethereum_support::Address,
     alice_refund_address: bitcoin_support::Address,
@@ -116,7 +120,7 @@ pub fn post_buy_orders(
         client.inner(),
         event_store.inner(),
         rng.inner(),
-        network.inner(),
+        *network.inner(),
         trade_id,
         buy_order_request_body.into_inner(),
     )?;
@@ -128,7 +132,7 @@ fn handle_buy_orders(
     client: &Arc<ApiClient>,
     event_store: &Arc<InMemoryEventStore<TradeId>>,
     rng: &Mutex<OsRng>,
-    network: &Network,
+    network: Network,
     trade_id: TradeId,
     buy_order: BuyOrderRequestBody,
 ) -> Result<RequestToFund, Error> {
@@ -149,7 +153,7 @@ fn handle_buy_orders(
     let order_created_event: OrderCreated<Ethereum, Bitcoin> = OrderCreated {
         uid: trade_id,
         secret: secret.clone(),
-        alice_success_address: alice_success_address.clone(),
+        alice_success_address,
         alice_refund_address: alice_refund_address.clone(),
         long_relative_timelock: lock_duration.clone(),
     };
@@ -160,7 +164,7 @@ fn handle_buy_orders(
         .create_buy_order(&OrderRequestBody {
             contract_secret_lock: secret.hash(),
             alice_refund_address: alice_refund_address.clone(),
-            alice_success_address: alice_success_address.clone(),
+            alice_success_address,
             alice_contract_time_lock: lock_duration.clone(),
             buy_amount: offer.buy_amount,
             sell_amount: offer.sell_amount,
@@ -187,7 +191,7 @@ fn handle_buy_orders(
 
     let offer = event_store.get_event::<OfferCreated<Ethereum, Bitcoin>>(trade_id)?;
 
-    let htlc_address = htlc.compute_address(network.clone());
+    let htlc_address = htlc.compute_address(network);
 
     Ok(RequestToFund {
         address_to_fund: htlc_address,

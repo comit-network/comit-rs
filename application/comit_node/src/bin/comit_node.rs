@@ -1,26 +1,18 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
 extern crate comit_wallet;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
-extern crate hex;
 #[macro_use]
 extern crate log;
 extern crate event_store;
 extern crate logging;
-extern crate reqwest;
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate secp256k1_support;
-extern crate serde;
-extern crate serde_json;
-extern crate tiny_keccak;
 extern crate tokio;
-extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -49,7 +41,7 @@ fn main() {
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
-    let event_store = Arc::new(InMemoryEventStore::new());
+    let event_store = Arc::new(InMemoryEventStore::default());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
 

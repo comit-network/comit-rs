@@ -14,10 +14,10 @@ pub enum TradingSymbol {
 
 impl fmt::Display for TradingSymbol {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let symbol = match self {
-            &TradingSymbol::ETH_BTC => "ETH-BTC",
-            &TradingSymbol::ETH_LN => "ETH-LN",
-            &TradingSymbol::UNKNOWN(ref string) => string.as_str(),
+        let symbol = match *self {
+            TradingSymbol::ETH_BTC => "ETH-BTC",
+            TradingSymbol::ETH_LN => "ETH-LN",
+            TradingSymbol::UNKNOWN(ref string) => string.as_str(),
         };
 
         write!(f, "{}", symbol)

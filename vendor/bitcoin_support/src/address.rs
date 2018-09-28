@@ -8,14 +8,10 @@ use bitcoin_rpc_client;
 use pubkey::PubkeyHash;
 use secp256k1_support::PublicKey;
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-    str::FromStr,
-};
+use std::{fmt, str::FromStr};
 use Network;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone, PartialEq, Hash)]
 pub struct Address(BitcoinAddress);
 
 // These (Eq, Hash, Serialize, Deserialize) work on the assumption that there is NO mix of Networks
@@ -23,17 +19,10 @@ pub struct Address(BitcoinAddress);
 // Meaning that when executed, either all addresses are testnet or all addresses are regtest.
 // From the moment the program expect to connect to several bitcoind which are connected to
 // different nets, then all hell breaks loose.
-impl Eq for Address {}
 
 impl AsRef<BitcoinAddress> for Address {
     fn as_ref(&self) -> &BitcoinAddress {
         &self.0
-    }
-}
-
-impl Hash for Address {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.0.to_string().hash(state);
     }
 }
 
@@ -161,8 +150,8 @@ impl From<bitcoin::util::Error> for Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &Error::BitcoinError(_) => write!(f, "address is not in bitcoin format"),
+        match *self {
+            Error::BitcoinError(_) => write!(f, "address is not in bitcoin format"),
         }
     }
 }

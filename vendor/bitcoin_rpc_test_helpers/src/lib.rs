@@ -1,3 +1,6 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
+
 // Place for putting common queries needed in tests
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;

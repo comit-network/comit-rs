@@ -16,6 +16,7 @@ use swaps::{bob_events::OrderTaken, common::TradeId};
 use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
 
+#[derive(Debug)]
 pub struct ComitServer {
     event_store: Arc<InMemoryEventStore<TradeId>>,
     my_keystore: Arc<KeyStore>,

@@ -19,10 +19,10 @@ impl BitcoinQuantity {
     pub fn from_bitcoin(btc: f64) -> Self {
         BitcoinQuantity((btc * 100_000_000.0).round() as u64)
     }
-    pub fn satoshi(&self) -> u64 {
+    pub fn satoshi(self) -> u64 {
         self.0
     }
-    pub fn bitcoin(&self) -> f64 {
+    pub fn bitcoin(self) -> f64 {
         (self.0 as f64) / 100_000_000.0
     }
 }

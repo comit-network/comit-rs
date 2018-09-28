@@ -1,7 +1,7 @@
 use transport_protocol::{config::Config, json::*, *};
 
 pub fn config() -> Config<Request, Response> {
-    Config::new().on_request("PLACE-ORDER", &["PRODUCT-TYPE"], |request: Request| {
+    Config::default().on_request("PLACE-ORDER", &["PRODUCT-TYPE"], |request: Request| {
         let product_type = header!(request.get_header("PRODUCT-TYPE"));
 
         match product_type {

@@ -58,6 +58,7 @@ pub struct SwapRequestHeaders {
     pub swap_protocol: SwapProtocol,
 }
 
+#[derive(Debug)]
 pub enum SwapResponse<T> {
     Accept(T),
     Decline,

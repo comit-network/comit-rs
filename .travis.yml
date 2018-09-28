@@ -28,6 +28,7 @@ before_script:
 - which sccache || cargo install sccache
 script:
 - "./check-fmt.sh"
+- cargo clippy
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
 - LOG_SERVICES=1 ./run_environments/regtest/harness.sh ./run_environments/regtest/happy_path.sh

@@ -11,11 +11,14 @@ use web3::{
 
 use futures::stream::iter_ok;
 
+#[derive(DebugStub)]
 pub struct EthereumWeb3BlockPoller<P> {
+    #[debug_stub = "EventLoop"]
     _event_loop: EventLoopHandle,
     client: Web3<Http>,
     filter: BaseFilter<Http, H256>,
     polling_interval: Duration,
+    #[debug_stub = "Processor"]
     processor: P,
 }
 

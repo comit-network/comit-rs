@@ -101,7 +101,7 @@ impl Htlc {
         Ok(())
     }
 
-    pub fn unlock_with_secret(&self, keypair: KeyPair, secret: Secret) -> UnlockParameters {
+    pub fn unlock_with_secret(&self, keypair: KeyPair, secret: &Secret) -> UnlockParameters {
         let public_key = keypair.public_key().clone();
         UnlockParameters {
             witness: vec![
@@ -134,7 +134,7 @@ impl Htlc {
 fn create_htlc(
     recipient_pubkey_hash: &PubkeyHash,
     sender_pubkey_hash: &PubkeyHash,
-    secret_hash: &Vec<u8>,
+    secret_hash: &[u8],
     redeem_block_height: u32,
 ) -> Script {
     let script = Builder::new()
@@ -146,7 +146,7 @@ fn create_htlc(
         .push_opcode(OP_HASH160)
         .push_slice(recipient_pubkey_hash.as_ref())
         .push_opcode(OP_ELSE)
-        .push_int(redeem_block_height as i64)
+        .push_int(i64::from(redeem_block_height))
         .push_opcode(OP_CHECKSEQUENCEVERIFY)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)

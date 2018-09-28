@@ -26,6 +26,7 @@ impl<'a> From<PoisonError<MutexGuard<'a, u32>>> for Error {
     }
 }
 
+#[derive(Debug)]
 pub struct KeyStore {
     _master_privkey: ExtendedPrivKey,
     transient_root_privkey: ExtendedPrivKey,

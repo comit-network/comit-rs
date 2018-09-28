@@ -1,3 +1,6 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
+
 extern crate bytes;
 extern crate futures;
 extern crate hex;
