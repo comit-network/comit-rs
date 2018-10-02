@@ -1,7 +1,5 @@
-use comit_client::{Client, SwapReject};
-use common_types::seconds::Seconds;
+use comit_client::{Client, SwapReject, SwapResponseError};
 use futures::{
-    future,
     sync::oneshot::{self, Sender},
     Future,
 };
@@ -9,11 +7,9 @@ use std::{
     any::{Any, TypeId},
     borrow::Borrow,
     collections::HashMap,
-    str::FromStr,
     sync::Mutex,
 };
 use swap_protocols::{ledger::Ledger, rfc003, wire_types};
-use transport_protocol::{self, json};
 
 #[allow(dead_code)]
 pub struct FakeClient {
@@ -53,7 +49,7 @@ impl Client for FakeClient {
     ) -> Box<
         Future<
                 Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
-                Error = transport_protocol::client::Error<json::Frame>,
+                Error = SwapResponseError,
             > + Send,
     > {
         let type_id = TypeId::of::<rfc003::AcceptResponse<SL, TL>>();

@@ -105,5 +105,5 @@ impl<
         TA: Clone + Send + Sync + 'static,
     > Event for ContractDeployed<SL, TL, SA, TA>
 {
-    type Prev = ContractDeployed<SL, TL, SA, TA>;
+    type Prev = SwapRequestAccepted<SL, TL, SA, TA>;
 }

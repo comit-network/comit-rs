@@ -22,7 +22,7 @@ extern crate testcontainers;
 extern crate uuid;
 
 use comit_node::{
-    comit_client::{self, FakeClient, FakeFactory, SwapReject},
+    comit_client::{FakeFactory, SwapReject},
     gotham_factory::create_gotham_router,
     swap_protocols::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},

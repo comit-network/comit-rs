@@ -1,6 +1,6 @@
 use bitcoin_htlc;
-use bitcoin_support::{self, BitcoinQuantity, Blocks, PubkeyHash, BTC_BLOCKS_IN_24H};
-use comit_client::{self, FakeClient};
+use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
+use comit_client::{self, SwapReject, SwapResponseError};
 use comit_wallet::KeyStore;
 use common_types::secret::Secret;
 use ethereum_support::{self, EthereumQuantity};
@@ -17,14 +17,13 @@ use hyper::{
     Body, Response, StatusCode,
 };
 use rand::OsRng;
-use rocket_contrib::Json;
 use serde_json;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
 use swap_protocols::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{self, bitcoin::Bitcoin, ethereum::Ethereum},
     rfc003,
 };
 use swaps::{alice_events, common::TradeId};
@@ -45,9 +44,9 @@ impl From<SwapError> for HttpApiProblem {
                 error!("Connection error: {:?}", e);
                 HttpApiProblem::new("couterparty-connection-error")
                     .set_status(500)
-                    .set_detail("There was a problem with the connection to the counterparty")
+                    .set_detail("There was a problem connecting to the counterparty")
             }
-            EventStore(e) => HttpApiProblem::with_title_and_type_from_status(500),
+            EventStore(_e) => HttpApiProblem::with_title_and_type_from_status(500),
             Unsupported => HttpApiProblem::new("swap-not-supported").set_status(400),
         }
     }
@@ -101,6 +100,7 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
         .concat2()
         .then(|full_body| match full_body {
             Ok(valid_body) => {
+                //TODO: Handle json ser/de generically for all routes
                 match serde_json::from_slice(valid_body.as_ref()) {
                     Ok(swap) => {
                         let result = {
@@ -127,13 +127,22 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
                                 Ok((state, response))
                             }
                             Err(e) => {
-                                let http_problem: HttpApiProblem = e.into();
-                                // (state, http_problem.to_hyper_response())
-                                unimplemented!()
+                                //TODO: use error to generate response (requires gotham 0.3)
+                                error!("Problem with sending swap request: {:?}", e);
+                                let response = Response::new().with_status(StatusCode::BadRequest);
+                                Ok((state, response))
                             }
                         }
                     }
-                    Err(err) => unimplemented!(),
+                    Err(err) => {
+                        let response = Response::new().with_status(StatusCode::BadRequest);
+                        error!(
+                            "POST /swap received invalid JSON {:?} {}",
+                            err,
+                            String::from_utf8_lossy(valid_body.as_ref())
+                        );
+                        Ok((state, response))
+                    }
                 }
             }
             Err(e) => Err((state, e.into_handler_error())),
@@ -155,6 +164,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
         Secret::generate(&mut *rng)
     };
     let client = client_factory.client_for(comit_node_addr)?;
+    debug!("Retrieved client for {}", comit_node_addr);
 
     match (swap.source_ledger, swap.target_ledger) {
         (
@@ -211,46 +221,12 @@ pub fn handle_post_swap<C: comit_client::Client>(
 
                     let event_store = event_store.clone();
 
-                    tokio::spawn(response_future.then(move |result| {
-                        match result {
-                            Ok(response) => match response {
-                                Ok(accepted) => event_store
-                                    .add_event(
-                                        id,
-                                        alice_events::SwapRequestAccepted::<
-                                            Bitcoin,
-                                            Ethereum,
-                                            BitcoinQuantity,
-                                            EthereumQuantity,
-                                        >::new(
-                                            accepted.target_ledger_refund_identity,
-                                            accepted.source_ledger_success_identity,
-                                            accepted.target_ledger_lock_duration,
-                                        ),
-                                    ).unwrap(),
-                                Err(_rejected) => event_store
-                                    .add_event(
-                                        id,
-                                        alice_events::SwapRequestRejected::<
-                                            Bitcoin,
-                                            Ethereum,
-                                            BitcoinQuantity,
-                                            EthereumQuantity,
-                                        >::new(),
-                                    ).unwrap(),
-                            },
-                            // just treat transport level problems as a rejection for now
-                            Err(_frame_error) => event_store
-                                .add_event(
-                                    id,
-                                    alice_events::SwapRequestRejected::<
-                                        Bitcoin,
-                                        Ethereum,
-                                        BitcoinQuantity,
-                                        EthereumQuantity,
-                                    >::new(),
-                                ).unwrap(),
-                        }
+                    tokio::spawn(response_future.then(move |response| {
+                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>(
+                            id,
+                            event_store,
+                            response,
+                        );
                         Ok(())
                     }));
                     Ok(SwapCreated { id })
@@ -262,18 +238,56 @@ pub fn handle_post_swap<C: comit_client::Client>(
     }
 }
 
+fn on_swap_response<
+    SL: ledger::Ledger,
+    TL: ledger::Ledger,
+    SA: Clone + Send + Sync + 'static,
+    TA: Clone + Send + Sync + 'static,
+>(
+    id: TradeId,
+    event_store: Arc<InMemoryEventStore<TradeId>>,
+    result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
+) {
+    match result {
+        Ok(response) => match response {
+            Ok(accepted) => event_store
+                .add_event(
+                    id,
+                    alice_events::SwapRequestAccepted::<SL, TL, SA, TA>::new(
+                        accepted.target_ledger_refund_identity,
+                        accepted.source_ledger_success_identity,
+                        accepted.target_ledger_lock_duration,
+                    ),
+                ).unwrap(),
+            Err(_rejected) => event_store
+                .add_event(
+                    id,
+                    alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
+                ).unwrap(),
+        },
+        // TODO: Decide what to do with transport level errors
+        Err(_frame_error) => event_store
+            .add_event(
+                id,
+                alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
+            ).unwrap(),
+    }
+}
+
 #[derive(Deserialize, Debug, Serialize)]
 #[serde(tag = "status")]
 enum SwapStatus {
     #[serde(rename = "pending")]
     Pending,
     #[serde(rename = "accepted")]
-    Accepted { to_fund: bitcoin_support::Address },
+    Accepted {
+        funding_required: bitcoin_support::Address,
+    },
     #[serde(rename = "rejected")]
     Rejected,
     #[serde(rename = "redeemable")]
     Redeemable {
-        from: ethereum_support::Address,
+        contract_address: ethereum_support::Address,
         data: Secret,
         gas: u64,
     },
@@ -315,7 +329,6 @@ fn handle_get_swap(
                 BitcoinQuantity,
                 EthereumQuantity,
             >>(id);
-
             match accepted {
                 Ok(accepted) => {
                     let contract_deployed = event_store.get_event::<alice_events::ContractDeployed<
@@ -328,7 +341,7 @@ fn handle_get_swap(
                     match contract_deployed {
                         Ok(contract_deployed) => {
                             Some(SwapStatus::Redeemable {
-                                from: contract_deployed.address.clone(),
+                                contract_address: contract_deployed.address.clone(),
                                 data: requested.secret.clone(),
                                 // TODO: check how much gas we should tell the customer to pay
                                 gas: 3500,
@@ -342,7 +355,8 @@ fn handle_get_swap(
                                 requested.source_ledger_lock_duration.clone().into(),
                             );
                             Some(SwapStatus::Accepted {
-                                to_fund: htlc.compute_address(requested.source_ledger.network()),
+                                funding_required: htlc
+                                    .compute_address(requested.source_ledger.network()),
                             })
                         }
                     }
@@ -363,39 +377,8 @@ fn handle_get_swap(
             }
         }
         Err(event_store::Error::NotFound) => None,
-        _ => unreachable!(),
+        _ => unreachable!(
+            "The only type of error you can get from event store at this point is NotFound"
+        ),
     }
 }
-
-// pub fn post_swap(
-//     _swap: Json<Swap>,
-//     rng: State<Mutex<OsRng>>,
-//     event_store: State<Arc<InMemoryEventStore<TradeId>>>,
-//     client_factory: State<Arc<comit_client::Factory<FakeClient>>>,
-//     remote_comit_node_socket_addr: State<SocketAddr>,
-// ) -> Result<status::Created<Json<SwapCreated>>, HttpApiProblem> {
-//     let swap_created = handle_swap(
-//         _swap.into_inner(),
-//         rng.inner(),
-//         event_store.inner(),
-//         *remote_comit_node_socket_addr,
-//         client_factory.inner(),
-//     )?;
-
-//     Ok(status::Created(
-//         format!("/swap/{}", swap_created.id),
-//         Some(Json(swap_created)),
-//     ))
-// }
-
-// fn handle_swap(
-//     swap: Swap,
-//     rng: &Mutex<OsRng>,
-//     event_store: &Arc<InMemoryEventStore<TradeId>>,
-//     comit_node_addr: SocketAddr,
-//     client_factory: &Arc<comit_client::Factory<FakeClient>>,
-// ) -> Result<SwapCreated, SwapError> {
-
-// }
-
-//fn make_swap_request<SL: Ledger, TL: Ledger, SA, TA>

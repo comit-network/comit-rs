@@ -23,7 +23,7 @@ pub enum Error<F> {
     Canceled,
 }
 
-impl<Frame: 'static, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static>
+impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static>
     Client<Frame, Req, Res>
 {
     pub fn new(
@@ -42,10 +42,10 @@ impl<Frame: 'static, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static
         (client, receiver)
     }
 
-    pub fn send_request<'s>(
-        &'s mut self,
+    pub fn send_request(
+        &mut self,
         request: Req,
-    ) -> Box<Future<Item = Res, Error = Error<Frame>> + 's> {
+    ) -> Box<Future<Item = Res, Error = Error<Frame>> + Send> {
         let response_source = self.response_source.clone();
         let frame_id = self.next_id;
         let frame = request.into_frame(frame_id);
@@ -66,7 +66,10 @@ impl<Frame: 'static, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static
         Box::new(future)
     }
 
-    pub fn send_frame(&mut self, frame: Frame) -> Box<Future<Item = (), Error = Error<Frame>>> {
+    pub fn send_frame(
+        &mut self,
+        frame: Frame,
+    ) -> Box<Future<Item = (), Error = Error<Frame>> + Send> {
         let send_result = self.sender.unbounded_send(frame);
 
         match send_result {
@@ -106,7 +109,7 @@ mod tests {
         fn on_response_frame(
             &mut self,
             frame_id: u32,
-        ) -> Box<Future<Item = json::Frame, Error = ()>> {
+        ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
             let future = match self.responses.remove(&frame_id) {
                 Some(response) => future::ok(response),
                 None => future::err(()),

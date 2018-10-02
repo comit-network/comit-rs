@@ -1,10 +1,9 @@
 use comit_client;
 use comit_wallet::KeyStore;
-use event_store::{EventStore, InMemoryEventStore};
+use event_store::InMemoryEventStore;
 use gotham::{
-    self,
     handler::HandlerFuture,
-    middleware::{Middleware, NewMiddleware},
+    middleware::Middleware,
     pipeline::{new_pipeline, single::single_pipeline},
     router::{builder::*, Router},
     state::{State, StateData},
@@ -13,7 +12,6 @@ use http_api;
 use rand::OsRng;
 use std::{
     net::SocketAddr,
-    ops::Deref,
     panic::RefUnwindSafe,
     sync::{Arc, Mutex},
 };

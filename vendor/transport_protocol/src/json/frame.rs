@@ -44,7 +44,10 @@ pub struct JsonResponseSource {
 }
 
 impl ResponseFrameSource<json::Frame> for JsonResponseSource {
-    fn on_response_frame(&mut self, frame_id: u32) -> Box<Future<Item = json::Frame, Error = ()>> {
+    fn on_response_frame(
+        &mut self,
+        frame_id: u32,
+    ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
         let (sender, recevier) = oneshot::channel();
 
         self.awaiting_responses.insert(frame_id, sender);

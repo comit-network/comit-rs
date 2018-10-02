@@ -25,7 +25,7 @@ extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
-use bitcoin_support::{Address as BitcoinAddress, Network, PrivateKey};
+use bitcoin_support::Address as BitcoinAddress;
 
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
@@ -128,12 +128,15 @@ fn main() {
     );
 
     {
-        let http_api_address = settings.http_api.address;
+        let http_api_address_gotham = settings.http_api.address.clone();
+        let http_api_address_rocket = settings.http_api.address.clone();
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
+        let network = settings.bitcoin.network;
+        let key_store_rocket = key_store.clone();
 
-        let client_factory = comit_client::DefaultFactory::new();
+        let client_factory = comit_client::DefaultFactory::default();
 
         let gotham_router = gotham_factory::create_gotham_router(
             gotham_event_store,
@@ -144,27 +147,28 @@ fn main() {
 
         std::thread::spawn(move || {
             gotham::start(
-                SocketAddr::from_str(format!("{}:{}", http_api_address, http_api_port).as_str())
-                    .unwrap(),
+                SocketAddr::from_str(
+                    format!("{}:{}", http_api_address_gotham, http_api_port).as_str(),
+                ).unwrap(),
                 gotham_router,
             );
         });
 
-        // std::thread::spawn(move || {
-        //     create_rocket_instance(
-        //         rocket_event_store,
-        //         Arc::new(ethereum_service),
-        //         Arc::new(bitcoin_service),
-        //         bob_refund_address,
-        //         bob_success_keypair,
-        //         network,
-        //         Arc::new(client_factory),
-        //         remote_comit_node_socket_addr,
-        //     ).launch();
-        // });
+        std::thread::spawn(move || {
+            create_rocket_instance(
+                rocket_event_store,
+                Arc::new(ethereum_service),
+                Arc::new(bitcoin_service),
+                key_store_rocket,
+                network,
+                http_api_address_rocket,
+                http_api_port + 2,
+                http_api_logging,
+            ).launch();
+        });
     }
 
-    let server = ComitServer::new(comit_server_event_store, key_store);
+    let server = ComitServer::new(comit_server_event_store, key_store.clone());
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);
