@@ -18,7 +18,9 @@ use std::{env::var, sync::Arc, thread, time::Duration};
 fn main() {
     let _ = pretty_env_logger::try_init();
 
-    let config = rocket::Config::development().unwrap();
+    let mut config = rocket::Config::development().unwrap();
+
+    config.set_port(8080);
 
     // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(config.port));

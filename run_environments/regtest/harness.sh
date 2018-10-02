@@ -30,7 +30,7 @@ END(){
         docker-compose rm -sfv;
     );
 
-    for pid in "$BOB_COMIT_NODE_PID" "$ALICE_COMIT_NODE_PID"; do
+    for pid in "$BOB_COMIT_NODE_PID" "$ALICE_COMIT_NODE_PID" "$LQS_PID"; do
         if test "$pid" && ps "$pid" >/dev/null; then
             echo "KILLING $pid";
             kill "$pid" 2>/dev/null;
@@ -98,6 +98,15 @@ function setup() {
 
         start_target "comit_node" "Alice";
     );
+
+    LQS_PID=$(
+        export  RUST_LOG=ledger_query_service=debug \
+                BITCOIN_ZMQ_ENDPOINT=tcp://127.0.0.1:28332;
+
+        start_target "ledger_query_service" "LQS  ";
+    );
+
+
 }
 
 test "$@" || { log "ERROR: The harness requires a file to run!"; exit 1; }
