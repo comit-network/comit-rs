@@ -2,6 +2,5 @@
 use reqwest;
 
 mod client;
-mod fake_client;
 
-pub use self::{client::*, fake_client::*};
+pub use self::client::*;

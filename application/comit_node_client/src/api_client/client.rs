@@ -1,15 +1,15 @@
-use bitcoin_rpc_client;
-use bitcoin_support::BitcoinQuantity;
-use common_types;
-use ethereum_support::{self, EthereumQuantity};
-use offer::Symbol;
-use regex::Regex;
 use reqwest;
-use std::{fmt, str::FromStr};
+use std::{collections::HashMap, fmt, str::FromStr};
 use uuid::{ParseError, Uuid};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
+
+impl TradeId {
+    pub fn new() -> Self {
+        TradeId(Uuid::new_v4())
+    }
+}
 
 impl FromStr for TradeId {
     type Err = ParseError;
@@ -46,56 +46,6 @@ impl BuyOfferRequestBody {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct OfferResponseBody {
-    pub uid: TradeId,
-    pub symbol: Symbol,
-    pub rate: f64,
-    //TODO: trading-cli should be agnostic of the currencies
-    pub buy_amount: EthereumQuantity,
-    pub sell_amount: BitcoinQuantity,
-}
-
-#[derive(Deserialize, Serialize)]
-pub struct BuyOrderRequestBody {
-    alice_success_address: ethereum_support::Address,
-    alice_refund_address: bitcoin_rpc_client::Address,
-}
-
-impl BuyOrderRequestBody {
-    pub fn new(alice_success_address: String, alice_refund_address: String) -> BuyOrderRequestBody {
-        let alice_success_address = alice_success_address.clone();
-
-        let re = Regex::new("^0x").unwrap();
-        let alice_success_address = re.replace(&alice_success_address.as_str(), "");
-
-        let alice_success_address = ethereum_support::Address::from_str(&alice_success_address)
-            .expect("Could not convert the success address");
-        let alice_refund_address =
-            bitcoin_rpc_client::Address::from_str(alice_refund_address.as_str())
-                .expect("Could not convert the Bitcoin refund address");
-
-        BuyOrderRequestBody {
-            alice_success_address,
-            alice_refund_address,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RequestToFund {
-    pub address_to_fund: bitcoin_rpc_client::Address,
-    pub btc_amount: BitcoinQuantity,
-    pub eth_amount: EthereumQuantity,
-}
-
-#[derive(Deserialize)]
-pub struct RedeemDetails {
-    pub address: ethereum_support::Address,
-    pub data: common_types::secret::Secret,
-    pub gas: u64,
-}
-
 #[derive(Debug)]
 pub enum TradingServiceError {
     OfferAborted(reqwest::Error),
@@ -104,96 +54,75 @@ pub enum TradingServiceError {
 }
 
 pub trait ApiClient {
-    fn request_offer(
-        &self,
-        symbol: &Symbol,
-        offer_request: &BuyOfferRequestBody,
-    ) -> Result<OfferResponseBody, TradingServiceError>;
+    fn send_swap_request(&self, SwapRequest) -> Result<SwapCreated, TradingServiceError>;
+    fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, TradingServiceError>;
+}
 
-    fn request_order(
-        &self,
-        symbol: &Symbol,
-        uid: Uuid,
-        request: &BuyOrderRequestBody,
-    ) -> Result<RequestToFund, TradingServiceError>;
+#[derive(Deserialize, Debug, Serialize, Clone)]
+#[serde(tag = "status")]
+pub enum SwapStatus {
+    #[serde(rename = "pending")]
+    Pending,
+    #[serde(rename = "accepted")]
+    Accepted { funding_required: String },
+    #[serde(rename = "rejected")]
+    Rejected,
+    #[serde(rename = "redeemable")]
+    Redeemable {
+        contract_address: String,
+        data: String,
+        gas: u64,
+    },
+}
 
-    fn request_redeem_details(
-        &self,
-        symbol: Symbol,
-        uid: Uuid,
-    ) -> Result<RedeemDetails, TradingServiceError>;
+#[derive(Deserialize, Debug, Clone)]
+pub struct SwapCreated {
+    pub id: TradeId,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+pub struct Ledger {
+    pub value: String,
+    pub identity: String,
+    #[serde(flatten)]
+    pub parameters: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
+pub struct Asset {
+    pub value: String,
+    #[serde(flatten)]
+    pub parameters: HashMap<String, String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SwapRequest {
+    pub source_ledger: Ledger,
+    pub target_ledger: Ledger,
+    pub source_asset: Asset,
+    pub target_asset: Asset,
 }
 
 impl ApiClient for DefaultApiClient {
-    fn request_offer(
+    fn send_swap_request(
         &self,
-        symbol: &Symbol,
-        request: &BuyOfferRequestBody,
-    ) -> Result<OfferResponseBody, TradingServiceError> {
+        swap_request: SwapRequest,
+    ) -> Result<SwapCreated, TradingServiceError> {
         let client = reqwest::Client::new();
         client
-            .post(format!("{}/cli/trades/{}/buy-offers", self.url.0, symbol).as_str())
-            .json(request)
+            .post(format!("{}/swap", self.url.0).as_str())
+            .json(&swap_request)
             .send()
-            .and_then(|mut res| res.json::<OfferResponseBody>())
+            .and_then(|mut res| res.json::<SwapCreated>())
             .map_err(TradingServiceError::OfferAborted)
     }
 
-    fn request_order(
-        &self,
-        symbol: &Symbol,
-        uid: Uuid,
-        request: &BuyOrderRequestBody,
-    ) -> Result<RequestToFund, TradingServiceError> {
+    fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, TradingServiceError> {
         let client = reqwest::Client::new();
         client
-            .post(format!("{}/cli/trades/{}/{}/buy-orders", self.url.0, symbol, uid).as_str())
-            .json(request)
+            .get(format!("{}/swap/{}", self.url.0, id).as_str())
             .send()
-            .and_then(|mut res| res.json::<RequestToFund>())
+            .and_then(|mut res| res.json::<SwapStatus>())
             .map_err(|err| TradingServiceError::OrderAborted(err))
     }
-
-    fn request_redeem_details(
-        &self,
-        symbol: Symbol,
-        uid: Uuid,
-    ) -> Result<RedeemDetails, TradingServiceError> {
-        let client = reqwest::Client::new();
-        client
-            .get(format!("{}/cli/trades/{}/{}/redeem-orders", self.url.0, symbol, uid).as_str())
-            .send()
-            .and_then(|mut res| res.json::<RedeemDetails>())
-            .map_err(|err| TradingServiceError::RedeemAborted(err))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn given_an_hex_address_with_0x_should_remove_0x() {
-        let address = "0x00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
-        let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
-        let order_request_body = BuyOrderRequestBody::new(address, refund_address);
-
-        let eth_address =
-            ethereum_support::Address::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
-                .unwrap();
-        assert_eq!(order_request_body.alice_success_address, eth_address)
-    }
-
-    #[test]
-    fn given_an_hex_address_without_0x_should_return_same_address() {
-        let address = "00a329c0648769a73afac7f9381e08fb43dbea72".to_string();
-        let refund_address = "tb1qj3z3ymhfawvdp4rphamc7777xargzufztd44fv".to_string();
-        let order_request_body = BuyOrderRequestBody::new(address, refund_address);
-
-        let eth_address =
-            ethereum_support::Address::from_str("00a329c0648769a73afac7f9381e08fb43dbea72")
-                .unwrap();
-        assert_eq!(order_request_body.alice_success_address, eth_address)
-    }
-
 }
