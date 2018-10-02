@@ -22,7 +22,7 @@ use swaps::{
     errors::Error,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct AliceContractDeployedRequestBody {
     pub contract_address: ethereum_support::Address,
 }
@@ -92,17 +92,16 @@ fn handle_post_orders_funding(
     let trade_funded: BobTradeFunded<Ethereum, Bitcoin> =
         BobTradeFunded::new(trade_id, htlc_identifier);
 
-    event_store.add_event(trade_id.clone(), trade_funded)?;
+    event_store.add_event(trade_id, trade_funded)?;
 
-    let order_taken =
-        event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
+    let order_taken = event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id)?;
 
     let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
         refund_address: order_taken.bob_refund_address,
         success_address: order_taken.alice_success_address,
         time_lock: order_taken.bob_contract_time_lock,
         amount: order_taken.buy_amount,
-        secret_hash: order_taken.contract_secret_lock.clone().into(),
+        secret_hash: order_taken.contract_secret_lock.clone(),
     })?;
 
     let deployed: BobContractDeployed<Ethereum, Bitcoin> =
@@ -113,7 +112,7 @@ fn handle_post_orders_funding(
     Ok(())
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct RedeemBTCNotificationBody {
     pub secret: Secret,
 }
@@ -148,11 +147,10 @@ fn handle_post_revealed_secret(
     trade_id: TradeId,
     bitcoin_htlc_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
 ) -> Result<(), Error> {
-    let order_taken_event =
-        event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
+    let order_taken_event = event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id)?;
     // TODO: Maybe if this fails we keep the secret around anyway and steal money early?
     let trade_funded_event =
-        event_store.get_event::<BobTradeFunded<Ethereum, Bitcoin>>(trade_id.clone())?;
+        event_store.get_event::<BobTradeFunded<Ethereum, Bitcoin>>(trade_id)?;
 
     let secret: Secret = redeem_btc_notification_body.secret;
 

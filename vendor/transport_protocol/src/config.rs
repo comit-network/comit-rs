@@ -1,18 +1,22 @@
 use std::collections::{HashMap, HashSet};
 
+#[derive(DebugStub)]
 pub struct Config<Req, Res> {
     known_headers: HashMap<String, HashSet<String>>,
+    #[debug_stub = "RequestHandlers"]
     request_handlers: HashMap<String, Box<FnMut(Req) -> Res + Send + 'static>>,
 }
 
-impl<Req, Res> Config<Req, Res> {
-    pub fn new() -> Self {
+impl<Req, Res> Default for Config<Req, Res> {
+    fn default() -> Self {
         Self {
             known_headers: HashMap::new(),
             request_handlers: HashMap::new(),
         }
     }
+}
 
+impl<Req, Res> Config<Req, Res> {
     pub fn on_request<RH: 'static>(
         mut self,
         request_type: &str,
@@ -36,10 +40,11 @@ impl<Req, Res> Config<Req, Res> {
         self.known_headers.get(request_type)
     }
 
+    #[allow(clippy::borrowed_box)]
     pub fn request_handler_for(
         &mut self,
         request_type: &str,
-    ) -> Option<&mut Box<FnMut(Req) -> Res + Send>> {
+    ) -> Option<&mut Box<(FnMut(Req) -> Res + Send)>> {
         self.request_handlers.get_mut(request_type)
     }
 }

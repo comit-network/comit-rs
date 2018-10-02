@@ -1,27 +1,19 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 #![plugin(rocket_codegen)]
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
 extern crate comit_wallet;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
-extern crate hex;
 #[macro_use]
 extern crate log;
 extern crate event_store;
 extern crate gotham;
 extern crate logging;
-extern crate reqwest;
-extern crate rocket;
-extern crate rocket_contrib;
-extern crate secp256k1_support;
-extern crate serde;
-extern crate serde_json;
-extern crate tiny_keccak;
 extern crate tokio;
-extern crate uuid;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -34,7 +26,7 @@ use comit_node::{
     gas_price_service::StaticGasPriceService,
     gotham_factory,
     rocket_factory::create_rocket_instance,
-    settings::settings::ComitNodeSettings,
+    settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use comit_wallet::KeyStore;
@@ -52,7 +44,7 @@ fn main() {
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
-    let event_store = Arc::new(InMemoryEventStore::new());
+    let event_store = Arc::new(InMemoryEventStore::default());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
     let gotham_event_store = event_store.clone();
@@ -91,7 +83,7 @@ fn main() {
     //TODO: make it dynamically generated every X BTC. Could be done with #296
     let btc_bob_redeem_keypair = key_store.get_new_internal_keypair();
     let btc_bob_redeem_address =
-        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key().into(), btc_network);
+        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key(), btc_network);
 
     info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 
@@ -122,7 +114,7 @@ fn main() {
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
     let bitcoin_service = BitcoinService::new(
         bitcoin_rpc_client.clone(),
-        settings.bitcoin.network.clone(),
+        settings.bitcoin.network,
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
     );
@@ -133,7 +125,6 @@ fn main() {
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
-        let network = settings.bitcoin.network;
         let key_store_rocket = key_store.clone();
 
         let client_factory = comit_client::DefaultFactory::default();
@@ -160,7 +151,7 @@ fn main() {
                 Arc::new(ethereum_service),
                 Arc::new(bitcoin_service),
                 key_store_rocket,
-                network,
+                btc_network,
                 http_api_address_rocket,
                 http_api_port + 2,
                 http_api_logging,

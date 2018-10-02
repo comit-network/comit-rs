@@ -9,9 +9,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[derive(DebugStub)]
 pub struct Client<Frame, Req, Res> {
+    #[debug_stub = "ResponseSource"]
     response_source: Arc<Mutex<ResponseFrameSource<Frame>>>,
     next_id: u32,
+    #[debug_stub = "Sender"]
     sender: UnboundedSender<Frame>,
     request_type: PhantomData<Req>,
     response_type: PhantomData<Res>,
@@ -53,12 +56,10 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
         let future = self.send_frame(frame).and_then(move |()| {
             let mut response_source = response_source.lock().unwrap();
 
-            let response = response_source
+            response_source
                 .on_response_frame(frame_id)
                 .map(|f| f.into())
-                .map_err(|_| Error::Canceled);
-
-            response
+                .map_err(|_| Error::Canceled)
         });
 
         self.next_id += 1;

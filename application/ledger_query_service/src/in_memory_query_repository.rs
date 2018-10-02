@@ -33,7 +33,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
     fn get(&self, id: u32) -> Option<T> {
         let state = self.state.read().unwrap();
 
-        state.storage.get(&id).map(|q| q.clone())
+        state.storage.get(&id).cloned()
     }
 
     fn save(&self, entity: T) -> Result<u32, Error<T>> {

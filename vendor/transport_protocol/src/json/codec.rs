@@ -22,6 +22,7 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+#[derive(Debug)]
 pub struct JsonFrameCodec;
 
 impl Default for JsonFrameCodec {

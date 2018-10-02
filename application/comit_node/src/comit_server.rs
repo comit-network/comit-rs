@@ -1,4 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, ToP2wpkhAddress};
+use bitcoin_support::{BitcoinQuantity, IntoP2wpkhAddress};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
@@ -16,6 +16,7 @@ use swaps::{bob_events::OrderTaken, common::TradeId};
 use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
 
+#[derive(Debug)]
 pub struct ComitServer {
     event_store: Arc<InMemoryEventStore<TradeId>>,
     my_keystore: Arc<KeyStore>,
@@ -91,9 +92,7 @@ impl
             .get_transient_keypair(&uid.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
         let bob_success_address = bob_success_keypair
             .public_key()
-            .clone()
-            .to_p2wpkh_address(request.source_ledger.network())
-            .into();
+            .into_p2wpkh_address(request.source_ledger.network());
         debug!(
             "Generated transient success address for Bob is {}",
             bob_success_address
@@ -115,10 +114,10 @@ impl
             alice_contract_time_lock: request.source_ledger_lock_duration,
             bob_contract_time_lock: twelve_hours,
             alice_refund_address,
-            alice_success_address: request.target_ledger_success_identity.into(),
-            bob_refund_address: bob_refund_address.clone(),
+            alice_success_address: request.target_ledger_success_identity,
+            bob_refund_address,
             bob_success_address,
-            bob_success_keypair: bob_success_keypair.clone(),
+            bob_success_keypair,
             buy_amount: request.target_asset,
             sell_amount: request.source_asset,
         };
@@ -129,8 +128,8 @@ impl
         {
             Ok(_) => {
                 let response = rfc003::AcceptResponse::<Bitcoin, Ethereum> {
-                    target_ledger_refund_identity: bob_refund_address.into(),
-                    source_ledger_success_identity: bob_success_keypair.public_key().clone().into(),
+                    target_ledger_refund_identity: bob_refund_address,
+                    source_ledger_success_identity: bob_success_keypair.public_key().into(),
                     target_ledger_lock_duration: twelve_hours,
                 };
                 SwapResponse::Accept(response)

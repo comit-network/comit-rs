@@ -26,16 +26,17 @@ impl fmt::Display for TradeId {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ComitNodeApiUrl(pub String);
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct DefaultApiClient {
     pub url: ComitNodeApiUrl,
     pub client: reqwest::Client,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct BuyOfferRequestBody {
     amount: f64,
 }

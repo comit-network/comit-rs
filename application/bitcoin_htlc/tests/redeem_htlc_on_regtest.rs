@@ -22,7 +22,6 @@ use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
-
 use tc_coblox_bitcoincore::BitcoinCore;
 use testcontainers::{clients::DockerCli, Docker};
 
@@ -92,7 +91,7 @@ fn redeem_htlc_with_secret() {
     let (txid, vout, input_amount, htlc, _, secret, keypair, _) = fund_htlc(&client);
 
     assert!(
-        htlc.can_be_unlocked_with(&secret, &keypair).is_ok(),
+        htlc.can_be_unlocked_with(secret, keypair).is_ok(),
         "Should be unlockable with the given secret and secret_key"
     );
 
@@ -105,7 +104,7 @@ fn redeem_htlc_with_secret() {
             txid.into(),
             vout.n,
             input_amount,
-            htlc.unlock_with_secret(keypair, secret),
+            htlc.unlock_with_secret(keypair, &secret),
         )],
         output_address: alice_addr.clone(),
         locktime: 0,

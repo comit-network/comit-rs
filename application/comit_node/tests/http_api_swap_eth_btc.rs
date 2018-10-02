@@ -44,7 +44,7 @@ use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
 fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
     let _ = pretty_env_logger::try_init();
-    let event_store = Arc::new(InMemoryEventStore::new());
+    let event_store = Arc::new(InMemoryEventStore::default());
     let fake_factory = Arc::new(FakeFactory::new());
     let master_priv_key =
         "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"

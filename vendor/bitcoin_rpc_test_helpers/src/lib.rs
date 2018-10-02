@@ -1,3 +1,6 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
+
 // Place for putting common queries needed in tests
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
@@ -5,7 +8,7 @@ extern crate bitcoin_support;
 use bitcoin_rpc_client::{
     BitcoinRpcApi, TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput,
 };
-use bitcoin_support::{Address, BitcoinQuantity, Network, Sha256dHash, ToP2wpkhAddress};
+use bitcoin_support::{Address, BitcoinQuantity, IntoP2wpkhAddress, Network, Sha256dHash};
 
 //TODO: All of this should be under #[cfg(test)]
 pub trait RegtestHelperClient {
@@ -17,7 +20,7 @@ pub trait RegtestHelperClient {
     fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput;
 
     fn enable_segwit(&self);
-    fn create_p2wpkh_vout_at<D: ToP2wpkhAddress>(
+    fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
         value: BitcoinQuantity,
@@ -61,12 +64,12 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
             .clone()
     }
 
-    fn create_p2wpkh_vout_at<D: ToP2wpkhAddress>(
+    fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
         value: BitcoinQuantity,
     ) -> (Sha256dHash, TransactionOutput) {
-        let address = dest.to_p2wpkh_address(Network::Regtest);
+        let address = dest.into_p2wpkh_address(Network::Regtest);
 
         let txid = self
             .send_to_address(&address.clone().into(), value.bitcoin())

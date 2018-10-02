@@ -17,7 +17,7 @@ impl Default for SayHelloToTimesHeader {
 }
 
 pub fn config() -> Config<Request, Response> {
-    Config::new().on_request("SAY_HELLO", &["TO"], |request: Request| {
+    Config::default().on_request("SAY_HELLO", &["TO"], |request: Request| {
         let to = header!(request.get_header::<SayHelloToHeader>("TO"));
         let times = try_header!(request.get_header::<SayHelloToTimesHeader>("TIMES"));
 

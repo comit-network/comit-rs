@@ -1,5 +1,4 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
-use byteorder::{LittleEndian, WriteBytesExt};
 use num::{
     bigint::{BigInt, BigUint, Sign},
     FromPrimitive, ToPrimitive,
@@ -18,22 +17,22 @@ pub struct EthereumQuantity(U256);
 const U64SIZE: usize = mem::size_of::<u64>();
 
 impl EthereumQuantity {
-    fn from_eth_bigdec(decimal: BigDecimal) -> EthereumQuantity {
+    fn from_eth_bigdec(decimal: &BigDecimal) -> EthereumQuantity {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
-        Self::from_wei_bigint(wei_bigint.to_biguint().unwrap())
+        Self::from_wei_bigint(&wei_bigint.to_biguint().unwrap())
     }
 
     pub fn from_eth(eth: f64) -> Self {
-        let dec =
-            BigDecimal::from_f64(eth).expect(format!("{} is an invalid eth value", eth).as_str());
-        Self::from_eth_bigdec(dec)
+        let dec = BigDecimal::from_f64(eth)
+            .unwrap_or_else(|| panic!("{} is an invalid eth value !", eth));
+        Self::from_eth_bigdec(&dec)
     }
 
     pub fn from_wei(wei: U256) -> Self {
         EthereumQuantity(wei)
     }
 
-    fn from_wei_bigint(wei: BigUint) -> EthereumQuantity {
+    fn from_wei_bigint(wei: &BigUint) -> EthereumQuantity {
         let bytes = wei.to_bytes_be();
         let mut buf = [0u8; 32];
         let start = 32 - bytes.len();
@@ -42,22 +41,10 @@ impl EthereumQuantity {
     }
 
     fn to_ethereum_bigdec(&self) -> BigDecimal {
-        let mut bs = [0u8; U64SIZE * 4];
+        let mut bytes = [0u8; U64SIZE * 4];
+        self.0.to_little_endian(&mut bytes);
 
-        let _u256 = self.0;
-        let four_u64s_little_endian = _u256.0;
-
-        for index in 0..4 {
-            let _u64 = four_u64s_little_endian[index];
-            let start = index * U64SIZE;
-            let end = (index + 1) * U64SIZE;
-            bs[start..end]
-                .as_mut()
-                .write_u64::<LittleEndian>(_u64)
-                .expect("Unable to write");
-        }
-
-        let bigint = BigInt::from_bytes_le(Sign::Plus, &bs);
+        let bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
 
         BigDecimal::new(bigint, 18)
     }
@@ -67,7 +54,7 @@ impl EthereumQuantity {
     }
 
     pub fn wei(&self) -> U256 {
-        U256::from(self.0)
+        self.0
     }
 }
 
@@ -90,7 +77,7 @@ impl FromStr for EthereumQuantity {
     type Err = ParseBigDecimalError;
     fn from_str(string: &str) -> Result<EthereumQuantity, Self::Err> {
         let dec = BigDecimal::from_str(string)?;
-        Ok(Self::from_eth_bigdec(dec))
+        Ok(Self::from_eth_bigdec(&dec))
     }
 }
 
@@ -113,7 +100,7 @@ impl<'de> Deserialize<'de> for EthereumQuantity {
                 E: de::Error,
             {
                 let bigint = BigUint::from_str(v).map_err(E::custom)?;
-                Ok(EthereumQuantity::from_wei_bigint(bigint))
+                Ok(EthereumQuantity::from_wei_bigint(&bigint))
             }
         }
 

@@ -1,16 +1,17 @@
-extern crate bytes;
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
+
+#[macro_use]
+extern crate debug_stub_derive;
 extern crate futures;
 extern crate hex;
 extern crate http;
 extern crate pem;
-extern crate prost;
 #[macro_use]
 extern crate prost_derive;
 extern crate tls_api;
 extern crate tls_api_native_tls;
-extern crate tokio;
 extern crate tokio_core;
-extern crate tokio_io;
 extern crate tokio_tls_api;
 extern crate tower_grpc;
 extern crate tower_h2;

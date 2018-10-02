@@ -8,7 +8,9 @@ use routes::{
 };
 use std::sync::Arc;
 
+#[derive(DebugStub)]
 pub struct ServerBuilder {
+    #[debug_stub = "Rocket"]
     rocket: rocket::Rocket,
 }
 

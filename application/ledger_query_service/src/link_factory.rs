@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct LinkFactory {
     port: Option<u16>,
     host: String,
@@ -17,12 +18,12 @@ impl LinkFactory {
         let port = self
             .port
             .map(|port| format!(":{}", port))
-            .unwrap_or(String::new());
+            .unwrap_or_default();
 
         let path = {
             let path = path.into();
 
-            if path.starts_with("/") {
+            if path.starts_with('/') {
                 path
             } else {
                 String::from("/") + &path

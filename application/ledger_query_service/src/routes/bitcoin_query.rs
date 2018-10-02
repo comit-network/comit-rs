@@ -24,6 +24,7 @@ pub struct BitcoinQuery {
     format = "application/json",
     data = "<query>"
 )]
+#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn handle_new_bitcoin_query<'r>(
     query: Json<BitcoinQuery>,
     link_factory: State<LinkFactory>,
@@ -72,13 +73,14 @@ impl Transaction for BitcoinTransaction {
     }
 }
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Debug, Serialize, Clone, Default)]
 pub struct RetrieveBitcoinQueryResponse {
     query: BitcoinQuery,
     matching_transactions: QueryResult,
 }
 
 #[get("/queries/bitcoin/<id>")]
+#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn retrieve_bitcoin_query(
     id: u32,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
@@ -97,6 +99,7 @@ pub fn retrieve_bitcoin_query(
 }
 
 #[delete("/queries/bitcoin/<id>")]
+#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn delete_bitcoin_query(
     id: u32,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,

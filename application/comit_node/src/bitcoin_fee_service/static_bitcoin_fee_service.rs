@@ -1,5 +1,6 @@
 use bitcoin_fee_service::{BitcoinFeeService, Error};
 
+#[derive(Debug)]
 pub struct StaticBitcoinFeeService(f64);
 
 impl BitcoinFeeService for StaticBitcoinFeeService {

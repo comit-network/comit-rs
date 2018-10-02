@@ -21,10 +21,10 @@ pub enum RequestError {
 impl RequestError {
     pub fn status(&self) -> Status {
         match *self {
-            RequestError::UnknownRequestType(_) => Status::SE(02),
-            RequestError::UnknownMandatoryHeaders(_) => Status::SE(01),
-            RequestError::MalformedHeader(_) => Status::SE(00),
-            RequestError::MalformedField(_) => Status::SE(00),
+            RequestError::UnknownRequestType(_) => Status::SE(2),
+            RequestError::UnknownMandatoryHeaders(_) => Status::SE(1),
+            RequestError::MalformedHeader(_) => Status::SE(0),
+            RequestError::MalformedField(_) => Status::SE(0),
         }
     }
 }

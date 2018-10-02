@@ -8,7 +8,7 @@ pub struct CounterState {
 pub fn config() -> Config<Request, Response> {
     let mut state = CounterState::default();
 
-    Config::new().on_request("COUNT", &[], move |_request: Request| {
+    Config::default().on_request("COUNT", &[], move |_request: Request| {
         state.invocations += 1;
 
         Response::new(Status::OK(0)).with_body(state.invocations)

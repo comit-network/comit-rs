@@ -80,15 +80,14 @@ impl ParityClient {
     }
 
     pub fn get_contract_address(&self, txid: H256) -> Address {
-        let receipt = self
-            .client
+        self.client
             .eth()
             .transaction_receipt(txid)
             .wait()
             .unwrap()
-            .unwrap();
-
-        receipt.contract_address.unwrap()
+            .unwrap()
+            .contract_address
+            .unwrap()
     }
 
     pub fn mint_tokens(&self, contract: Address, amount: U256, to: Address) -> U256 {

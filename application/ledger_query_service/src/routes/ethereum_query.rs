@@ -27,6 +27,7 @@ pub struct EthereumQuery {
     format = "application/json",
     data = "<query>"
 )]
+#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn handle_new_ethereum_query<'r>(
     query: Json<EthereumQuery>,
     link_factory: State<LinkFactory>,
@@ -37,8 +38,8 @@ pub fn handle_new_ethereum_query<'r>(
     if let EthereumQuery {
         from_address: None,
         to_address: None,
-        is_contract_creation: _, // Not enough by itself
         transaction_data: None,
+        ..
     } = query
     {
         return Err(HttpApiProblem::with_title_from_status(400)
@@ -95,13 +96,14 @@ impl Transaction for EthereumTransaction {
     }
 }
 
-#[derive(Serialize, Clone, Default)]
+#[derive(Serialize, Clone, Default, Debug)]
 pub struct RetrieveEthereumQueryResponse {
     query: EthereumQuery,
     matching_transactions: QueryResult,
 }
 
 #[get("/queries/ethereum/<id>")]
+#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn retrieve_ethereum_query(
     id: u32,
     query_repository: State<Arc<QueryRepository<EthereumQuery>>>,
@@ -120,6 +122,7 @@ pub fn retrieve_ethereum_query(
 }
 
 #[delete("/queries/ethereum/<id>")]
+#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn delete_ethereum_query(
     id: u32,
     query_repository: State<Arc<QueryRepository<EthereumQuery>>>,

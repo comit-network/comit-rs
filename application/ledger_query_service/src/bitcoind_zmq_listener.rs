@@ -2,9 +2,13 @@ use bitcoin_support::{serialize::deserialize, Block, Transaction};
 use transaction_processor::TransactionProcessor;
 use zmq::{self, Context, Socket};
 
+#[derive(DebugStub)]
 pub struct BitcoindZmqListener<P> {
+    #[debug_stub = "Context"]
     _context: Context,
+    #[debug_stub = "Socket"]
     socket: Socket,
+    #[debug_stub = "Processor"]
     processor: P,
 }
 

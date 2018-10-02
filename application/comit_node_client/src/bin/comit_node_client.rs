@@ -1,3 +1,5 @@
+#![warn(unused_extern_crates, missing_debug_implementations)]
+#![deny(unsafe_code)]
 extern crate bitcoin_rpc_client;
 extern crate comit_node_client;
 extern crate common_types;

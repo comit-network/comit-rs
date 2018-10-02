@@ -17,7 +17,7 @@ fn evm_snapshot() {
     let container = DockerCli::new().run(GanacheCli::default());
     let (_event_loop, client) = tc_web3_client::new(&container);
 
-    let _ = client
+    client
         .api::<Ganache<transports::Http>>()
         .evm_snapshot()
         .wait()
@@ -37,7 +37,7 @@ fn evm_revert() {
         .wait()
         .unwrap();
 
-    let _ = client
+    client
         .api::<Ganache<transports::Http>>()
         .evm_revert(&snapshot_id)
         .wait()
@@ -53,14 +53,14 @@ fn evm_increase_time() {
     let (_event_loop, client) = tc_web3_client::new(&container);
 
     //        let increase = U256::from(1);
-    //
-    let _ = client
+
+    client
         .api::<Ganache<transports::Http>>()
         .evm_increase_time(0)
         .wait()
         .unwrap();
 
-    let _ = client
+    client
         .api::<Ganache<transports::Http>>()
         .evm_mine()
         .wait()
@@ -74,7 +74,7 @@ fn evm_mine() {
     let container = DockerCli::new().run(GanacheCli::default());
     let (_event_loop, client) = tc_web3_client::new(&container);
 
-    let _ = client
+    client
         .api::<Ganache<transports::Http>>()
         .evm_mine()
         .wait()

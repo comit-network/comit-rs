@@ -54,7 +54,7 @@ impl Factory<DefaultClient> for DefaultFactory {
                 let socket = TcpStream::connect(&comit_node_socket_addr).wait()?;
                 info!("Connection to {} established", comit_node_socket_addr);
                 let codec = json::JsonFrameCodec::default();
-                let config: Config<json::Request, json::Response> = Config::new();
+                let config = Config::<json::Request, json::Response>::default();
                 let connection = Connection::new(config, codec, socket);
                 let (connection_future, client) = connection.start::<json::JsonFrameHandler>();
                 let socket_addr = comit_node_socket_addr.clone();
