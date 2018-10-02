@@ -5,8 +5,8 @@ extern crate rand;
 extern crate secp256k1_support;
 
 use bitcoin_support::{
-    ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint, Network, PrivateKey,
-    PubkeyHash, ToP2wpkhAddress,
+    ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint, IntoP2wpkhAddress,
+    Network, PrivateKey, PubkeyHash,
 };
 use ethereum_support::ToEthereumAddress;
 use rand::OsRng;
@@ -17,7 +17,7 @@ fn main() {
     let keypair = KeyPair::new(&mut rng);
     let secret_key = keypair.secret_key();
     let public_key = keypair.public_key();
-    let private_key = PrivateKey::from_secret_key(*secret_key, true, Network::Bitcoin);
+    let private_key = PrivateKey::from_secret_key(secret_key, true, Network::Bitcoin);
 
     println!("private_key: {}", hex::encode(&secret_key[..]));
     println!("btc_base58_private_key: {}", private_key.to_string());
@@ -32,19 +32,19 @@ fn main() {
     let eth_address = public_key.to_ethereum_address();
     println!("eth_address: {:?}", eth_address);
     {
-        let btc_address_mainnet = public_key.to_p2wpkh_address(Network::Bitcoin);
+        let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Bitcoin);
         println!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
     }
 
     {
-        let btc_address_testnet = public_key.to_p2wpkh_address(Network::Testnet);
+        let btc_address_testnet = public_key.into_p2wpkh_address(Network::Testnet);
         println!("btc_address_p2wpkh_testnet: {:?}", btc_address_testnet);
     }
     {
-        let btc_address_regtest = public_key.to_p2wpkh_address(Network::Regtest);
+        let btc_address_regtest = public_key.into_p2wpkh_address(Network::Regtest);
         println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
     }
-    println!("pubkey_hash: {:?}", PubkeyHash::from(public_key.clone()));
+    println!("pubkey_hash: {:?}", PubkeyHash::from(public_key));
 
     {
         let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Bitcoin);
@@ -67,7 +67,7 @@ fn main() {
 }
 
 fn extended_privkey_from_secret_key(
-    secret_key: &SecretKey,
+    secret_key: SecretKey,
     network: bitcoin_support::Network,
 ) -> ExtendedPrivKey {
     let chain_code = ChainCode::from(&[1u8; 32][..]);
@@ -76,7 +76,7 @@ fn extended_privkey_from_secret_key(
         depth: 0,
         parent_fingerprint: Fingerprint::default(),
         child_number: ChildNumber::from(0),
-        secret_key: secret_key.clone(),
+        secret_key,
         chain_code,
     }
 }

@@ -12,18 +12,6 @@ use tower_grpc::{self, codegen::client::http, Request, Response};
 use tower_h2::{self, client::Connection};
 use tower_http::{self, add_origin};
 
-pub struct TowerLightningClient(
-    pub  Lightning<
-        tower_http::AddOrigin<
-            tower_h2::client::Connection<
-                tokio_tls_api::TlsStream<tokio_core::net::TcpStream>,
-                tokio_core::reactor::Handle,
-                tower_h2::BoxBody,
-            >,
-        >,
-    >,
-);
-
 trait WithMacaroon
 where
     Self: std::marker::Sized,
@@ -42,10 +30,20 @@ impl<M> WithMacaroon for Request<M> {
     }
 }
 
+#[derive(DebugStub)]
 pub struct LndClient {
     core: Core,
-    client: TowerLightningClient,
     macaroon: Option<Macaroon>,
+    #[debug_stub = "Lightning"]
+    client: Lightning<
+        tower_http::AddOrigin<
+            tower_h2::client::Connection<
+                tokio_tls_api::TlsStream<tokio_core::net::TcpStream>,
+                tokio_core::reactor::Handle,
+                tower_h2::BoxBody,
+            >,
+        >,
+    >,
 }
 
 #[derive(Debug)]
@@ -104,7 +102,7 @@ impl LndClient {
 
         Ok(LndClient {
             core,
-            client: TowerLightningClient(client),
+            client,
             macaroon,
         })
     }
@@ -128,22 +126,21 @@ impl LightningRpcApi for LndClient {
     fn add_invoice(&mut self, invoice: Invoice) -> Result<AddInvoiceResponse, Self::Err> {
         let request = Request::new(invoice).with_macaroon(self.macaroon.as_ref())?;
         let response: Response<AddInvoiceResponse> =
-            self.core.run({ self.client.0.add_invoice(request) })?;
+            self.core.run({ self.client.add_invoice(request) })?;
         Ok(response.into_inner())
     }
 
     fn get_info(&mut self) -> Result<GetInfoResponse, Self::Err> {
         let request = Request::new(GetInfoRequest {}).with_macaroon(self.macaroon.as_ref())?;
         let response: Response<GetInfoResponse> =
-            self.core.run({ self.client.0.get_info(request) })?;
+            self.core.run({ self.client.get_info(request) })?;
         Ok(response.into_inner())
     }
 
     fn send_payment(&mut self, send_request: SendRequest) -> Result<SendResponse, Self::Err> {
         let request = Request::new(send_request).with_macaroon(self.macaroon.as_ref())?;
-        let response: Response<SendResponse> = self
-            .core
-            .run({ self.client.0.send_payment_sync(request) })?;
+        let response: Response<SendResponse> =
+            self.core.run({ self.client.send_payment_sync(request) })?;
         Ok(response.into_inner())
     }
 }

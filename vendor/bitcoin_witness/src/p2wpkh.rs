@@ -9,8 +9,8 @@ use witness::{UnlockParameters, Witness};
 /// 19 76 a9 14 <public_key_hash> 88 ac
 /// in the unlocking script. See BIP 143.
 /// This function simply returns the latter as a Script.
-fn generate_prev_script(public_key_hash: &PubkeyHash) -> Script {
-    let public_key_hash: Hash160 = public_key_hash.clone().into();
+fn generate_prev_script(public_key_hash: PubkeyHash) -> Script {
+    let public_key_hash: Hash160 = public_key_hash.into();
 
     let mut prev_script = vec![0x76, 0xa9, 0x14];
 
@@ -22,18 +22,18 @@ fn generate_prev_script(public_key_hash: &PubkeyHash) -> Script {
 }
 
 pub trait UnlockP2wpkh {
-    fn p2wpkh_unlock_parameters(&self) -> UnlockParameters;
+    fn p2wpkh_unlock_parameters(self) -> UnlockParameters;
 }
 
 impl UnlockP2wpkh for KeyPair {
-    fn p2wpkh_unlock_parameters(&self) -> UnlockParameters {
+    fn p2wpkh_unlock_parameters(self) -> UnlockParameters {
         UnlockParameters {
             witness: vec![
-                Witness::Signature(self.clone()),
-                Witness::PublicKey(self.public_key().clone()),
+                Witness::Signature(self),
+                Witness::PublicKey(self.public_key()),
             ],
             sequence: super::SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
-            prev_script: generate_prev_script(&self.public_key().clone().into()),
+            prev_script: generate_prev_script(self.public_key().into()),
         }
     }
 }

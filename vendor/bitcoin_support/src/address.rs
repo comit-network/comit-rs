@@ -126,8 +126,8 @@ impl Address {
     pub fn p2wsh(script: &script::Script, network: Network) -> Address {
         Address::from(BitcoinAddress::p2wsh(script, network))
     }
-    pub fn p2wpkh(pk: &PublicKey, network: Network) -> Address {
-        Address::from(BitcoinAddress::p2wpkh(pk.inner(), network))
+    pub fn p2wpkh(pk: PublicKey, network: Network) -> Address {
+        Address::from(BitcoinAddress::p2wpkh(&pk.into(), network))
     }
 }
 

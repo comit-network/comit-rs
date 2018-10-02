@@ -11,17 +11,17 @@ use serde::{
 };
 use std::fmt;
 
-pub trait ToP2wpkhAddress {
-    fn to_p2wpkh_address(&self, Network) -> Address;
+pub trait IntoP2wpkhAddress {
+    fn into_p2wpkh_address(self, network: Network) -> Address;
 }
 
-impl ToP2wpkhAddress for PublicKey {
-    fn to_p2wpkh_address(&self, network: Network) -> Address {
-        Address::p2wpkh(&self, network)
+impl IntoP2wpkhAddress for PublicKey {
+    fn into_p2wpkh_address(self, network: Network) -> Address {
+        Address::p2wpkh(self, network)
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PubkeyHash(Hash160);
 
 impl From<Hash160> for PubkeyHash {
@@ -166,7 +166,7 @@ mod test {
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
         let keypair: KeyPair = private_key.secret_key().clone().into();
-        let address = keypair.public_key().to_p2wpkh_address(Network::Bitcoin);
+        let address = keypair.public_key().into_p2wpkh_address(Network::Bitcoin);
 
         assert_eq!(
             address,

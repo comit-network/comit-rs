@@ -1,5 +1,4 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
-use byteorder::{LittleEndian, WriteBytesExt};
 use num::{
     bigint::{BigInt, BigUint, Sign},
     FromPrimitive, ToPrimitive,
@@ -24,9 +23,8 @@ impl EthereumQuantity {
     }
 
     pub fn from_eth(eth: f64) -> Self {
-        let dec =
-            //.unwrap_or_else(|| panic!(format!("{} is an invalid eth value", eth).as_str()));;
-            BigDecimal::from_f64(eth).expect(format!("{} is an invalid eth value", eth).as_str());
+        let dec = BigDecimal::from_f64(eth)
+            .unwrap_or_else(|| panic!("{} is an invalid eth value !", eth));
         Self::from_eth_bigdec(&dec)
     }
 
@@ -43,22 +41,10 @@ impl EthereumQuantity {
     }
 
     fn to_ethereum_bigdec(&self) -> BigDecimal {
-        let mut bs = [0u8; U64SIZE * 4];
+        let mut bytes = [0u8; U64SIZE * 4];
+        self.0.to_little_endian(&mut bytes);
 
-        let _u256 = self.0;
-        let four_u64s_little_endian = _u256.0;
-
-        for index in 0..4 {
-            let _u64 = four_u64s_little_endian[index];
-            let start = index * U64SIZE;
-            let end = (index + 1) * U64SIZE;
-            bs[start..end]
-                .as_mut()
-                .write_u64::<LittleEndian>(_u64)
-                .expect("Unable to write");
-        }
-
-        let bigint = BigInt::from_bytes_le(Sign::Plus, &bs);
+        let bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
 
         BigDecimal::new(bigint, 18)
     }

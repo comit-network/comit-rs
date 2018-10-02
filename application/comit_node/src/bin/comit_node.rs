@@ -23,7 +23,7 @@ use comit_node::{
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
     rocket_factory::create_rocket_instance,
-    settings::settings::ComitNodeSettings,
+    settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
 };
 use comit_wallet::KeyStore;
@@ -79,7 +79,7 @@ fn main() {
     //TODO: make it dynamically generated every X BTC. Could be done with #296
     let btc_bob_redeem_keypair = bob_key_store.get_new_internal_keypair();
     let btc_bob_redeem_address =
-        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key().into(), btc_network);
+        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key(), btc_network);
 
     info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 
@@ -110,7 +110,7 @@ fn main() {
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
     let bitcoin_service = BitcoinService::new(
         bitcoin_rpc_client.clone(),
-        settings.bitcoin.network.clone(),
+        settings.bitcoin.network,
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
     );
@@ -131,7 +131,7 @@ fn main() {
                 bob_key_store,
                 btc_network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_url)),
-                http_api_address.into(),
+                http_api_address,
                 http_api_port,
                 http_api_logging,
             ).launch();

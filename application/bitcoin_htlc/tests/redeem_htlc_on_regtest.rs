@@ -91,7 +91,7 @@ fn redeem_htlc_with_secret() {
     let (txid, vout, input_amount, htlc, _, secret, keypair, _) = fund_htlc(&client);
 
     assert!(
-        htlc.can_be_unlocked_with(&secret, &keypair).is_ok(),
+        htlc.can_be_unlocked_with(secret, keypair).is_ok(),
         "Should be unlockable with the given secret and secret_key"
     );
 
