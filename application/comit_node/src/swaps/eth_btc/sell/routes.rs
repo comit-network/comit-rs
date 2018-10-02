@@ -1,4 +1,4 @@
-use bitcoin_support::{self, Network, ToP2wpkhAddress};
+use bitcoin_support::{self, IntoP2wpkhAddress, Network};
 use comit_node_api_client::OrderRequestBody;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};

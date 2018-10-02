@@ -11,11 +11,11 @@ use serde::{
 };
 use std::fmt;
 
-pub trait ToP2wpkhAddress {
-    fn into_p2wpkh_address(self, Network) -> Address;
+pub trait IntoP2wpkhAddress {
+    fn into_p2wpkh_address(self, network: Network) -> Address;
 }
 
-impl ToP2wpkhAddress for PublicKey {
+impl IntoP2wpkhAddress for PublicKey {
     fn into_p2wpkh_address(self, network: Network) -> Address {
         Address::p2wpkh(self, network)
     }

@@ -5,8 +5,8 @@ extern crate rand;
 extern crate secp256k1_support;
 
 use bitcoin_support::{
-    ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint, Network, PrivateKey,
-    PubkeyHash, ToP2wpkhAddress,
+    ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint, IntoP2wpkhAddress,
+    Network, PrivateKey, PubkeyHash,
 };
 use ethereum_support::ToEthereumAddress;
 use rand::OsRng;

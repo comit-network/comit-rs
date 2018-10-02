@@ -1,4 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, ToP2wpkhAddress};
+use bitcoin_support::{BitcoinQuantity, IntoP2wpkhAddress};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
 use ethereum_support::{EthereumQuantity, ToEthereumAddress};
