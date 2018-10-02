@@ -35,6 +35,7 @@ pub struct Bitcoin {
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: ExtendedPrivKey,
     pub lqs_url: String, //TODO: use Url type
+    pub poll_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]

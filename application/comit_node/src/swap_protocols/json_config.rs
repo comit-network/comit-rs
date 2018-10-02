@@ -45,6 +45,7 @@ pub fn json_config<
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_network: Network,
+    bitcoin_poll_interval: Duration,
 ) -> Config<Request, Response> {
     Config::new().on_request(
         "SWAP",
@@ -95,6 +96,7 @@ pub fn json_config<
                                 ledger_query_service_api_client.clone(),
                                 ethereum_service.clone(),
                                 bitcoin_network,
+                                bitcoin_poll_interval,
                             ),
                         }
                     }
@@ -139,6 +141,7 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_network: Network,
+    bitcoin_poll_interval: Duration,
 ) -> Response {
     let alice_refund_address: BitcoinAddress = request.source_ledger_refund_identity.clone().into();
 
@@ -212,9 +215,8 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         }
     };
 
-    //TODO: allow configuration of polling interval?
     let ledger_services =
-        LedgerServices::new(ledger_query_service_api_client, Duration::from_secs(300));
+        LedgerServices::new(ledger_query_service_api_client, bitcoin_poll_interval);
 
     let future_factory = FutureFactory::new(ledger_services);
     let stream = future_factory.create_stream_from_template(query_id);
@@ -253,7 +255,6 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
     event_store: Arc<E>,
     ethereum_service: Arc<EthereumService>,
     htlc_identifier: HtlcId,
-    //TODO: EventError is probably inappropriate. Needs to understand how Failure works
 ) -> Result<(), Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 

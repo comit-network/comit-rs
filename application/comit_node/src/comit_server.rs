@@ -4,7 +4,7 @@ use ethereum_support::EthereumQuantity;
 use event_store::EventStore;
 use futures::{Future, Stream};
 use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
-use std::{io, net::SocketAddr, sync::Arc};
+use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     json_config,
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -23,8 +23,9 @@ pub struct ComitServer<
     event_store: Arc<E>,
     my_keystore: Arc<KeyStore>,
     ethereum_service: Arc<EthereumService>,
-    bitcoin_network: Network,
     ledger_query_service: Arc<BLQS>,
+    bitcoin_network: Network,
+    bitcoin_poll_interval: Duration,
 }
 
 impl<E, BLQS> ComitServer<E, BLQS>
@@ -36,15 +37,17 @@ where
         event_store: Arc<E>,
         my_keystore: Arc<KeyStore>,
         ethereum_service: Arc<EthereumService>,
-        bitcoin_network: Network,
         ledger_query_service: Arc<BLQS>,
+        bitcoin_network: Network,
+        bitcoin_poll_interval: Duration,
     ) -> Self {
         Self {
             event_store,
             my_keystore,
             ethereum_service,
-            bitcoin_network,
             ledger_query_service,
+            bitcoin_network,
+            bitcoin_poll_interval,
         }
     }
 
@@ -65,6 +68,7 @@ where
                 self.ledger_query_service.clone(),
                 self.ethereum_service.clone(),
                 self.bitcoin_network,
+                self.bitcoin_poll_interval,
             );
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();

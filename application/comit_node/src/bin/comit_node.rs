@@ -39,7 +39,7 @@ use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
-use std::{env::var, sync::Arc};
+use std::{env::var, sync::Arc, time::Duration};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -153,8 +153,9 @@ fn main() {
         comit_server_event_store,
         bob_key_store,
         ethereum_service.clone(),
-        btc_network,
         ledger_query_service,
+        btc_network,
+        Duration::from_secs(settings.bitcoin.poll_interval_secs),
     );
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {

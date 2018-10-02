@@ -28,6 +28,7 @@ pub use bitcoin::{
     },
 };
 pub use bitcoin_quantity::*;
+pub use bitcoin_rpc_client::TransactionId;
 pub use blocks::*;
 pub use pubkey::*;
 pub use transaction::*;

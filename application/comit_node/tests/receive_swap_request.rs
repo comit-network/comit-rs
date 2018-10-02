@@ -1,4 +1,3 @@
-/* TODO uncomment
 extern crate tokio;
 extern crate transport_protocol;
 #[macro_use]
@@ -7,45 +6,54 @@ extern crate lazy_static;
 extern crate maplit;
 #[macro_use]
 extern crate serde_json;
+extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
 extern crate comit_wallet;
 extern crate common_types;
 extern crate ethereum_support;
+extern crate ethereum_wallet;
 extern crate event_store;
+extern crate failure;
 extern crate futures;
 extern crate hex;
 extern crate memsocket;
 extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate spectral;
+extern crate tc_parity_parity;
+extern crate tc_web3_client;
+extern crate testcontainers;
 extern crate web3;
-extern crate failure;
 
-use bitcoin_support::{BitcoinQuantity, Blocks};
+use bitcoin_support::{BitcoinQuantity, Blocks, TransactionId};
 use comit_node::{
-    bitcoin_payment_future::LedgerServices,
-    futures_ext::FutureFactory,
+    gas_price_service::StaticGasPriceService,
+    ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient, QueryId},
     swap_protocols::{
         json_config,
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-        rfc003,
+        rfc003::{self, ledger_htlc_service::EthereumService},
         wire_types::SwapResponse,
         SwapRequestHandler,
     },
 };
 use comit_wallet::fake_key_store::FakeKeyStoreFactory;
 use ethereum_support::EthereumQuantity;
+use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use failure::Error as FailureError;
 use futures::future::Future;
 use hex::FromHex;
+use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::{
     str::FromStr,
     sync::{Arc, Mutex},
     time::Duration,
 };
+use tc_parity_parity::ParityEthereum;
+use testcontainers::{clients::DockerCli, Docker};
 use tokio::runtime::Runtime;
 use transport_protocol::{
     client::*,
@@ -55,7 +63,6 @@ use transport_protocol::{
     shutdown_handle::{self, ShutdownHandle},
     Status,
 };
-use web3::types::TransactionId;
 
 //TODO: This is code duplication
 struct FakeLedgerQueryService {
@@ -117,22 +124,29 @@ fn setup<
         ],
     });
 
-    // TODO: Duration to come from somewhere else
-    let ledger_services =
-        LedgerServices::new(ledger_query_service.clone(), Duration::from_millis(100));
+    let container = DockerCli::new().run(ParityEthereum::default());
+    //let (_event_loop, _web3) = tc_web3_client::new(&container);
 
-    //TODO: not sure this Arc is needed but getting an "outer capture error" in json_config
-    let future_factory = Arc::new(FutureFactory::new(ledger_services));
+    let alice_keypair = KeyPair::from_secret_key_hex(
+        "63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992",
+    ).unwrap();
+
+    let ethereum_service = Arc::new(EthereumService::new(
+        Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
+        Arc::new(StaticGasPriceService::default()),
+        Arc::new(tc_web3_client::new(&container)),
+        0,
+    ));
 
     let (bob_server, alice_client) = Connection::new(
         json_config(
             swap_request_handler,
             Arc::new(FakeKeyStoreFactory::create()),
             Arc::new(InMemoryEventStore::new()),
-            future_factory,
             ledger_query_service,
-            bitcoin_node,
             ethereum_service,
+            bitcoin_support::Network::Regtest,
+            Duration::from_secs(1),
         ),
         JsonFrameCodec::default(),
         bob,
@@ -410,4 +424,3 @@ fn rate_handler_accept_offer_eth_btc() {
         .is_ok()
         .is_equal_to(&Response::new(Status::SE(22)));
 }
-*/
