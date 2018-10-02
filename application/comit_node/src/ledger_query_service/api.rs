@@ -19,7 +19,7 @@ impl<L: Ledger> QueryId<L> {
     }
 }
 
-pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: Send + Sync {
+pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: 'static + Send + Sync {
     fn create(&self, query: Q) -> Result<QueryId<L>, Error>;
     fn fetch_results(&self, query: &QueryId<L>) -> Result<Vec<L::TxId>, Error>;
     fn delete(&self, query: &QueryId<L>);

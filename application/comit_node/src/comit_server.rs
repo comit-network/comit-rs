@@ -1,12 +1,10 @@
-use bitcoin_payment_future::LedgerServices;
 use bitcoin_support::{BitcoinQuantity, Network};
 use comit_wallet::KeyStore;
 use ethereum_support::EthereumQuantity;
-use event_store::InMemoryEventStore;
+use event_store::EventStore;
 use futures::{Future, Stream};
-use futures_ext::FutureFactory;
-use ledger_query_service::DefaultLedgerQueryServiceApiClient;
-use std::{io, net::SocketAddr, sync::Arc, time::Duration};
+use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use std::{io, net::SocketAddr, sync::Arc};
 use swap_protocols::{
     json_config,
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -18,25 +16,35 @@ use swaps::common::TradeId;
 use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
 
-pub struct ComitServer {
-    event_store: Arc<InMemoryEventStore<TradeId>>,
+pub struct ComitServer<
+    E: EventStore<TradeId> + Send + Sync,
+    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>,
+> {
+    event_store: Arc<E>,
     my_keystore: Arc<KeyStore>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_network: Network,
+    ledger_query_service: Arc<BLQS>,
 }
 
-impl ComitServer {
+impl<E, BLQS> ComitServer<E, BLQS>
+where
+    E: 'static + EventStore<TradeId> + Send + Sync,
+    BLQS: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
+{
     pub fn new(
-        event_store: Arc<InMemoryEventStore<TradeId>>,
+        event_store: Arc<E>,
         my_keystore: Arc<KeyStore>,
         ethereum_service: Arc<EthereumService>,
         bitcoin_network: Network,
+        ledger_query_service: Arc<BLQS>,
     ) -> Self {
         Self {
             event_store,
             my_keystore,
             ethereum_service,
             bitcoin_network,
+            ledger_query_service,
         }
     }
 
@@ -48,26 +56,13 @@ impl ComitServer {
             let peer_addr = connection.peer_addr();
             let codec = json::JsonFrameCodec::default();
 
-            //TODO: Pass ledger query service in Comitserver
-            let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
-                "http://bitcoin_ledger_service.com/".parse().unwrap(),
-            ));
-
-            // TODO: Duration to come from somewhere else
-            let ledger_services =
-                LedgerServices::new(ledger_query_service.clone(), Duration::from_millis(100));
-
-            //TODO: not sure this Arc is needed but getting an "outer capture error" in json_config
-            let future_factory = Arc::new(FutureFactory::new(ledger_services));
-
             let swap_handler = MySwapHandler::default();
 
             let config = json_config(
                 swap_handler,
                 self.my_keystore.clone(),
                 self.event_store.clone(),
-                future_factory.clone(),
-                ledger_query_service.clone(),
+                self.ledger_query_service.clone(),
                 self.ethereum_service.clone(),
                 self.bitcoin_network,
             );

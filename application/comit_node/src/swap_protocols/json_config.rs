@@ -9,7 +9,7 @@ use failure::Error;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
 use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
     ledger::{
@@ -37,13 +37,12 @@ pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
         + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
     //TODO: Remove 'static?
-    E: 'static + EventStore<TradeId> + Send + Sync,
-    C: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
+    E: EventStore<TradeId>,
+    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
 >(
     mut handler: H,
     key_store: Arc<KeyStore>,
     event_store: Arc<E>,
-    future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_network: Network,
@@ -94,7 +93,6 @@ pub fn json_config<
                                 request,
                                 key_store.clone(),
                                 event_store.clone(),
-                                future_factory.clone(),
                                 ledger_query_service_api_client.clone(),
                                 ethereum_service.clone(),
                                 bitcoin_network,
@@ -135,14 +133,10 @@ pub fn json_config<
 
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
-fn process<
-    E: 'static + EventStore<TradeId> + Send + Sync,
-    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>,
->(
+fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>(
     request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
     key_store: Arc<KeyStore>,
     event_store: Arc<E>,
-    future_factory: Arc<FutureFactory<LedgerServices>>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_network: Network,
@@ -219,6 +213,11 @@ fn process<
         }
     };
 
+    //TODO: allow configuration of polling interval?
+    let ledger_services =
+        LedgerServices::new(ledger_query_service_api_client, Duration::from_secs(300));
+
+    let future_factory = FutureFactory::new(ledger_services);
     let stream = future_factory.create_stream_from_template(query_id);
 
     tokio::run(

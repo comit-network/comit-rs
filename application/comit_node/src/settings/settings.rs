@@ -34,6 +34,7 @@ pub struct Bitcoin {
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: ExtendedPrivKey,
+    pub lqs_url: String, //TODO: use Url type
 }
 
 #[derive(Debug, Deserialize)]

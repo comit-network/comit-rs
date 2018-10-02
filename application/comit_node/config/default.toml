@@ -10,6 +10,7 @@ satoshi_per_byte = 50 # used for calculating transaction fees
 node_url = "http://localhost:18443"
 node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+lqs_url = "http://localhost:8001"
 
 [comit]
 remote_comit_node_url = "0.0.0.0:8010"

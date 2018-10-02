@@ -30,6 +30,7 @@ use comit_node::{
     comit_node_api_client::DefaultApiClient as ComitNodeClient,
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
+    ledger_query_service::DefaultLedgerQueryServiceApiClient,
     rocket_factory::create_rocket_instance,
     settings::settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
@@ -144,11 +145,16 @@ fn main() {
         });
     }
 
+    let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
+        "http://bitcoin_ledger_service.com/".parse().unwrap(),
+    ));
+
     let server = ComitServer::new(
         comit_server_event_store,
         bob_key_store,
         ethereum_service.clone(),
         btc_network,
+        ledger_query_service,
     );
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
