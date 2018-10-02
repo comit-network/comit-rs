@@ -2,7 +2,7 @@ use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EthereumQuantity;
 use serde::Serialize;
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
-use transport_protocol::{json, Status};
+use transport_protocol::Status;
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value", content = "parameters")]
@@ -59,27 +59,16 @@ pub struct SwapRequestHeaders {
 }
 
 #[derive(Debug)]
-pub enum SwapResponse<T> {
-    Accept(T),
+pub enum SwapResponse {
+    Accept,
     Decline,
 }
 
-impl<T> SwapResponse<T> {
+impl SwapResponse {
     pub fn status(&self) -> Status {
         match *self {
-            SwapResponse::Accept(_) => Status::OK(20),
+            SwapResponse::Accept => Status::OK(20),
             SwapResponse::Decline => Status::SE(21),
-        }
-    }
-}
-
-impl<T: Serialize> Into<json::Response> for SwapResponse<T> {
-    fn into(self) -> json::Response {
-        //TODO: Don't use json::Response but accept a type argument of some trait Response
-        let response = json::Response::new(self.status());
-        match self {
-            SwapResponse::Accept(swap_accept) => response.with_body(swap_accept),
-            _ => response,
         }
     }
 }

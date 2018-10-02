@@ -58,6 +58,7 @@ fn handle_post_contract_deployed(
     Ok(())
 }
 
+//TODO: delete this route
 #[post(
     "/trades/ETH-BTC/<_trade_id>/buy-order-htlc-funded",
     format = "application/json",

@@ -6,6 +6,7 @@ use ethereum_support;
 use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{ffi::OsStr, net::SocketAddr, path::Path};
+use url;
 
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
@@ -19,7 +20,8 @@ pub struct ComitNodeSettings {
 #[derive(Debug, Deserialize)]
 pub struct Ethereum {
     pub network_id: u8,
-    pub node_url: String,
+    #[serde(with = "serde::url")]
+    pub node_url: url::Url,
     pub gas_price: u64,
     #[serde(with = "serde::keypair")]
     // TODO: Replace with mnemonics and derive keys. See #185
@@ -30,11 +32,15 @@ pub struct Ethereum {
 pub struct Bitcoin {
     pub network: Network,
     pub satoshi_per_byte: f64,
-    pub node_url: String,
+    #[serde(with = "serde::url")]
+    pub node_url: url::Url,
     pub node_username: String,
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: ExtendedPrivKey,
+    #[serde(with = "serde::url")]
+    pub lqs_url: url::Url,
+    pub queries_poll_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]

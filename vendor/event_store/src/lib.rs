@@ -1,6 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
+#[macro_use]
+extern crate failure;
+
 use std::{
     any::{Any, TypeId},
     borrow::Borrow,
@@ -18,14 +21,17 @@ impl Event for () {
     type Prev = ();
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "Previous event is missing")]
     PrevEventMissing,
+    #[fail(display = "Event with similar type already exists")]
     DuplicateEvent,
+    #[fail(display = "Event is not found")]
     NotFound,
 }
 
-pub trait EventStore<K> {
+pub trait EventStore<K: Send + Sync>: 'static + Send + Sync {
     fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error>;
     fn get_event<E: Event>(&self, key: K) -> Result<E, Error>;
 }
@@ -64,7 +70,7 @@ impl<K: Hash + Eq + Clone> InMemoryEventStore<K> {
     }
 }
 
-impl<K: Hash + Eq + Clone> EventStore<K> for InMemoryEventStore<K> {
+impl<K: 'static + Hash + Eq + Clone + Send + Sync> EventStore<K> for InMemoryEventStore<K> {
     fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error> {
         let mut events = self.events.lock().unwrap();
 

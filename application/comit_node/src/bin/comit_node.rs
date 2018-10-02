@@ -13,6 +13,7 @@ extern crate log;
 extern crate event_store;
 extern crate logging;
 extern crate tokio;
+extern crate url;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -22,6 +23,7 @@ use comit_node::{
     comit_node_api_client::DefaultApiClient as ComitNodeClient,
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
+    ledger_query_service::DefaultLedgerQueryServiceApiClient,
     rocket_factory::create_rocket_instance,
     settings::ComitNodeSettings,
     swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
@@ -30,7 +32,7 @@ use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
-use std::{env::var, sync::Arc};
+use std::{env::var, sync::Arc, time::Duration};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -50,7 +52,7 @@ fn main() {
     let address = eth_keypair.public_key().to_ethereum_address();
     let wallet = InMemoryWallet::new(eth_keypair, settings.ethereum.network_id);
 
-    let (event_loop, transport) = Http::new(&settings.ethereum.node_url).unwrap();
+    let (event_loop, transport) = Http::new(&settings.ethereum.node_url.as_str()).unwrap();
     let web3 = Web3::new(transport);
 
     let nonce = web3.eth().transaction_count(address, None).wait().unwrap();
@@ -59,12 +61,12 @@ fn main() {
         address, nonce
     );
 
-    let ethereum_service = EthereumService::new(
+    let ethereum_service = Arc::new(EthereumService::new(
         Arc::new(wallet),
         Arc::new(StaticGasPriceService::new(settings.ethereum.gas_price)),
         Arc::new((event_loop, web3)),
         nonce,
-    );
+    ));
 
     let _eth_refund_address = settings.swap.eth_refund_address;
 
@@ -83,13 +85,11 @@ fn main() {
 
     info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 
-    let bitcoin_rpc_client = {
-        bitcoin_rpc_client::BitcoinCoreClient::new(
-            settings.bitcoin.node_url.as_str(),
-            settings.bitcoin.node_username.as_str(),
-            settings.bitcoin.node_password.as_str(),
-        )
-    };
+    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client::BitcoinCoreClient::new(
+        settings.bitcoin.node_url.as_str(),
+        settings.bitcoin.node_username.as_str(),
+        settings.bitcoin.node_password.as_str(),
+    ));
 
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
@@ -106,18 +106,18 @@ fn main() {
 
     let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;
     let bitcoin_fee_service = StaticBitcoinFeeService::new(satoshi_per_kb);
-    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client);
     let bitcoin_fee_service = Arc::new(bitcoin_fee_service);
-    let bitcoin_service = BitcoinService::new(
+    let bitcoin_service = Arc::new(BitcoinService::new(
         bitcoin_rpc_client.clone(),
         settings.bitcoin.network,
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
-    );
+    ));
 
     {
+        let ethereum_service = ethereum_service.clone();
+        let bitcoin_service = bitcoin_service.clone();
         let bob_key_store = bob_key_store.clone();
-
         let http_api_address = settings.http_api.address;
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
@@ -126,8 +126,8 @@ fn main() {
         std::thread::spawn(move || {
             create_rocket_instance(
                 rocket_event_store,
-                Arc::new(ethereum_service),
-                Arc::new(bitcoin_service),
+                ethereum_service,
+                bitcoin_service,
                 bob_key_store,
                 btc_network,
                 Arc::new(ComitNodeClient::new(remote_comit_node_url)),
@@ -138,7 +138,18 @@ fn main() {
         });
     }
 
-    let server = ComitServer::new(comit_server_event_store, bob_key_store);
+    let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
+        settings.bitcoin.lqs_url,
+    ));
+
+    let server = ComitServer::new(
+        comit_server_event_store,
+        bob_key_store,
+        ethereum_service.clone(),
+        ledger_query_service,
+        btc_network,
+        Duration::from_secs(settings.bitcoin.queries_poll_interval_secs),
+    );
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);

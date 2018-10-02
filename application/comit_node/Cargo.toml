@@ -11,6 +11,7 @@ authors = [
 [dependencies]
 bitcoin_rpc_client = "0.1"
 bitcoin_htlc = { path = "../bitcoin_htlc" }
+url = "1.7"
 debug_stub_derive = "0.3.0"
 reqwest = "0.8.6"
 serde = "1.0.66"
@@ -42,6 +43,8 @@ futures = "0.1"
 chrono = "0.4.2"
 comit_wallet = { path = "../comit_wallet" }
 config = "0.9"
+tokio-timer = "0.2"
+failure = "0.1"
 
 [dev-dependencies]
 maplit = "1"
