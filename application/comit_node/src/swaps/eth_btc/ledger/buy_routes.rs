@@ -5,17 +5,14 @@ use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
 use swap_protocols::{
-    ledger::{
-        bitcoin::{self, Bitcoin},
-        ethereum::Ethereum,
-    },
-    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    rfc003::ledger_htlc_service::{BitcoinHtlcParams, LedgerHtlcService},
 };
 use swaps::{
     alice_events::ContractDeployed as AliceContractDeployed,
     bob_events::{
-        ContractDeployed as BobContractDeployed, ContractRedeemed as BobContractRedeemed,
-        OrderTaken as BobOrderTaken, TradeFunded as BobTradeFunded,
+        ContractRedeemed as BobContractRedeemed, OrderTaken as BobOrderTaken,
+        TradeFunded as BobTradeFunded,
     },
     common::TradeId,
     errors::Error,
@@ -54,61 +51,6 @@ fn handle_post_contract_deployed(
     let deployed: AliceContractDeployed<Ethereum, Bitcoin> =
         AliceContractDeployed::new(uid, address);
     event_store.add_event(uid, deployed)?;
-
-    Ok(())
-}
-
-#[post(
-    "/trades/ETH-BTC/<_trade_id>/buy-order-htlc-funded",
-    format = "application/json",
-    data = "<htlc_identifier>"
-)]
-pub fn post_orders_funding(
-    _trade_id: TradeId,
-    htlc_identifier: Json<bitcoin::HtlcId>,
-    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
-    ethereum_service: State<Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>>,
-) -> Result<(), BadRequest<String>> {
-    let event_store = event_store.inner();
-    handle_post_orders_funding(
-        // TODO HACK: Ignore trade id in post and just the first one
-        // from event_store because the poker is not giving us the
-        // right trade id anymore!
-        event_store.keys().next().unwrap(),
-        htlc_identifier.into_inner(),
-        event_store,
-        ethereum_service.inner(),
-    )?;
-    Ok(())
-}
-
-//TODO: this can be removed
-fn handle_post_orders_funding(
-    trade_id: TradeId,
-    htlc_identifier: bitcoin::HtlcId,
-    event_store: &Arc<InMemoryEventStore<TradeId>>,
-    ethereum_service: &Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
-) -> Result<(), Error> {
-    let trade_funded: BobTradeFunded<Ethereum, Bitcoin> =
-        BobTradeFunded::new(trade_id, htlc_identifier);
-
-    event_store.add_event(trade_id.clone(), trade_funded)?;
-
-    let order_taken =
-        event_store.get_event::<BobOrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
-
-    let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
-        refund_address: order_taken.bob_refund_address,
-        success_address: order_taken.alice_success_address,
-        time_lock: order_taken.bob_contract_time_lock,
-        amount: order_taken.buy_amount,
-        secret_hash: order_taken.contract_secret_lock.clone().into(),
-    })?;
-
-    let deployed: BobContractDeployed<Ethereum, Bitcoin> =
-        BobContractDeployed::new(trade_id, tx_id.to_string());
-
-    event_store.add_event(trade_id, deployed)?;
 
     Ok(())
 }

@@ -44,7 +44,6 @@ pub fn create_rocket_instance(
             routes![
                 // TODO will be removed once we have the Ledger Query Service
                 eth_btc::ledger::buy_routes::post_contract_deployed,
-                eth_btc::ledger::buy_routes::post_orders_funding,
                 eth_btc::ledger::buy_routes::post_revealed_secret,
                 eth_btc::ledger::sell_routes::post_orders_funding,
                 eth_btc::ledger::sell_routes::post_revealed_secret,
