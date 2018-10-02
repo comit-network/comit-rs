@@ -45,6 +45,7 @@ impl Htlc {
         recipient_success_pubkey_hash: RecipientSuccessPubkeyHash,
         sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
+        //TODO: use bitcoin_support::Blocks type
         relative_timelock: u32,
     ) -> Htlc {
         let recipient_success_pubkey_hash = recipient_success_pubkey_hash.into();
