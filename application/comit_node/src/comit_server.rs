@@ -29,8 +29,8 @@ pub struct ComitServer<
 
 impl<E, BLQS> ComitServer<E, BLQS>
 where
-    E: 'static + EventStore<TradeId> + Send + Sync,
-    BLQS: 'static + LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
+    E: EventStore<TradeId> + Send + Sync,
+    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
 {
     pub fn new(
         event_store: Arc<E>,
@@ -96,7 +96,6 @@ impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, Ethe
     }
 }
 
-//TODO: Should be Ethereum, EthereumQuery
 impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>
     for MySwapHandler
 {

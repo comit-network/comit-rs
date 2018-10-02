@@ -146,7 +146,7 @@ fn main() {
     }
 
     let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
-        "http://bitcoin_ledger_service.com/".parse().unwrap(),
+        settings.bitcoin.lqs_url.parse().unwrap(),
     ));
 
     let server = ComitServer::new(

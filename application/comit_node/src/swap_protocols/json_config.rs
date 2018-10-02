@@ -36,7 +36,6 @@ use transport_protocol::{
 pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
         + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
-    //TODO: Remove 'static?
     E: EventStore<TradeId>,
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
 >(
