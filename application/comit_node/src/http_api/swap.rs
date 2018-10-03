@@ -249,8 +249,8 @@ fn on_swap_response<
     result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
     match result {
-        Ok(response) => match response {
-            Ok(accepted) => event_store
+        Ok(Ok(accepted)) => {
+            event_store
                 .add_event(
                     id,
                     alice_events::SwapRequestAccepted::<SL, TL, SA, TA>::new(
@@ -258,19 +258,15 @@ fn on_swap_response<
                         accepted.source_ledger_success_identity,
                         accepted.target_ledger_lock_duration,
                     ),
-                ).unwrap(),
-            Err(_rejected) => event_store
+                ).unwrap();
+        }
+        _ => {
+            event_store
                 .add_event(
                     id,
                     alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
-                ).unwrap(),
-        },
-        // TODO: Decide what to do with transport level errors
-        Err(_frame_error) => event_store
-            .add_event(
-                id,
-                alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
-            ).unwrap(),
+                ).unwrap();
+        }
     }
 }
 
