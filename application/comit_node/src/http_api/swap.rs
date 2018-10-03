@@ -28,15 +28,15 @@ use swaps::{alice_events, common::TradeId};
 use tokio;
 
 #[derive(Debug)]
-pub enum SwapError {
+pub enum Error {
     EventStore(event_store::Error),
     ClientFactory(comit_client::FactoryError),
     Unsupported,
 }
 
-impl From<SwapError> for HttpApiProblem {
-    fn from(e: SwapError) -> Self {
-        use self::SwapError::*;
+impl From<Error> for HttpApiProblem {
+    fn from(e: Error) -> Self {
+        use self::Error::*;
         match e {
             ClientFactory(e) => {
                 error!("Connection error: {:?}", e);
@@ -50,15 +50,15 @@ impl From<SwapError> for HttpApiProblem {
     }
 }
 
-impl From<event_store::Error> for SwapError {
+impl From<event_store::Error> for Error {
     fn from(e: event_store::Error) -> Self {
-        SwapError::EventStore(e)
+        Error::EventStore(e)
     }
 }
 
-impl From<comit_client::FactoryError> for SwapError {
+impl From<comit_client::FactoryError> for Error {
     fn from(e: comit_client::FactoryError) -> Self {
-        SwapError::ClientFactory(e)
+        Error::ClientFactory(e)
     }
 }
 
@@ -158,7 +158,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
     client_factory: &Arc<comit_client::Factory<C>>,
     comit_node_addr: SocketAddr,
     key_store: &Arc<KeyStore>,
-) -> Result<SwapCreated, SwapError> {
+) -> Result<SwapCreated, Error> {
     let id = TradeId::default();
     let secret = {
         let mut rng = rng.lock().unwrap();
@@ -231,10 +231,10 @@ pub fn handle_post_swap<C: comit_client::Client>(
                     }));
                     Ok(SwapCreated { id })
                 }
-                _ => Err(SwapError::Unsupported),
+                _ => Err(Error::Unsupported),
             }
         }
-        _ => Err(SwapError::Unsupported),
+        _ => Err(Error::Unsupported),
     }
 }
 
