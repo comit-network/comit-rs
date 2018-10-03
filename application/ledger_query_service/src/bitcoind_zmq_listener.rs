@@ -1,8 +1,5 @@
-use bitcoin_support::{
-    serialize::{deserialize, BitcoinHash},
-    Block, Sha256dHash, Transaction,
-};
-use transaction_processor::TransactionProcessor;
+use bitcoin_support::{serialize::deserialize, Block};
+use block_processor::BlockProcessor;
 use zmq::{self, Context, Socket};
 
 #[derive(DebugStub)]
@@ -13,10 +10,9 @@ pub struct BitcoindZmqListener<P> {
     socket: Socket,
     #[debug_stub = "Processor"]
     processor: P,
-    blockhashes: Vec<Sha256dHash>,
 }
 
-impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
+impl<P: BlockProcessor<Block>> BitcoindZmqListener<P> {
     pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
         let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
@@ -28,7 +24,6 @@ impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
             _context: context,
             socket,
             processor,
-            blockhashes: Vec::new(),
         })
     }
 
@@ -39,32 +34,13 @@ impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
         );
 
         // for now work on the assumption that there is one blockchain, but warn
-        // every time that assumption doesn't hold, by comparing prev_blockhash to
-        // the most recent member of a list of ordered blockhashes, obtained using
-        // the method bitcoin_hash
+        // every time that assumption doesn't hold, by comparing the previous
+        // blockhash to the most recent member of a list of ordered blockhashes
         loop {
             let result = self.receive_block();
 
             if let Ok(Some(block)) = result {
-                match self.blockhashes.last() {
-                    Some(last_blockhash) => {
-                        if *last_blockhash != block.header.prev_blockhash {
-                            warn!(
-                                "Last blockhash in chain doesn't match with block {} previous blockhash",
-                                block.header.bitcoin_hash()
-                            );
-                        }
-                    }
-                    None => (),
-                }
-                self.blockhashes.push(block.header.bitcoin_hash());
-
-                self.processor.update_unconfirmed_txs_queue();
-
-                block
-                    .txdata
-                    .iter()
-                    .for_each(|tx| self.processor.process(tx))
+                self.processor.process(&block);
             }
         }
     }

@@ -21,6 +21,7 @@ extern crate futures;
 extern crate zmq_rs as zmq;
 
 mod bitcoind_zmq_listener;
+mod block_processor;
 mod ethereum_web3_block_poller;
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;
@@ -29,9 +30,9 @@ mod query_repository;
 mod query_result_repository;
 mod routes;
 pub mod server_builder;
-mod transaction_processor;
 
 pub use bitcoind_zmq_listener::*;
+pub use block_processor::*;
 pub use ethereum_support::web3;
 pub use ethereum_web3_block_poller::*;
 pub use in_memory_query_repository::*;
@@ -40,4 +41,3 @@ pub use link_factory::*;
 pub use query_repository::*;
 pub use query_result_repository::*;
 pub use routes::*;
-pub use transaction_processor::*;

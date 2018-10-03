@@ -8,11 +8,11 @@ extern crate spectral;
 extern crate serde_derive;
 extern crate bitcoin_support;
 
-use bitcoin_support::{Address, Transaction, TxOut};
+use bitcoin_support::{Address, Block, BlockHeader, Sha256dHash, Transaction, TxOut};
 use http::Uri;
 use ledger_query_service::{
-    DefaultTransactionProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
-    LinkFactory, TransactionProcessor, UnconfirmedMatchingTransaction,
+    BlockProcessor, DefaultBlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
+    LinkFactory,
 };
 use rocket::{
     http::{ContentType, Status},
@@ -99,8 +99,8 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-    let mut transaction_processor =
-        DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
+    let mut block_processor =
+        DefaultBlockProcessor::new(query_repository.clone(), query_result_repository.clone());
 
     let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
@@ -131,7 +131,21 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
 
     let tx_id = incoming_transaction.txid();
 
-    transaction_processor.process(&incoming_transaction);
+    let block_header = BlockHeader {
+        version: 1,
+        prev_blockhash: Sha256dHash::default(),
+        merkle_root: Sha256dHash::default(),
+        time: 0,
+        bits: 1,
+        nonce: 0,
+    };
+
+    let block = Block {
+        header: block_header,
+        txdata: vec![incoming_transaction],
+    };
+
+    block_processor.process(&block);
 
     let mut get_response = client.get(uri.path()).dispatch();
     assert_that(&get_response.status()).is_equal_to(Status::Ok);
@@ -177,8 +191,8 @@ fn given_unconfirmed_transaction_response_matching_transactions_is_empty() {
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-    let mut transaction_processor =
-        DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
+    let mut block_processor =
+        DefaultBlockProcessor::new(query_repository.clone(), query_result_repository.clone());
 
     let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
@@ -208,9 +222,21 @@ fn given_unconfirmed_transaction_response_matching_transactions_is_empty() {
         }],
     };
 
-    let tx_id = incoming_transaction.txid();
+    let block_header = BlockHeader {
+        version: 1,
+        prev_blockhash: Sha256dHash::default(),
+        merkle_root: Sha256dHash::default(),
+        time: 0,
+        bits: 1,
+        nonce: 0,
+    };
 
-    transaction_processor.process(&incoming_transaction);
+    let block = Block {
+        header: block_header,
+        txdata: vec![incoming_transaction],
+    };
+
+    block_processor.process(&block);
 
     let mut get_response = client.get(uri.path()).dispatch();
     assert_that(&get_response.status()).is_equal_to(Status::Ok);
@@ -223,12 +249,4 @@ fn given_unconfirmed_transaction_response_matching_transactions_is_empty() {
     assert_that(body)
         .map(|b| &b.matching_transactions)
         .is_equal_to(Vec::new());
-
-    // assert_that(&transaction_processor.unconfirmed_matching_transactions).contains(
-    //     &UnconfirmedMatchingTransaction {
-    //         query_id: 1,
-    //         tx_id: incoming_transaction.transaction_id(),
-    //         confirmations_still_needed: 2,
-    //     },
-    // )
 }

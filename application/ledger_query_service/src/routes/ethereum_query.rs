@@ -1,4 +1,7 @@
-use ethereum_support::{Address, Bytes, Transaction as EthereumTransaction};
+use block_processor::{Block, Query, Transaction};
+use ethereum_support::{
+    Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
+};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
@@ -11,8 +14,7 @@ use rocket::{
     State,
 };
 use rocket_contrib::Json;
-use std::sync::Arc;
-use transaction_processor::{Query, Transaction};
+use std::{fmt::Debug, sync::Arc};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct EthereumQuery {
@@ -90,7 +92,7 @@ impl Query<EthereumTransaction> for EthereumQuery {
     }
 
     // TODO: Implement this when adding number of confirmations needed for ethereum
-    fn confirmations_needed(&self, number_of_confirmations: u32) -> u32 {
+    fn confirmations_needed(&self) -> u32 {
         0
     }
 }
@@ -98,6 +100,19 @@ impl Query<EthereumTransaction> for EthereumQuery {
 impl Transaction for EthereumTransaction {
     fn transaction_id(&self) -> String {
         self.hash.to_string()
+    }
+}
+
+impl Block for EthereumBlock<EthereumTransaction> {
+    type Transaction = EthereumTransaction;
+    fn blockhash(&self) -> String {
+        format!("{:x}", self.hash.unwrap())
+    }
+    fn prev_blockhash(&self) -> String {
+        format!("{:x}", self.parent_hash)
+    }
+    fn transactions(&self) -> &[Self::Transaction] {
+        self.transactions.as_slice()
     }
 }
 

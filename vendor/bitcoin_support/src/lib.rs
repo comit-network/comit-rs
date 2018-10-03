@@ -16,7 +16,7 @@ extern crate spectral;
 pub use address::Address;
 pub use bitcoin::{
     blockdata::{
-        block::Block,
+        block::{Block, BlockHeader},
         script::Script,
         transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },

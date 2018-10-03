@@ -1,11 +1,11 @@
+use block_processor::BlockProcessor;
 use std::time::Duration;
-use transaction_processor::TransactionProcessor;
 use web3::{
     self,
     api::BaseFilter,
     futures::{Future, Stream},
     transports::{EventLoopHandle, Http},
-    types::{BlockId, Transaction as EthereumTransaction, TransactionId, H256},
+    types::{Block, BlockId, Transaction as EthereumTransaction, TransactionId, H256},
     Web3,
 };
 
@@ -22,7 +22,7 @@ pub struct EthereumWeb3BlockPoller<P> {
     processor: P,
 }
 
-impl<P: TransactionProcessor<EthereumTransaction>> EthereumWeb3BlockPoller<P> {
+impl<P: BlockProcessor<Block<EthereumTransaction>>> EthereumWeb3BlockPoller<P> {
     pub fn new(
         endpoint: &str,
         polling_wait_time: Duration,
@@ -58,16 +58,11 @@ impl<P: TransactionProcessor<EthereumTransaction>> EthereumWeb3BlockPoller<P> {
         let result = self
             .filter
             .stream(self.polling_interval)
-            .and_then(|block_hash| client.eth().block(BlockId::from(block_hash)))
-            .filter(Option::is_some)
-            .map(|block| iter_ok(block.unwrap().transactions))
-            .flatten()
-            .map(TransactionId::Hash)
-            .and_then(|transaction_id| client.eth().transaction(transaction_id))
+            .and_then(|block_hash| client.eth().block_with_txs(BlockId::from(block_hash)))
             .filter(Option::is_some)
             .map(Option::unwrap)
-            .for_each(|transaction| {
-                processor.process(&transaction);
+            .for_each(|block| {
+                processor.process(&block);
                 Ok(())
             }).wait();
 

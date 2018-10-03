@@ -1,19 +1,26 @@
 use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
-pub trait TransactionProcessor<T> {
-    fn process(&mut self, transaction: &T);
-    fn update_unconfirmed_txs_queue(&mut self);
+pub trait BlockProcessor<B> {
+    fn process(&mut self, block: &B);
 }
 
 pub trait Transaction: Debug {
     fn transaction_id(&self) -> String;
 }
 
+pub trait Block: Debug {
+    type Transaction: Transaction;
+
+    fn blockhash(&self) -> String;
+    fn prev_blockhash(&self) -> String;
+    fn transactions(&self) -> &[Self::Transaction];
+}
+
 pub trait Query<T>: Debug {
     fn matches(&self, transaction: &T) -> bool;
-    fn confirmations_needed(&self, number_of_confirmations: u32) -> u32;
+    fn confirmations_needed(&self) -> u32;
 }
 
 pub struct UnconfirmedMatchingTransaction {
@@ -23,18 +30,70 @@ pub struct UnconfirmedMatchingTransaction {
 }
 
 #[derive(DebugStub)]
-pub struct DefaultTransactionProcessor<Q> {
+pub struct DefaultBlockProcessor<T, Q> {
     #[debug_stub = "Queries"]
     queries: Arc<QueryRepository<Q>>,
     #[debug_stub = "Results"]
     results: Arc<QueryResultRepository<Q>>,
     unconfirmed_matching_transactions: Vec<UnconfirmedMatchingTransaction>,
+    blockhashes: Vec<String>,
+    tx_type: PhantomData<T>,
 }
 
-impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
-    for DefaultTransactionProcessor<Q>
+impl<T: Transaction, B: Block<Transaction = T>, Q: Query<T> + 'static> BlockProcessor<B>
+    for DefaultBlockProcessor<T, Q>
 {
-    fn process(&mut self, transaction: &T) {
+    fn process(&mut self, block: &B) {
+        trace!("New block received: {:?}", block);
+
+        match self.blockhashes.last() {
+            Some(last_blockhash) => {
+                if *last_blockhash != block.prev_blockhash() {
+                    warn!(
+                        "Last blockhash in chain doesn't match with block {} previous blockhash",
+                        block.blockhash()
+                    );
+                }
+            }
+            None => (),
+        }
+
+        self.blockhashes.push(block.blockhash());
+
+        self.update_unconfirmed_txs_queue();
+
+        block
+            .transactions()
+            .iter()
+            .for_each(|tx| self.process_new_tx(tx));
+    }
+}
+
+impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
+    fn update_unconfirmed_txs_queue(&mut self) {
+        trace!("Updating unconfirmed transaction queue");
+        self.unconfirmed_matching_transactions
+            .iter_mut()
+            .for_each(|utx| utx.confirmations_still_needed -= 1);
+
+        self.unconfirmed_matching_transactions
+            .iter()
+            .for_each(|utx| {
+                if utx.confirmations_still_needed <= 0 {
+                    trace!(
+                        "Sending newly confirmed transaction {:?} to query result repository",
+                        utx.tx_id
+                    );
+                    self.results
+                        .add_result(utx.query_id.clone(), utx.tx_id.clone())
+                }
+            });
+
+        self.unconfirmed_matching_transactions
+            .retain(|ref utx| utx.confirmations_still_needed > 0);
+    }
+
+    fn process_new_tx(&mut self, transaction: &T) {
         trace!("Processing {:?}", transaction);
 
         self.queries
@@ -45,11 +104,11 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
                     query,
                     transaction
                 );
+
                 let tx_matches = query.matches(transaction);
 
                 if tx_matches {
-                    let confirmations_needed = query.confirmations_needed(1);
-                    let is_confirmed = confirmations_needed <= 0;
+                    let is_confirmed = query.confirmations_needed() <= 1;
                     let tx_id = transaction.transaction_id();
 
                     if is_confirmed {
@@ -66,7 +125,7 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
                             Some(UnconfirmedMatchingTransaction {
                                 query_id: id,
                                 tx_id,
-                                confirmations_still_needed: confirmations_needed,
+                                confirmations_still_needed: query.confirmations_needed() - 1,
                             }),
                         )
                     }
@@ -86,27 +145,9 @@ impl<T: Transaction, Q: Query<T> + 'static> TransactionProcessor<T>
                 }
             })
     }
-
-    fn update_unconfirmed_txs_queue(&mut self) {
-        self.unconfirmed_matching_transactions
-            .iter_mut()
-            .for_each(|tx| tx.confirmations_still_needed -= 1);
-
-        self.unconfirmed_matching_transactions
-            .iter()
-            .for_each(|tx| {
-                if tx.confirmations_still_needed <= 0 {
-                    self.results
-                        .add_result(tx.query_id.clone(), tx.tx_id.clone())
-                }
-            });
-
-        self.unconfirmed_matching_transactions
-            .retain(|ref tx| tx.confirmations_still_needed > 0);
-    }
 }
 
-impl<Q> DefaultTransactionProcessor<Q> {
+impl<T, Q> DefaultBlockProcessor<T, Q> {
     pub fn new(
         query_repository: Arc<QueryRepository<Q>>,
         query_result_repository: Arc<QueryResultRepository<Q>>,
@@ -115,6 +156,8 @@ impl<Q> DefaultTransactionProcessor<Q> {
             queries: query_repository,
             results: query_result_repository,
             unconfirmed_matching_transactions: Vec::new(),
+            blockhashes: Vec::new(),
+            tx_type: PhantomData,
         }
     }
 }
