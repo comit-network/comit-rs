@@ -117,7 +117,11 @@ impl Address {
                 WitnessProgram::new(
                     bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
                     pubkeyhash.as_ref().to_vec(),
-                    bitcoin_bech32::constants::Network::Regtest,
+                    match network {
+                        Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
+                        Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
+                        Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
+                    },
                 ).expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
             ),
             network,
@@ -157,12 +161,32 @@ mod tests {
     use hex::FromHex;
 
     #[test]
-    fn from_pubkeyhash_and_network() {
+    fn from_pubkeyhash_and_network_regtest() {
         let pubkey_hash = PubkeyHash::from_hex("9a5b5cc47ed3ff2f65295c3563d9cb8f8db5e400").unwrap();
         let address = Address::from_pubkeyhash_and_network(pubkey_hash, Network::Regtest);
         assert_eq!(
             address,
             Address::from_str("bcrt1qnfd4e3r760lj7effts6k8kwt37xmteqq58q6ad").unwrap()
+        );
+    }
+
+    #[test]
+    fn from_pubkeyhash_and_network_mainnet() {
+        let pubkey_hash = PubkeyHash::from_hex("be8ac820650094c45c38763d4347137965eb8db5").unwrap();
+        let address = Address::from_pubkeyhash_and_network(pubkey_hash, Network::Bitcoin);
+        assert_eq!(
+            address,
+            Address::from_str("bc1qh69vsgr9qz2vghpcwc75x3cn09j7hrd4csc88q").unwrap()
+        );
+    }
+
+    #[test]
+    fn from_pubkeyhash_and_network_testnet() {
+        let pubkey_hash = PubkeyHash::from_hex("be8ac820650094c45c38763d4347137965eb8db5").unwrap();
+        let address = Address::from_pubkeyhash_and_network(pubkey_hash, Network::Testnet);
+        assert_eq!(
+            address,
+            Address::from_str("tb1qh69vsgr9qz2vghpcwc75x3cn09j7hrd4jkr5un").unwrap()
         );
     }
 }
