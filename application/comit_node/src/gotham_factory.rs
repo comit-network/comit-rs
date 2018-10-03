@@ -17,18 +17,18 @@ use std::{
 };
 use swaps::common::TradeId;
 
-#[derive(Deserialize, StateData, StaticResponseExtender)]
+#[derive(Deserialize, StateData, StaticResponseExtender, Debug)]
 pub struct SwapId {
     pub id: TradeId,
 }
 
-#[derive(Clone, NewMiddleware)]
+#[derive(Clone, NewMiddleware, Debug)]
 struct SwapMiddleware<F: Clone + StateData + Sync + RefUnwindSafe> {
     pub swap_state: SwapState,
     pub client_factory: F,
 }
 
-#[derive(StateData, Clone)]
+#[derive(StateData, Clone, Debug)]
 pub struct SwapState {
     pub event_store: Arc<InMemoryEventStore<TradeId>>,
     pub rng: Arc<Mutex<OsRng>>,
@@ -42,7 +42,7 @@ impl<C> Clone for ClientFactory<C> {
     }
 }
 
-#[derive(StateData)]
+#[derive(StateData, Debug)]
 pub struct ClientFactory<C: 'static>(pub Arc<comit_client::Factory<C>>);
 
 impl<F: StateData + Clone + Sync + RefUnwindSafe> Middleware for SwapMiddleware<F> {

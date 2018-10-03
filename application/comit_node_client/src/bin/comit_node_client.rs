@@ -1,15 +1,10 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-extern crate bitcoin_rpc_client;
-extern crate comit_node_client;
-extern crate common_types;
-extern crate reqwest;
-extern crate serde;
-extern crate structopt;
-extern crate uuid;
-
 extern crate bitcoin_support;
+extern crate comit_node_client;
 extern crate ethereum_support;
+extern crate reqwest;
+extern crate structopt;
 #[macro_use]
 extern crate maplit;
 

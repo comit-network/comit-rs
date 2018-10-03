@@ -9,12 +9,6 @@ impl Blocks {
     }
 }
 
-impl Default for Blocks {
-    fn default() -> Self {
-        BTC_BLOCKS_IN_24H
-    }
-}
-
 impl From<u32> for Blocks {
     fn from(num: u32) -> Self {
         Blocks::new(num)

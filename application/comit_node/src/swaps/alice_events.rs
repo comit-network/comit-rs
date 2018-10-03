@@ -58,7 +58,7 @@ impl<
 {
     type Prev = SentSwapRequest<SL, TL, SA, TA>;
 }
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SwapRequestRejected<SL: Ledger, TL: Ledger, SA, TA> {
     phantom: PhantomData<(SL, TL, SA, TA)>,
 }

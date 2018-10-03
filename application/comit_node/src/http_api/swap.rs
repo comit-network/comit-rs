@@ -188,9 +188,8 @@ pub fn handle_post_swap<C: comit_client::Client>(
                     },
                 ) => {
                     let source_ledger_refund_identity: PubkeyHash = key_store
-                        .get_transient_keypair(&id.clone().into(), b"REFUND")
+                        .get_transient_keypair(&id.into(), b"REFUND")
                         .public_key()
-                        .clone()
                         .into();
                     let target_ledger_success_identity = target_ledger_final_identity;
 
@@ -203,7 +202,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                         target_asset,
                         secret,
                         target_ledger_success_identity,
-                        source_ledger_refund_identity: source_ledger_refund_identity.clone(),
+                        source_ledger_refund_identity,
                         source_ledger_lock_duration: source_ledger_lock_duration.clone(),
                     };
 
@@ -224,17 +223,17 @@ pub fn handle_post_swap<C: comit_client::Client>(
                     tokio::spawn(response_future.then(move |response| {
                         on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>(
                             id,
-                            event_store,
+                            &event_store,
                             response,
                         );
                         Ok(())
                     }));
                     Ok(SwapCreated { id })
                 }
-                _ => return Err(SwapError::Unsupported),
+                _ => Err(SwapError::Unsupported),
             }
         }
-        _ => return Err(SwapError::Unsupported),
+        _ => Err(SwapError::Unsupported),
     }
 }
 
@@ -245,7 +244,7 @@ fn on_swap_response<
     TA: Clone + Send + Sync + 'static,
 >(
     id: TradeId,
-    event_store: Arc<InMemoryEventStore<TradeId>>,
+    event_store: &Arc<InMemoryEventStore<TradeId>>,
     result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
     match result {
@@ -341,8 +340,8 @@ fn handle_get_swap(
                     match contract_deployed {
                         Ok(contract_deployed) => {
                             Some(SwapStatus::Redeemable {
-                                contract_address: contract_deployed.address.clone(),
-                                data: requested.secret.clone(),
+                                contract_address: contract_deployed.address,
+                                data: requested.secret,
                                 // TODO: check how much gas we should tell the customer to pay
                                 gas: 3500,
                             })

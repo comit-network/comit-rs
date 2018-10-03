@@ -12,17 +12,12 @@ use std::{
 use swap_protocols::{ledger::Ledger, rfc003, wire_types};
 
 #[allow(dead_code)]
+#[derive(Debug, Default)]
 pub struct FakeClient {
     pending_requests: Mutex<HashMap<TypeId, Sender<Box<Any + Send>>>>,
 }
 
 impl FakeClient {
-    pub fn new() -> Self {
-        FakeClient {
-            pending_requests: Mutex::new(HashMap::new()),
-        }
-    }
-
     pub fn resolve_request<SL: Ledger, TL: Ledger>(
         &self,
         response: Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,

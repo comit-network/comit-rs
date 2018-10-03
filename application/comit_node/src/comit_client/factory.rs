@@ -2,6 +2,7 @@ use comit_client::{client::Client, DefaultClient, FakeClient};
 use futures::Future;
 use std::{
     collections::HashMap,
+    fmt::Debug,
     io,
     net::SocketAddr,
     panic::RefUnwindSafe,
@@ -21,11 +22,11 @@ impl From<io::Error> for FactoryError {
     }
 }
 
-pub trait Factory<C: Client>: Send + Sync + RefUnwindSafe {
+pub trait Factory<C: Client>: Send + Sync + RefUnwindSafe + Debug {
     fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<Arc<C>, FactoryError>;
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct DefaultFactory {
     clients: RwLock<HashMap<SocketAddr, Arc<DefaultClient>>>,
 }
@@ -43,7 +44,7 @@ impl Factory<DefaultClient> for DefaultFactory {
             .read()
             .unwrap()
             .get(&comit_node_socket_addr)
-            .map(Clone::clone);
+            .cloned();
 
         match existing_client {
             None => {
@@ -57,7 +58,7 @@ impl Factory<DefaultClient> for DefaultFactory {
                 let config = Config::<json::Request, json::Response>::default();
                 let connection = Connection::new(config, codec, socket);
                 let (connection_future, client) = connection.start::<json::JsonFrameHandler>();
-                let socket_addr = comit_node_socket_addr.clone();
+                let socket_addr = comit_node_socket_addr;
                 tokio::spawn(connection_future.map_err(move |e| {
                     error!(
                         "Connection to {:?} prematurely closed: {:?}",
@@ -74,17 +75,12 @@ impl Factory<DefaultClient> for DefaultFactory {
     }
 }
 
+#[derive(Debug, Default)]
 pub struct FakeFactory {
     pub fake_client: Arc<FakeClient>,
 }
 
 impl FakeFactory {
-    pub fn new() -> Self {
-        FakeFactory {
-            fake_client: Arc::new(FakeClient::new()),
-        }
-    }
-
     pub fn fake_client(&self) -> &FakeClient {
         &self.fake_client
     }

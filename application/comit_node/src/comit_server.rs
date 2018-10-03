@@ -83,7 +83,7 @@ impl
         // TODO: Prefer "redeem vs refund vs final" terminology than the "success" that may be misleading
         let alice_refund_address = request
             .source_ledger
-            .address_for_identity(request.source_ledger_refund_identity.clone());
+            .address_for_identity(request.source_ledger_refund_identity);
 
         let uid = TradeId::default();
 

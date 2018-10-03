@@ -5,12 +5,6 @@ use uuid::{ParseError, Uuid};
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
 
-impl TradeId {
-    pub fn new() -> Self {
-        TradeId(Uuid::new_v4())
-    }
-}
-
 impl FromStr for TradeId {
     type Err = ParseError;
 
@@ -36,27 +30,9 @@ pub struct DefaultApiClient {
     pub client: reqwest::Client,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct BuyOfferRequestBody {
-    amount: f64,
-}
-
-impl BuyOfferRequestBody {
-    pub fn new(amount: f64) -> BuyOfferRequestBody {
-        BuyOfferRequestBody { amount }
-    }
-}
-
-#[derive(Debug)]
-pub enum TradingServiceError {
-    OfferAborted(reqwest::Error),
-    OrderAborted(reqwest::Error),
-    RedeemAborted(reqwest::Error),
-}
-
 pub trait ApiClient {
-    fn send_swap_request(&self, SwapRequest) -> Result<SwapCreated, TradingServiceError>;
-    fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, TradingServiceError>;
+    fn send_swap_request(&self, SwapRequest) -> Result<SwapCreated, reqwest::Error>;
+    fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, reqwest::Error>;
 }
 
 #[derive(Deserialize, Debug, Serialize, Clone)]
@@ -105,25 +81,20 @@ pub struct SwapRequest {
 }
 
 impl ApiClient for DefaultApiClient {
-    fn send_swap_request(
-        &self,
-        swap_request: SwapRequest,
-    ) -> Result<SwapCreated, TradingServiceError> {
+    fn send_swap_request(&self, swap_request: SwapRequest) -> Result<SwapCreated, reqwest::Error> {
         let client = reqwest::Client::new();
         client
             .post(format!("{}/swap", self.url.0).as_str())
             .json(&swap_request)
             .send()
             .and_then(|mut res| res.json::<SwapCreated>())
-            .map_err(TradingServiceError::OfferAborted)
     }
 
-    fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, TradingServiceError> {
+    fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, reqwest::Error> {
         let client = reqwest::Client::new();
         client
             .get(format!("{}/swap/{}", self.url.0, id).as_str())
             .send()
             .and_then(|mut res| res.json::<SwapStatus>())
-            .map_err(|err| TradingServiceError::OrderAborted(err))
     }
 }

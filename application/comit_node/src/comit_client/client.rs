@@ -31,6 +31,7 @@ pub enum SwapReject {
     Rejected,
 }
 
+#[derive(Debug)]
 pub enum SwapResponseError {
     /// The counterparty had an internal error while processing the request
     InternalError,
@@ -40,6 +41,7 @@ pub enum SwapResponseError {
     InvalidResponse,
 }
 
+#[derive(Debug)]
 pub struct DefaultClient {
     comit_node_socket_addr: SocketAddr,
     bam_client:
@@ -83,7 +85,7 @@ impl Client for DefaultClient {
         );
         let mut bam_client = self.bam_client.lock().unwrap();
 
-        let socket_addr = self.comit_node_socket_addr.clone();
+        let socket_addr = self.comit_node_socket_addr;
 
         let response = bam_client
             .send_request(request)
