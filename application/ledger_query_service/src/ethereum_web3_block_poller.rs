@@ -53,7 +53,7 @@ impl<P: TransactionProcessor<EthereumTransaction>> EthereumWeb3BlockPoller<P> {
                 .expect("Could not get block height from web3 client")
         );
 
-        let (client, processor) = (self.client, self.processor);
+        let (client, mut processor) = (self.client, self.processor);
 
         let result = self
             .filter

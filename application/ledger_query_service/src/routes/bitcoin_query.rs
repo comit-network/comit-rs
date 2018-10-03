@@ -17,6 +17,7 @@ use transaction_processor::{Query, Transaction};
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinQuery {
     pub to_address: Option<Address>,
+    confirmations_needed: Option<u32>,
 }
 
 #[post(
@@ -30,11 +31,20 @@ pub fn handle_new_bitcoin_query<'r>(
     link_factory: State<LinkFactory>,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
 ) -> Result<impl Responder<'r>, HttpApiProblem> {
-    let query = query.into_inner();
+    let mut query = query.into_inner();
 
-    if let BitcoinQuery { to_address: None } = query {
-        return Err(HttpApiProblem::with_title_from_status(400)
-            .set_detail("Query needs at least one condition"));
+    match query {
+        BitcoinQuery {
+            to_address: None, ..
+        } => {
+            return Err(HttpApiProblem::with_title_from_status(400)
+                .set_detail("Query needs at least one condition"))
+        }
+        BitcoinQuery {
+            confirmations_needed: None,
+            ..
+        } => query.confirmations_needed = Some(1),
+        _ => (),
     }
 
     let result = query_repository.save(query);
@@ -64,6 +74,10 @@ impl Query<BitcoinTransaction> for BitcoinQuery {
         }
 
         false
+    }
+
+    fn confirmations_needed(&self, number_of_confirmations_provided: u32) -> u32 {
+        self.confirmations_needed.unwrap_or(1) - number_of_confirmations_provided
     }
 }
 

@@ -100,7 +100,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-    let transaction_processor =
+    let mut transaction_processor =
         DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
 
     let server = ledger_query_service::server_builder::ServerBuilder::create(

@@ -1,4 +1,7 @@
-use bitcoin_support::{serialize::deserialize, Block, Transaction};
+use bitcoin_support::{
+    serialize::{deserialize, BitcoinHash},
+    Block, Sha256dHash, Transaction,
+};
 use transaction_processor::TransactionProcessor;
 use zmq::{self, Context, Socket};
 
@@ -10,6 +13,7 @@ pub struct BitcoindZmqListener<P> {
     socket: Socket,
     #[debug_stub = "Processor"]
     processor: P,
+    blockhashes: Vec<Sha256dHash>,
 }
 
 impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
@@ -24,6 +28,7 @@ impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
             _context: context,
             socket,
             processor,
+            blockhashes: Vec::new(),
         })
     }
 
@@ -33,10 +38,29 @@ impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
             self.socket.get_last_endpoint().unwrap()
         );
 
+        // for now work on the assumption that there is one blockchain, but warn
+        // every time that assumption doesn't hold, by comparing prev_blockhash to
+        // the most recent member of a list of ordered blockhashes, obtained using
+        // the method bitcoin_hash
         loop {
             let result = self.receive_block();
 
             if let Ok(Some(block)) = result {
+                match self.blockhashes.last() {
+                    Some(last_blockhash) => {
+                        if *last_blockhash != block.header.prev_blockhash {
+                            warn!(
+                                "Last blockhash in chain doesn't match with block {} previous blockhash",
+                                block.header.bitcoin_hash()
+                            );
+                        }
+                    }
+                    None => (),
+                }
+                self.blockhashes.push(block.header.bitcoin_hash());
+
+                self.processor.update_unconfirmed_txs_queue();
+
                 block
                     .txdata
                     .iter()

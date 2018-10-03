@@ -88,6 +88,11 @@ impl Query<EthereumTransaction> for EthereumQuery {
 
         result
     }
+
+    // TODO: Implement this when adding number of confirmations needed for ethereum
+    fn confirmations_needed(&self, number_of_confirmations: u32) -> u32 {
+        0
+    }
 }
 
 impl Transaction for EthereumTransaction {
