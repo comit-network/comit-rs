@@ -37,8 +37,7 @@ impl Factory<DefaultClient> for DefaultFactory {
         comit_node_socket_addr: SocketAddr,
         //TODO: Return a future and ensure no duplicate connections
     ) -> Result<Arc<DefaultClient>, FactoryError> {
-        info!("Connecting to {}", comit_node_socket_addr);
-
+        debug!("Trying to get client for {}", comit_node_socket_addr);
         let existing_client = self
             .clients
             .read()
@@ -68,9 +67,16 @@ impl Factory<DefaultClient> for DefaultFactory {
                 let client = Arc::new(DefaultClient::new(comit_node_socket_addr, client));
                 let mut clients = self.clients.write().unwrap();
                 clients.insert(comit_node_socket_addr, client.clone());
+                debug!(
+                    "Client for {} created by making a new connection",
+                    comit_node_socket_addr
+                );
                 Ok(client)
             }
-            Some(client) => Ok(client.clone()),
+            Some(client) => {
+                debug!("Retrieved existing client for {}", comit_node_socket_addr);
+                Ok(client.clone())
+            }
         }
     }
 }

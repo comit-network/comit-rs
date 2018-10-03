@@ -165,7 +165,6 @@ pub fn handle_post_swap<C: comit_client::Client>(
         Secret::generate(&mut *rng)
     };
     let client = client_factory.client_for(comit_node_addr)?;
-    debug!("Retrieved client for {}", comit_node_addr);
 
     match (swap.source_ledger, swap.target_ledger) {
         (
