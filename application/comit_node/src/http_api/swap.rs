@@ -12,10 +12,8 @@ use gotham::{
 };
 use gotham_factory::{ClientFactory, SwapId, SwapState};
 use http_api_problem::HttpApiProblem;
-use hyper::{
-    header::{ContentType, Location},
-    Body, Response, StatusCode,
-};
+use hyper::{header, Body, Response, StatusCode};
+use mime;
 use rand::OsRng;
 use serde_json;
 use std::{
@@ -117,25 +115,28 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
                         };
                         match result {
                             Ok(swap_created) => {
-                                let response = Response::new()
-                                    .with_status(StatusCode::Created)
-                                    .with_header(ContentType::json())
-                                    .with_header(Location::new(format!(
-                                        "/swap/{}",
-                                        swap_created.id
-                                    ))).with_body(serde_json::to_string(&swap_created).unwrap());
+                                let response = Response::builder()
+                                    .status(StatusCode::CREATED)
+                                    .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                                    .header(header::LOCATION, format!("/swap/{}", swap_created.id))
+                                    .body(Body::from(
+                                        serde_json::to_string(&swap_created)
+                                            .expect("should always serialize"),
+                                    )).unwrap();
                                 Ok((state, response))
                             }
                             Err(e) => {
-                                //TODO: use error to generate response (requires gotham 0.3)
                                 error!("Problem with sending swap request: {:?}", e);
-                                let response = Response::new().with_status(StatusCode::BadRequest);
-                                Ok((state, response))
+                                let problem: HttpApiProblem = e.into();
+                                Ok((state, problem.into()))
                             }
                         }
                     }
                     Err(err) => {
-                        let response = Response::new().with_status(StatusCode::BadRequest);
+                        let response = Response::builder()
+                            .status(StatusCode::BAD_REQUEST)
+                            .body(Body::empty())
+                            .unwrap();
                         error!(
                             "POST /swap received invalid JSON {:?} {}",
                             err,
@@ -300,11 +301,16 @@ pub fn get_swap(state: State) -> Box<HandlerFuture> {
     };
 
     let response = match result {
-        Some(swap_status) => Response::new()
-            .with_status(StatusCode::Ok)
-            .with_header(ContentType::json())
-            .with_body(serde_json::to_string(&swap_status).unwrap()),
-        None => Response::new().with_status(StatusCode::NotFound),
+        Some(swap_status) => Response::builder()
+            .status(StatusCode::OK)
+            .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+            .body(Body::from(
+                serde_json::to_string(&swap_status).expect("should always serialize"),
+            )).unwrap(),
+        None => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::empty())
+            .unwrap(),
     };
     Box::new(future::ok((state, response)))
 }

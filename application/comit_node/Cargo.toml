@@ -37,12 +37,13 @@ event_store = { path = "../../vendor/event_store" }
 rand = "0.4.2"
 rustc-hex = "1.0.0"
 transport_protocol = { path = "../../vendor/transport_protocol" }
-tokio = "0.1.8"
+tokio = "0.1.11"
 futures = "0.1"
 chrono = "0.4.2"
-gotham = "0.2"
-gotham_derive = "0.2"
-hyper = "0.11"
+gotham = { git = "https://github.com/gotham-rs/gotham.git" }
+gotham_derive = { git = "https://github.com/gotham-rs/gotham.git" }
+hyper = "0.12"
+mime = "0.3"
 comit_wallet = { path = "../comit_wallet" }
 config = "0.9"
 

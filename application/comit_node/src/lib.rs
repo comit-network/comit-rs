@@ -41,6 +41,7 @@ extern crate web3;
 extern crate gotham_derive;
 extern crate comit_wallet;
 extern crate hyper;
+extern crate mime;
 
 #[cfg(test)]
 extern crate spectral;

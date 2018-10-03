@@ -18,6 +18,7 @@ extern crate comit_wallet;
 extern crate futures;
 extern crate gotham;
 extern crate hyper;
+extern crate mime;
 extern crate testcontainers;
 extern crate uuid;
 
@@ -35,11 +36,7 @@ use common_types::seconds::Seconds;
 use event_store::InMemoryEventStore;
 use gotham::test::TestServer;
 use hex::FromHex;
-use hyper::{
-    header::{ContentType, Location},
-    mime::APPLICATION_JSON,
-    StatusCode,
-};
+use hyper::{header, StatusCode};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
 fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
@@ -71,7 +68,7 @@ fn get_non_existent_swap() {
         .perform()
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::NotFound)
+    assert_eq!(response.status(), StatusCode::NOT_FOUND)
 }
 
 #[derive(Deserialize, Debug)]
@@ -107,19 +104,20 @@ fn swap_accepted_btc_eth() {
                 }
             }
         ).to_string(),
-            APPLICATION_JSON,
+            mime::APPLICATION_JSON,
         ).perform()
         .unwrap();
 
-    assert_eq!(response.status(), StatusCode::Created);
+    assert_eq!(response.status(), StatusCode::CREATED);
     let location = {
         let headers = response.headers();
-        assert!(headers.has::<ContentType>());
-        let content_type = headers.get::<ContentType>().unwrap();
-        assert_eq!(content_type, &ContentType::json());
+        assert!(headers.get(header::CONTENT_TYPE).is_some());
+        let content_type = headers.get(header::CONTENT_TYPE).unwrap();
+        assert_eq!(content_type, mime::APPLICATION_JSON.as_ref());
 
-        assert!(headers.has::<Location>());
-        headers.get::<Location>().unwrap().clone()
+        let location = headers.get(header::LOCATION);
+        assert!(location.is_some());
+        location.unwrap().to_str().unwrap().to_string()
     };
 
     let swap_created =
@@ -129,7 +127,7 @@ fn swap_accepted_btc_eth() {
 
     let swap_created = swap_created.unwrap();
 
-    assert_eq!(format!("/swap/{}", &swap_created.id), location.to_string());
+    assert_eq!(format!("/swap/{}", &swap_created.id), location);
 
     {
         #[derive(Deserialize)]
@@ -142,7 +140,7 @@ fn swap_accepted_btc_eth() {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let get_swap =
             serde_json::from_slice::<SwapPending>(response.read_body().unwrap().as_ref()).unwrap();
@@ -176,7 +174,7 @@ fn swap_accepted_btc_eth() {
             .perform()
             .unwrap();
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let swap_accepted =
             serde_json::from_slice::<SwapAccepted>(response.read_body().unwrap().as_ref()).unwrap();
@@ -213,7 +211,7 @@ fn swap_rejected_btc_eth() {
                     }
                 }
             ).to_string(),
-            APPLICATION_JSON,
+            mime::APPLICATION_JSON,
         ).perform()
         .unwrap();
 
@@ -236,7 +234,7 @@ fn swap_rejected_btc_eth() {
             pub status: String,
         }
 
-        assert_eq!(response.status(), StatusCode::Ok);
+        assert_eq!(response.status(), StatusCode::OK);
 
         let swap_rejected =
             serde_json::from_slice::<SwapRejected>(response.read_body().unwrap().as_ref()).unwrap();
