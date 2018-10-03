@@ -82,9 +82,9 @@ pub fn create_gotham_router<
     let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
 
     build_router(chain, pipelines, |route| {
-        route.post("/swap").to(http_api::swap::post_swap::<C>);
+        route.post("/swaps").to(http_api::swap::post_swap::<C>);
         route
-            .get("/swap/:id")
+            .get("/swaps/:id")
             .with_path_extractor::<SwapId>()
             .to(http_api::swap::get_swap)
     })

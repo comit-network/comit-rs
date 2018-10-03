@@ -64,7 +64,7 @@ fn get_non_existent_swap() {
 
     let response = test_server
         .client()
-        .get(format!("http://localhost/swap/{}", id).as_str())
+        .get(format!("http://localhost/swaps/{}", id).as_str())
         .perform()
         .unwrap();
 
@@ -83,7 +83,7 @@ fn swap_accepted_btc_eth() {
     let response = test_server
         .client()
         .post(
-            "http://localhost/swap",
+            "http://localhost/swaps",
             json!(
             {
                 "source_ledger"  : {
@@ -127,7 +127,7 @@ fn swap_accepted_btc_eth() {
 
     let swap_created = swap_created.unwrap();
 
-    assert_eq!(format!("/swap/{}", &swap_created.id), location);
+    assert_eq!(format!("/swaps/{}", &swap_created.id), location);
 
     {
         #[derive(Deserialize)]
@@ -170,7 +170,7 @@ fn swap_accepted_btc_eth() {
 
         let response = test_server
             .client()
-            .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
+            .get(format!("http://localhost/swaps/{}", swap_created.id).as_str())
             .perform()
             .unwrap();
 
@@ -190,7 +190,7 @@ fn swap_rejected_btc_eth() {
     let response = test_server
         .client()
         .post(
-            "http://localhost/swap",
+            "http://localhost/swaps",
             json!(
                 {
                     "source_ledger"  : {
@@ -225,7 +225,7 @@ fn swap_rejected_btc_eth() {
     {
         let response = test_server
             .client()
-            .get(format!("http://localhost/swap/{}", swap_created.id).as_str())
+            .get(format!("http://localhost/swaps/{}", swap_created.id).as_str())
             .perform()
             .unwrap();
 

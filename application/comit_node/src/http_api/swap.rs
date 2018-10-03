@@ -118,7 +118,7 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
                                 let response = Response::builder()
                                     .status(StatusCode::CREATED)
                                     .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                                    .header(header::LOCATION, format!("/swap/{}", swap_created.id))
+                                    .header(header::LOCATION, format!("/swaps/{}", swap_created.id))
                                     .body(Body::from(
                                         serde_json::to_string(&swap_created)
                                             .expect("should always serialize"),
