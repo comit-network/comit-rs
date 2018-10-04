@@ -1,6 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
+#[macro_use]
+extern crate failure;
+
 use std::{
     any::{Any, TypeId},
     borrow::Borrow,
@@ -18,10 +21,13 @@ impl Event for () {
     type Prev = ();
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "Previous event is missing")]
     PrevEventMissing,
+    #[fail(display = "Event with similar type already exists")]
     DuplicateEvent,
+    #[fail(display = "Event is not found")]
     NotFound,
 }
 

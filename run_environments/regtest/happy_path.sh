@@ -214,9 +214,10 @@ alice_htlc_address=$(alice_wait_swap_status "$id" "accepted" | sed  -n 's/fundin
 
 fund_htlc "$alice_htlc_address";
 
-notify_bob_comit_node_btc_htlc_funded $id;
+sleep 5;
 
 notify_alice_comit_node_eth_htlc_funded $id;
+
 
 secret=$(
     ### REDEEM ETHEREUM

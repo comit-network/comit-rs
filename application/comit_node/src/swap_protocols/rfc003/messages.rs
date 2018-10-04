@@ -4,7 +4,7 @@ use swap_protocols::{
     wire_types::{Asset, SwapProtocol, SwapRequestHeaders},
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Request<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_asset: SA,
     pub target_asset: TA,

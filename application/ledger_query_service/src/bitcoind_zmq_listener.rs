@@ -29,7 +29,7 @@ impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
 
     pub fn start(&mut self) {
         info!(
-            "Starting ZeroMQ listener for Bitcoin on {} waiting for new blocks.",
+            "Connecting to {} to subscribe to new Bitcoin blocks over ZeroMQ",
             self.socket.get_last_endpoint().unwrap()
         );
 
