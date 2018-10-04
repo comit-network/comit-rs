@@ -127,8 +127,14 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
             .matching_transactions)
     }
 
-    //TODO: is the delete ever used?
-    fn delete(&self, _query: &QueryId<Bitcoin>) {
-        unimplemented!()
+    fn delete(&self, query: &QueryId<Bitcoin>) {
+        let response = self.client.delete(query.as_ref().clone()).send();
+
+        if let Err(e) = response {
+            error!(
+                "Could not delete query {:?} on ledger_query_service: {}",
+                query, e
+            );
+        };
     }
 }

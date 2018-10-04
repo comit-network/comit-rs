@@ -204,7 +204,7 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         to_address: Some(htlc.compute_address(bitcoin_network)),
     };
 
-    let query_id = match ledger_query_service_api_client.create(query) {
+    let query_id = match ledger_query_service_api_client.clone().create(query) {
         Ok(query_id) => query_id,
         Err(e) => {
             error!(
@@ -217,11 +217,13 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
 
     info!("Starting the watcher for {:?}", query_id);
 
-    let ledger_services =
-        LedgerServices::new(ledger_query_service_api_client, bitcoin_poll_interval);
+    let ledger_services = LedgerServices::new(
+        ledger_query_service_api_client.clone(),
+        bitcoin_poll_interval,
+    );
 
     let future_factory = FutureFactory::new(ledger_services);
-    let stream = future_factory.create_stream_from_template(query_id);
+    let stream = future_factory.create_stream_from_template(query_id.clone());
 
     tokio::spawn(
         stream
@@ -229,6 +231,7 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
             .for_each(move |transaction_id| {
                 // TODO: Proceed with sanity checks & Analyze the tx to get vout. See #302
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
+                //TODO: Mark the trade as failed if cannot deploy the HTLC
                 let _ = deploy_eth_htlc(
                     uid,
                     event_store.clone(),
@@ -238,7 +241,9 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
                         vout: 0,
                     },
                 );
-                // TODO: delete the trade on the LQS side
+
+                ledger_query_service_api_client.delete(&query_id);
+
                 Ok(())
             }).map_err(|e| {
                 error!("Ledger Query Service Failure: {:#?}", e);
