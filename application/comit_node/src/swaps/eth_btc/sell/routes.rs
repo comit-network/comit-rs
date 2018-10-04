@@ -39,7 +39,7 @@ pub fn post_sell_orders(
     bob_refund_address: State<ethereum_support::Address>,
     network: State<Network>,
 ) -> Result<Json<OrderTakenResponseBody<Bitcoin, Ethereum>>, BadRequest<String>> {
-    let order_taken_response_body = handle_post_sell_orders(
+    let order_taken = handle_post_sell_orders(
         trade_id,
         order_request_body.into_inner(),
         event_store.inner(),
@@ -47,7 +47,8 @@ pub fn post_sell_orders(
         bob_refund_address.inner(),
         *network.inner(),
     )?;
-    Ok(Json(order_taken_response_body))
+
+    Ok(Json(order_taken.into()))
 }
 
 fn handle_post_sell_orders(
@@ -57,7 +58,7 @@ fn handle_post_sell_orders(
     bob_success_keypair: &KeyPair,
     bob_refund_address: &ethereum_support::Address,
     network: Network,
-) -> Result<OrderTakenResponseBody<Bitcoin, Ethereum>, Error> {
+) -> Result<OrderTaken<Bitcoin, Ethereum>, Error> {
     let alice_refund_address: ethereum_support::Address = order_request_body.alice_refund_address;
 
     let bob_success_address = bob_success_keypair
@@ -80,5 +81,6 @@ fn handle_post_sell_orders(
     };
 
     event_store.add_event(trade_id, order_taken.clone())?;
-    Ok(order_taken.into())
+
+    Ok(order_taken)
 }

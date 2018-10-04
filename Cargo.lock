@@ -324,6 +324,7 @@ dependencies = [
  "ethereum_support 0.1.0",
  "ethereum_wallet 0.1.0",
  "event_store 0.1.0",
+ "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -351,7 +352,9 @@ dependencies = [
  "testcontainers 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-timer 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "transport_protocol 0.1.0",
+ "url 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "uuid 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "web3 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -696,6 +699,9 @@ dependencies = [
 [[package]]
 name = "event_store"
 version = "0.1.0"
+dependencies = [
+ "failure 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "failure"
