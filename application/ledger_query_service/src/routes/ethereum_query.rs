@@ -14,7 +14,7 @@ use rocket::{
     State,
 };
 use rocket_contrib::Json;
-use std::{fmt::Debug, sync::Arc};
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct EthereumQuery {

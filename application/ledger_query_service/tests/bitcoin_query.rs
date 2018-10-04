@@ -185,7 +185,7 @@ fn should_reject_malformed_address() {
 }
 
 #[test]
-fn given_unconfirmed_transaction_response_matching_transactions_is_empty() {
+fn given_pending_transaction_response_matching_transactions_is_empty() {
     let _ = pretty_env_logger::try_init();
 
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));

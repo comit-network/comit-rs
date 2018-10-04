@@ -33,9 +33,6 @@ impl<P: BlockProcessor<Block>> BitcoindZmqListener<P> {
             self.socket.get_last_endpoint().unwrap()
         );
 
-        // for now work on the assumption that there is one blockchain, but warn
-        // every time that assumption doesn't hold, by comparing the previous
-        // blockhash to the most recent member of a list of ordered blockhashes
         loop {
             let result = self.receive_block();
 

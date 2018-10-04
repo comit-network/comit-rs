@@ -5,11 +5,9 @@ use web3::{
     api::BaseFilter,
     futures::{Future, Stream},
     transports::{EventLoopHandle, Http},
-    types::{Block, BlockId, Transaction as EthereumTransaction, TransactionId, H256},
+    types::{Block, BlockId, Transaction as EthereumTransaction, H256},
     Web3,
 };
-
-use futures::stream::iter_ok;
 
 #[derive(DebugStub)]
 pub struct EthereumWeb3BlockPoller<P> {

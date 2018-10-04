@@ -20,7 +20,12 @@ use std::sync::Arc;
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinQuery {
     pub to_address: Option<Address>,
-    confirmations_needed: Option<u32>,
+    #[serde(default = "default_confirmations")]
+    confirmations_needed: u32,
+}
+
+fn default_confirmations() -> u32 {
+    1
 }
 
 #[post(
@@ -34,20 +39,14 @@ pub fn handle_new_bitcoin_query<'r>(
     link_factory: State<LinkFactory>,
     query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
 ) -> Result<impl Responder<'r>, HttpApiProblem> {
-    let mut query = query.into_inner();
+    let query = query.into_inner();
 
-    match query {
-        BitcoinQuery {
-            to_address: None, ..
-        } => {
-            return Err(HttpApiProblem::with_title_from_status(400)
-                .set_detail("Query needs at least one condition"))
-        }
-        BitcoinQuery {
-            confirmations_needed: None,
-            ..
-        } => query.confirmations_needed = Some(1),
-        _ => (),
+    if let BitcoinQuery {
+        to_address: None, ..
+    } = query
+    {
+        return Err(HttpApiProblem::with_title_from_status(400)
+            .set_detail("Query needs at least one condition"));
     }
 
     let result = query_repository.save(query);
@@ -80,7 +79,7 @@ impl Query<BitcoinTransaction> for BitcoinQuery {
     }
 
     fn confirmations_needed(&self) -> u32 {
-        self.confirmations_needed.unwrap_or(1)
+        self.confirmations_needed
     }
 }
 
