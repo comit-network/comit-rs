@@ -1,9 +1,6 @@
 use bitcoin_rpc_client::TransactionId;
 use failure::Error as FailureError;
-use ledger_query_service::{
-    api::{LedgerQueryServiceApiClient, QueryId},
-    bitcoin::BitcoinQuery,
-};
+use ledger_query_service::{bitcoin::BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
 use reqwest::{self, header::Location, Client, Url, UrlError};
 use serde::{
     de::{self, SeqAccess},

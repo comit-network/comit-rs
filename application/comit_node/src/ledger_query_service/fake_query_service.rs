@@ -1,9 +1,6 @@
 use bitcoin_support::TransactionId;
 use failure::Error;
-use ledger_query_service::{
-    api::{LedgerQueryServiceApiClient, QueryId},
-    bitcoin::BitcoinQuery,
-};
+use ledger_query_service::{bitcoin::BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
 use std::sync::Mutex;
 use swap_protocols::ledger::bitcoin::Bitcoin;
 
