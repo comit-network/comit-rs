@@ -35,7 +35,7 @@ pub struct DefaultBlockProcessor<T, Q> {
     queries: Arc<QueryRepository<Q>>,
     #[debug_stub = "Results"]
     results: Arc<QueryResultRepository<Q>>,
-    unconfirmed_matching_transactions: Vec<UnconfirmedMatchingTransaction>,
+    unconfirmed_matching_transaction_queue: Vec<UnconfirmedMatchingTransaction>,
     blockhashes: Vec<String>,
     tx_type: PhantomData<T>,
 }
@@ -48,9 +48,10 @@ impl<T: Transaction, B: Block<Transaction = T>, Q: Query<T> + 'static> BlockProc
 
         match self.blockhashes.last() {
             Some(last_blockhash) => {
+                trace!("Checking that new block is child of last block in chain");
                 if *last_blockhash != block.prev_blockhash() {
                     warn!(
-                        "Last blockhash in chain doesn't match with block {} previous blockhash",
+                        "Block with blockhash {} is not child of previous block in chain",
                         block.blockhash()
                     );
                 }
@@ -60,23 +61,23 @@ impl<T: Transaction, B: Block<Transaction = T>, Q: Query<T> + 'static> BlockProc
 
         self.blockhashes.push(block.blockhash());
 
-        self.update_unconfirmed_txs_queue();
+        self.update_unconfirmed_matching_transaction_queue();
 
         block
             .transactions()
             .iter()
-            .for_each(|tx| self.process_new_tx(tx));
+            .for_each(|tx| self.process_new_transaction(tx));
     }
 }
 
 impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
-    fn update_unconfirmed_txs_queue(&mut self) {
-        trace!("Updating unconfirmed transaction queue");
-        self.unconfirmed_matching_transactions
+    fn update_unconfirmed_matching_transaction_queue(&mut self) {
+        trace!("Updating unconfirmed matching transaction queue");
+        self.unconfirmed_matching_transaction_queue
             .iter_mut()
             .for_each(|utx| utx.confirmations_still_needed -= 1);
 
-        self.unconfirmed_matching_transactions
+        self.unconfirmed_matching_transaction_queue
             .iter()
             .for_each(|utx| {
                 if utx.confirmations_still_needed <= 0 {
@@ -89,11 +90,11 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
                 }
             });
 
-        self.unconfirmed_matching_transactions
+        self.unconfirmed_matching_transaction_queue
             .retain(|ref utx| utx.confirmations_still_needed > 0);
     }
 
-    fn process_new_tx(&mut self, transaction: &T) {
+    fn process_new_transaction(&mut self, transaction: &T) {
         trace!("Processing {:?}", transaction);
 
         self.queries
@@ -138,7 +139,7 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
                         self.results.add_result(query_id, tx_id)
                     }
                     (false, None, Some(unconfirmed_matching_tx)) => {
-                        self.unconfirmed_matching_transactions
+                        self.unconfirmed_matching_transaction_queue
                             .push(unconfirmed_matching_tx);
                     }
                     _ => (),
@@ -155,9 +156,172 @@ impl<T, Q> DefaultBlockProcessor<T, Q> {
         Self {
             queries: query_repository,
             results: query_result_repository,
-            unconfirmed_matching_transactions: Vec::new(),
+            unconfirmed_matching_transaction_queue: Vec::new(),
             blockhashes: Vec::new(),
             tx_type: PhantomData,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use in_memory_query_repository::InMemoryQueryRepository;
+    use in_memory_query_result_repository::InMemoryQueryResultRepository;
+    use std::str::FromStr;
+
+    #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
+    struct GenericQuery {
+        transaction_id: u8,
+        confirmations_needed: u32,
+    }
+
+    impl Query<GenericTransaction> for GenericQuery {
+        fn matches(&self, transaction: &GenericTransaction) -> bool {
+            self.transaction_id == transaction.id
+        }
+
+        fn confirmations_needed(&self) -> u32 {
+            self.confirmations_needed
+        }
+    }
+
+    #[derive(Debug, Copy, Clone)]
+    struct GenericTransaction {
+        id: u8,
+    }
+
+    impl Transaction for GenericTransaction {
+        fn transaction_id(&self) -> String {
+            self.id.to_string()
+        }
+    }
+
+    #[derive(Debug, Default)]
+    struct GenericBlock {
+        id: u8,
+        parent_id: u8,
+        transaction_list: Vec<GenericTransaction>,
+    }
+
+    impl Block for GenericBlock {
+        type Transaction = GenericTransaction;
+
+        fn blockhash(&self) -> String {
+            self.id.to_string()
+        }
+        fn prev_blockhash(&self) -> String {
+            self.parent_id.to_string()
+        }
+        fn transactions(&self) -> &[GenericTransaction] {
+            self.transaction_list.as_slice()
+        }
+    }
+
+    struct Setup {
+        query_result_repository: Arc<InMemoryQueryResultRepository<GenericQuery>>,
+        block_processor: DefaultBlockProcessor<GenericTransaction, GenericQuery>,
+        first_query_id: u32,
+        first_transaction: GenericTransaction,
+        first_block: GenericBlock,
+    }
+
+    impl Setup {
+        fn new(query_transaction_id: u8, transaction_id: u8, confirmations_needed: u32) -> Self {
+            let query_repository = Arc::new(InMemoryQueryRepository::default());
+            let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+            let block_processor = DefaultBlockProcessor::new(
+                query_repository.clone(),
+                query_result_repository.clone(),
+            );
+
+            let first_query = GenericQuery {
+                transaction_id: query_transaction_id,
+                confirmations_needed,
+            };
+
+            let first_query_id = query_repository.save(first_query).unwrap();
+
+            let first_transaction = GenericTransaction { id: transaction_id };
+
+            let first_block = GenericBlock {
+                id: 0,
+                parent_id: 0,
+                transaction_list: vec![first_transaction],
+            };
+
+            Self {
+                query_result_repository,
+                block_processor,
+                first_query_id,
+                first_transaction,
+                first_block,
+            }
+        }
+    }
+    #[test]
+    fn given_single_confirmation_query_when_matching_transaction_is_processed_adds_result() {
+        let harness = Setup::new(1, 1, 1);
+        let mut block_processor = harness.block_processor;
+
+        block_processor.process(&harness.first_block);
+
+        assert!(
+            harness
+                .query_result_repository
+                .get(harness.first_query_id)
+                .is_some(),
+            "Query not moved to result repository after matching transaction \
+             requiring single confirmation arrived in block"
+        );
+    }
+
+    #[test]
+    fn given_double_confirmation_query_when_matching_transaction_is_processed_and_confirmed_adds_result(
+) {
+        let harness = Setup::new(1, 1, 2);
+        let mut block_processor = harness.block_processor;
+
+        block_processor.process(&harness.first_block);
+
+        // Not yet confirmed
+        assert!(
+            harness
+                .query_result_repository
+                .get(harness.first_query_id)
+                .is_none(),
+            "Query found in result repository even though matching transaction \
+             still requires one more confirmation"
+        );
+
+        let empty_block = GenericBlock::default();
+        block_processor.process(&empty_block);
+
+        // Now confirmed
+        assert!(
+            harness
+                .query_result_repository
+                .get(harness.first_query_id)
+                .is_some(),
+            "Query not moved to result repository after matching transaction \
+             sufficiently confirmed"
+        );
+    }
+    #[test]
+    fn given_single_confirmation_query_when_non_matching_transaction_is_processed_does_not_add_result(
+) {
+        let harness = Setup::new(1, 2, 1);
+        let mut block_processor = harness.block_processor;
+
+        block_processor.process(&harness.first_block);
+
+        assert!(
+            harness
+                .query_result_repository
+                .get(harness.first_query_id)
+                .is_none(),
+            "Query moved to result repository after non-matching transaction \
+             arrived in block"
+        );
     }
 }
