@@ -91,7 +91,7 @@ pub fn json_config<
                             SwapResponse::Decline => Response::new(Status::SE(21)),
                             SwapResponse::Accept => process(
                                 request,
-                                key_store.clone(),
+                                &key_store,
                                 event_store.clone(),
                                 ledger_query_service_api_client.clone(),
                                 ethereum_service.clone(),
@@ -136,14 +136,14 @@ const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
 fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>(
     request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
-    key_store: Arc<KeyStore>,
+    key_store: &Arc<KeyStore>,
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
 ) -> Response {
-    let alice_refund_address: BitcoinAddress = request.source_ledger_refund_identity.clone().into();
+    let alice_refund_address: BitcoinAddress = request.source_ledger_refund_identity.into();
 
     let uid = TradeId::default();
 
@@ -151,9 +151,7 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         key_store.get_transient_keypair(&uid.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
     let bob_success_address: BitcoinAddress = bob_success_keypair
         .public_key()
-        .clone()
-        .into_p2wpkh_address(request.source_ledger.network())
-        .into();
+        .into_p2wpkh_address(request.source_ledger.network());
     debug!(
         "Generated transient success address for Bob is {}",
         bob_success_address
@@ -175,10 +173,10 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         alice_contract_time_lock: request.source_ledger_lock_duration,
         bob_contract_time_lock: twelve_hours,
         alice_refund_address: alice_refund_address.clone(),
-        alice_success_address: request.target_ledger_success_identity.into(),
-        bob_refund_address: bob_refund_address.clone(),
+        alice_success_address: request.target_ledger_success_identity,
+        bob_refund_address,
         bob_success_address: bob_success_address.clone(),
-        bob_success_keypair: bob_success_keypair.clone(),
+        bob_success_keypair,
         buy_amount: request.target_asset,
         sell_amount: request.source_asset,
     };
@@ -215,8 +213,6 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         }
     };
 
-    info!("Starting the watcher for {:?}", query_id);
-
     let ledger_services = LedgerServices::new(
         ledger_query_service_api_client.clone(),
         bitcoin_poll_interval,
@@ -234,8 +230,8 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
                 //TODO: Mark the trade as failed if cannot deploy the HTLC
                 let _ = deploy_eth_htlc(
                     uid,
-                    event_store.clone(),
-                    ethereum_service.clone(),
+                    &event_store,
+                    &ethereum_service,
                     HtlcId {
                         transaction_id,
                         vout: 0,
@@ -250,37 +246,36 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
             }),
     );
 
-    info!("Watcher started, sending a response back");
     json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
-        target_ledger_refund_identity: bob_refund_address.into(),
-        source_ledger_success_identity: bob_success_keypair.public_key().clone().into(),
+        target_ledger_refund_identity: bob_refund_address,
+        source_ledger_success_identity: bob_success_keypair.public_key().into(),
         target_ledger_lock_duration: twelve_hours,
     })
 }
 
 fn deploy_eth_htlc<E: EventStore<TradeId>>(
     trade_id: TradeId,
-    event_store: Arc<E>,
-    ethereum_service: Arc<EthereumService>,
+    event_store: &Arc<E>,
+    ethereum_service: &Arc<EthereumService>,
     htlc_identifier: HtlcId,
 ) -> Result<(), Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
-    event_store.add_event(trade_id.clone(), trade_funded)?;
+    event_store.add_event(trade_id, trade_funded)?;
 
-    let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id.clone())?;
+    let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id)?;
 
     let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
         refund_address: order_taken.bob_refund_address,
         success_address: order_taken.alice_success_address,
         time_lock: order_taken.bob_contract_time_lock,
         amount: order_taken.buy_amount,
-        secret_hash: order_taken.contract_secret_lock.clone().into(),
+        secret_hash: order_taken.contract_secret_lock.clone(),
     })?;
 
     let deployed: ContractDeployed<Ethereum, Bitcoin> =
         ContractDeployed::new(trade_id, tx_id.to_string());
 
-    let result = event_store.add_event(trade_id, deployed)?;
-    Ok(result)
+    event_store.add_event(trade_id, deployed)?;
+    Ok(())
 }

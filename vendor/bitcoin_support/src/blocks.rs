@@ -14,7 +14,7 @@ impl From<Duration> for Blocks {
         let seconds = duration.as_secs();
         // ~10 minutes = ~600 seconds blocks
         let blocks = seconds / 600;
-        let blocks = if blocks > ::std::u32::MAX as u64 {
+        let blocks = if blocks > u64::from(::std::u32::MAX) {
             ::std::u32::MAX - 1 // 600 does not devise u32::MAX
         } else {
             blocks as u32

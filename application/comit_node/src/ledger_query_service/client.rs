@@ -57,7 +57,7 @@ impl<'de, T: FromStr> de::Visitor<'de> for Visitor<T> {
     type Value = Vec<T>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("an ip address with port")
+        formatter.write_str("a blockchain transaction id")
     }
 
     fn visit_seq<A>(

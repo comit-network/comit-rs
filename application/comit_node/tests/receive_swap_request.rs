@@ -88,7 +88,6 @@ fn setup<
     });
 
     let container = DockerCli::new().run(ParityEthereum::default());
-    //let (_event_loop, _web3) = tc_web3_client::new(&container);
 
     let alice_keypair = KeyPair::from_secret_key_hex(
         "63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992",

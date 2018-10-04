@@ -65,7 +65,7 @@ impl<F: Future> Future for PollUntilReady<F> {
     type Error = F::Error;
 
     fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
-        let _ = try_ready!(
+        try_ready!(
             self.next_try
                 .poll()
                 .map_err(|e| panic!("Unable to poll timer of PollUntilReady: {:?}", e))
