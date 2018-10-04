@@ -41,7 +41,7 @@ pub struct SwapState {
 }
 
 #[derive(StateData, Debug)]
-pub struct ClientFactory<C: 'static>(pub Arc<comit_client::Factory<C>>);
+pub struct ClientFactory<C: 'static>(pub Arc<comit_client::ClientFactory<C>>);
 
 impl<C> Clone for ClientFactory<C> {
     fn clone(&self) -> Self {
@@ -75,7 +75,7 @@ impl<F: StateData + Clone + Sync + RefUnwindSafe, E: StateData + Clone + Sync + 
 
 pub fn create_gotham_router<
     C: comit_client::Client + 'static,
-    F: comit_client::Factory<C> + 'static,
+    F: comit_client::ClientFactory<C> + 'static,
     E: event_store::EventStore<TradeId> + RefUnwindSafe,
 >(
     event_store: Arc<E>,

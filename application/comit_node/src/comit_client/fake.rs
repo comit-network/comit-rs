@@ -1,13 +1,13 @@
-use comit_client::{Client, SwapReject, SwapResponseError};
+use comit_client::{Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError};
 use futures::{
     sync::oneshot::{self, Sender},
     Future,
 };
 use std::{
     any::{Any, TypeId},
-    borrow::Borrow,
     collections::HashMap,
-    sync::Mutex,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
 };
 use swap_protocols::{ledger::Ledger, rfc003, wire_types};
 
@@ -58,10 +58,31 @@ impl Client for FakeClient {
         }
 
         Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
+            use std::borrow::Borrow;
             let _any: &(Any + Send) = response.borrow();
             _any.downcast_ref::<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>>()
                 .unwrap()
                 .to_owned()
         }))
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct FakeClientFactory {
+    pub fake_client: Arc<FakeClient>,
+}
+
+impl FakeClientFactory {
+    pub fn fake_client(&self) -> &FakeClient {
+        &self.fake_client
+    }
+}
+
+impl ClientFactory<FakeClient> for FakeClientFactory {
+    fn client_for(
+        &self,
+        _comit_node_socket_addr: SocketAddr,
+    ) -> Result<Arc<FakeClient>, ClientFactoryError> {
+        Ok(self.fake_client.clone())
     }
 }

@@ -23,7 +23,7 @@ extern crate testcontainers;
 extern crate uuid;
 
 use comit_node::{
-    comit_client::{FakeFactory, SwapReject},
+    comit_client::{fake::FakeClientFactory, SwapReject},
     gotham_factory::create_gotham_router,
     swap_protocols::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
@@ -39,10 +39,10 @@ use hex::FromHex;
 use hyper::{header, StatusCode};
 use std::{net::SocketAddr, str::FromStr, sync::Arc};
 
-fn build_test_server() -> (TestServer, Arc<FakeFactory>) {
+fn build_test_server() -> (TestServer, Arc<FakeClientFactory>) {
     let _ = pretty_env_logger::try_init();
     let event_store = Arc::new(InMemoryEventStore::default());
-    let fake_factory = Arc::new(FakeFactory::default());
+    let fake_factory = Arc::new(FakeClientFactory::default());
     let master_priv_key =
         "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
         .parse().unwrap();

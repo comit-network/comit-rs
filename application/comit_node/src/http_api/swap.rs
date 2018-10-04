@@ -30,7 +30,7 @@ use tokio;
 #[derive(Debug)]
 pub enum Error {
     EventStore(event_store::Error),
-    ClientFactory(comit_client::FactoryError),
+    ClientFactory(comit_client::ClientFactoryError),
     Unsupported,
 }
 
@@ -56,8 +56,8 @@ impl From<event_store::Error> for Error {
     }
 }
 
-impl From<comit_client::FactoryError> for Error {
-    fn from(e: comit_client::FactoryError) -> Self {
+impl From<comit_client::ClientFactoryError> for Error {
+    fn from(e: comit_client::ClientFactoryError) -> Self {
         Error::ClientFactory(e)
     }
 }
@@ -158,7 +158,7 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
     swap: Swap,
     event_store: &Arc<E>,
     rng: &Mutex<OsRng>,
-    client_factory: &Arc<comit_client::Factory<C>>,
+    client_factory: &Arc<comit_client::ClientFactory<C>>,
     comit_node_addr: SocketAddr,
     key_store: &Arc<KeyStore>,
 ) -> Result<SwapCreated, Error> {

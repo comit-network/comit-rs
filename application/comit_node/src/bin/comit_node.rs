@@ -127,11 +127,11 @@ fn main() {
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
         let key_store_rocket = key_store.clone();
 
-        let client_factory = comit_client::DefaultFactory::default();
+        let client_pool = comit_client::bam::BamClientPool::default();
 
         let gotham_router = gotham_factory::create_gotham_router(
             gotham_event_store,
-            Arc::new(client_factory),
+            Arc::new(client_pool),
             remote_comit_node_url,
             key_store.clone(),
         );
