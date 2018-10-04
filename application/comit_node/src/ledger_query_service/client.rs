@@ -5,8 +5,15 @@ use ledger_query_service::{
     bitcoin::BitcoinQuery,
 };
 use reqwest::{self, header::Location, Client, Url, UrlError};
+use serde::{
+    de::{self, SeqAccess},
+    export::fmt,
+    Deserialize, Deserializer,
+};
+use std::{marker::PhantomData, str::FromStr};
 use swap_protocols::ledger::bitcoin::Bitcoin;
 
+#[derive(Debug)]
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
     endpoint: Url,
@@ -18,6 +25,57 @@ impl DefaultLedgerQueryServiceApiClient {
             client: Client::new(),
             endpoint,
         }
+    }
+}
+
+#[derive(Deserialize)]
+struct QueryResponse<T: FromStr> {
+    #[serde(deserialize_with = "deserialize")]
+    matching_transactions: Vec<T>,
+}
+
+pub fn deserialize<'de, D, T: FromStr>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    deserializer.deserialize_any(Visitor::default())
+}
+
+struct Visitor<T> {
+    phantom_data: PhantomData<T>,
+}
+
+impl<T> Default for Visitor<T> {
+    fn default() -> Self {
+        Visitor {
+            phantom_data: PhantomData,
+        }
+    }
+}
+
+impl<'de, T: FromStr> de::Visitor<'de> for Visitor<T> {
+    type Value = Vec<T>;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an ip address with port")
+    }
+
+    fn visit_seq<A>(
+        self,
+        mut seq: A,
+    ) -> Result<<Self as de::Visitor<'de>>::Value, <A as SeqAccess<'de>>::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(1));
+
+        while let Some(value) = seq.next_element::<String>()? {
+            if let Ok(tx) = value.parse::<T>() {
+                result.push(tx);
+            };
+        }
+
+        Ok(result)
     }
 }
 
@@ -57,10 +115,19 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
         Ok(QueryId::new(url))
     }
 
-    fn fetch_results(&self, _query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, FailureError> {
-        unimplemented!()
+    fn fetch_results(&self, query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, FailureError> {
+        let mut response = self
+            .client
+            .get(query.as_ref().clone())
+            .send()
+            .map_err(Error::FailedRequest)?;
+
+        Ok(response
+            .json::<QueryResponse<TransactionId>>()?
+            .matching_transactions)
     }
 
+    //TODO: is the delete ever used?
     fn delete(&self, _query: &QueryId<Bitcoin>) {
         unimplemented!()
     }

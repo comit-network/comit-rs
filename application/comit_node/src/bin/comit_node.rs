@@ -13,7 +13,6 @@ extern crate log;
 extern crate event_store;
 extern crate logging;
 extern crate tokio;
-extern crate url;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;

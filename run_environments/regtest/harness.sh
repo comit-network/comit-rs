@@ -84,8 +84,7 @@ function setup() {
     ALICE_COMIT_NODE_PORT=8000
 
     BOB_COMIT_NODE_PID=$(
-        export RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
-               RUST_BACKTRACE=1 \
+        export RUST_BACKTRACE=1 \
                COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/bob;
 
         start_target "comit_node" "Bob  ";
@@ -93,15 +92,13 @@ function setup() {
 
 
     ALICE_COMIT_NODE_PID=$(
-        export  RUST_LOG=comit_node=debug,bitcoin_htlc=debug \
-                COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/alice;
+        export COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/alice;
 
         start_target "comit_node" "Alice";
     );
 
     LQS_PID=$(
-        export  RUST_LOG=ledger_query_service=debug \
-                BITCOIN_ZMQ_ENDPOINT=tcp://127.0.0.1:28332;
+        export BITCOIN_ZMQ_ENDPOINT=tcp://127.0.0.1:28332;
 
         start_target "ledger_query_service" "LQS  ";
     );

@@ -6,7 +6,7 @@ use std::{sync::Arc, time::Duration};
 use swap_protocols::ledger::bitcoin::Bitcoin;
 use tokio::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct LedgerServices {
     api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
     bitcoin_poll_interval: Duration,
@@ -24,6 +24,7 @@ impl LedgerServices {
     }
 }
 
+#[derive(Debug)]
 pub struct PaymentsToBitcoinAddressStream<F> {
     inner: F,
     transactions: Vec<TransactionId>,
@@ -37,24 +38,40 @@ impl<F: Future<Item = Vec<TransactionId>, Error = Error>> Stream
     type Error = Error;
 
     fn poll(&mut self) -> Result<Async<Option<<Self as Stream>::Item>>, <Self as Stream>::Error> {
+        trace!(
+            "Polling Stream. Got {} transactions in total, {} already emitted.",
+            self.transactions.len(),
+            self.next_index
+        );
+
         if let Some(transaction) = self.transactions.get(self.next_index) {
             self.next_index += 1;
+
+            trace!("Emitting transaction {}.", transaction);
+
             return Ok(Async::Ready(Some(transaction.clone())));
         }
 
-        let inner_result = self.inner.poll();
+        let transactions = try_ready!(self.inner.poll());
 
-        match inner_result {
-            Ok(Async::Ready(transactions)) => {
-                self.transactions = transactions;
-                self.poll()
-            }
-            Ok(Async::NotReady) => Ok(Async::NotReady),
-            Err(e) => Err(e),
+        trace!(
+            "Got new transactions ({}) from inner future: {:?}. Currently have {} transactions.",
+            transactions.len(),
+            transactions,
+            self.transactions.len()
+        );
+
+        self.transactions = transactions;
+
+        if self.transactions.len() > self.next_index {
+            self.poll()
+        } else {
+            Ok(Async::NotReady)
         }
     }
 }
 
+#[derive(Debug)]
 pub struct FetchBitcoinQueryResultsFuture {
     query_id: QueryId<Bitcoin>,
     api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,

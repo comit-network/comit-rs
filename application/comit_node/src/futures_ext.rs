@@ -13,7 +13,7 @@ pub trait StreamTemplate<D> {
 
     fn into_stream(self, dependencies: D) -> Self::Stream;
 }
-
+#[derive(Debug)]
 pub struct FutureFactory<D> {
     dependencies: D,
 }
@@ -39,6 +39,7 @@ impl<D: Clone> FutureFactory<D> {
 }
 
 /// A future that polls the inner future in the given interval until it returns Ready
+#[derive(Debug)]
 pub struct PollUntilReady<F> {
     inner: F,
     poll_interval: Duration,
@@ -72,10 +73,11 @@ impl<F: Future> Future for PollUntilReady<F> {
 
         let inner = self.inner.poll();
 
-        match inner {
-            Ok(Async::NotReady) => {
-                self.next_try = Self::compute_next_try(self.poll_interval);
-                self.poll()
+        self.next_try = Self::compute_next_try(self.poll_interval);
+
+        match self.poll() {
+            Ok(Async::Ready(_)) => {
+                panic!("Timer should not be immediately ready after resetting it")
             }
             _ => inner,
         }

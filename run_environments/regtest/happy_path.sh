@@ -125,7 +125,7 @@ function fund_htlc() {
     ## Getting the vout which pays the BTC HTLC
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
 
-    echo "HTLC successfully funded - BTC payment was made."
+    echo "HTLC successfully funded - BTC payment was made. to ${btc_htlc_address}"
 }
 
 function notify_bob_comit_node_btc_htlc_funded() {
@@ -250,7 +250,9 @@ fund_htlc;
 
 step;
 
-notify_bob_comit_node_btc_htlc_funded;
+#notify_bob_comit_node_btc_htlc_funded;
+
+sleep 10;
 
 step;
 

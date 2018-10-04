@@ -215,13 +215,15 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         }
     };
 
+    info!("Starting the watcher for {:?}", query_id);
+
     let ledger_services =
         LedgerServices::new(ledger_query_service_api_client, bitcoin_poll_interval);
 
     let future_factory = FutureFactory::new(ledger_services);
     let stream = future_factory.create_stream_from_template(query_id);
 
-    tokio::run(
+    tokio::spawn(
         stream
             .take(1)
             .for_each(move |transaction_id| {
@@ -236,12 +238,14 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
                         vout: 0,
                     },
                 );
+                // TODO: delete the trade on the LQS side
                 Ok(())
             }).map_err(|e| {
                 error!("Ledger Query Service Failure: {:#?}", e);
             }),
     );
 
+    info!("Watcher started, sending a response back");
     json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
         target_ledger_refund_identity: bob_refund_address.into(),
         source_ledger_success_identity: bob_success_keypair.public_key().clone().into(),

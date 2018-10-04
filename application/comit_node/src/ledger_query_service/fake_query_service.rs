@@ -7,6 +7,7 @@ use ledger_query_service::{
 use std::sync::Mutex;
 use swap_protocols::ledger::bitcoin::Bitcoin;
 
+#[derive(Debug)]
 pub struct SimpleFakeLedgerQueryService {
     pub results: Vec<TransactionId>,
 }
@@ -25,6 +26,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQuer
     }
 }
 
+#[derive(Debug)]
 pub struct InvocationCountFakeLedgerQueryService {
     pub number_of_invocations_before_result: u32,
     pub invocations: Mutex<u32>,

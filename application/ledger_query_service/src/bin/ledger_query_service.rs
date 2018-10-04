@@ -32,7 +32,7 @@ fn main() {
         Err(_) => server_builder,
         Ok(zmq_endpoint) => {
             //e.g. tcp://127.0.0.1:28332
-            info!("Starting BitcoinZmqListener on {}", zmq_endpoint);
+            info!("Connect BitcoinZmqListener to {}", zmq_endpoint);
 
             let query_repository = Arc::new(InMemoryQueryRepository::default());
             let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
