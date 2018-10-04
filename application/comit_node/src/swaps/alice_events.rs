@@ -73,6 +73,7 @@ impl<
     type Prev = SentSwapRequest<SL, TL, SA, TA>;
 }
 
+#[allow(clippy::new_without_default_derive)]
 impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
     pub fn new() -> Self {
         SwapRequestRejected {
