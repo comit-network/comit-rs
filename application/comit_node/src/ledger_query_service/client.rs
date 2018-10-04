@@ -2,12 +2,7 @@ use bitcoin_rpc_client::TransactionId;
 use failure::Error as FailureError;
 use ledger_query_service::{bitcoin::BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
 use reqwest::{self, header::Location, Client, Url, UrlError};
-use serde::{
-    de::{self, SeqAccess},
-    export::fmt,
-    Deserialize, Deserializer,
-};
-use std::{marker::PhantomData, str::FromStr};
+use serde::Deserialize;
 use swap_protocols::ledger::bitcoin::Bitcoin;
 
 #[derive(Debug)]
@@ -26,54 +21,8 @@ impl DefaultLedgerQueryServiceApiClient {
 }
 
 #[derive(Deserialize)]
-struct QueryResponse<T: FromStr> {
-    #[serde(deserialize_with = "deserialize")]
+struct QueryResponse<T> {
     matching_transactions: Vec<T>,
-}
-
-pub fn deserialize<'de, D, T: FromStr>(deserializer: D) -> Result<Vec<T>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    deserializer.deserialize_any(Visitor::default())
-}
-
-struct Visitor<T> {
-    phantom_data: PhantomData<T>,
-}
-
-impl<T> Default for Visitor<T> {
-    fn default() -> Self {
-        Visitor {
-            phantom_data: PhantomData,
-        }
-    }
-}
-
-impl<'de, T: FromStr> de::Visitor<'de> for Visitor<T> {
-    type Value = Vec<T>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a blockchain transaction id")
-    }
-
-    fn visit_seq<A>(
-        self,
-        mut seq: A,
-    ) -> Result<<Self as de::Visitor<'de>>::Value, <A as SeqAccess<'de>>::Error>
-    where
-        A: SeqAccess<'de>,
-    {
-        let mut result = Vec::with_capacity(seq.size_hint().unwrap_or(1));
-
-        while let Some(value) = seq.next_element::<String>()? {
-            if let Ok(tx) = value.parse::<T>() {
-                result.push(tx);
-            };
-        }
-
-        Ok(result)
-    }
 }
 
 #[derive(Fail, Debug)]
