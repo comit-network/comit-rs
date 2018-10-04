@@ -93,9 +93,9 @@ impl PrimedTransaction {
 
         let weight: Weight = transaction.get_weight().into();
         let fee = weight.calculate_fee(fee_per_byte);
-
+        debug!("Calculated fee is {}", fee);
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
-
+        debug!("Transaction output set to {}", transaction.output[0].value);
         self._sign(&mut transaction);
         transaction
     }
