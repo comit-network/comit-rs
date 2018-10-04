@@ -261,14 +261,14 @@ fn on_swap_response<
                         accepted.source_ledger_success_identity,
                         accepted.target_ledger_lock_duration,
                     ),
-                ).unwrap();
+                ).expect("It should not be possible to be in the wrong state");
         }
         _ => {
             event_store
                 .add_event(
                     id,
                     alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
-                ).unwrap();
+                ).expect("It should not be possible to be in the wrong state");
         }
     }
 }

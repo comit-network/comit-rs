@@ -26,7 +26,7 @@ common_types = { path = "../common_types" }
 bitcoin_support  = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
-http-api-problem = { version = "0.7.0", features = ["with_rocket", "with_hyper"] }
+http-api-problem = { version = "0.7", features = ["with_rocket", "with_hyper"] }
 serde_json = "1.0.22"
 ethereum_wallet = { path = "../ethereum_wallet" }
 ethereum_support = { path = "../../vendor/ethereum_support" }
@@ -37,7 +37,7 @@ event_store = { path = "../../vendor/event_store" }
 rand = "0.4.2"
 rustc-hex = "1.0.0"
 transport_protocol = { path = "../../vendor/transport_protocol" }
-tokio = "0.1.11"
+tokio = "^0.1.11"
 futures = "0.1"
 chrono = "0.4.2"
 gotham = { git = "https://github.com/gotham-rs/gotham.git" }
