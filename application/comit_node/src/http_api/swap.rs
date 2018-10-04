@@ -4,13 +4,13 @@ use comit_client::{self, SwapReject, SwapResponseError};
 use comit_wallet::KeyStore;
 use common_types::secret::Secret;
 use ethereum_support::{self, EthereumQuantity};
-use event_store::{self, EventStore, InMemoryEventStore};
+use event_store::{self, EventStore};
 use futures::{future, Future, Stream};
 use gotham::{
     handler::{HandlerFuture, IntoHandlerError},
     state::{FromState, State},
 };
-use gotham_factory::{ClientFactory, SwapId, SwapState};
+use gotham_factory::{self, ClientFactory, SwapId, SwapState};
 use http_api_problem::HttpApiProblem;
 use hyper::{header, Body, Response, StatusCode};
 use mime;
@@ -93,7 +93,9 @@ pub struct SwapCreated {
     pub id: TradeId,
 }
 
-pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<HandlerFuture> {
+pub fn post_swap<C: comit_client::Client + 'static, E: EventStore<TradeId>>(
+    mut state: State,
+) -> Box<HandlerFuture> {
     let f = Body::take_from(&mut state)
         .concat2()
         .then(|full_body| match full_body {
@@ -104,9 +106,10 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
                         let result = {
                             let swap_state = SwapState::borrow_from(&state);
                             let client_factory = ClientFactory::<C>::borrow_from(&state);
-                            handle_post_swap::<C>(
+                            let event_store = gotham_factory::EventStore::<E>::borrow_from(&state);
+                            handle_post_swap(
                                 swap,
-                                &swap_state.event_store,
+                                &event_store.0,
                                 &swap_state.rng,
                                 &client_factory.0,
                                 swap_state.remote_comit_node_socket_addr,
@@ -151,9 +154,9 @@ pub fn post_swap<C: comit_client::Client + 'static>(mut state: State) -> Box<Han
     Box::new(f)
 }
 
-pub fn handle_post_swap<C: comit_client::Client>(
+pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
     swap: Swap,
-    event_store: &Arc<InMemoryEventStore<TradeId>>,
+    event_store: &Arc<E>,
     rng: &Mutex<OsRng>,
     client_factory: &Arc<comit_client::Factory<C>>,
     comit_node_addr: SocketAddr,
@@ -221,7 +224,7 @@ pub fn handle_post_swap<C: comit_client::Client>(
                     let event_store = event_store.clone();
 
                     tokio::spawn(response_future.then(move |response| {
-                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>(
+                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity, E>(
                             id,
                             &event_store,
                             response,
@@ -242,9 +245,10 @@ fn on_swap_response<
     TL: ledger::Ledger,
     SA: Clone + Send + Sync + 'static,
     TA: Clone + Send + Sync + 'static,
+    E: EventStore<TradeId>,
 >(
     id: TradeId,
-    event_store: &Arc<InMemoryEventStore<TradeId>>,
+    event_store: &Arc<E>,
     result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
     match result {
@@ -288,11 +292,11 @@ enum SwapStatus {
     },
 }
 
-pub fn get_swap(state: State) -> Box<HandlerFuture> {
+pub fn get_swap<E: EventStore<TradeId>>(state: State) -> Box<HandlerFuture> {
     let result = {
         let id = SwapId::borrow_from(&state).id;
-        let swap_state = SwapState::borrow_from(&state);
-        handle_get_swap(id, &swap_state.event_store)
+        let event_store = gotham_factory::EventStore::<E>::borrow_from(&state);
+        handle_get_swap(id, &event_store.0)
     };
 
     let response = match result {
@@ -310,9 +314,9 @@ pub fn get_swap(state: State) -> Box<HandlerFuture> {
     Box::new(future::ok((state, response)))
 }
 
-fn handle_get_swap(
+fn handle_get_swap<E: EventStore<TradeId>>(
     id: TradeId,
-    event_store: &Arc<InMemoryEventStore<TradeId>>,
+    event_store: &Arc<E>,
 ) -> Option<SwapStatus> {
     let requested = event_store.get_event::<alice_events::SentSwapRequest<
         Bitcoin,

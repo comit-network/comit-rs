@@ -25,7 +25,7 @@ pub enum Error {
     NotFound,
 }
 
-pub trait EventStore<K> {
+pub trait EventStore<K>: Send + Sync + 'static {
     fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error>;
     fn get_event<E: Event>(&self, key: K) -> Result<E, Error>;
 }
@@ -64,7 +64,7 @@ impl<K: Hash + Eq + Clone> InMemoryEventStore<K> {
     }
 }
 
-impl<K: Hash + Eq + Clone> EventStore<K> for InMemoryEventStore<K> {
+impl<K: Hash + Eq + Clone + Send + Sync + 'static> EventStore<K> for InMemoryEventStore<K> {
     fn add_event<E: Event>(&self, key: K, event: E) -> Result<(), Error> {
         let mut events = self.events.lock().unwrap();
 

@@ -1,6 +1,7 @@
 use comit_client;
 use comit_wallet::KeyStore;
-use event_store::InMemoryEventStore;
+use event_store;
+
 use gotham::{
     handler::HandlerFuture,
     middleware::Middleware,
@@ -23,18 +24,24 @@ pub struct SwapId {
 }
 
 #[derive(Clone, NewMiddleware, Debug)]
-struct SwapMiddleware<F: Clone + StateData + Sync + RefUnwindSafe> {
+struct SwapMiddleware<
+    F: Clone + StateData + Sync + RefUnwindSafe,
+    E: Clone + StateData + Sync + RefUnwindSafe,
+> {
     pub swap_state: SwapState,
+    pub event_store: E,
     pub client_factory: F,
 }
 
 #[derive(StateData, Clone, Debug)]
 pub struct SwapState {
-    pub event_store: Arc<InMemoryEventStore<TradeId>>,
     pub rng: Arc<Mutex<OsRng>>,
     pub remote_comit_node_socket_addr: SocketAddr,
     pub key_store: Arc<KeyStore>,
 }
+
+#[derive(StateData, Debug)]
+pub struct ClientFactory<C: 'static>(pub Arc<comit_client::Factory<C>>);
 
 impl<C> Clone for ClientFactory<C> {
     fn clone(&self) -> Self {
@@ -42,16 +49,26 @@ impl<C> Clone for ClientFactory<C> {
     }
 }
 
-#[derive(StateData, Debug)]
-pub struct ClientFactory<C: 'static>(pub Arc<comit_client::Factory<C>>);
+#[derive(Debug)]
+pub struct EventStore<E>(pub Arc<E>);
 
-impl<F: StateData + Clone + Sync + RefUnwindSafe> Middleware for SwapMiddleware<F> {
+impl<E: event_store::EventStore<TradeId>> StateData for EventStore<E> {}
+impl<E> Clone for EventStore<E> {
+    fn clone(&self) -> Self {
+        EventStore(self.0.clone())
+    }
+}
+
+impl<F: StateData + Clone + Sync + RefUnwindSafe, E: StateData + Clone + Sync + RefUnwindSafe>
+    Middleware for SwapMiddleware<F, E>
+{
     fn call<Chain>(self, mut state: State, chain: Chain) -> Box<HandlerFuture>
     where
         Chain: FnOnce(State) -> Box<HandlerFuture>,
     {
         state.put(self.swap_state);
         state.put(self.client_factory);
+        state.put(self.event_store);
         chain(state)
     }
 }
@@ -59,8 +76,9 @@ impl<F: StateData + Clone + Sync + RefUnwindSafe> Middleware for SwapMiddleware<
 pub fn create_gotham_router<
     C: comit_client::Client + 'static,
     F: comit_client::Factory<C> + 'static,
+    E: event_store::EventStore<TradeId> + RefUnwindSafe,
 >(
-    event_store: Arc<InMemoryEventStore<TradeId>>,
+    event_store: Arc<E>,
     client_factory: Arc<F>,
     remote_comit_node_socket_addr: SocketAddr,
     key_store: Arc<KeyStore>,
@@ -71,21 +89,21 @@ pub fn create_gotham_router<
 
     let middleware = SwapMiddleware {
         swap_state: SwapState {
-            event_store,
             rng,
             remote_comit_node_socket_addr,
             key_store,
         },
         client_factory: ClientFactory(client_factory),
+        event_store: EventStore(event_store),
     };
 
     let (chain, pipelines) = single_pipeline(new_pipeline().add(middleware).build());
 
     build_router(chain, pipelines, |route| {
-        route.post("/swaps").to(http_api::swap::post_swap::<C>);
+        route.post("/swaps").to(http_api::swap::post_swap::<C, E>);
         route
             .get("/swaps/:id")
             .with_path_extractor::<SwapId>()
-            .to(http_api::swap::get_swap)
+            .to(http_api::swap::get_swap::<E>)
     })
 }
