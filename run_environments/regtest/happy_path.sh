@@ -104,6 +104,8 @@ function fund_htlc() {
     "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"decoderawtransaction\", \"params\": [ \"${raw_funding_tx}\" ]}"\
      -H 'content-type: text/plain;' $BITCOIN_RPC_URL)
 
+    debug "htlc funding transaction: $output";
+
     ## Getting the vout which pays the BTC HTLC
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
 
