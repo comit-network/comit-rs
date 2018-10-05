@@ -1,40 +1,39 @@
-use bitcoin_rpc_client::TransactionId;
 use failure::Error;
 use futures_ext::{PollUntilReady, StreamTemplate};
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
+use ledger_query_service::{LedgerQueryServiceApiClient, QueryId};
 use std::{sync::Arc, time::Duration};
-use swap_protocols::ledger::bitcoin::Bitcoin;
+use swap_protocols::ledger::Ledger;
 use tokio::prelude::*;
 
 #[derive(Clone, Debug)]
-pub struct LedgerServices {
-    api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
-    bitcoin_poll_interval: Duration,
+pub struct LedgerServices<L: Ledger, Q> {
+    api_client: Arc<LedgerQueryServiceApiClient<L, Q>>,
+    poll_interval: Duration,
 }
 
-impl LedgerServices {
+impl<L: Ledger, Q> LedgerServices<L, Q> {
     pub fn new(
-        api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
-        bitcoin_poll_interval: Duration,
-    ) -> LedgerServices {
+        api_client: Arc<LedgerQueryServiceApiClient<L, Q>>,
+        poll_interval: Duration,
+    ) -> LedgerServices<L, Q> {
         LedgerServices {
             api_client,
-            bitcoin_poll_interval,
+            poll_interval,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct PaymentsToBitcoinAddressStream<F> {
+pub struct TransactionIdStream<F, L: Ledger> {
     inner: F,
-    transactions: Vec<TransactionId>,
+    transactions: Vec<L::TxId>,
     next_index: usize,
 }
 
-impl<F: Future<Item = Vec<TransactionId>, Error = Error>> Stream
-    for PaymentsToBitcoinAddressStream<F>
+impl<F: Future<Item = Vec<L::TxId>, Error = Error>, L: Ledger> Stream
+    for TransactionIdStream<F, L>
 {
-    type Item = TransactionId;
+    type Item = L::TxId;
     type Error = Error;
 
     fn poll(&mut self) -> Result<Async<Option<<Self as Stream>::Item>>, <Self as Stream>::Error> {
@@ -47,7 +46,7 @@ impl<F: Future<Item = Vec<TransactionId>, Error = Error>> Stream
         if let Some(transaction) = self.transactions.get(self.next_index) {
             self.next_index += 1;
 
-            trace!("Emitting transaction {}.", transaction);
+            trace!("Emitting transaction {:?}.", transaction);
 
             return Ok(Async::Ready(Some(transaction.clone())));
         }
@@ -72,13 +71,13 @@ impl<F: Future<Item = Vec<TransactionId>, Error = Error>> Stream
 }
 
 #[derive(Debug)]
-pub struct FetchBitcoinQueryResultsFuture {
-    query_id: QueryId<Bitcoin>,
-    api_client: Arc<LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>,
+pub struct FetchQueryResultsFuture<L: Ledger, Q> {
+    query_id: QueryId<L>,
+    api_client: Arc<LedgerQueryServiceApiClient<L, Q>>,
 }
 
-impl Future for FetchBitcoinQueryResultsFuture {
-    type Item = Vec<TransactionId>;
+impl<L: Ledger, Q: 'static> Future for FetchQueryResultsFuture<L, Q> {
+    type Item = Vec<L::TxId>;
     type Error = Error;
 
     fn poll(&mut self) -> Result<Async<<Self as Future>::Item>, <Self as Future>::Error> {
@@ -89,21 +88,21 @@ impl Future for FetchBitcoinQueryResultsFuture {
     }
 }
 
-impl StreamTemplate<LedgerServices> for QueryId<Bitcoin> {
-    type Stream = PaymentsToBitcoinAddressStream<PollUntilReady<FetchBitcoinQueryResultsFuture>>;
+impl<L: Ledger, Q: 'static> StreamTemplate<LedgerServices<L, Q>> for QueryId<L> {
+    type Stream = TransactionIdStream<PollUntilReady<FetchQueryResultsFuture<L, Q>>, L>;
 
     fn into_stream(
         self,
-        dependencies: LedgerServices,
-    ) -> PaymentsToBitcoinAddressStream<PollUntilReady<FetchBitcoinQueryResultsFuture>> {
-        PaymentsToBitcoinAddressStream {
+        dependencies: LedgerServices<L, Q>,
+    ) -> TransactionIdStream<PollUntilReady<FetchQueryResultsFuture<L, Q>>, L> {
+        TransactionIdStream {
             inner: {
                 PollUntilReady::new(
-                    FetchBitcoinQueryResultsFuture {
+                    FetchQueryResultsFuture {
                         query_id: self,
                         api_client: dependencies.api_client,
                     },
-                    dependencies.bitcoin_poll_interval,
+                    dependencies.poll_interval,
                 )
             },
             transactions: Vec::new(),
@@ -116,14 +115,17 @@ impl StreamTemplate<LedgerServices> for QueryId<Bitcoin> {
 mod tests {
     use super::*;
     use futures_ext::FutureFactory;
-    use ledger_query_service::fake_query_service::InvocationCountFakeLedgerQueryService;
+    use ledger_query_service::{
+        fake_query_service::InvocationCountFakeLedgerQueryService, BitcoinQuery,
+    };
     use spectral::prelude::*;
     use std::sync::Mutex;
+    use swap_protocols::ledger::bitcoin::Bitcoin;
     use tokio::runtime::Runtime;
 
     #[test]
     fn given_future_resolves_to_transaction_eventually() {
-        let ledger_query_service = Arc::new(InvocationCountFakeLedgerQueryService {
+        let ledger_query_service = Arc::new(InvocationCountFakeLedgerQueryService::<Bitcoin> {
             number_of_invocations_before_result: 5,
             invocations: Mutex::new(0),
             results: vec![
@@ -133,7 +135,7 @@ mod tests {
             ],
         });
 
-        let future_factory = FutureFactory::new(LedgerServices::new(
+        let future_factory = FutureFactory::new(LedgerServices::<Bitcoin, BitcoinQuery>::new(
             ledger_query_service.clone(),
             Duration::from_millis(100),
         ));

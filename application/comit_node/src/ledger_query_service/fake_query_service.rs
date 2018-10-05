@@ -1,41 +1,40 @@
-use bitcoin_support::TransactionId;
 use failure::Error;
-use ledger_query_service::{bitcoin::BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
+use ledger_query_service::{LedgerQueryServiceApiClient, QueryId};
 use std::sync::Mutex;
-use swap_protocols::ledger::bitcoin::Bitcoin;
+use swap_protocols::ledger::Ledger;
 
 #[derive(Debug)]
-pub struct SimpleFakeLedgerQueryService {
-    pub results: Vec<TransactionId>,
+pub struct SimpleFakeLedgerQueryService<L: Ledger> {
+    pub results: Vec<L::TxId>,
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
-    fn create(&self, _query: BitcoinQuery) -> Result<QueryId<Bitcoin>, Error> {
+impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for SimpleFakeLedgerQueryService<L> {
+    fn create(&self, _query: Q) -> Result<QueryId<L>, Error> {
         Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
     }
 
-    fn fetch_results(&self, _query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, Error> {
+    fn fetch_results(&self, _query: &QueryId<L>) -> Result<Vec<L::TxId>, Error> {
         Ok(self.results.clone())
     }
 
-    fn delete(&self, _query: &QueryId<Bitcoin>) {
+    fn delete(&self, _query: &QueryId<L>) {
         unimplemented!()
     }
 }
 
 #[derive(Debug)]
-pub struct InvocationCountFakeLedgerQueryService {
+pub struct InvocationCountFakeLedgerQueryService<L: Ledger> {
     pub number_of_invocations_before_result: u32,
     pub invocations: Mutex<u32>,
-    pub results: Vec<TransactionId>,
+    pub results: Vec<L::TxId>,
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for InvocationCountFakeLedgerQueryService {
-    fn create(&self, _query: BitcoinQuery) -> Result<QueryId<Bitcoin>, Error> {
+impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedgerQueryService<L> {
+    fn create(&self, _query: Q) -> Result<QueryId<L>, Error> {
         Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
     }
 
-    fn fetch_results(&self, _query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, Error> {
+    fn fetch_results(&self, _query: &QueryId<L>) -> Result<Vec<L::TxId>, Error> {
         let mut invocations = self.invocations.lock().unwrap();
 
         *invocations += 1;
@@ -47,7 +46,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for InvocationCountFakeL
         }
     }
 
-    fn delete(&self, _query: &QueryId<Bitcoin>) {
+    fn delete(&self, _query: &QueryId<L>) {
         unimplemented!()
     }
 }
