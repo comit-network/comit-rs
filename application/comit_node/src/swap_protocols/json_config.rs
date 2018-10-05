@@ -1,5 +1,4 @@
 use bitcoin_htlc;
-use bitcoin_payment_future::LedgerServices;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
@@ -9,6 +8,7 @@ use failure::Error;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
 use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use ledger_query_service_future::LedgerServices;
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
