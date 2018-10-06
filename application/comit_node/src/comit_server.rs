@@ -8,7 +8,10 @@ use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     json_config,
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003::{self, ledger_htlc_service::EthereumService},
+    rfc003::{
+        self,
+        ledger_htlc_service::{BitcoinService, EthereumService},
+    },
     wire_types::SwapResponse,
     SwapRequestHandler,
 };
@@ -24,6 +27,7 @@ pub struct ComitServer<
     event_store: Arc<E>,
     my_keystore: Arc<KeyStore>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<BLQS>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
@@ -38,6 +42,7 @@ where
         event_store: Arc<E>,
         my_keystore: Arc<KeyStore>,
         ethereum_service: Arc<EthereumService>,
+        bitcoin_service: Arc<BitcoinService>,
         ledger_query_service: Arc<BLQS>,
         bitcoin_network: Network,
         bitcoin_poll_interval: Duration,
@@ -46,6 +51,7 @@ where
             event_store,
             my_keystore,
             ethereum_service,
+            bitcoin_service,
             ledger_query_service,
             bitcoin_network,
             bitcoin_poll_interval,
@@ -68,6 +74,7 @@ where
                 self.event_store.clone(),
                 self.ledger_query_service.clone(),
                 self.ethereum_service.clone(),
+                self.bitcoin_service.clone(),
                 self.bitcoin_network,
                 self.bitcoin_poll_interval,
             );
