@@ -2,7 +2,6 @@ extern crate bitcoin_rpc_client;
 extern crate bitcoin_rpc_test_helpers;
 extern crate bitcoin_support;
 extern crate bitcoin_witness;
-extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
 extern crate tc_bitcoincore_client;
@@ -20,8 +19,6 @@ use testcontainers::{clients::DockerCli, Docker};
 
 #[test]
 fn redeem_single_p2wpkh() {
-    let _ = env_logger::try_init();
-
     let container = DockerCli::new().run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
     client.enable_segwit();
