@@ -167,6 +167,7 @@ fn main() {
         comit_server_event_store,
         key_store.clone(),
         ethereum_service.clone(),
+        bitcoin_service.clone(),
         ledger_query_service,
         btc_network,
         Duration::from_secs(settings.bitcoin.queries_poll_interval_secs),
