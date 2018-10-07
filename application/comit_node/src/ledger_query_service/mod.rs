@@ -1,4 +1,4 @@
-pub use self::{bitcoin::*, client::*};
+pub use self::{bitcoin::*, client::*, ethereum::*};
 use failure::Error;
 use reqwest::Url;
 use std::{fmt::Debug, marker::PhantomData};
@@ -6,6 +6,7 @@ use swap_protocols::ledger::Ledger;
 
 mod bitcoin;
 mod client;
+mod ethereum;
 pub mod fake_query_service;
 
 #[derive(Clone, Debug)]

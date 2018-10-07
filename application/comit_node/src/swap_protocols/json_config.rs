@@ -2,12 +2,12 @@ use bitcoin_htlc;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
-use ethereum_support::{EthereumQuantity, ToEthereumAddress};
+use ethereum_support::{Address as EthereumAddress, EthereumQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
 use ledger_query_service_future::LedgerServices;
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
@@ -308,4 +308,69 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
 
     event_store.add_event(trade_id, deployed)?;
     Ok(())
+}
+
+fn watch_for_eth_htlc_and_redeem_it<
+    C: LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+    E: EventStore<TradeId>,
+    K,
+>(
+    ledger_query_service_api_client: Arc<C>,
+    sender_address: EthereumAddress,
+    poll_interval: Duration,
+    event_store: Arc<E>,
+    ethereum_service: &'static Arc<EthereumService>,
+) {
+    let query = EthereumQuery {
+        // TODO: It assumes the same account is used to deploy the ETH and refund eth to other party
+        from_address: Some(sender_address),
+        // TODO: how do I use default?
+        to_address: None,
+        is_contract_creation: Some(true),
+        // TODO: pass the htlc deployment bytes
+        //transaction_data: Some(Bytes::new()),
+        transaction_data: None,
+    };
+
+    let query_id = match ledger_query_service_api_client.clone().create(query) {
+        Ok(query_id) => query_id,
+        Err(e) => {
+            error!(
+                "Aborting trade because of problem with Ethereum Ledger Query Service: {:?}",
+                e
+            );
+            // TODO: Handle errors
+            return ();
+        }
+    };
+
+    let ledger_services =
+        LedgerServices::new(ledger_query_service_api_client.clone(), poll_interval);
+
+    let future_factory = FutureFactory::new(ledger_services);
+    let stream = future_factory.create_stream_from_template(query_id.clone());
+
+    tokio::spawn(
+        stream
+            .take(1)
+            .for_each(move |transaction_id| {
+                // TODO: Proceed with sanity checks & Analyze the tx to get vout. See #302
+                debug!("Ledger Query Service returned tx: {}", transaction_id);
+                //TODO: Send some error if cannot redeem the HTLC
+
+                let secret =
+                    LedgerHtlcService::<Ethereum, EtherHtlcParams>::check_and_extract_secret(
+                        ethereum_service.as_ref(),
+                        transaction_id,
+                    );
+
+                // TODO And then redeem BTC HTLC
+
+                ledger_query_service_api_client.delete(&query_id);
+
+                Ok(())
+            }).map_err(|e| {
+                error!("Ledger Query Service Failure: {:#?}", e);
+            }),
+    );
 }

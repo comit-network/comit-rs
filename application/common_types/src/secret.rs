@@ -98,6 +98,19 @@ impl Secret {
         Secret::from(secret)
     }
 
+    pub fn from_vec(vec: Vec<u8>) -> Result<Secret, SecretFromErr> {
+        if vec.len() != SHA256_DIGEST_LENGTH {
+            return Err(SecretFromErr::InvalidLength {
+                expected: SHA256_DIGEST_LENGTH,
+                got: vec.len(),
+            });
+        }
+        let mut data = [0; SHA256_DIGEST_LENGTH];
+        let vec = &vec[..SHA256_DIGEST_LENGTH];
+        data.copy_from_slice(vec);
+        Ok(Secret(data))
+    }
+
     pub fn hash(&self) -> SecretHash {
         let mut sha = Sha256::new();
         sha.input(&self.0);
@@ -119,24 +132,24 @@ impl fmt::LowerHex for Secret {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum SecretFromStringErr {
+pub enum SecretFromErr {
     InvalidLength { expected: usize, got: usize },
     FromHex(hex::FromHexError),
 }
 
-impl From<hex::FromHexError> for SecretFromStringErr {
+impl From<hex::FromHexError> for SecretFromErr {
     fn from(err: hex::FromHexError) -> Self {
-        SecretFromStringErr::FromHex(err)
+        SecretFromErr::FromHex(err)
     }
 }
 
 impl FromStr for Secret {
-    type Err = SecretFromStringErr;
+    type Err = SecretFromErr;
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         let vec = hex::decode(s)?;
         if vec.len() != SHA256_DIGEST_LENGTH {
-            return Err(SecretFromStringErr::InvalidLength {
+            return Err(SecretFromErr::InvalidLength {
                 expected: SHA256_DIGEST_LENGTH,
                 got: vec.len(),
             });
@@ -258,7 +271,7 @@ mod tests {
 
         assert_eq!(
             result.unwrap_err(),
-            SecretFromStringErr::InvalidLength {
+            SecretFromErr::InvalidLength {
                 expected: 32,
                 got: 31
             }
