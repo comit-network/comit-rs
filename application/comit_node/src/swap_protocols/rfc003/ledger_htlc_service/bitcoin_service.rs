@@ -155,7 +155,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
 
     fn check_and_extract_secret(
         &self,
-        transaction_id: <Bitcoin as Ledger>::TxId,
+        _transaction_id: <Bitcoin as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }

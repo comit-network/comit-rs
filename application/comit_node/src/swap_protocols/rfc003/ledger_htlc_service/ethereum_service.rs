@@ -174,7 +174,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
                 let data = tx.input.0;
 
                 match Secret::from_vec(data) {
-                    Err(e) => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
+                    Err(_) => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
                     Ok(secret) => Ok(secret),
                 }
             }
@@ -264,7 +264,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
 
     fn check_and_extract_secret(
         &self,
-        transaction_id: <Ethereum as Ledger>::TxId,
+        _transaction_id: <Ethereum as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }
@@ -354,7 +354,7 @@ mod tests {
 
         fn transaction(
             &self,
-            transaction_id: TransactionId,
+            _transaction_id: TransactionId,
         ) -> Result<Option<Transaction>, web3::Error> {
             unimplemented!()
         }
