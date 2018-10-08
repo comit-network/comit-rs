@@ -1229,7 +1229,6 @@ dependencies = [
  "bitcoin_support 0.1.0",
  "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum_support 0.1.0",
- "futures 0.1.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "http 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",

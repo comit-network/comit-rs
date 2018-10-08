@@ -1,5 +1,5 @@
-use bitcoin_support::{serialize::deserialize, Block, Transaction};
-use transaction_processor::TransactionProcessor;
+use bitcoin_support::{serialize::deserialize, Block};
+use block_processor::BlockProcessor;
 use zmq::{self, Context, Socket};
 
 #[derive(DebugStub)]
@@ -12,7 +12,7 @@ pub struct BitcoindZmqListener<P> {
     processor: P,
 }
 
-impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
+impl<P: BlockProcessor<Block>> BitcoindZmqListener<P> {
     pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
         let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
@@ -37,10 +37,7 @@ impl<P: TransactionProcessor<Transaction>> BitcoindZmqListener<P> {
             let result = self.receive_block();
 
             if let Ok(Some(block)) = result {
-                block
-                    .txdata
-                    .iter()
-                    .for_each(|tx| self.processor.process(tx))
+                self.processor.process(&block);
             }
         }
     }

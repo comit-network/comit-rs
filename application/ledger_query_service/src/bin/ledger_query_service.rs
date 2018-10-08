@@ -10,8 +10,8 @@ extern crate rocket;
 extern crate log;
 
 use ledger_query_service::{
-    BitcoindZmqListener, DefaultTransactionProcessor, EthereumWeb3BlockPoller,
-    InMemoryQueryRepository, InMemoryQueryResultRepository, LinkFactory,
+    BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
+    InMemoryQueryResultRepository, LinkFactory,
 };
 use std::{env::var, sync::Arc, thread, time::Duration};
 
@@ -37,7 +37,7 @@ fn main() {
             let query_repository = Arc::new(InMemoryQueryRepository::default());
             let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-            let bitcoin_transaction_processor = DefaultTransactionProcessor::new(
+            let bitcoin_transaction_processor = DefaultBlockProcessor::new(
                 query_repository.clone(),
                 query_result_repository.clone(),
             );
@@ -69,7 +69,7 @@ fn main() {
             let query_repository = Arc::new(InMemoryQueryRepository::default());
             let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-            let ethereum_transaction_processor = DefaultTransactionProcessor::new(
+            let ethereum_transaction_processor = DefaultBlockProcessor::new(
                 query_repository.clone(),
                 query_result_repository.clone(),
             );
