@@ -8,7 +8,6 @@ extern crate spectral;
 extern crate serde_derive;
 extern crate ethereum_support;
 extern crate secp256k1_support;
-extern crate tc_parity_parity;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
@@ -28,8 +27,7 @@ use rocket::{
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::{sync::Arc, time::Duration};
-use tc_parity_parity::ParityEthereum;
-use testcontainers::{clients::DockerCli, Docker};
+use testcontainers::{clients::Cli, images::parity_parity::ParityEthereum, Docker};
 
 #[derive(Deserialize, Debug)]
 struct QueryResponse {
@@ -46,8 +44,9 @@ fn new_account(secret_key: &str) -> (KeyPair, Address) {
 #[test]
 fn given_to_address_query_when_matching_transaction_is_processed_returns_result() {
     let _ = pretty_env_logger::try_init();
+    let docker = Cli::default();
 
-    let container = DockerCli::new().run(ParityEthereum::default());
+    let container = docker.run(ParityEthereum::default());
     let (_event_loop, web3) = tc_web3_client::new(&container);
 
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));

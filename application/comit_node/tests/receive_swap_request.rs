@@ -23,7 +23,6 @@ extern crate reqwest;
 extern crate secp256k1_support;
 extern crate serde;
 extern crate spectral;
-extern crate tc_parity_parity;
 extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate web3;
@@ -55,8 +54,7 @@ use mocks::BitcoinRpcClientMock;
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::{str::FromStr, sync::Arc, time::Duration};
-use tc_parity_parity::ParityEthereum;
-use testcontainers::{clients::DockerCli, Docker};
+use testcontainers::{clients::Cli, images::parity_parity::ParityEthereum, Docker};
 use tokio::runtime::Runtime;
 use transport_protocol::{
     client::*,
@@ -95,8 +93,9 @@ fn setup<
                 .unwrap(),
         ],
     });
+    let docker = Cli::default();
 
-    let container = DockerCli::new().run(ParityEthereum::default());
+    let container = docker.run(ParityEthereum::default());
 
     let alice_keypair = KeyPair::from_secret_key_hex(
         "63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992",

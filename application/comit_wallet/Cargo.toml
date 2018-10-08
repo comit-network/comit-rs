@@ -20,5 +20,4 @@ bitcoin_support = { path = "../../vendor/bitcoin_support"}
 
 [dev-dependencies]
 bitcoin_htlc =  { path = "../bitcoin_htlc" }
-tc_coblox_bitcoincore = "0.2"
 

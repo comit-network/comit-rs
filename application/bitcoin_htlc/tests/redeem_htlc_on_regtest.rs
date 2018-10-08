@@ -9,7 +9,6 @@ extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
 extern crate tc_bitcoincore_client;
-extern crate tc_coblox_bitcoincore;
 extern crate testcontainers;
 
 use bitcoin_htlc::Htlc;
@@ -22,8 +21,7 @@ use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::Secret;
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
-use tc_coblox_bitcoincore::BitcoinCore;
-use testcontainers::{clients::DockerCli, Docker};
+use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 fn fund_htlc(
     client: &bitcoin_rpc_client::BitcoinCoreClient,
@@ -83,8 +81,9 @@ fn fund_htlc(
 #[test]
 fn redeem_htlc_with_secret() {
     let _ = env_logger::try_init();
+    let docker = Cli::default();
 
-    let container = DockerCli::new().run(BitcoinCore::default());
+    let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
     client.generate(432).unwrap().unwrap();
 
@@ -129,8 +128,9 @@ fn redeem_htlc_with_secret() {
 #[test]
 fn redeem_refund_htlc() {
     let _ = env_logger::try_init();
+    let docker = Cli::default();
 
-    let container = DockerCli::new().run(BitcoinCore::default());
+    let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
     client.generate(432).unwrap().unwrap();
 

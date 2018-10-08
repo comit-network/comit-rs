@@ -9,6 +9,5 @@ authors = [
 ]
 
 [dependencies]
-testcontainers = "0.2"
-tc_coblox_bitcoincore = "0.2"
+testcontainers = "0.3"
 bitcoin_rpc_client = "0.1"
