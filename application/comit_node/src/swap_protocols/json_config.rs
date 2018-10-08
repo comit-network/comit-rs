@@ -310,15 +310,17 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
     Ok(())
 }
 
-fn watch_for_eth_htlc_and_redeem_it<
+fn watch_for_eth_htlc_and_redeem_btc_htlc<
     C: LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
     E: EventStore<TradeId>,
     K,
 >(
+    trade_id: TradeId,
     ledger_query_service_api_client: Arc<C>,
     sender_address: EthereumAddress,
     poll_interval: Duration,
     event_store: Arc<E>,
+    bitcoin_service: &'static Arc<BitcoinService>,
     ethereum_service: &'static Arc<EthereumService>,
 ) {
     let query = EthereumQuery {
@@ -354,23 +356,35 @@ fn watch_for_eth_htlc_and_redeem_it<
         stream
             .take(1)
             .for_each(move |transaction_id| {
-                // TODO: Proceed with sanity checks & Analyze the tx to get vout. See #302
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
-                //TODO: Send some error if cannot redeem the HTLC
 
                 let secret =
                     LedgerHtlcService::<Ethereum, EtherHtlcParams>::check_and_extract_secret(
                         ethereum_service.as_ref(),
                         transaction_id,
-                    );
+                    )?;
 
-                // TODO And then redeem BTC HTLC
+                let order_taken: BobOrderTaken<Ethereum, Bitcoin> =
+                    event_store.get_event(trade_id).unwrap();
+
+                let trade_funded: BobTradeFunded<Ethereum, Bitcoin> =
+                    event_store.get_event(trade_id).unwrap();
+
+                bitcoin_service.redeem_htlc(
+                    secret,
+                    trade_id,
+                    order_taken.bob_success_address,
+                    order_taken.bob_success_keypair,
+                    order_taken.alice_refund_address,
+                    trade_funded.htlc_identifier,
+                    order_taken.sell_amount,
+                    order_taken.alice_contract_time_lock,
+                )?;
 
                 ledger_query_service_api_client.delete(&query_id);
-
                 Ok(())
             }).map_err(|e| {
-                error!("Ledger Query Service Failure: {:#?}", e);
-            }),
+            error!("Ledger Query Service Failure: {:#?}", e);
+        }),
     );
 }
