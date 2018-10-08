@@ -343,14 +343,11 @@ fn handle_get_swap<E: EventStore<TradeId>>(
                     >>(id);
 
                     match contract_deployed {
-                        Ok(contract_deployed) => {
-                            Some(SwapStatus::Redeemable {
-                                contract_address: contract_deployed.address,
-                                data: requested.secret,
-                                // TODO: check how much gas we should tell the customer to pay
-                                gas: 3500,
-                            })
-                        }
+                        Ok(contract_deployed) => Some(SwapStatus::Redeemable {
+                            contract_address: contract_deployed.address,
+                            data: requested.secret,
+                            gas: 110,
+                        }),
                         Err(_) => {
                             let htlc = bitcoin_htlc::Htlc::new(
                                 accepted.source_ledger_success_identity,
