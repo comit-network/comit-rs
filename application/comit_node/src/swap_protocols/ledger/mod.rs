@@ -17,11 +17,11 @@ pub trait Ledger:
         + Sync
         + 'static
         + From<Self::Address>
-        + Into<Self::Address>
         + Serialize
         + DeserializeOwned;
 
     fn symbol() -> String;
+    fn address_for_identity(&self, Self::Identity) -> Self::Address;
 }
 
 pub mod bitcoin;

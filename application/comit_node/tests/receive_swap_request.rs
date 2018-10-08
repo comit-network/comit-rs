@@ -19,21 +19,28 @@ extern crate futures;
 extern crate hex;
 extern crate memsocket;
 extern crate pretty_env_logger;
+extern crate reqwest;
 extern crate secp256k1_support;
+extern crate serde;
 extern crate spectral;
 extern crate tc_parity_parity;
 extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate web3;
 
-use bitcoin_support::{BitcoinQuantity, Blocks};
+mod mocks;
+use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Blocks, TransactionId};
 use comit_node::{
+    bitcoin_fee_service::StaticBitcoinFeeService,
     gas_price_service::StaticGasPriceService,
     ledger_query_service::fake_query_service::SimpleFakeLedgerQueryService,
     swap_protocols::{
         json_config,
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-        rfc003::{self, ledger_htlc_service::EthereumService},
+        rfc003::{
+            self,
+            ledger_htlc_service::{BitcoinService, EthereumService},
+        },
         wire_types::SwapResponse,
         SwapRequestHandler,
     },
@@ -44,6 +51,7 @@ use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use futures::future::Future;
 use hex::FromHex;
+use mocks::BitcoinRpcClientMock;
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::{str::FromStr, sync::Arc, time::Duration};
@@ -64,6 +72,7 @@ fn setup<
         + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
 >(
     swap_request_handler: H,
+    btc_redeem_pubkeyhash: bitcoin_support::PubkeyHash,
 ) -> (
     Runtime,
     Client<Frame, Request, Response>,
@@ -100,6 +109,24 @@ fn setup<
         0,
     ));
 
+    let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
+
+    let btc_redeem_address = BitcoinAddress::from_pubkeyhash_and_network(
+        btc_redeem_pubkeyhash,
+        bitcoin_support::Network::Regtest,
+    );
+
+    let bitcoin_service = Arc::new(BitcoinService::new(
+        Arc::new(BitcoinRpcClientMock::new(
+            TransactionId::from_str(
+                "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
+            ).unwrap(),
+        )),
+        bitcoin_support::Network::Regtest,
+        bitcoin_fee_service.clone(),
+        btc_redeem_address,
+    ));
+
     let (bob_server, alice_client) = Connection::new(
         json_config(
             swap_request_handler,
@@ -107,6 +134,7 @@ fn setup<
             Arc::new(InMemoryEventStore::default()),
             ledger_query_service,
             ethereum_service,
+            bitcoin_service,
             bitcoin_support::Network::Regtest,
             Duration::from_secs(1),
         ),
@@ -240,7 +268,8 @@ fn can_receive_swap_request() {
         sender: Some(sender),
     };
 
-    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) = setup(handler);
+    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) =
+        setup(handler, *BTC_SUCCESS_PUBKEYHASH);
 
     let _response = to_bob
         .send_request(gen_request(OfferDirection::BtcToEth))
@@ -254,8 +283,8 @@ fn can_receive_swap_request() {
     let result = receiver.wait();
 
     let expected_request = rfc003::Request {
-        source_ledger: Bitcoin {},
-        target_ledger: Ethereum {},
+        source_ledger: Bitcoin::regtest(),
+        target_ledger: Ethereum::default(),
         source_asset: BitcoinQuantity::from_satoshi(100_000_000),
         target_asset: EthereumQuantity::from_eth(10.0),
         source_ledger_lock_duration: Blocks::from(144),
@@ -320,7 +349,8 @@ fn rate_handler_reject_offer_btc_eth() {
         btc_to_eth: 1.0 / 5.0,
     };
 
-    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) = setup(handler);
+    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) =
+        setup(handler, *BTC_SUCCESS_PUBKEYHASH);
     let response = to_bob
         .send_request(gen_request(OfferDirection::BtcToEth))
         .wait();
@@ -339,7 +369,8 @@ fn rate_handler_accept_offer_btc_eth() {
     let handler = AcceptRate {
         btc_to_eth: 1.0 / 11.0,
     };
-    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) = setup(handler);
+    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) =
+        setup(handler, *BTC_SUCCESS_PUBKEYHASH);
     let response = to_bob
         .send_request(gen_request(OfferDirection::BtcToEth))
         .wait();
@@ -358,7 +389,8 @@ fn rate_handler_reject_offer_eth_btc() {
     let handler = AcceptRate {
         btc_to_eth: 1.0 / 11.0,
     };
-    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) = setup(handler);
+    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) =
+        setup(handler, *BTC_SUCCESS_PUBKEYHASH);
     let response = to_bob
         .send_request(gen_request(OfferDirection::EthToBtc))
         .wait();
@@ -377,7 +409,8 @@ fn rate_handler_accept_offer_eth_btc() {
     let handler = AcceptRate {
         btc_to_eth: 1.0 / 5.0,
     };
-    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) = setup(handler);
+    let (_runtime, _to_alice, mut to_bob, _alice_handle, _bob_handle) =
+        setup(handler, *BTC_SUCCESS_PUBKEYHASH);
     let response = to_bob
         .send_request(gen_request(OfferDirection::EthToBtc))
         .wait();

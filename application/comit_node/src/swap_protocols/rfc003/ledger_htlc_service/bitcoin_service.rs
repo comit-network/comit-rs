@@ -1,7 +1,7 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::bitcoin_htlc;
 use bitcoin_rpc_client;
-use bitcoin_support::{self, PubkeyHash};
+use bitcoin_support::{self, PubkeyHash, Script, Transaction, TxOut};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
 use reqwest;
@@ -167,5 +167,18 @@ impl BitcoinService {
             network,
             btc_bob_redeem_address,
         }
+    }
+
+    pub fn get_vout_matching(
+        &self,
+        txid: bitcoin_rpc_client::TransactionId,
+        script: &Script,
+    ) -> Result<Option<(usize, TxOut)>, ledger_htlc_service::Error> {
+        let transaction: Transaction = self.client.get_raw_transaction_serialized(&txid)??.into();
+        Ok(transaction
+            .output
+            .into_iter()
+            .enumerate()
+            .find(|(_, txout)| &txout.script_pubkey == script))
     }
 }

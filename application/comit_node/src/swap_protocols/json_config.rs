@@ -15,12 +15,15 @@ use swap_protocols::{
     ledger::{
         bitcoin::{Bitcoin, HtlcId},
         ethereum::Ethereum,
+        Ledger,
     },
     rfc003::{
         self,
-        ledger_htlc_service::{EtherHtlcParams, EthereumService, LedgerHtlcService},
+        ledger_htlc_service::{
+            BitcoinService, EtherHtlcParams, EthereumService, LedgerHtlcService,
+        },
     },
-    wire_types::{Asset, Ledger, SwapProtocol, SwapRequestHeaders, SwapResponse},
+    wire_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
 };
 use swaps::{
     bob_events::{ContractDeployed, OrderTaken, TradeFunded},
@@ -44,6 +47,7 @@ pub fn json_config<
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_service: Arc<BitcoinService>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
 ) -> Config<Request, Response> {
@@ -65,6 +69,9 @@ pub fn json_config<
                 swap_protocol: header!(request.get_header("swap_protocol")),
             };
 
+            // Too many things called Ledger so just import this on to this local namespace
+            use swap_protocols::wire_types::{Asset, Ledger};
+
             match headers.swap_protocol {
                 SwapProtocol::ComitRfc003 => match headers {
                     SwapRequestHeaders {
@@ -81,8 +88,8 @@ pub fn json_config<
                         ..
                     } => {
                         let request = rfc003::Request::new(
-                            Bitcoin {},
-                            Ethereum {},
+                            Bitcoin::default(),
+                            Ethereum::default(),
                             source_quantity,
                             target_quantity,
                             body!(request.get_body()),
@@ -95,6 +102,7 @@ pub fn json_config<
                                 event_store.clone(),
                                 ledger_query_service_api_client.clone(),
                                 ethereum_service.clone(),
+                                bitcoin_service.clone(),
                                 bitcoin_network,
                                 bitcoin_poll_interval,
                             ),
@@ -114,8 +122,8 @@ pub fn json_config<
                         ..
                     } => {
                         let request = rfc003::Request::new(
-                            Ethereum {},
-                            Bitcoin {},
+                            Ethereum::default(),
+                            Bitcoin::default(),
                             source_quantity,
                             target_quantity,
                             body!(request.get_body()),
@@ -140,10 +148,13 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,
     ethereum_service: Arc<EthereumService>,
+    bitcoin_service: Arc<BitcoinService>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
 ) -> Response {
-    let alice_refund_address: BitcoinAddress = request.source_ledger_refund_identity.into();
+    let alice_refund_address: BitcoinAddress = request
+        .source_ledger
+        .address_for_identity(request.source_ledger_refund_identity);
 
     let uid = TradeId::default();
 
@@ -198,8 +209,10 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         btc_lock_time,
     );
 
+    let htlc_address = htlc.compute_address(bitcoin_network);
+
     let query = BitcoinQuery {
-        to_address: Some(htlc.compute_address(bitcoin_network)),
+        to_address: Some(htlc_address.clone()),
     };
 
     let query_id = match ledger_query_service_api_client.clone().create(query) {
@@ -224,8 +237,17 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
     tokio::spawn(
         stream
             .take(1)
-            .for_each(move |transaction_id| {
-                // TODO: Proceed with sanity checks & Analyze the tx to get vout. See #302
+            .for_each(move |transaction_id| -> Result<(), Error> {
+                let (n, vout) = bitcoin_service
+                    .get_vout_matching(
+                        transaction_id.clone(),
+                        &htlc_address.to_address().script_pubkey(),
+                    )?.ok_or(CounterpartyDeployError::NotFound)?;
+
+                if vout.value < order_taken.sell_amount.satoshi() {
+                    return Err(Error::from(CounterpartyDeployError::Underfunded));
+                }
+
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
                 //TODO: Mark the trade as failed if cannot deploy the HTLC
                 let _ = deploy_eth_htlc(
@@ -234,7 +256,7 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
                     &ethereum_service,
                     HtlcId {
                         transaction_id,
-                        vout: 0,
+                        vout: n as u32,
                     },
                 );
 
@@ -251,6 +273,14 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
         source_ledger_success_identity: bob_success_keypair.public_key().into(),
         target_ledger_lock_duration: twelve_hours,
     })
+}
+
+#[derive(Debug, Fail)]
+enum CounterpartyDeployError {
+    #[fail(display = "The contract was funded but it was less than the agreed amount")]
+    Underfunded,
+    #[fail(display = "The contract wasn't found at the id provided")]
+    NotFound,
 }
 
 fn deploy_eth_htlc<E: EventStore<TradeId>>(

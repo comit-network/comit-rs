@@ -54,6 +54,6 @@ pub enum Status {
     RE(u8),
 }
 
-pub trait ResponseFrameSource<F> {
-    fn on_response_frame(&mut self, frame_id: u32) -> Box<Future<Item = F, Error = ()>>;
+pub trait ResponseFrameSource<F>: Send {
+    fn on_response_frame(&mut self, frame_id: u32) -> Box<Future<Item = F, Error = ()> + Send>;
 }

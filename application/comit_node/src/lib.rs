@@ -26,17 +26,23 @@ extern crate serde_json;
 extern crate uuid;
 #[macro_use]
 extern crate log;
-extern crate comit_wallet;
 extern crate config;
 extern crate event_store;
 #[macro_use]
 extern crate futures;
+extern crate gotham;
 extern crate hex;
+extern crate http_api_problem;
 extern crate logging;
 extern crate rand;
 extern crate rustc_hex;
 #[macro_use]
 extern crate transport_protocol;
+#[macro_use]
+extern crate gotham_derive;
+extern crate comit_wallet;
+extern crate hyper;
+extern crate mime;
 #[macro_use]
 extern crate failure;
 extern crate url;
@@ -45,11 +51,15 @@ extern crate url;
 extern crate spectral;
 
 pub mod bitcoin_fee_service;
+
 pub mod bitcoin_payment_future;
-pub mod comit_node_api_client;
+pub mod comit_client;
+
 pub mod comit_server;
 pub mod futures_ext;
 pub mod gas_price_service;
+pub mod gotham_factory;
+pub mod http_api;
 pub mod ledger_query_service;
 pub mod rocket_factory;
 pub mod settings;
