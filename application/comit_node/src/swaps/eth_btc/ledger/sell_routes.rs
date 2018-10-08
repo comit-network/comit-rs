@@ -71,7 +71,8 @@ fn handle_post_orders_funding(
     Ok(())
 }
 
-#[derive(Deserialize, Debug)]
+//TODO: Delete
+#[derive(Deserialize, Clone, Copy, Debug)]
 pub struct RedeemETHNotificationBody {
     pub secret: Secret,
 }

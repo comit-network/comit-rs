@@ -1,5 +1,6 @@
 use bitcoin_rpc_client::TransactionId;
 use bitcoin_support::{Address, BitcoinQuantity, Blocks, Network, PubkeyHash};
+use ledger_query_service::BitcoinQuery;
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
 
@@ -36,12 +37,13 @@ pub struct HtlcId {
 
 impl Ledger for Bitcoin {
     type Quantity = BitcoinQuantity;
-    type Address = Address;
     type LockDuration = Blocks;
     type HtlcId = HtlcId;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
+    type Address = Address;
     type Identity = PubkeyHash;
+    type QueryForLedgerQueryService = BitcoinQuery;
 
     fn symbol() -> String {
         String::from("BTC")

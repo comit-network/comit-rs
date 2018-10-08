@@ -37,5 +37,14 @@ pub trait LedgerHtlcService<L: Ledger, H>: Send + Sync {
         lock_time: L::LockDuration,
     ) -> Result<L::TxId, Error>;
 
-    fn check_and_extract_secret(&self, transaction_id: L::TxId) -> Result<Secret, Error>;
+    fn create_query_to_watch_redeeming(
+        &self,
+        htlc_funding_tx_id: L::TxId,
+    ) -> Result<L::QueryForLedgerQueryService, Error>;
+
+    fn check_and_extract_secret(
+        &self,
+        create_htlc_tx_id: L::TxId,
+        redeem_htlc_tx_id: L::TxId,
+    ) -> Result<Secret, Error>;
 }

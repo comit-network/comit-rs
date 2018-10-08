@@ -11,6 +11,7 @@ use ethereum_support::{
 };
 use ethereum_wallet::{UnsignedTransaction, Wallet};
 use gas_price_service::{self, GasPriceService};
+use ledger_query_service::EthereumQuery;
 use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
@@ -52,6 +53,10 @@ pub trait BlockingEthereumApi: Send + Sync {
         &self,
         transaction_id: TransactionId,
     ) -> Result<Option<Transaction>, web3::Error>;
+    fn transaction_receipt(
+        &self,
+        transaction_id: H256,
+    ) -> Result<Option<TransactionReceipt>, web3::Error>;
 }
 
 impl BlockingEthereumApi for (EventLoopHandle, Web3<Http>) {
@@ -64,6 +69,13 @@ impl BlockingEthereumApi for (EventLoopHandle, Web3<Http>) {
         transaction_id: TransactionId,
     ) -> Result<Option<Transaction>, web3::Error> {
         self.1.eth().transaction(transaction_id).wait()
+    }
+
+    fn transaction_receipt(
+        &self,
+        transaction_id: H256,
+    ) -> Result<Option<TransactionReceipt>, web3::Error> {
+        self.1.eth().transaction_receipt(transaction_id).wait()
     }
 }
 
@@ -159,23 +171,50 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
         Ok(tx_id)
     }
 
+    fn create_query_to_watch_redeeming(
+        &self,
+        htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
+    ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
+        match self.get_contract_address(htlc_funding_tx_id) {
+            Some(eth_htlc_address) => Ok(EthereumQuery {
+                from_address: None,
+                to_address: Some(eth_htlc_address),
+                is_contract_creation: Some(true),
+                transaction_data: None,
+            }),
+            None => Err(ledger_htlc_service::Error::Internal),
+        }
+    }
+
     fn check_and_extract_secret(
         &self,
-        transaction_id: <Ethereum as Ledger>::TxId,
+        create_htlc_tx_id: <Ethereum as Ledger>::TxId,
+        redeem_htlc_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
-        let transaction = self.web3.transaction(TransactionId::Hash(transaction_id))?;
-        match transaction {
+        //TODO: remove unwrap
+        let htlc_address = self.get_contract_address(create_htlc_tx_id).unwrap();
+
+        let redeem_tx = self
+            .web3
+            .transaction(TransactionId::Hash(redeem_htlc_tx_id))?;
+        match redeem_tx {
             None => Err(ledger_htlc_service::Error::TransactionNotFound),
             Some(tx) => {
-                // 1. Need to check the 'to' matches the contract
-                // 2. Then need to check the contract is redeemed -> probably need htlc update to logged "redeemed"
-                // 3. Need to extract the secret
-                // TODO: 1. & 2. See #316
-                let data = tx.input.0;
+                match tx.to {
+                    Some(address) => {
+                        if address == htlc_address {
+                            // TODO: check the contract is redeemed -> probably need htlc update to logged "redeemed". See #316
+                            let data = tx.input.0;
 
-                match Secret::from_vec(data) {
-                    Err(_) => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
-                    Ok(secret) => Ok(secret),
+                            match Secret::from_vec(data) {
+                                Err(_) => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
+                                Ok(secret) => Ok(secret),
+                            }
+                        } else {
+                            Err(ledger_htlc_service::Error::InvalidRedeemTransaction)
+                        }
+                    }
+                    _ => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
                 }
             }
         }
@@ -262,9 +301,17 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
         unimplemented!()
     }
 
+    fn create_query_to_watch_redeeming(
+        &self,
+        _htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
+    ) -> Result<<Ethereum as Ledger>::QueryForLedgerQueryService, ledger_htlc_service::Error> {
+        unimplemented!()
+    }
+
     fn check_and_extract_secret(
         &self,
-        _transaction_id: <Ethereum as Ledger>::TxId,
+        _create_htlc_tx_id: <Ethereum as Ledger>::TxId,
+        _redeem_htlc_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }
@@ -317,6 +364,16 @@ impl EthereumService {
         debug!("Nonce was incremented from {} to {}", nonce, next_nonce);
         *nonce = next_nonce;
     }
+
+    fn get_contract_address(&self, deploy_tx_id: H256) -> Option<Address> {
+        let create_tx_receipt = self.web3.transaction_receipt(deploy_tx_id);
+
+        if let Ok(Some(receipt)) = create_tx_receipt {
+            receipt.contract_address
+        } else {
+            None
+        }
+    }
 }
 
 #[cfg(test)]
@@ -356,6 +413,13 @@ mod tests {
             &self,
             _transaction_id: TransactionId,
         ) -> Result<Option<Transaction>, web3::Error> {
+            unimplemented!()
+        }
+
+        fn transaction_receipt(
+            &self,
+            _transaction_id: H256,
+        ) -> Result<Option<TransactionReceipt>, web3::Error> {
             unimplemented!()
         }
     }

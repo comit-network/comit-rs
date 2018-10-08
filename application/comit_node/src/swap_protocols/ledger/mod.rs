@@ -20,7 +20,7 @@ pub trait Ledger:
         + Serialize
         + DeserializeOwned;
 
-    //TODO: Should we add LedgerQueryService queries here?
+    type QueryForLedgerQueryService: Clone + Debug + Send + Sync;
 
     fn symbol() -> String;
     fn address_for_identity(&self, Self::Identity) -> Self::Address;

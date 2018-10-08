@@ -153,9 +153,17 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
         Ok(redeem_txid)
     }
 
+    fn create_query_to_watch_redeeming(
+        &self,
+        _htlc_funding_tx_id: <Bitcoin as Ledger>::TxId,
+    ) -> Result<<Bitcoin as Ledger>::QueryForLedgerQueryService, ledger_htlc_service::Error> {
+        unimplemented!()
+    }
+
     fn check_and_extract_secret(
         &self,
-        _transaction_id: <Bitcoin as Ledger>::TxId,
+        _create_htlc_tx_id: <Bitcoin as Ledger>::TxId,
+        _redeem_htlc_tx_id: <Bitcoin as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }
@@ -178,7 +186,7 @@ impl BitcoinService {
 
     pub fn get_vout_matching(
         &self,
-        txid: bitcoin_rpc_client::TransactionId,
+        txid: &bitcoin_rpc_client::TransactionId,
         script: &Script,
     ) -> Result<Option<(usize, TxOut)>, ledger_htlc_service::Error> {
         let transaction: Transaction = self.client.get_raw_transaction_serialized(&txid)??.into();
