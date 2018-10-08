@@ -20,7 +20,7 @@ use swap_protocols::{
     ledger::{ethereum::Ethereum, Ledger},
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc},
-        ledger_htlc_service::{self, api::LedgerHtlcService},
+        ledger_htlc_service::{self, LedgerHtlcService},
     },
 };
 use swaps::common::TradeId;
@@ -48,11 +48,22 @@ impl<'a> From<web3::Error> for ledger_htlc_service::Error {
 
 pub trait BlockingEthereumApi: Send + Sync {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error>;
+    fn transaction(
+        &self,
+        transaction_id: TransactionId,
+    ) -> Result<Option<Transaction>, web3::Error>;
 }
 
 impl BlockingEthereumApi for (EventLoopHandle, Web3<Http>) {
     fn send_raw_transaction(&self, rlp: Bytes) -> Result<H256, web3::Error> {
         self.1.eth().send_raw_transaction(rlp).wait()
+    }
+
+    fn transaction(
+        &self,
+        transaction_id: TransactionId,
+    ) -> Result<Option<Transaction>, web3::Error> {
+        self.1.eth().transaction(transaction_id).wait()
     }
 }
 
@@ -147,6 +158,28 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
 
         Ok(tx_id)
     }
+
+    fn check_and_extract_secret(
+        &self,
+        transaction_id: <Ethereum as Ledger>::TxId,
+    ) -> Result<Secret, ledger_htlc_service::Error> {
+        let transaction = self.web3.transaction(TransactionId::Hash(transaction_id))?;
+        match transaction {
+            None => Err(ledger_htlc_service::Error::TransactionNotFound),
+            Some(tx) => {
+                // 1. Need to check the 'to' matches the contract
+                // 2. Then need to check the contract is redeemed -> probably need htlc update to logged "redeemed"
+                // 3. Need to extract the secret
+                // TODO: 1. & 2. See #316
+                let data = tx.input.0;
+
+                match Secret::from_vec(data) {
+                    Err(_) => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
+                    Ok(secret) => Ok(secret),
+                }
+            }
+        }
+    }
 }
 
 impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
@@ -226,6 +259,13 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
         _sell_amount: <Ethereum as Ledger>::Quantity,
         _lock_time: <Ethereum as Ledger>::LockDuration,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        unimplemented!()
+    }
+
+    fn check_and_extract_secret(
+        &self,
+        _transaction_id: <Ethereum as Ledger>::TxId,
+    ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }
 }
@@ -310,6 +350,13 @@ mod tests {
             sent_bytes.push(rlp);
 
             results.remove(0)
+        }
+
+        fn transaction(
+            &self,
+            _transaction_id: TransactionId,
+        ) -> Result<Option<Transaction>, web3::Error> {
+            unimplemented!()
         }
     }
 

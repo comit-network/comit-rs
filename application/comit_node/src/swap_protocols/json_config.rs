@@ -1,14 +1,14 @@
 use bitcoin_htlc;
-use bitcoin_payment_future::LedgerServices;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
-use ethereum_support::{EthereumQuantity, ToEthereumAddress};
+use ethereum_support::{Address as EthereumAddress, EthereumQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
+use ledger_query_service_future::LedgerServices;
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
@@ -308,4 +308,83 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
 
     event_store.add_event(trade_id, deployed)?;
     Ok(())
+}
+
+fn watch_for_eth_htlc_and_redeem_btc_htlc<
+    C: LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+    E: EventStore<TradeId>,
+    K,
+>(
+    trade_id: TradeId,
+    ledger_query_service_api_client: Arc<C>,
+    sender_address: EthereumAddress,
+    poll_interval: Duration,
+    event_store: Arc<E>,
+    bitcoin_service: &'static Arc<BitcoinService>,
+    ethereum_service: &'static Arc<EthereumService>,
+) {
+    let query = EthereumQuery {
+        // TODO: It assumes the same account is used to deploy the ETH and refund eth to other party
+        from_address: Some(sender_address),
+        // TODO: how do I use default?
+        to_address: None,
+        is_contract_creation: Some(true),
+        // TODO: pass the htlc deployment bytes
+        //transaction_data: Some(Bytes::new()),
+        transaction_data: None,
+    };
+
+    let query_id = match ledger_query_service_api_client.clone().create(query) {
+        Ok(query_id) => query_id,
+        Err(e) => {
+            error!(
+                "Aborting trade because of problem with Ethereum Ledger Query Service: {:?}",
+                e
+            );
+            // TODO: Handle errors
+            return ();
+        }
+    };
+
+    let ledger_services =
+        LedgerServices::new(ledger_query_service_api_client.clone(), poll_interval);
+
+    let future_factory = FutureFactory::new(ledger_services);
+    let stream = future_factory.create_stream_from_template(query_id.clone());
+
+    tokio::spawn(
+        stream
+            .take(1)
+            .for_each(move |transaction_id| {
+                debug!("Ledger Query Service returned tx: {}", transaction_id);
+
+                let secret =
+                    LedgerHtlcService::<Ethereum, EtherHtlcParams>::check_and_extract_secret(
+                        ethereum_service.as_ref(),
+                        transaction_id,
+                    )?;
+
+                let order_taken: BobOrderTaken<Ethereum, Bitcoin> =
+                    event_store.get_event(trade_id).unwrap();
+
+                let trade_funded: BobTradeFunded<Ethereum, Bitcoin> =
+                    event_store.get_event(trade_id).unwrap();
+
+                bitcoin_service.redeem_htlc(
+                    secret,
+                    trade_id,
+                    order_taken.bob_success_address,
+                    order_taken.bob_success_keypair,
+                    order_taken.alice_refund_address,
+                    trade_funded.htlc_identifier,
+                    order_taken.sell_amount,
+                    order_taken.alice_contract_time_lock,
+                )?;
+
+                ledger_query_service_api_client.delete(&query_id);
+                Ok(())
+            }).map_err(|e| {
+            error!("Ledger Query Service Failure: {:#?}", e);
+        }),
+    );
 }
