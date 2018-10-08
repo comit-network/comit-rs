@@ -8,11 +8,11 @@ extern crate spectral;
 extern crate serde_derive;
 extern crate ethereum_support;
 
-use ethereum_support::web3::types::{Address, Bytes, Transaction, H256, U256};
+use ethereum_support::web3::types::{Address, Block, Bytes, Transaction, H160, H2048, H256, U256};
 use http::Uri;
 use ledger_query_service::{
-    DefaultTransactionProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
-    LinkFactory, TransactionProcessor,
+    BlockProcessor, DefaultBlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
+    LinkFactory,
 };
 use rocket::{
     http::{ContentType, Status},
@@ -100,8 +100,8 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-    let transaction_processor =
-        DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
+    let mut block_processor =
+        DefaultBlockProcessor::new(query_repository.clone(), query_result_repository.clone());
 
     let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
@@ -134,7 +134,31 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
         input: Bytes::from(vec![]),
     };
 
-    transaction_processor.process(&incoming_transaction);
+    let tx_id = incoming_transaction.hash;
+
+    let block = Block {
+        hash: Some(H256::zero()),
+        parent_hash: H256::zero(),
+        uncles_hash: H256::zero(),
+        author: H160::zero(),
+        state_root: H256::zero(),
+        transactions_root: H256::zero(),
+        receipts_root: H256::zero(),
+        number: None,
+        gas_used: U256::from(0),
+        gas_limit: U256::from(0),
+        extra_data: Bytes::from(vec![]),
+        logs_bloom: H2048::zero(),
+        timestamp: U256::from(0),
+        difficulty: U256::from(0),
+        total_difficulty: U256::from(0),
+        seal_fields: vec![Bytes::from(vec![])],
+        uncles: vec![],
+        transactions: vec![incoming_transaction],
+        size: None,
+    };
+
+    block_processor.process(&block);
 
     let mut get_response = client.get(uri.path()).dispatch();
     assert_that(&get_response.status()).is_equal_to(Status::Ok);
@@ -144,7 +168,6 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let body = serde_json::from_slice::<QueryResponse>(body);
     let body = assert_that(&body).is_ok().subject;
 
-    let tx_id = incoming_transaction.hash;
     assert_that(body)
         .map(|b| &b.matching_transactions)
         .contains(tx_id.to_string());

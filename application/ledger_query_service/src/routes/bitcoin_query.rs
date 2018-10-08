@@ -1,4 +1,8 @@
-use bitcoin_support::{Address, SpendsTo, Transaction as BitcoinTransaction};
+use bitcoin_support::{
+    serialize::BitcoinHash, Address, Block as BitcoinBlock, SpendsTo,
+    Transaction as BitcoinTransaction,
+};
+use block_processor::{Block, Query, Transaction};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
@@ -12,11 +16,16 @@ use rocket::{
 };
 use rocket_contrib::Json;
 use std::sync::Arc;
-use transaction_processor::{Query, Transaction};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinQuery {
     pub to_address: Option<Address>,
+    #[serde(default = "default_confirmations")]
+    confirmations_needed: u32,
+}
+
+fn default_confirmations() -> u32 {
+    1
 }
 
 #[post(
@@ -32,7 +41,10 @@ pub fn handle_new_bitcoin_query<'r>(
 ) -> Result<impl Responder<'r>, HttpApiProblem> {
     let query = query.into_inner();
 
-    if let BitcoinQuery { to_address: None } = query {
+    if let BitcoinQuery {
+        to_address: None, ..
+    } = query
+    {
         return Err(HttpApiProblem::with_title_from_status(400)
             .set_detail("Query needs at least one condition"));
     }
@@ -65,11 +77,29 @@ impl Query<BitcoinTransaction> for BitcoinQuery {
 
         false
     }
+
+    fn confirmations_needed(&self) -> u32 {
+        self.confirmations_needed
+    }
 }
 
 impl Transaction for BitcoinTransaction {
     fn transaction_id(&self) -> String {
         self.txid().to_string()
+    }
+}
+
+impl Block for BitcoinBlock {
+    type Transaction = BitcoinTransaction;
+
+    fn blockhash(&self) -> String {
+        format!("{:x}", self.header.bitcoin_hash())
+    }
+    fn prev_blockhash(&self) -> String {
+        format!("{:x}", self.header.prev_blockhash)
+    }
+    fn transactions(&self) -> &[BitcoinTransaction] {
+        self.txdata.as_slice()
     }
 }
 

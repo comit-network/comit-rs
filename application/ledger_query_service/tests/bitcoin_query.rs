@@ -8,11 +8,11 @@ extern crate spectral;
 extern crate serde_derive;
 extern crate bitcoin_support;
 
-use bitcoin_support::{Address, Transaction, TxOut};
+use bitcoin_support::{Address, Block, BlockHeader, Sha256dHash, Transaction, TxOut};
 use http::Uri;
 use ledger_query_service::{
-    DefaultTransactionProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
-    LinkFactory, TransactionProcessor,
+    BlockProcessor, DefaultBlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
+    LinkFactory,
 };
 use rocket::{
     http::{ContentType, Status},
@@ -99,8 +99,8 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let link_factory = LinkFactory::new("http", "localhost", Some(8000));
     let query_repository = Arc::new(InMemoryQueryRepository::default());
     let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-    let transaction_processor =
-        DefaultTransactionProcessor::new(query_repository.clone(), query_result_repository.clone());
+    let mut block_processor =
+        DefaultBlockProcessor::new(query_repository.clone(), query_result_repository.clone());
 
     let server = ledger_query_service::server_builder::ServerBuilder::create(
         rocket::Config::development().unwrap(),
@@ -131,7 +131,21 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
 
     let tx_id = incoming_transaction.txid();
 
-    transaction_processor.process(&incoming_transaction);
+    let block_header = BlockHeader {
+        version: 1,
+        prev_blockhash: Sha256dHash::default(),
+        merkle_root: Sha256dHash::default(),
+        time: 0,
+        bits: 1,
+        nonce: 0,
+    };
+
+    let block = Block {
+        header: block_header,
+        txdata: vec![incoming_transaction],
+    };
+
+    block_processor.process(&block);
 
     let mut get_response = client.get(uri.path()).dispatch();
     assert_that(&get_response.status()).is_equal_to(Status::Ok);
@@ -168,4 +182,71 @@ fn should_reject_malformed_address() {
         .dispatch();
 
     assert_that(&response.status()).is_equal_to(Status::BadRequest);
+}
+
+#[test]
+fn given_pending_transaction_response_matching_transactions_is_empty() {
+    let _ = pretty_env_logger::try_init();
+
+    let link_factory = LinkFactory::new("http", "localhost", Some(8000));
+    let query_repository = Arc::new(InMemoryQueryRepository::default());
+    let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    let mut block_processor =
+        DefaultBlockProcessor::new(query_repository.clone(), query_result_repository.clone());
+
+    let server = ledger_query_service::server_builder::ServerBuilder::create(
+        rocket::Config::development().unwrap(),
+        link_factory,
+    ).register_bitcoin(query_repository, query_result_repository)
+    .build();
+    let client = Client::new(server).unwrap();
+
+    let response = client
+        .post("/queries/bitcoin")
+        .header(ContentType::JSON)
+        .body(include_str!(
+            "bitcoin_query_requiring_three_confirmations.json"
+        )).dispatch();
+
+    let location_header_value = response.headers().get_one("Location");
+    let uri: Uri = location_header_value.unwrap().parse().unwrap();
+
+    let address: Address = "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".parse().unwrap();
+    let incoming_transaction = Transaction {
+        version: 1,
+        lock_time: 0,
+        input: Vec::new(),
+        output: vec![TxOut {
+            value: 0,
+            script_pubkey: address.as_ref().script_pubkey(),
+        }],
+    };
+
+    let block_header = BlockHeader {
+        version: 1,
+        prev_blockhash: Sha256dHash::default(),
+        merkle_root: Sha256dHash::default(),
+        time: 0,
+        bits: 1,
+        nonce: 0,
+    };
+
+    let block = Block {
+        header: block_header,
+        txdata: vec![incoming_transaction],
+    };
+
+    block_processor.process(&block);
+
+    let mut get_response = client.get(uri.path()).dispatch();
+    assert_that(&get_response.status()).is_equal_to(Status::Ok);
+
+    let body = get_response.body_bytes();
+    let body = assert_that(&body).is_some().subject;
+    let body = serde_json::from_slice::<QueryResponse>(body);
+    let body = assert_that(&body).is_ok().subject;
+
+    assert_that(body)
+        .map(|b| &b.matching_transactions)
+        .is_equal_to(Vec::new());
 }
