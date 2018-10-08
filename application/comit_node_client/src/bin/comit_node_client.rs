@@ -1,23 +1,18 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-
-extern crate bitcoin_rpc_client;
+extern crate bitcoin_support;
 extern crate comit_node_client;
-extern crate common_types;
+extern crate ethereum_support;
 extern crate reqwest;
-extern crate serde;
 extern crate structopt;
-extern crate uuid;
+#[macro_use]
+extern crate maplit;
 
-use comit_node_client::{
-    api_client::{ComitNodeApiUrl, DefaultApiClient},
-    offer::{self, OrderType, Symbol},
-    order,
-    redeem::{self, RedeemOutput},
+use comit_node_client::api_client::{
+    ApiClient, Asset, ComitNodeApiUrl, DefaultApiClient, Ledger, SwapRequest, SwapStatus, TradeId,
 };
-use std::{env::var, str::FromStr, string::String};
+use std::{collections::HashMap, env::var, str::FromStr, string::String};
 use structopt::StructOpt;
-use uuid::Uuid;
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -25,70 +20,52 @@ use uuid::Uuid;
     about = "CLI for the COMIT Node."
 )]
 enum Opt {
-    /// Request an offer
-    #[structopt(name = "offer")]
-    Offer {
-        /// The symbol you want to trade (e.g. ETH-BTC)
-        #[structopt(
-            short = "S",
-            long = "symbol",
-            name = "symbol to trade (e.g. ETH-BTC)"
-        )]
-        symbol: String,
-        /// The type of trade
+    /// Sends a Swap request
+    #[structopt(name = "swap")]
+    Swap {
         #[structopt(subcommand)]
-        order_type: OrderType,
-        /// The amount you want to exchange (buy for a buy order, sell for a sell order). Integer.
-        #[structopt(
-            short = "a",
-            long = "amount",
-            name = "amount to exchange (buy for a buy order, sell for a sell order). Integer."
-        )]
-        amount: f64,
+        swap_command: SwapCommand,
     },
-    /// Accept an order
-    #[structopt(name = "order")]
-    Order {
-        /// The symbol you want to trade (e.g. ETH-BTC)
+}
+
+fn parse_eth_addr(address: &str) -> Result<ethereum_support::Address, String> {
+    if !address.starts_with("0x") {
+        Err("Ethereum addresses must start with 0x".into())
+    } else {
+        ethereum_support::Address::from_str(address.trim_left_matches("0x"))
+            .map_err(|_| "Invalid ethereum address".to_string())
+    }
+}
+
+#[derive(StructOpt, Debug)]
+enum SwapCommand {
+    /// Swap Bitcoin for Ether
+    #[structopt(name = "btc-eth")]
+    BtcEth {
+        /// The amount of Bitcoin to SELL
+        #[structopt(name = "BTC")]
+        btc_quantity: bitcoin_support::BitcoinQuantity,
+        /// The amount of Ethereum to BUY
+        #[structopt(name = "ETH")]
+        eth_quantity: ethereum_support::EthereumQuantity,
+
+        /// The refund address
+        #[structopt(name = "Bitcoin Address")]
+        btc_addr: bitcoin_support::Address,
+
+        /// The redemption address
         #[structopt(
-            short = "S",
-            long = "symbol",
-            name = "symbol to trade (e.g. ETH-BTC)"
+            name = "Ethereum Address",
+            parse(try_from_str = "parse_eth_addr")
         )]
-        symbol: String,
-        /// The trade id
-        #[structopt(short = "u", long = "uid", name = "trade id")]
-        uid: Uuid,
-        /// The address to receive the traded currency
-        #[structopt(
-            short = "d",
-            long = "success-address",
-            name = "address to receive the traded currency"
-        )]
-        success_address: String,
-        /// The address to receive a refund in the original currency in case the trade is cancelled
-        #[structopt(
-            short = "r",
-            long = "refund-address",
-            name = "address to receive your refund in case of cancellation"
-        )]
-        refund_address: String,
+        eth_addr: ethereum_support::Address,
     },
-    /// Get details to proceed with redeem transaction
-    #[structopt(name = "redeem")]
-    Redeem {
-        /// The symbol you want to trade (e.g. ETH-BTC)
-        #[structopt(
-            short = "S",
-            long = "symbol",
-            name = "symbol to trade (e.g. ETH-BTC)"
-        )]
-        symbol: String,
-        /// The trade id
-        #[structopt(short = "u", long = "uid", name = "trade id")]
-        uid: Uuid,
-        #[structopt(short = "c", long = "console", name = "web3 console format")]
-        console: bool,
+
+    /// Display the state of an atomic swap
+    #[structopt(name = "status")]
+    SwapState {
+        #[structopt(name = "ID")]
+        id: TradeId,
     },
 }
 
@@ -109,48 +86,95 @@ impl<T, E> UnwrapOrExit<T, E> for Result<T, E> {
 }
 
 fn main() {
-    let trading_api_url =
-        ComitNodeApiUrl(var("COMIT_NODE_URL").expect("env variable COMIT_NODE_URL must be set"));
+    let opts = Opt::from_args();
+
+    let trading_api_url = ComitNodeApiUrl(
+        var("COMIT_NODE_URL").unwrap_or_exit("env variable COMIT_NODE_URL must be set"),
+    );
 
     let client = DefaultApiClient {
         url: trading_api_url,
         client: reqwest::Client::new(),
     };
 
-    let output = match Opt::from_args() {
-        Opt::Offer {
-            symbol,
-            order_type,
-            amount,
-        } => offer::run(
-            &client,
-            &Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
-            order_type,
-            amount,
-        ),
-        Opt::Order {
-            symbol,
-            uid,
-            success_address,
-            refund_address,
-        } => order::run(
-            &client,
-            Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
-            uid,
-            success_address,
-            refund_address,
-        ),
-        Opt::Redeem {
-            symbol,
-            uid,
-            console,
-        } => redeem::run(
-            &client,
-            Symbol::from_str(&symbol).unwrap_or_exit("Invalid Symbol"),
-            uid,
-            RedeemOutput::new(console),
-        ),
-    };
+    match opts {
+        Opt::Swap {
+            swap_command:
+                SwapCommand::BtcEth {
+                    btc_quantity,
+                    eth_quantity,
+                    btc_addr,
+                    eth_addr,
+                },
+        } => {
+            let request = SwapRequest {
+                source_ledger: Ledger {
+                    value: "Bitcoin".to_string(),
+                    identity: format!("{:x}", bitcoin_support::PubkeyHash::from(btc_addr)),
+                    parameters: HashMap::new(),
+                },
+                target_ledger: Ledger {
+                    value: "Ethereum".to_string(),
+                    identity: format!("0x{:x}", eth_addr),
+                    parameters: HashMap::new(),
+                },
+                source_asset: Asset {
+                    value: "Bitcoin".to_string(),
+                    parameters: convert_args!(hashmap!(
+                        "quantity" =>  format!("{}", btc_quantity.satoshi())
+                    )),
+                },
+                target_asset: Asset {
+                    value: "Ether".to_string(),
+                    parameters: convert_args!(hashmap!(
+                        "quantity" => format!("{}", eth_quantity.wei())
+                    )),
+                },
+            };
 
-    println!("{}", output.unwrap())
+            let response = client.send_swap_request(request);
+
+            match response {
+                Ok(swap_created) => println!("{}", swap_created.id),
+                Err(e) => {
+                    eprintln!("{:?}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Opt::Swap {
+            swap_command: SwapCommand::SwapState { id },
+        } => {
+            let response = client.get_swap_status(id);
+            match response {
+                Ok(swap_status) => {
+                    use SwapStatus::*;
+                    match swap_status {
+                        Pending => {
+                            println!("status: pending");
+                        }
+                        Accepted { funding_required } => {
+                            println!("status: accepted");
+                            println!("funding_required: {}", funding_required);
+                        }
+                        Redeemable {
+                            contract_address,
+                            data,
+                            gas,
+                        } => {
+                            println!("status: redeemable");
+                            println!("contract_address: {}", contract_address);
+                            println!("data: {}", data);
+                            println!("gas: {}", gas);
+                        }
+                        _ => unimplemented!(),
+                    }
+                }
+                Err(e) => {
+                    eprintln!("{:?}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
 }

@@ -24,18 +24,17 @@ function log {
 }
 
 END(){
-    log "KILLING docker containers";
-    (
-        cd $PROJECT_ROOT/run_environments/regtest;
-        docker-compose rm -sfv;
-    );
-
     for pid in "$BOB_COMIT_NODE_PID" "$ALICE_COMIT_NODE_PID" "$LQS_PID"; do
         if test "$pid" && ps "$pid" >/dev/null; then
             echo "KILLING $pid";
             kill "$pid" 2>/dev/null;
         fi
     done
+    log "KILLING docker containers";
+    (
+        cd $PROJECT_ROOT/run_environments/regtest;
+        docker-compose rm -sfv;
+    );
 }
 
 trap 'END' EXIT;

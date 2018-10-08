@@ -1,74 +1,96 @@
-use common_types::{secret::Secret, TradingSymbol};
+use common_types::secret::Secret;
 use event_store::Event;
 use std::marker::PhantomData;
 use swap_protocols::ledger::Ledger;
 use swaps::common::TradeId;
 
-// State after bob has made an offer
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OfferCreated<Buy, Sell>
-where
-    Buy: Ledger,
-    Sell: Ledger,
-{
-    pub uid: TradeId,
-    pub symbol: TradingSymbol,
-    pub rate: f64,
-    pub buy_amount: Buy::Quantity,
-    pub sell_amount: Sell::Quantity,
+#[derive(Clone, Debug)]
+pub struct SentSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
+    pub source_ledger: SL,
+    pub target_ledger: TL,
+    pub target_asset: TA,
+    pub source_asset: SA,
+    pub secret: Secret,
+    pub target_ledger_success_identity: TL::Identity,
+    pub source_ledger_refund_identity: SL::Identity,
+    pub source_ledger_lock_duration: SL::LockDuration,
 }
 
-impl<Buy: Ledger, Sell: Ledger> Event for OfferCreated<Buy, Sell> {
+impl<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync + 'static,
+        TA: Clone + Send + Sync + 'static,
+    > Event for SentSwapRequest<SL, TL, SA, TA>
+{
     type Prev = ();
 }
 
-// State after client accepts trade offer
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct OrderCreated<Buy, Sell>
-where
-    Buy: Ledger,
-    Sell: Ledger,
-{
-    pub uid: TradeId,
-    pub alice_success_address: Buy::Address,
-    pub alice_refund_address: Sell::Address,
-    pub secret: Secret,
-    pub long_relative_timelock: Sell::LockDuration,
-}
-
-impl<Buy: Ledger, Sell: Ledger> Event for OrderCreated<Buy, Sell> {
-    type Prev = OfferCreated<Buy, Sell>;
-}
-
 #[derive(Clone, Debug)]
-pub struct OrderTaken<Buy, Sell>
-where
-    Buy: Ledger,
-    Sell: Ledger,
-{
-    pub uid: TradeId,
-    pub bob_refund_address: Buy::Address,
-    pub bob_success_address: Sell::Address,
-    pub bob_contract_time_lock: Buy::LockDuration,
+pub struct SwapRequestAccepted<SL: Ledger, TL: Ledger, SA, TA> {
+    pub target_ledger_refund_identity: TL::Identity,
+    pub source_ledger_success_identity: SL::Identity,
+    pub target_ledger_lock_duration: TL::LockDuration,
+    phantom: PhantomData<(SA, TA)>,
 }
 
-impl<Buy: Ledger, Sell: Ledger> Event for OrderTaken<Buy, Sell> {
-    type Prev = OrderCreated<Buy, Sell>;
+impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestAccepted<SL, TL, SA, TA> {
+    pub fn new(
+        target_ledger_refund_identity: TL::Identity,
+        source_ledger_success_identity: SL::Identity,
+        target_ledger_lock_duration: TL::LockDuration,
+    ) -> Self {
+        SwapRequestAccepted {
+            target_ledger_refund_identity,
+            source_ledger_success_identity,
+            target_ledger_lock_duration,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync + 'static,
+        TA: Clone + Send + Sync + 'static,
+    > Event for SwapRequestAccepted<SL, TL, SA, TA>
+{
+    type Prev = SentSwapRequest<SL, TL, SA, TA>;
+}
+#[derive(Clone, Debug)]
+pub struct SwapRequestRejected<SL: Ledger, TL: Ledger, SA, TA> {
+    phantom: PhantomData<(SL, TL, SA, TA)>,
+}
+
+impl<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync + 'static,
+        TA: Clone + Send + Sync + 'static,
+    > Event for SwapRequestRejected<SL, TL, SA, TA>
+{
+    type Prev = SentSwapRequest<SL, TL, SA, TA>;
+}
+
+#[allow(clippy::new_without_default_derive)]
+impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
+    pub fn new() -> Self {
+        SwapRequestRejected {
+            phantom: PhantomData,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<Buy, Sell>
-where
-    Buy: Ledger,
-    Sell: Ledger,
-{
+pub struct ContractDeployed<SL: Ledger, TL: Ledger, SA, TA> {
     pub uid: TradeId,
-    pub address: Buy::Address,
-    phantom: PhantomData<Sell>,
+    pub address: TL::Address,
+    phantom: PhantomData<(SL, SA, TA)>,
 }
 
-impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
-    pub fn new(uid: TradeId, address: Buy::Address) -> ContractDeployed<Buy, Sell> {
+impl<SL: Ledger, TL: Ledger, SA, TA> ContractDeployed<SL, TL, SA, TA> {
+    pub fn new(uid: TradeId, address: TL::Address) -> ContractDeployed<SL, TL, SA, TA> {
         ContractDeployed {
             uid,
             address,
@@ -77,6 +99,12 @@ impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
     }
 }
 
-impl<Buy: Ledger, Sell: Ledger> Event for ContractDeployed<Buy, Sell> {
-    type Prev = OrderTaken<Buy, Sell>;
+impl<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync + 'static,
+        TA: Clone + Send + Sync + 'static,
+    > Event for ContractDeployed<SL, TL, SA, TA>
+{
+    type Prev = SwapRequestAccepted<SL, TL, SA, TA>;
 }

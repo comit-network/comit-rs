@@ -11,17 +11,20 @@ extern crate ethereum_wallet;
 #[macro_use]
 extern crate log;
 extern crate event_store;
+extern crate gotham;
 extern crate logging;
 extern crate tokio;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::Address as BitcoinAddress;
+
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
-    comit_node_api_client::DefaultApiClient as ComitNodeClient,
+    comit_client,
     comit_server::ComitServer,
     gas_price_service::StaticGasPriceService,
+    gotham_factory,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     rocket_factory::create_rocket_instance,
     settings::ComitNodeSettings,
@@ -31,7 +34,7 @@ use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
-use std::{env::var, sync::Arc, time::Duration};
+use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -45,6 +48,7 @@ fn main() {
     let event_store = Arc::new(InMemoryEventStore::default());
     let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
+    let gotham_event_store = event_store.clone();
 
     let eth_keypair = settings.ethereum.private_key;
 
@@ -72,13 +76,13 @@ fn main() {
     let btc_network = settings.bitcoin.network;
 
     //TODO: Integrate all Ethereum keys in this keystore. See #185/#291
-    let bob_key_store = Arc::new(
+    let key_store = Arc::new(
         KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),
     );
 
     //TODO: make it dynamically generated every X BTC. Could be done with #296
-    let btc_bob_redeem_keypair = bob_key_store.get_new_internal_keypair();
+    let btc_bob_redeem_keypair = key_store.get_new_internal_keypair();
     let btc_bob_redeem_address =
         BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key(), btc_network);
 
@@ -114,24 +118,42 @@ fn main() {
     ));
 
     {
-        let ethereum_service = ethereum_service.clone();
-        let bitcoin_service = bitcoin_service.clone();
-        let bob_key_store = bob_key_store.clone();
-        let http_api_address = settings.http_api.address;
+        let http_api_address_gotham = settings.http_api.address.clone();
+        let http_api_address_rocket = settings.http_api.address.clone();
         let http_api_port = settings.http_api.port;
         let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
+        let key_store_rocket = key_store.clone();
+        let ethereum_service = ethereum_service.clone();
+        let bitcoin_service = bitcoin_service.clone();
+
+        let client_pool = comit_client::bam::BamClientPool::default();
+
+        let gotham_router = gotham_factory::create_gotham_router(
+            gotham_event_store,
+            Arc::new(client_pool),
+            remote_comit_node_url,
+            key_store.clone(),
+        );
+
+        std::thread::spawn(move || {
+            gotham::start(
+                SocketAddr::from_str(
+                    format!("{}:{}", http_api_address_gotham, http_api_port).as_str(),
+                ).unwrap(),
+                gotham_router,
+            );
+        });
 
         std::thread::spawn(move || {
             create_rocket_instance(
                 rocket_event_store,
                 ethereum_service,
                 bitcoin_service,
-                bob_key_store,
+                key_store_rocket,
                 btc_network,
-                Arc::new(ComitNodeClient::new(remote_comit_node_url)),
-                http_api_address,
-                http_api_port,
+                http_api_address_rocket,
+                http_api_port + 2,
                 http_api_logging,
             ).launch();
         });
@@ -143,7 +165,7 @@ fn main() {
 
     let server = ComitServer::new(
         comit_server_event_store,
-        bob_key_store,
+        key_store.clone(),
         ethereum_service.clone(),
         bitcoin_service.clone(),
         ledger_query_service,

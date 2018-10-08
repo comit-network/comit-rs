@@ -27,8 +27,6 @@ extern crate tc_parity_parity;
 extern crate tc_web3_client;
 extern crate testcontainers;
 extern crate web3;
-#[macro_use]
-extern crate serde_derive;
 
 mod mocks;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Blocks, TransactionId};
@@ -113,7 +111,10 @@ fn setup<
 
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
 
-    let btc_redeem_address = BitcoinAddress::from(btc_redeem_pubkeyhash);
+    let btc_redeem_address = BitcoinAddress::from_pubkeyhash_and_network(
+        btc_redeem_pubkeyhash,
+        bitcoin_support::Network::Regtest,
+    );
 
     let bitcoin_service = Arc::new(BitcoinService::new(
         Arc::new(BitcoinRpcClientMock::new(
@@ -282,8 +283,8 @@ fn can_receive_swap_request() {
     let result = receiver.wait();
 
     let expected_request = rfc003::Request {
-        source_ledger: Bitcoin {},
-        target_ledger: Ethereum {},
+        source_ledger: Bitcoin::regtest(),
+        target_ledger: Ethereum::default(),
         source_asset: BitcoinQuantity::from_satoshi(100_000_000),
         target_asset: EthereumQuantity::from_eth(10.0),
         source_ledger_lock_duration: Blocks::from(144),
