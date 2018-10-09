@@ -179,7 +179,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
             Some(eth_htlc_address) => Ok(EthereumQuery {
                 from_address: None,
                 to_address: Some(eth_htlc_address),
-                is_contract_creation: Some(true),
+                is_contract_creation: None,
                 transaction_data: None,
             }),
             None => Err(ledger_htlc_service::Error::Internal),
@@ -198,23 +198,39 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
             .web3
             .transaction(TransactionId::Hash(redeem_htlc_tx_id))?;
         match redeem_tx {
-            None => Err(ledger_htlc_service::Error::TransactionNotFound),
+            None => {
+                error!(
+                    "Could not get details of transaction {:#?}",
+                    redeem_htlc_tx_id
+                );
+                Err(ledger_htlc_service::Error::TransactionNotFound)
+            }
             Some(tx) => {
                 match tx.to {
                     Some(address) => {
                         if address == htlc_address {
                             // TODO: check the contract is redeemed -> probably need htlc update to logged "redeemed". See #316
                             let data = tx.input.0;
-
+                            debug!("Transaction data: {:?}", data);
                             match Secret::from_vec(data) {
-                                Err(_) => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
+                                Err(_) => {
+                                    error!("Could not get secret out of transaction data");
+                                    Err(ledger_htlc_service::Error::InvalidRedeemTransaction)
+                                }
                                 Ok(secret) => Ok(secret),
                             }
                         } else {
+                            error!(
+                                "Expected 'to' is {:?} not {:?} for transaction {:?}",
+                                htlc_address, address, tx
+                            );
                             Err(ledger_htlc_service::Error::InvalidRedeemTransaction)
                         }
                     }
-                    _ => Err(ledger_htlc_service::Error::InvalidRedeemTransaction),
+                    _ => {
+                        error!("'to' is expected on redeem transaction {:?}", tx);
+                        Err(ledger_htlc_service::Error::InvalidRedeemTransaction)
+                    }
                 }
             }
         }

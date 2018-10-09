@@ -83,8 +83,7 @@ function setup() {
     ALICE_COMIT_NODE_PORT=8000
 
     BOB_COMIT_NODE_PID=$(
-        export RUST_BACKTRACE=1 \
-               COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/bob;
+        export COMIT_NODE_CONFIG_PATH=$(pwd)/run_environments/regtest/bob;
 
         start_target "comit_node" "Bob  ";
     );
@@ -98,6 +97,9 @@ function setup() {
 
     LQS_PID=$(
         export BITCOIN_ZMQ_ENDPOINT=tcp://127.0.0.1:28332;
+        export ETHEREUM_WEB3_ENDPOINT=$ETHEREUM_NODE_ENDPOINT;
+        export ETHEREUM_POLLING_TIME_SEC=1
+        export RUST_LOG=debug;
 
         start_target "ledger_query_service" "LQS  ";
     );
