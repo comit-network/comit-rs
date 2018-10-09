@@ -46,6 +46,8 @@ extern crate mime;
 #[macro_use]
 extern crate failure;
 extern crate url;
+#[macro_use]
+extern crate maplit;
 
 #[cfg(test)]
 extern crate spectral;
