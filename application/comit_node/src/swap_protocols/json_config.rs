@@ -277,7 +277,7 @@ fn process<
                     event_store.clone(),
                     bitcoin_service.clone(),
                     ethereum_service.clone(),
-                );
+                )?;
 
                 Ok(())
             }).map_err(|e| {
@@ -338,24 +338,22 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
     event_store: Arc<E>,
     bitcoin_service: Arc<BitcoinService>,
     ethereum_service: Arc<EthereumService>,
-) {
-    //TODO: remove unwrap
+) -> Result<(), Error> {
     let query = LedgerHtlcService::<Ethereum, EtherHtlcParams>::create_query_to_watch_redeeming(
         ethereum_service.as_ref(),
         eth_htlc_created_tx_id,
-    ).unwrap();
+    )?;
 
-    let query_id = match ledger_query_service_api_client.clone().create(query) {
-        Ok(query_id) => query_id,
-        Err(e) => {
+    let query_id = ledger_query_service_api_client
+        .clone()
+        .create(query)
+        .map_err(|e| {
             error!(
                 "Aborting trade because of problem with Ethereum Ledger Query Service: {:?}",
                 e
             );
-            // TODO: Handle errors
-            return ();
-        }
-    };
+            e
+        })?;
 
     let ledger_services =
         LedgerServices::new(ledger_query_service_api_client.clone(), poll_interval);
@@ -376,12 +374,10 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
                         transaction_id,
                     )?;
 
-                //TODO: remove unwraps
-                let order_taken: OrderTaken<Ethereum, Bitcoin> =
-                    event_store.get_event(trade_id).unwrap();
+                let order_taken: OrderTaken<Ethereum, Bitcoin> = event_store.get_event(trade_id)?;
 
                 let trade_funded: TradeFunded<Ethereum, Bitcoin> =
-                    event_store.get_event(trade_id).unwrap();
+                    event_store.get_event(trade_id)?;
 
                 let redeem_tx_id = bitcoin_service.redeem_htlc(
                     secret,
@@ -405,4 +401,5 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
                 error!("Ledger Query Service Failure: {:#?}", e);
             }),
     );
+    Ok(())
 }

@@ -191,8 +191,9 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
         create_htlc_tx_id: <Ethereum as Ledger>::TxId,
         redeem_htlc_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
-        //TODO: remove unwrap
-        let htlc_address = self.get_contract_address(create_htlc_tx_id).unwrap();
+        let htlc_address = self
+            .get_contract_address(create_htlc_tx_id)
+            .ok_or(ledger_htlc_service::Error::Internal)?;
 
         let redeem_tx = self
             .web3
