@@ -74,9 +74,7 @@ impl Query<EthereumTransaction> for EthereumQuery {
         }
 
         if let Some(to_address) = self.to_address {
-            if let Some(tx_to_address) = transaction.to {
-                result = result && (tx_to_address == to_address);
-            }
+            result = result && (transaction.to == Some(to_address));
         }
 
         if let Some(is_contract_creation) = self.is_contract_creation {
@@ -99,7 +97,9 @@ impl Query<EthereumTransaction> for EthereumQuery {
 
 impl Transaction for EthereumTransaction {
     fn transaction_id(&self) -> String {
-        self.hash.to_string()
+        let result = format!("{:?}", self.hash);
+        debug!("Tx Id: {}", result);
+        result
     }
 }
 
@@ -271,6 +271,34 @@ mod tests {
     }
 
     #[test]
+    fn given_query_to_address_transaction_with_to_none_doesnt_match() {
+        let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
+
+        let query = EthereumQuery {
+            from_address: None,
+            to_address: Some(to_address),
+            is_contract_creation: None,
+            transaction_data: None,
+        };
+
+        let transaction = Transaction {
+            hash: H256::from(123),
+            nonce: U256::from(1),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
+            to: None,
+            value: U256::from(0),
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: Bytes::from(vec![]),
+        };
+
+        assert_that(&query.matches(&transaction)).is_false();
+    }
+
+    #[test]
     fn given_query_transaction_data_transaction_matches() {
         let query = EthereumQuery {
             from_address: None,
@@ -321,4 +349,5 @@ mod tests {
 
         assert_that(&query.matches(&transaction)).is_true();
     }
+
 }
