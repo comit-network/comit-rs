@@ -120,8 +120,9 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let uri: Uri = location_header_value.unwrap().parse().unwrap();
 
     let address: Address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
+    let tx_id = "09bd46e048485d4e70ef00b181b033a015314b52e3fc50a8762d9af69620e87c";
     let incoming_transaction = Transaction {
-        hash: H256::from(123),
+        hash: tx_id.parse().unwrap(),
         nonce: U256::from(1),
         block_hash: None,
         block_number: None,
@@ -133,8 +134,6 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
         gas: U256::from(0),
         input: Bytes::from(vec![]),
     };
-
-    let tx_id = incoming_transaction.hash;
 
     let block = Block {
         hash: Some(H256::zero()),
@@ -170,7 +169,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
 
     assert_that(body)
         .map(|b| &b.matching_transactions)
-        .contains(tx_id.to_string());
+        .contains(format!("0x{}", tx_id));
 }
 
 #[test]
