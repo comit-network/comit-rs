@@ -97,9 +97,7 @@ impl Query<EthereumTransaction> for EthereumQuery {
 
 impl Transaction for EthereumTransaction {
     fn transaction_id(&self) -> String {
-        let result = format!("{:?}", self.hash);
-        debug!("Tx Id: {}", result);
-        result
+        format!("{:?}", self.hash)
     }
 }
 
