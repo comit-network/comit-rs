@@ -11,9 +11,7 @@ satoshi_per_byte = 50 # used for calculating transaction fees
 node_url = "http://localhost:18443"
 node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-# The extended private key is this private key + Chaincode [0u8; 32]
-# private_key="d14645573802900964c63e00e9e238aef9152b95e2f9aa1b534323951258d7fc"
-extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSALoMjDCZoi5BwobjymauUwpJXXhHoCMTC7nVo183SqnVBDGZ8i3"
+mnemonic_key_phrase="crop cash unable insane eight faith inflict route frame loud box vibrant"
 lqs_url = "http://localhost:8080"
 queries_poll_interval_secs = 2
 

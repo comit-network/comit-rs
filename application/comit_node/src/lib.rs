@@ -45,6 +45,7 @@ extern crate hyper;
 extern crate mime;
 #[macro_use]
 extern crate failure;
+extern crate bip39;
 extern crate url;
 
 #[cfg(test)]

@@ -49,6 +49,7 @@ comit_wallet = { path = "../comit_wallet" }
 config = "0.9"
 tokio-timer = "0.2"
 failure = "0.1"
+bip39 = "=0.4.0"
 
 [dev-dependencies]
 maplit = "1"

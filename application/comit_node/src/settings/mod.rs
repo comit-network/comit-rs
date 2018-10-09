@@ -1,6 +1,7 @@
 mod serde;
 
-use bitcoin_support::{ExtendedPrivKey, Network};
+use bip39::Mnemonic;
+use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
 use ethereum_support;
 use secp256k1_support::KeyPair;
@@ -37,7 +38,7 @@ pub struct Bitcoin {
     pub node_username: String,
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
-    pub extended_private_key: ExtendedPrivKey,
+    pub mnemonic_key_phrase: Mnemonic,
     #[serde(with = "serde::url")]
     pub lqs_url: url::Url,
     pub queries_poll_interval_secs: u64,

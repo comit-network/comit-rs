@@ -13,11 +13,12 @@ extern crate log;
 extern crate event_store;
 extern crate gotham;
 extern crate logging;
+extern crate secp256k1_support;
 extern crate tokio;
 extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
-use bitcoin_support::Address as BitcoinAddress;
+use bitcoin_support::{Address as BitcoinAddress, ExtendedPrivKey};
 
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
@@ -34,6 +35,7 @@ use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
+use secp256k1_support::SECP;
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
 use web3::{transports::Http, Web3};
 
@@ -75,9 +77,14 @@ fn main() {
 
     let btc_network = settings.bitcoin.network;
 
+    let mnemonic_phrase_bytes = settings.bitcoin.mnemonic_key_phrase.as_seed().as_bytes();
+    let btc_extended_private_key =
+        ExtendedPrivKey::new_master(&*SECP, settings.bitcoin.network, mnemonic_phrase_bytes)
+            .expect("Could not generate private key from mnemonic key phrase");
+
     //TODO: Integrate all Ethereum keys in this keystore. See #185/#291
     let key_store = Arc::new(
-        KeyStore::new(settings.bitcoin.extended_private_key)
+        KeyStore::new(btc_extended_private_key)
             .expect("Could not HD derive keys from the private key"),
     );
 
