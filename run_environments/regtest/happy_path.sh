@@ -250,7 +250,7 @@ secret=$(
     info "BTC: Total UTXOs before redeem: $old_unspent_num";
 
     # Waiting for Bob to see ETH redeem and redeem BTC
-    sleep 10;
+    sleep 5;
 
     generate_blocks;
 
