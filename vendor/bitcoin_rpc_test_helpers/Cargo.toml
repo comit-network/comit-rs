@@ -9,7 +9,7 @@ authors = [
 ]
 
 [dependencies]
-testcontainers = "0.2"
+testcontainers = "0.3"
 bitcoin_rpc_client = "0.1"
 bitcoin_support = { path = "../bitcoin_support" }
 

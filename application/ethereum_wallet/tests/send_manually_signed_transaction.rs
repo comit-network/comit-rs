@@ -3,7 +3,6 @@ extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate hex;
 extern crate secp256k1_support;
-extern crate tc_trufflesuite_ganachecli;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
@@ -11,8 +10,7 @@ use ethereum_support::*;
 use ethereum_wallet::*;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
-use tc_trufflesuite_ganachecli::GanacheCli;
-use testcontainers::{clients::DockerCli, Docker};
+use testcontainers::{clients::Cli, images::trufflesuite_ganachecli::GanacheCli, Docker};
 
 #[test]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
@@ -21,8 +19,9 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
     // Arrange
 
     let account = Address::from("e7b6bfabddfaeb2c016b334a5322e4327dc5e499");
+    let docker = Cli::default();
 
-    let container = DockerCli::new().run(GanacheCli::default());
+    let container = docker.run(GanacheCli::default());
     let (_event_loop, client) = tc_web3_client::new(&container);
 
     let get_nonce = || {

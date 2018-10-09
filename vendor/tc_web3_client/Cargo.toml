@@ -9,6 +9,5 @@ authors = [
 ]
 
 [dependencies]
-testcontainers = "0.2"
-tc_trufflesuite_ganachecli = "0.2"
+testcontainers = "0.3"
 web3 = "0.4"

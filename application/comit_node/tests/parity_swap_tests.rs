@@ -8,7 +8,6 @@ extern crate ethereum_wallet;
 extern crate hex;
 extern crate pretty_env_logger;
 extern crate secp256k1_support;
-extern crate tc_parity_parity;
 #[macro_use]
 extern crate log;
 extern crate spectral;
@@ -25,6 +24,7 @@ use ethereum_support::{Bytes, EthereumQuantity, U256};
 use htlc_harness::*;
 use spectral::prelude::*;
 use std::time::Duration;
+use testcontainers::clients::Cli;
 
 const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
 const HTLC_TIMEOUT: Duration = Duration::from_secs(5);
@@ -32,14 +32,18 @@ const HTLC_GAS_COST: u64 = 8879000;
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
-    let (alice, bob, htlc, _, client, _handle, _container) = harness(TestHarnessParams {
-        alice_initial_ether: EthereumQuantity::from_eth(1.0),
-        htlc_type: HtlcType::Eth {
-            htlc_eth_value: EthereumQuantity::from_eth(0.4),
+    let docker = Cli::default();
+    let (alice, bob, htlc, _, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
+            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            htlc_type: HtlcType::Eth {
+                htlc_eth_value: EthereumQuantity::from_eth(0.4),
+            },
+            htlc_timeout: HTLC_TIMEOUT,
+            htlc_secret: SECRET.clone(),
         },
-        htlc_timeout: HTLC_TIMEOUT,
-        htlc_secret: SECRET.clone(),
-    });
+    );
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();
 
@@ -75,14 +79,18 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 
 #[test]
 fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
-    let (alice, bob, htlc, _, client, _handle, _container) = harness(TestHarnessParams {
-        alice_initial_ether: EthereumQuantity::from_eth(1.0),
-        htlc_type: HtlcType::Eth {
-            htlc_eth_value: EthereumQuantity::from_eth(0.4),
+    let docker = Cli::default();
+    let (alice, bob, htlc, _, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
+            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            htlc_type: HtlcType::Eth {
+                htlc_eth_value: EthereumQuantity::from_eth(0.4),
+            },
+            htlc_timeout: HTLC_TIMEOUT,
+            htlc_secret: SECRET.clone(),
         },
-        htlc_timeout: HTLC_TIMEOUT,
-        htlc_secret: SECRET.clone(),
-    });
+    );
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();
 
@@ -120,14 +128,18 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 
 #[test]
 fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
-    let (alice, bob, htlc, _, client, _handle, _container) = harness(TestHarnessParams {
-        alice_initial_ether: EthereumQuantity::from_eth(1.0),
-        htlc_type: HtlcType::Eth {
-            htlc_eth_value: EthereumQuantity::from_eth(0.4),
+    let docker = Cli::default();
+    let (alice, bob, htlc, _, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
+            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            htlc_type: HtlcType::Eth {
+                htlc_eth_value: EthereumQuantity::from_eth(0.4),
+            },
+            htlc_timeout: HTLC_TIMEOUT,
+            htlc_secret: SECRET.clone(),
         },
-        htlc_timeout: HTLC_TIMEOUT,
-        htlc_secret: SECRET.clone(),
-    });
+    );
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();
 
@@ -165,8 +177,10 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
 
 #[test]
 fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred() {
-    let (alice, bob, htlc, token_contract, client, _handle, _container) =
-        harness(TestHarnessParams {
+    let docker = Cli::default();
+    let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
             alice_initial_ether: EthereumQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(1000),
@@ -174,7 +188,8 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferr
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
-        });
+        },
+    );
     let token = token_contract.unwrap();
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();
@@ -193,8 +208,10 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferr
 
 #[test]
 fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunded() {
-    let (alice, bob, htlc, token_contract, client, _handle, _container) =
-        harness(TestHarnessParams {
+    let docker = Cli::default();
+    let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
             alice_initial_ether: EthereumQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(1000),
@@ -202,7 +219,8 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
-        });
+        },
+    );
     let token = token_contract.unwrap();
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();
@@ -223,8 +241,10 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
 
 #[test]
 fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
-    let (alice, bob, htlc, token_contract, client, _handle, _container) =
-        harness(TestHarnessParams {
+    let docker = Cli::default();
+    let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
             alice_initial_ether: EthereumQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(1000),
@@ -232,7 +252,8 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
-        });
+        },
+    );
     let token = token_contract.unwrap();
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();
@@ -251,8 +272,10 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
 
 #[test]
 fn given_no_enough_tokens_token_balances_dont_change_and_contract_is_not_deployed() {
-    let (alice, bob, htlc, token_contract, client, _handle, _container) =
-        harness(TestHarnessParams {
+    let docker = Cli::default();
+    let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
+        &docker,
+        TestHarnessParams {
             alice_initial_ether: EthereumQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(200),
@@ -260,7 +283,8 @@ fn given_no_enough_tokens_token_balances_dont_change_and_contract_is_not_deploye
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
-        });
+        },
+    );
     let token = token_contract.unwrap();
 
     let htlc = assert_that(&htlc).is_ok().subject.clone();

@@ -6,7 +6,6 @@ extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
 extern crate tc_bitcoincore_client;
-extern crate tc_coblox_bitcoincore;
 extern crate testcontainers;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -15,14 +14,14 @@ use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, Privat
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
-use tc_coblox_bitcoincore::BitcoinCore;
-use testcontainers::{clients::DockerCli, Docker};
+use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 #[test]
 fn redeem_single_p2wpkh() {
     let _ = env_logger::try_init();
 
-    let container = DockerCli::new().run(BitcoinCore::default());
+    let docker = Cli::default();
+    let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
     client.enable_segwit();
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
@@ -70,7 +69,8 @@ fn redeem_single_p2wpkh() {
 
 #[test]
 fn redeem_two_p2wpkh() {
-    let container = DockerCli::new().run(BitcoinCore::default());
+    let docker = Cli::default();
+    let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
 
     client.enable_segwit();

@@ -14,7 +14,6 @@ members = [
     "vendor/bitcoin_witness",
     "vendor/ethereum_support",
     "vendor/event_store",
-    "vendor/ganache_rust_web3",
     "vendor/key_gen",
     "vendor/lightning_rpc",
     "vendor/secp256k1_support",
