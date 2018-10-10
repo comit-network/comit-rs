@@ -148,15 +148,7 @@ impl FromStr for Secret {
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         let vec = hex::decode(s)?;
-        if vec.len() != SHA256_DIGEST_LENGTH {
-            return Err(SecretFromErr::InvalidLength {
-                expected: SHA256_DIGEST_LENGTH,
-                got: vec.len(),
-            });
-        }
-        let mut secret = [0; SHA256_DIGEST_LENGTH];
-        secret.copy_from_slice(&vec[..]);
-        Ok(Secret::from(secret))
+        Self::from_vec(vec)
     }
 }
 
