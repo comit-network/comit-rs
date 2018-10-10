@@ -1,17 +1,17 @@
-use common_types::secret::Secret;
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
+use ledger_query_service::BitcoinQuery;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
 use swap_protocols::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
-    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
+    rfc003::ledger_htlc_service::{BitcoinHtlcParams, LedgerHtlcService},
 };
 use swaps::{
     bob_events::{
-        ContractDeployed as BobContractDeployed, ContractRedeemed as BobContractRedeemed,
-        OrderTaken as BobOrderTaken, TradeFunded as BobTradeFunded,
+        ContractDeployed as BobContractDeployed, OrderTaken as BobOrderTaken,
+        TradeFunded as BobTradeFunded,
     },
     common::TradeId,
     errors::Error,
@@ -31,7 +31,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<<Ethereum as Ledger>::HtlcId>,
     event_store: State<Arc<InMemoryEventStore<TradeId>>>,
-    bitcoin_service: State<Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>>,
+    bitcoin_service: State<Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -46,7 +46,7 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: &<Ethereum as Ledger>::HtlcId,
     event_store: &Arc<InMemoryEventStore<TradeId>>,
-    bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
+    bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
     let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id)?;
@@ -68,57 +68,5 @@ fn handle_post_orders_funding(
 
     event_store.add_event(trade_id, contract_deployed)?;
 
-    Ok(())
-}
-
-#[derive(Deserialize, Debug)]
-pub struct RedeemETHNotificationBody {
-    pub secret: Secret,
-}
-
-#[post(
-    "/trades/ETH-BTC/<trade_id>/sell-order-secret-revealed",
-    format = "application/json",
-    data = "<redeem_eth_notification_body>"
-)]
-pub fn post_revealed_secret(
-    redeem_eth_notification_body: Json<RedeemETHNotificationBody>,
-    event_store: State<Arc<InMemoryEventStore<TradeId>>>,
-    trade_id: TradeId,
-    ethereum_service: State<Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>>,
-) -> Result<(), BadRequest<String>> {
-    handle_post_revealed_secret(
-        redeem_eth_notification_body.into_inner(),
-        event_store.inner(),
-        trade_id,
-        ethereum_service.inner(),
-    )?;
-
-    Ok(())
-}
-
-fn handle_post_revealed_secret(
-    redeem_eth_notification_body: RedeemETHNotificationBody,
-    event_store: &Arc<InMemoryEventStore<TradeId>>,
-    trade_id: TradeId,
-    ethereum_service: &Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
-) -> Result<(), Error> {
-    let trade_funded = event_store.get_event::<BobTradeFunded<Bitcoin, Ethereum>>(trade_id)?;
-    let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id)?;
-
-    let tx_id = ethereum_service.redeem_htlc(
-        redeem_eth_notification_body.secret,
-        trade_id,
-        order_taken.bob_success_address,
-        order_taken.bob_success_keypair,
-        order_taken.alice_refund_address,
-        trade_funded.htlc_identifier,
-        order_taken.sell_amount,
-        order_taken.alice_contract_time_lock,
-    )?;
-    let deployed: BobContractRedeemed<Bitcoin, Ethereum> =
-        BobContractRedeemed::new(trade_id, tx_id.to_string());
-
-    event_store.add_event(trade_id, deployed)?;
     Ok(())
 }

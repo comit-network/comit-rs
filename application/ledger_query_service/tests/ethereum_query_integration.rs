@@ -143,9 +143,9 @@ fn given_to_address_query_when_matching_transaction_is_processed_returns_result(
 
     assert_that(body)
         .map(|b| &b.matching_transactions)
-        .does_not_contain(dev_to_alice_hash.to_string());
+        .does_not_contain(format!("{:?}", dev_to_alice_hash));
 
     assert_that(body)
         .map(|b| &b.matching_transactions)
-        .contains(dev_to_bob_hash.to_string());
+        .contains(format!("{:?}", dev_to_bob_hash));
 }

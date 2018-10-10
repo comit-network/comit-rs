@@ -36,11 +36,11 @@ pub struct HtlcId {
 
 impl Ledger for Bitcoin {
     type Quantity = BitcoinQuantity;
-    type Address = Address;
     type LockDuration = Blocks;
     type HtlcId = HtlcId;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
+    type Address = Address;
     type Identity = PubkeyHash;
 
     fn symbol() -> String {

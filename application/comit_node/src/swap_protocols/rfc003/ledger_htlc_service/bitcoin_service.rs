@@ -4,6 +4,7 @@ use bitcoin_rpc_client;
 use bitcoin_support::{self, PubkeyHash, Script, Transaction, TxOut};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
+use ledger_query_service::BitcoinQuery;
 use reqwest;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
@@ -64,7 +65,7 @@ pub struct BitcoinHtlcParams {
     pub secret_hash: SecretHash,
 }
 
-impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
+impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery> for BitcoinService {
     fn deploy_htlc(
         &self,
         htlc_params: BitcoinHtlcParams,
@@ -152,6 +153,21 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
 
         Ok(redeem_txid)
     }
+
+    fn create_query_to_watch_redeeming(
+        &self,
+        _htlc_funding_tx_id: <Bitcoin as Ledger>::TxId,
+    ) -> Result<BitcoinQuery, ledger_htlc_service::Error> {
+        unimplemented!()
+    }
+
+    fn check_and_extract_secret(
+        &self,
+        _create_htlc_tx_id: <Bitcoin as Ledger>::TxId,
+        _redeem_htlc_tx_id: <Bitcoin as Ledger>::TxId,
+    ) -> Result<Secret, ledger_htlc_service::Error> {
+        unimplemented!()
+    }
 }
 
 impl BitcoinService {
@@ -171,7 +187,7 @@ impl BitcoinService {
 
     pub fn get_vout_matching(
         &self,
-        txid: bitcoin_rpc_client::TransactionId,
+        txid: &bitcoin_rpc_client::TransactionId,
         script: &Script,
     ) -> Result<Option<(usize, TxOut)>, ledger_htlc_service::Error> {
         let transaction: Transaction = self.client.get_raw_transaction_serialized(&txid)??.into();

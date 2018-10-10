@@ -42,7 +42,7 @@ services:
     - "8545:8545"
 
   bitcoin:
-    image: ruimarinho/bitcoin-core:0.16.3-alpine
+    image: ruimarinho/bitcoin-core:0.17.0-alpine
     command:
       -regtest
       -server

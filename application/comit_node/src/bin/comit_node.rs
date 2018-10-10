@@ -171,6 +171,7 @@ fn main() {
         ledger_query_service,
         btc_network,
         Duration::from_secs(settings.bitcoin.queries_poll_interval_secs),
+        Duration::from_secs(settings.ethereum.queries_poll_interval_secs),
     );
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {

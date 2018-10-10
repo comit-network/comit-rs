@@ -44,11 +44,11 @@ function setup() {
 }
 
 function debug() {
-    printf '%s\n' "$*" >&4;
+    printf '%s\n' "$(date) $*" >&4;
 }
 
 function info() {
-    printf '%s\n' "$*" >&3;
+    printf '%s\n' "$(date) $*" >&3;
 }
 
 function exec_cmd() {
@@ -57,7 +57,7 @@ function exec_cmd() {
 }
 
 function info_blue() {
-    printf '\e[34m%s\e[0m\n' "$*" >&3;
+    printf '\e[34m%s\e[0m\n' "$(date) $*" >&3;
 }
 
 function send_swap_request() {
@@ -127,13 +127,6 @@ function notify_alice_comit_node_eth_htlc_funded() {
 
     debug $result;
     info_blue "Notified alice about bob's ETH payment (Bob funded ETH HTLC)."
-}
-
-function notify_bob_comit_node_eth_redeemed() {
-    id=$1 secret=$2;
-    debug "$($curl --data-binary "{\"secret\": \"$secret\"}" -H 'Content-Type: application/json' $(echo ${BOB_COMIT_NODE_URL} | sed 's/0$/2/' )/ledger/trades/ETH-BTC/${id}/buy-order-secret-revealed)";
-
-    info_blue "Notified Bob about revealed secret (Alice redeemed ETH funds)."
 }
 
 function get_eth_balance() {
@@ -224,7 +217,7 @@ notify_alice_comit_node_eth_htlc_funded $id;
 secret=$(
     ### REDEEM ETHEREUM
     redeemable=$(alice_wait_swap_status "$id" "redeemable")
-    debug "REDEEM DETIALS"
+    debug "REDEEM DETAILS"
     debug "$redeemable";
     debug "=======";
     contract_address=$(echo "$redeemable" | sed -n 's/contract_address: //p');
@@ -256,7 +249,9 @@ secret=$(
     old_unspent_num=$(echo "$old_unspent" | jq length);
     info "BTC: Total UTXOs before redeem: $old_unspent_num";
 
-    notify_bob_comit_node_eth_redeemed $id $secret;
+    # Waiting for Bob to see ETH redeem and redeem BTC
+    sleep 5;
+
     generate_blocks;
 
     new_unspent=$(list_unspent_transactions $BTC_BOB_REDEEM_ADDRESS);

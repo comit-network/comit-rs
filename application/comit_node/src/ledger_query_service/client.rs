@@ -1,14 +1,15 @@
-use bitcoin_rpc_client::TransactionId;
 use failure::Error as FailureError;
-use ledger_query_service::{bitcoin::BitcoinQuery, LedgerQueryServiceApiClient, QueryId};
+use ledger_query_service::{LedgerQueryServiceApiClient, QueryId};
 use reqwest::{self, header::Location, Client, Url, UrlError};
-use serde::Deserialize;
-use swap_protocols::ledger::bitcoin::Bitcoin;
+use serde::{Deserialize, Serialize};
+use std::{any::TypeId, collections::HashMap};
+use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 
 #[derive(Debug)]
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
     endpoint: Url,
+    path: HashMap<TypeId, &'static str>,
 }
 
 impl DefaultLedgerQueryServiceApiClient {
@@ -16,12 +17,13 @@ impl DefaultLedgerQueryServiceApiClient {
         DefaultLedgerQueryServiceApiClient {
             client: Client::new(),
             endpoint,
+            path: hashmap!(TypeId::of::<Bitcoin>() => "queries/bitcoin", TypeId::of::<Ethereum>() => "queries/ethereum"),
         }
     }
 }
 
-#[derive(Deserialize)]
-struct QueryResponse<T> {
+#[derive(Debug, Deserialize)]
+pub struct QueryResponse<T> {
     matching_transactions: Vec<T>,
 }
 
@@ -35,14 +37,21 @@ enum Error {
     MissingLocation,
     #[fail(display = "The returned URL could not be parsed.")]
     MalformedLocation(#[cause] UrlError),
+    #[fail(display = "The ledger is not support.")]
+    UnsupportedLedger(),
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
-    fn create(&self, query: BitcoinQuery) -> Result<QueryId<Bitcoin>, FailureError> {
-        let create_endpoint = self
-            .endpoint
-            .join("queries/bitcoin")
-            .map_err(Error::MalformedEndpoint)?;
+impl<L: Ledger, Q: Serialize> LedgerQueryServiceApiClient<L, Q>
+    for DefaultLedgerQueryServiceApiClient
+{
+    fn create(&self, query: Q) -> Result<QueryId<L>, FailureError> {
+        let type_id = &TypeId::of::<L>();
+        let path = self
+            .path
+            .get(&type_id)
+            .ok_or_else(Error::UnsupportedLedger)?;
+
+        let create_endpoint = self.endpoint.join(path).map_err(Error::MalformedEndpoint)?;
 
         let response = self
             .client
@@ -61,7 +70,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
         Ok(QueryId::new(url))
     }
 
-    fn fetch_results(&self, query: &QueryId<Bitcoin>) -> Result<Vec<TransactionId>, FailureError> {
+    fn fetch_results(&self, query: &QueryId<L>) -> Result<Vec<L::TxId>, FailureError> {
         let mut response = self
             .client
             .get(query.as_ref().clone())
@@ -69,11 +78,11 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
             .map_err(Error::FailedRequest)?;
 
         Ok(response
-            .json::<QueryResponse<TransactionId>>()?
+            .json::<QueryResponse<L::TxId>>()?
             .matching_transactions)
     }
 
-    fn delete(&self, query: &QueryId<Bitcoin>) {
+    fn delete(&self, query: &QueryId<L>) {
         let response = self.client.delete(query.as_ref().clone()).send();
 
         if let Err(e) = response {

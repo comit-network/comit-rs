@@ -3,7 +3,7 @@ use comit_wallet::KeyStore;
 use ethereum_support::EthereumQuantity;
 use event_store::EventStore;
 use futures::{Future, Stream};
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     json_config,
@@ -22,7 +22,8 @@ use transport_protocol::{connection::Connection, json};
 #[derive(Debug)]
 pub struct ComitServer<
     E: EventStore<TradeId>,
-    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>,
+    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 > {
     event_store: Arc<E>,
     my_keystore: Arc<KeyStore>,
@@ -31,12 +32,14 @@ pub struct ComitServer<
     ledger_query_service: Arc<BLQS>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
+    ethereum_poll_interval: Duration,
 }
 
 impl<E, BLQS> ComitServer<E, BLQS>
 where
     E: EventStore<TradeId> + Send + Sync,
-    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, // + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
+    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 {
     pub fn new(
         event_store: Arc<E>,
@@ -46,6 +49,7 @@ where
         ledger_query_service: Arc<BLQS>,
         bitcoin_network: Network,
         bitcoin_poll_interval: Duration,
+        ethereum_poll_interval: Duration,
     ) -> Self {
         Self {
             event_store,
@@ -55,6 +59,7 @@ where
             ledger_query_service,
             bitcoin_network,
             bitcoin_poll_interval,
+            ethereum_poll_interval,
         }
     }
 
@@ -77,6 +82,7 @@ where
                 self.bitcoin_service.clone(),
                 self.bitcoin_network,
                 self.bitcoin_poll_interval,
+                self.ethereum_poll_interval,
             );
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();

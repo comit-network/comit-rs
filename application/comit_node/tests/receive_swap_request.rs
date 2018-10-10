@@ -87,11 +87,12 @@ fn setup<
     let (alice_server, alice_shutdown_handle) = shutdown_handle::new(alice_server);
 
     let ledger_query_service = Arc::new(SimpleFakeLedgerQueryService {
-        results: vec![
+        bitcoin_results: vec![
             "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4"
                 .parse()
                 .unwrap(),
         ],
+        ethereum_results: Vec::new(),
     });
     let docker = Cli::default();
 
@@ -135,6 +136,7 @@ fn setup<
             ethereum_service,
             bitcoin_service,
             bitcoin_support::Network::Regtest,
+            Duration::from_secs(1),
             Duration::from_secs(1),
         ),
         JsonFrameCodec::default(),

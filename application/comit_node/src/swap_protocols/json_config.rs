@@ -1,14 +1,14 @@
 use bitcoin_htlc;
-use bitcoin_payment_future::LedgerServices;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
-use ethereum_support::{EthereumQuantity, ToEthereumAddress};
+use ethereum_support::{web3::types::H256, EthereumQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
 use futures_ext::FutureFactory;
-use ledger_query_service::{BitcoinQuery, LedgerQueryServiceApiClient};
+use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
+use ledger_query_service_future::LedgerServices;
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
@@ -26,7 +26,9 @@ use swap_protocols::{
     wire_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
 };
 use swaps::{
-    bob_events::{ContractDeployed, OrderTaken, TradeFunded},
+    bob_events::{
+        ContractDeployed, ContractRedeemed as BobContractRedeemed, OrderTaken, TradeFunded,
+    },
     common::TradeId,
 };
 use tokio;
@@ -40,7 +42,8 @@ pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
         + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
     E: EventStore<TradeId>,
-    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>, //TODO: when integrating Ethereum LQS + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>
+    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 >(
     mut handler: H,
     key_store: Arc<KeyStore>,
@@ -50,6 +53,7 @@ pub fn json_config<
     bitcoin_service: Arc<BitcoinService>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
+    ethereum_poll_interval: Duration,
 ) -> Config<Request, Response> {
     Config::default().on_request(
         "SWAP",
@@ -105,6 +109,7 @@ pub fn json_config<
                                 bitcoin_service.clone(),
                                 bitcoin_network,
                                 bitcoin_poll_interval,
+                                ethereum_poll_interval,
                             ),
                         }
                     }
@@ -142,7 +147,11 @@ pub fn json_config<
 
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
-fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>>(
+fn process<
+    E: EventStore<TradeId>,
+    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+>(
     request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
     key_store: &Arc<KeyStore>,
     event_store: Arc<E>,
@@ -151,15 +160,16 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
     bitcoin_service: Arc<BitcoinService>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
+    ethereum_poll_interval: Duration,
 ) -> Response {
     let alice_refund_address: BitcoinAddress = request
         .source_ledger
         .address_for_identity(request.source_ledger_refund_identity);
 
-    let uid = TradeId::default();
+    let trade_id = TradeId::default();
 
     let bob_success_keypair =
-        key_store.get_transient_keypair(&uid.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
+        key_store.get_transient_keypair(&trade_id.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
     let bob_success_address: BitcoinAddress = bob_success_keypair
         .public_key()
         .into_p2wpkh_address(request.source_ledger.network());
@@ -179,7 +189,7 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
     let twelve_hours = Seconds::new(60 * 60 * 12);
 
     let order_taken = OrderTaken::<Ethereum, Bitcoin> {
-        uid,
+        uid: trade_id,
         contract_secret_lock: request.secret_hash.clone(),
         alice_contract_time_lock: request.source_ledger_lock_duration,
         bob_contract_time_lock: twelve_hours,
@@ -239,28 +249,35 @@ fn process<E: EventStore<TradeId>, C: LedgerQueryServiceApiClient<Bitcoin, Bitco
             .take(1)
             .for_each(move |transaction_id| -> Result<(), Error> {
                 let (n, vout) = bitcoin_service
-                    .get_vout_matching(
-                        transaction_id.clone(),
-                        &htlc_address.to_address().script_pubkey(),
-                    )?.ok_or(CounterpartyDeployError::NotFound)?;
+                    .get_vout_matching(&transaction_id, &htlc_address.to_address().script_pubkey())?
+                    .ok_or(CounterpartyDeployError::NotFound)?;
 
                 if vout.value < order_taken.sell_amount.satoshi() {
                     return Err(Error::from(CounterpartyDeployError::Underfunded));
                 }
 
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
-                //TODO: Mark the trade as failed if cannot deploy the HTLC
-                let _ = deploy_eth_htlc(
-                    uid,
+                let eth_htlc_txid = deploy_eth_htlc(
+                    trade_id,
                     &event_store,
                     &ethereum_service,
                     HtlcId {
                         transaction_id,
                         vout: n as u32,
                     },
-                );
+                )?;
 
                 ledger_query_service_api_client.delete(&query_id);
+
+                watch_for_eth_htlc_and_redeem_btc_htlc(
+                    trade_id,
+                    ledger_query_service_api_client.clone(),
+                    eth_htlc_txid,
+                    ethereum_poll_interval,
+                    event_store.clone(),
+                    bitcoin_service.clone(),
+                    ethereum_service.clone(),
+                )?;
 
                 Ok(())
             }).map_err(|e| {
@@ -288,7 +305,7 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
     event_store: &Arc<E>,
     ethereum_service: &Arc<EthereumService>,
     htlc_identifier: HtlcId,
-) -> Result<(), Error> {
+) -> Result<H256, Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 
     event_store.add_event(trade_id, trade_funded)?;
@@ -307,5 +324,82 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
         ContractDeployed::new(trade_id, tx_id.to_string());
 
     event_store.add_event(trade_id, deployed)?;
+    Ok(tx_id)
+}
+
+fn watch_for_eth_htlc_and_redeem_btc_htlc<
+    C: LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+    E: EventStore<TradeId>,
+>(
+    trade_id: TradeId,
+    ledger_query_service_api_client: Arc<C>,
+    eth_htlc_created_tx_id: H256,
+    poll_interval: Duration,
+    event_store: Arc<E>,
+    bitcoin_service: Arc<BitcoinService>,
+    ethereum_service: Arc<EthereumService>,
+) -> Result<(), Error> {
+    let query = LedgerHtlcService::<Ethereum, EtherHtlcParams, EthereumQuery>::create_query_to_watch_redeeming(
+        ethereum_service.as_ref(),
+        eth_htlc_created_tx_id,
+    )?;
+
+    let query_id = ledger_query_service_api_client
+        .clone()
+        .create(query)
+        .map_err(|e| {
+            error!(
+                "Aborting trade because of problem with Ethereum Ledger Query Service: {:?}",
+                e
+            );
+            e
+        })?;
+
+    let ledger_services =
+        LedgerServices::new(ledger_query_service_api_client.clone(), poll_interval);
+
+    let future_factory = FutureFactory::new(ledger_services);
+    let stream = future_factory.create_stream_from_template(query_id.clone());
+
+    tokio::spawn(
+        stream
+            .take(1)
+            .for_each(move |transaction_id| {
+                debug!("Ledger Query Service returned tx: {}", transaction_id);
+
+                let secret =
+                    LedgerHtlcService::<Ethereum, EtherHtlcParams, EthereumQuery>::check_and_extract_secret(
+                        ethereum_service.as_ref(),
+                        eth_htlc_created_tx_id,
+                        transaction_id,
+                    )?;
+
+                let order_taken: OrderTaken<Ethereum, Bitcoin> = event_store.get_event(trade_id)?;
+
+                let trade_funded: TradeFunded<Ethereum, Bitcoin> =
+                    event_store.get_event(trade_id)?;
+
+                let redeem_tx_id = bitcoin_service.redeem_htlc(
+                    secret,
+                    trade_id,
+                    order_taken.bob_success_address,
+                    order_taken.bob_success_keypair,
+                    order_taken.alice_refund_address,
+                    trade_funded.htlc_identifier,
+                    order_taken.sell_amount,
+                    order_taken.alice_contract_time_lock,
+                )?;
+
+                let contract_redeemed: BobContractRedeemed<Ethereum, Bitcoin> =
+                    BobContractRedeemed::new(trade_id, redeem_tx_id.to_string());
+                event_store.add_event(trade_id, contract_redeemed)?;
+
+                ledger_query_service_api_client.delete(&query_id);
+
+                Ok(())
+            }).map_err(|e| {
+                error!("Ledger Query Service Failure: {:#?}", e);
+            }),
+    );
     Ok(())
 }

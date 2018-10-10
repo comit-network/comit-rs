@@ -3184,7 +3184,7 @@ dependencies = [
 [[package]]
 name = "web3"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/coblox/rust-web3?branch=to-for-contract-deploy#4c3bfd89aaa16c85c4e4778881dd1b4a9e312865"
 dependencies = [
  "arrayvec 0.4.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3208,6 +3208,12 @@ dependencies = [
  "url 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "websocket 0.20.3 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "web3"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+replace = "web3 0.4.0 (git+https://github.com/coblox/rust-web3?branch=to-for-contract-deploy)"
 
 [[package]]
 name = "websocket"
@@ -3645,6 +3651,7 @@ dependencies = [
 "checksum walkdir 2.2.5 (registry+https://github.com/rust-lang/crates.io-index)" = "af464bc7be7b785c7ac72e266a6b67c4c9070155606f51655a650a6686204e35"
 "checksum want 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "a05d9d966753fa4b5c8db73fcab5eed4549cfe0e1e4e66911e5564a0085c35d1"
 "checksum want 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)" = "797464475f30ddb8830cc529aaaae648d581f99e2036a928877dfde027ddf6b3"
+"checksum web3 0.4.0 (git+https://github.com/coblox/rust-web3?branch=to-for-contract-deploy)" = "<none>"
 "checksum web3 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a618ea95d1f68185720c8a8f778f4a8371bba36e2370d3a331167fdf28dd5135"
 "checksum websocket 0.20.3 (registry+https://github.com/rust-lang/crates.io-index)" = "9234b4e667c19995475227172446884f516ec0963380afa960d962ab9f4c0bfa"
 "checksum which 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49c4f580e93079b70ac522e7bdebbe1568c8afa7d8d05ee534ee737ca37d2f51"

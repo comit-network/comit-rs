@@ -46,21 +46,22 @@ extern crate mime;
 #[macro_use]
 extern crate failure;
 extern crate url;
+#[macro_use]
+extern crate maplit;
 
 #[cfg(test)]
 extern crate spectral;
 
 pub mod bitcoin_fee_service;
 
-pub mod bitcoin_payment_future;
 pub mod comit_client;
-
 pub mod comit_server;
 pub mod futures_ext;
 pub mod gas_price_service;
 pub mod gotham_factory;
 pub mod http_api;
 pub mod ledger_query_service;
+pub mod ledger_query_service_future;
 pub mod rocket_factory;
 pub mod settings;
 pub mod swap_protocols;

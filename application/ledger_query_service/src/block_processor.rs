@@ -82,7 +82,7 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
             if utx.pending_confirmations == 0 {
                 let confirmed_tx_id = &utx.tx_id;
                 trace!(
-                    "Transaction {:?} now has enough confirmations. Sent to query result repository",
+                    "Transaction {} now has enough confirmations. Sent to query result repository",
                     confirmed_tx_id
                 );
                 self.results

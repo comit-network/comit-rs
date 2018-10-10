@@ -26,6 +26,7 @@ pub struct Ethereum {
     #[serde(with = "serde::keypair")]
     // TODO: Replace with mnemonics and derive keys. See #185
     pub private_key: KeyPair,
+    pub queries_poll_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]
