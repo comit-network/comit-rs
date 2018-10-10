@@ -21,7 +21,7 @@ pub enum Error {
     InvalidRedeemTransaction,
 }
 
-pub trait LedgerHtlcService<L: Ledger, H>: Send + Sync {
+pub trait LedgerHtlcService<L: Ledger, H, Q>: Send + Sync {
     fn deploy_htlc(&self, htlc_params: H) -> Result<L::TxId, Error>;
 
     #[allow(clippy::too_many_arguments)]
@@ -37,10 +37,7 @@ pub trait LedgerHtlcService<L: Ledger, H>: Send + Sync {
         lock_time: L::LockDuration,
     ) -> Result<L::TxId, Error>;
 
-    fn create_query_to_watch_redeeming(
-        &self,
-        htlc_funding_tx_id: L::TxId,
-    ) -> Result<L::QueryForLedgerQueryService, Error>;
+    fn create_query_to_watch_redeeming(&self, htlc_funding_tx_id: L::TxId) -> Result<Q, Error>;
 
     fn check_and_extract_secret(
         &self,

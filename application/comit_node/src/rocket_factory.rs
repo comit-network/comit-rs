@@ -1,6 +1,7 @@
 use bitcoin_support::Network;
 use comit_wallet::KeyStore;
 use event_store::InMemoryEventStore;
+use ledger_query_service::{BitcoinQuery, EthereumQuery};
 use rocket::{
     self,
     config::{Config, Environment},
@@ -15,8 +16,8 @@ use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(
     event_store: Arc<InMemoryEventStore<TradeId>>,
-    ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams>>,
-    bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
+    ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery>>,
+    bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery>>,
     my_keystore: Arc<KeyStore>,
     network: Network,
     address: String,

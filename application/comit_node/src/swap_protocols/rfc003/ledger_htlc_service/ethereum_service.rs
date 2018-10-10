@@ -109,7 +109,7 @@ pub struct Erc20HtlcParams {
     pub token_contract_address: Address,
 }
 
-impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
+impl LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery> for EthereumService {
     fn deploy_htlc(
         &self,
         htlc_params: EtherHtlcParams,
@@ -210,7 +210,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
                 match tx.to {
                     Some(address) => {
                         if address == htlc_address {
-                            // TODO: check the contract is redeemed -> probably need htlc update to logged "redeemed". See #316
+                            // TODO: Check this is the transaction that redeems the contract. See #316
                             let data = tx.input.0;
                             debug!("Transaction data: {:?}", data);
                             match Secret::from_vec(data) {
@@ -238,7 +238,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams> for EthereumService {
     }
 }
 
-impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
+impl LedgerHtlcService<Ethereum, Erc20HtlcParams, EthereumQuery> for EthereumService {
     fn deploy_htlc(
         &self,
         htlc_params: Erc20HtlcParams,
@@ -321,7 +321,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams> for EthereumService {
     fn create_query_to_watch_redeeming(
         &self,
         _htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
-    ) -> Result<<Ethereum as Ledger>::QueryForLedgerQueryService, ledger_htlc_service::Error> {
+    ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
         unimplemented!()
     }
 

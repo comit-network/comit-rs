@@ -339,7 +339,7 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
     bitcoin_service: Arc<BitcoinService>,
     ethereum_service: Arc<EthereumService>,
 ) -> Result<(), Error> {
-    let query = LedgerHtlcService::<Ethereum, EtherHtlcParams>::create_query_to_watch_redeeming(
+    let query = LedgerHtlcService::<Ethereum, EtherHtlcParams, EthereumQuery>::create_query_to_watch_redeeming(
         ethereum_service.as_ref(),
         eth_htlc_created_tx_id,
     )?;
@@ -368,7 +368,7 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
 
                 let secret =
-                    LedgerHtlcService::<Ethereum, EtherHtlcParams>::check_and_extract_secret(
+                    LedgerHtlcService::<Ethereum, EtherHtlcParams, EthereumQuery>::check_and_extract_secret(
                         ethereum_service.as_ref(),
                         eth_htlc_created_tx_id,
                         transaction_id,

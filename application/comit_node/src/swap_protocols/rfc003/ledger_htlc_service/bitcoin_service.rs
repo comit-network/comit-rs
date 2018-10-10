@@ -4,6 +4,7 @@ use bitcoin_rpc_client;
 use bitcoin_support::{self, PubkeyHash, Script, Transaction, TxOut};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
+use ledger_query_service::BitcoinQuery;
 use reqwest;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
@@ -64,7 +65,7 @@ pub struct BitcoinHtlcParams {
     pub secret_hash: SecretHash,
 }
 
-impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
+impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery> for BitcoinService {
     fn deploy_htlc(
         &self,
         htlc_params: BitcoinHtlcParams,
@@ -156,7 +157,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams> for BitcoinService {
     fn create_query_to_watch_redeeming(
         &self,
         _htlc_funding_tx_id: <Bitcoin as Ledger>::TxId,
-    ) -> Result<<Bitcoin as Ledger>::QueryForLedgerQueryService, ledger_htlc_service::Error> {
+    ) -> Result<BitcoinQuery, ledger_htlc_service::Error> {
         unimplemented!()
     }
 

@@ -1,5 +1,6 @@
 use ethereum_support;
 use event_store::{EventStore, InMemoryEventStore};
+use ledger_query_service::BitcoinQuery;
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
@@ -30,7 +31,7 @@ pub fn post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: Json<<Ethereum as Ledger>::HtlcId>,
     event_store: State<Arc<InMemoryEventStore<TradeId>>>,
-    bitcoin_service: State<Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>>,
+    bitcoin_service: State<Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery>>>,
 ) -> Result<(), BadRequest<String>> {
     handle_post_orders_funding(
         trade_id,
@@ -45,7 +46,7 @@ fn handle_post_orders_funding(
     trade_id: TradeId,
     htlc_identifier: &<Ethereum as Ledger>::HtlcId,
     event_store: &Arc<InMemoryEventStore<TradeId>>,
-    bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams>>,
+    bitcoin_service: &Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery>>,
 ) -> Result<(), Error> {
     //get OrderTaken event to verify correct state
     let order_taken = event_store.get_event::<BobOrderTaken<Bitcoin, Ethereum>>(trade_id)?;
