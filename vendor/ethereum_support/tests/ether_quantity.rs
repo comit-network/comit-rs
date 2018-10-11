@@ -1,6 +1,6 @@
 extern crate ethereum_support;
 extern crate serde_json;
-use ethereum_support::{EthereumQuantity, U256};
+use ethereum_support::{EtherQuantity, U256};
 #[macro_use]
 extern crate lazy_static;
 use std::{f64, str::FromStr};
@@ -11,16 +11,13 @@ lazy_static! {
 
 #[test]
 fn display_ethereum() {
-    assert_eq!(
-        format!("{}", EthereumQuantity::from_eth(9000.0)),
-        "9000 ETH"
-    );
+    assert_eq!(format!("{}", EtherQuantity::from_eth(9000.0)), "9000 ETH");
 }
 
 #[test]
 fn a_ethereum_is_a_quintillion_wei() {
     assert_eq!(
-        EthereumQuantity::from_eth(2.0).wei(),
+        EtherQuantity::from_eth(2.0).wei(),
         U256::from(2_000_000_000_000_000_000u64) // 2 quintillion
     )
 }
@@ -28,7 +25,7 @@ fn a_ethereum_is_a_quintillion_wei() {
 #[test]
 fn from_eth_works_when_resulting_wei_cant_fit_in_u64() {
     assert_eq!(
-        EthereumQuantity::from_eth(9001.0).wei(),
+        EtherQuantity::from_eth(9001.0).wei(),
         U256::from(9001u64) * *WEI_IN_ETHEREUM
     )
 }
@@ -36,41 +33,38 @@ fn from_eth_works_when_resulting_wei_cant_fit_in_u64() {
 #[test]
 fn from_fractional_ethereum_converts_to_correct_wei() {
     assert_eq!(
-        EthereumQuantity::from_eth(0.000_000_001).wei(),
+        EtherQuantity::from_eth(0.000_000_001).wei(),
         U256::from(1_000_000_000)
     )
 }
 
 #[test]
-fn ethereum_quantity_from_str() {
+fn ether_quantity_from_str() {
     assert_eq!(
-        EthereumQuantity::from_str("1.000000001").unwrap().wei(),
+        EtherQuantity::from_str("1.000000001").unwrap().wei(),
         U256::from(1_000_000_001_000_000_000u64)
     )
 }
 
 #[test]
-fn ethereum_quantity_back_into_f64() {
-    assert!(EthereumQuantity::from_eth(0.1234).ethereum() - 0.1234f64 < f64::EPSILON)
+fn ether_quantity_back_into_f64() {
+    assert!(EtherQuantity::from_eth(0.1234).ethereum() - 0.1234f64 < f64::EPSILON)
 }
 
 #[test]
 fn fractional_ethereum_format() {
-    assert_eq!(
-        format!("{}", EthereumQuantity::from_eth(0.1234)),
-        "0.1234 ETH"
-    )
+    assert_eq!(format!("{}", EtherQuantity::from_eth(0.1234)), "0.1234 ETH")
 }
 
 #[test]
 fn whole_ethereum_format() {
-    assert_eq!(format!("{}", EthereumQuantity::from_eth(12.0)), "12 ETH");
+    assert_eq!(format!("{}", EtherQuantity::from_eth(12.0)), "12 ETH");
 }
 
 #[test]
 fn ethereum_with_small_fraction_format() {
     assert_eq!(
-        format!("{}", EthereumQuantity::from_str("1234.00000100").unwrap()),
+        format!("{}", EtherQuantity::from_str("1234.00000100").unwrap()),
         "1234.000001 ETH"
     )
 }
@@ -78,14 +72,14 @@ fn ethereum_with_small_fraction_format() {
 #[test]
 fn one_hundren_ethereum_format() {
     assert_eq!(
-        format!("{}", EthereumQuantity::from_str("100").unwrap()),
+        format!("{}", EtherQuantity::from_str("100").unwrap()),
         "100 ETH"
     )
 }
 
 #[test]
 fn serialize_ether_quantity() {
-    let quantity = EthereumQuantity::from_eth(1.0);
+    let quantity = EtherQuantity::from_eth(1.0);
     let quantity_str = serde_json::to_string(&quantity).unwrap();
     assert_eq!(quantity_str, "\"1000000000000000000\"");
 }
@@ -93,6 +87,6 @@ fn serialize_ether_quantity() {
 #[test]
 fn deserialize_ether_quantity() {
     let quantity_str = "\"1000000000000000000\"";
-    let quantity = serde_json::from_str::<EthereumQuantity>(quantity_str).unwrap();
-    assert_eq!(quantity, EthereumQuantity::from_eth(1.0));
+    let quantity = serde_json::from_str::<EtherQuantity>(quantity_str).unwrap();
+    assert_eq!(quantity, EtherQuantity::from_eth(1.0));
 }

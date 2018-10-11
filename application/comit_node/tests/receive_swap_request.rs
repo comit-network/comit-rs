@@ -45,7 +45,7 @@ use comit_node::{
     },
 };
 use comit_wallet::fake_key_store::FakeKeyStoreFactory;
-use ethereum_support::EthereumQuantity;
+use ethereum_support::EtherQuantity;
 use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use futures::future::Future;
@@ -66,8 +66,8 @@ use transport_protocol::{
 };
 
 fn setup<
-    H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
-        + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
+    H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
+        + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>,
 >(
     swap_request_handler: H,
     btc_redeem_pubkeyhash: bitcoin_support::PubkeyHash,
@@ -240,24 +240,24 @@ fn can_receive_swap_request() {
     struct CaptureSwapMessage {
         sender: Option<
             futures::sync::oneshot::Sender<
-                rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+                rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
             >,
         >,
     }
 
-    impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
+    impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
         for CaptureSwapMessage
     {
         fn handle(
             &mut self,
-            request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+            request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
         ) -> SwapResponse {
             self.sender.take().unwrap().send(request).unwrap();
             SwapResponse::Decline
         }
     }
 
-    impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>
+    impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>
         for CaptureSwapMessage
     {}
 
@@ -287,7 +287,7 @@ fn can_receive_swap_request() {
         source_ledger: Bitcoin::regtest(),
         target_ledger: Ethereum::default(),
         source_asset: BitcoinQuantity::from_satoshi(100_000_000),
-        target_asset: EthereumQuantity::from_eth(10.0),
+        target_asset: EtherQuantity::from_eth(10.0),
         source_ledger_lock_duration: Blocks::from(144),
         source_ledger_refund_identity: BTC_REFUND_PUBKEYHASH.clone(),
         target_ledger_success_identity: ETH_SUCCESS_ADDRESS.clone(),
@@ -303,12 +303,12 @@ struct AcceptRate {
     pub btc_to_eth: f64,
 }
 
-impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
+impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
     for AcceptRate
 {
     fn handle(
         &mut self,
-        request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+        request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ) -> SwapResponse {
         let bitcoin = request.source_asset.bitcoin();
         let ethereum = request.target_asset.ethereum();
@@ -322,12 +322,12 @@ impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, Ethe
     }
 }
 
-impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>
+impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>
     for AcceptRate
 {
     fn handle(
         &mut self,
-        request: rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
+        request: rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
     ) -> SwapResponse {
         let bitcoin = request.target_asset.bitcoin();
         let ethereum = request.source_asset.ethereum();

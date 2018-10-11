@@ -5,7 +5,7 @@ use comit_node::{
     },
 };
 use common_types::{seconds::Seconds, secret::Secret};
-use ethereum_support::{EthereumQuantity, ToEthereumAddress};
+use ethereum_support::{EtherQuantity, ToEthereumAddress};
 use ethereum_wallet::fake::StaticFakeWallet;
 use parity_client::ParityClient;
 use pretty_env_logger;
@@ -24,12 +24,12 @@ pub enum HtlcType {
         htlc_token_value: U256,
     },
     Eth {
-        htlc_eth_value: EthereumQuantity,
+        htlc_eth_value: EtherQuantity,
     },
 }
 
 pub struct TestHarnessParams {
-    pub alice_initial_ether: EthereumQuantity,
+    pub alice_initial_ether: EtherQuantity,
     pub htlc_timeout: Duration,
     pub htlc_secret: [u8; 32],
     pub htlc_type: HtlcType,

@@ -1,5 +1,5 @@
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{self, EthereumQuantity};
+use ethereum_support::{self, EtherQuantity};
 use event_store::{EventStore, InMemoryEventStore};
 use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
@@ -39,7 +39,7 @@ fn handle_post_contract_deployed(
     uid: TradeId,
     address: ethereum_support::Address,
 ) -> Result<(), Error> {
-    let deployed: AliceContractDeployed<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity> =
+    let deployed: AliceContractDeployed<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> =
         AliceContractDeployed::new(uid, address);
     event_store.add_event(uid, deployed)?;
 

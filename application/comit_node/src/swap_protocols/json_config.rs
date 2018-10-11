@@ -2,7 +2,7 @@ use bitcoin_htlc;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
-use ethereum_support::{web3::types::H256, EthereumQuantity, ToEthereumAddress};
+use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
@@ -39,8 +39,8 @@ use transport_protocol::{
 };
 
 pub fn json_config<
-    H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
-        + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>,
+    H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
+        + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>,
     E: EventStore<TradeId>,
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
@@ -152,7 +152,7 @@ fn process<
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 >(
-    request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+    request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     key_store: &Arc<KeyStore>,
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,

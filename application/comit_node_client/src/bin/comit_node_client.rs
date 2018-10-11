@@ -47,7 +47,7 @@ enum SwapCommand {
         btc_quantity: bitcoin_support::BitcoinQuantity,
         /// The amount of Ethereum to BUY
         #[structopt(name = "ETH")]
-        eth_quantity: ethereum_support::EthereumQuantity,
+        eth_quantity: ethereum_support::EtherQuantity,
 
         /// The refund address
         #[structopt(name = "Bitcoin Address")]

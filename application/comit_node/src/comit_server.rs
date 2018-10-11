@@ -1,6 +1,6 @@
 use bitcoin_support::{BitcoinQuantity, Network};
 use comit_wallet::KeyStore;
-use ethereum_support::EthereumQuantity;
+use ethereum_support::EtherQuantity;
 use event_store::EventStore;
 use futures::{Future, Stream};
 use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
@@ -100,12 +100,12 @@ where
 #[derive(Default)]
 struct MySwapHandler {}
 
-impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>>
+impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
     for MySwapHandler
 {
     fn handle(
         &mut self,
-        _request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity>,
+        _request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ) -> SwapResponse {
         {
             // TODO: Decide whether to swap
@@ -114,12 +114,12 @@ impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, Ethe
     }
 }
 
-impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>>
+impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>
     for MySwapHandler
 {
     fn handle(
         &mut self,
-        _request: rfc003::Request<Ethereum, Bitcoin, EthereumQuantity, BitcoinQuantity>,
+        _request: rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
     ) -> SwapResponse {
         {
             SwapResponse::Decline

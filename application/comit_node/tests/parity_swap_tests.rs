@@ -20,7 +20,7 @@ extern crate web3;
 mod htlc_harness;
 mod parity_client;
 
-use ethereum_support::{Bytes, EthereumQuantity, U256};
+use ethereum_support::{Bytes, EtherQuantity, U256};
 use htlc_harness::*;
 use spectral::prelude::*;
 use std::time::Duration;
@@ -36,9 +36,9 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let (alice, bob, htlc, _, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Eth {
-                htlc_eth_value: EthereumQuantity::from_eth(0.4),
+                htlc_eth_value: EtherQuantity::from_eth(0.4),
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
@@ -49,15 +49,15 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
     assert_eq!(
         client.eth_balance_of(alice),
-        EthereumQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
-        EthereumQuantity::from_eth(0.4).wei()
+        EtherQuantity::from_eth(0.4).wei()
     );
 
     // Send correct secret to contract
@@ -65,15 +65,15 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EthereumQuantity::from_eth(0.4).wei()
+        EtherQuantity::from_eth(0.4).wei()
     );
     assert_eq!(
         client.eth_balance_of(alice),
-        EthereumQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
 }
 
@@ -83,9 +83,9 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let (alice, bob, htlc, _, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Eth {
-                htlc_eth_value: EthereumQuantity::from_eth(0.4),
+                htlc_eth_value: EtherQuantity::from_eth(0.4),
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
@@ -96,15 +96,15 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
     assert_eq!(
         client.eth_balance_of(alice),
-        EthereumQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
-        EthereumQuantity::from_eth(0.4).wei()
+        EtherQuantity::from_eth(0.4).wei()
     );
 
     // Wait for the contract to expire
@@ -114,15 +114,15 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
     assert_eq!(
         client.eth_balance_of(alice),
-        EthereumQuantity::from_eth(1.0).wei() - U256::from(HTLC_GAS_COST)
+        EtherQuantity::from_eth(1.0).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
 }
 
@@ -132,9 +132,9 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
     let (alice, bob, htlc, _, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Eth {
-                htlc_eth_value: EthereumQuantity::from_eth(0.4),
+                htlc_eth_value: EtherQuantity::from_eth(0.4),
             },
             htlc_timeout: HTLC_TIMEOUT,
             htlc_secret: SECRET.clone(),
@@ -145,15 +145,15 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
     assert_eq!(
         client.eth_balance_of(alice),
-        EthereumQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
-        EthereumQuantity::from_eth(0.4).wei()
+        EtherQuantity::from_eth(0.4).wei()
     );
 
     // Wait for the contract to expire
@@ -161,15 +161,15 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EthereumQuantity::from_eth(0.0).wei()
+        EtherQuantity::from_eth(0.0).wei()
     );
     assert_eq!(
         client.eth_balance_of(alice),
-        EthereumQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
-        EthereumQuantity::from_eth(0.4).wei()
+        EtherQuantity::from_eth(0.4).wei()
     );
 }
 
@@ -181,7 +181,7 @@ fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferr
     let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(1000),
                 htlc_token_value: U256::from(400),
@@ -212,7 +212,7 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
     let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(1000),
                 htlc_token_value: U256::from(400),
@@ -245,7 +245,7 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
     let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(1000),
                 htlc_token_value: U256::from(400),
@@ -276,7 +276,7 @@ fn given_no_enough_tokens_token_balances_dont_change_and_contract_is_not_deploye
     let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
         &docker,
         TestHarnessParams {
-            alice_initial_ether: EthereumQuantity::from_eth(1.0),
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_type: HtlcType::Erc20 {
                 alice_initial_tokens: U256::from(200),
                 htlc_token_value: U256::from(400),
