@@ -95,7 +95,7 @@ pub struct EtherHtlcParams {
     pub refund_address: Address,
     pub success_address: Address,
     pub time_lock: Seconds,
-    pub amount: EthereumQuantity,
+    pub amount: EtherQuantity,
     pub secret_hash: SecretHash,
 }
 

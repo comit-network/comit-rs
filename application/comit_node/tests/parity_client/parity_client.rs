@@ -1,6 +1,6 @@
 use ethereum_support::{
     web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, EthereumQuantity, Future, TransactionRequest, H256, U256,
+    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionRequest, H256, U256,
 };
 use hex;
 
@@ -22,7 +22,7 @@ impl ParityClient {
         ParityClient { client }
     }
 
-    pub fn give_eth_to(&self, to: Address, amount: EthereumQuantity) {
+    pub fn give_eth_to(&self, to: Address, amount: EtherQuantity) {
         self.client
             .personal()
             .send_transaction(

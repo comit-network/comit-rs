@@ -3,7 +3,7 @@ use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
 use comit_client::{self, SwapReject, SwapResponseError};
 use comit_wallet::KeyStore;
 use common_types::secret::Secret;
-use ethereum_support::{self, EthereumQuantity};
+use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{future, Future, Stream};
 use gotham::{
@@ -77,7 +77,7 @@ pub enum Ledger {
 #[serde(tag = "value")]
 pub enum Asset {
     Bitcoin { quantity: BitcoinQuantity },
-    Ether { quantity: EthereumQuantity },
+    Ether { quantity: EtherQuantity },
 }
 
 #[derive(Deserialize, Debug)]
@@ -224,7 +224,7 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
                     let event_store = event_store.clone();
 
                     tokio::spawn(response_future.then(move |response| {
-                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EthereumQuantity, E>(
+                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, E>(
                             id,
                             &event_store,
                             response,
@@ -322,7 +322,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
         Bitcoin,
         Ethereum,
         BitcoinQuantity,
-        EthereumQuantity,
+        EtherQuantity,
     >>(id);
 
     match requested {
@@ -331,7 +331,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
                 Bitcoin,
                 Ethereum,
                 BitcoinQuantity,
-                EthereumQuantity,
+                EtherQuantity,
             >>(id);
             match accepted {
                 Ok(accepted) => {
@@ -339,7 +339,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
                         Bitcoin,
                         Ethereum,
                         BitcoinQuantity,
-                        EthereumQuantity,
+                        EtherQuantity,
                     >>(id);
 
                     match contract_deployed {
@@ -370,7 +370,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
                         Bitcoin,
                         Ethereum,
                         BitcoinQuantity,
-                        EthereumQuantity,
+                        EtherQuantity,
                     >>(id);
 
                     match rejected {

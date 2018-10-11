@@ -12,12 +12,12 @@ use std::{f64, fmt, mem, str::FromStr};
 use U256;
 
 #[derive(PartialEq, Clone, Debug, Copy)]
-pub struct EthereumQuantity(U256);
+pub struct EtherQuantity(U256);
 
 const U64SIZE: usize = mem::size_of::<u64>();
 
-impl EthereumQuantity {
-    fn from_eth_bigdec(decimal: &BigDecimal) -> EthereumQuantity {
+impl EtherQuantity {
+    fn from_eth_bigdec(decimal: &BigDecimal) -> EtherQuantity {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
         Self::from_wei_bigint(&wei_bigint.to_biguint().unwrap())
     }
@@ -29,15 +29,15 @@ impl EthereumQuantity {
     }
 
     pub fn from_wei(wei: U256) -> Self {
-        EthereumQuantity(wei)
+        EtherQuantity(wei)
     }
 
-    fn from_wei_bigint(wei: &BigUint) -> EthereumQuantity {
+    fn from_wei_bigint(wei: &BigUint) -> EtherQuantity {
         let bytes = wei.to_bytes_be();
         let mut buf = [0u8; 32];
         let start = 32 - bytes.len();
         buf[start..].clone_from_slice(&bytes[..]);
-        EthereumQuantity(buf.into())
+        EtherQuantity(buf.into())
     }
 
     fn to_ethereum_bigdec(&self) -> BigDecimal {
@@ -62,7 +62,7 @@ lazy_static! {
     static ref TRAILING_ZEROS: Regex = Regex::new(r"\.?0*$").unwrap();
 }
 
-impl fmt::Display for EthereumQuantity {
+impl fmt::Display for EtherQuantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
@@ -73,15 +73,15 @@ impl fmt::Display for EthereumQuantity {
     }
 }
 
-impl FromStr for EthereumQuantity {
+impl FromStr for EtherQuantity {
     type Err = ParseBigDecimalError;
-    fn from_str(string: &str) -> Result<EthereumQuantity, Self::Err> {
+    fn from_str(string: &str) -> Result<EtherQuantity, Self::Err> {
         let dec = BigDecimal::from_str(string)?;
         Ok(Self::from_eth_bigdec(&dec))
     }
 }
 
-impl<'de> Deserialize<'de> for EthereumQuantity {
+impl<'de> Deserialize<'de> for EtherQuantity {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
@@ -89,18 +89,18 @@ impl<'de> Deserialize<'de> for EthereumQuantity {
         struct Visitor;
 
         impl<'vde> de::Visitor<'vde> for Visitor {
-            type Value = EthereumQuantity;
+            type Value = EtherQuantity;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
                 formatter.write_str("A string representing a wei quantity")
             }
 
-            fn visit_str<E>(self, v: &str) -> Result<EthereumQuantity, E>
+            fn visit_str<E>(self, v: &str) -> Result<EtherQuantity, E>
             where
                 E: de::Error,
             {
                 let bigint = BigUint::from_str(v).map_err(E::custom)?;
-                Ok(EthereumQuantity::from_wei_bigint(&bigint))
+                Ok(EtherQuantity::from_wei_bigint(&bigint))
             }
         }
 
@@ -108,7 +108,7 @@ impl<'de> Deserialize<'de> for EthereumQuantity {
     }
 }
 
-impl Serialize for EthereumQuantity {
+impl Serialize for EtherQuantity {
     fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
     where
         S: Serializer,

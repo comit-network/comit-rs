@@ -14,10 +14,10 @@ extern crate serde;
 
 pub use web3_crate::types::*;
 
-mod ethereum_quantity;
+mod ether_quantity;
 mod key;
 
-pub use ethereum_quantity::*;
+pub use ether_quantity::*;
 pub use key::*;
 
 pub use web3_crate::futures::Future;
