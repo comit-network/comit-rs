@@ -12,7 +12,6 @@ extern crate rocket;
 extern crate rocket_contrib;
 extern crate serde;
 extern crate tokio;
-extern crate tokio_timer;
 #[macro_use]
 extern crate serde_derive;
 extern crate bitcoin_htlc;
@@ -28,7 +27,6 @@ extern crate uuid;
 extern crate log;
 extern crate config;
 extern crate event_store;
-#[macro_use]
 extern crate futures;
 extern crate gotham;
 extern crate hex;
@@ -50,18 +48,19 @@ extern crate url;
 extern crate maplit;
 
 #[cfg(test)]
+extern crate pretty_env_logger;
+#[cfg(test)]
 extern crate spectral;
+extern crate tokio_timer;
 
 pub mod bitcoin_fee_service;
 
 pub mod comit_client;
 pub mod comit_server;
-pub mod futures_ext;
 pub mod gas_price_service;
 pub mod gotham_factory;
 pub mod http_api;
 pub mod ledger_query_service;
-pub mod ledger_query_service_future;
 pub mod rocket_factory;
 pub mod settings;
 pub mod swap_protocols;

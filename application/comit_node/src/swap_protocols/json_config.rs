@@ -6,9 +6,10 @@ use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
-use futures_ext::FutureFactory;
-use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
-use ledger_query_service_future::LedgerServices;
+use ledger_query_service::{
+    fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
+    LedgerQueryServiceApiClient,
+};
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
@@ -32,6 +33,7 @@ use swaps::{
     common::TradeId,
 };
 use tokio;
+use tokio_timer::Interval;
 use transport_protocol::{
     config::Config,
     json::{self, Request, Response},
@@ -236,18 +238,16 @@ fn process<
         }
     };
 
-    let ledger_services = LedgerServices::new(
-        ledger_query_service_api_client.clone(),
-        bitcoin_poll_interval,
+    let stream = ledger_query_service_api_client.fetch_transaction_stream(
+        Interval::new_interval(bitcoin_poll_interval),
+        query_id.clone(),
     );
-
-    let future_factory = FutureFactory::new(ledger_services);
-    let stream = future_factory.create_stream_from_template(query_id.clone());
 
     tokio::spawn(
         stream
             .take(1)
-            .for_each(move |transaction_id| -> Result<(), Error> {
+            .map_err(Error::from)
+            .for_each(move |transaction_id| {
                 let (n, vout) = bitcoin_service
                     .get_vout_matching(&transaction_id, &htlc_address.to_address().script_pubkey())?
                     .ok_or(CounterpartyDeployError::NotFound)?;
@@ -355,15 +355,13 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
             e
         })?;
 
-    let ledger_services =
-        LedgerServices::new(ledger_query_service_api_client.clone(), poll_interval);
-
-    let future_factory = FutureFactory::new(ledger_services);
-    let stream = future_factory.create_stream_from_template(query_id.clone());
+    let stream = ledger_query_service_api_client
+        .fetch_transaction_stream(Interval::new_interval(poll_interval), query_id.clone());
 
     tokio::spawn(
         stream
             .take(1)
+            .map_err(Error::from)
             .for_each(move |transaction_id| {
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
 

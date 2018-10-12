@@ -8,7 +8,15 @@ pub trait Ledger:
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type LockDuration: Debug + Clone + Send + Sync + Serialize + DeserializeOwned + 'static;
     type HtlcId: Clone + DeserializeOwned + Serialize + Send + Sync;
-    type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + FromStr + 'static;
+    type TxId: Debug
+        + Clone
+        + DeserializeOwned
+        + Serialize
+        + Send
+        + Sync
+        + FromStr
+        + PartialEq
+        + 'static;
     type Pubkey: Clone + Debug + Send + Sync + 'static;
     type Address: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
     type Identity: Clone

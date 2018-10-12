@@ -1,10 +1,9 @@
 use bitcoin_support::TransactionId as BitcoinTxId;
 use ethereum_support::H256 as EthereumTxId;
-use failure::Error;
 use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, LedgerQueryServiceApiClient, QueryId,
+    bitcoin::BitcoinQuery, ethereum::EthereumQuery, Error, LedgerQueryServiceApiClient, QueryId,
 };
-use std::sync::Mutex;
+use std::{fmt, marker::PhantomData, sync::Mutex};
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 
 #[derive(Debug)]
@@ -59,6 +58,58 @@ impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedg
         } else {
             Ok(Vec::new())
         }
+    }
+
+    fn delete(&self, _query: &QueryId<L>) {
+        unimplemented!()
+    }
+}
+
+#[derive(Debug)]
+pub struct LedgerQueryServiceMock<L: Ledger, Q> {
+    number_of_invocations: Mutex<u32>,
+    results_for_next_invocation: Mutex<Option<Result<Vec<L::TxId>, Error>>>,
+    query_type: PhantomData<Q>,
+}
+
+impl<L: Ledger, Q> Default for LedgerQueryServiceMock<L, Q> {
+    fn default() -> Self {
+        Self {
+            number_of_invocations: Mutex::new(0),
+            results_for_next_invocation: Mutex::new(None),
+            query_type: PhantomData,
+        }
+    }
+}
+
+impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
+    pub fn set_next_result(&self, next_result: Result<Vec<L::TxId>, Error>) {
+        let mut result = self.results_for_next_invocation.lock().unwrap();
+
+        *result = Some(next_result);
+    }
+
+    pub fn number_of_invocations(&self) -> u32 {
+        *self.number_of_invocations.lock().unwrap()
+    }
+}
+
+impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> LedgerQueryServiceApiClient<L, Q>
+    for LedgerQueryServiceMock<L, Q>
+{
+    fn create(&self, _query: Q) -> Result<QueryId<L>, Error> {
+        Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
+    }
+
+    fn fetch_results(&self, _query: &QueryId<L>) -> Result<Vec<<L as Ledger>::TxId>, Error> {
+        let mut invocations = self.number_of_invocations.lock().unwrap();
+
+        let mut results = self.results_for_next_invocation.lock().unwrap();
+
+        let result = results.take().unwrap_or(Ok(Vec::new()));
+        *invocations = *invocations + 1;
+
+        result
     }
 
     fn delete(&self, _query: &QueryId<L>) {
