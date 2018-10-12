@@ -3,7 +3,6 @@
 network_id = 1
 node_url = "http://localhost:8545"
 gas_price=2_000_000_000
-queries_poll_interval_secs = 20
 
 [bitcoin]
 network = "regtest"
@@ -11,12 +10,17 @@ satoshi_per_byte = 50 # used for calculating transaction fees
 node_url = "http://localhost:18443"
 node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-lqs_url = "http://localhost:8001"
-queries_poll_interval_secs = 300
 
 [comit]
 remote_comit_node_url = "0.0.0.0:8010"
 comit_listen = "0.0.0.0:8011"
+
+[ledger_query_service]
+url = "http://localhost:8001"
+[ledger_query_service.bitcoin]
+poll_interval_secs = 300
+[ledger_query_service.ethereum]
+poll_interval_secs = 20
 
 [http_api]
 address="0.0.0.0"

@@ -138,8 +138,8 @@ impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> LedgerQueryServiceApiClie
 
         let result = results
             .take()
-            .unwrap_or(Box::new(Ok(Vec::new()).into_future()));
-        *invocations = *invocations + 1;
+            .unwrap_or_else(|| Box::new(Ok(Vec::new()).into_future()));
+        *invocations += 1;
 
         result
     }

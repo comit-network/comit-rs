@@ -5,9 +5,7 @@ use rocket::{response::status::BadRequest, State};
 use rocket_contrib::Json;
 use std::sync::Arc;
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
-use swaps::{
-    alice_events::ContractDeployed as AliceContractDeployed, common::TradeId, errors::Error,
-};
+use swaps::{alice_events::TargetFunded as AliceContractDeployed, common::TradeId, errors::Error};
 
 #[derive(Deserialize, Debug)]
 pub struct AliceContractDeployedRequestBody {
@@ -40,7 +38,7 @@ fn handle_post_contract_deployed(
     address: ethereum_support::Address,
 ) -> Result<(), Error> {
     let deployed: AliceContractDeployed<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> =
-        AliceContractDeployed::new(uid, address);
+        AliceContractDeployed::new(address);
     event_store.add_event(uid, deployed)?;
 
     Ok(())

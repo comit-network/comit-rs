@@ -10,14 +10,21 @@ use rocket::{
 use std::sync::Arc;
 use swap_protocols::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003::ledger_htlc_service::{BitcoinHtlcParams, EtherHtlcParams, LedgerHtlcService},
+    rfc003::ledger_htlc_service::{
+        BitcoinHtlcParams, BitcoinHtlcRedeemParams, EtherHtlcParams, EtherHtlcRedeemParams,
+        LedgerHtlcService,
+    },
 };
 use swaps::{common::TradeId, eth_btc};
 
 pub fn create_rocket_instance(
     event_store: Arc<InMemoryEventStore<TradeId>>,
-    ethereum_service: Arc<LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery>>,
-    bitcoin_service: Arc<LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery>>,
+    ethereum_service: Arc<
+        LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, EthereumQuery>,
+    >,
+    bitcoin_service: Arc<
+        LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinHtlcRedeemParams, BitcoinQuery>,
+    >,
     my_keystore: Arc<KeyStore>,
     network: Network,
     address: String,

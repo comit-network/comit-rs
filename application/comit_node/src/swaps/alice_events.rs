@@ -83,16 +83,39 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ContractDeployed<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct SourceFunded<SL: Ledger, TL: Ledger, SA, TA> {
     pub uid: TradeId,
+    phantom: PhantomData<(SL, TL, SA, TA)>,
+}
+
+impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
+    pub fn new(uid: TradeId) -> SourceFunded<SL, TL, SA, TA> {
+        SourceFunded {
+            uid,
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync + 'static,
+        TA: Clone + Send + Sync + 'static,
+    > Event for SourceFunded<SL, TL, SA, TA>
+{
+    type Prev = SwapRequestAccepted<SL, TL, SA, TA>;
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TargetFunded<SL: Ledger, TL: Ledger, SA, TA> {
     pub address: TL::Address,
     phantom: PhantomData<(SL, SA, TA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> ContractDeployed<SL, TL, SA, TA> {
-    pub fn new(uid: TradeId, address: TL::Address) -> ContractDeployed<SL, TL, SA, TA> {
-        ContractDeployed {
-            uid,
+impl<SL: Ledger, TL: Ledger, SA, TA> TargetFunded<SL, TL, SA, TA> {
+    pub fn new(address: TL::Address) -> TargetFunded<SL, TL, SA, TA> {
+        TargetFunded {
             address,
             phantom: PhantomData,
         }
@@ -104,7 +127,30 @@ impl<
         TL: Ledger,
         SA: Clone + Send + Sync + 'static,
         TA: Clone + Send + Sync + 'static,
-    > Event for ContractDeployed<SL, TL, SA, TA>
+    > Event for TargetFunded<SL, TL, SA, TA>
 {
-    type Prev = SwapRequestAccepted<SL, TL, SA, TA>;
+    type Prev = SourceFunded<SL, TL, SA, TA>;
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TargetRedeemed<SL: Ledger, TL: Ledger, SA, TA> {
+    phantom: PhantomData<(SL, TL, SA, TA)>,
+}
+
+impl<SL: Ledger, TL: Ledger, SA, TA> TargetRedeemed<SL, TL, SA, TA> {
+    pub fn new() -> TargetRedeemed<SL, TL, SA, TA> {
+        TargetRedeemed {
+            phantom: PhantomData,
+        }
+    }
+}
+
+impl<
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync + 'static,
+        TA: Clone + Send + Sync + 'static,
+    > Event for TargetRedeemed<SL, TL, SA, TA>
+{
+    type Prev = TargetFunded<SL, TL, SA, TA>;
 }

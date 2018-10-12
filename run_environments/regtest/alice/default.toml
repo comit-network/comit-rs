@@ -4,6 +4,7 @@ network_id = 1
 node_url = "http://localhost:8545"
 gas_price=2_000_000_000
 private_key="f01c140fb86e8b3587b239f71cfbe305bf3a0e1a3701d6186165fe29be06120e"
+lqs_url = "http://localhost:8080"
 queries_poll_interval_secs = 1
 
 [bitcoin]

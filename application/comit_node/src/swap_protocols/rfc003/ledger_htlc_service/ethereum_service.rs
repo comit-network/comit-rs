@@ -12,7 +12,6 @@ use ethereum_support::{
 use ethereum_wallet::{UnsignedTransaction, Wallet};
 use gas_price_service::{self, GasPriceService};
 use ledger_query_service::EthereumQuery;
-use secp256k1_support::KeyPair;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex, MutexGuard, PoisonError},
@@ -90,7 +89,7 @@ pub struct EthereumService {
     web3: Arc<BlockingEthereumApi>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct EtherHtlcParams {
     pub refund_address: Address,
     pub success_address: Address,
@@ -98,6 +97,9 @@ pub struct EtherHtlcParams {
     pub amount: EtherQuantity,
     pub secret_hash: SecretHash,
 }
+
+#[derive(Clone, Debug)]
+pub struct EtherHtlcRedeemParams(pub <Ethereum as Ledger>::HtlcId);
 
 #[derive(Clone, Debug)]
 pub struct Erc20HtlcParams {
@@ -109,7 +111,12 @@ pub struct Erc20HtlcParams {
     pub token_contract_address: Address,
 }
 
-impl LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery> for EthereumService {
+#[derive(Clone, Debug)]
+pub struct Erc20HtlcRedeemParams {}
+
+impl LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, EthereumQuery>
+    for EthereumService
+{
     fn deploy_htlc(
         &self,
         htlc_params: EtherHtlcParams,
@@ -145,13 +152,10 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery> for EthereumSer
         &self,
         secret: Secret,
         _trade_id: TradeId,
-        _bob_success_address: <Ethereum as Ledger>::Address,
-        _bob_success_keypair: KeyPair,
-        _alice_refund_address: <Ethereum as Ledger>::Address,
-        contract_address: <Ethereum as Ledger>::HtlcId,
-        _sell_amount: <Ethereum as Ledger>::Quantity,
-        _lock_time: <Ethereum as Ledger>::LockDuration,
+        htlc_redeem_params: EtherHtlcRedeemParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+        let contract_address = htlc_redeem_params.0;
+
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_invocation(
                 secret.raw_secret().to_vec(),
@@ -176,13 +180,30 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery> for EthereumSer
         htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
         match self.get_contract_address(htlc_funding_tx_id) {
-            Some(eth_htlc_address) => Ok(EthereumQuery {
+            Ok(Some(eth_htlc_address)) => Ok(EthereumQuery {
                 from_address: None,
                 to_address: Some(eth_htlc_address),
                 is_contract_creation: None,
                 transaction_data: None,
             }),
-            None => Err(ledger_htlc_service::Error::Internal),
+            _ => Err(ledger_htlc_service::Error::Internal),
+        }
+    }
+
+    fn create_query_to_watch_funding(&self, htlc_params: EtherHtlcParams) -> EthereumQuery {
+        let data = EtherHtlc::new(
+            htlc_params.time_lock.into(),
+            htlc_params.refund_address,
+            htlc_params.success_address,
+            htlc_params.secret_hash,
+        ).compile_to_hex()
+        .into();
+
+        EthereumQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(data),
         }
     }
 
@@ -191,9 +212,10 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery> for EthereumSer
         create_htlc_tx_id: <Ethereum as Ledger>::TxId,
         redeem_htlc_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
-        let htlc_address = self
-            .get_contract_address(create_htlc_tx_id)
-            .ok_or(ledger_htlc_service::Error::Internal)?;
+        let htlc_address = match self.get_contract_address(create_htlc_tx_id) {
+            Ok(Some(address)) => address,
+            _ => return Err(ledger_htlc_service::Error::Internal),
+        };
 
         let redeem_tx = self
             .web3
@@ -238,7 +260,9 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EthereumQuery> for EthereumSer
     }
 }
 
-impl LedgerHtlcService<Ethereum, Erc20HtlcParams, EthereumQuery> for EthereumService {
+impl LedgerHtlcService<Ethereum, Erc20HtlcParams, Erc20HtlcRedeemParams, EthereumQuery>
+    for EthereumService
+{
     fn deploy_htlc(
         &self,
         htlc_params: Erc20HtlcParams,
@@ -308,12 +332,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams, EthereumQuery> for EthereumSer
         &self,
         _secret: Secret,
         _trade_id: TradeId,
-        _bob_success_address: <Ethereum as Ledger>::Address,
-        _bob_success_keypair: KeyPair,
-        _alice_refund_address: <Ethereum as Ledger>::Address,
-        _contract_address: <Ethereum as Ledger>::HtlcId,
-        _sell_amount: <Ethereum as Ledger>::Quantity,
-        _lock_time: <Ethereum as Ledger>::LockDuration,
+        _htlc_redeem_params: Erc20HtlcRedeemParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
         unimplemented!()
     }
@@ -322,6 +341,10 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams, EthereumQuery> for EthereumSer
         &self,
         _htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
+        unimplemented!()
+    }
+
+    fn create_query_to_watch_funding(&self, _htlc_params: Erc20HtlcParams) -> EthereumQuery {
         unimplemented!()
     }
 
@@ -382,14 +405,14 @@ impl EthereumService {
         *nonce = next_nonce;
     }
 
-    fn get_contract_address(&self, deploy_tx_id: H256) -> Option<Address> {
-        let create_tx_receipt = self.web3.transaction_receipt(deploy_tx_id);
+    pub fn get_contract_address(&self, deploy_tx_id: H256) -> Result<Option<Address>, web3::Error> {
+        self.web3
+            .transaction_receipt(deploy_tx_id)
+            .map(|opt| opt.and_then(|receipt| receipt.contract_address))
+    }
 
-        if let Ok(Some(receipt)) = create_tx_receipt {
-            receipt.contract_address
-        } else {
-            None
-        }
+    pub fn get_transaction(&self, tx_id: H256) -> Result<Option<Transaction>, web3::Error> {
+        self.web3.transaction(TransactionId::Hash(tx_id))
     }
 }
 
@@ -399,6 +422,7 @@ mod tests {
     use common_types::secret::SecretHash;
     use ethereum_wallet::{fake::StaticFakeWallet, Wallet};
     use hex;
+    use secp256k1_support::KeyPair;
     use spectral::prelude::*;
     use std::{ops::Deref, str::FromStr, time::Duration};
 

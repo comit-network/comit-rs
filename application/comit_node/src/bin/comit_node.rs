@@ -28,13 +28,16 @@ use comit_node::{
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     rocket_factory::create_rocket_instance,
     settings::ComitNodeSettings,
-    swap_protocols::rfc003::ledger_htlc_service::{BitcoinService, EthereumService},
+    swap_protocols::rfc003::{
+        alice_ledger_actor::AliceLedgerActor,
+        ledger_htlc_service::{BitcoinService, EthereumService},
+    },
 };
 use comit_wallet::KeyStore;
 use ethereum_support::*;
 use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
-use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc, time::Duration};
+use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -116,6 +119,23 @@ fn main() {
         bitcoin_fee_service.clone(),
         btc_bob_redeem_address.clone(),
     ));
+    let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
+        &settings.ledger_query_service.url,
+    ));
+
+    let alice_actor = AliceLedgerActor::new(
+        event_store.clone(),
+        ledger_query_service.clone(),
+        bitcoin_service.clone(),
+        btc_network,
+        ethereum_service.clone(),
+        settings.ledger_query_service.bitcoin.poll_interval_secs,
+        settings.ledger_query_service.ethereum.poll_interval_secs,
+    );
+
+    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let (alice_actor_sender, alice_actor_future) = alice_actor.listen();
+    runtime.spawn(alice_actor_future);
 
     {
         let http_api_address_gotham = settings.http_api.address.clone();
@@ -124,19 +144,21 @@ fn main() {
         let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
         let key_store_rocket = key_store.clone();
+        let key_store_gotham = key_store.clone();
         let ethereum_service = ethereum_service.clone();
         let bitcoin_service = bitcoin_service.clone();
 
         let client_pool = comit_client::bam::BamClientPool::default();
 
-        let gotham_router = gotham_factory::create_gotham_router(
-            gotham_event_store,
-            Arc::new(client_pool),
-            remote_comit_node_url,
-            key_store.clone(),
-        );
-
         std::thread::spawn(move || {
+            let gotham_router = gotham_factory::create_gotham_router(
+                gotham_event_store,
+                Arc::new(client_pool),
+                remote_comit_node_url,
+                key_store_gotham,
+                alice_actor_sender,
+            );
+
             gotham::start(
                 SocketAddr::from_str(
                     format!("{}:{}", http_api_address_gotham, http_api_port).as_str(),
@@ -159,10 +181,6 @@ fn main() {
         });
     }
 
-    let ledger_query_service = Arc::new(DefaultLedgerQueryServiceApiClient::new(
-        settings.bitcoin.lqs_url,
-    ));
-
     let server = ComitServer::new(
         comit_server_event_store,
         key_store.clone(),
@@ -170,8 +188,8 @@ fn main() {
         bitcoin_service.clone(),
         ledger_query_service,
         btc_network,
-        Duration::from_secs(settings.bitcoin.queries_poll_interval_secs),
-        Duration::from_secs(settings.ethereum.queries_poll_interval_secs),
+        settings.ledger_query_service.bitcoin.poll_interval_secs,
+        settings.ledger_query_service.ethereum.poll_interval_secs,
     );
 
     tokio::run(server.listen(settings.comit.comit_listen).map_err(|e| {

@@ -7,7 +7,6 @@ use ethereum_support::{
     web3, Bytes, Transaction as EthereumTransaction, TransactionId as EthereumTxId,
     TransactionReceipt, H256,
 };
-use reqwest;
 
 pub struct BitcoinRpcClientMock {
     transaction_id: BitcoinTxId,

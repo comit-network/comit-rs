@@ -1,6 +1,5 @@
 pub use self::{bitcoin_service::*, ethereum_service::*};
 use common_types::secret::Secret;
-use secp256k1_support::KeyPair;
 use swap_protocols::ledger::Ledger;
 use swaps::common::TradeId;
 
@@ -21,7 +20,7 @@ pub enum Error {
     InvalidRedeemTransaction,
 }
 
-pub trait LedgerHtlcService<L: Ledger, H, Q>: Send + Sync {
+pub trait LedgerHtlcService<L: Ledger, H, R, Q>: Send + Sync {
     fn deploy_htlc(&self, htlc_params: H) -> Result<L::TxId, Error>;
 
     #[allow(clippy::too_many_arguments)]
@@ -29,15 +28,12 @@ pub trait LedgerHtlcService<L: Ledger, H, Q>: Send + Sync {
         &self,
         secret: Secret,
         trade_id: TradeId,
-        bob_success_address: L::Address,
-        bob_success_keypair: KeyPair,
-        alice_refund_address: L::Address,
-        htlc_identifier: L::HtlcId,
-        sell_amount: L::Quantity,
-        lock_time: L::LockDuration,
+        htlc_redeem_params: R,
     ) -> Result<L::TxId, Error>;
 
     fn create_query_to_watch_redeeming(&self, htlc_funding_tx_id: L::TxId) -> Result<Q, Error>;
+
+    fn create_query_to_watch_funding(&self, htlc_params: H) -> Q;
 
     fn check_and_extract_secret(
         &self,
