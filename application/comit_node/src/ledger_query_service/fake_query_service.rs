@@ -68,7 +68,7 @@ impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedg
 #[derive(Debug)]
 pub struct LedgerQueryServiceMock<L: Ledger, Q> {
     number_of_invocations: Mutex<u32>,
-    results_for_next_invocation: Mutex<Option<Vec<L::TxId>>>,
+    results_for_next_invocation: Mutex<Option<Result<Vec<L::TxId>, Error>>>,
     query_type: PhantomData<Q>,
 }
 
@@ -83,10 +83,10 @@ impl<L: Ledger, Q> Default for LedgerQueryServiceMock<L, Q> {
 }
 
 impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
-    pub fn set_next_results(&self, transactions: Vec<L::TxId>) {
-        let mut results = self.results_for_next_invocation.lock().unwrap();
+    pub fn set_next_result(&self, next_result: Result<Vec<L::TxId>, Error>) {
+        let mut result = self.results_for_next_invocation.lock().unwrap();
 
-        *results = Some(transactions);
+        *result = Some(next_result);
     }
 
     pub fn number_of_invocations(&self) -> u32 {
@@ -106,10 +106,10 @@ impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> LedgerQueryServiceApiClie
 
         let mut results = self.results_for_next_invocation.lock().unwrap();
 
-        let transactions = results.take().unwrap_or(Vec::new());
+        let result = results.take().unwrap_or(Ok(Vec::new()));
         *invocations = *invocations + 1;
 
-        Ok(transactions)
+        result
     }
 
     fn delete(&self, _query: &QueryId<L>) {

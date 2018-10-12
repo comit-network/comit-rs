@@ -34,18 +34,21 @@ where
 
         Box::new(
             ticker
-                .map(|_| ())
-                .and_then(move |_| Ok(inner_self.fetch_results(&query_id).unwrap_or(Vec::new()))) // TODO: Log warning if fetching fails
-                .map(iter_ok)
+                .and_then(move |_| {
+                    Ok(inner_self.fetch_results(&query_id).unwrap_or_else(|e| {
+                        warn!("Falling back to empty list of transactions because {:?}", e);
+                        Vec::new()
+                    }))
+                }).map(iter_ok)
                 .flatten()
                 .filter(move |transaction| {
-                    let was_emitted = emitted_transactions.contains(transaction);
+                    let is_new_transaction = !emitted_transactions.contains(transaction);
 
-                    if !was_emitted {
-                        emitted_transactions.push(transaction.clone())
+                    if is_new_transaction {
+                        emitted_transactions.push(transaction.clone());
                     }
 
-                    !was_emitted
+                    is_new_transaction
                 }),
         )
     }
@@ -57,8 +60,10 @@ mod tests {
     use futures::sync::mpsc;
     use ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock};
     use pretty_env_logger;
+    use std::time::{Duration, Instant};
     use swap_protocols::ledger::bitcoin::Bitcoin;
-    use tokio::runtime::Runtime;
+    use tokio::{prelude::future::Either, runtime::Runtime};
+    use tokio_timer::Delay;
 
     #[test]
     fn should_emit_transactions_as_they_appear_without_waiting_for_the_next_tick() {
@@ -70,7 +75,7 @@ mod tests {
         let ledger_query_service =
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_results(vec![
+        ledger_query_service.set_next_result(Ok(vec![
             "0000000000000000000000000000000000000000000000000000000000000001"
                 .parse()
                 .unwrap(),
@@ -80,7 +85,7 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000003"
                 .parse()
                 .unwrap(),
-        ]);
+        ]));
 
         let stream = ledger_query_service.fetch_transaction_stream(
             receiver,
@@ -144,11 +149,11 @@ mod tests {
         let ledger_query_service =
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_results(vec![
+        ledger_query_service.set_next_result(Ok(vec![
             "0000000000000000000000000000000000000000000000000000000000000001"
                 .parse()
                 .unwrap(),
-        ]);
+        ]));
 
         let stream = ledger_query_service.fetch_transaction_stream(
             receiver,
@@ -170,14 +175,14 @@ mod tests {
             )
         );
 
-        ledger_query_service.set_next_results(vec![
+        ledger_query_service.set_next_result(Ok(vec![
             "0000000000000000000000000000000000000000000000000000000000000001"
                 .parse()
                 .unwrap(),
             "0000000000000000000000000000000000000000000000000000000000000002"
                 .parse()
                 .unwrap(),
-        ]);
+        ]));
 
         sender.unbounded_send(()).unwrap();
         let (result, _) = runtime
@@ -201,4 +206,36 @@ mod tests {
         );
     }
 
+    #[test]
+    fn given_no_results_should_not_emit_anything() {
+        let _ = pretty_env_logger::try_init();
+
+        let mut runtime = Runtime::new().unwrap();
+        let (sender, receiver) = mpsc::unbounded();
+        let ledger_query_service =
+            Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
+        let stream = ledger_query_service.fetch_transaction_stream(
+            receiver,
+            QueryId::new("http://localhost/results/1".parse().unwrap()),
+        );
+
+        ledger_query_service.set_next_result(Ok(vec![]));
+        sender.unbounded_send(()).unwrap();
+
+        let either = runtime
+            .block_on(
+                stream
+                    .into_future()
+                    .select2(Delay::new(Instant::now() + Duration::from_secs(1))),
+            ).map_err(|_| ())
+            .unwrap();
+
+        // A stream of no items will never complete.
+        // Thus we `select2` it with a delay that completes after 1 second
+        // We have to do this weird assertion because some things are not Debug :(
+        // TL;DR: If we don't hit this branch, the Either is Either::B (the timeout) so we are fine.
+        if let Either::A(_transaction) = either {
+            panic!("should not emit a transaction")
+        }
+    }
 }
