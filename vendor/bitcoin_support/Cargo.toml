@@ -11,7 +11,7 @@ authors = [
 [dependencies]
 bigdecimal = "0.0.12"
 bitcoin = { version = "0.14", features = ["serde"] }
-bitcoin_rpc_client = "0.1"
+bitcoin_rpc_client = "0.3"
 secp256k1_support = { path = "../secp256k1_support" }
 lazy_static = "1"
 serde = "1.0.64"

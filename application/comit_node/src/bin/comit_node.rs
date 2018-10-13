@@ -101,10 +101,10 @@ fn main() {
                 btc_bob_redeem_address.clone(),
             )) {
                 Ok(address_validation) => info!("Validation:\n{:?}", address_validation),
-                Err(e) => error!("Could not validate BTC_BOB_REDEEM_ADDRESS: {}", e),
+                Err(e) => error!("Could not validate BTC_BOB_REDEEM_ADDRESS: {:?}", e),
             };
         }
-        Err(e) => error!("Could not connect to Bitcoin RPC:\n{}", e),
+        Err(e) => error!("Could not connect to Bitcoin RPC because {:?}", e),
     };
 
     let satoshi_per_kb = settings.bitcoin.satoshi_per_byte;

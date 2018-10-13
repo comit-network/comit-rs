@@ -5,6 +5,7 @@ use ledger_query_service::{
 };
 use std::{fmt, marker::PhantomData, sync::Mutex};
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
+use tokio::prelude::{future::IntoFuture, Future};
 
 #[derive(Debug)]
 pub struct SimpleFakeLedgerQueryService {
@@ -13,27 +14,43 @@ pub struct SimpleFakeLedgerQueryService {
 }
 
 impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
-    fn create(&self, _query: BitcoinQuery) -> Result<QueryId<Bitcoin>, Error> {
-        Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
+    fn create(
+        &self,
+        _query: BitcoinQuery,
+    ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
+        Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 
-    fn fetch_results(&self, _query: &QueryId<Bitcoin>) -> Result<Vec<BitcoinTxId>, Error> {
-        Ok(self.bitcoin_results.clone())
+    fn fetch_results(
+        &self,
+        _query: &QueryId<Bitcoin>,
+    ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
+        Box::new(Ok(self.bitcoin_results.clone()).into_future())
     }
 
-    fn delete(&self, _query: &QueryId<Bitcoin>) {}
+    fn delete(&self, _query: &QueryId<Bitcoin>) -> Box<Future<Item = (), Error = Error> + Send> {
+        unimplemented!()
+    }
 }
 
 impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
-    fn create(&self, _query: EthereumQuery) -> Result<QueryId<Ethereum>, Error> {
-        Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
+    fn create(
+        &self,
+        _query: EthereumQuery,
+    ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
+        Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 
-    fn fetch_results(&self, _query: &QueryId<Ethereum>) -> Result<Vec<EthereumTxId>, Error> {
-        Ok(self.ethereum_results.clone())
+    fn fetch_results(
+        &self,
+        _query: &QueryId<Ethereum>,
+    ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
+        Box::new(Ok(self.ethereum_results.clone()).into_future())
     }
 
-    fn delete(&self, _query: &QueryId<Ethereum>) {}
+    fn delete(&self, _query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
+        unimplemented!()
+    }
 }
 
 #[derive(Debug)]
@@ -44,31 +61,38 @@ pub struct InvocationCountFakeLedgerQueryService<L: Ledger> {
 }
 
 impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedgerQueryService<L> {
-    fn create(&self, _query: Q) -> Result<QueryId<L>, Error> {
-        Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
+    fn create(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+        Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 
-    fn fetch_results(&self, _query: &QueryId<L>) -> Result<Vec<L::TxId>, Error> {
+    fn fetch_results(
+        &self,
+        _query: &QueryId<L>,
+    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send> {
         let mut invocations = self.invocations.lock().unwrap();
 
         *invocations += 1;
 
-        if *invocations >= self.number_of_invocations_before_result {
-            Ok(self.results.clone())
+        let transactions = if *invocations >= self.number_of_invocations_before_result {
+            self.results.clone()
         } else {
-            Ok(Vec::new())
-        }
+            Vec::new()
+        };
+
+        Box::new(Ok(transactions).into_future())
     }
 
-    fn delete(&self, _query: &QueryId<L>) {
+    fn delete(&self, _query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send> {
         unimplemented!()
     }
 }
 
-#[derive(Debug)]
+#[derive(DebugStub)]
 pub struct LedgerQueryServiceMock<L: Ledger, Q> {
     number_of_invocations: Mutex<u32>,
-    results_for_next_invocation: Mutex<Option<Result<Vec<L::TxId>, Error>>>,
+    #[debug_stub = "next result"]
+    results_for_next_invocation:
+        Mutex<Option<Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>>>,
     query_type: PhantomData<Q>,
 }
 
@@ -83,7 +107,10 @@ impl<L: Ledger, Q> Default for LedgerQueryServiceMock<L, Q> {
 }
 
 impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
-    pub fn set_next_result(&self, next_result: Result<Vec<L::TxId>, Error>) {
+    pub fn set_next_result(
+        &self,
+        next_result: Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>,
+    ) {
         let mut result = self.results_for_next_invocation.lock().unwrap();
 
         *result = Some(next_result);
@@ -97,22 +124,27 @@ impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
 impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> LedgerQueryServiceApiClient<L, Q>
     for LedgerQueryServiceMock<L, Q>
 {
-    fn create(&self, _query: Q) -> Result<QueryId<L>, Error> {
-        Ok(QueryId::new("http://localhost/results/1".parse().unwrap()))
+    fn create(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+        Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 
-    fn fetch_results(&self, _query: &QueryId<L>) -> Result<Vec<<L as Ledger>::TxId>, Error> {
+    fn fetch_results(
+        &self,
+        _query: &QueryId<L>,
+    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send> {
         let mut invocations = self.number_of_invocations.lock().unwrap();
 
         let mut results = self.results_for_next_invocation.lock().unwrap();
 
-        let result = results.take().unwrap_or(Ok(Vec::new()));
+        let result = results
+            .take()
+            .unwrap_or(Box::new(Ok(Vec::new()).into_future()));
         *invocations = *invocations + 1;
 
         result
     }
 
-    fn delete(&self, _query: &QueryId<L>) {
+    fn delete(&self, _query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send> {
         unimplemented!()
     }
 }

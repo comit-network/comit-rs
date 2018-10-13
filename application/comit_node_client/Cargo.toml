@@ -17,7 +17,7 @@ reqwest = "0.9"
 lazy_static = "1"
 regex = "1.0.0"
 uuid = { version = "0.6.3", features = ["serde", "v4"] }
-bitcoin_rpc_client = "0.1"
+bitcoin_rpc_client = "0.3"
 maplit = "1"
 
 common_types = { path = "../common_types"}
