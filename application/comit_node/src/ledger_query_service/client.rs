@@ -10,7 +10,8 @@ use tokio::prelude::future::{self, Future};
 #[derive(Debug)]
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
-    endpoint: Url,
+    create_bitcoin_query_endpoint: Url,
+    create_ethereum_query_endpoint: Url,
 }
 
 #[derive(Debug, Deserialize)]
@@ -22,20 +23,16 @@ impl DefaultLedgerQueryServiceApiClient {
     pub fn new(endpoint: Url) -> Self {
         DefaultLedgerQueryServiceApiClient {
             client: Client::new(),
-            endpoint,
+            create_bitcoin_query_endpoint: endpoint.join("queries/bitcoin").expect("invalid url"),
+            create_ethereum_query_endpoint: endpoint.join("queries/ethereum").expect("invalid url"),
         }
     }
 
     fn _create<L: Ledger, Q: Serialize>(
         &self,
-        path: &'static str,
+        create_endpoint: Url,
         query: Q,
     ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
-        let create_endpoint = match self.endpoint.join(path) {
-            Ok(url) => url,
-            Err(e) => return Box::new(future::err(Error::MalformedEndpoint(e))),
-        };
-
         let query_id = self
             .client
             .post(create_endpoint)
@@ -94,7 +91,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
         &self,
         query: BitcoinQuery,
     ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
-        self._create("queries/bitcoin", query)
+        self._create(self.create_bitcoin_query_endpoint, query)
     }
 
     fn fetch_results(
@@ -114,7 +111,7 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
         &self,
         query: EthereumQuery,
     ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
-        self._create("queries/ethereum", query)
+        self._create(self.create_ethereum_query_endpoint, query)
     }
 
     fn fetch_results(

@@ -35,8 +35,6 @@ impl<L: Ledger> QueryId<L> {
 
 #[derive(Fail, Debug)]
 pub enum Error {
-    #[fail(display = "The provided endpoint was malformed.")]
-    MalformedEndpoint(#[cause] ParseError),
     #[fail(display = "The request failed to send.")]
     FailedRequest(#[cause] reqwest::Error),
     #[fail(display = "The response was somehow malformed.")]
