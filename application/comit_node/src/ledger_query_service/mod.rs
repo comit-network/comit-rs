@@ -41,8 +41,6 @@ pub enum Error {
     FailedRequest(#[cause] reqwest::Error),
     #[fail(display = "The response was somehow malformed.")]
     MalformedResponse(failure::Error),
-    #[fail(display = "The ledger is not support.")]
-    UnsupportedLedger,
 }
 
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: 'static + Send + Sync {

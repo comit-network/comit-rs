@@ -1,8 +1,9 @@
 use failure;
-use ledger_query_service::{Error, LedgerQueryServiceApiClient, QueryId};
+use ledger_query_service::{
+    bitcoin::BitcoinQuery, ethereum::EthereumQuery, Error, LedgerQueryServiceApiClient, QueryId,
+};
 use reqwest::{async::Client, header::LOCATION, Url};
 use serde::{Deserialize, Serialize};
-use std::{any::TypeId, collections::HashMap};
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
 use tokio::prelude::future::{self, Future};
 
@@ -10,17 +11,6 @@ use tokio::prelude::future::{self, Future};
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
     endpoint: Url,
-    path: HashMap<TypeId, &'static str>,
-}
-
-impl DefaultLedgerQueryServiceApiClient {
-    pub fn new(endpoint: Url) -> Self {
-        DefaultLedgerQueryServiceApiClient {
-            client: Client::new(),
-            endpoint,
-            path: hashmap!(TypeId::of::<Bitcoin>() => "queries/bitcoin", TypeId::of::<Ethereum>() => "queries/ethereum"),
-        }
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -28,16 +18,22 @@ pub struct QueryResponse<T> {
     matching_transactions: Vec<T>,
 }
 
-impl<L: Ledger, Q: Serialize> LedgerQueryServiceApiClient<L, Q>
-    for DefaultLedgerQueryServiceApiClient
-{
-    fn create(&self, query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
-        let type_id = &TypeId::of::<L>();
+impl DefaultLedgerQueryServiceApiClient {
+    pub fn new(endpoint: Url) -> Self {
+        DefaultLedgerQueryServiceApiClient {
+            client: Client::new(),
+            endpoint,
+        }
+    }
 
-        let create_endpoint = match self.path.get(&type_id).map(|path| self.endpoint.join(path)) {
-            Some(Ok(url)) => url,
-            Some(Err(e)) => return Box::new(future::err(Error::MalformedEndpoint(e))),
-            None => return Box::new(future::err(Error::UnsupportedLedger)),
+    fn _create<L: Ledger, Q: Serialize>(
+        &self,
+        path: &'static str,
+        query: Q,
+    ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+        let create_endpoint = match self.endpoint.join(path) {
+            Ok(url) => url,
+            Err(e) => return Box::new(future::err(Error::MalformedEndpoint(e))),
         };
 
         let query_id = self
@@ -64,7 +60,7 @@ impl<L: Ledger, Q: Serialize> LedgerQueryServiceApiClient<L, Q>
         Box::new(query_id)
     }
 
-    fn fetch_results(
+    fn _fetch_results<L: Ledger>(
         &self,
         query: &QueryId<L>,
     ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send> {
@@ -79,7 +75,10 @@ impl<L: Ledger, Q: Serialize> LedgerQueryServiceApiClient<L, Q>
         Box::new(transactions)
     }
 
-    fn delete(&self, query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send> {
+    fn _delete<L: Ledger>(
+        &self,
+        query: &QueryId<L>,
+    ) -> Box<Future<Item = (), Error = Error> + Send> {
         Box::new(
             self.client
                 .delete(query.as_ref().clone())
@@ -87,5 +86,45 @@ impl<L: Ledger, Q: Serialize> LedgerQueryServiceApiClient<L, Q>
                 .map(|_| ())
                 .map_err(Error::FailedRequest),
         )
+    }
+}
+
+impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
+    fn create(
+        &self,
+        query: BitcoinQuery,
+    ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
+        self._create("queries/bitcoin", query)
+    }
+
+    fn fetch_results(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
+        self._fetch_results(query)
+    }
+
+    fn delete(&self, query: &QueryId<Bitcoin>) -> Box<Future<Item = (), Error = Error> + Send> {
+        self._delete(&query)
+    }
+}
+
+impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
+    fn create(
+        &self,
+        query: EthereumQuery,
+    ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
+        self._create("queries/ethereum", query)
+    }
+
+    fn fetch_results(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
+        self._fetch_results(query)
+    }
+
+    fn delete(&self, query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
+        self._delete(&query)
     }
 }
