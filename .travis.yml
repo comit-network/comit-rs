@@ -1,7 +1,6 @@
 language: rust
 cache:
   directories:
-  - "$HOME/.rustup"
   - "$HOME/.cargo"
   - "$HOME/.cache/sccache"
 sudo: required
@@ -22,14 +21,14 @@ env:
   - KEEP_CONTAINERS=true
   - RUST_TEST_THREADS=8 # Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
 before_script:
-- docker pull trufflesuite/ganache-cli:v6.1.3
-- docker pull coblox/bitcoin-core:0.16.1-r2
-- "./setup.sh"
-- which sccache || cargo install sccache
+- .travis/keep-cargo-cache-small.sh
+- .travis/pull-docker-images.sh
+- .travis/setup-sccache.sh
+- .travis/install-additional-rustup-components.sh
 script:
-- "./check-fmt.sh"
-- cargo clippy
-- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all
+- cargo fmt -- --check
+- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all --all-targets
+- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo clippy --all --all-targets
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
 - LOG_SERVICES=1 ./run_environments/regtest/harness.sh ./run_environments/regtest/happy_path.sh
 notifications:
