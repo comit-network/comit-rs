@@ -4,7 +4,6 @@ use reqwest::{self, Url};
 use std::marker::PhantomData;
 use swap_protocols::ledger::Ledger;
 use tokio::prelude::Future;
-use url::ParseError;
 
 mod bitcoin;
 mod client;

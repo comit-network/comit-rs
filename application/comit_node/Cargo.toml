@@ -31,7 +31,6 @@ hyper = "0.12"
 lazy_static = "1"
 log = "0.4.3"
 logging = { path = "../logging" }
-maplit= "1"
 mime = "0.3"
 rand = "0.4.2"
 reqwest = "0.9"

@@ -5,7 +5,7 @@ use ledger_query_service::{
 use reqwest::{async::Client, header::LOCATION, Url};
 use serde::{Deserialize, Serialize};
 use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
-use tokio::prelude::future::{self, Future};
+use tokio::prelude::future::Future;
 
 #[derive(Debug)]
 pub struct DefaultLedgerQueryServiceApiClient {
@@ -91,7 +91,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
         &self,
         query: BitcoinQuery,
     ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
-        self._create(self.create_bitcoin_query_endpoint, query)
+        self._create(self.create_bitcoin_query_endpoint.clone(), query)
     }
 
     fn fetch_results(
@@ -111,7 +111,7 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
         &self,
         query: EthereumQuery,
     ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
-        self._create(self.create_ethereum_query_endpoint, query)
+        self._create(self.create_ethereum_query_endpoint.clone(), query)
     }
 
     fn fetch_results(
