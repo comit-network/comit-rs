@@ -227,7 +227,8 @@ fn process<
         to_address: Some(htlc_address.clone()),
     };
 
-    let query_id = match ledger_query_service_api_client.clone().create(query) {
+    // TODO: Should not wait here but composing together is hard :(
+    let query_id = match ledger_query_service_api_client.create(query).wait() {
         Ok(query_id) => query_id,
         Err(e) => {
             error!(
@@ -344,16 +345,8 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
         eth_htlc_created_tx_id,
     )?;
 
-    let query_id = ledger_query_service_api_client
-        .clone()
-        .create(query)
-        .map_err(|e| {
-            error!(
-                "Aborting trade because of problem with Ethereum Ledger Query Service: {:?}",
-                e
-            );
-            e
-        })?;
+    // TODO: Should not wait here but composing together is hard :(
+    let query_id = ledger_query_service_api_client.create(query).wait()?;
 
     let stream = ledger_query_service_api_client
         .fetch_transaction_stream(Interval::new_interval(poll_interval), query_id.clone());

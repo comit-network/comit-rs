@@ -1,5 +1,6 @@
 use bitcoin_rpc_client::{
-    Address, BitcoinRpcApi, RpcError, SerializedRawTransaction, TransactionId as BitcoinTxId,
+    Address, BitcoinRpcApi, ClientError, RpcError, SerializedRawTransaction,
+    TransactionId as BitcoinTxId,
 };
 use comit_node::swap_protocols::rfc003::ledger_htlc_service::BlockingEthereumApi;
 use ethereum_support::{
@@ -23,14 +24,14 @@ impl BitcoinRpcApi for BitcoinRpcClientMock {
     fn send_raw_transaction(
         &self,
         _raw_transaction: SerializedRawTransaction,
-    ) -> Result<Result<BitcoinTxId, RpcError>, reqwest::Error> {
+    ) -> Result<Result<BitcoinTxId, RpcError>, ClientError> {
         Ok(Ok(self.transaction_id.clone()))
     }
     fn send_to_address(
         &self,
         _address: &Address,
         _amount: f64,
-    ) -> Result<Result<BitcoinTxId, RpcError>, reqwest::Error> {
+    ) -> Result<Result<BitcoinTxId, RpcError>, ClientError> {
         Ok(Ok(self.transaction_id.clone()))
     }
 }

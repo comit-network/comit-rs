@@ -1,7 +1,9 @@
 pub use self::{bitcoin::*, client::*, ethereum::*};
-use reqwest::{self, Url, UrlError};
+use failure;
+use reqwest::{self, Url};
 use std::marker::PhantomData;
 use swap_protocols::ledger::Ledger;
+use tokio::prelude::Future;
 
 mod bitcoin;
 mod client;
@@ -32,20 +34,17 @@ impl<L: Ledger> QueryId<L> {
 
 #[derive(Fail, Debug)]
 pub enum Error {
-    #[fail(display = "The provided endpoint was malformed.")]
-    MalformedEndpoint(UrlError),
     #[fail(display = "The request failed to send.")]
-    FailedRequest(reqwest::Error),
-    #[fail(display = "The response did not contain a Location header.")]
-    MissingLocation,
-    #[fail(display = "The returned URL could not be parsed.")]
-    MalformedLocation(#[cause] UrlError),
-    #[fail(display = "The ledger is not support.")]
-    UnsupportedLedger,
+    FailedRequest(#[cause] reqwest::Error),
+    #[fail(display = "The response was somehow malformed.")]
+    MalformedResponse(failure::Error),
 }
 
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: 'static + Send + Sync {
-    fn create(&self, query: Q) -> Result<QueryId<L>, Error>;
-    fn fetch_results(&self, query: &QueryId<L>) -> Result<Vec<L::TxId>, Error>;
-    fn delete(&self, query: &QueryId<L>);
+    fn create(&self, query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send>;
+    fn fetch_results(
+        &self,
+        query: &QueryId<L>,
+    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
+    fn delete(&self, query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send>;
 }

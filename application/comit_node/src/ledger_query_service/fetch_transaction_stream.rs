@@ -35,10 +35,10 @@ where
         Box::new(
             ticker
                 .and_then(move |_| {
-                    Ok(inner_self.fetch_results(&query_id).unwrap_or_else(|e| {
+                    inner_self.fetch_results(&query_id).or_else(|e| {
                         warn!("Falling back to empty list of transactions because {:?}", e);
-                        Vec::new()
-                    }))
+                        Ok(Vec::new())
+                    })
                 }).map(iter_ok)
                 .flatten()
                 .filter(move |transaction| {
@@ -75,7 +75,7 @@ mod tests {
         let ledger_query_service =
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_result(Ok(vec![
+        ledger_query_service.set_next_result(Box::new(future::ok(vec![
             "0000000000000000000000000000000000000000000000000000000000000001"
                 .parse()
                 .unwrap(),
@@ -85,7 +85,7 @@ mod tests {
             "0000000000000000000000000000000000000000000000000000000000000003"
                 .parse()
                 .unwrap(),
-        ]));
+        ])));
 
         let stream = ledger_query_service.fetch_transaction_stream(
             receiver,
@@ -149,11 +149,11 @@ mod tests {
         let ledger_query_service =
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_result(Ok(vec![
+        ledger_query_service.set_next_result(Box::new(future::ok(vec![
             "0000000000000000000000000000000000000000000000000000000000000001"
                 .parse()
                 .unwrap(),
-        ]));
+        ])));
 
         let stream = ledger_query_service.fetch_transaction_stream(
             receiver,
@@ -175,14 +175,14 @@ mod tests {
             )
         );
 
-        ledger_query_service.set_next_result(Ok(vec![
+        ledger_query_service.set_next_result(Box::new(future::ok(vec![
             "0000000000000000000000000000000000000000000000000000000000000001"
                 .parse()
                 .unwrap(),
             "0000000000000000000000000000000000000000000000000000000000000002"
                 .parse()
                 .unwrap(),
-        ]));
+        ])));
 
         sender.unbounded_send(()).unwrap();
         let (result, _) = runtime
@@ -219,7 +219,7 @@ mod tests {
             QueryId::new("http://localhost/results/1".parse().unwrap()),
         );
 
-        ledger_query_service.set_next_result(Ok(vec![]));
+        ledger_query_service.set_next_result(Box::new(future::ok(vec![])));
         sender.unbounded_send(()).unwrap();
 
         let either = runtime

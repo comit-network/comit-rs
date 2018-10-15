@@ -5,7 +5,6 @@ use bitcoin_support::{self, PubkeyHash, Script, Transaction, TxOut};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
 use ledger_query_service::BitcoinQuery;
-use reqwest;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swap_protocols::{
@@ -14,8 +13,8 @@ use swap_protocols::{
 };
 use swaps::common::TradeId;
 
-impl From<reqwest::Error> for ledger_htlc_service::Error {
-    fn from(error: reqwest::Error) -> Self {
+impl From<bitcoin_rpc_client::ClientError> for ledger_htlc_service::Error {
+    fn from(error: bitcoin_rpc_client::ClientError) -> Self {
         error!("{:?}", error);
         ledger_htlc_service::Error::NodeConnection
     }
@@ -81,7 +80,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinQuery> for BitcoinServ
 
         let tx_id = self
             .client
-            .send_to_address(&htlc_address.clone().into(), htlc_params.amount.bitcoin())??;
+            .send_to_address(&htlc_address.into(), htlc_params.amount.bitcoin())??;
 
         Ok(tx_id)
     }

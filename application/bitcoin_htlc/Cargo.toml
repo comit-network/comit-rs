@@ -10,7 +10,7 @@ authors = [
 
 [dependencies]
 bitcoin = "0.14"
-bitcoin_rpc_client = "0.1"
+bitcoin_rpc_client = "0.3"
 common_types = { path = "../common_types" }
 bitcoin_support = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }

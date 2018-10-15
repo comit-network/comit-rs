@@ -36,7 +36,7 @@ impl FromStr for Address {
 
 impl From<bitcoin_rpc_client::Address> for Address {
     fn from(address: bitcoin_rpc_client::Address) -> Self {
-        Address::from(address.to_address())
+        Address(address.into())
     }
 }
 

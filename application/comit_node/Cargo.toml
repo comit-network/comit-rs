@@ -10,7 +10,7 @@ authors = [
 
 [dependencies]
 bitcoin_htlc = { path = "../bitcoin_htlc" }
-bitcoin_rpc_client = "0.1"
+bitcoin_rpc_client = "0.3"
 bitcoin_support  = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 chrono = "0.4.2"
@@ -31,10 +31,9 @@ hyper = "0.12"
 lazy_static = "1"
 log = "0.4.3"
 logging = { path = "../logging" }
-maplit= "1"
 mime = "0.3"
 rand = "0.4.2"
-reqwest = "0.8.6"
+reqwest = "0.9"
 rocket = "0.3"
 rocket_codegen = "0.3"
 rocket_contrib = "0.3"
