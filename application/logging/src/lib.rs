@@ -31,6 +31,9 @@ pub fn set_up_logging() {
         .level_for("comit_wallet", log::LevelFilter::Trace)
         .level_for("ethereum_htlc", log::LevelFilter::Trace)
         .level_for("ethereum_wallet", log::LevelFilter::Trace)
+        .level_for("tokio_core::reactor", log::LevelFilter::Info)
+        .level_for("tokio_reactor", log::LevelFilter::Info)
+        .level_for("hyper", log::LevelFilter::Info)
         // output to stdout
         .chain(stdout())
         .apply()
