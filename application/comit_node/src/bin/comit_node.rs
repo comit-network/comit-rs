@@ -1,7 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
-#![plugin(rocket_codegen)]
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
@@ -26,7 +25,6 @@ use comit_node::{
     gas_price_service::StaticGasPriceService,
     gotham_factory,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
-    rocket_factory::create_rocket_instance,
     settings::ComitNodeSettings,
     swap_protocols::rfc003::{
         alice_ledger_actor::AliceLedgerActor,
@@ -49,7 +47,6 @@ fn main() {
     info!("Starting up with {:#?}", settings);
 
     let event_store = Arc::new(InMemoryEventStore::default());
-    let rocket_event_store = event_store.clone();
     let comit_server_event_store = event_store.clone();
     let gotham_event_store = event_store.clone();
 
@@ -139,14 +136,9 @@ fn main() {
 
     {
         let http_api_address_gotham = settings.http_api.address.clone();
-        let http_api_address_rocket = settings.http_api.address.clone();
         let http_api_port = settings.http_api.port;
-        let http_api_logging = settings.http_api.logging;
         let remote_comit_node_url = settings.comit.remote_comit_node_url;
-        let key_store_rocket = key_store.clone();
         let key_store_gotham = key_store.clone();
-        let ethereum_service = ethereum_service.clone();
-        let bitcoin_service = bitcoin_service.clone();
 
         let client_pool = comit_client::bam::BamClientPool::default();
 
@@ -165,19 +157,6 @@ fn main() {
                 ).unwrap(),
                 gotham_router,
             );
-        });
-
-        std::thread::spawn(move || {
-            create_rocket_instance(
-                rocket_event_store,
-                ethereum_service,
-                bitcoin_service,
-                key_store_rocket,
-                btc_network,
-                http_api_address_rocket,
-                http_api_port + 2,
-                http_api_logging,
-            ).launch();
         });
     }
 

@@ -1,7 +1,6 @@
 use comit_client;
 use comit_wallet::KeyStore;
 use event_store;
-
 use futures::sync::mpsc::UnboundedSender;
 use gotham::{
     handler::HandlerFuture,
