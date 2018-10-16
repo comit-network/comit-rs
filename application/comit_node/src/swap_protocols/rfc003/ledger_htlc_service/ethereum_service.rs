@@ -235,7 +235,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, Ethereu
                             // TODO: Check this is the transaction that redeems the contract. See #316
                             let data = tx.input.0;
                             debug!("Transaction data: {:?}", data);
-                            match Secret::from_vec(data) {
+                            match Secret::from_vec(&data) {
                                 Err(_) => {
                                     error!("Could not get secret out of transaction data");
                                     Err(ledger_htlc_service::Error::InvalidRedeemTransaction)
