@@ -1,5 +1,5 @@
 use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
-use comit_client::{self, SwapReject, SwapResponseError};
+use comit_client;
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{future, sync::mpsc::UnboundedSender, Future, Stream};
@@ -16,7 +16,6 @@ use rand::OsRng;
 use serde_json;
 use std::{
     net::SocketAddr,
-    ops::DerefMut,
     sync::{Arc, Mutex},
 };
 use swap_protocols::{
@@ -24,7 +23,6 @@ use swap_protocols::{
     rfc003::{self, bitcoin, Secret},
 };
 use swaps::{alice_events, common::TradeId};
-use tokio;
 
 #[derive(Debug)]
 pub enum Error {
@@ -168,7 +166,6 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
         let mut rng = rng.lock().unwrap();
         Secret::generate(&mut *rng)
     };
-    let client = client_factory.client_for(comit_node_addr)?;
 
     match (swap.source_ledger, swap.target_ledger) {
         (
@@ -199,7 +196,7 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
 
                     let source_ledger_lock_duration = BTC_BLOCKS_IN_24H;
                     let secret_hash = secret.hash();
-                    let sent_event = alice_events::SentSwapRequest {
+                    let sent_event = alice_events::StartSwap {
                         source_ledger: source_ledger.clone(),
                         target_ledger: target_ledger.clone(),
                         source_asset,
@@ -208,80 +205,23 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
                         target_ledger_success_identity,
                         source_ledger_refund_identity,
                         source_ledger_lock_duration,
+                        remote: comit_node_addr,
                     };
 
                     event_store.add_event(id, sent_event)?;
-                    let response_future = client.send_swap_request(rfc003::Request {
-                        secret_hash,
-                        source_ledger_refund_identity,
-                        target_ledger_success_identity,
-                        source_ledger_lock_duration,
-                        target_asset,
-                        source_asset,
-                        source_ledger,
-                        target_ledger,
-                    });
 
-                    let event_store = event_store.clone();
-                    let alice_actor_sender = alice_actor_sender.clone();
+                    let sender = alice_actor_sender
+                        .lock()
+                        .expect("cannot send through alice channel");
 
-                    tokio::spawn(response_future.then(move |response| {
-                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, E>(
-                            id,
-                            &event_store,
-                            &alice_actor_sender,
-                            response,
-                        );
-                        Ok(())
-                    }));
+                    sender.unbounded_send(id);
+
                     Ok(SwapCreated { id })
                 }
                 _ => Err(Error::Unsupported),
             }
         }
         _ => Err(Error::Unsupported),
-    }
-}
-
-fn on_swap_response<
-    SL: ledger::Ledger,
-    TL: ledger::Ledger,
-    SA: Clone + Send + Sync + 'static,
-    TA: Clone + Send + Sync + 'static,
-    E: EventStore<TradeId>,
->(
-    id: TradeId,
-    event_store: &Arc<E>,
-    alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
-    result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
-) {
-    match result {
-        Ok(Ok(accepted)) => {
-            event_store
-                .add_event(
-                    id,
-                    alice_events::SwapRequestAccepted::<SL, TL, SA, TA>::new(
-                        accepted.target_ledger_refund_identity,
-                        accepted.source_ledger_success_identity,
-                        accepted.target_ledger_lock_duration,
-                    ),
-                ).expect("It should not be possible to be in the wrong state");
-
-            let mut alice_actor_sender = alice_actor_sender
-                .lock()
-                .expect("Issue with unlocking alice actor sender");
-            let alice_actor_sender = alice_actor_sender.deref_mut();
-            alice_actor_sender
-                .unbounded_send(id)
-                .expect("Receiver should always be in scope");
-        }
-        _ => {
-            event_store
-                .add_event(
-                    id,
-                    alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
-                ).expect("It should not be possible to be in the wrong state");
-        }
     }
 }
 
@@ -330,7 +270,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
     id: TradeId,
     event_store: &Arc<E>,
 ) -> Option<SwapStatus> {
-    let requested = event_store.get_event::<alice_events::SentSwapRequest<
+    let requested = event_store.get_event::<alice_events::StartSwap<
         Bitcoin,
         Ethereum,
         BitcoinQuantity,

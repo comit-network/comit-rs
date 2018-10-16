@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
 use swap_protocols::{
-    ledger::{ethereum::Ethereum, Ledger},
+    ledger::ethereum::Ethereum,
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
         ledger_htlc_service::{self, LedgerHtlcService},
@@ -97,7 +97,7 @@ pub struct EtherHtlcFundingParams {
 
 #[derive(Clone, Debug)]
 pub struct EtherHtlcRedeemParams {
-    pub contract_address: <Ethereum as Ledger>::HtlcId,
+    pub contract_address: Address,
     pub secret: Secret,
 }
 
@@ -120,7 +120,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
     fn fund_htlc(
         &self,
         htlc_funding_params: EtherHtlcFundingParams,
-    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+    ) -> Result<H256, ledger_htlc_service::Error> {
         let contract = EtherHtlc::new(
             htlc_funding_params.time_lock.into(),
             htlc_funding_params.refund_address,
@@ -152,7 +152,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
         &self,
         _trade_id: TradeId,
         htlc_redeem_params: EtherHtlcRedeemParams,
-    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+    ) -> Result<H256, ledger_htlc_service::Error> {
         let contract_address = htlc_redeem_params.contract_address;
         let secret = htlc_redeem_params.secret;
 
@@ -177,7 +177,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
 
     fn create_query_to_watch_redeeming(
         &self,
-        htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
+        htlc_funding_tx_id: H256,
     ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
         match self.get_contract_address(htlc_funding_tx_id) {
             Ok(Some(eth_htlc_address)) => Ok(EthereumQuery::Transaction {
@@ -209,8 +209,8 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
 
     fn check_and_extract_secret(
         &self,
-        create_htlc_tx_id: <Ethereum as Ledger>::TxId,
-        redeem_htlc_tx_id: <Ethereum as Ledger>::TxId,
+        create_htlc_tx_id: H256,
+        redeem_htlc_tx_id: H256,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         let htlc_address = match self.get_contract_address(create_htlc_tx_id) {
             Ok(Some(address)) => address,
@@ -266,7 +266,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, 
     fn fund_htlc(
         &self,
         htlc_funding_params: Erc20HtlcFundingParams,
-    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+    ) -> Result<H256, ledger_htlc_service::Error> {
         let gas_price = self.gas_price_service.get_gas_price()?;
 
         let tx_id = {
@@ -332,13 +332,13 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, 
         &self,
         _trade_id: TradeId,
         _htlc_redeem_params: Erc20HtlcRedeemParams,
-    ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
+    ) -> Result<H256, ledger_htlc_service::Error> {
         unimplemented!()
     }
 
     fn create_query_to_watch_redeeming(
         &self,
-        _htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
+        _htlc_funding_tx_id: H256,
     ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
         unimplemented!()
     }
@@ -349,8 +349,8 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, 
 
     fn check_and_extract_secret(
         &self,
-        _create_htlc_tx_id: <Ethereum as Ledger>::TxId,
-        _redeem_htlc_tx_id: <Ethereum as Ledger>::TxId,
+        _create_htlc_tx_id: H256,
+        _redeem_htlc_tx_id: H256,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }

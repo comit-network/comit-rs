@@ -9,7 +9,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-use swap_protocols::{ledger::Ledger, rfc003, wire_types};
+use swap_protocols::{rfc003, wire_types};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -18,7 +18,7 @@ pub struct FakeClient {
 }
 
 impl FakeClient {
-    pub fn resolve_request<SL: Ledger, TL: Ledger>(
+    pub fn resolve_request<SL: rfc003::ledger::Ledger, TL: rfc003::ledger::Ledger>(
         &self,
         response: Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
     ) {
@@ -34,8 +34,8 @@ impl FakeClient {
 
 impl Client for FakeClient {
     fn send_swap_request<
-        SL: Ledger,
-        TL: Ledger,
+        SL: rfc003::ledger::Ledger,
+        TL: rfc003::ledger::Ledger,
         SA: Into<wire_types::Asset>,
         TA: Into<wire_types::Asset>,
     >(

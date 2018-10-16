@@ -1,10 +1,10 @@
 use event_store::Event;
-use std::marker::PhantomData;
-use swap_protocols::{ledger::Ledger, rfc003::Secret};
+use std::{marker::PhantomData, net::SocketAddr};
+use swap_protocols::rfc003::{ledger::Ledger, Secret};
 use swaps::common::TradeId;
 
 #[derive(Clone, Debug)]
-pub struct SentSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct StartSwap<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_ledger: SL,
     pub target_ledger: TL,
     pub target_asset: TA,
@@ -13,6 +13,7 @@ pub struct SentSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
     pub target_ledger_success_identity: TL::Identity,
     pub source_ledger_refund_identity: SL::Identity,
     pub source_ledger_lock_duration: SL::LockDuration,
+    pub remote: SocketAddr,
 }
 
 impl<
@@ -20,7 +21,7 @@ impl<
         TL: Ledger,
         SA: Clone + Send + Sync + 'static,
         TA: Clone + Send + Sync + 'static,
-    > Event for SentSwapRequest<SL, TL, SA, TA>
+    > Event for StartSwap<SL, TL, SA, TA>
 {
     type Prev = ();
 }
@@ -55,7 +56,7 @@ impl<
         TA: Clone + Send + Sync + 'static,
     > Event for SwapRequestAccepted<SL, TL, SA, TA>
 {
-    type Prev = SentSwapRequest<SL, TL, SA, TA>;
+    type Prev = StartSwap<SL, TL, SA, TA>;
 }
 #[derive(Clone, Debug)]
 pub struct SwapRequestRejected<SL: Ledger, TL: Ledger, SA, TA> {
@@ -69,7 +70,7 @@ impl<
         TA: Clone + Send + Sync + 'static,
     > Event for SwapRequestRejected<SL, TL, SA, TA>
 {
-    type Prev = SentSwapRequest<SL, TL, SA, TA>;
+    type Prev = StartSwap<SL, TL, SA, TA>;
 }
 
 #[allow(clippy::new_without_default_derive)]

@@ -32,8 +32,6 @@ impl Default for Bitcoin {
 
 impl Ledger for Bitcoin {
     type Quantity = BitcoinQuantity;
-    type LockDuration = Blocks;
-    type HtlcId = OutPoint;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
     type Address = Address;

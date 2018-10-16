@@ -5,12 +5,12 @@ use futures::Future;
 use std::{io, net::SocketAddr, sync::Arc};
 
 use std::{fmt::Debug, panic::RefUnwindSafe};
-use swap_protocols::{ledger::Ledger, rfc003, wire_types};
+use swap_protocols::{rfc003, wire_types};
 
 pub trait Client {
     fn send_swap_request<
-        SL: Ledger,
-        TL: Ledger,
+        SL: rfc003::ledger::Ledger,
+        TL: rfc003::ledger::Ledger,
         SA: Into<wire_types::Asset>,
         TA: Into<wire_types::Asset>,
     >(

@@ -1,6 +1,5 @@
 use swap_protocols::{
-    ledger::Ledger,
-    rfc003::SecretHash,
+    rfc003::{ledger::Ledger, SecretHash},
     wire_types::{Asset, SwapProtocol, SwapRequestHeaders},
 };
 

@@ -176,6 +176,8 @@ fn spawn_gotham_instance(
     let client_pool = comit_client::bam::BamClientPool::default();
     let remote_comit_node_url = settings.comit.remote_comit_node_url;
 
+    let client_pool = Arc::new(comit_client::bam::BamClientPool::default());
+
     let alice_actor = AliceLedgerActor::new(
         Arc::clone(&event_store),
         ledger_query_service,
@@ -184,6 +186,7 @@ fn spawn_gotham_instance(
         ethereum_service,
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
+        Arc::clone(&client_pool),
     );
 
     let (alice_actor_sender, alice_actor_future) = alice_actor.listen();
