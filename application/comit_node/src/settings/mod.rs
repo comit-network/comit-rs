@@ -5,7 +5,7 @@ use config::{Config, ConfigError, File};
 use ethereum_support;
 use secp256k1_support::KeyPair;
 use serde::Deserialize;
-use std::{ffi::OsStr, net::SocketAddr, path::Path};
+use std::{ffi::OsStr, net::SocketAddr, path::Path, time::Duration};
 use url;
 
 #[derive(Debug, Deserialize)]
@@ -15,6 +15,7 @@ pub struct ComitNodeSettings {
     pub swap: Swap,
     pub comit: Comit,
     pub http_api: HttpApi,
+    pub ledger_query_service: LedgerQueryService,
 }
 
 #[derive(Debug, Deserialize)]
@@ -26,7 +27,6 @@ pub struct Ethereum {
     #[serde(with = "serde::keypair")]
     // TODO: Replace with mnemonics and derive keys. See #185
     pub private_key: KeyPair,
-    pub queries_poll_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,9 +39,6 @@ pub struct Bitcoin {
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: ExtendedPrivKey,
-    #[serde(with = "serde::url")]
-    pub lqs_url: url::Url,
-    pub queries_poll_interval_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,6 +60,20 @@ pub struct HttpApi {
     pub address: String,
     pub port: u16,
     pub logging: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LedgerQueryService {
+    #[serde(with = "serde::url")]
+    pub url: url::Url,
+    pub bitcoin: PollParameters,
+    pub ethereum: PollParameters,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PollParameters {
+    #[serde(with = "serde::duration")]
+    pub poll_interval_secs: Duration,
 }
 
 impl ComitNodeSettings {
@@ -106,6 +117,20 @@ mod tests {
         let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
 
         assert_that(&settings).is_ok();
+    }
+
+    #[test]
+    fn can_read_nested_parameters() {
+        let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
+
+        assert_that(&settings).is_ok();
+        assert_that(
+            &settings
+                .unwrap()
+                .ledger_query_service
+                .ethereum
+                .poll_interval_secs,
+        ).is_equal_to(&Duration::from_secs(20));
     }
 
 }

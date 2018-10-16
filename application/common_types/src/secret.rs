@@ -98,7 +98,7 @@ impl Secret {
         Secret::from(secret)
     }
 
-    pub fn from_vec(vec: Vec<u8>) -> Result<Secret, SecretFromErr> {
+    pub fn from_vec(vec: &[u8]) -> Result<Secret, SecretFromErr> {
         if vec.len() != SHA256_DIGEST_LENGTH {
             return Err(SecretFromErr::InvalidLength {
                 expected: SHA256_DIGEST_LENGTH,
@@ -148,7 +148,7 @@ impl FromStr for Secret {
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         let vec = hex::decode(s)?;
-        Self::from_vec(vec)
+        Self::from_vec(&vec)
     }
 }
 

@@ -3,7 +3,6 @@ use bitcoin_rpc_client;
 use bitcoin_support;
 use event_store;
 use reqwest;
-use rocket::response::status::BadRequest;
 use rustc_hex;
 use swap_protocols::rfc003::ledger_htlc_service;
 
@@ -16,13 +15,6 @@ pub enum Error {
     BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),
     Unlocking(String),
-}
-
-impl From<Error> for BadRequest<String> {
-    fn from(e: Error) -> Self {
-        error!("{:?}", e);
-        BadRequest(None)
-    }
 }
 
 impl From<bitcoin_support::serialize::Error> for Error {

@@ -109,24 +109,7 @@ function fund_htlc() {
     ## Getting the vout which pays the BTC HTLC
     htlc_funding_tx_vout=$(echo $output | jq .result.vout | jq ".[] | select(.scriptPubKey.addresses[0] == \"${btc_htlc_address}\")"|jq .n)
 
-    info "HTLC successfully funded - BTC payment was made."
-}
-
-function notify_bob_comit_node_btc_htlc_funded() {
-    id=$1;
-
-    result=$($curl --data-binary "{\"transaction_id\": \"${htlc_funding_tx}\",\"vout\": ${htlc_funding_tx_vout}}" -H 'Content-Type: application/json' $(echo ${BOB_COMIT_NODE_URL} | sed 's/0$/2/' )/ledger/trades/ETH-BTC/$id/buy-order-htlc-funded )
-
-    info_blue "Notified bob about alice's BTC payment (Alice funded BTC HTLC)."
-}
-
-function notify_alice_comit_node_eth_htlc_funded() {
-    id=$1;
-
-    result=$($curl --data-binary "{\"contract_address\": \"${ETH_HTLC_ADDRESS}\"}" -H 'Content-Type: application/json' $(echo ${ALICE_COMIT_NODE_URL} | sed 's/0$/2/')/ledger/trades/ETH-BTC/$id/buy-order-contract-deployed)
-
-    debug $result;
-    info_blue "Notified alice about bob's ETH payment (Bob funded ETH HTLC)."
+    info "HTLC successfully funded - BTC payment was made to ${btc_htlc_address}."
 }
 
 function get_eth_balance() {
@@ -211,7 +194,7 @@ fund_htlc "$alice_htlc_address";
 
 sleep 5;
 
-notify_alice_comit_node_eth_htlc_funded $id;
+# notify_alice_comit_node_eth_htlc_funded $id;
 
 
 secret=$(
@@ -250,7 +233,7 @@ secret=$(
     info "BTC: Total UTXOs before redeem: $old_unspent_num";
 
     # Waiting for Bob to see ETH redeem and redeem BTC
-    sleep 5;
+    sleep 10;
 
     generate_blocks;
 

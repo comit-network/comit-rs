@@ -5,7 +5,7 @@ use comit_wallet::KeyStore;
 use common_types::secret::Secret;
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
-use futures::{future, Future, Stream};
+use futures::{future, sync::mpsc::UnboundedSender, Future, Stream};
 use gotham::{
     handler::{HandlerFuture, IntoHandlerError},
     state::{FromState, State},
@@ -18,6 +18,7 @@ use rand::OsRng;
 use serde_json;
 use std::{
     net::SocketAddr,
+    ops::DerefMut,
     sync::{Arc, Mutex},
 };
 use swap_protocols::{
@@ -114,6 +115,7 @@ pub fn post_swap<C: comit_client::Client + 'static, E: EventStore<TradeId>>(
                                 &client_factory.0,
                                 swap_state.remote_comit_node_socket_addr,
                                 &swap_state.key_store,
+                                &swap_state.alice_actor_sender,
                             )
                         };
                         match result {
@@ -161,6 +163,7 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
     client_factory: &Arc<comit_client::ClientFactory<C>>,
     comit_node_addr: SocketAddr,
     key_store: &Arc<KeyStore>,
+    alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
 ) -> Result<SwapCreated, Error> {
     let id = TradeId::default();
     let secret = {
@@ -206,7 +209,7 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
                         secret,
                         target_ledger_success_identity,
                         source_ledger_refund_identity,
-                        source_ledger_lock_duration: source_ledger_lock_duration.clone(),
+                        source_ledger_lock_duration,
                     };
 
                     event_store.add_event(id, sent_event)?;
@@ -222,11 +225,13 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
                     });
 
                     let event_store = event_store.clone();
+                    let alice_actor_sender = alice_actor_sender.clone();
 
                     tokio::spawn(response_future.then(move |response| {
                         on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, E>(
                             id,
                             &event_store,
+                            &alice_actor_sender,
                             response,
                         );
                         Ok(())
@@ -249,6 +254,7 @@ fn on_swap_response<
 >(
     id: TradeId,
     event_store: &Arc<E>,
+    alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
     result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
     match result {
@@ -262,6 +268,14 @@ fn on_swap_response<
                         accepted.target_ledger_lock_duration,
                     ),
                 ).expect("It should not be possible to be in the wrong state");
+
+            let mut alice_actor_sender = alice_actor_sender
+                .lock()
+                .expect("Issue with unlocking alice actor sender");
+            let alice_actor_sender = alice_actor_sender.deref_mut();
+            alice_actor_sender
+                .unbounded_send(id)
+                .expect("Receiver should always be in scope");
         }
         _ => {
             event_store
@@ -335,17 +349,17 @@ fn handle_get_swap<E: EventStore<TradeId>>(
             >>(id);
             match accepted {
                 Ok(accepted) => {
-                    let contract_deployed = event_store.get_event::<alice_events::ContractDeployed<
+                    let target_funded = event_store.get_event::<alice_events::TargetFunded<
                         Bitcoin,
                         Ethereum,
                         BitcoinQuantity,
                         EtherQuantity,
                     >>(id);
 
-                    match contract_deployed {
-                        Ok(contract_deployed) => {
+                    match target_funded {
+                        Ok(target_funded) => {
                             Some(SwapStatus::Redeemable {
-                                contract_address: contract_deployed.address,
+                                contract_address: target_funded.address,
                                 data: requested.secret,
                                 // TODO: check how much gas we should tell the customer to pay
                                 gas: 3500,
@@ -356,7 +370,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
                                 accepted.source_ledger_success_identity,
                                 requested.source_ledger_refund_identity,
                                 requested.secret.hash(),
-                                requested.source_ledger_lock_duration.clone().into(),
+                                requested.source_ledger_lock_duration.into(),
                             );
                             Some(SwapStatus::Accepted {
                                 funding_required: htlc

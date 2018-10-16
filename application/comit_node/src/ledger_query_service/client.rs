@@ -20,7 +20,7 @@ pub struct QueryResponse<T> {
 }
 
 impl DefaultLedgerQueryServiceApiClient {
-    pub fn new(endpoint: Url) -> Self {
+    pub fn new(endpoint: &Url) -> Self {
         DefaultLedgerQueryServiceApiClient {
             client: Client::new(),
             create_bitcoin_query_endpoint: endpoint.join("queries/bitcoin").expect("invalid url"),

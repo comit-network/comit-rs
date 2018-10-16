@@ -1,7 +1,7 @@
 use comit_client;
 use comit_wallet::KeyStore;
 use event_store;
-
+use futures::sync::mpsc::UnboundedSender;
 use gotham::{
     handler::HandlerFuture,
     middleware::Middleware,
@@ -38,6 +38,7 @@ pub struct SwapState {
     pub rng: Arc<Mutex<OsRng>>,
     pub remote_comit_node_socket_addr: SocketAddr,
     pub key_store: Arc<KeyStore>,
+    pub alice_actor_sender: Arc<Mutex<UnboundedSender<TradeId>>>,
 }
 
 #[derive(StateData, Debug)]
@@ -82,6 +83,7 @@ pub fn create_gotham_router<
     client_factory: Arc<F>,
     remote_comit_node_socket_addr: SocketAddr,
     key_store: Arc<KeyStore>,
+    alice_actor_sender: UnboundedSender<TradeId>,
 ) -> Router {
     let rng = Arc::new(Mutex::new(
         OsRng::new().expect("Failed to get randomness from OS"),
@@ -92,6 +94,7 @@ pub fn create_gotham_router<
             rng,
             remote_comit_node_socket_addr,
             key_store,
+            alice_actor_sender: Arc::new(Mutex::new(alice_actor_sender)),
         },
         client_factory: ClientFactory(client_factory),
         event_store: EventStore(event_store),

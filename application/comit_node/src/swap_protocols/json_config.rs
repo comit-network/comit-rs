@@ -21,7 +21,8 @@ use swap_protocols::{
     rfc003::{
         self,
         ledger_htlc_service::{
-            BitcoinService, EtherHtlcParams, EthereumService, LedgerHtlcService,
+            BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
+            EthereumService, LedgerHtlcService,
         },
     },
     wire_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
@@ -313,7 +314,7 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
 
     let order_taken = event_store.get_event::<OrderTaken<Ethereum, Bitcoin>>(trade_id)?;
 
-    let tx_id = ethereum_service.deploy_htlc(EtherHtlcParams {
+    let tx_id = ethereum_service.fund_htlc(EtherHtlcFundingParams {
         refund_address: order_taken.bob_refund_address,
         success_address: order_taken.alice_success_address,
         time_lock: order_taken.bob_contract_time_lock,
@@ -340,9 +341,13 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
     bitcoin_service: Arc<BitcoinService>,
     ethereum_service: Arc<EthereumService>,
 ) -> Result<(), Error> {
-    let query = LedgerHtlcService::<Ethereum, EtherHtlcParams, EthereumQuery>::create_query_to_watch_redeeming(
-        ethereum_service.as_ref(),
-        eth_htlc_created_tx_id,
+    let query = LedgerHtlcService::<
+        Ethereum,
+        EtherHtlcFundingParams,
+        EtherHtlcRedeemParams,
+        EthereumQuery,
+    >::create_query_to_watch_redeeming(
+        ethereum_service.as_ref(), eth_htlc_created_tx_id
     )?;
 
     // TODO: Should not wait here but composing together is hard :(
@@ -358,28 +363,33 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
             .for_each(move |transaction_id| {
                 debug!("Ledger Query Service returned tx: {}", transaction_id);
 
-                let secret =
-                    LedgerHtlcService::<Ethereum, EtherHtlcParams, EthereumQuery>::check_and_extract_secret(
-                        ethereum_service.as_ref(),
-                        eth_htlc_created_tx_id,
-                        transaction_id,
-                    )?;
+                let secret = LedgerHtlcService::<
+                    Ethereum,
+                    EtherHtlcFundingParams,
+                    EtherHtlcRedeemParams,
+                    EthereumQuery,
+                >::check_and_extract_secret(
+                    ethereum_service.as_ref(),
+                    eth_htlc_created_tx_id,
+                    transaction_id,
+                )?;
 
                 let order_taken: OrderTaken<Ethereum, Bitcoin> = event_store.get_event(trade_id)?;
 
                 let trade_funded: TradeFunded<Ethereum, Bitcoin> =
                     event_store.get_event(trade_id)?;
 
-                let redeem_tx_id = bitcoin_service.redeem_htlc(
+                let htlc_redeem_params = BitcoinHtlcRedeemParams {
+                    htlc_identifier: trade_funded.htlc_identifier,
+                    success_address: order_taken.bob_success_address,
+                    refund_address: order_taken.alice_refund_address,
+                    amount: order_taken.sell_amount,
+                    time_lock: order_taken.alice_contract_time_lock,
+                    keypair: order_taken.bob_success_keypair,
                     secret,
-                    trade_id,
-                    order_taken.bob_success_address,
-                    order_taken.bob_success_keypair,
-                    order_taken.alice_refund_address,
-                    trade_funded.htlc_identifier,
-                    order_taken.sell_amount,
-                    order_taken.alice_contract_time_lock,
-                )?;
+                };
+
+                let redeem_tx_id = bitcoin_service.redeem_htlc(trade_id, htlc_redeem_params)?;
 
                 let contract_redeemed: BobContractRedeemed<Ethereum, Bitcoin> =
                     BobContractRedeemed::new(trade_id, redeem_tx_id.to_string());

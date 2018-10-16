@@ -1,7 +1,7 @@
 use comit_node::{
     gas_price_service::StaticGasPriceService,
     swap_protocols::rfc003::ledger_htlc_service::{
-        self, Erc20HtlcParams, EtherHtlcParams, EthereumService, LedgerHtlcService,
+        self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService, LedgerHtlcService,
     },
 };
 use common_types::{seconds::Seconds, secret::Secret};
@@ -75,7 +75,7 @@ pub fn harness<D: Docker>(
 
             client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
-            let htlc_params = Erc20HtlcParams {
+            let htlc_params = Erc20HtlcFundingParams {
                 refund_address: alice,
                 success_address: bob,
                 time_lock: Seconds::from(params.htlc_timeout),
@@ -84,13 +84,13 @@ pub fn harness<D: Docker>(
                 token_contract_address: token_contract,
             };
             let deployment_result = ethereum_service
-                .deploy_htlc(htlc_params)
+                .fund_htlc(htlc_params)
                 .map(|tx_id| client.get_contract_address(tx_id.clone()));
 
             (Some(token_contract), deployment_result)
         }
         HtlcType::Eth { htlc_eth_value } => {
-            let htlc_params = EtherHtlcParams {
+            let htlc_params = EtherHtlcFundingParams {
                 refund_address: alice,
                 success_address: bob,
                 time_lock: Seconds::from(params.htlc_timeout),
@@ -98,7 +98,7 @@ pub fn harness<D: Docker>(
                 secret_hash: Secret::from(params.htlc_secret).hash(),
             };
             let deployment_result = ethereum_service
-                .deploy_htlc(htlc_params)
+                .fund_htlc(htlc_params)
                 .map(|tx_id| client.get_contract_address(tx_id.clone()));
 
             (None, deployment_result)
