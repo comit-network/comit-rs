@@ -1,5 +1,5 @@
 use bitcoin_htlc;
-use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Network};
+use bitcoin_support::{BitcoinQuantity, Network};
 use ethereum_support::{web3::types::Bytes, Address as EthereumAddress, EtherQuantity};
 use event_store::EventStore;
 use failure::{err_msg, Error};
@@ -17,8 +17,8 @@ use swap_protocols::{
     rfc003::{
         ethereum::{EtherHtlc, Htlc},
         ledger_htlc_service::{
-            BitcoinHtlcParams, BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcParams,
-            EtherHtlcRedeemParams, EthereumService, LedgerHtlcService,
+            BitcoinHtlcFundingParams, BitcoinHtlcRedeemParams, BitcoinService,
+            EtherHtlcFundingParams, EtherHtlcRedeemParams, EthereumService, LedgerHtlcService,
         },
     },
 };
@@ -195,19 +195,9 @@ where
             .get_event(self.trade_id)
             .expect("We cannot be in the wrong state");
 
-        let refund_address = BitcoinAddress::from_pubkeyhash_and_network(
-            sent_swap_request.source_ledger_refund_identity,
-            self.bitcoin_network,
-        );
-
-        let success_address = BitcoinAddress::from_pubkeyhash_and_network(
-            swap_request_accepted.source_ledger_success_identity,
-            self.bitcoin_network,
-        );
-
-        let bitcoin_htlc_params = BitcoinHtlcParams {
-            refund_address,
-            success_address,
+        let bitcoin_htlc_params = BitcoinHtlcFundingParams {
+            refund_pubkey_hash: sent_swap_request.source_ledger_refund_identity,
+            success_pubkey_hash: swap_request_accepted.source_ledger_success_identity,
             time_lock: sent_swap_request.source_ledger_lock_duration,
             amount: sent_swap_request.source_asset,
             secret_hash: sent_swap_request.secret.hash(),
@@ -215,7 +205,7 @@ where
 
         let query = LedgerHtlcService::<
             Bitcoin,
-            BitcoinHtlcParams,
+            BitcoinHtlcFundingParams,
             BitcoinHtlcRedeemParams,
             BitcoinQuery,
         >::create_query_to_watch_funding(
@@ -249,8 +239,8 @@ where
                         let bitcoin_htlc_params = bitcoin_htlc_params.clone();
 
                         let btc_htlc_address = bitcoin_htlc::Htlc::new(
-                            bitcoin_htlc_params.success_address,
-                            bitcoin_htlc_params.refund_address,
+                            bitcoin_htlc_params.success_pubkey_hash,
+                            bitcoin_htlc_params.refund_pubkey_hash,
                             bitcoin_htlc_params.secret_hash,
                             bitcoin_htlc_params.time_lock.into(),
                         ).compute_address(self.bitcoin_network);
@@ -295,7 +285,7 @@ where
             .get_event(self.trade_id)
             .expect("We cannot be in the wrong state");;
 
-        let ethereum_htlc_params = EtherHtlcParams {
+        let ethereum_htlc_params = EtherHtlcFundingParams {
             refund_address: swap_request_accepted.target_ledger_refund_identity,
             success_address: sent_swap_request.target_ledger_success_identity,
             time_lock: swap_request_accepted.target_ledger_lock_duration,
@@ -305,7 +295,7 @@ where
 
         let query = LedgerHtlcService::<
             Ethereum,
-            EtherHtlcParams,
+            EtherHtlcFundingParams,
             EtherHtlcRedeemParams,
             EthereumQuery,
         >::create_query_to_watch_funding(

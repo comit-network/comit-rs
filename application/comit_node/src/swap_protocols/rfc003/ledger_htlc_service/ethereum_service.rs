@@ -90,7 +90,7 @@ pub struct EthereumService {
 }
 
 #[derive(Clone, Debug)]
-pub struct EtherHtlcParams {
+pub struct EtherHtlcFundingParams {
     pub refund_address: Address,
     pub success_address: Address,
     pub time_lock: Seconds,
@@ -99,10 +99,13 @@ pub struct EtherHtlcParams {
 }
 
 #[derive(Clone, Debug)]
-pub struct EtherHtlcRedeemParams(pub <Ethereum as Ledger>::HtlcId);
+pub struct EtherHtlcRedeemParams {
+    pub contract_address: <Ethereum as Ledger>::HtlcId,
+    pub secret: Secret,
+}
 
 #[derive(Clone, Debug)]
-pub struct Erc20HtlcParams {
+pub struct Erc20HtlcFundingParams {
     pub refund_address: Address,
     pub success_address: Address,
     pub time_lock: Seconds,
@@ -114,21 +117,21 @@ pub struct Erc20HtlcParams {
 #[derive(Clone, Debug)]
 pub struct Erc20HtlcRedeemParams {}
 
-impl LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, EthereumQuery>
+impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, EthereumQuery>
     for EthereumService
 {
-    fn deploy_htlc(
+    fn fund_htlc(
         &self,
-        htlc_params: EtherHtlcParams,
+        htlc_funding_params: EtherHtlcFundingParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
         let contract = EtherHtlc::new(
-            htlc_params.time_lock.into(),
-            htlc_params.refund_address,
-            htlc_params.success_address,
-            htlc_params.secret_hash,
+            htlc_funding_params.time_lock.into(),
+            htlc_funding_params.refund_address,
+            htlc_funding_params.success_address,
+            htlc_funding_params.secret_hash,
         );
 
-        let funding = htlc_params.amount.wei();
+        let funding = htlc_funding_params.amount.wei();
 
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_deployment(
@@ -150,11 +153,11 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, Ethereu
 
     fn redeem_htlc(
         &self,
-        secret: Secret,
         _trade_id: TradeId,
         htlc_redeem_params: EtherHtlcRedeemParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
-        let contract_address = htlc_redeem_params.0;
+        let contract_address = htlc_redeem_params.contract_address;
+        let secret = htlc_redeem_params.secret;
 
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_invocation(
@@ -190,7 +193,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, Ethereu
         }
     }
 
-    fn create_query_to_watch_funding(&self, htlc_params: EtherHtlcParams) -> EthereumQuery {
+    fn create_query_to_watch_funding(&self, htlc_params: EtherHtlcFundingParams) -> EthereumQuery {
         let data = EtherHtlc::new(
             htlc_params.time_lock.into(),
             htlc_params.refund_address,
@@ -260,12 +263,12 @@ impl LedgerHtlcService<Ethereum, EtherHtlcParams, EtherHtlcRedeemParams, Ethereu
     }
 }
 
-impl LedgerHtlcService<Ethereum, Erc20HtlcParams, Erc20HtlcRedeemParams, EthereumQuery>
+impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, EthereumQuery>
     for EthereumService
 {
-    fn deploy_htlc(
+    fn fund_htlc(
         &self,
-        htlc_params: Erc20HtlcParams,
+        htlc_funding_params: Erc20HtlcFundingParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
         let gas_price = self.gas_price_service.get_gas_price()?;
 
@@ -279,9 +282,9 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams, Erc20HtlcRedeemParams, Ethereu
                 .calculate_contract_address(*nonce + U256::from(1));
 
             let approval_transaction = UnsignedTransaction::new_erc20_approval(
-                htlc_params.token_contract_address,
+                htlc_funding_params.token_contract_address,
                 htlc_address,
-                htlc_params.amount,
+                htlc_funding_params.amount,
                 gas_price,
                 *nonce,
             );
@@ -295,13 +298,13 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams, Erc20HtlcRedeemParams, Ethereu
             EthereumService::increment_nonce(nonce);
 
             let htlc = Erc20Htlc::new(
-                htlc_params.time_lock.into(),
-                htlc_params.refund_address,
-                htlc_params.success_address,
-                htlc_params.secret_hash,
+                htlc_funding_params.time_lock.into(),
+                htlc_funding_params.refund_address,
+                htlc_funding_params.success_address,
+                htlc_funding_params.secret_hash,
                 htlc_address,
-                htlc_params.token_contract_address,
-                htlc_params.amount,
+                htlc_funding_params.token_contract_address,
+                htlc_funding_params.amount,
             );
 
             let htlc_code = htlc.compile_to_hex();
@@ -330,7 +333,6 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams, Erc20HtlcRedeemParams, Ethereu
 
     fn redeem_htlc(
         &self,
-        _secret: Secret,
         _trade_id: TradeId,
         _htlc_redeem_params: Erc20HtlcRedeemParams,
     ) -> Result<<Ethereum as Ledger>::TxId, ledger_htlc_service::Error> {
@@ -344,7 +346,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcParams, Erc20HtlcRedeemParams, Ethereu
         unimplemented!()
     }
 
-    fn create_query_to_watch_funding(&self, _htlc_params: Erc20HtlcParams) -> EthereumQuery {
+    fn create_query_to_watch_funding(&self, _htlc_params: Erc20HtlcFundingParams) -> EthereumQuery {
         unimplemented!()
     }
 
@@ -556,7 +558,7 @@ mod tests {
             0,
         );
 
-        let params = Erc20HtlcParams {
+        let params = Erc20HtlcFundingParams {
             refund_address: Address::from("0000000000000000000000000000000000000001"),
             success_address: Address::from("0000000000000000000000000000000000000002"),
             time_lock: Seconds::new(100),
@@ -566,7 +568,7 @@ mod tests {
         };
 
         // Act
-        let result = service.deploy_htlc(params.clone());
+        let result = service.fund_htlc(params.clone());
 
         // Assert
         let sent_bytes = ethereum_api.sent_bytes.lock().unwrap();

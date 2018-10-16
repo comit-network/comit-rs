@@ -1,7 +1,9 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_htlc::bitcoin_htlc;
 use bitcoin_rpc_client;
-use bitcoin_support::{self, PubkeyHash, Script, Transaction, TxOut};
+use bitcoin_support::{
+    self, Address, BitcoinQuantity, Blocks, PubkeyHash, Script, Transaction, TxOut,
+};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use common_types::secret::{Secret, SecretHash};
 use ledger_query_service::BitcoinQuery;
@@ -51,14 +53,12 @@ pub struct BitcoinService {
     btc_bob_redeem_address: bitcoin_support::Address,
 }
 
-use bitcoin_support::{Address, BitcoinQuantity, Blocks};
-
 // TODO: Maybe interesting to refactor and have the bitcoin service generate the
 // transient/redeem keypairs transparently (ie, receiving the keystore) see #296
 #[derive(Clone, Debug)]
-pub struct BitcoinHtlcParams {
-    pub refund_address: Address,
-    pub success_address: Address,
+pub struct BitcoinHtlcFundingParams {
+    pub refund_pubkey_hash: PubkeyHash,
+    pub success_pubkey_hash: PubkeyHash,
     pub time_lock: Blocks,
     pub amount: BitcoinQuantity,
     pub secret_hash: SecretHash,
@@ -72,34 +72,34 @@ pub struct BitcoinHtlcRedeemParams {
     pub amount: BitcoinQuantity,
     pub time_lock: Blocks,
     pub keypair: KeyPair,
+    pub secret: Secret,
 }
 
-impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinHtlcRedeemParams, BitcoinQuery>
+impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParams, BitcoinQuery>
     for BitcoinService
 {
-    fn deploy_htlc(
+    fn fund_htlc(
         &self,
-        htlc_params: BitcoinHtlcParams,
+        htlc_funding_params: BitcoinHtlcFundingParams,
     ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
         let htlc = bitcoin_htlc::Htlc::new(
-            htlc_params.success_address,
-            htlc_params.refund_address,
-            htlc_params.secret_hash,
-            htlc_params.time_lock.into(),
+            htlc_funding_params.success_pubkey_hash,
+            htlc_funding_params.refund_pubkey_hash,
+            htlc_funding_params.secret_hash,
+            htlc_funding_params.time_lock.into(),
         );
 
         let htlc_address = htlc.compute_address(self.network);
 
         let tx_id = self
             .client
-            .send_to_address(&htlc_address.into(), htlc_params.amount.bitcoin())??;
+            .send_to_address(&htlc_address.into(), htlc_funding_params.amount.bitcoin())??;
 
         Ok(tx_id)
     }
 
     fn redeem_htlc(
         &self,
-        secret: Secret,
         trade_id: TradeId,
         htlc_redeem_params: BitcoinHtlcRedeemParams,
     ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
@@ -109,6 +109,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinHtlcRedeemParams, Bitc
         let lock_time = htlc_redeem_params.time_lock;
         let bob_success_keypair = htlc_redeem_params.keypair;
         let htlc_identifier = htlc_redeem_params.htlc_identifier;
+        let secret = htlc_redeem_params.secret;
 
         let bob_success_pubkey_hash: PubkeyHash = bob_success_address.into();
 
@@ -174,10 +175,10 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcParams, BitcoinHtlcRedeemParams, Bitc
         unimplemented!()
     }
 
-    fn create_query_to_watch_funding(&self, htlc_params: BitcoinHtlcParams) -> BitcoinQuery {
+    fn create_query_to_watch_funding(&self, htlc_params: BitcoinHtlcFundingParams) -> BitcoinQuery {
         let htlc = bitcoin_htlc::Htlc::new(
-            htlc_params.success_address,
-            htlc_params.refund_address,
+            htlc_params.success_pubkey_hash,
+            htlc_params.refund_pubkey_hash,
             htlc_params.secret_hash,
             htlc_params.time_lock.into(),
         );
