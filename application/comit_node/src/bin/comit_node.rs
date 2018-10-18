@@ -13,7 +13,6 @@ extern crate event_store;
 extern crate gotham;
 extern crate logging;
 extern crate tokio;
-extern crate web3;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
 use bitcoin_support::Address as BitcoinAddress;

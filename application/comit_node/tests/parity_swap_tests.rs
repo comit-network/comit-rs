@@ -15,7 +15,6 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 #[macro_use]
 extern crate lazy_static;
-extern crate web3;
 
 mod htlc_harness;
 mod parity_client;

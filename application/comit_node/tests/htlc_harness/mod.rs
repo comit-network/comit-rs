@@ -5,7 +5,13 @@ use comit_node::{
     },
 };
 use common_types::{seconds::Seconds, secret::Secret};
-use ethereum_support::{EtherQuantity, ToEthereumAddress};
+use ethereum_support::{
+    web3::{
+        transports::EventLoopHandle,
+        types::{Address, U256},
+    },
+    EtherQuantity, ToEthereumAddress,
+};
 use ethereum_wallet::fake::StaticFakeWallet;
 use parity_client::ParityClient;
 use pretty_env_logger;
@@ -13,10 +19,6 @@ use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::Duration};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
-use web3::{
-    transports::EventLoopHandle,
-    types::{Address, U256},
-};
 
 pub enum HtlcType {
     Erc20 {

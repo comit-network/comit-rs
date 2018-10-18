@@ -25,7 +25,6 @@ extern crate serde;
 extern crate spectral;
 extern crate tc_web3_client;
 extern crate testcontainers;
-extern crate web3;
 
 mod mocks;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Blocks, TransactionId};
