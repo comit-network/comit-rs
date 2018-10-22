@@ -11,22 +11,23 @@ use comit_node::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
         rfc003::{
             ledger::Ledger,
-            state_machine::{
-                self, Context, Futures, {events, SwapOutcome},
-            },
+            state_machine::{self, events, Context, Futures, StateMachineError, SwapOutcome},
             AcceptResponse, Request,
         },
         wire_types,
     },
 };
 use ethereum_support::EtherQuantity;
-use futures::future;
+use futures::{
+    future::{self, Either},
+    Future,
+};
 use hex::FromHex;
 use std::str::FromStr;
 
 #[derive(Default)]
 struct TestFutures<SL: Ledger, TL: Ledger> {
-    response: Option<Box<events::Response<SL, TL>>>,
+    request: Option<Box<events::Response<SL, TL>>>,
 }
 
 impl<
@@ -40,17 +41,9 @@ impl<
         &mut self,
         request: &Request<SL, TL, SA, TA>,
     ) -> &mut Box<events::Response<SL, TL>> {
-        self.response
+        self.request
             .get_or_insert_with(|| Box::new(future::ok(Err(SwapReject::Rejected))))
     }
-
-    // fn send_request(&self, request: &Request<SL, TL, SA, TA>) -> Box<events::Response<SL, TL>> {
-    //     Box::new(
-    //         self.comit_client
-    //             .send_swap_request(request.clone())
-    //             .map_err(StateMachineError::SwapResponse),
-    //     )
-    // }
 
     fn source_htlc_funded(
         &mut self,
@@ -86,8 +79,12 @@ impl<
 
 #[test]
 fn when_swap_is_rejected_go_to_final_reject() {
-    let futures = TestFutures::default();
+    let test_futures = TestFutures::default();
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
+
+    let context = Context {
+        futures: Box::new(test_futures),
+    };
 
     let final_state = runtime.block_on(state_machine::Swap::<
         Bitcoin,
@@ -111,9 +108,7 @@ fn when_swap_is_rejected_go_to_final_reject() {
             source_ledger: Bitcoin::regtest(),
             target_ledger: Ethereum::default(),
         },
-        Context {
-            futures: Box::new(futures),
-        },
+        context,
     ));
 
     assert_eq!(final_state, Ok(SwapOutcome::Rejected))

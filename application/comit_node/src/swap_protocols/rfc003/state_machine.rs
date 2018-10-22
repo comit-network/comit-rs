@@ -67,6 +67,12 @@ pub struct Context<SL: Ledger, TL: Ledger, SA, TA> {
     pub futures: Box<Futures<SL, TL, SA, TA>>,
 }
 
+impl<SL: Ledger, TL: Ledger, SA, TA> Clone for Context<SL, TL, SA, TA> {
+    fn clone(&self) -> Self {
+        unimplemented!()
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome {
     Rejected,
