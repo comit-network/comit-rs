@@ -128,7 +128,6 @@ where
                         target_ledger: start_event.target_ledger,
                     },
                     unimplemented!(),
-                    None,
                 ).map_err(|e| ())
                 .map(|_| unimplemented!())
             }).map_err(|e| {

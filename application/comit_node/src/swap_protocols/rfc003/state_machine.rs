@@ -1,5 +1,5 @@
 use super::AcceptResponse;
-use comit_client::{SwapReject, SwapResponseError};
+use comit_client::SwapResponseError;
 use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use swap_protocols::rfc003::{ledger::Ledger, messages::Request};
@@ -33,26 +33,33 @@ pub mod events {
 }
 
 pub trait Services<SL: Ledger, TL: Ledger, SA, TA>: Send {
-    fn send_request(&self, request: &Request<SL, TL, SA, TA>) -> Box<events::Response<SL, TL>>;
+    fn send_request(
+        &mut self,
+        request: &Request<SL, TL, SA, TA>,
+    ) -> &mut Box<events::Response<SL, TL>>;
 
     fn source_htlc_funded(
-        &self,
+        &mut self,
         request: &Request<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
-    ) -> Box<events::Funded<SL>>;
+    ) -> &mut Box<events::Funded<SL>>;
 
-    fn source_htlc_refunded(&self, source_htlc_id: &SL::HtlcId) -> Box<events::Refunded<SL>>;
-    fn source_htlc_redeemed(&self, source_htlc_id: &SL::HtlcId) -> Box<events::Redeemed<SL>>;
-
-    fn target_htlc_funded(
-        &self,
+    fn source_htlc_refunded_target_htlc_funded(
+        &mut self,
         request: &Request<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
-    ) -> Box<events::Funded<TL>>;
+        source_htlc_id: &SL::HtlcId,
+    ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>>;
 
-    fn target_htlc_refunded(&self, target_htlc_id: &TL::HtlcId) -> Box<events::Refunded<TL>>;
+    fn target_htlc_redeemed_or_refunded(
+        &mut self,
+        target_htlc_id: &TL::HtlcId,
+    ) -> &mut Box<events::RedeemedOrRefunded<TL>>;
 
-    fn target_htlc_redeemed(&self, target_htlc_id: &TL::HtlcId) -> Box<events::Redeemed<TL>>;
+    fn source_htlc_redeemed_or_refunded(
+        &mut self,
+        source_htlc_id: &SL::HtlcId,
+    ) -> &mut Box<events::RedeemedOrRefunded<SL>>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -75,7 +82,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         request: Request<SL, TL, SA, TA>,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        inner_future: Option<Box<events::Response<SL, TL>>>,
     },
 
     #[state_machine_future(transitions(SourceFunded))]
@@ -84,7 +90,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        inner_future: Option<Box<events::Funded<SL>>>,
     },
 
     #[state_machine_future(transitions(BothFunded, Final))]
@@ -94,7 +99,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         source_htlc_id: SL::HtlcId,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        inner_future: Option<Box<events::SourceRefundedOrTargetFunded<SL, TL>>>,
     },
 
     #[state_machine_future(transitions(
@@ -110,8 +114,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         source_htlc_id: SL::HtlcId,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        source_htlc_redeemed_or_refunded_future: Option<Box<events::RedeemedOrRefunded<SL>>>,
-        target_htlc_redeemed_or_refunded_future: Option<Box<events::RedeemedOrRefunded<TL>>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -121,7 +123,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         source_htlc_id: SL::HtlcId,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        source_htlc_redeemed_or_refunded_future: Option<Box<events::RedeemedOrRefunded<SL>>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -131,7 +132,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         target_htlc_id: TL::HtlcId,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        target_htlc_redeemed_or_refunded_future: Option<Box<events::RedeemedOrRefunded<TL>>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -141,7 +141,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         target_htlc_id: TL::HtlcId,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        target_htlc_redeemed_or_refunded_future: Option<Box<events::RedeemedOrRefunded<TL>>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -152,7 +151,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         source_htlc_id: SL::HtlcId,
 
         services: Box<Services<SL, TL, SA, TA>>,
-        source_htlc_redeemed_or_refunded_future: Option<Box<events::RedeemedOrRefunded<SL>>>,
     },
 
     #[state_machine_future(ready)]
@@ -162,55 +160,26 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     Error(StateMachineError),
 }
 
-macro_rules! transition_save {
-    ( $new_state:expr ) => {
-        error!("LOL");
-        return Ok(::futures::Async::Ready($new_state.into()));
-    };
-}
-
-macro_rules! select2 {
-    ($f1:expr, $f2: expr) => {
-        $f1.select2($f2).map_err(|either| match either {
-            Either::A((error, _)) => error,
-            Either::B((error, _)) => error,
-        })
-    };
-}
-
 impl<SL: Ledger, TL: Ledger, SA, TA> Sent<SL, TL, SA, TA> {
     fn inner_future(&mut self) -> &mut Box<events::Response<SL, TL>> {
-        let (services, request) = (&self.services, &self.request);
-
-        self.inner_future
-            .get_or_insert_with(|| services.send_request(request))
+        self.services.send_request(&self.request)
     }
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> Accepted<SL, TL, SA, TA> {
     fn inner_future(&mut self) -> &mut Box<events::Funded<SL>> {
-        let (services, request, response) = (&self.services, &self.request, &self.response);
-
-        self.inner_future
-            .get_or_insert_with(|| services.source_htlc_funded(request, response))
+        self.services
+            .source_htlc_funded(&self.request, &self.response)
     }
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
     fn inner_future(&mut self) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
-        let (services, request, response, source_htlc_id) = (
-            &self.services,
+        self.services.source_htlc_refunded_target_htlc_funded(
             &self.request,
             &self.response,
             &self.source_htlc_id,
-        );
-
-        self.inner_future.get_or_insert_with(|| {
-            Box::new(select2!(
-                services.source_htlc_refunded(source_htlc_id),
-                services.target_htlc_funded(request, response)
-            ))
-        })
+        )
     }
 }
 
@@ -218,29 +187,15 @@ impl<SL: Ledger, TL: Ledger, SA, TA> BothFunded<SL, TL, SA, TA> {
     fn target_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        let (services, target_htlc_id) = (&self.services, &self.target_htlc_id);
-
-        self.target_htlc_redeemed_or_refunded_future
-            .get_or_insert_with(|| {
-                Box::new(select2!(
-                    services.target_htlc_redeemed(target_htlc_id),
-                    services.target_htlc_refunded(target_htlc_id)
-                ))
-            })
+        self.services
+            .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
     }
 
     fn source_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        let (services, source_htlc_id) = (&self.services, &self.source_htlc_id);
-
-        self.source_htlc_redeemed_or_refunded_future
-            .get_or_insert_with(|| {
-                Box::new(select2!(
-                    services.source_htlc_redeemed(source_htlc_id),
-                    services.source_htlc_refunded(source_htlc_id)
-                ))
-            })
+        self.services
+            .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
     }
 }
 
@@ -248,15 +203,8 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceFundedTargetRefunded<SL, TL, SA, TA> 
     fn source_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        let (services, source_htlc_id) = (&self.services, &self.source_htlc_id);
-
-        self.source_htlc_redeemed_or_refunded_future
-            .get_or_insert_with(|| {
-                Box::new(select2!(
-                    services.source_htlc_redeemed(source_htlc_id),
-                    services.source_htlc_refunded(source_htlc_id)
-                ))
-            })
+        self.services
+            .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
     }
 }
 
@@ -264,14 +212,8 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceRefundedTargetFunded<SL, TL, SA, TA> 
     fn target_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        let (services, target_htlc_id) = (&self.services, &self.target_htlc_id);
-        self.target_htlc_redeemed_or_refunded_future
-            .get_or_insert_with(|| {
-                Box::new(select2!(
-                    services.target_htlc_redeemed(target_htlc_id),
-                    services.target_htlc_refunded(target_htlc_id)
-                ))
-            })
+        self.services
+            .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
     }
 }
 
@@ -279,14 +221,8 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceRedeemedTargetFunded<SL, TL, SA, TA> 
     fn target_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        let (services, target_htlc_id) = (&self.services, &self.target_htlc_id);
-        self.target_htlc_redeemed_or_refunded_future
-            .get_or_insert_with(|| {
-                Box::new(select2!(
-                    services.target_htlc_redeemed(target_htlc_id),
-                    services.target_htlc_refunded(target_htlc_id)
-                ))
-            })
+        self.services
+            .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
     }
 }
 
@@ -294,15 +230,8 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceFundedTargetRedeemed<SL, TL, SA, TA> 
     fn source_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        let (services, source_htlc_id) = (&self.services, &self.source_htlc_id);
-
-        self.source_htlc_redeemed_or_refunded_future
-            .get_or_insert_with(|| {
-                Box::new(select2!(
-                    services.source_htlc_redeemed(source_htlc_id),
-                    services.source_htlc_refunded(source_htlc_id)
-                ))
-            })
+        self.services
+            .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
     }
 }
 
@@ -319,7 +248,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                 services: state.services,
                 request: state.request,
                 response: swap_accepted,
-                inner_future: None,
             }),
             Err(rejected) => transition!(Final(SwapOutcome::Rejected)),
         }
@@ -337,7 +265,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
             response: state.response,
             services: state.services,
             source_htlc_id,
-            inner_future: None
         })
     }
 
@@ -357,8 +284,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     services: state.services,
                     source_htlc_id: state.source_htlc_id,
                     target_htlc_id,
-                    target_htlc_redeemed_or_refunded_future: None,
-                    source_htlc_redeemed_or_refunded_future: None
                 })
             }
         }
@@ -377,14 +302,12 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
                     services: state.services,
-                    target_htlc_redeemed_or_refunded_future: None
                 }),
                 Either::B((source_refunded_txid, _)) => transition!(SourceRefundedTargetFunded {
                     request: state.request,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
                     services: state.services,
-                    target_htlc_redeemed_or_refunded_future: None
                 }),
             }
         }
@@ -398,7 +321,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     target_redeemed_txid,
                     source_htlc_id: state.source_htlc_id,
                     services: state.services,
-                    source_htlc_redeemed_or_refunded_future: None,
                 })
             }
             Either::B((target_refunded_txid, _)) => {
@@ -408,7 +330,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     response: state.response,
                     services: state.services,
                     source_htlc_id: state.source_htlc_id,
-                    source_htlc_redeemed_or_refunded_future: None,
                 })
             }
         }
