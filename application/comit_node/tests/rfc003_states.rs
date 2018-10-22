@@ -1,41 +1,47 @@
 extern crate bitcoin_support;
 extern crate comit_node;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate futures;
 extern crate hex;
 extern crate tokio;
 use bitcoin_support::{BitcoinQuantity, Blocks};
 use comit_node::{
-    comit_client::{fake::FakeClient, Client, SwapReject},
+    comit_client::SwapReject,
     swap_protocols::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
         rfc003::{
             ledger::Ledger,
-            state_machine::{self, events, Services, StateMachineError, SwapOutcome},
+            state_machine::{
+                self, Context, Futures, {events, SwapOutcome},
+            },
             AcceptResponse, Request,
         },
         wire_types,
     },
 };
-use common_types::secret::Secret;
 use ethereum_support::EtherQuantity;
-use futures::{future, Future};
+use futures::future;
 use hex::FromHex;
-use std::{marker::PhantomData, str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 #[derive(Default)]
-struct TestServices {}
+struct TestFutures<SL: Ledger, TL: Ledger> {
+    response: Option<Box<events::Response<SL, TL>>>,
+}
 
 impl<
         SL: Ledger,
         TL: Ledger,
         SA: Into<wire_types::Asset> + Clone,
         TA: Into<wire_types::Asset> + Clone,
-    > Services<SL, TL, SA, TA> for TestServices
+    > Futures<SL, TL, SA, TA> for TestFutures<SL, TL>
 {
-    fn send_request(&self, request: &Request<SL, TL, SA, TA>) -> Box<events::Response<SL, TL>> {
-        Box::new(future::ok(Err(SwapReject::Rejected)))
+    fn send_request(
+        &mut self,
+        request: &Request<SL, TL, SA, TA>,
+    ) -> &mut Box<events::Response<SL, TL>> {
+        self.response
+            .get_or_insert_with(|| Box::new(future::ok(Err(SwapReject::Rejected))))
     }
 
     // fn send_request(&self, request: &Request<SL, TL, SA, TA>) -> Box<events::Response<SL, TL>> {
@@ -47,40 +53,40 @@ impl<
     // }
 
     fn source_htlc_funded(
-        &self,
+        &mut self,
         request: &Request<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
-    ) -> Box<events::Funded<SL>> {
+    ) -> &mut Box<events::Funded<SL>> {
         unimplemented!()
     }
 
-    fn source_htlc_refunded(&self, source_htlc_id: &SL::HtlcId) -> Box<events::Refunded<SL>> {
-        unimplemented!()
-    }
-    fn source_htlc_redeemed(&self, source_htlc_id: &SL::HtlcId) -> Box<events::Redeemed<SL>> {
-        unimplemented!()
-    }
-
-    fn target_htlc_funded(
-        &self,
+    fn source_htlc_refunded_target_htlc_funded(
+        &mut self,
         request: &Request<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
-    ) -> Box<events::Funded<TL>> {
+        source_htlc_id: &SL::HtlcId,
+    ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
         unimplemented!()
     }
 
-    fn target_htlc_refunded(&self, target_htlc_id: &TL::HtlcId) -> Box<events::Refunded<TL>> {
+    fn target_htlc_redeemed_or_refunded(
+        &mut self,
+        target_htlc_id: &TL::HtlcId,
+    ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
         unimplemented!()
     }
 
-    fn target_htlc_redeemed(&self, target_htlc_id: &TL::HtlcId) -> Box<events::Redeemed<TL>> {
+    fn source_htlc_redeemed_or_refunded(
+        &mut self,
+        source_htlc_id: &SL::HtlcId,
+    ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
         unimplemented!()
     }
 }
 
 #[test]
 fn when_swap_is_rejected_go_to_final_reject() {
-    let test_services = TestServices::default();
+    let futures = TestFutures::default();
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
     let final_state = runtime.block_on(state_machine::Swap::<
@@ -105,8 +111,9 @@ fn when_swap_is_rejected_go_to_final_reject() {
             source_ledger: Bitcoin::regtest(),
             target_ledger: Ethereum::default(),
         },
-        Box::new(test_services),
-        None,
+        Context {
+            futures: Box::new(futures),
+        },
     ));
 
     assert_eq!(final_state, Ok(SwapOutcome::Rejected))

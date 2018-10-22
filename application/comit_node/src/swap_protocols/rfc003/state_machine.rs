@@ -62,6 +62,10 @@ pub trait Futures<SL: Ledger, TL: Ledger, SA, TA>: Send {
     ) -> &mut Box<events::RedeemedOrRefunded<SL>>;
 }
 
+pub struct Context<SL: Ledger, TL: Ledger, SA, TA> {
+    pub futures: Box<Futures<SL, TL, SA, TA>>,
+}
+
 #[derive(Debug, PartialEq)]
 pub enum SwapOutcome {
     Rejected,
@@ -76,20 +80,15 @@ pub enum SwapOutcome {
 /// - Side-effects (call to `Services` are only caused if the Option<Future> inside the state is None
 ///
 #[derive(StateMachineFuture)]
+#[state_machine_future(context = "Context")]
 pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     #[state_machine_future(start, transitions(Accepted, Final))]
-    Sent {
-        request: Request<SL, TL, SA, TA>,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
-    },
+    Sent { request: Request<SL, TL, SA, TA> },
 
     #[state_machine_future(transitions(SourceFunded))]
     Accepted {
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(BothFunded, Final))]
@@ -97,8 +96,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         source_htlc_id: SL::HtlcId,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(
@@ -112,8 +109,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
         source_htlc_id: SL::HtlcId,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -121,8 +116,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         source_htlc_id: SL::HtlcId,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -130,8 +123,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -139,8 +130,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -149,8 +138,6 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
         target_redeemed_txid: TL::TxId,
         source_htlc_id: SL::HtlcId,
-
-        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(ready)]
@@ -160,92 +147,17 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     Error(StateMachineError),
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> Sent<SL, TL, SA, TA> {
-    fn inner_future(&mut self) -> &mut Box<events::Response<SL, TL>> {
-        self.futures.send_request(&self.request)
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> Accepted<SL, TL, SA, TA> {
-    fn inner_future(&mut self) -> &mut Box<events::Funded<SL>> {
-        self.futures
-            .source_htlc_funded(&self.request, &self.response)
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
-    fn inner_future(&mut self) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
-        self.futures.source_htlc_refunded_target_htlc_funded(
-            &self.request,
-            &self.response,
-            &self.source_htlc_id,
-        )
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> BothFunded<SL, TL, SA, TA> {
-    fn target_htlc_redeemed_or_refunded_future(
-        &mut self,
-    ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        self.futures
-            .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
-    }
-
-    fn source_htlc_redeemed_or_refunded_future(
-        &mut self,
-    ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        self.futures
-            .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> SourceFundedTargetRefunded<SL, TL, SA, TA> {
-    fn source_htlc_redeemed_or_refunded_future(
-        &mut self,
-    ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        self.futures
-            .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> SourceRefundedTargetFunded<SL, TL, SA, TA> {
-    fn target_htlc_redeemed_or_refunded_future(
-        &mut self,
-    ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        self.futures
-            .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> SourceRedeemedTargetFunded<SL, TL, SA, TA> {
-    fn target_htlc_redeemed_or_refunded_future(
-        &mut self,
-    ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        self.futures
-            .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> SourceFundedTargetRedeemed<SL, TL, SA, TA> {
-    fn source_htlc_redeemed_or_refunded_future(
-        &mut self,
-    ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        self.futures
-            .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
-    }
-}
-
 impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, SA, TA> {
     fn poll_sent<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, Sent<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterSent<SL, TL, SA, TA>>, StateMachineError> {
-        let response = try_ready!(state.inner_future().poll());
+        let response = try_ready!(context.futures.send_request(&state.request).poll());
 
         let state = state.take();
 
         match response {
             Ok(swap_accepted) => transition!(Accepted {
-                futures: state.futures,
                 request: state.request,
                 response: swap_accepted,
             }),
@@ -255,23 +167,37 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
     fn poll_accepted<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, Accepted<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterAccepted<SL, TL, SA, TA>>, StateMachineError> {
-        let source_htlc_id = try_ready!(state.inner_future().poll());
+        let source_htlc_id = try_ready!(
+            context
+                .futures
+                .source_htlc_funded(&state.request, &state.response)
+                .poll()
+        );
 
         let state = state.take();
 
         transition!(SourceFunded {
             request: state.request,
             response: state.response,
-            futures: state.futures,
             source_htlc_id,
         })
     }
 
     fn poll_source_funded<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, SourceFunded<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterSourceFunded<SL, TL, SA, TA>>, StateMachineError> {
-        match try_ready!(state.inner_future().poll()) {
+        match try_ready!(
+            context
+                .futures
+                .source_htlc_refunded_target_htlc_funded(
+                    &state.request,
+                    &state.response,
+                    &state.source_htlc_id
+                ).poll()
+        ) {
             Either::A((source_refunded_txid, target_htlc_funded_future)) => {
                 let state = state.take();
                 transition!(Final(SwapOutcome::SourceRefunded))
@@ -281,7 +207,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                 transition!(BothFunded {
                     request: state.request,
                     response: state.response,
-                    futures: state.futures,
                     source_htlc_id: state.source_htlc_id,
                     target_htlc_id,
                 })
@@ -291,9 +216,12 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
     fn poll_both_funded<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, BothFunded<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA>>, StateMachineError> {
-        if let Async::Ready(redeemed_or_refunded) =
-            state.source_htlc_redeemed_or_refunded_future().poll()?
+        if let Async::Ready(redeemed_or_refunded) = context
+            .futures
+            .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
+            .poll()?
         {
             let state = state.take();
             match redeemed_or_refunded {
@@ -301,18 +229,21 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     request: state.request,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
-                    futures: state.futures,
                 }),
                 Either::B((source_refunded_txid, _)) => transition!(SourceRefundedTargetFunded {
                     request: state.request,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
-                    futures: state.futures,
                 }),
             }
         }
 
-        match try_ready!(state.target_htlc_redeemed_or_refunded_future().poll()) {
+        match try_ready!(
+            context
+                .futures
+                .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
+                .poll()
+        ) {
             Either::A((target_redeemed_txid, _)) => {
                 let state = state.take();
                 transition!(SourceFundedTargetRedeemed {
@@ -320,7 +251,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     response: state.response,
                     target_redeemed_txid,
                     source_htlc_id: state.source_htlc_id,
-                    futures: state.futures,
                 })
             }
             Either::B((target_refunded_txid, _)) => {
@@ -328,7 +258,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                 transition!(SourceFundedTargetRefunded {
                     request: state.request,
                     response: state.response,
-                    futures: state.futures,
                     source_htlc_id: state.source_htlc_id,
                 })
             }
@@ -337,8 +266,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
     fn poll_source_funded_target_refunded<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, SourceFundedTargetRefunded<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, StateMachineError> {
-        match try_ready!(state.source_htlc_redeemed_or_refunded_future().poll()) {
+        match try_ready!(
+            context
+                .futures
+                .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
+                .poll()
+        ) {
             Either::A((source_redeemed_txid, _)) => {
                 transition!(Final(SwapOutcome::SourceRedeemedTargetRefunded))
             }
@@ -348,8 +283,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
     fn poll_source_refunded_target_funded<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, SourceRefundedTargetFunded<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, StateMachineError> {
-        match try_ready!(state.target_htlc_redeemed_or_refunded_future().poll()) {
+        match try_ready!(
+            context
+                .futures
+                .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
+                .poll()
+        ) {
             Either::A((target_redeemed_txid, _)) => {
                 transition!(Final(SwapOutcome::SourceRefundedTargetRedeemed))
             }
@@ -359,8 +300,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
     fn poll_source_redeemed_target_funded<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, SourceRedeemedTargetFunded<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, StateMachineError> {
-        match try_ready!(state.target_htlc_redeemed_or_refunded_future().poll()) {
+        match try_ready!(
+            context
+                .futures
+                .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
+                .poll()
+        ) {
             Either::A((target_redeemed_txid, _)) => transition!(Final(SwapOutcome::BothRedeemed)),
             Either::B((target_refunded_txid, _)) => {
                 transition!(Final(SwapOutcome::SourceRedeemedTargetRefunded))
@@ -370,8 +317,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
     fn poll_source_funded_target_redeemed<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, SourceFundedTargetRedeemed<SL, TL, SA, TA>>,
+        context: &mut Context<SL, TL, SA, TA>,
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, StateMachineError> {
-        match try_ready!(state.source_htlc_redeemed_or_refunded_future().poll()) {
+        match try_ready!(
+            context
+                .futures
+                .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
+                .poll()
+        ) {
             Either::A((target_redeemed_txid, _)) => transition!(Final(SwapOutcome::BothRedeemed)),
             Either::B((target_refunded_txid, _)) => {
                 transition!(Final(SwapOutcome::SourceRefundedTargetRedeemed))
