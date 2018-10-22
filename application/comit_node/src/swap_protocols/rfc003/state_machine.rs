@@ -83,9 +83,6 @@ pub enum SwapOutcome {
     SourceRefundedTargetRedeemed,
 }
 
-/// TODO: Things to tests:
-/// - Side-effects (call to `Services` are only caused if the Option<Future> inside the state is None
-///
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone))]
 pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
