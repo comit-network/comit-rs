@@ -18,7 +18,7 @@ use rocket_contrib::Json;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct BitcoinQuery {
+pub struct BitcoinTransactionQuery {
     pub to_address: Option<Address>,
     #[serde(default = "default_confirmations")]
     confirmations_needed: u32,
@@ -34,14 +34,14 @@ fn default_confirmations() -> u32 {
     data = "<query>"
 )]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn handle_new_bitcoin_query<'r>(
-    query: Json<BitcoinQuery>,
+pub fn handle_new_query<'r>(
+    query: Json<BitcoinTransactionQuery>,
     link_factory: State<LinkFactory>,
-    query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
+    query_repository: State<Arc<QueryRepository<BitcoinTransactionQuery>>>,
 ) -> Result<impl Responder<'r>, HttpApiProblem> {
     let query = query.into_inner();
 
-    if let BitcoinQuery {
+    if let BitcoinTransactionQuery {
         to_address: None, ..
     } = query
     {
@@ -66,7 +66,7 @@ fn created(url: String) -> Created<Option<()>> {
     Created(url, None)
 }
 
-impl Query<BitcoinTransaction> for BitcoinQuery {
+impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
     fn matches(&self, transaction: &BitcoinTransaction) -> bool {
         match self.to_address {
             Some(ref address) => {
@@ -105,16 +105,16 @@ impl Block for BitcoinBlock {
 
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct RetrieveBitcoinQueryResponse {
-    query: BitcoinQuery,
+    query: BitcoinTransactionQuery,
     matching_transactions: QueryResult,
 }
 
 #[get("/queries/bitcoin/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn retrieve_bitcoin_query(
+pub fn retrieve_query(
     id: u32,
-    query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository<BitcoinQuery>>>,
+    query_repository: State<Arc<QueryRepository<BitcoinTransactionQuery>>>,
+    query_result_repository: State<Arc<QueryResultRepository<BitcoinTransactionQuery>>>,
 ) -> Result<Json<RetrieveBitcoinQueryResponse>, HttpApiProblem> {
     let query = query_repository.get(id).ok_or_else(|| {
         HttpApiProblem::with_title_from_status(404).set_detail("The requested query does not exist")
@@ -130,10 +130,10 @@ pub fn retrieve_bitcoin_query(
 
 #[delete("/queries/bitcoin/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn delete_bitcoin_query(
+pub fn delete_query(
     id: u32,
-    query_repository: State<Arc<QueryRepository<BitcoinQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository<BitcoinQuery>>>,
+    query_repository: State<Arc<QueryRepository<BitcoinTransactionQuery>>>,
+    query_result_repository: State<Arc<QueryResultRepository<BitcoinTransactionQuery>>>,
 ) -> impl Responder<'static> {
     query_repository.delete(id);
     query_result_repository.delete(id);
