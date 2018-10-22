@@ -67,7 +67,7 @@ mod tests {
                 "3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59",
             ).unwrap();
             let keypair = KeyPair::from_secret_key_slice(secret_key_data).unwrap();
-            InMemoryWallet::new(keypair, 42) // 42 is used in GanacheCliNode
+            InMemoryWallet::new(keypair, 0) // Chain doesn't matter in this test
         };
 
         let contract_address = wallet.calculate_contract_address(U256::from(0));
