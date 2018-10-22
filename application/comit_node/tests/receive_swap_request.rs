@@ -10,7 +10,6 @@ extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
 extern crate comit_wallet;
-extern crate common_types;
 extern crate ethereum_support;
 extern crate ethereum_wallet;
 extern crate event_store;

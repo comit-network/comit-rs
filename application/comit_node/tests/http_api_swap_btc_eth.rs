@@ -6,7 +6,6 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bitcoin_rpc_client;
 extern crate comit_node;
-extern crate common_types;
 extern crate ethereum_wallet;
 extern crate hex;
 extern crate pretty_env_logger;
@@ -26,12 +25,11 @@ use comit_node::{
     gotham_factory::create_gotham_router,
     swap_protocols::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
-        rfc003,
+        rfc003::{self, ethereum::Seconds},
     },
     swaps::common::TradeId,
 };
 use comit_wallet::KeyStore;
-use common_types::seconds::Seconds;
 use event_store::InMemoryEventStore;
 use futures::sync::mpsc::{self, UnboundedReceiver};
 use gotham::test::TestServer;
@@ -165,7 +163,7 @@ fn swap_accepted_btc_eth() {
             source_ledger_success_identity: bitcoin_support::PubkeyHash::from_hex(
                 "2107b76566056263e6f281f3a991b6651284bc76",
             ).unwrap(),
-            target_ledger_lock_duration: Seconds::new(60 * 60 * 24),
+            target_ledger_lock_duration: Seconds(60 * 60 * 24),
         }));
 
     {

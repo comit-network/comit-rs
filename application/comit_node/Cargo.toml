@@ -14,7 +14,6 @@ bitcoin_support  = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 chrono = "0.4.2"
 comit_wallet = { path = "../comit_wallet" }
-common_types = { path = "../common_types" }
 config = "0.9"
 debug_stub_derive = "0.3.0"
 ethereum_support = { path = "../../vendor/ethereum_support" }

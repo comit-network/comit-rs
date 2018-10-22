@@ -1,6 +1,5 @@
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
-use common_types::seconds::Seconds;
 use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
@@ -19,6 +18,7 @@ use swap_protocols::{
     },
     rfc003::{
         self,
+        ethereum::Seconds,
         ledger_htlc_service::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
             EthereumService, LedgerHtlcService,
@@ -188,7 +188,7 @@ fn process<
         bob_refund_address
     );
 
-    let twelve_hours = Seconds::new(60 * 60 * 12);
+    let twelve_hours = Seconds(60 * 60 * 12);
 
     let order_taken = OrderTaken::<Ethereum, Bitcoin> {
         uid: trade_id,

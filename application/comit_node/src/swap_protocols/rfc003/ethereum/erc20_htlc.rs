@@ -1,13 +1,12 @@
 use ethereum_support::{Address, U256};
-use std::time::Duration;
 use swap_protocols::rfc003::{
-    ethereum::{ByteCode, Htlc},
+    ethereum::{ByteCode, Htlc, Seconds},
     SecretHash,
 };
 
 #[derive(Debug)]
 pub struct Erc20Htlc {
-    refund_timeout: Duration,
+    refund_timeout: Seconds,
     refund_address: Address,
     success_address: Address,
     secret_hash: SecretHash,
@@ -38,7 +37,7 @@ impl Erc20Htlc {
         "6000000000000000000000000000000000000006";
 
     pub fn new(
-        refund_timeout: Duration,
+        refund_timeout: Seconds,
         refund_address: Address,
         success_address: Address,
         secret_hash: SecretHash,
@@ -64,7 +63,7 @@ impl Erc20Htlc {
 
 impl Htlc for Erc20Htlc {
     fn compile_to_hex(&self) -> ByteCode {
-        let refund_timeout = format!("{:0>8x}", self.refund_timeout.as_secs());
+        let refund_timeout = format!("{:0>8x}", self.refund_timeout.0);
         let success_address = format!("{:x}", self.success_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);

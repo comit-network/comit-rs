@@ -10,7 +10,6 @@
       <sourceFolder url="file://$MODULE_DIR$/application/comit_node/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/application/comit_node/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/application/comit_node/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/application/common_types/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/application/common_types/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/application/common_types/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/application/common_types/benches" isTestSource="true" />

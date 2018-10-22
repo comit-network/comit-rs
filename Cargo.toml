@@ -4,7 +4,6 @@ members = [
     "application/comit_node",
     "application/comit_node_client",
     "application/comit_wallet",
-    "application/common_types",
     "application/ethereum_wallet",
     "application/ledger_query_service",
     "application/logging",

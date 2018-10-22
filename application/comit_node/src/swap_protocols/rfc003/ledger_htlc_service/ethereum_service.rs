@@ -1,4 +1,3 @@
-use common_types::seconds::Seconds;
 use ethereum_support::{
     web3::{
         transports::{EventLoopHandle, Http},
@@ -16,7 +15,7 @@ use std::{
 use swap_protocols::{
     ledger::{ethereum::Ethereum, Ledger},
     rfc003::{
-        ethereum::{Erc20Htlc, EtherHtlc, Htlc},
+        ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
         ledger_htlc_service::{self, LedgerHtlcService},
         Secret, SecretHash,
     },
@@ -423,7 +422,8 @@ mod tests {
     use hex;
     use secp256k1_support::KeyPair;
     use spectral::prelude::*;
-    use std::{ops::Deref, time::Duration};
+    use std::ops::Deref;
+    use swap_protocols::rfc003::ethereum::Seconds;
 
     struct MockEthereumApi {
         send_raw_transaction_results: Mutex<Vec<Result<H256, web3::Error>>>,
@@ -481,7 +481,7 @@ mod tests {
         let result = service.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_deployment(
                 EtherHtlc::new(
-                    Duration::from_secs(100),
+                    Seconds(100),
                     Address::new(),
                     Address::new(),
                     "".parse().unwrap(),
@@ -516,7 +516,7 @@ mod tests {
         let result = service.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_deployment(
                 EtherHtlc::new(
-                    Duration::from_secs(100),
+                    Seconds(100),
                     Address::new(),
                     Address::new(),
                     "".parse().unwrap(),
@@ -558,7 +558,7 @@ mod tests {
         let params = Erc20HtlcFundingParams {
             refund_address: Address::from("0000000000000000000000000000000000000001"),
             success_address: Address::from("0000000000000000000000000000000000000002"),
-            time_lock: Seconds::new(100),
+            time_lock: Seconds(100),
             amount: U256::from(10),
             secret_hash: "".parse().unwrap(),
             token_contract_address: Address::from("0000000000000000000000000000000000000003"),
