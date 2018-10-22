@@ -32,7 +32,7 @@ pub mod events {
 
 }
 
-pub trait Services<SL: Ledger, TL: Ledger, SA, TA>: Send {
+pub trait Futures<SL: Ledger, TL: Ledger, SA, TA>: Send {
     fn send_request(
         &mut self,
         request: &Request<SL, TL, SA, TA>,
@@ -81,7 +81,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     Sent {
         request: Request<SL, TL, SA, TA>,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(SourceFunded))]
@@ -89,7 +89,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(BothFunded, Final))]
@@ -98,7 +98,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
         source_htlc_id: SL::HtlcId,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(
@@ -113,7 +113,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         target_htlc_id: TL::HtlcId,
         source_htlc_id: SL::HtlcId,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -122,7 +122,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
         source_htlc_id: SL::HtlcId,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -131,7 +131,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -140,7 +140,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -150,7 +150,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         target_redeemed_txid: TL::TxId,
         source_htlc_id: SL::HtlcId,
 
-        services: Box<Services<SL, TL, SA, TA>>,
+        futures: Box<Futures<SL, TL, SA, TA>>,
     },
 
     #[state_machine_future(ready)]
@@ -162,20 +162,20 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
 
 impl<SL: Ledger, TL: Ledger, SA, TA> Sent<SL, TL, SA, TA> {
     fn inner_future(&mut self) -> &mut Box<events::Response<SL, TL>> {
-        self.services.send_request(&self.request)
+        self.futures.send_request(&self.request)
     }
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> Accepted<SL, TL, SA, TA> {
     fn inner_future(&mut self) -> &mut Box<events::Funded<SL>> {
-        self.services
+        self.futures
             .source_htlc_funded(&self.request, &self.response)
     }
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
     fn inner_future(&mut self) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
-        self.services.source_htlc_refunded_target_htlc_funded(
+        self.futures.source_htlc_refunded_target_htlc_funded(
             &self.request,
             &self.response,
             &self.source_htlc_id,
@@ -187,14 +187,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> BothFunded<SL, TL, SA, TA> {
     fn target_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        self.services
+        self.futures
             .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
     }
 
     fn source_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        self.services
+        self.futures
             .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
     }
 }
@@ -203,7 +203,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceFundedTargetRefunded<SL, TL, SA, TA> 
     fn source_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        self.services
+        self.futures
             .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
     }
 }
@@ -212,7 +212,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceRefundedTargetFunded<SL, TL, SA, TA> 
     fn target_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        self.services
+        self.futures
             .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
     }
 }
@@ -221,7 +221,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceRedeemedTargetFunded<SL, TL, SA, TA> 
     fn target_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        self.services
+        self.futures
             .target_htlc_redeemed_or_refunded(&self.target_htlc_id)
     }
 }
@@ -230,7 +230,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceFundedTargetRedeemed<SL, TL, SA, TA> 
     fn source_htlc_redeemed_or_refunded_future(
         &mut self,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
-        self.services
+        self.futures
             .source_htlc_redeemed_or_refunded(&self.source_htlc_id)
     }
 }
@@ -245,7 +245,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
 
         match response {
             Ok(swap_accepted) => transition!(Accepted {
-                services: state.services,
+                futures: state.futures,
                 request: state.request,
                 response: swap_accepted,
             }),
@@ -263,7 +263,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
         transition!(SourceFunded {
             request: state.request,
             response: state.response,
-            services: state.services,
+            futures: state.futures,
             source_htlc_id,
         })
     }
@@ -281,7 +281,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                 transition!(BothFunded {
                     request: state.request,
                     response: state.response,
-                    services: state.services,
+                    futures: state.futures,
                     source_htlc_id: state.source_htlc_id,
                     target_htlc_id,
                 })
@@ -301,13 +301,13 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     request: state.request,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
-                    services: state.services,
+                    futures: state.futures,
                 }),
                 Either::B((source_refunded_txid, _)) => transition!(SourceRefundedTargetFunded {
                     request: state.request,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
-                    services: state.services,
+                    futures: state.futures,
                 }),
             }
         }
@@ -320,7 +320,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                     response: state.response,
                     target_redeemed_txid,
                     source_htlc_id: state.source_htlc_id,
-                    services: state.services,
+                    futures: state.futures,
                 })
             }
             Either::B((target_refunded_txid, _)) => {
@@ -328,7 +328,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                 transition!(SourceFundedTargetRefunded {
                     request: state.request,
                     response: state.response,
-                    services: state.services,
+                    futures: state.futures,
                     source_htlc_id: state.source_htlc_id,
                 })
             }
