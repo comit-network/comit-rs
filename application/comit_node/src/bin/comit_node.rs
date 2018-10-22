@@ -11,7 +11,6 @@ extern crate ethereum_wallet;
 extern crate log;
 extern crate event_store;
 extern crate gotham;
-extern crate logging;
 extern crate tokio;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -24,6 +23,7 @@ use comit_node::{
     gas_price_service::StaticGasPriceService,
     gotham_factory,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
+    logging,
     settings::ComitNodeSettings,
     swap_protocols::rfc003::{
         alice_ledger_actor::AliceLedgerActor,
