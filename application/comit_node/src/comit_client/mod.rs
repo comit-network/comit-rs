@@ -34,7 +34,7 @@ pub enum SwapReject {
     Rejected,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SwapResponseError {
     /// The counterparty had an internal error while processing the request
     InternalError,

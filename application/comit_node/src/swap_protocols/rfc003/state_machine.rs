@@ -2,9 +2,10 @@ use super::AcceptResponse;
 use comit_client::SwapResponseError;
 use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
+use std::{collections::HashMap, hash::Hash, sync::RwLock};
 use swap_protocols::rfc003::{ledger::Ledger, messages::Request};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineError {
     SwapResponse(SwapResponseError),
 }
@@ -66,7 +67,7 @@ pub struct Context<SL: Ledger, TL: Ledger, SA, TA> {
     pub futures: Box<Futures<SL, TL, SA, TA>>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome {
     Rejected,
     SourceRefunded,
@@ -80,7 +81,7 @@ pub enum SwapOutcome {
 /// - Side-effects (call to `Services` are only caused if the Option<Future> inside the state is None
 ///
 #[derive(StateMachineFuture)]
-#[state_machine_future(context = "Context")]
+#[state_machine_future(context = "Context", derive(Clone))]
 pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Sent { request: Request<SL, TL, SA, TA> },
@@ -330,5 +331,90 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
                 transition!(Final(SwapOutcome::SourceRefundedTargetRedeemed))
             }
         }
+    }
+}
+
+trait StateRepo<K, SL: Ledger, TL: Ledger, SA, TA>: Send + Sync {
+    fn set(&self, id: K, state: SwapStates<SL, TL, SA, TA>);
+    fn get(&self, id: &K) -> Option<SwapStates<SL, TL, SA, TA>>;
+}
+
+pub struct InMemoryStateRepo<K: Hash + Eq, SL: Ledger, TL: Ledger, SA, TA> {
+    data: RwLock<HashMap<K, SwapStates<SL, TL, SA, TA>>>,
+}
+
+impl<K: Hash + Eq, SL: Ledger, TL: Ledger, SA, TA> Default
+    for InMemoryStateRepo<K, SL, TL, SA, TA>
+{
+    fn default() -> Self {
+        InMemoryStateRepo {
+            data: RwLock::new(HashMap::new()),
+        }
+    }
+}
+
+impl<
+        K: Hash + Eq + Send + Sync,
+        SL: Ledger,
+        TL: Ledger,
+        SA: Clone + Send + Sync,
+        TA: Send + Sync + Clone,
+    > StateRepo<K, SL, TL, SA, TA> for InMemoryStateRepo<K, SL, TL, SA, TA>
+{
+    fn set(&self, id: K, state: SwapStates<SL, TL, SA, TA>) {
+        let mut repo = self
+            .data
+            .write()
+            .expect("Other thread should not have panicked while having the lock");
+        repo.insert(id, state);
+    }
+
+    fn get(&self, id: &K) -> Option<SwapStates<SL, TL, SA, TA>> {
+        let repo = self
+            .data
+            .read()
+            .expect("Other thread should not have panicked while having the lock");
+        repo.get(id).map(Clone::clone)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use bitcoin_support::{self, BitcoinQuantity, Blocks};
+    use ethereum_support::{self, EtherQuantity};
+    use hex::FromHex;
+    use std::str::FromStr;
+    use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
+
+    #[test]
+    fn given_a_state_store_it() {
+        let repo: InMemoryStateRepo<
+            String,
+            Bitcoin,
+            Ethereum,
+            BitcoinQuantity,
+            EtherQuantity,
+        > = InMemoryStateRepo::default();
+
+        let state = SwapStates::Sent(Sent {
+            request: Request {
+                secret_hash: "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5"
+                    .parse()
+                    .unwrap(),
+                source_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
+                    "875638cac0b0ae9f826575e190f2788918c354c2",
+                ).unwrap(),
+                target_ledger_success_identity: ethereum_support::Address::from_str(
+                    "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
+                ).unwrap(),
+                source_ledger_lock_duration: Blocks::from(144),
+                target_asset: EtherQuantity::from_eth(10.0),
+                source_asset: BitcoinQuantity::from_bitcoin(1.0),
+                source_ledger: Bitcoin::regtest(),
+                target_ledger: Ethereum::default(),
+            },
+        });
     }
 }
