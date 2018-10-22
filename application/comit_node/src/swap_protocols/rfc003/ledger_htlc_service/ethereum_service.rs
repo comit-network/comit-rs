@@ -1,7 +1,4 @@
-use common_types::{
-    seconds::Seconds,
-    secret::{Secret, SecretHash},
-};
+use common_types::seconds::Seconds;
 use ethereum_support::{
     web3::{
         transports::{EventLoopHandle, Http},
@@ -21,6 +18,7 @@ use swap_protocols::{
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc},
         ledger_htlc_service::{self, LedgerHtlcService},
+        Secret, SecretHash,
     },
 };
 use swaps::common::TradeId;
@@ -421,12 +419,11 @@ impl EthereumService {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use common_types::secret::SecretHash;
     use ethereum_wallet::{fake::StaticFakeWallet, Wallet};
     use hex;
     use secp256k1_support::KeyPair;
     use spectral::prelude::*;
-    use std::{ops::Deref, str::FromStr, time::Duration};
+    use std::{ops::Deref, time::Duration};
 
     struct MockEthereumApi {
         send_raw_transaction_results: Mutex<Vec<Result<H256, web3::Error>>>,
@@ -487,7 +484,7 @@ mod tests {
                     Duration::from_secs(100),
                     Address::new(),
                     Address::new(),
-                    SecretHash::from_str("").unwrap(),
+                    "".parse().unwrap(),
                 ).compile_to_hex(),
                 gas_price,
                 U256::from(10),
@@ -522,7 +519,7 @@ mod tests {
                     Duration::from_secs(100),
                     Address::new(),
                     Address::new(),
-                    SecretHash::from_str("").unwrap(),
+                    "".parse().unwrap(),
                 ).compile_to_hex(),
                 gas_price,
                 U256::from(10),
@@ -563,7 +560,7 @@ mod tests {
             success_address: Address::from("0000000000000000000000000000000000000002"),
             time_lock: Seconds::new(100),
             amount: U256::from(10),
-            secret_hash: SecretHash::from_str("").unwrap(),
+            secret_hash: "".parse().unwrap(),
             token_contract_address: Address::from("0000000000000000000000000000000000000003"),
         };
 

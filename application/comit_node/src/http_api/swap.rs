@@ -1,8 +1,6 @@
-use bitcoin_htlc;
 use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
 use comit_client::{self, SwapReject, SwapResponseError};
 use comit_wallet::KeyStore;
-use common_types::secret::Secret;
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{future, sync::mpsc::UnboundedSender, Future, Stream};
@@ -23,7 +21,7 @@ use std::{
 };
 use swap_protocols::{
     ledger::{self, bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003,
+    rfc003::{self, bitcoin, Secret},
 };
 use swaps::{alice_events, common::TradeId};
 use tokio;
@@ -366,7 +364,7 @@ fn handle_get_swap<E: EventStore<TradeId>>(
                             })
                         }
                         Err(_) => {
-                            let htlc = bitcoin_htlc::Htlc::new(
+                            let htlc = bitcoin::Htlc::new(
                                 accepted.source_ledger_success_identity,
                                 requested.source_ledger_refund_identity,
                                 requested.secret.hash(),

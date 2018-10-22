@@ -1,7 +1,9 @@
-use common_types::secret::SecretHash;
 use ethereum_support::{Address, U256};
 use std::time::Duration;
-use swap_protocols::rfc003::ethereum::{ByteCode, Htlc};
+use swap_protocols::rfc003::{
+    ethereum::{ByteCode, Htlc},
+    SecretHash,
+};
 
 #[derive(Debug)]
 pub struct Erc20Htlc {

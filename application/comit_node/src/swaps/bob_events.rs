@@ -1,8 +1,7 @@
-use common_types::secret::SecretHash;
 use event_store::Event;
 use secp256k1_support::KeyPair;
 use std::marker::PhantomData;
-use swap_protocols::ledger::Ledger;
+use swap_protocols::{ledger::Ledger, rfc003::SecretHash};
 use swaps::common::TradeId;
 
 #[derive(Clone, Debug)]

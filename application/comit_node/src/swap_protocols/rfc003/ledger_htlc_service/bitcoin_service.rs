@@ -1,17 +1,19 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
-use bitcoin_htlc::bitcoin_htlc;
 use bitcoin_rpc_client;
 use bitcoin_support::{
     self, Address, BitcoinQuantity, Blocks, PubkeyHash, Script, Transaction, TxOut,
 };
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
-use common_types::secret::{Secret, SecretHash};
 use ledger_query_service::BitcoinQuery;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swap_protocols::{
     ledger::{bitcoin::Bitcoin, Ledger},
-    rfc003::ledger_htlc_service::{self, LedgerHtlcService},
+    rfc003::{
+        bitcoin,
+        ledger_htlc_service::{self, LedgerHtlcService},
+        Secret, SecretHash,
+    },
 };
 use swaps::common::TradeId;
 
@@ -29,8 +31,8 @@ impl From<bitcoin_rpc_client::RpcError> for ledger_htlc_service::Error {
     }
 }
 
-impl From<bitcoin_htlc::UnlockingError> for ledger_htlc_service::Error {
-    fn from(error: bitcoin_htlc::UnlockingError) -> Self {
+impl From<bitcoin::UnlockingError> for ledger_htlc_service::Error {
+    fn from(error: bitcoin::UnlockingError) -> Self {
         error!("{:?}", error);
         ledger_htlc_service::Error::Unlocking
     }
@@ -82,7 +84,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
         &self,
         htlc_funding_params: BitcoinHtlcFundingParams,
     ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
-        let htlc = bitcoin_htlc::Htlc::new(
+        let htlc = bitcoin::Htlc::new(
             htlc_funding_params.success_pubkey_hash,
             htlc_funding_params.refund_pubkey_hash,
             htlc_funding_params.secret_hash,
@@ -117,7 +119,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
         let htlc_tx_id = htlc_identifier.transaction_id;
         let vout = htlc_identifier.vout;
 
-        let htlc = bitcoin_htlc::Htlc::new(
+        let htlc = bitcoin::Htlc::new(
             bob_success_pubkey_hash,
             alice_refund_pubkey_hash,
             secret.hash(),
@@ -176,7 +178,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
     }
 
     fn create_query_to_watch_funding(&self, htlc_params: BitcoinHtlcFundingParams) -> BitcoinQuery {
-        let htlc = bitcoin_htlc::Htlc::new(
+        let htlc = bitcoin::Htlc::new(
             htlc_params.success_pubkey_hash,
             htlc_params.refund_pubkey_hash,
             htlc_params.secret_hash,

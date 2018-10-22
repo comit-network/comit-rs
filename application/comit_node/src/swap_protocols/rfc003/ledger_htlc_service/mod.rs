@@ -1,6 +1,5 @@
 pub use self::{bitcoin_service::*, ethereum_service::*};
-use common_types::secret::Secret;
-use swap_protocols::ledger::Ledger;
+use swap_protocols::{ledger::Ledger, rfc003::Secret};
 use swaps::common::TradeId;
 
 mod bitcoin_service;

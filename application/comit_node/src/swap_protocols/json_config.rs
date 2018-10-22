@@ -1,4 +1,3 @@
-use bitcoin_htlc;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
 use comit_wallet::KeyStore;
 use common_types::seconds::Seconds;
@@ -215,7 +214,7 @@ fn process<
 
     let btc_lock_time = (60 * 24) / 10;
 
-    let htlc = bitcoin_htlc::Htlc::new(
+    let htlc = rfc003::bitcoin::Htlc::new(
         bob_success_address,
         alice_refund_address,
         request.secret_hash,

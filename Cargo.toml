@@ -1,7 +1,6 @@
 [workspace]
 
 members = [
-    "application/bitcoin_htlc",
     "application/comit_node",
     "application/comit_node_client",
     "application/comit_wallet",

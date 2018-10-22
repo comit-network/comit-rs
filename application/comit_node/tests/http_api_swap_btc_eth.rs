@@ -1,4 +1,3 @@
-extern crate bitcoin_htlc;
 extern crate bitcoin_support;
 extern crate ethereum_support;
 extern crate event_store;

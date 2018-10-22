@@ -1,6 +1,6 @@
-use common_types::secret::SecretHash;
 use swap_protocols::{
     ledger::Ledger,
+    rfc003::SecretHash,
     wire_types::{Asset, SwapProtocol, SwapRequestHeaders},
 };
 

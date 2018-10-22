@@ -9,7 +9,6 @@ authors = [
 ]
 
 [dependencies]
-bitcoin_htlc = { path = "../bitcoin_htlc" }
 bitcoin_rpc_client = "0.3"
 bitcoin_support  = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
@@ -34,6 +33,7 @@ logging = { path = "../logging" }
 mime = "0.3"
 rand = "0.4.2"
 reqwest = "0.9"
+rust-crypto = "0.2"
 rustc-hex = "1.0.0"
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 serde = "1.0.66"
@@ -45,6 +45,8 @@ tokio-timer = "0.2"
 transport_protocol = { path = "../../vendor/transport_protocol" }
 url = "1.7"
 uuid = { version = "0.6.5", features = ["serde", "v4"] }
+tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
+bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
 
 [dev-dependencies]
 maplit = "1"

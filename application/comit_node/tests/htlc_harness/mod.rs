@@ -1,10 +1,14 @@
 use comit_node::{
     gas_price_service::StaticGasPriceService,
-    swap_protocols::rfc003::ledger_htlc_service::{
-        self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService, LedgerHtlcService,
+    swap_protocols::rfc003::{
+        ledger_htlc_service::{
+            self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService,
+            LedgerHtlcService,
+        },
+        Secret,
     },
 };
-use common_types::{seconds::Seconds, secret::Secret};
+use common_types::seconds::Seconds;
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
