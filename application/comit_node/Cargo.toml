@@ -39,7 +39,7 @@ serde = "1"
 serde_derive = "1"
 serde_json = "1"
 tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
-state_machine_future = { git = "https://github.com/thomaseizinger/state_machine_future.git", branch = "context" }
+state_machine_future = { git = "https://github.com/coblox/state_machine_future.git", branch = "combined-changes" }
 #features = ["debug_code_generation"]
 tiny-keccak = "1.4"
 tokio = "^0.1"
