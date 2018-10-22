@@ -29,7 +29,7 @@ fn default_confirmations() -> u32 {
 }
 
 #[post(
-    "/queries/bitcoin",
+    "/queries/bitcoin/transactions",
     format = "application/json",
     data = "<query>"
 )]
@@ -53,7 +53,7 @@ pub fn handle_new_query<'r>(
 
     match result {
         Ok(id) => Ok(created(
-            link_factory.create_link(format!("/queries/bitcoin/{}", id)),
+            link_factory.create_link(format!("/queries/bitcoin/transactions/{}", id)),
         )),
         Err(_) => {
             Err(HttpApiProblem::with_title_from_status(500)
@@ -109,7 +109,7 @@ pub struct RetrieveBitcoinQueryResponse {
     matching_transactions: QueryResult,
 }
 
-#[get("/queries/bitcoin/<id>")]
+#[get("/queries/bitcoin/transactions/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn retrieve_query(
     id: u32,
@@ -128,7 +128,7 @@ pub fn retrieve_query(
     }))
 }
 
-#[delete("/queries/bitcoin/<id>")]
+#[delete("/queries/bitcoin/transactions/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn delete_query(
     id: u32,

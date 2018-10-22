@@ -68,7 +68,7 @@ fn given_to_address_query_when_matching_transaction_is_processed_returns_result(
         new_account("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
 
     let response = client
-        .post("/queries/ethereum")
+        .post("/queries/ethereum/transactions")
         .header(ContentType::JSON)
         .body(r#"{ "to_address" : "0x88f9b82462f6c4bf4a0fb15e5c3971559a316e7f" }"#) // Bob's address
         .dispatch();

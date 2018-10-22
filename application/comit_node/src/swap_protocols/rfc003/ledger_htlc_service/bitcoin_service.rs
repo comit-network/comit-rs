@@ -187,7 +187,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
         let htlc_address = htlc.compute_address(self.network);
 
-        BitcoinQuery {
+        BitcoinQuery::Transaction {
             to_address: Some(htlc_address),
         }
     }

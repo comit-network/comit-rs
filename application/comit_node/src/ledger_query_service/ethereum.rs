@@ -1,9 +1,54 @@
 use ethereum_support::web3::types::{Address, Bytes};
+use serde::Serialize;
 
-#[derive(Debug, Default, Clone, Serialize)]
-pub struct EthereumQuery {
-    pub from_address: Option<Address>,
-    pub to_address: Option<Address>,
-    pub is_contract_creation: Option<bool>,
-    pub transaction_data: Option<Bytes>,
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum EthereumQuery {
+    Transaction {
+        from_address: Option<Address>,
+        to_address: Option<Address>,
+        is_contract_creation: Option<bool>,
+        transaction_data: Option<Bytes>,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethereum_support::Address;
+    use serde_json;
+    use std::str::FromStr;
+
+    #[test]
+    fn given_a_ethereum_transaction_query_with_toaddress_it_serializes_ok() {
+        let to_address =
+            Some(Address::from_str("8457037fcd80a8650c4692d7fcfc1d0a96b92867").unwrap());
+        let query = EthereumQuery::Transaction {
+            from_address: None,
+            to_address,
+            is_contract_creation: None,
+            transaction_data: None,
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(
+            query,
+            r#"{"from_address":null,"to_address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","is_contract_creation":null,"transaction_data":null}"#
+        )
+    }
+
+    #[test]
+    fn given_an_empty_ethereum_transaction_query_it_serializes_ok() {
+        let to_address = None;
+        let query = EthereumQuery::Transaction {
+            from_address: None,
+            to_address,
+            is_contract_creation: None,
+            transaction_data: None,
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(
+            query,
+            r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null}"#
+        )
+    }
 }

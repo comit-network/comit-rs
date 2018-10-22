@@ -10,12 +10,12 @@ use tokio::prelude::future::Future;
 #[derive(Debug)]
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
-    create_bitcoin_query_endpoint: Url,
-    create_ethereum_query_endpoint: Url,
+    create_bitcoin_transaction_query_endpoint: Url,
+    create_ethereum_transaction_query_endpoint: Url,
 }
 
 #[derive(Debug, Deserialize)]
-pub struct QueryResponse<T> {
+pub struct TransactionQueryResponse<T> {
     matching_transactions: Vec<T>,
 }
 
@@ -23,15 +23,19 @@ impl DefaultLedgerQueryServiceApiClient {
     pub fn new(endpoint: &Url) -> Self {
         DefaultLedgerQueryServiceApiClient {
             client: Client::new(),
-            create_bitcoin_query_endpoint: endpoint.join("queries/bitcoin").expect("invalid url"),
-            create_ethereum_query_endpoint: endpoint.join("queries/ethereum").expect("invalid url"),
+            create_bitcoin_transaction_query_endpoint: endpoint
+                .join("queries/bitcoin/transactions")
+                .expect("invalid url"),
+            create_ethereum_transaction_query_endpoint: endpoint
+                .join("queries/ethereum/transactions")
+                .expect("invalid url"),
         }
     }
 
     fn _create<L: Ledger, Q: Serialize>(
         &self,
         create_endpoint: Url,
-        query: Q,
+        query: &Q,
     ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
         let query_id = self
             .client
@@ -65,7 +69,7 @@ impl DefaultLedgerQueryServiceApiClient {
             .client
             .get(query.as_ref().clone())
             .send()
-            .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
+            .and_then(|mut response| response.json::<TransactionQueryResponse<L::TxId>>())
             .map_err(Error::FailedRequest)
             .map(|response| response.matching_transactions);
 
@@ -91,7 +95,12 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
         &self,
         query: BitcoinQuery,
     ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
-        self._create(self.create_bitcoin_query_endpoint.clone(), query)
+        let endpoint = match &query {
+            BitcoinQuery::Transaction { .. } => {
+                self.create_bitcoin_transaction_query_endpoint.clone()
+            }
+        };
+        self._create(endpoint, &query)
     }
 
     fn fetch_results(
@@ -111,7 +120,12 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
         &self,
         query: EthereumQuery,
     ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
-        self._create(self.create_ethereum_query_endpoint.clone(), query)
+        let endpoint = match &query {
+            EthereumQuery::Transaction { .. } => {
+                self.create_ethereum_transaction_query_endpoint.clone()
+            }
+        };
+        self._create(endpoint, &query)
     }
 
     fn fetch_results(

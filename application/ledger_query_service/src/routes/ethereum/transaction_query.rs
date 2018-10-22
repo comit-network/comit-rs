@@ -25,7 +25,7 @@ pub struct EthereumTransactionQuery {
 }
 
 #[post(
-    "/queries/ethereum",
+    "/queries/ethereum/transactions",
     format = "application/json",
     data = "<query>"
 )]
@@ -52,7 +52,7 @@ pub fn handle_new_query<'r>(
 
     match result {
         Ok(id) => Ok(created(
-            link_factory.create_link(format!("/queries/ethereum/{}", id)),
+            link_factory.create_link(format!("/queries/ethereum/transactions/{}", id)),
         )),
         Err(_) => {
             Err(HttpApiProblem::with_title_from_status(500)
@@ -120,7 +120,7 @@ pub struct RetrieveEthereumQueryResponse {
     matching_transactions: QueryResult,
 }
 
-#[get("/queries/ethereum/<id>")]
+#[get("/queries/ethereum/transactions/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn retrieve_query(
     id: u32,
@@ -139,7 +139,7 @@ pub fn retrieve_query(
     }))
 }
 
-#[delete("/queries/ethereum/<id>")]
+#[delete("/queries/ethereum/transactions/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn delete_query(
     id: u32,
