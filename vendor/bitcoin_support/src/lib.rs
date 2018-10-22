@@ -17,7 +17,8 @@ pub use address::Address;
 pub use bitcoin::{
     blockdata::{
         block::{Block, BlockHeader},
-        script::Script,
+        opcodes,
+        script::{self, Script},
         transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },
     network::{constants::Network, serialize},

@@ -1,9 +1,8 @@
 use ethereum_support::{Address, ToEthereumAddress, U256};
+use ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
 use rlp::RlpStream;
 use secp256k1_support::{KeyPair, RecoverableSignature};
 use tiny_keccak;
-use SignedTransaction;
-use UnsignedTransaction;
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;

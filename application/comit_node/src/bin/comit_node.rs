@@ -4,14 +4,11 @@
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
-extern crate comit_wallet;
 extern crate ethereum_support;
-extern crate ethereum_wallet;
 #[macro_use]
 extern crate log;
 extern crate event_store;
 extern crate gotham;
-extern crate logging;
 extern crate tokio;
 
 use bitcoin_rpc_client::BitcoinRpcApi;
@@ -21,18 +18,19 @@ use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     comit_client,
     comit_server::ComitServer,
+    ethereum_wallet::InMemoryWallet,
     gas_price_service::StaticGasPriceService,
     gotham_factory,
+    key_store::KeyStore,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
+    logging,
     settings::ComitNodeSettings,
     swap_protocols::rfc003::{
         alice_ledger_actor::AliceLedgerActor,
         ledger_htlc_service::{BitcoinService, EthereumService},
     },
 };
-use comit_wallet::KeyStore;
 use ethereum_support::*;
-use ethereum_wallet::InMemoryWallet;
 use event_store::InMemoryEventStore;
 use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
 use web3::{transports::Http, Web3};

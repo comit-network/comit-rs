@@ -1,4 +1,3 @@
-use bitcoin_htlc;
 use bitcoin_support::{BitcoinQuantity, Network};
 use ethereum_support::{web3::types::Bytes, Address as EthereumAddress, EtherQuantity};
 use event_store::EventStore;
@@ -15,6 +14,7 @@ use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
     rfc003::{
+        bitcoin,
         ethereum::{EtherHtlc, Htlc},
         ledger_htlc_service::{
             BitcoinHtlcFundingParams, BitcoinHtlcRedeemParams, BitcoinService,
@@ -238,7 +238,7 @@ where
 
                         let bitcoin_htlc_params = bitcoin_htlc_params.clone();
 
-                        let btc_htlc_address = bitcoin_htlc::Htlc::new(
+                        let btc_htlc_address = bitcoin::Htlc::new(
                             bitcoin_htlc_params.success_pubkey_hash,
                             bitcoin_htlc_params.refund_pubkey_hash,
                             bitcoin_htlc_params.secret_hash,

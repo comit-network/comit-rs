@@ -1,11 +1,11 @@
 use hex::FromHex;
 
 use ethereum_support::{Address, U256};
+use ethereum_wallet::{
+    transaction::{SignedTransaction, UnsignedTransaction},
+    wallet::{InMemoryWallet, Wallet},
+};
 use secp256k1_support::KeyPair;
-use InMemoryWallet;
-use SignedTransaction;
-use UnsignedTransaction;
-use Wallet;
 
 /// A wallet with static private-keys that can be used for testing purposes.
 #[derive(Debug)]

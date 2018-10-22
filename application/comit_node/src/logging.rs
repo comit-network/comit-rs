@@ -1,15 +1,9 @@
-#![warn(unused_extern_crates, missing_debug_implementations)]
-#![deny(unsafe_code)]
-
-extern crate chrono;
-extern crate fern;
-pub extern crate log;
-
+use chrono;
 use fern::{
     colors::{Color, ColoredLevelConfig},
-    FormatCallback,
+    Dispatch, FormatCallback,
 };
-use log::Record;
+use log::{LevelFilter, Record};
 use std::{cell::RefCell, fmt::Arguments, io::stdout};
 
 #[allow(dead_code)]
@@ -22,18 +16,18 @@ pub fn set_context<S: ToString>(input: &S) {
 }
 
 pub fn set_up_logging() {
-    fern::Dispatch::new()
+    Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
         //TODO: get level from config file once implemented with #136
-        .level(log::LevelFilter::Debug)
-        .level_for("comit_node", log::LevelFilter::Trace)
-        .level_for("bitcoin_htlc", log::LevelFilter::Trace)
-        .level_for("comit_wallet", log::LevelFilter::Trace)
-        .level_for("ethereum_htlc", log::LevelFilter::Trace)
-        .level_for("ethereum_wallet", log::LevelFilter::Trace)
-        .level_for("tokio_core::reactor", log::LevelFilter::Info)
-        .level_for("tokio_reactor", log::LevelFilter::Info)
-        .level_for("hyper", log::LevelFilter::Info)
+        .level(LevelFilter::Debug)
+        .level_for("comit_node", LevelFilter::Trace)
+        .level_for("bitcoin_htlc", LevelFilter::Trace)
+        .level_for("comit_wallet", LevelFilter::Trace)
+        .level_for("ethereum_htlc", LevelFilter::Trace)
+        .level_for("ethereum_wallet", LevelFilter::Trace)
+        .level_for("tokio_core::reactor", LevelFilter::Info)
+        .level_for("tokio_reactor", LevelFilter::Info)
+        .level_for("hyper", LevelFilter::Info)
         // output to stdout
         .chain(stdout())
         .apply()

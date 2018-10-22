@@ -1,7 +1,6 @@
-use common_types::seconds::Seconds;
 use ethereum_support::{Address, EtherQuantity, H256};
 use secp256k1_support::PublicKey;
-use swap_protocols::ledger::Ledger;
+use swap_protocols::{ledger::Ledger, rfc003::ethereum::Seconds};
 
 #[derive(Clone, Debug, PartialEq, Default)]
 pub struct Ethereum {}

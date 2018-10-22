@@ -1,11 +1,9 @@
-use bitcoin_htlc;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
-use comit_wallet::KeyStore;
-use common_types::seconds::Seconds;
 use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
+use key_store::KeyStore;
 use ledger_query_service::{
     fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
     LedgerQueryServiceApiClient,
@@ -20,6 +18,7 @@ use swap_protocols::{
     },
     rfc003::{
         self,
+        ethereum::Seconds,
         ledger_htlc_service::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
             EthereumService, LedgerHtlcService,
@@ -189,7 +188,7 @@ fn process<
         bob_refund_address
     );
 
-    let twelve_hours = Seconds::new(60 * 60 * 12);
+    let twelve_hours = Seconds(60 * 60 * 12);
 
     let order_taken = OrderTaken::<Ethereum, Bitcoin> {
         uid: trade_id,
@@ -215,7 +214,7 @@ fn process<
 
     let btc_lock_time = (60 * 24) / 10;
 
-    let htlc = bitcoin_htlc::Htlc::new(
+    let htlc = rfc003::bitcoin::Htlc::new(
         bob_success_address,
         alice_refund_address,
         request.secret_hash,

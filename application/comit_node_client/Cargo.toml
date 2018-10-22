@@ -20,6 +20,5 @@ uuid = { version = "0.6.3", features = ["serde", "v4"] }
 bitcoin_rpc_client = "0.3"
 maplit = "1"
 
-common_types = { path = "../common_types"}
 ethereum_support = { path = "../../vendor/ethereum_support" }
 bitcoin_support = { path = "../../vendor/bitcoin_support" }

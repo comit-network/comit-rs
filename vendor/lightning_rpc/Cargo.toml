@@ -10,7 +10,6 @@ authors = [
 
 [dependencies]
 bytes = "0.4"
-common_types = { path = "../../application/common_types" }
 futures = "0.1"
 hex = "0.3.2"
 http = "0.1"

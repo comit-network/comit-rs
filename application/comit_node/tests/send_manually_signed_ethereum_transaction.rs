@@ -1,20 +1,20 @@
-extern crate env_logger;
+extern crate comit_node;
 extern crate ethereum_support;
-extern crate ethereum_wallet;
 extern crate hex;
+extern crate pretty_env_logger;
 extern crate secp256k1_support;
 extern crate tc_web3_client;
 extern crate testcontainers;
 
+use comit_node::ethereum_wallet::{InMemoryWallet, UnsignedTransaction, Wallet};
 use ethereum_support::*;
-use ethereum_wallet::*;
 use hex::FromHex;
 use secp256k1_support::KeyPair;
 use testcontainers::{clients::Cli, images::trufflesuite_ganachecli::GanacheCli, Docker};
 
 #[test]
 fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_address() {
-    let _ = env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     // Arrange
 

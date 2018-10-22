@@ -2,9 +2,7 @@
 #![deny(unsafe_code)]
 
 extern crate comit_node;
-extern crate common_types;
 extern crate ethereum_support;
-extern crate ethereum_wallet;
 extern crate hex;
 extern crate pretty_env_logger;
 extern crate secp256k1_support;

@@ -1,11 +1,11 @@
-use bitcoin::blockdata::{
+use bitcoin_support::{
     opcodes::All::{OP_NOP3 as OP_CHECKSEQUENCEVERIFY, *},
     script::Builder,
+    Address, Network, PubkeyHash, Script,
 };
-use bitcoin_support::{Address, Network, PubkeyHash, Script};
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use secp256k1_support::KeyPair;
-use secret::{Secret, SecretHash};
+use swap_protocols::rfc003::{Secret, SecretHash};
 
 #[derive(Debug)]
 pub enum UnlockingError {
