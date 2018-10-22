@@ -1,8 +1,8 @@
 use bitcoin_support::{BitcoinQuantity, Network};
-use comit_wallet::KeyStore;
 use ethereum_support::EtherQuantity;
 use event_store::EventStore;
 use futures::{Future, Stream};
+use key_store::KeyStore;
 use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{

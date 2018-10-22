@@ -1,5 +1,4 @@
 use comit_client;
-use comit_wallet::KeyStore;
 use event_store;
 use futures::sync::mpsc::UnboundedSender;
 use gotham::{
@@ -10,6 +9,7 @@ use gotham::{
     state::{State, StateData},
 };
 use http_api;
+use key_store::KeyStore;
 use rand::OsRng;
 use std::{
     net::SocketAddr,

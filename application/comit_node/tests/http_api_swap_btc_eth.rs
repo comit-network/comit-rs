@@ -6,13 +6,11 @@ extern crate serde;
 extern crate serde_derive;
 extern crate bitcoin_rpc_client;
 extern crate comit_node;
-extern crate ethereum_wallet;
 extern crate hex;
 extern crate pretty_env_logger;
 extern crate reqwest;
 #[macro_use]
 extern crate serde_json;
-extern crate comit_wallet;
 extern crate futures;
 extern crate gotham;
 extern crate hyper;
@@ -23,13 +21,13 @@ extern crate uuid;
 use comit_node::{
     comit_client::{fake::FakeClientFactory, SwapReject},
     gotham_factory::create_gotham_router,
+    key_store::KeyStore,
     swap_protocols::{
         ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
         rfc003::{self, ethereum::Seconds},
     },
     swaps::common::TradeId,
 };
-use comit_wallet::KeyStore;
 use event_store::InMemoryEventStore;
 use futures::sync::mpsc::{self, UnboundedReceiver};
 use gotham::test::TestServer;

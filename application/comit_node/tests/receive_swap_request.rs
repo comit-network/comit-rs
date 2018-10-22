@@ -9,9 +9,7 @@ extern crate serde_json;
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
-extern crate comit_wallet;
 extern crate ethereum_support;
-extern crate ethereum_wallet;
 extern crate event_store;
 extern crate failure;
 extern crate futures;
@@ -29,7 +27,9 @@ mod mocks;
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Blocks, TransactionId};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
+    ethereum_wallet::fake::StaticFakeWallet,
     gas_price_service::StaticGasPriceService,
+    key_store::FakeKeyStoreFactory,
     ledger_query_service::fake_query_service::SimpleFakeLedgerQueryService,
     swap_protocols::{
         json_config,
@@ -42,9 +42,7 @@ use comit_node::{
         SwapRequestHandler,
     },
 };
-use comit_wallet::fake_key_store::FakeKeyStoreFactory;
 use ethereum_support::EtherQuantity;
-use ethereum_wallet::fake::StaticFakeWallet;
 use event_store::InMemoryEventStore;
 use futures::future::Future;
 use hex::FromHex;

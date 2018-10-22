@@ -1,4 +1,5 @@
 use comit_node::{
+    ethereum_wallet::fake::StaticFakeWallet,
     gas_price_service::StaticGasPriceService,
     swap_protocols::rfc003::{
         ethereum::Seconds,
@@ -16,7 +17,6 @@ use ethereum_support::{
     },
     EtherQuantity, ToEthereumAddress,
 };
-use ethereum_wallet::fake::StaticFakeWallet;
 use parity_client::ParityClient;
 use pretty_env_logger;
 use secp256k1_support::KeyPair;

@@ -1,7 +1,6 @@
-use super::SECP;
 use bitcoin_support::{bip32, ChildNumber, ExtendedPrivKey};
 use crypto::{digest::Digest, sha2::Sha256};
-use secp256k1_support::{KeyPair, SECRET_KEY_SIZE};
+use secp256k1_support::{KeyPair, SECP, SECRET_KEY_SIZE};
 use std::{
     ops::DerefMut,
     sync::{Mutex, MutexGuard, PoisonError},

@@ -1,9 +1,9 @@
 use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
-use comit_wallet::KeyStore;
 use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
 use futures::{Future, Stream};
+use key_store::KeyStore;
 use ledger_query_service::{
     fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
     LedgerQueryServiceApiClient,

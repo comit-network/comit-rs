@@ -2,6 +2,7 @@ use bitcoin_support::{ChainCode, ChildNumber, ExtendedPrivKey, Fingerprint, Netw
 use key_store::KeyStore;
 use secp256k1_support::{SecretKey, SECP};
 
+#[derive(Debug)]
 pub struct FakeKeyStoreFactory(KeyStore);
 
 impl FakeKeyStoreFactory {

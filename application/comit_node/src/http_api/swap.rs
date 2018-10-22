@@ -1,6 +1,5 @@
 use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
 use comit_client::{self, SwapReject, SwapResponseError};
-use comit_wallet::KeyStore;
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{future, sync::mpsc::UnboundedSender, Future, Stream};
@@ -11,6 +10,7 @@ use gotham::{
 use gotham_factory::{self, ClientFactory, SwapId, SwapState};
 use http_api_problem::HttpApiProblem;
 use hyper::{header, Body, Response, StatusCode};
+use key_store::KeyStore;
 use mime;
 use rand::OsRng;
 use serde_json;

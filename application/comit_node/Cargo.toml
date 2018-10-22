@@ -11,14 +11,12 @@ authors = [
 [dependencies]
 bitcoin_rpc_client = "0.3"
 bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
-bitcoin_support  = { path = "../../vendor/bitcoin_support" }
+bitcoin_support = { path = "../../vendor/bitcoin_support"}
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 chrono = "0.4"
-comit_wallet = { path = "../comit_wallet" }
 config = "0.9"
 debug_stub_derive = "0.3"
 ethereum_support = { path = "../../vendor/ethereum_support" }
-ethereum_wallet = { path = "../ethereum_wallet" }
 event_store = { path = "../../vendor/event_store" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
@@ -33,6 +31,7 @@ log = "0.4"
 mime = "0.3"
 rand = "0.4"
 reqwest = "0.9"
+rlp = "0.2.4"
 rust-crypto = "0.2"
 rustc-hex = "1"
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
@@ -48,14 +47,14 @@ url = "1.7"
 uuid = { version = "0.6", features = ["serde", "v4"] }
 
 [dev-dependencies]
+key_gen = { path = "../../vendor/key_gen"}
+lazy_static = "1"
 maplit = "1"
 memsocket = "0.1"
 pretty_env_logger = "0.2"
+spectral = "0.6"
 tc_web3_client = { path = "../../vendor/tc_web3_client" }
 testcontainers = "0.3"
-spectral = "0.6"
-lazy_static = "1"
-key_gen = { path = "../../vendor/key_gen"}
 
 [build-dependencies]
 regex = "1"
