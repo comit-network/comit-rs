@@ -180,7 +180,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
         htlc_funding_tx_id: <Ethereum as Ledger>::TxId,
     ) -> Result<EthereumQuery, ledger_htlc_service::Error> {
         match self.get_contract_address(htlc_funding_tx_id) {
-            Ok(Some(eth_htlc_address)) => Ok(EthereumQuery {
+            Ok(Some(eth_htlc_address)) => Ok(EthereumQuery::Transaction {
                 from_address: None,
                 to_address: Some(eth_htlc_address),
                 is_contract_creation: None,
@@ -199,7 +199,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
         ).compile_to_hex()
         .into();
 
-        EthereumQuery {
+        EthereumQuery::Transaction {
             from_address: None,
             to_address: None,
             is_contract_creation: Some(true),

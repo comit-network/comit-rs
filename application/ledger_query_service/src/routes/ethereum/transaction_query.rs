@@ -17,7 +17,7 @@ use rocket_contrib::Json;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct EthereumQuery {
+pub struct EthereumTransactionQuery {
     from_address: Option<Address>,
     to_address: Option<Address>,
     is_contract_creation: Option<bool>,
@@ -25,19 +25,19 @@ pub struct EthereumQuery {
 }
 
 #[post(
-    "/queries/ethereum",
+    "/queries/ethereum/transactions",
     format = "application/json",
     data = "<query>"
 )]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn handle_new_ethereum_query<'r>(
-    query: Json<EthereumQuery>,
+pub fn handle_new_query<'r>(
+    query: Json<EthereumTransactionQuery>,
     link_factory: State<LinkFactory>,
-    query_repository: State<Arc<QueryRepository<EthereumQuery>>>,
+    query_repository: State<Arc<QueryRepository<EthereumTransactionQuery>>>,
 ) -> Result<impl Responder<'r>, HttpApiProblem> {
     let query = query.into_inner();
 
-    if let EthereumQuery {
+    if let EthereumTransactionQuery {
         from_address: None,
         to_address: None,
         transaction_data: None,
@@ -52,7 +52,7 @@ pub fn handle_new_ethereum_query<'r>(
 
     match result {
         Ok(id) => Ok(created(
-            link_factory.create_link(format!("/queries/ethereum/{}", id)),
+            link_factory.create_link(format!("/queries/ethereum/transactions/{}", id)),
         )),
         Err(_) => {
             Err(HttpApiProblem::with_title_from_status(500)
@@ -65,7 +65,7 @@ fn created(url: String) -> Created<Option<()>> {
     Created(url, None)
 }
 
-impl Query<EthereumTransaction> for EthereumQuery {
+impl Query<EthereumTransaction> for EthereumTransactionQuery {
     fn matches(&self, transaction: &EthereumTransaction) -> bool {
         let mut result = true;
 
@@ -116,16 +116,16 @@ impl Block for EthereumBlock<EthereumTransaction> {
 
 #[derive(Serialize, Clone, Default, Debug)]
 pub struct RetrieveEthereumQueryResponse {
-    query: EthereumQuery,
+    query: EthereumTransactionQuery,
     matching_transactions: QueryResult,
 }
 
-#[get("/queries/ethereum/<id>")]
+#[get("/queries/ethereum/transactions/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn retrieve_ethereum_query(
+pub fn retrieve_query(
     id: u32,
-    query_repository: State<Arc<QueryRepository<EthereumQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository<EthereumQuery>>>,
+    query_repository: State<Arc<QueryRepository<EthereumTransactionQuery>>>,
+    query_result_repository: State<Arc<QueryResultRepository<EthereumTransactionQuery>>>,
 ) -> Result<Json<RetrieveEthereumQueryResponse>, HttpApiProblem> {
     let query = query_repository.get(id).ok_or_else(|| {
         HttpApiProblem::with_title_from_status(404).set_detail("The requested query does not exist")
@@ -139,12 +139,12 @@ pub fn retrieve_ethereum_query(
     }))
 }
 
-#[delete("/queries/ethereum/<id>")]
+#[delete("/queries/ethereum/transactions/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn delete_ethereum_query(
+pub fn delete_query(
     id: u32,
-    query_repository: State<Arc<QueryRepository<EthereumQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository<EthereumQuery>>>,
+    query_repository: State<Arc<QueryRepository<EthereumTransactionQuery>>>,
+    query_result_repository: State<Arc<QueryResultRepository<EthereumTransactionQuery>>>,
 ) -> impl Responder<'static> {
     query_repository.delete(id);
     query_result_repository.delete(id);
@@ -162,7 +162,7 @@ mod tests {
     fn given_query_from_address_contract_creation_transaction_matches() {
         let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: Some(from_address),
             to_address: None,
             is_contract_creation: Some(true),
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn given_query_from_address_doesnt_match() {
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: Some("a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap()),
             to_address: None,
             is_contract_creation: None,
@@ -216,7 +216,7 @@ mod tests {
     fn given_query_to_address_transaction_matches() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -244,7 +244,7 @@ mod tests {
     fn given_query_to_address_transaction_doesnt_match() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -272,7 +272,7 @@ mod tests {
     fn given_query_to_address_transaction_with_to_none_doesnt_match() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -298,7 +298,7 @@ mod tests {
 
     #[test]
     fn given_query_transaction_data_transaction_matches() {
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -324,7 +324,7 @@ mod tests {
 
     #[test]
     fn given_no_conditions_in_query_transaction_matches() {
-        let query = EthereumQuery {
+        let query = EthereumTransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,

@@ -1,2 +1,2 @@
-pub mod bitcoin_query;
-pub mod ethereum_query;
+pub mod bitcoin;
+pub mod ethereum;

@@ -3,8 +3,8 @@ use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
 use rocket;
 use routes::{
-    bitcoin_query::{self, BitcoinQuery},
-    ethereum_query::{self, EthereumQuery},
+    bitcoin::{self, transaction_query::BitcoinTransactionQuery},
+    ethereum::{self, transaction_query::EthereumTransactionQuery},
 };
 use std::sync::Arc;
 
@@ -26,17 +26,17 @@ impl ServerBuilder {
 
     pub fn register_bitcoin(
         self,
-        query_repository: Arc<QueryRepository<BitcoinQuery>>,
-        query_result_repository: Arc<QueryResultRepository<BitcoinQuery>>,
+        query_repository: Arc<QueryRepository<BitcoinTransactionQuery>>,
+        query_result_repository: Arc<QueryResultRepository<BitcoinTransactionQuery>>,
     ) -> ServerBuilder {
         let rocket = self
             .rocket
             .mount(
                 "/",
                 routes![
-                    bitcoin_query::handle_new_bitcoin_query,
-                    bitcoin_query::retrieve_bitcoin_query,
-                    bitcoin_query::delete_bitcoin_query,
+                    bitcoin::transaction_query::handle_new_query,
+                    bitcoin::transaction_query::retrieve_query,
+                    bitcoin::transaction_query::delete_query,
                 ],
             ).manage(query_repository)
             .manage(query_result_repository);
@@ -45,17 +45,17 @@ impl ServerBuilder {
 
     pub fn register_ethereum(
         self,
-        query_repository: Arc<QueryRepository<EthereumQuery>>,
-        query_result_repository: Arc<QueryResultRepository<EthereumQuery>>,
+        query_repository: Arc<QueryRepository<EthereumTransactionQuery>>,
+        query_result_repository: Arc<QueryResultRepository<EthereumTransactionQuery>>,
     ) -> ServerBuilder {
         let rocket = self
             .rocket
             .mount(
                 "/",
                 routes![
-                    ethereum_query::handle_new_ethereum_query,
-                    ethereum_query::retrieve_ethereum_query,
-                    ethereum_query::delete_ethereum_query,
+                    ethereum::transaction_query::handle_new_query,
+                    ethereum::transaction_query::retrieve_query,
+                    ethereum::transaction_query::delete_query,
                 ],
             ).manage(query_repository)
             .manage(query_result_repository);

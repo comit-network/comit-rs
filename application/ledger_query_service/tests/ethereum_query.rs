@@ -37,7 +37,7 @@ fn can_access_query_resource_after_creation() {
     let client = Client::new(server).unwrap();
 
     let response = client
-        .post("/queries/ethereum")
+        .post("/queries/ethereum/transactions")
         .header(ContentType::JSON)
         .body(r#"{"from_address" : "0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"}"#)
         .dispatch();
@@ -47,7 +47,7 @@ fn can_access_query_resource_after_creation() {
     assert_that(&status).is_equal_to(Status::Created);
     assert_that(&location_header_value)
         .is_some()
-        .is_equal_to("http://localhost:8000/queries/ethereum/1");
+        .is_equal_to("http://localhost:8000/queries/ethereum/transactions/1");
 
     let uri: Uri = location_header_value.unwrap().parse().unwrap();
 
@@ -73,7 +73,7 @@ fn given_created_query_when_deleted_is_no_longer_available() {
     let client = Client::new(server).unwrap();
 
     let response = client
-        .post("/queries/ethereum")
+        .post("/queries/ethereum/transactions")
         .header(ContentType::JSON)
         .body(r#"{"from_address" : "0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099"}"#)
         .dispatch();
@@ -111,7 +111,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
     let client = Client::new(server).unwrap();
 
     let response = client
-        .post("/queries/ethereum")
+        .post("/queries/ethereum/transactions")
         .header(ContentType::JSON)
         .body(r#"{"from_address" : "0xa00f2cac7bad9285ecfd59e8860f5b2d8622e099", "is_contract_creation" : true }"#)
         .dispatch();
@@ -188,7 +188,7 @@ fn should_reject_malformed_address() {
     let client = Client::new(server).unwrap();
 
     let response = client
-        .post("/queries/ethereum")
+        .post("/queries/ethereum/transactions")
         .header(ContentType::JSON)
         .body(r#"{"from_address" : "ZZZZZZZZZ", "is_contract_creation" : true }"#)
         .dispatch();

@@ -223,7 +223,7 @@ fn process<
 
     let htlc_address = htlc.compute_address(bitcoin_network);
 
-    let query = BitcoinQuery {
+    let query = BitcoinQuery::Transaction {
         to_address: Some(htlc_address.clone()),
     };
 
