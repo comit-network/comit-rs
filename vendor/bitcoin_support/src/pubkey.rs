@@ -140,7 +140,7 @@ mod test {
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
         let keypair: KeyPair = private_key.secret_key().clone().into();
-        let pubkey_hash: PubkeyHash = keypair.public_key().clone().into();
+        let pubkey_hash: PubkeyHash = keypair.public_key().into();
 
         assert_eq!(
             pubkey_hash,

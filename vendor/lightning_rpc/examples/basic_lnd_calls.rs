@@ -32,8 +32,8 @@ static LND_URI: &'static str = "127.0.0.1:10009";
 static ORIGIN_URI: &'static str = "http://127.0.0.1";
 
 fn main() {
-    let cert_path = env::args().skip(1).next();
-    let macaroon_path = env::args().skip(2).next();
+    let cert_path = env::args().nth(1);
+    let macaroon_path = env::args().nth(2);
 
     let cert_path = cert_path.unwrap_or({ format!("{}/.lnd/tls.cert", env::var("HOME").unwrap()) });
     let macaroon_path =
@@ -92,8 +92,8 @@ fn create_lnd_client(cert_path: String, macaroon_path: String) -> LndClient {
     let macaroon = Macaroon::from_file(macaroon_path).ok();
     let lnd_addr = LND_URI.parse().unwrap();
     let origin_uri: http::Uri = ORIGIN_URI.parse().unwrap();
-    let lnd_client = LndClient::new(certificate, macaroon, lnd_addr, origin_uri).unwrap();
-    lnd_client
+
+    LndClient::new(certificate, macaroon, lnd_addr, origin_uri).unwrap()
 }
 
 fn send_payment(lnd_client: &mut LndClient) {

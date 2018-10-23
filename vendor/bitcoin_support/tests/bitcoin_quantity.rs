@@ -1,25 +1,25 @@
 extern crate bitcoin_support;
 extern crate serde_json;
+extern crate spectral;
 
 use bitcoin_support::BitcoinQuantity;
+use spectral::prelude::*;
 use std::str::FromStr;
 
 #[test]
 fn hundred_million_sats_is_a_bitcoin() {
-    assert_eq!(BitcoinQuantity::from_satoshi(100_000_000).bitcoin(), 1.0);
+    assert_that(&BitcoinQuantity::from_satoshi(100_000_000).bitcoin()).is_equal_to(&1.0);
 }
 
 #[test]
 fn a_bitcoin_is_a_hundred_million_sats() {
-    assert_eq!(BitcoinQuantity::from_bitcoin(1.0).satoshi(), 100_000_000);
+    assert_that(&BitcoinQuantity::from_bitcoin(1.0).satoshi()).is_equal_to(&100_000_000);
 }
 
 #[test]
 fn a_bitcoin_as_string_is_a_hundred_million_sats() {
-    assert_eq!(
-        BitcoinQuantity::from_str("1.00000001").unwrap(),
-        BitcoinQuantity::from_bitcoin(1.00000001)
-    )
+    assert_that(&BitcoinQuantity::from_str("1.00000001").unwrap())
+        .is_equal_to(&BitcoinQuantity::from_bitcoin(1.000_000_01));
 }
 
 #[test]
