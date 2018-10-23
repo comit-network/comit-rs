@@ -2,6 +2,11 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 use swap_protocols;
 
+mod bitcoin;
+mod ethereum;
+
+pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
+
 pub trait Ledger:
     Clone + Debug + Send + Sync + 'static + Default + Into<swap_protocols::wire_types::Ledger>
 {
@@ -19,8 +24,5 @@ pub trait Ledger:
         + DeserializeOwned;
 
     fn symbol() -> String;
-    fn address_for_identity(&self, Self::Identity) -> Self::Address;
+    fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }
-
-pub mod bitcoin;
-pub mod ethereum;

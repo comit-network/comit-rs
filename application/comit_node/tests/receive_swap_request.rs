@@ -33,7 +33,7 @@ use comit_node::{
     ledger_query_service::fake_query_service::SimpleFakeLedgerQueryService,
     swap_protocols::{
         json_config,
-        ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+        ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
             ledger_htlc_service::{BitcoinService, EthereumService},

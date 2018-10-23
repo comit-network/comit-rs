@@ -31,8 +31,8 @@ impl BamClient {
 
 impl Client for BamClient {
     fn send_swap_request<
-        SL: rfc003::ledger::Ledger,
-        TL: rfc003::ledger::Ledger,
+        SL: rfc003::Ledger,
+        TL: rfc003::Ledger,
         SA: Into<wire_types::Asset>,
         TA: Into<wire_types::Asset>,
     >(

@@ -4,7 +4,7 @@ use ledger_query_service::{
 };
 use reqwest::{async::Client, header::LOCATION, Url};
 use serde::{Deserialize, Serialize};
-use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger};
+use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::future::Future;
 
 #[derive(Debug)]

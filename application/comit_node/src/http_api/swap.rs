@@ -19,8 +19,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 use swap_protocols::{
-    ledger::{self, bitcoin::Bitcoin, ethereum::Ethereum},
-    rfc003::{self, bitcoin, Secret},
+    ledger::{Bitcoin, Ethereum},
+    rfc003::{bitcoin, Secret},
 };
 use swaps::{alice_events, common::TradeId};
 

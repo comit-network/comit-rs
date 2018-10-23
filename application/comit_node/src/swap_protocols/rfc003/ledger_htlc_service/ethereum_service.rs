@@ -13,7 +13,7 @@ use std::{
     sync::{Arc, Mutex, MutexGuard, PoisonError},
 };
 use swap_protocols::{
-    ledger::ethereum::Ethereum,
+    ledger::Ethereum,
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
         ledger_htlc_service::{self, LedgerHtlcService},

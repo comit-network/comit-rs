@@ -13,11 +13,11 @@ use ledger_query_service::{
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
+    ledger::{Bitcoin, Ethereum, Ledger},
     rfc003::{
         self,
+        bitcoin::HtlcId,
         ethereum::Seconds,
-        ledger::bitcoin::HtlcId,
         ledger_htlc_service::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
             EthereumService, LedgerHtlcService,

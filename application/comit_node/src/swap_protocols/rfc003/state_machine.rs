@@ -389,7 +389,7 @@ mod tests {
     use ethereum_support::{self, EtherQuantity};
     use hex::FromHex;
     use std::str::FromStr;
-    use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
+    use swap_protocols::ledger::{Bitcoin, Ethereum};
 
     #[test]
     fn given_a_state_store_it() {

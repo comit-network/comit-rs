@@ -1,7 +1,7 @@
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use serde::Serialize;
-use swap_protocols::ledger::{bitcoin::Bitcoin, ethereum::Ethereum};
+use swap_protocols::ledger::{Bitcoin, Ethereum};
 use transport_protocol::Status;
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]

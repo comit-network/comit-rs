@@ -8,11 +8,10 @@ use bitcoin_support::{BitcoinQuantity, Blocks};
 use comit_node::{
     comit_client::SwapReject,
     swap_protocols::{
-        ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+        ledger::{Bitcoin, Ethereum},
         rfc003::{
-            ledger::Ledger,
             state_machine::{self, events, Context, Futures, StateMachineError, SwapOutcome},
-            AcceptResponse, Request,
+            AcceptResponse, Ledger, Request,
         },
         wire_types,
     },

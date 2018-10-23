@@ -62,7 +62,7 @@ mod tests {
     use ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock};
     use pretty_env_logger;
     use std::time::{Duration, Instant};
-    use swap_protocols::ledger::bitcoin::Bitcoin;
+    use swap_protocols::ledger::Bitcoin;
     use tokio::{prelude::future::Either, runtime::Runtime};
     use tokio_timer::Delay;
 

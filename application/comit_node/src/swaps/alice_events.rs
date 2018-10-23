@@ -1,6 +1,6 @@
 use event_store::Event;
 use std::{marker::PhantomData, net::SocketAddr};
-use swap_protocols::rfc003::{ledger::Ledger, Secret};
+use swap_protocols::rfc003::{Ledger, Secret};
 use swaps::common::TradeId;
 
 #[derive(Clone, Debug)]

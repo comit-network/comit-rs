@@ -14,7 +14,7 @@ use ledger_query_service::{
 };
 use std::{marker::PhantomData, sync::Arc, time::Duration};
 use swap_protocols::{
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{Bitcoin, Ethereum},
     rfc003::{
         bitcoin,
         ethereum::{EtherHtlc, Htlc},

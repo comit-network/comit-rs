@@ -2,7 +2,9 @@ use ethereum_support::Bytes;
 use hex;
 
 pub use self::{erc20_htlc::*, ether_htlc::*};
+use ethereum_support::web3::types::Address;
 use std::time::Duration;
+use swap_protocols::{ledger::Ethereum, rfc003::Ledger};
 
 mod erc20_htlc;
 mod ether_htlc;
@@ -33,4 +35,9 @@ impl From<Seconds> for Duration {
     fn from(seconds: Seconds) -> Duration {
         Duration::from_secs(seconds.0)
     }
+}
+
+impl Ledger for Ethereum {
+    type LockDuration = Seconds;
+    type HtlcId = Address;
 }

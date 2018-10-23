@@ -8,10 +8,9 @@ use ledger_query_service::BitcoinQuery;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swap_protocols::{
-    ledger::{bitcoin::Bitcoin, Ledger},
+    ledger::Bitcoin,
     rfc003::{
-        bitcoin,
-        ledger::bitcoin::HtlcId,
+        bitcoin::{self, HtlcId},
         ledger_htlc_service::{self, LedgerHtlcService},
         Secret, SecretHash,
     },

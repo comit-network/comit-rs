@@ -18,7 +18,7 @@ pub struct FakeClient {
 }
 
 impl FakeClient {
-    pub fn resolve_request<SL: rfc003::ledger::Ledger, TL: rfc003::ledger::Ledger>(
+    pub fn resolve_request<SL: rfc003::Ledger, TL: rfc003::Ledger>(
         &self,
         response: Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
     ) {
@@ -34,8 +34,8 @@ impl FakeClient {
 
 impl Client for FakeClient {
     fn send_swap_request<
-        SL: rfc003::ledger::Ledger,
-        TL: rfc003::ledger::Ledger,
+        SL: rfc003::Ledger,
+        TL: rfc003::Ledger,
         SA: Into<wire_types::Asset>,
         TA: Into<wire_types::Asset>,
     >(
