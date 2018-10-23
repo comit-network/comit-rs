@@ -107,29 +107,29 @@ where
                 let bitcoin_service = bitcoin_service.clone();
                 let ethereum_service = ethereum_service.clone();
 
-                let start_event: StartSwap<
-                    Bitcoin,
-                    Ethereum,
-                    BitcoinQuantity,
-                    EtherQuantity,
-                > = event_store
-                    .get_event(trade_id)
-                    .expect("should have start event");
+                // let start_event: StartSwap<
+                //     Bitcoin,
+                //     Ethereum,
+                //     BitcoinQuantity,
+                //     EtherQuantity,
+                // > = event_store
+                //     .get_event(trade_id)
+                //     .expect("should have start event");
 
-                state_machine::Swap::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::start(
-                    Request {
-                        secret_hash: start_event.secret.hash(),
-                        source_ledger_refund_identity: start_event.source_ledger_refund_identity,
-                        target_ledger_success_identity: start_event.target_ledger_success_identity,
-                        source_ledger_lock_duration: start_event.source_ledger_lock_duration,
-                        target_asset: start_event.target_asset,
-                        source_asset: start_event.source_asset,
-                        source_ledger: start_event.source_ledger,
-                        target_ledger: start_event.target_ledger,
-                    },
-                    unimplemented!(),
-                ).map_err(|e| ())
-                .map(|_| unimplemented!())
+                // state_machine::Swap::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::start(
+                //         secret: start_event.secret,
+                //         source_ledger_refund_identity: start_event.source_ledger_refund_identity,
+                //         target_ledger_success_identity: start_event.target_ledger_success_identity,
+                //         source_ledger_lock_duration: start_event.source_ledger_lock_duration,
+                //         target_asset: start_event.target_asset,
+                //         source_asset: start_event.source_asset,
+                //         source_ledger: start_event.source_ledger,
+                //         target_ledger: start_event.target_ledger,
+                //     },
+                //     unimplemented!(),
+                // ).map_err(|e| ())
+                // .map(|_| unimplemented!())
+                Ok(unimplemented!())
             }).map_err(|e| {
                 panic!("Issue with the unbounded channel: {:?}", e);
             });

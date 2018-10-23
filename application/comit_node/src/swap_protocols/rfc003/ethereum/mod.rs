@@ -40,4 +40,5 @@ impl From<Seconds> for Duration {
 impl Ledger for Ethereum {
     type LockDuration = Seconds;
     type HtlcId = Address;
+    type HtlcIdentity = Address;
 }

@@ -3,7 +3,7 @@ use comit_client::SwapResponseError;
 use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{collections::HashMap, hash::Hash, sync::RwLock};
-use swap_protocols::rfc003::{ledger::Ledger, messages::Request};
+use swap_protocols::rfc003::{ledger::Ledger, messages::Request, secret::Secret};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineError {
@@ -86,14 +86,21 @@ pub enum SwapOutcome {
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone))]
 pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
-    // Start {
-    //     sl_identity: SL::
-    // }
     #[state_machine_future(start, transitions(Accepted, Final))]
-    Sent { request: Request<SL, TL, SA, TA> },
+    Start {
+        source_identity: SL::HtlcIdentity,
+        target_identity: TL::HtlcIdentity,
+        source_ledger: SL,
+        target_ledger: TL,
+        source_asset: SA,
+        target_asset: TA,
+        source_ledger_lock_duration: SL::LockDuration,
+        secret: Secret,
+    },
 
     #[state_machine_future(transitions(SourceFunded))]
     Accepted {
+        start: Start<SL, TL, SA, TA>,
         request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
     },
@@ -155,17 +162,29 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, SA, TA> {
-    fn poll_sent<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, Sent<SL, TL, SA, TA>>,
+    fn poll_start<'smf_poll>(
+        state: &'smf_poll mut RentToOwn<'smf_poll, Start<SL, TL, SA, TA>>,
         context: &mut Context<SL, TL, SA, TA>,
-    ) -> Result<Async<AfterSent<SL, TL, SA, TA>>, StateMachineError> {
-        let response = try_ready!(context.futures.send_request(&state.request).poll());
+    ) -> Result<Async<AfterStart<SL, TL, SA, TA>>, StateMachineError> {
+        let request = Request {
+            source_asset: state.source_asset.clone(),
+            target_asset: state.target_asset.clone(),
+            source_ledger: state.source_ledger,
+            target_ledger: state.target_ledger,
+            source_ledger_refund_identity: state.source_identity.clone().into(),
+            target_ledger_success_identity: state.target_identity.clone().into(),
+            source_ledger_lock_duration: state.source_ledger_lock_duration,
+            secret_hash: state.secret.hash(),
+        };
+
+        let response = try_ready!(context.futures.send_request(&request).poll());
 
         let state = state.take();
 
         match response {
             Ok(swap_accepted) => transition!(Accepted {
-                request: state.request,
+                start: state,
+                request: request,
                 response: swap_accepted,
             }),
             Err(rejected) => transition!(Final(SwapOutcome::Rejected)),

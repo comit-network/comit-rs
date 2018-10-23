@@ -21,16 +21,17 @@ pub fn bitcoin_htlc<TA>(
     )
 }
 
-impl<TA> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
+impl<TA: Clone> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
     for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, TA>
 {
     fn actions(&self) -> Vec<Action<BitcoinFund, EtherRedeem, BitcoinRefund>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Sent { .. } => vec![],
+            SS::Start { .. } => vec![],
             SS::Accepted(Accepted {
                 ref request,
                 ref response,
+                ..
             }) => {
                 let htlc = bitcoin_htlc(request, response);
                 let address = htlc.compute_address(request.source_ledger.network());
