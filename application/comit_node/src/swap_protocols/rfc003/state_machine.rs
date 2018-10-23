@@ -86,6 +86,9 @@ pub enum SwapOutcome {
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone))]
 pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
+    // Start {
+    //     sl_identity: SL::
+    // }
     #[state_machine_future(start, transitions(Accepted, Final))]
     Sent { request: Request<SL, TL, SA, TA> },
 

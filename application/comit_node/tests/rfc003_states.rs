@@ -11,11 +11,12 @@ use comit_node::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             state_machine::{self, events, Context, Futures, StateMachineError, SwapOutcome},
-            AcceptResponse, Ledger, Request,
+            AcceptResponse, Ledger, Request, Secret,
         },
         wire_types,
     },
 };
+
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
