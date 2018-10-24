@@ -5,9 +5,7 @@
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 
-use bitcoin_rpc_client::{
-    BitcoinRpcApi, TransactionId, TransactionOutput, TxOutConfirmations, UnspentTransactionOutput,
-};
+use bitcoin_rpc_client::*;
 use bitcoin_support::{Address, BitcoinQuantity, IntoP2wpkhAddress, Network, Sha256dHash};
 
 //TODO: All of this should be under #[cfg(test)]
@@ -16,15 +14,19 @@ pub trait RegtestHelperClient {
         &self,
         txid: &TransactionId,
         address: &Address,
-    ) -> Option<UnspentTransactionOutput>;
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput;
+    ) -> Option<rpc::UnspentTransactionOutput>;
+    fn find_vout_for_address(
+        &self,
+        txid: &TransactionId,
+        address: &Address,
+    ) -> rpc::TransactionOutput;
 
     fn enable_segwit(&self);
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
         value: BitcoinQuantity,
-    ) -> (Sha256dHash, TransactionOutput);
+    ) -> (Sha256dHash, rpc::TransactionOutput);
 }
 
 impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
@@ -36,10 +38,10 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         &self,
         txid: &TransactionId,
         address: &Address,
-    ) -> Option<UnspentTransactionOutput> {
+    ) -> Option<rpc::UnspentTransactionOutput> {
         let unspent = self
             .list_unspent(
-                TxOutConfirmations::AtLeast(1),
+                rpc::TxOutConfirmations::AtLeast(1),
                 None,
                 Some(vec![address.clone().into()]),
             ).unwrap()
@@ -48,7 +50,11 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         unspent.into_iter().find(|utxo| utxo.txid == *txid)
     }
 
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> TransactionOutput {
+    fn find_vout_for_address(
+        &self,
+        txid: &TransactionId,
+        address: &Address,
+    ) -> rpc::TransactionOutput {
         let raw_txn = self.get_raw_transaction_serialized(&txid).unwrap().unwrap();
 
         let decoded_txn = self
@@ -59,7 +65,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         decoded_txn
             .vout
             .iter()
-            .find(|txout| txout.script_pub_key.hex == address.to_address().script_pubkey())
+            .find(|txout| txout.script_pub_key.hex == address.script_pubkey())
             .unwrap()
             .clone()
     }
@@ -68,7 +74,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         &self,
         dest: D,
         value: BitcoinQuantity,
-    ) -> (Sha256dHash, TransactionOutput) {
+    ) -> (Sha256dHash, rpc::TransactionOutput) {
         let address = dest.into_p2wpkh_address(Network::Regtest);
 
         let txid = self

@@ -24,7 +24,7 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 
 mod mocks;
-use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, Blocks, TransactionId};
+use bitcoin_support::{BitcoinQuantity, Blocks, IntoP2wpkhAddress, TransactionId};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
     ethereum_wallet::fake::StaticFakeWallet,
@@ -84,9 +84,9 @@ fn setup<
 
     let ledger_query_service = Arc::new(SimpleFakeLedgerQueryService {
         bitcoin_results: vec![
-            "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4"
-                .parse()
-                .unwrap(),
+            TransactionId::from_hex(
+                "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4",
+            ).unwrap(),
         ],
         ethereum_results: Vec::new(),
     });
@@ -107,14 +107,12 @@ fn setup<
 
     let bitcoin_fee_service = Arc::new(StaticBitcoinFeeService::new(50.0));
 
-    let btc_redeem_address = BitcoinAddress::from_pubkeyhash_and_network(
-        btc_redeem_pubkeyhash,
-        bitcoin_support::Network::Regtest,
-    );
+    let btc_redeem_address =
+        btc_redeem_pubkeyhash.into_p2wpkh_address(bitcoin_support::Network::Regtest);
 
     let bitcoin_service = Arc::new(BitcoinService::new(
         Arc::new(BitcoinRpcClientMock::new(
-            TransactionId::from_str(
+            TransactionId::from_hex(
                 "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
             ).unwrap(),
         )),

@@ -1,6 +1,6 @@
 use bitcoin_support::{
-    Address, BitcoinQuantity, OutPoint, Script, Sha256dHash, SigHashType, SighashComponents,
-    Transaction, TxIn, TxOut, Weight,
+    Address, BitcoinQuantity, OutPoint, Script, SigHashType, SighashComponents, Transaction, TxIn,
+    TxOut, Weight,
 };
 use secp256k1_support::{DerSerializableSignature, Message};
 use witness::{UnlockParameters, Witness};
@@ -14,15 +14,14 @@ pub struct PrimedInput {
 
 impl PrimedInput {
     pub fn new(
-        txid: Sha256dHash,
-        vout: u32,
+        previous_output: OutPoint,
         value: BitcoinQuantity,
         input_parameters: UnlockParameters,
     ) -> PrimedInput {
         PrimedInput {
             input_parameters,
             value,
-            previous_output: OutPoint { txid, vout },
+            previous_output,
         }
     }
 
@@ -120,7 +119,7 @@ impl PrimedTransaction {
     fn _transaction_without_signatures_or_output_values(&self) -> Transaction {
         let output = TxOut {
             value: 0,
-            script_pubkey: self.output_address.to_address().script_pubkey(),
+            script_pubkey: self.output_address.script_pubkey(),
         };
 
         Transaction {
@@ -160,8 +159,10 @@ mod test {
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(
-                txid,
-                1, // First number I found that gave me a 71 byte signature
+                OutPoint {
+                    txid,
+                    vout: 1, // First number I found that gave me a 71 byte signature
+                },
                 BitcoinQuantity::from_bitcoin(1.0),
                 keypair.p2wpkh_unlock_parameters(),
             )],

@@ -9,9 +9,9 @@ extern crate spectral;
 extern crate tc_bitcoincore_client;
 extern crate testcontainers;
 
-use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, PrivateKey};
+use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, OutPoint, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
@@ -39,8 +39,7 @@ fn redeem_single_p2wpkh() {
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            txid.into(),
-            vout.n,
+            OutPoint { txid, vout: vout.n },
             input_amount,
             keypair.p2wpkh_unlock_parameters(),
         )],
@@ -50,7 +49,7 @@ fn redeem_single_p2wpkh() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid = client
         .send_raw_transaction(raw_redeem_tx.clone())
@@ -95,14 +94,18 @@ fn redeem_two_p2wpkh() {
     let redeem_tx = PrimedTransaction {
         inputs: vec![
             PrimedInput::new(
-                txid_1.into(),
-                vout_1.n,
+                OutPoint {
+                    txid: txid_1,
+                    vout: vout_1.n,
+                },
                 input_amount,
                 keypair_1.p2wpkh_unlock_parameters(),
             ),
             PrimedInput::new(
-                txid_2.into(),
-                vout_2.n,
+                OutPoint {
+                    txid: txid_2,
+                    vout: vout_2.n,
+                },
                 input_amount,
                 keypair_2.p2wpkh_unlock_parameters(),
             ),
@@ -113,7 +116,7 @@ fn redeem_two_p2wpkh() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid = client
         .send_raw_transaction(raw_redeem_tx.clone())

@@ -1,7 +1,4 @@
-use bitcoin_rpc_client::{
-    Address, BitcoinRpcApi, ClientError, RpcError, SerializedRawTransaction,
-    TransactionId as BitcoinTxId,
-};
+use bitcoin_rpc_client::{TransactionId as BitcoinTxId, *};
 use comit_node::swap_protocols::rfc003::ledger_htlc_service::BlockingEthereumApi;
 use ethereum_support::{
     web3, Bytes, Transaction as EthereumTransaction, TransactionId as EthereumTxId,
@@ -22,7 +19,7 @@ impl BitcoinRpcClientMock {
 impl BitcoinRpcApi for BitcoinRpcClientMock {
     fn send_raw_transaction(
         &self,
-        _raw_transaction: SerializedRawTransaction,
+        _raw_transaction: rpc::SerializedRawTransaction,
     ) -> Result<Result<BitcoinTxId, RpcError>, ClientError> {
         Ok(Ok(self.transaction_id.clone()))
     }

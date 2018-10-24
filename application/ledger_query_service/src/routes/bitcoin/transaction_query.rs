@@ -70,7 +70,7 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
     fn matches(&self, transaction: &BitcoinTransaction) -> bool {
         match self.to_address {
             Some(ref address) => {
-                return transaction.spends_to(address.as_ref());
+                return transaction.spends_to(address);
             }
             None => trace!("to_address not sent, will not used for comparison"),
         }

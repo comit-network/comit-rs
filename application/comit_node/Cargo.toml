@@ -9,7 +9,7 @@ authors = [
 ]
 
 [dependencies]
-bitcoin_rpc_client = "0.3"
+bitcoin_rpc_client = "0.4"
 bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
 bitcoin_support = { path = "../../vendor/bitcoin_support"}
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }

@@ -10,6 +10,6 @@ authors = [
 
 [dependencies]
 testcontainers = "0.3"
-bitcoin_rpc_client = "0.3"
+bitcoin_rpc_client = "0.4"
 bitcoin_support = { path = "../bitcoin_support" }
 

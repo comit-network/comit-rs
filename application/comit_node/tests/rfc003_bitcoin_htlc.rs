@@ -9,10 +9,10 @@ extern crate secp256k1_support;
 extern crate tc_bitcoincore_client;
 extern crate testcontainers;
 
-use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
-    serialize::serialize_hex, Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash,
+    serialize::serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
 };
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret};
@@ -21,10 +21,10 @@ use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 fn fund_htlc(
-    client: &bitcoin_rpc_client::BitcoinCoreClient,
+    client: &BitcoinCoreClient,
 ) -> (
-    bitcoin_rpc_client::TransactionId,
-    bitcoin_rpc_client::TransactionOutput,
+    TransactionId,
+    rpc::TransactionOutput,
     BitcoinQuantity,
     Htlc,
     u32,
@@ -97,8 +97,7 @@ fn redeem_htlc_with_secret() {
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            txid.into(),
-            vout.n,
+            OutPoint { txid, vout: vout.n },
             input_amount,
             htlc.unlock_with_secret(keypair, &secret),
         )],
@@ -108,7 +107,7 @@ fn redeem_htlc_with_secret() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
 
@@ -138,8 +137,7 @@ fn redeem_refund_htlc() {
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            txid.clone().into(),
-            vout.n,
+            OutPoint { txid, vout: vout.n },
             input_amount,
             htlc.unlock_after_timeout(keypair),
         )],
@@ -149,7 +147,7 @@ fn redeem_refund_htlc() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid_error = client.send_raw_transaction(raw_redeem_tx.clone()).unwrap();
 
