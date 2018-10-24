@@ -116,7 +116,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
         let bob_success_pubkey_hash: PubkeyHash = bob_success_address.into();
 
         let alice_refund_pubkey_hash: PubkeyHash = alice_refund_address.into();
-        let htlc_tx_id = htlc_identifier.transaction_id;
+        let htlc_tx_id = htlc_identifier.txid;
         let vout = htlc_identifier.vout;
 
         let htlc = bitcoin::Htlc::new(

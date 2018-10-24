@@ -1,4 +1,6 @@
-use bitcoin_support::{Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network};
+use bitcoin_support::{
+    Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint,
+};
 use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
@@ -11,11 +13,7 @@ use ledger_query_service::{
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     handler::SwapRequestHandler,
-    ledger::{
-        bitcoin::{Bitcoin, HtlcId},
-        ethereum::Ethereum,
-        Ledger,
-    },
+    ledger::{bitcoin::Bitcoin, ethereum::Ethereum, Ledger},
     rfc003::{
         self,
         ethereum::Seconds,
@@ -262,8 +260,8 @@ fn process<
                     trade_id,
                     &event_store,
                     &ethereum_service,
-                    HtlcId {
-                        transaction_id,
+                    OutPoint {
+                        txid: transaction_id,
                         vout: n as u32,
                     },
                 )?;
@@ -305,7 +303,7 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
     trade_id: TradeId,
     event_store: &Arc<E>,
     ethereum_service: &Arc<EthereumService>,
-    htlc_identifier: HtlcId,
+    htlc_identifier: OutPoint,
 ) -> Result<H256, Error> {
     let trade_funded: TradeFunded<Ethereum, Bitcoin> = TradeFunded::new(trade_id, htlc_identifier);
 

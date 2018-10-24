@@ -1,5 +1,7 @@
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{Address, BitcoinQuantity, Blocks, IntoP2wpkhAddress, Network, PubkeyHash};
+use bitcoin_support::{
+    Address, BitcoinQuantity, Blocks, IntoP2wpkhAddress, Network, OutPoint, PubkeyHash,
+};
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
 
@@ -28,16 +30,10 @@ impl Default for Bitcoin {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct HtlcId {
-    pub transaction_id: TransactionId,
-    pub vout: u32,
-}
-
 impl Ledger for Bitcoin {
     type Quantity = BitcoinQuantity;
     type LockDuration = Blocks;
-    type HtlcId = HtlcId;
+    type HtlcId = OutPoint;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
     type Address = Address;
