@@ -33,7 +33,7 @@ pub mod events {
 
 }
 
-pub trait Futures<SL: Ledger, TL: Ledger, SA, TA>: Send {
+pub trait Futures<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone>: Send {
     fn send_request(
         &mut self,
         request: &Request<SL, TL, SA, TA>,
@@ -41,13 +41,13 @@ pub trait Futures<SL: Ledger, TL: Ledger, SA, TA>: Send {
 
     fn source_htlc_funded(
         &mut self,
-        request: &Request<SL, TL, SA, TA>,
+        start: &Start<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
     ) -> &mut Box<events::Funded<SL>>;
 
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        request: &Request<SL, TL, SA, TA>,
+        start: &Start<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
         source_htlc_id: &SL::HtlcId,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>>;
@@ -67,12 +67,6 @@ pub struct Context<SL: Ledger, TL: Ledger, SA, TA> {
     pub futures: Box<Futures<SL, TL, SA, TA>>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> Clone for Context<SL, TL, SA, TA> {
-    fn clone(&self) -> Self {
-        unimplemented!()
-    }
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome {
     Rejected,
@@ -85,7 +79,7 @@ pub enum SwapOutcome {
 
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone))]
-pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
+pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
         source_identity: SL::HtlcIdentity,
@@ -101,13 +95,12 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     #[state_machine_future(transitions(SourceFunded))]
     Accepted {
         start: Start<SL, TL, SA, TA>,
-        request: Request<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
     },
 
     #[state_machine_future(transitions(BothFunded, Final))]
     SourceFunded {
-        request: Request<SL, TL, SA, TA>,
+        start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         source_htlc_id: SL::HtlcId,
     },
@@ -119,7 +112,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
         SourceFundedTargetRedeemed
     ))]
     BothFunded {
-        request: Request<SL, TL, SA, TA>,
+        start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
         source_htlc_id: SL::HtlcId,
@@ -127,28 +120,28 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRefunded {
-        request: Request<SL, TL, SA, TA>,
+        start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         source_htlc_id: SL::HtlcId,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRefundedTargetFunded {
-        request: Request<SL, TL, SA, TA>,
+        start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRedeemedTargetFunded {
-        request: Request<SL, TL, SA, TA>,
+        start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcId,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRedeemed {
-        request: Request<SL, TL, SA, TA>,
+        start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_redeemed_txid: TL::TxId,
         source_htlc_id: SL::HtlcId,
@@ -161,7 +154,9 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA, TA> {
     Error(StateMachineError),
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, SA, TA> {
+impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
+    for Swap<SL, TL, SA, TA>
+{
     fn poll_start<'smf_poll>(
         state: &'smf_poll mut RentToOwn<'smf_poll, Start<SL, TL, SA, TA>>,
         context: &mut Context<SL, TL, SA, TA>,
@@ -169,11 +164,11 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
         let request = Request {
             source_asset: state.source_asset.clone(),
             target_asset: state.target_asset.clone(),
-            source_ledger: state.source_ledger,
-            target_ledger: state.target_ledger,
+            source_ledger: state.source_ledger.clone(),
+            target_ledger: state.target_ledger.clone(),
             source_ledger_refund_identity: state.source_identity.clone().into(),
             target_ledger_success_identity: state.target_identity.clone().into(),
-            source_ledger_lock_duration: state.source_ledger_lock_duration,
+            source_ledger_lock_duration: state.source_ledger_lock_duration.clone(),
             secret_hash: state.secret.hash(),
         };
 
@@ -184,7 +179,6 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
         match response {
             Ok(swap_accepted) => transition!(Accepted {
                 start: state,
-                request: request,
                 response: swap_accepted,
             }),
             Err(rejected) => transition!(Final(SwapOutcome::Rejected)),
@@ -198,14 +192,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
         let source_htlc_id = try_ready!(
             context
                 .futures
-                .source_htlc_funded(&state.request, &state.response)
+                .source_htlc_funded(&state.start, &state.response)
                 .poll()
         );
 
         let state = state.take();
 
         transition!(SourceFunded {
-            request: state.request,
+            start: state.start,
             response: state.response,
             source_htlc_id,
         })
@@ -219,19 +213,18 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
             context
                 .futures
                 .source_htlc_refunded_target_htlc_funded(
-                    &state.request,
+                    &state.start,
                     &state.response,
                     &state.source_htlc_id
                 ).poll()
         ) {
             Either::A((source_refunded_txid, target_htlc_funded_future)) => {
-                let state = state.take();
                 transition!(Final(SwapOutcome::SourceRefunded))
             }
             Either::B((target_htlc_id, source_htlc_refunded_future)) => {
                 let state = state.take();
                 transition!(BothFunded {
-                    request: state.request,
+                    start: state.start,
                     response: state.response,
                     source_htlc_id: state.source_htlc_id,
                     target_htlc_id,
@@ -252,12 +245,12 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
             let state = state.take();
             match redeemed_or_refunded {
                 Either::A((source_redeemed_txid, _)) => transition!(SourceRedeemedTargetFunded {
-                    request: state.request,
+                    start: state.start,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
                 }),
                 Either::B((source_refunded_txid, _)) => transition!(SourceRefundedTargetFunded {
-                    request: state.request,
+                    start: state.start,
                     response: state.response,
                     target_htlc_id: state.target_htlc_id,
                 }),
@@ -273,7 +266,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
             Either::A((target_redeemed_txid, _)) => {
                 let state = state.take();
                 transition!(SourceFundedTargetRedeemed {
-                    request: state.request,
+                    start: state.start,
                     response: state.response,
                     target_redeemed_txid,
                     source_htlc_id: state.source_htlc_id,
@@ -282,7 +275,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
             Either::B((target_refunded_txid, _)) => {
                 let state = state.take();
                 transition!(SourceFundedTargetRefunded {
-                    request: state.request,
+                    start: state.start,
                     response: state.response,
                     source_htlc_id: state.source_htlc_id,
                 })
@@ -359,87 +352,96 @@ impl<SL: Ledger, TL: Ledger, SA, TA> PollSwap<SL, TL, SA, TA> for Swap<SL, TL, S
     }
 }
 
-trait StateRepo<K, SL: Ledger, TL: Ledger, SA, TA>: Send + Sync {
+impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> SwapFuture<SL, TL, SA, TA> {
+    pub fn new(
+        initial_state: SwapStates<SL, TL, SA, TA>,
+        context: Context<SL, TL, SA, TA>,
+    ) -> Self {
+        SwapFuture(Some(initial_state), context)
+    }
+}
+
+trait StateRepo<K, SL: Ledger, TL: Ledger, SA: Clone, TA: Clone>: Send + Sync {
     fn set(&self, id: K, state: SwapStates<SL, TL, SA, TA>);
     fn get(&self, id: &K) -> Option<SwapStates<SL, TL, SA, TA>>;
 }
 
-pub struct InMemoryStateRepo<K: Hash + Eq, SL: Ledger, TL: Ledger, SA, TA> {
-    data: RwLock<HashMap<K, SwapStates<SL, TL, SA, TA>>>,
-}
+// pub struct InMemoryStateRepo<K: Hash + Eq, SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> {
+//     data: RwLock<HashMap<K, SwapStates<SL, TL, SA, TA>>>,
+// }
 
-impl<K: Hash + Eq, SL: Ledger, TL: Ledger, SA, TA> Default
-    for InMemoryStateRepo<K, SL, TL, SA, TA>
-{
-    fn default() -> Self {
-        InMemoryStateRepo {
-            data: RwLock::new(HashMap::new()),
-        }
-    }
-}
+// impl<K: Hash + Eq, SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> Default
+//     for InMemoryStateRepo<K, SL, TL, SA, TA>
+// {
+//     fn default() -> Self {
+//         InMemoryStateRepo {
+//             data: RwLock::new(HashMap::new()),
+//         }
+//     }
+// }
 
-impl<
-        K: Hash + Eq + Send + Sync,
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync,
-        TA: Send + Sync + Clone,
-    > StateRepo<K, SL, TL, SA, TA> for InMemoryStateRepo<K, SL, TL, SA, TA>
-{
-    fn set(&self, id: K, state: SwapStates<SL, TL, SA, TA>) {
-        let mut repo = self
-            .data
-            .write()
-            .expect("Other thread should not have panicked while having the lock");
-        repo.insert(id, state);
-    }
+// impl<
+//         K: Hash + Eq + Send + Sync,
+//         SL: Ledger,
+//         TL: Ledger,
+//         SA: Clone + Send + Sync,
+//         TA: Send + Sync + Clone,
+//     > StateRepo<K, SL, TL, SA, TA> for InMemoryStateRepo<K, SL, TL, SA, TA>
+// {
+//     fn set(&self, id: K, state: SwapStates<SL, TL, SA, TA>) {
+//         let mut repo = self
+//             .data
+//             .write()
+//             .expect("Other thread should not have panicked while having the lock");
+//         repo.insert(id, state);
+//     }
 
-    fn get(&self, id: &K) -> Option<SwapStates<SL, TL, SA, TA>> {
-        let repo = self
-            .data
-            .read()
-            .expect("Other thread should not have panicked while having the lock");
-        repo.get(id).map(Clone::clone)
-    }
-}
+//     fn get(&self, id: &K) -> Option<SwapStates<SL, TL, SA, TA>> {
+//         let repo = self
+//             .data
+//             .read()
+//             .expect("Other thread should not have panicked while having the lock");
+//         repo.get(id).map(Clone::clone)
+//     }
+// }
 
-#[cfg(test)]
-mod tests {
+// #[cfg(test)]
+// mod tests {
 
-    use super::*;
-    use bitcoin_support::{self, BitcoinQuantity, Blocks};
-    use ethereum_support::{self, EtherQuantity};
-    use hex::FromHex;
-    use std::str::FromStr;
-    use swap_protocols::ledger::{Bitcoin, Ethereum};
+//     use super::*;
+//     use bitcoin_support::{self, BitcoinQuantity, Blocks};
+//     use ethereum_support::{self, EtherQuantity};
+//     use hex::FromHex;
+//     use std::str::FromStr;
+//     use swap_protocols::ledger::{Bitcoin, Ethereum};
 
-    #[test]
-    fn given_a_state_store_it() {
-        let repo: InMemoryStateRepo<
-            String,
-            Bitcoin,
-            Ethereum,
-            BitcoinQuantity,
-            EtherQuantity,
-        > = InMemoryStateRepo::default();
+//     #[test]
+//     fn given_a_state_store_it() {
+//         let repo: InMemoryStateRepo<
+//             String,
+//             Bitcoin,
+//             Ethereum,
+//             BitcoinQuantity,
+//             EtherQuantity,
+//         > = InMemoryStateRepo::default();
 
-        let state = SwapStates::Sent(Sent {
-            request: Request {
-                secret_hash: "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5"
-                    .parse()
-                    .unwrap(),
-                source_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
-                    "875638cac0b0ae9f826575e190f2788918c354c2",
-                ).unwrap(),
-                target_ledger_success_identity: ethereum_support::Address::from_str(
-                    "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
-                ).unwrap(),
-                source_ledger_lock_duration: Blocks::from(144),
-                target_asset: EtherQuantity::from_eth(10.0),
-                source_asset: BitcoinQuantity::from_bitcoin(1.0),
-                source_ledger: Bitcoin::regtest(),
-                target_ledger: Ethereum::default(),
-            },
-        });
-    }
-}
+//         let state = SwapStates::Sent(Start {
+//             request: Request {
+//                 secret_hash: "f6fc84c9f21c24907d6bee6eec38cabab5fa9a7be8c4a7827fe9e56f245bd2d5"
+//                     .parse()
+//                     .unwrap(),
+//                 source_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
+//                     "875638cac0b0ae9f826575e190f2788918c354c2",
+//                 ).unwrap(),
+//                 target_ledger_success_identity: ethereum_support::Address::from_str(
+//                     "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
+//                 ).unwrap(),
+//                 source_ledger_lock_duration: Blocks::from(144),
+//                 target_asset: EtherQuantity::from_eth(10.0),
+//                 source_asset: BitcoinQuantity::from_bitcoin(1.0),
+//                 source_ledger: Bitcoin::regtest(),
+//                 target_ledger: Ethereum::default(),
+//             },
+//         });
+//     }
+// }

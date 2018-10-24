@@ -1,3 +1,4 @@
+use ledger_query_service::BitcoinQuery;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 use swap_protocols;

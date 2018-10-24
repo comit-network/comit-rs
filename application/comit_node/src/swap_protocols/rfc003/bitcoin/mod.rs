@@ -6,20 +6,10 @@ mod htlc;
 
 pub use self::htlc::{Htlc, UnlockingError};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct HtlcIdentity(pub KeyPair);
-
-impl From<HtlcIdentity> for PubkeyHash {
-    fn from(htlc_identity: HtlcIdentity) -> Self {
-        let (_, public_key) = htlc_identity.0.into();
-        public_key.into()
-    }
-}
-
 impl Ledger for Bitcoin {
     type LockDuration = Blocks;
     type HtlcId = HtlcId;
-    type HtlcIdentity = HtlcIdentity;
+    type HtlcIdentity = KeyPair;
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug)]
