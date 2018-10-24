@@ -1,12 +1,7 @@
 [package]
 name = "comit_node"
 version = "0.1.0"
-authors = [
-    "Thomas Eizinger <thomas@coblox.tech>",
-    "Philipp Hoenisch <philipp@coblox.tech>",
-    "Franck Royer <franck@coblox.tech>",
-    "Lloyd Fournier <lloyd@coblox.tech>",
-]
+authors = [ "CoBloX developers <team@coblox.tech>" ]
 
 [dependencies]
 bitcoin_rpc_client = "0.4"
@@ -31,18 +26,17 @@ log = "0.4"
 mime = "0.3"
 rand = "0.4"
 reqwest = "0.9"
-rlp = "0.2.4"
+rlp = "0.2"
 rust-crypto = "0.2"
 rustc-hex = "1"
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 serde = "1"
 serde_derive = "1"
 serde_json = "1"
-tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
 state_machine_future = { git = "https://github.com/coblox/state_machine_future.git", branch = "combined-changes" }
-#features = ["debug_code_generation"]
+tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
 tiny-keccak = "1.4"
-tokio = "^0.1"
+tokio = "0.1"
 tokio-timer = "0.2"
 transport_protocol = { path = "../../vendor/transport_protocol" }
 url = "1.7"
