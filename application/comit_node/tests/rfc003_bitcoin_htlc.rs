@@ -12,7 +12,7 @@ extern crate testcontainers;
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
-    serialize::serialize_hex, Address, BitcoinQuantity, Network, PrivateKey, PubkeyHash,
+    serialize::serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
 };
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret};
@@ -97,8 +97,7 @@ fn redeem_htlc_with_secret() {
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            txid.into(),
-            vout.n,
+            OutPoint { txid, vout: vout.n },
             input_amount,
             htlc.unlock_with_secret(keypair, &secret),
         )],
@@ -138,8 +137,7 @@ fn redeem_refund_htlc() {
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            txid.clone().into(),
-            vout.n,
+            OutPoint { txid, vout: vout.n },
             input_amount,
             htlc.unlock_after_timeout(keypair),
         )],

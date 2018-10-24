@@ -116,8 +116,6 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
         let bob_success_pubkey_hash: PubkeyHash = bob_success_address.into();
 
         let alice_refund_pubkey_hash: PubkeyHash = alice_refund_address.into();
-        let htlc_tx_id = htlc_identifier.txid;
-        let vout = htlc_identifier.vout;
 
         let htlc = bitcoin::Htlc::new(
             bob_success_pubkey_hash,
@@ -132,8 +130,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(
-                htlc_tx_id.clone().into(),
-                vout,
+                htlc_identifier,
                 sell_amount,
                 unlocking_parameters,
             )],
@@ -146,18 +143,17 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
         let rate = self.fee_service.get_recommended_fee()?;
         let redeem_tx = primed_txn.sign_with_rate(rate);
         debug!(
-            "Redeem {} (input: {}, vout: {}) to {} (output: {})",
-            htlc_tx_id,
+            "Redeem HTLC at {:?} with {} to {} (output: {})",
+            htlc_identifier,
             total_input_value,
-            vout,
             redeem_tx.txid(),
             redeem_tx.output[0].value
         );
 
         let rpc_transaction = rpc::SerializedRawTransaction::from(redeem_tx);
         info!(
-            "Attempting to redeem HTLC with txid {} for {}",
-            htlc_tx_id, trade_id
+            "Attempting to redeem HTLC with {:?} for {}",
+            htlc_identifier, trade_id
         );
 
         let redeem_txid = self.client.send_raw_transaction(rpc_transaction)??;
