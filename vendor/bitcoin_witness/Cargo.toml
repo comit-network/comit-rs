@@ -19,3 +19,4 @@ bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
 tc_bitcoincore_client = { path = "../tc_bitcoincore_client" }
 testcontainers = "0.3"
 env_logger = "0.5.11"
+spectral = "0.6"

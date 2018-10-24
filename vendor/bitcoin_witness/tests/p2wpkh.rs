@@ -5,6 +5,7 @@ extern crate bitcoin_witness;
 extern crate env_logger;
 extern crate hex;
 extern crate secp256k1_support;
+extern crate spectral;
 extern crate tc_bitcoincore_client;
 extern crate testcontainers;
 
@@ -13,6 +14,7 @@ use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::KeyPair;
+use spectral::prelude::*;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
@@ -57,14 +59,13 @@ fn redeem_single_p2wpkh() {
 
     client.generate(1).unwrap().unwrap();
 
-    assert_eq!(
-        client
-            .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
-            .unwrap()
-            .amount,
-        (input_amount - fee).bitcoin(),
-        "utxo should exist after redeeming p2wpkhoutput"
-    );
+    let actual_amount = client
+        .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
+        .unwrap()
+        .amount;
+    let expected_amount = (input_amount - fee).bitcoin();
+
+    assert_that(&actual_amount).is_close_to(expected_amount, 0.000_000_01);
 }
 
 #[test]
@@ -121,12 +122,12 @@ fn redeem_two_p2wpkh() {
 
     client.generate(1).unwrap().unwrap();
 
-    assert_eq!(
-        client
-            .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
-            .unwrap()
-            .amount,
-        BitcoinQuantity::from_satoshi(input_amount.satoshi() * 2 - fee.satoshi()).bitcoin(),
-        "The utxo should include the amounts from both inputs"
-    );
+    let actual_amount = client
+        .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
+        .unwrap()
+        .amount;
+    let expected_amount =
+        BitcoinQuantity::from_satoshi(input_amount.satoshi() * 2 - fee.satoshi()).bitcoin();
+
+    assert_that(&actual_amount).is_close_to(&expected_amount, 0.000_000_01);
 }
