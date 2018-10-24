@@ -3,17 +3,15 @@
 #![feature(const_fn)]
 extern crate bigdecimal;
 extern crate bitcoin;
-extern crate bitcoin_bech32;
-extern crate bitcoin_rpc_client;
 extern crate hex;
 extern crate secp256k1_support;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate bitcoin_bech32;
 #[cfg(test)]
 extern crate spectral;
 
-pub use address::Address;
 pub use bitcoin::{
     blockdata::{
         block::{Block, BlockHeader},
@@ -25,19 +23,19 @@ pub use bitcoin::{
     util::{
         bip143::SighashComponents,
         bip32::{self, ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
-        hash::{Hash160, Sha256dHash},
+        hash::{Hash160, Sha256dHash, Sha256dHash as TransactionId, Sha256dHash as BlockHash},
         privkey::Privkey as PrivateKey,
         Error,
     },
+    Address,
 };
+
 pub use bitcoin_quantity::*;
-pub use bitcoin_rpc_client::TransactionId;
 pub use blocks::*;
 pub use pubkey::*;
 pub use transaction::*;
 pub use weight::*;
 
-mod address;
 mod bitcoin_quantity;
 mod blocks;
 mod pubkey;

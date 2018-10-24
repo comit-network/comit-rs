@@ -120,7 +120,7 @@ impl PrimedTransaction {
     fn _transaction_without_signatures_or_output_values(&self) -> Transaction {
         let output = TxOut {
             value: 0,
-            script_pubkey: self.output_address.to_address().script_pubkey(),
+            script_pubkey: self.output_address.script_pubkey(),
         };
 
         Transaction {

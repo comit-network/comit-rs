@@ -1,5 +1,5 @@
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{Address, BitcoinQuantity, Blocks, Network, PubkeyHash};
+use bitcoin_support::{Address, BitcoinQuantity, Blocks, IntoP2wpkhAddress, Network, PubkeyHash};
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
 
@@ -48,7 +48,7 @@ impl Ledger for Bitcoin {
     }
 
     fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
-        Address::from_pubkeyhash_and_network(pubkeyhash, self.network)
+        pubkeyhash.into_p2wpkh_address(self.network)
     }
 }
 

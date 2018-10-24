@@ -250,7 +250,7 @@ fn process<
             .map_err(Error::from)
             .for_each(move |transaction_id| {
                 let (n, vout) = bitcoin_service
-                    .get_vout_matching(&transaction_id, &htlc_address.to_address().script_pubkey())?
+                    .get_vout_matching(&transaction_id, &htlc_address.script_pubkey())?
                     .ok_or(CounterpartyDeployError::NotFound)?;
 
                 if vout.value < order_taken.sell_amount.satoshi() {

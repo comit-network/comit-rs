@@ -57,6 +57,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin_support::TransactionId;
     use futures::sync::mpsc;
     use ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock};
     use pretty_env_logger;
@@ -76,15 +77,15 @@ mod tests {
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
         ledger_query_service.set_next_result(Box::new(future::ok(vec![
-            "0000000000000000000000000000000000000000000000000000000000000001"
-                .parse()
-                .unwrap(),
-            "0000000000000000000000000000000000000000000000000000000000000002"
-                .parse()
-                .unwrap(),
-            "0000000000000000000000000000000000000000000000000000000000000003"
-                .parse()
-                .unwrap(),
+            TransactionId::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000001",
+            ).unwrap(),
+            TransactionId::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000002",
+            ).unwrap(),
+            TransactionId::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000003",
+            ).unwrap(),
         ])));
 
         let stream = ledger_query_service.fetch_transaction_stream(
@@ -101,9 +102,9 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                "0000000000000000000000000000000000000000000000000000000000000001"
-                    .parse()
-                    .unwrap()
+                TransactionId::from_hex(
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                ).unwrap()
             )
         );
 
@@ -114,9 +115,9 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                "0000000000000000000000000000000000000000000000000000000000000002"
-                    .parse()
-                    .unwrap()
+                TransactionId::from_hex(
+                    "0000000000000000000000000000000000000000000000000000000000000002"
+                ).unwrap()
             )
         );
 
@@ -127,9 +128,9 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                "0000000000000000000000000000000000000000000000000000000000000003"
-                    .parse()
-                    .unwrap()
+                TransactionId::from_hex(
+                    "0000000000000000000000000000000000000000000000000000000000000003"
+                ).unwrap()
             )
         );
         assert_eq!(
@@ -150,9 +151,9 @@ mod tests {
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
         ledger_query_service.set_next_result(Box::new(future::ok(vec![
-            "0000000000000000000000000000000000000000000000000000000000000001"
-                .parse()
-                .unwrap(),
+            TransactionId::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000001",
+            ).unwrap(),
         ])));
 
         let stream = ledger_query_service.fetch_transaction_stream(
@@ -169,19 +170,19 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                "0000000000000000000000000000000000000000000000000000000000000001"
-                    .parse()
-                    .unwrap()
+                TransactionId::from_hex(
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                ).unwrap()
             )
         );
 
         ledger_query_service.set_next_result(Box::new(future::ok(vec![
-            "0000000000000000000000000000000000000000000000000000000000000001"
-                .parse()
-                .unwrap(),
-            "0000000000000000000000000000000000000000000000000000000000000002"
-                .parse()
-                .unwrap(),
+            TransactionId::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000001",
+            ).unwrap(),
+            TransactionId::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000002",
+            ).unwrap(),
         ])));
 
         sender.unbounded_send(()).unwrap();
@@ -193,9 +194,9 @@ mod tests {
         assert_eq!(
             result,
             Some(
-                "0000000000000000000000000000000000000000000000000000000000000002"
-                    .parse()
-                    .unwrap()
+                TransactionId::from_hex(
+                    "0000000000000000000000000000000000000000000000000000000000000002"
+                ).unwrap()
             )
         );
 

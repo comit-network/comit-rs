@@ -1,5 +1,5 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
-use bitcoin_rpc_client;
+use bitcoin_rpc_client::{self, *};
 use bitcoin_support::{
     self, Address, BitcoinQuantity, Blocks, PubkeyHash, Script, Transaction, TxOut,
 };
@@ -48,7 +48,7 @@ impl From<bitcoin_fee_service::Error> for ledger_htlc_service::Error {
 #[derive(DebugStub)]
 pub struct BitcoinService {
     #[debug_stub = "BitcoinRpcClient"]
-    client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
+    client: Arc<BitcoinRpcApi>,
     #[debug_stub = "FeeService"]
     fee_service: Arc<BitcoinFeeService>,
     network: bitcoin_support::Network,
@@ -154,7 +154,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
             redeem_tx.output[0].value
         );
 
-        let rpc_transaction = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx);
+        let rpc_transaction = rpc::SerializedRawTransaction::from(redeem_tx);
         info!(
             "Attempting to redeem HTLC with txid {} for {}",
             htlc_tx_id, trade_id
@@ -203,7 +203,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
 impl BitcoinService {
     pub fn new(
-        client: Arc<bitcoin_rpc_client::BitcoinRpcApi>,
+        client: Arc<BitcoinRpcApi>,
         network: bitcoin_support::Network,
         fee_service: Arc<BitcoinFeeService>,
         btc_bob_redeem_address: bitcoin_support::Address,
@@ -218,7 +218,7 @@ impl BitcoinService {
 
     pub fn get_vout_matching(
         &self,
-        txid: &bitcoin_rpc_client::TransactionId,
+        txid: &TransactionId,
         script: &Script,
     ) -> Result<Option<(usize, TxOut)>, ledger_htlc_service::Error> {
         let transaction: Transaction = self.client.get_raw_transaction_serialized(&txid)??.into();

@@ -11,7 +11,7 @@ extern crate event_store;
 extern crate gotham;
 extern crate tokio;
 
-use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_rpc_client::*;
 use bitcoin_support::Address as BitcoinAddress;
 
 use comit_node::{
@@ -122,8 +122,10 @@ fn create_bitcoin_service(
 
     //TODO: make it dynamically generated every X BTC. Could be done with #296
     let btc_bob_redeem_keypair = key_store.get_new_internal_keypair();
-    let btc_bob_redeem_address =
-        BitcoinAddress::p2wpkh(btc_bob_redeem_keypair.public_key(), settings.network);
+    let btc_bob_redeem_address = BitcoinAddress::p2wpkh(
+        &btc_bob_redeem_keypair.public_key().into(),
+        settings.network,
+    );
 
     info!("btc_bob_redeem_address: {}", btc_bob_redeem_address);
 

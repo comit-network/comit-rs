@@ -17,7 +17,7 @@ reqwest = "0.9"
 lazy_static = "1"
 regex = "1.0.0"
 uuid = { version = "0.6.3", features = ["serde", "v4"] }
-bitcoin_rpc_client = "0.3"
+bitcoin_rpc_client = "0.4"
 maplit = "1"
 
 ethereum_support = { path = "../../vendor/ethereum_support" }

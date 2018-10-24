@@ -9,7 +9,7 @@ extern crate spectral;
 extern crate tc_bitcoincore_client;
 extern crate testcontainers;
 
-use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
@@ -50,7 +50,7 @@ fn redeem_single_p2wpkh() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid = client
         .send_raw_transaction(raw_redeem_tx.clone())
@@ -113,7 +113,7 @@ fn redeem_two_p2wpkh() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
-    let raw_redeem_tx = bitcoin_rpc_client::SerializedRawTransaction::from(redeem_tx_hex.as_str());
+    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid = client
         .send_raw_transaction(raw_redeem_tx.clone())

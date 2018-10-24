@@ -1,8 +1,9 @@
-use address::Address;
 use bitcoin::{
     network::constants::Network,
     util::{address::Payload, hash::Hash160},
+    Address,
 };
+use bitcoin_bech32;
 use hex::{self, FromHex};
 use secp256k1_support::PublicKey;
 use serde::{
@@ -17,7 +18,26 @@ pub trait IntoP2wpkhAddress {
 
 impl IntoP2wpkhAddress for PublicKey {
     fn into_p2wpkh_address(self, network: Network) -> Address {
-        Address::p2wpkh(self, network)
+        Address::p2wpkh(&self.into(), network)
+    }
+}
+
+impl IntoP2wpkhAddress for PubkeyHash {
+    fn into_p2wpkh_address(self, network: Network) -> Address {
+        Address {
+            payload: Payload::WitnessProgram(
+                bitcoin_bech32::WitnessProgram::new(
+                    bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
+                    self.as_ref().to_vec(),
+                    match network {
+                        Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
+                        Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
+                        Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
+                    },
+                ).expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
+            ),
+            network,
+        }
     }
 }
 
@@ -32,7 +52,7 @@ impl From<Hash160> for PubkeyHash {
 
 impl From<Address> for PubkeyHash {
     fn from(address: Address) -> PubkeyHash {
-        match address.to_address().payload {
+        match address.payload {
             Payload::WitnessProgram(witness) => PubkeyHash(Hash160::from(witness.program())),
             // TODO: from/into should never fail. Remove this panic by
             // creating a PubkeyAddress type which is guaranteed to

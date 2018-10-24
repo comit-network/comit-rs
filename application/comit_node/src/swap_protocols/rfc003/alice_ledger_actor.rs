@@ -247,10 +247,8 @@ where
 
                         let (_n, vout) = self
                             .bitcoin_service
-                            .get_vout_matching(
-                                &transaction_id,
-                                &btc_htlc_address.to_address().script_pubkey(),
-                            ).expect("Could not connect to Bitcoin node")
+                            .get_vout_matching(&transaction_id, &btc_htlc_address.script_pubkey())
+                            .expect("Could not connect to Bitcoin node")
                             .expect("Could not retrieve vout of BTC funding transaction");
 
                         if vout.value < sent_swap_request.source_asset.satoshi() {

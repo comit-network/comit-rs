@@ -125,7 +125,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
         input: Vec::new(),
         output: vec![TxOut {
             value: 0,
-            script_pubkey: address.as_ref().script_pubkey(),
+            script_pubkey: address.script_pubkey(),
         }],
     };
 
@@ -218,7 +218,7 @@ fn given_pending_transaction_response_matching_transactions_is_empty() {
         input: Vec::new(),
         output: vec![TxOut {
             value: 0,
-            script_pubkey: address.as_ref().script_pubkey(),
+            script_pubkey: address.script_pubkey(),
         }],
     };
 
