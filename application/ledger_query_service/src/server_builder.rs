@@ -3,8 +3,10 @@ use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
 use rocket;
 use routes::{
-    bitcoin::{self, transaction_query::BitcoinTransactionQuery},
-    ethereum::{self, transaction_query::EthereumTransactionQuery},
+    bitcoin::{self, block_query::BitcoinBlockQuery, transaction_query::BitcoinTransactionQuery},
+    ethereum::{
+        self, block_query::EthereumBlockQuery, transaction_query::EthereumTransactionQuery,
+    },
 };
 use std::sync::Arc;
 
@@ -26,8 +28,10 @@ impl ServerBuilder {
 
     pub fn register_bitcoin(
         self,
-        query_repository: Arc<QueryRepository<BitcoinTransactionQuery>>,
-        query_result_repository: Arc<QueryResultRepository<BitcoinTransactionQuery>>,
+        transaction_query_repository: Arc<QueryRepository<BitcoinTransactionQuery>>,
+        transaction_query_result_repository: Arc<QueryResultRepository<BitcoinTransactionQuery>>,
+        block_query_repository: Arc<QueryRepository<BitcoinBlockQuery>>,
+        block_query_result_repository: Arc<QueryResultRepository<BitcoinBlockQuery>>,
     ) -> ServerBuilder {
         let rocket = self
             .rocket
@@ -38,15 +42,19 @@ impl ServerBuilder {
                     bitcoin::transaction_query::retrieve_query,
                     bitcoin::transaction_query::delete_query,
                 ],
-            ).manage(query_repository)
-            .manage(query_result_repository);
+            ).manage(transaction_query_repository)
+            .manage(transaction_query_result_repository)
+            .manage(block_query_repository)
+            .manage(block_query_result_repository);
         ServerBuilder { rocket }
     }
 
     pub fn register_ethereum(
         self,
-        query_repository: Arc<QueryRepository<EthereumTransactionQuery>>,
-        query_result_repository: Arc<QueryResultRepository<EthereumTransactionQuery>>,
+        transaction_query_repository: Arc<QueryRepository<EthereumTransactionQuery>>,
+        transaction_query_result_repository: Arc<QueryResultRepository<EthereumTransactionQuery>>,
+        block_query_repository: Arc<QueryRepository<EthereumBlockQuery>>,
+        block_query_result_repository: Arc<QueryResultRepository<EthereumBlockQuery>>,
     ) -> ServerBuilder {
         let rocket = self
             .rocket
@@ -57,8 +65,10 @@ impl ServerBuilder {
                     ethereum::transaction_query::retrieve_query,
                     ethereum::transaction_query::delete_query,
                 ],
-            ).manage(query_repository)
-            .manage(query_result_repository);
+            ).manage(transaction_query_repository)
+            .manage(transaction_query_result_repository)
+            .manage(block_query_repository)
+            .manage(block_query_result_repository);
         ServerBuilder { rocket }
     }
 }

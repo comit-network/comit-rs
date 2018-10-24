@@ -18,9 +18,30 @@ pub trait Block: Debug {
     fn transactions(&self) -> &[Self::Transaction];
 }
 
-pub trait Query<T>: Debug {
-    fn matches(&self, transaction: &T) -> bool;
-    fn confirmations_needed(&self) -> u32;
+pub trait Query<O>: Debug {
+    fn matches(&self, object: &O) -> QueryMatchResult;
+}
+
+#[derive(Debug, PartialEq)]
+pub enum QueryMatchResult {
+    Yes { confirmations_needed: u32 },
+    No,
+}
+
+impl QueryMatchResult {
+    pub fn yes() -> Self {
+        QueryMatchResult::Yes {
+            confirmations_needed: 0,
+        }
+    }
+    pub fn yes_with_confirmations(confirmations_needed: u32) -> Self {
+        QueryMatchResult::Yes {
+            confirmations_needed,
+        }
+    }
+    pub fn no() -> Self {
+        QueryMatchResult::No
+    }
 }
 
 #[derive(Debug)]
@@ -31,18 +52,23 @@ pub struct PendingTransaction {
 }
 
 #[derive(DebugStub)]
-pub struct DefaultBlockProcessor<T, Q> {
+pub struct DefaultBlockProcessor<T, B, TQ, BQ> {
     #[debug_stub = "Queries"]
-    queries: Arc<QueryRepository<Q>>,
+    transaction_queries: Arc<QueryRepository<TQ>>,
+    #[debug_stub = "Queries"]
+    block_queries: Arc<QueryRepository<BQ>>,
     #[debug_stub = "Results"]
-    results: Arc<QueryResultRepository<Q>>,
+    transaction_results: Arc<QueryResultRepository<TQ>>,
+    #[debug_stub = "Results"]
+    block_results: Arc<QueryResultRepository<BQ>>,
     pending_transactions: Vec<PendingTransaction>,
     blockhashes: Vec<String>,
     tx_type: PhantomData<T>,
+    block_type: PhantomData<B>,
 }
 
-impl<T: Transaction, B: Block<Transaction = T>, Q: Query<T> + 'static> BlockProcessor<B>
-    for DefaultBlockProcessor<T, Q>
+impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Query<B> + 'static>
+    BlockProcessor<B> for DefaultBlockProcessor<T, B, TQ, BQ>
 {
     fn process(&mut self, block: &B) {
         trace!("New block received: {:?}", block);
@@ -62,6 +88,8 @@ impl<T: Transaction, B: Block<Transaction = T>, Q: Query<T> + 'static> BlockProc
 
         self.blockhashes.push(block.blockhash());
 
+        self.process_new_block(block);
+
         self.update_pending_transactions();
 
         block
@@ -71,7 +99,13 @@ impl<T: Transaction, B: Block<Transaction = T>, Q: Query<T> + 'static> BlockProc
     }
 }
 
-impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
+impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Query<B> + 'static>
+    DefaultBlockProcessor<T, B, TQ, BQ>
+{
+    fn process_new_block(&mut self, block: &B) {
+        trace!("Processing {:?}", block);
+    }
+
     fn update_pending_transactions(&mut self) {
         trace!("Updating pending matching transactions");
         self.pending_transactions
@@ -85,7 +119,7 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
                     "Transaction {} now has enough confirmations. Sent to query result repository",
                     confirmed_tx_id
                 );
-                self.results
+                self.transaction_results
                     .add_result(utx.matching_query_id, confirmed_tx_id.clone())
             }
         });
@@ -97,9 +131,9 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
     fn process_new_transaction(&mut self, transaction: &T) {
         trace!("Processing {:?}", transaction);
 
-        let result_repository = &mut self.results;
+        let result_repository = &mut self.transaction_results;
         let pending_transactions = &mut self.pending_transactions;
-        self.queries
+        self.transaction_queries
             .all()
             .filter_map(|(query_id, query)| {
                 trace!(
@@ -108,17 +142,23 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
                     transaction
                 );
 
-                if query.matches(transaction) {
-                    let tx_id = transaction.transaction_id();
-                    let query_tx_confirmations_needed = query.confirmations_needed();
-
-                    if query_tx_confirmations_needed <= 1 {
+                let tx_id = transaction.transaction_id();
+                match query.matches(transaction) {
+                    QueryMatchResult::Yes {
+                        confirmations_needed: 0,
+                    }
+                    | QueryMatchResult::Yes {
+                        confirmations_needed: 1,
+                    } => {
                         info!(
                             "Confirmed transaction {} matches Query-ID: {:?}",
                             tx_id, query_id
                         );
                         Some((query_id, tx_id))
-                    } else {
+                    }
+                    QueryMatchResult::Yes {
+                        confirmations_needed,
+                    } => {
                         info!(
                             "Unconfirmed transaction {} matches Query-ID: {:?}",
                             tx_id, query_id
@@ -126,29 +166,33 @@ impl<T: Transaction, Q: Query<T> + 'static> DefaultBlockProcessor<T, Q> {
                         let pending_tx = PendingTransaction {
                             matching_query_id: query_id,
                             tx_id,
-                            pending_confirmations: query_tx_confirmations_needed - 1,
+                            pending_confirmations: confirmations_needed - 1,
                         };
                         pending_transactions.push(pending_tx);
                         None
                     }
-                } else {
-                    None
+                    QueryMatchResult::No => None,
                 }
             }).for_each(|(query_id, tx_id)| result_repository.add_result(query_id, tx_id))
     }
 }
 
-impl<T, Q> DefaultBlockProcessor<T, Q> {
+impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
     pub fn new(
-        query_repository: Arc<QueryRepository<Q>>,
-        query_result_repository: Arc<QueryResultRepository<Q>>,
+        transaction_query_repository: Arc<QueryRepository<TQ>>,
+        block_query_repository: Arc<QueryRepository<BQ>>,
+        transaction_query_result_repository: Arc<QueryResultRepository<TQ>>,
+        block_query_result_repository: Arc<QueryResultRepository<BQ>>,
     ) -> Self {
         Self {
-            queries: query_repository,
-            results: query_result_repository,
+            transaction_queries: transaction_query_repository,
+            block_queries: block_query_repository,
+            transaction_results: transaction_query_result_repository,
+            block_results: block_query_result_repository,
             pending_transactions: Vec::new(),
             blockhashes: Vec::new(),
             tx_type: PhantomData,
+            block_type: PhantomData,
         }
     }
 }
@@ -160,18 +204,27 @@ mod tests {
     use in_memory_query_result_repository::InMemoryQueryResultRepository;
 
     #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
-    struct GenericQuery {
+    struct GenericTransactionQuery {
         transaction_id: u8,
         confirmations_needed: u32,
     }
 
-    impl Query<GenericTransaction> for GenericQuery {
-        fn matches(&self, transaction: &GenericTransaction) -> bool {
-            self.transaction_id == transaction.id
+    impl Query<GenericTransaction> for GenericTransactionQuery {
+        fn matches(&self, transaction: &GenericTransaction) -> QueryMatchResult {
+            if self.transaction_id == transaction.id {
+                QueryMatchResult::yes_with_confirmations(self.confirmations_needed)
+            } else {
+                QueryMatchResult::no()
+            }
         }
+    }
 
-        fn confirmations_needed(&self) -> u32 {
-            self.confirmations_needed
+    #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
+    struct GenericBlockQuery {}
+
+    impl Query<GenericBlock> for GenericBlockQuery {
+        fn matches(&self, object: &GenericBlock) -> QueryMatchResult {
+            unimplemented!()
         }
     }
 
@@ -208,27 +261,40 @@ mod tests {
     }
 
     struct Setup {
-        query_result_repository: Arc<InMemoryQueryResultRepository<GenericQuery>>,
-        block_processor: DefaultBlockProcessor<GenericTransaction, GenericQuery>,
+        transaction_query_result_repository:
+            Arc<InMemoryQueryResultRepository<GenericTransactionQuery>>,
+        block_query_result_repository: Arc<InMemoryQueryResultRepository<GenericBlockQuery>>,
+        block_processor: DefaultBlockProcessor<
+            GenericTransaction,
+            GenericBlock,
+            GenericTransactionQuery,
+            GenericBlockQuery,
+        >,
         first_query_id: u32,
         first_block: GenericBlock,
     }
 
     impl Setup {
         fn new(query_transaction_id: u8, transaction_id: u8, confirmations_needed: u32) -> Self {
-            let query_repository = Arc::new(InMemoryQueryRepository::default());
-            let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+            let transaction_query_repository = Arc::new(InMemoryQueryRepository::default());
+            let transaction_query_result_repository =
+                Arc::new(InMemoryQueryResultRepository::default());
+            let block_query_repository = Arc::new(InMemoryQueryRepository::default());
+            let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+
             let block_processor = DefaultBlockProcessor::new(
-                query_repository.clone(),
-                query_result_repository.clone(),
+                transaction_query_repository.clone(),
+                block_query_repository.clone(),
+                transaction_query_result_repository.clone(),
+                block_query_result_repository.clone(),
             );
 
-            let first_query = GenericQuery {
+            let first_query = GenericTransactionQuery {
                 transaction_id: query_transaction_id,
                 confirmations_needed,
             };
 
-            let first_query_id = query_repository.save(first_query).unwrap();
+            let first_query_id = transaction_query_repository.save(first_query).unwrap();
 
             let first_transaction = GenericTransaction { id: transaction_id };
 
@@ -239,7 +305,8 @@ mod tests {
             };
 
             Self {
-                query_result_repository,
+                transaction_query_result_repository,
+                block_query_result_repository,
                 block_processor,
                 first_query_id,
                 first_block,
@@ -255,7 +322,7 @@ mod tests {
 
         assert!(
             harness
-                .query_result_repository
+                .transaction_query_result_repository
                 .get(harness.first_query_id)
                 .is_some(),
             "Query not moved to result repository after matching transaction \
@@ -274,7 +341,7 @@ mod tests {
         // Transaction not yet confirmed
         assert!(
             harness
-                .query_result_repository
+                .transaction_query_result_repository
                 .get(harness.first_query_id)
                 .is_none(),
             "Query found in result repository even though matching transaction \
@@ -287,7 +354,7 @@ mod tests {
         // Transaction now has enough confirmation
         assert!(
             harness
-                .query_result_repository
+                .transaction_query_result_repository
                 .get(harness.first_query_id)
                 .is_some(),
             "Query not moved to result repository after matching transaction \
@@ -304,7 +371,7 @@ mod tests {
 
         assert!(
             harness
-                .query_result_repository
+                .transaction_query_result_repository
                 .get(harness.first_query_id)
                 .is_none(),
             "Query moved to result repository after non-matching transaction \
