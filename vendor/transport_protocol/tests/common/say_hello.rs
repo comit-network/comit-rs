@@ -1,3 +1,4 @@
+use futures::future;
 use transport_protocol::{config::Config, json::*, *};
 
 #[derive(Serialize, Deserialize)]
@@ -28,6 +29,8 @@ pub fn config() -> Config<Request, Response> {
 
         let response = response.join("");
 
-        Response::new(Status::OK(0)).with_header("HELLO", response)
+        Box::new(future::ok(
+            Response::new(Status::OK(0)).with_header("HELLO", response),
+        ))
     })
 }

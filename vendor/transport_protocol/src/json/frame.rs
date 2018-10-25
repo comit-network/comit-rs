@@ -1,6 +1,7 @@
 use api::{Error, FrameHandler, IntoFrame, ResponseFrameSource};
 use config::Config;
 use futures::{
+    future,
     sync::oneshot::{self, Sender},
     Future,
 };
@@ -100,7 +101,10 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
         (handler, response_source)
     }
 
-    fn handle(&mut self, frame: json::Frame) -> Result<Option<json::Frame>, Error> {
+    fn handle(
+        &mut self,
+        frame: json::Frame,
+    ) -> Box<Future<Item = Option<json::Frame>, Error = Error> + Send + 'static> {
         match frame._type.as_str() {
             "REQUEST" => {
                 let mut payload = frame.payload;
@@ -112,7 +116,7 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
                 );
 
                 if frame.id < self.next_expected_id {
-                    return Err(Error::OutOfOrderRequest);
+                    return Box::new(future::err(Error::OutOfOrderRequest));
                 }
 
                 self.next_expected_id = frame.id + 1;
@@ -124,22 +128,29 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
                 // TODO: Validate generated response here
                 // TODO check if header or body in response failed to serialize here
 
-                Ok(Some(response.into_frame(frame.id)))
+                let frame_id = frame.id;
+
+                Box::new(
+                    response
+                        .and_then(move |response| Ok(Some(response.into_frame(frame_id))))
+                        .map_err(|_| Error::HandlerError),
+                )
             }
             "RESPONSE" => {
                 let mut response_source = self.response_source.lock().unwrap();
 
-                let sender = response_source
-                    .get_awaiting_response(frame.id)
-                    .ok_or(Error::UnexpectedResponse)?;
+                match response_source.get_awaiting_response(frame.id) {
+                    Some(sender) => {
+                        debug!("Dispatching response frame {:?} to stored handler.", frame);
 
-                debug!("Dispatching response frame {:?} to stored handler.", frame);
+                        sender.send(frame).unwrap();
 
-                sender.send(frame).unwrap();
-
-                Ok(None)
+                        Box::new(future::ok(None))
+                    }
+                    None => Box::new(future::err(Error::UnexpectedResponse)),
+                }
             }
-            _ => Err(Error::UnknownFrameType(frame._type)),
+            _ => Box::new(future::err(Error::UnknownFrameType(frame._type))),
         }
     }
 }
@@ -150,7 +161,7 @@ impl JsonFrameHandler {
         _type: &JsonValue,
         headers: JsonValue,
         body: JsonValue,
-    ) -> Result<json::Response, RequestError> {
+    ) -> Result<Box<Future<Item = json::Response, Error = ()> + Send + 'static>, RequestError> {
         let _type = _type
             .as_str()
             .ok_or_else(|| RequestError::MalformedField("type".to_string()))?;
@@ -252,18 +263,22 @@ impl JsonFrameHandler {
         (key, must_understand)
     }
 
-    fn response_from_error(error: RequestError) -> json::Response {
+    fn response_from_error(
+        error: RequestError,
+    ) -> Box<Future<Item = json::Response, Error = ()> + Send + 'static> {
         let status = error.status();
         let response = json::Response::new(status);
 
         warn!("Failed to dispatch request to handler because: {:?}", error);
 
-        match error {
+        let response = match error {
             RequestError::UnknownMandatoryHeaders(header_keys) => {
                 response.with_header("Unsupported-Headers", header_keys)
             }
             _ => response,
-        }
+        };
+
+        Box::new(future::ok(response))
     }
 }
 

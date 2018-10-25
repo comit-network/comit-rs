@@ -53,32 +53,23 @@ impl<
         let connection_loop = stream
             .map_err(ClosedReason::CodecError)
             .inspect(|frame| trace!("<--- Incoming {:?}", frame))
-            .map(move |frame| {
-                let result = frame_handler.handle(frame);
+            .and_then(move |frame| {
+                frame_handler.handle(frame).then(|result| {
+                    // Some errors are non-fatal, keep going if we get these
+                    let result = match result {
+                        Err(::api::Error::UnexpectedResponse) => {
+                            warn!("Received unexpected response - ignoring it.");
+                            Ok(None)
+                        }
+                        Err(::api::Error::OutOfOrderRequest) => {
+                            warn!("Received out of order request - ignoring it.");
+                            Ok(None)
+                        }
+                        _ => result,
+                    };
 
-                // Some errors are non-fatal, keep going if we get these
-                let result = match result {
-                    Err(::api::Error::UnexpectedResponse) => {
-                        warn!("Received unexpected response - ignoring it.");
-                        Ok(None)
-                    }
-                    Err(::api::Error::OutOfOrderRequest) => {
-                        warn!("Received out of order request - ignoring it.");
-                        Ok(None)
-                    }
-                    _ => result,
-                };
-
-                result.map_err(ClosedReason::InvalidFrame)
-            }).then(|result| {
-                match result {
-                    // Stream is fine and we could handle the frame => flatten one layer
-                    Ok(Ok(maybe_frame)) => Ok(maybe_frame),
-                    // Stream is fine but we failed to handle the frame => error on stream
-                    Ok(Err(e)) => Err(e),
-                    // Stream is already fucked, continue
-                    Err(e) => Err(e),
-                }
+                    result.map_err(ClosedReason::InvalidFrame)
+                })
             }).filter(Option::is_some)
             .map(Option::unwrap)
             .select(request_stream.map_err(|_| ClosedReason::InternalError))

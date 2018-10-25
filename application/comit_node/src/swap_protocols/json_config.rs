@@ -4,7 +4,7 @@ use bitcoin_support::{
 use ethereum_support::{web3::types::H256, EtherQuantity, ToEthereumAddress};
 use event_store::EventStore;
 use failure::Error;
-use futures::{Future, Stream};
+use futures::{future, Future, Stream};
 use key_store::KeyStore;
 use ledger_query_service::{
     fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
@@ -98,7 +98,7 @@ pub fn json_config<
                             target_quantity,
                             body!(request.get_body()),
                         );
-                        match handler.handle(request.clone()) {
+                        let response = match handler.handle(request.clone()) {
                             SwapResponse::Decline => Response::new(Status::SE(21)),
                             SwapResponse::Accept => process(
                                 request,
@@ -111,7 +111,9 @@ pub fn json_config<
                                 bitcoin_poll_interval,
                                 ethereum_poll_interval,
                             ),
-                        }
+                        };
+
+                        Box::new(future::ok(response))
                     }
                     SwapRequestHeaders {
                         source_ledger: Ledger::Ethereum,
@@ -133,12 +135,14 @@ pub fn json_config<
                             target_quantity,
                             body!(request.get_body()),
                         );
-                        match handler.handle(request.clone()) {
+                        let response = match handler.handle(request.clone()) {
                             SwapResponse::Decline => Response::new(Status::SE(21)),
                             SwapResponse::Accept => Response::new(Status::SE(22)),
-                        }
+                        };
+
+                        Box::new(future::ok(response))
                     }
-                    _ => Response::new(Status::SE(22)), // 22 = unsupported pair or source/target combination
+                    _ => Box::new(future::ok(Response::new(Status::SE(22)))), // 22 = unsupported pair or source/target combination
                 },
             }
         },

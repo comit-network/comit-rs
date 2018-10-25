@@ -8,6 +8,7 @@ pub enum Error {
     InvalidFieldFormat(String),
     UnexpectedResponse,
     OutOfOrderRequest,
+    HandlerError,
 }
 
 #[derive(Debug, PartialEq)]
@@ -34,7 +35,10 @@ where
     Self: Sized,
 {
     fn new(config: Config<Req, Res>) -> (Self, Arc<Mutex<ResponseFrameSource<Frame>>>);
-    fn handle(&mut self, frame: Frame) -> Result<Option<Frame>, Error>;
+    fn handle(
+        &mut self,
+        frame: Frame,
+    ) -> Box<Future<Item = Option<Frame>, Error = Error> + Send + 'static>;
 }
 
 #[derive(Debug)]

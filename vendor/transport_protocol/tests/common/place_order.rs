@@ -1,10 +1,11 @@
+use futures::future;
 use transport_protocol::{config::Config, json::*, *};
 
 pub fn config() -> Config<Request, Response> {
     Config::default().on_request("PLACE-ORDER", &["PRODUCT-TYPE"], |request: Request| {
         let product_type = header!(request.get_header("PRODUCT-TYPE"));
 
-        match product_type {
+        let response = match product_type {
             ProductType::Phone => {
                 let phone_spec = request.get_body::<PhoneSpec>().unwrap();
                 let price = 420;
@@ -18,7 +19,9 @@ pub fn config() -> Config<Request, Response> {
                 Response::new(Status::OK(0)).with_body(price)
             }
             ProductType::RetroEncabulator => Response::new(Status::SE(00)),
-        }
+        };
+
+        Box::new(future::ok(response))
     })
 }
 

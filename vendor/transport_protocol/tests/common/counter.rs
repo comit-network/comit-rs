@@ -1,3 +1,4 @@
+use futures::future;
 use transport_protocol::{config::Config, json::*, *};
 
 #[derive(Default)]
@@ -11,6 +12,8 @@ pub fn config() -> Config<Request, Response> {
     Config::default().on_request("COUNT", &[], move |_request: Request| {
         state.invocations += 1;
 
-        Response::new(Status::OK(0)).with_body(state.invocations)
+        Box::new(future::ok(
+            Response::new(Status::OK(0)).with_body(state.invocations),
+        ))
     })
 }

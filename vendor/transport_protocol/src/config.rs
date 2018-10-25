@@ -1,10 +1,14 @@
+use futures::Future;
 use std::collections::{HashMap, HashSet};
+
+pub type ResponseFuture<I> = Future<Item = I, Error = ()> + Send + 'static;
+pub type RequestFn<Req, Res> = FnMut(Req) -> Box<ResponseFuture<Res>> + Send + 'static;
 
 #[derive(DebugStub)]
 pub struct Config<Req, Res> {
     known_headers: HashMap<String, HashSet<String>>,
     #[debug_stub = "RequestHandlers"]
-    request_handlers: HashMap<String, Box<FnMut(Req) -> Res + Send + 'static>>,
+    request_handlers: HashMap<String, Box<RequestFn<Req, Res>>>,
 }
 
 impl<Req, Res> Default for Config<Req, Res> {
@@ -24,9 +28,10 @@ impl<Req, Res> Config<Req, Res> {
         request_handler: RH,
     ) -> Self
     where
-        RH: FnMut(Req) -> Res + Send,
+        RH: FnMut(Req) -> Box<ResponseFuture<Res>> + Send + 'static,
     {
         let header_keys = header_keys.into_iter().map(|key| (*key).into()).collect();
+
         let request_handler = Box::new(request_handler);
 
         self.known_headers.insert(request_type.into(), header_keys);
@@ -44,7 +49,7 @@ impl<Req, Res> Config<Req, Res> {
     pub fn request_handler_for(
         &mut self,
         request_type: &str,
-    ) -> Option<&mut Box<(FnMut(Req) -> Res + Send)>> {
+    ) -> Option<&mut Box<(RequestFn<Req, Res>)>> {
         self.request_handlers.get_mut(request_type)
     }
 }
