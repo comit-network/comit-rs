@@ -42,6 +42,31 @@ impl QueryMatchResult {
     pub fn no() -> Self {
         QueryMatchResult::No
     }
+
+    pub fn or(self, other: QueryMatchResult) -> QueryMatchResult {
+        match self {
+            QueryMatchResult::Yes {
+                confirmations_needed,
+            } => match other {
+                QueryMatchResult::Yes {
+                    confirmations_needed: other_confirmations_needed,
+                } => QueryMatchResult::Yes {
+                    confirmations_needed: confirmations_needed.max(other_confirmations_needed),
+                },
+                QueryMatchResult::No => QueryMatchResult::Yes {
+                    confirmations_needed,
+                },
+            },
+            QueryMatchResult::No => match other {
+                QueryMatchResult::Yes {
+                    confirmations_needed,
+                } => QueryMatchResult::Yes {
+                    confirmations_needed,
+                },
+                QueryMatchResult::No => QueryMatchResult::No,
+            },
+        }
+    }
 }
 
 #[derive(Debug)]

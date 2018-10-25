@@ -24,6 +24,15 @@ pub struct EthereumTransactionQuery {
     transaction_data: Option<Bytes>,
 }
 
+impl EthereumTransactionQuery {
+    fn is_empty(&self) -> bool {
+        self.from_address.is_none()
+            && self.to_address.is_none()
+            && self.is_contract_creation.is_none()
+            && self.transaction_data.is_none()
+    }
+}
+
 #[post(
     "/queries/ethereum/transactions",
     format = "application/json",
@@ -65,47 +74,55 @@ fn created(url: String) -> Created<Option<()>> {
     Created(url, None)
 }
 
-impl Query<EthereumTransaction> for EthereumTransactionQuery {
-    fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
+trait IsEqualTo<'a, T: 'a> {
+    fn is_equal_to<O, R>(&self, predicate: O) -> QueryMatchResult
+    where
+        O: Fn() -> R,
+        Option<&'a T>: From<R>;
+}
+
+impl<'a, T: PartialEq + 'a> IsEqualTo<'a, T> for Option<T> {
+    fn is_equal_to<O, R>(&self, other: O) -> QueryMatchResult
+    where
+        O: Fn() -> R,
+        Option<&'a T>: From<R>,
+    {
         match self {
-            Self {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: None,
-                transaction_data: None,
-            } => QueryMatchResult::no(),
-            Self {
-                from_address,
-                to_address,
-                is_contract_creation,
-                transaction_data,
-            } => {
-                let mut result = true;
+            Some(this) => {
+                let option = other().into();
 
-                if let Some(from_address) = from_address {
-                    result = result && (transaction.from == *from_address);
-                }
-
-                if let Some(to_address) = to_address {
-                    result = result && (transaction.to == Some(*to_address));
-                }
-
-                if let Some(is_contract_creation) = is_contract_creation {
-                    // to_address is None for contract creations
-                    result = result && (*is_contract_creation == transaction.to.is_none());
-                }
-
-                if let Some(ref transaction_data) = transaction_data {
-                    result = result && (transaction.input == *transaction_data);
-                }
-
-                if result {
-                    QueryMatchResult::yes()
-                } else {
-                    QueryMatchResult::no()
+                match option {
+                    Some(other) if this == other => QueryMatchResult::yes(),
+                    _ => QueryMatchResult::no(),
                 }
             }
+            None => QueryMatchResult::no(),
         }
+    }
+}
+
+impl Query<EthereumTransaction> for EthereumTransactionQuery {
+    fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
+        if self.is_empty() {
+            return QueryMatchResult::no();
+        }
+
+        let EthereumTransactionQuery {
+            from_address,
+            to_address,
+            is_contract_creation,
+            transaction_data,
+        } = self;
+
+        let from_address = from_address.is_equal_to(|| &transaction.from);
+        let to_address = to_address.is_equal_to(|| transaction.to.as_ref());
+        //        let is_contract_creation = is_contract_creation.is_equal_to(|| transaction.to.is_none());
+        let transaction_data = transaction_data.is_equal_to(|| &transaction.input);
+
+        from_address
+            .or(to_address)
+            //            .or(is_contract_creation)
+            .or(transaction_data)
     }
 }
 
