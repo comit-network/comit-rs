@@ -236,11 +236,17 @@ mod tests {
     }
 
     #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
-    struct GenericBlockQuery {}
+    struct GenericBlockQuery {
+        min_timestamp_secs: u8,
+    }
 
     impl Query<GenericBlock> for GenericBlockQuery {
-        fn matches(&self, object: &GenericBlock) -> QueryMatchResult {
-            unimplemented!()
+        fn matches(&self, block: &GenericBlock) -> QueryMatchResult {
+            if self.min_timestamp_secs <= block.timestamp {
+                QueryMatchResult::yes()
+            } else {
+                QueryMatchResult::no()
+            }
         }
     }
 
@@ -259,6 +265,7 @@ mod tests {
     struct GenericBlock {
         id: u8,
         parent_id: u8,
+        timestamp: u8,
         transaction_list: Vec<GenericTransaction>,
     }
 
@@ -286,12 +293,19 @@ mod tests {
             GenericTransactionQuery,
             GenericBlockQuery,
         >,
-        first_query_id: u32,
+        first_transaction_query_id: u32,
         first_block: GenericBlock,
+        first_block_query_id: u32,
     }
 
     impl Setup {
-        fn new(query_transaction_id: u8, transaction_id: u8, confirmations_needed: u32) -> Self {
+        fn new(
+            query_transaction_id: u8,
+            transaction_id: u8,
+            confirmations_needed: u32,
+            query_timestamp: u8,
+            block_timestamp: u8,
+        ) -> Self {
             let transaction_query_repository = Arc::new(InMemoryQueryRepository::default());
             let transaction_query_result_repository =
                 Arc::new(InMemoryQueryResultRepository::default());
@@ -305,18 +319,27 @@ mod tests {
                 block_query_result_repository.clone(),
             );
 
-            let first_query = GenericTransactionQuery {
+            let first_transaction_query = GenericTransactionQuery {
                 transaction_id: query_transaction_id,
                 confirmations_needed,
             };
 
-            let first_query_id = transaction_query_repository.save(first_query).unwrap();
+            let first_query_id = transaction_query_repository
+                .save(first_transaction_query)
+                .unwrap();
 
             let first_transaction = GenericTransaction { id: transaction_id };
+
+            let first_block_query = GenericBlockQuery {
+                min_timestamp_secs: query_timestamp,
+            };
+
+            let first_block_query_id = block_query_repository.save(first_block_query).unwrap();
 
             let first_block = GenericBlock {
                 id: 0,
                 parent_id: 0,
+                timestamp: block_timestamp,
                 transaction_list: vec![first_transaction],
             };
 
@@ -324,14 +347,15 @@ mod tests {
                 transaction_query_result_repository,
                 block_query_result_repository,
                 block_processor,
-                first_query_id,
+                first_transaction_query_id: first_query_id,
                 first_block,
+                first_block_query_id,
             }
         }
     }
     #[test]
     fn given_single_confirmation_query_when_matching_transaction_is_processed_adds_result() {
-        let harness = Setup::new(1, 1, 1);
+        let harness = Setup::new(1, 1, 1, 0, 0);
         let mut block_processor = harness.block_processor;
 
         block_processor.process(&harness.first_block);
@@ -339,7 +363,7 @@ mod tests {
         assert!(
             harness
                 .transaction_query_result_repository
-                .get(harness.first_query_id)
+                .get(harness.first_transaction_query_id)
                 .is_some(),
             "Query not moved to result repository after matching transaction \
              requiring single confirmation arrived in block"
@@ -349,7 +373,7 @@ mod tests {
     #[test]
     fn given_double_confirmation_query_when_matching_transaction_is_processed_and_confirmed_adds_result(
 ) {
-        let harness = Setup::new(1, 1, 2);
+        let harness = Setup::new(1, 1, 2, 0, 0);
         let mut block_processor = harness.block_processor;
 
         block_processor.process(&harness.first_block);
@@ -358,7 +382,7 @@ mod tests {
         assert!(
             harness
                 .transaction_query_result_repository
-                .get(harness.first_query_id)
+                .get(harness.first_transaction_query_id)
                 .is_none(),
             "Query found in result repository even though matching transaction \
              still requires one more confirmation"
@@ -371,16 +395,17 @@ mod tests {
         assert!(
             harness
                 .transaction_query_result_repository
-                .get(harness.first_query_id)
+                .get(harness.first_transaction_query_id)
                 .is_some(),
             "Query not moved to result repository after matching transaction \
              sufficiently confirmed"
         );
     }
+
     #[test]
     fn given_single_confirmation_query_when_non_matching_transaction_is_processed_does_not_add_result(
 ) {
-        let harness = Setup::new(1, 2, 1);
+        let harness = Setup::new(1, 2, 1, 0, 0);
         let mut block_processor = harness.block_processor;
 
         block_processor.process(&harness.first_block);
@@ -388,10 +413,42 @@ mod tests {
         assert!(
             harness
                 .transaction_query_result_repository
-                .get(harness.first_query_id)
+                .get(harness.first_transaction_query_id)
                 .is_none(),
             "Query moved to result repository after non-matching transaction \
              arrived in block"
+        );
+    }
+
+    #[test]
+    fn given_block_timestamp_query_when_younger_block_is_processed_add_result() {
+        let harness = Setup::new(1, 2, 1, 5, 6);
+        let mut block_processor = harness.block_processor;
+
+        block_processor.process(&harness.first_block);
+
+        assert!(
+            harness
+                .block_query_result_repository
+                .get(harness.first_block_query_id)
+                .is_some(),
+            "Query moved to result repository after matching block arrived"
+        );
+    }
+
+    #[test]
+    fn given_block_timestamp_query_when_older_block_is_processed_does_not_add_result() {
+        let harness = Setup::new(1, 2, 1, 6, 5);
+        let mut block_processor = harness.block_processor;
+
+        block_processor.process(&harness.first_block);
+
+        assert!(
+            harness
+                .block_query_result_repository
+                .get(harness.first_block_query_id)
+                .is_none(),
+            "Query not moved to result repository after non-matching block arrived"
         );
     }
 }
