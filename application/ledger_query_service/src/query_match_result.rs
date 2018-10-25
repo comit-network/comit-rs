@@ -132,3 +132,79 @@ impl<T: PartialEq> IsEqualTo<T, Option<T>> for Option<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn no_and_yes_is_no() {
+        assert_eq!(
+            QueryMatchResult::no().and(QueryMatchResult::yes()),
+            QueryMatchResult::no()
+        )
+    }
+
+    #[test]
+    fn yes_and_yes_is_yes_with_higher_confirmations() {
+        assert_eq!(
+            QueryMatchResult::yes_with_confirmations(2)
+                .and(QueryMatchResult::yes_with_confirmations(3)),
+            QueryMatchResult::yes_with_confirmations(3)
+        )
+    }
+
+    #[test]
+    fn yes_or_yes_is_yes_with_higher_confirmations() {
+        assert_eq!(
+            QueryMatchResult::yes_with_confirmations(2)
+                .or(QueryMatchResult::yes_with_confirmations(3)),
+            QueryMatchResult::yes_with_confirmations(3)
+        )
+    }
+
+    #[test]
+    fn yes_or_no_is_yes() {
+        assert_eq!(
+            QueryMatchResult::yes().or(QueryMatchResult::no()),
+            QueryMatchResult::yes()
+        )
+    }
+
+    #[test]
+    fn no_or_no_is_no() {
+        assert_eq!(
+            QueryMatchResult::no().or(QueryMatchResult::no()),
+            QueryMatchResult::no()
+        )
+    }
+
+    #[test]
+    fn no_or_yes_with_confirmations_is_yes_with_confirmations() {
+        assert_eq!(
+            QueryMatchResult::no().or(QueryMatchResult::yes_with_confirmations(2)),
+            QueryMatchResult::yes_with_confirmations(2)
+        )
+    }
+
+    #[test]
+    fn yes_or_no_and_yes_is_yes() {
+        assert_eq!(
+            QueryMatchResult::yes()
+                .or(QueryMatchResult::no())
+                .and(QueryMatchResult::yes()),
+            QueryMatchResult::yes()
+        )
+    }
+
+    #[test]
+    fn no_or_yes_or_no_is_yes() {
+        assert_eq!(
+            QueryMatchResult::no()
+                .or(QueryMatchResult::yes())
+                .or(QueryMatchResult::no()),
+            QueryMatchResult::yes()
+        )
+    }
+}
