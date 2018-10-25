@@ -1,4 +1,4 @@
-use block_processor::{Block, Query, QueryMatchResult, Transaction};
+use block_processor::{Block, IsEqualTo, Query, QueryMatchResult, Transaction};
 use ethereum_support::{
     Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
 };
@@ -22,15 +22,6 @@ pub struct EthereumTransactionQuery {
     to_address: Option<Address>,
     is_contract_creation: Option<bool>,
     transaction_data: Option<Bytes>,
-}
-
-impl EthereumTransactionQuery {
-    fn is_empty(&self) -> bool {
-        self.from_address.is_none()
-            && self.to_address.is_none()
-            && self.is_contract_creation.is_none()
-            && self.transaction_data.is_none()
-    }
 }
 
 #[post(
@@ -74,39 +65,8 @@ fn created(url: String) -> Created<Option<()>> {
     Created(url, None)
 }
 
-trait IsEqualTo<'a, T: 'a> {
-    fn is_equal_to<O, R>(&self, predicate: O) -> QueryMatchResult
-    where
-        O: Fn() -> R,
-        Option<&'a T>: From<R>;
-}
-
-impl<'a, T: PartialEq + 'a> IsEqualTo<'a, T> for Option<T> {
-    fn is_equal_to<O, R>(&self, other: O) -> QueryMatchResult
-    where
-        O: Fn() -> R,
-        Option<&'a T>: From<R>,
-    {
-        match self {
-            Some(this) => {
-                let option = other().into();
-
-                match option {
-                    Some(other) if this == other => QueryMatchResult::yes(),
-                    _ => QueryMatchResult::no(),
-                }
-            }
-            None => QueryMatchResult::no(),
-        }
-    }
-}
-
 impl Query<EthereumTransaction> for EthereumTransactionQuery {
     fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
-        if self.is_empty() {
-            return QueryMatchResult::no();
-        }
-
         let EthereumTransactionQuery {
             from_address,
             to_address,
@@ -114,15 +74,15 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
             transaction_data,
         } = self;
 
-        let from_address = from_address.is_equal_to(|| &transaction.from);
-        let to_address = to_address.is_equal_to(|| transaction.to.as_ref());
-        //        let is_contract_creation = is_contract_creation.is_equal_to(|| transaction.to.is_none());
-        let transaction_data = transaction_data.is_equal_to(|| &transaction.input);
+        let matches_from_address = from_address.is_equal_to(|| transaction.from);
+        let matches_to_address = to_address.is_equal_to(|| &transaction.to);
+        let is_contract_creation = is_contract_creation.is_equal_to(|| transaction.to.is_none());
+        let matches_transaction_data = transaction_data.is_equal_to(|| &transaction.input);
 
-        from_address
-            .or(to_address)
-            //            .or(is_contract_creation)
-            .or(transaction_data)
+        matches_from_address
+            .or(matches_to_address)
+            .or(is_contract_creation)
+            .or(matches_transaction_data)
     }
 }
 

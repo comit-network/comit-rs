@@ -69,6 +69,48 @@ impl QueryMatchResult {
     }
 }
 
+pub trait IsEqualTo<T, U> {
+    fn is_equal_to<O>(&self, predicate: O) -> QueryMatchResult
+    where
+        O: Fn() -> U;
+}
+
+impl<'a, T: PartialEq + 'a> IsEqualTo<T, &'a T> for Option<T> {
+    fn is_equal_to<O>(&self, other: O) -> QueryMatchResult
+    where
+        O: Fn() -> &'a T,
+    {
+        match self {
+            Some(this) if this == other() => QueryMatchResult::yes(),
+            _ => QueryMatchResult::no(),
+        }
+    }
+}
+
+impl<T: PartialEq> IsEqualTo<T, T> for Option<T> {
+    fn is_equal_to<O>(&self, other: O) -> QueryMatchResult
+    where
+        O: Fn() -> T,
+    {
+        match self {
+            Some(this) if this == &other() => QueryMatchResult::yes(),
+            _ => QueryMatchResult::no(),
+        }
+    }
+}
+
+impl<'a, T: PartialEq + 'a> IsEqualTo<T, &'a Option<T>> for Option<T> {
+    fn is_equal_to<O>(&self, other: O) -> QueryMatchResult
+    where
+        O: Fn() -> &'a Option<T>,
+    {
+        match (self, other().as_ref()) {
+            (Some(this), Some(other)) if this == other => QueryMatchResult::yes(),
+            _ => QueryMatchResult::no(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PendingTransaction {
     matching_query_id: u32,
