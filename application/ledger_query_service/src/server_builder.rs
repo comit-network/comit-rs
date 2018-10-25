@@ -67,6 +67,9 @@ impl ServerBuilder {
                     ethereum::transaction_query::handle_new_query,
                     ethereum::transaction_query::retrieve_query,
                     ethereum::transaction_query::delete_query,
+                    ethereum::block_query::handle_new_query,
+                    ethereum::block_query::retrieve_query,
+                    ethereum::block_query::delete_query,
                 ],
             ).manage(transaction_query_repository)
             .manage(transaction_query_result_repository)

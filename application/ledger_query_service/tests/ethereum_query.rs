@@ -7,6 +7,8 @@ extern crate spectral;
 #[macro_use]
 extern crate serde_derive;
 extern crate ethereum_support;
+#[macro_use]
+extern crate log;
 
 use ethereum_support::web3::types::{Address, Block, Bytes, Transaction, H160, H2048, H256, U256};
 use http::Uri;
@@ -101,7 +103,7 @@ fn given_created_query_when_deleted_is_no_longer_available() {
 }
 
 #[derive(Deserialize, Debug)]
-struct QueryResponse {
+struct TransactionQueryResponse {
     matching_transactions: Vec<String>,
 }
 
@@ -186,7 +188,7 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
 
     let body = get_response.body_bytes();
     let body = assert_that(&body).is_some().subject;
-    let body = serde_json::from_slice::<QueryResponse>(body);
+    let body = serde_json::from_slice::<TransactionQueryResponse>(body);
     let body = assert_that(&body).is_ok().subject;
 
     assert_that(body)
@@ -222,4 +224,84 @@ fn should_reject_malformed_address() {
         .dispatch();
 
     assert_that(&response.status()).is_equal_to(Status::BadRequest);
+}
+
+#[derive(Deserialize, Debug)]
+struct BlockQueryResponse {
+    matching_blocks: Vec<String>,
+}
+
+#[test]
+fn given_block_query_when_matching_block_is_processed_returns_result() {
+    let _ = pretty_env_logger::try_init();
+
+    let link_factory = LinkFactory::new("http", "localhost", Some(8000));
+    let transaction_query_repository = Arc::new(InMemoryQueryRepository::default());
+    let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    let block_query_repository = Arc::new(InMemoryQueryRepository::default());
+    let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    let mut block_processor = DefaultBlockProcessor::new(
+        transaction_query_repository.clone(),
+        block_query_repository.clone(),
+        transaction_query_result_repository.clone(),
+        block_query_result_repository.clone(),
+    );
+
+    let server = ledger_query_service::server_builder::ServerBuilder::create(
+        rocket::Config::development().unwrap(),
+        link_factory,
+    ).register_ethereum(
+        transaction_query_repository,
+        transaction_query_result_repository,
+        block_query_repository,
+        block_query_result_repository,
+    ).build();
+    let client = Client::new(server).unwrap();
+
+    let response = client
+        .post("/queries/ethereum/blocks")
+        .header(ContentType::JSON)
+        .body(r#"{ "min_timestamp_secs" : 9000 }"#)
+        .dispatch();
+
+    let location_header_value = response.headers().get_one("Location");
+    let uri: Uri = location_header_value.unwrap().parse().unwrap();
+
+    let block = Block {
+        hash: Some(H256::zero()),
+        parent_hash: H256::zero(),
+        uncles_hash: H256::zero(),
+        author: H160::zero(),
+        state_root: H256::zero(),
+        transactions_root: H256::zero(),
+        receipts_root: H256::zero(),
+        number: None,
+        gas_used: U256::from(0),
+        gas_limit: U256::from(0),
+        extra_data: Bytes::from(vec![]),
+        logs_bloom: H2048::zero(),
+        timestamp: U256::from(10_000),
+        difficulty: U256::from(0),
+        total_difficulty: U256::from(0),
+        seal_fields: vec![Bytes::from(vec![])],
+        uncles: vec![],
+        transactions: vec![],
+        size: None,
+    };
+
+    block_processor.process(&block);
+
+    let mut get_response = client.get(uri.path()).dispatch();
+    assert_that(&get_response.status()).is_equal_to(Status::Ok);
+
+    let body = get_response.body_bytes();
+    let body = assert_that(&body).is_some().subject;
+    let body = serde_json::from_slice::<BlockQueryResponse>(body);
+    let body = assert_that(&body).is_ok().subject;
+
+    debug!("Body: {:?}", body);
+
+    //    assert_that(body)
+    //        .map(|b| &b.matching_blocks)
+    //        .contains(format!("0x{}", tx_id));
 }
