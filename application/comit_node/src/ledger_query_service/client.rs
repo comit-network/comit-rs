@@ -17,13 +17,8 @@ pub struct DefaultLedgerQueryServiceApiClient {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct TransactionQueryResponse<T> {
-    matching_transactions: Vec<T>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct BlockQueryResponse<B> {
-    matching_blocks: Vec<B>,
+pub struct QueryResponse<T> {
+    matches: Vec<T>,
 }
 
 impl DefaultLedgerQueryServiceApiClient {
@@ -82,9 +77,9 @@ impl DefaultLedgerQueryServiceApiClient {
             .client
             .get(query.as_ref().clone())
             .send()
-            .and_then(|mut response| response.json::<TransactionQueryResponse<L::TxId>>())
+            .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
             .map_err(Error::FailedRequest)
-            .map(|response| response.matching_transactions);
+            .map(|response| response.matches);
 
         Box::new(transactions)
     }
@@ -152,5 +147,19 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
 
     fn delete(&self, query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use bitcoin_support::TransactionId;
+    use serde_json;
+
+    #[test]
+    fn json_deserialize() {
+        let json = r#"{"query":{"to_address":"bcrt1qtfd0gvmdhx2uz267a8a3rpm4v55t8nuzgka2f5xzm4e06tg2d2dqxugdz7","confirmations_needed":1},"matches":["b29cb185d467b3a5faeb7a3f312175e336dbfcc8e9fecc8ad86e9106031315c2"]}"#;
+
+        let blah: QueryResponse<TransactionId> = serde_json::from_str(json).unwrap();
     }
 }

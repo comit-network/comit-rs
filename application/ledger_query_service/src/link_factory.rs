@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LinkFactory {
     port: Option<u16>,
     host: String,
