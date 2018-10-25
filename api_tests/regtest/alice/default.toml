@@ -1,0 +1,36 @@
+# This is should not be used in production
+[ethereum]
+network_id = 1
+node_url = "http://localhost:8545"
+gas_price=2_000_000_000
+private_key="f01c140fb86e8b3587b239f71cfbe305bf3a0e1a3701d6186165fe29be06120e"
+
+[bitcoin]
+network = "regtest"
+satoshi_per_byte = 50 # used for calculating transaction fees
+node_url = "http://localhost:18443"
+node_username = "bitcoin"
+node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+# The extended private key is this private key + Chaincode [0u8; 32]
+# private_key="d14645573802900964c63e00e9e238aef9152b95e2f9aa1b534323951258d7fc"
+extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSALoMjDCZoi5BwobjymauUwpJXXhHoCMTC7nVo183SqnVBDGZ8i3"
+
+
+[swap]
+eth_refund_address="0x3853005576eeca2ba7ec579ce04c1ce2f4cd162e"
+
+[comit]
+remote_comit_node_url = "127.0.0.1:8011"
+comit_listen = "0.0.0.0:8001"
+
+[http_api]
+address="0.0.0.0"
+port=8000
+logging=true
+
+[ledger_query_service]
+url = "http://localhost:8080"
+[ledger_query_service.bitcoin]
+poll_interval_secs = 1
+[ledger_query_service.ethereum]
+poll_interval_secs = 1
