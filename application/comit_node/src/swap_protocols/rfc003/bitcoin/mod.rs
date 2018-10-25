@@ -1,4 +1,4 @@
-use bitcoin_support::{Blocks, PubkeyHash, TransactionId};
+use bitcoin_support::{Blocks, OutPoint, PubkeyHash, TransactionId};
 use secp256k1_support::KeyPair;
 use swap_protocols::{ledger::Bitcoin, rfc003::Ledger};
 
@@ -8,12 +8,6 @@ pub use self::htlc::{Htlc, UnlockingError};
 
 impl Ledger for Bitcoin {
     type LockDuration = Blocks;
-    type HtlcId = HtlcId;
+    type HtlcId = OutPoint;
     type HtlcIdentity = KeyPair;
-}
-
-#[derive(Clone, Deserialize, Serialize, Debug)]
-pub struct HtlcId {
-    pub transaction_id: TransactionId,
-    pub vout: u32,
 }

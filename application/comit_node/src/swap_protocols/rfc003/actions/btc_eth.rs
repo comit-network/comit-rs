@@ -54,7 +54,7 @@ impl<TA: Clone> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
                     data: start.secret,
                 }),
                 Action::RefundHtlc(BitcoinRefund {
-                    htlc_id: source_htlc_id.clone(),
+                    outpoint: source_htlc_id.clone(),
                     htlc: bitcoin_htlc(start, response),
                     value: start.source_asset,
                     transient_keypair: start.source_identity.into(),
@@ -72,7 +72,7 @@ impl<TA: Clone> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
                 ref source_htlc_id,
                 ..
             }) => vec![Action::RefundHtlc(BitcoinRefund {
-                htlc_id: source_htlc_id.clone(),
+                outpoint: source_htlc_id.clone(),
                 htlc: bitcoin_htlc(start, response),
                 value: start.source_asset,
                 transient_keypair: start.source_identity.into(),

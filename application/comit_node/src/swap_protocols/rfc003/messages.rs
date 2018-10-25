@@ -56,7 +56,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> Request<SL, TL, SA, TA> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct AcceptResponse<SL: Ledger, TL: Ledger> {
     pub target_ledger_refund_identity: TL::Identity,
     pub source_ledger_success_identity: SL::Identity,

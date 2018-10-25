@@ -173,9 +173,7 @@ fn spawn_gotham_instance(
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let client_pool = comit_client::bam::BamClientPool::default();
     let remote_comit_node_url = settings.comit.remote_comit_node_url;
-
     let client_pool = Arc::new(comit_client::bam::BamClientPool::default());
 
     let alice_actor = AliceLedgerActor::new(
@@ -194,7 +192,7 @@ fn spawn_gotham_instance(
 
     let router = gotham_factory::create_gotham_router(
         event_store,
-        Arc::new(client_pool),
+        Arc::clone(&client_pool),
         remote_comit_node_url,
         key_store,
         alice_actor_sender,

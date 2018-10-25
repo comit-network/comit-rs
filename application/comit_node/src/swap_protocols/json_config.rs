@@ -16,7 +16,6 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum, Ledger},
     rfc003::{
         self,
-        bitcoin::HtlcId,
         ethereum::Seconds,
         ledger_htlc_service::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,

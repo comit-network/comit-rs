@@ -1,7 +1,8 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_rpc_client::{self, *};
 use bitcoin_support::{
-    self, Address, BitcoinQuantity, Blocks, PubkeyHash, Script, Transaction, TransactionId, TxOut,
+    self, Address, BitcoinQuantity, Blocks, OutPoint, PubkeyHash, Script, Transaction,
+    TransactionId, TxOut,
 };
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use ledger_query_service::BitcoinQuery;
@@ -10,7 +11,7 @@ use std::sync::Arc;
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        bitcoin::{self, HtlcId},
+        bitcoin,
         ledger_htlc_service::{self, LedgerHtlcService},
         Secret, SecretHash,
     },
@@ -68,7 +69,7 @@ pub struct BitcoinHtlcFundingParams {
 
 #[derive(Clone, Debug)]
 pub struct BitcoinHtlcRedeemParams {
-    pub htlc_identifier: HtlcId,
+    pub htlc_identifier: OutPoint,
     pub success_address: Address,
     pub refund_address: Address,
     pub amount: BitcoinQuantity,
