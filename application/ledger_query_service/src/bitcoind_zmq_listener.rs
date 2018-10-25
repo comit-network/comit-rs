@@ -1,5 +1,7 @@
-use bitcoin_support::{serialize::deserialize, Block};
+use bitcoin_support::{serialize::deserialize, BlockWithHeight};
 use block_processor::BlockProcessor;
+use byteorder::{LittleEndian, ReadBytesExt};
+use std::io::Cursor;
 use zmq::{self, Context, Socket};
 
 #[derive(DebugStub)]
@@ -12,7 +14,7 @@ pub struct BitcoindZmqListener<P> {
     processor: P,
 }
 
-impl<P: BlockProcessor<Block>> BitcoindZmqListener<P> {
+impl<P: BlockProcessor<BlockWithHeight>> BitcoindZmqListener<P> {
     pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
         let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
@@ -42,18 +44,31 @@ impl<P: BlockProcessor<Block>> BitcoindZmqListener<P> {
         }
     }
 
-    fn receive_block(&mut self) -> Result<Option<Block>, zmq::Error> {
+    fn receive_block(&mut self) -> Result<Option<BlockWithHeight>, zmq::Error> {
         let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
         let bytes: &[u8] = bytes.as_ref();
 
         match bytes {
             b"rawblock" => {
                 let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
+                let end_bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
+
+                let mut end_bytes = Cursor::new(end_bytes);
+                let height = end_bytes.read_u32::<LittleEndian>();
 
                 match deserialize(bytes.as_ref()) {
                     Ok(block) => {
                         trace!("Got {:?}", block);
-                        Ok(Some(block))
+                        match height {
+                            Ok(height) => Ok(Some(BlockWithHeight { block, height })),
+                            Err(e) => {
+                                error!(
+                                    "Got new block but failed to extract the height because {:?}",
+                                    e
+                                );
+                                Ok(None)
+                            }
+                        }
                     }
                     Err(e) => {
                         error!("Got new block but failed to deserialize it because {:?}", e);

@@ -1,5 +1,5 @@
 use bitcoin_support::{
-    serialize::BitcoinHash, Address, Block as BitcoinBlock, SpendsTo,
+    serialize::BitcoinHash, Address, BlockWithHeight as BitcoinBlock, SpendsTo,
     Transaction as BitcoinTransaction,
 };
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
@@ -94,13 +94,13 @@ impl Block for BitcoinBlock {
     type Transaction = BitcoinTransaction;
 
     fn blockhash(&self) -> String {
-        format!("{:x}", self.header.bitcoin_hash())
+        format!("{:x}", self.block.header.bitcoin_hash())
     }
     fn prev_blockhash(&self) -> String {
-        format!("{:x}", self.header.prev_blockhash)
+        format!("{:x}", self.block.header.prev_blockhash)
     }
     fn transactions(&self) -> &[BitcoinTransaction] {
-        self.txdata.as_slice()
+        self.block.txdata.as_slice()
     }
 }
 

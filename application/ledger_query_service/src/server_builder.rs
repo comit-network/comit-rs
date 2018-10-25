@@ -41,6 +41,9 @@ impl ServerBuilder {
                     bitcoin::transaction_query::handle_new_query,
                     bitcoin::transaction_query::retrieve_query,
                     bitcoin::transaction_query::delete_query,
+                    bitcoin::block_query::handle_new_query,
+                    bitcoin::block_query::retrieve_query,
+                    bitcoin::block_query::delete_query,
                 ],
             ).manage(transaction_query_repository)
             .manage(transaction_query_result_repository)

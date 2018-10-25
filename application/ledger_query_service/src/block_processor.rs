@@ -104,6 +104,22 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
 {
     fn process_new_block(&mut self, block: &B) {
         trace!("Processing {:?}", block);
+
+        let result_repository = &mut self.block_results;
+        self.block_queries
+            .all()
+            .filter_map(|(query_id, query)| {
+                trace!("Matching query {:#?} against block {:#?}", query, block);
+
+                let block_id = block.blockhash();
+                match query.matches(block) {
+                    QueryMatchResult::Yes { .. } => {
+                        info!("Block {} matches Query-ID: {:?}", block_id, query_id);
+                        Some((query_id, block_id))
+                    }
+                    QueryMatchResult::No => None,
+                }
+            }).for_each(|(query_id, block_id)| result_repository.add_result(query_id, block_id))
     }
 
     fn update_pending_transactions(&mut self) {

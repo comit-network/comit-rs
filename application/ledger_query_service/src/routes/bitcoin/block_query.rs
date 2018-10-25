@@ -1,4 +1,4 @@
-use bitcoin_support::Block as BitcoinBlock;
+use bitcoin_support::BlockWithHeight as BitcoinBlock;
 use block_processor::{Query, QueryMatchResult};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
@@ -60,7 +60,13 @@ fn created(url: String) -> Created<Option<()>> {
 impl Query<BitcoinBlock> for BitcoinBlockQuery {
     fn matches(&self, block: &BitcoinBlock) -> QueryMatchResult {
         match self.min_height {
-            Some(ref height) => unimplemented!(),
+            Some(ref height) => {
+                if *height <= block.height {
+                    QueryMatchResult::yes()
+                } else {
+                    QueryMatchResult::no()
+                }
+            }
             None => {
                 warn!("min_height not set, nothing to compare");
                 QueryMatchResult::no()
@@ -94,7 +100,7 @@ pub fn retrieve_query(
     }))
 }
 
-#[delete("/queries/bitcoin/transactions/<id>")]
+#[delete("/queries/bitcoin/blocks/<id>")]
 #[allow(clippy::needless_pass_by_value)] // Rocket passes by value
 pub fn delete_query(
     id: u32,
@@ -105,4 +111,90 @@ pub fn delete_query(
     query_result_repository.delete(id);
 
     NoContent
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bitcoin_support::{Block, BlockHeader, BlockWithHeight, Sha256dHash};
+    use spectral::prelude::*;
+
+    #[test]
+    fn given_query_min_height_then_lesser_block_does_not_match() {
+        let block_header = BlockHeader {
+            version: 1,
+            prev_blockhash: Sha256dHash::default(),
+            merkle_root: Sha256dHash::default(),
+            time: 0,
+            bits: 1,
+            nonce: 0,
+        };
+
+        let block = BlockWithHeight {
+            block: Block {
+                header: block_header,
+                txdata: vec![],
+            },
+            height: 40,
+        };
+
+        let query = BitcoinBlockQuery {
+            min_height: Some(42),
+        };
+
+        assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::no());
+    }
+
+    #[test]
+    fn given_query_min_height_then_exact_block_matches() {
+        let block_header = BlockHeader {
+            version: 1,
+            prev_blockhash: Sha256dHash::default(),
+            merkle_root: Sha256dHash::default(),
+            time: 0,
+            bits: 1,
+            nonce: 0,
+        };
+
+        let block = BlockWithHeight {
+            block: Block {
+                header: block_header,
+                txdata: vec![],
+            },
+            height: 42,
+        };
+
+        let query = BitcoinBlockQuery {
+            min_height: Some(42),
+        };
+
+        assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::yes());
+    }
+
+    #[test]
+    fn given_query_min_height_then_greater_block_matches() {
+        let block_header = BlockHeader {
+            version: 1,
+            prev_blockhash: Sha256dHash::default(),
+            merkle_root: Sha256dHash::default(),
+            time: 0,
+            bits: 1,
+            nonce: 0,
+        };
+
+        let block = BlockWithHeight {
+            block: Block {
+                header: block_header,
+                txdata: vec![],
+            },
+            height: 45,
+        };
+
+        let query = BitcoinBlockQuery {
+            min_height: Some(42),
+        };
+
+        assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::yes());
+    }
+
 }
