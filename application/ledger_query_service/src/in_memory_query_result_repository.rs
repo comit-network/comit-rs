@@ -1,19 +1,10 @@
 use query_result_repository::{QueryResult, QueryResultRepository};
 use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct InMemoryQueryResultRepository<Q> {
     storage: RwLock<HashMap<u32, QueryResult>>,
     phantom: PhantomData<Q>,
-}
-
-impl<Q> Default for InMemoryQueryResultRepository<Q> {
-    fn default() -> Self {
-        Self {
-            storage: RwLock::new(HashMap::new()),
-            phantom: PhantomData,
-        }
-    }
 }
 
 impl<Q: Send + Sync + Clone + 'static> QueryResultRepository<Q>
