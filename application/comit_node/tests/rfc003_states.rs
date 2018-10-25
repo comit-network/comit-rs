@@ -9,7 +9,6 @@ extern crate hex;
 extern crate secp256k1_support;
 extern crate tokio;
 extern crate tokio_timer;
-
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use comit_node::{
     comit_client::SwapReject,
