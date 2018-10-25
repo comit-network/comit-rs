@@ -75,7 +75,7 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
         } = self;
 
         let matches_from_address = from_address.is_equal_to(|| transaction.from);
-        let matches_to_address = to_address.is_equal_to(|| &transaction.to);
+        let matches_to_address = to_address.is_equal_to(|| transaction.to);
         let is_contract_creation = is_contract_creation.is_equal_to(|| transaction.to.is_none());
         let matches_transaction_data = transaction_data.is_equal_to(|| &transaction.input);
 

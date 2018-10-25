@@ -111,6 +111,18 @@ impl<'a, T: PartialEq + 'a> IsEqualTo<T, &'a Option<T>> for Option<T> {
     }
 }
 
+impl<T: PartialEq> IsEqualTo<T, Option<T>> for Option<T> {
+    fn is_equal_to<O>(&self, other: O) -> QueryMatchResult
+    where
+        O: Fn() -> Option<T>,
+    {
+        match (self, other()) {
+            (Some(this), Some(ref other)) if this == other => QueryMatchResult::yes(),
+            _ => QueryMatchResult::no(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct PendingTransaction {
     matching_query_id: u32,
