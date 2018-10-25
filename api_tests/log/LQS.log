@@ -1,0 +1,914 @@
+ [32mINFO [0m [1mrocket::rocket[0m > Configured for development.
+ [32mINFO [0m [1m_             [0m > address: 0.0.0.0
+ [32mINFO [0m [1m_             [0m > port: 8080
+ [32mINFO [0m [1m_             [0m > log: normal
+ [32mINFO [0m [1m_             [0m > workers: 16
+ [32mINFO [0m [1m_             [0m > secret key: generated
+ [32mINFO [0m [1m_             [0m > limits: forms = 32KiB
+ [32mINFO [0m [1m_             [0m > tls: disabled
+ [32mINFO [0m [1mledger_query_service[0m > Connect BitcoinZmqListener to tcp://127.0.0.1:28332
+ [32mINFO [0m [1mrocket::rocket      [0m > Mounting '/':
+ [32mINFO [0m [1m_                   [0m > POST /queries/bitcoin/transactions application/json
+ [32mINFO [0m [1m_                   [0m > GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                   [0m > DELETE /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                   [0m > POST /queries/bitcoin/blocks application/json
+ [32mINFO [0m [1m_                   [0m > GET /queries/bitcoin/blocks/<id>
+ [32mINFO [0m [1m_                   [0m > DELETE /queries/bitcoin/blocks/<id>
+ [32mINFO [0m [1mledger_query_service[0m > Starting EthereumSimpleListener on http://localhost:8545
+ [32mINFO [0m [1mrocket::rocket      [0m > Mounting '/':
+ [32mINFO [0m [1m_                   [0m > POST /queries/ethereum/transactions application/json
+ [32mINFO [0m [1m_                   [0m > GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                   [0m > DELETE /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                   [0m > POST /queries/ethereum/blocks application/json
+ [32mINFO [0m [1m_                   [0m > GET /queries/ethereum/blocks/<id>
+ [32mINFO [0m [1m_                   [0m > DELETE /queries/ethereum/blocks/<id>
+ [31mERROR[0m [1mlaunch              [0m > Rocket has launched from http://0.0.0.0:8080
+ [34mDEBUG[0m [1mhyper::server       [0m > threads = 16
+ [34mDEBUG[0m [1mtokio_reactor::background[0m > starting background reactor
+ [32mINFO [0m [1mledger_query_service::bitcoind_zmq_listener[0m > Connecting to tcp://127.0.0.1:28332 to subscribe to new Bitcoin blocks over ZeroMQ
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > consuming notification queue
+ [34mDEBUG[0m [1mweb3::transports::http                     [0m > [0] Sending: {"jsonrpc":"2.0","method":"eth_newBlockFilter","params":[],"id":0} to http://localhost:8545/
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 133.657µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 870137293 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 70.241µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 146.569µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 870389763 }
+ [34mDEBUG[0m [1mhyper::client::dns                         [0m > resolving host="localhost", port=8545
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 69.55µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 25.986µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 870521121 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 65.757µs
+ [34mDEBUG[0m [1mhyper::client::connect                     [0m > connecting to 127.0.0.1:8545
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 211.725µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 870831488 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 74.223µs
+ [34mDEBUG[0m [1mtokio_reactor                              [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 270.667µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 871221037 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 95.916µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > flushed 114 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > flushed 66 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 246.315µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 871597303 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 81.313µs
+ [34mDEBUG[0m [1mtokio_reactor                              [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > read 167 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                     [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                   [0m > incoming chunked header: 0x28 (40 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 552.095µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 872276336 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 77.349µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 60.107µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 872459068 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 64.756µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                     [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                        [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 182.643µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 872747316 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 77.17µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 41.86µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 872898332 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 61.92µs
+ [34mDEBUG[0m [1mweb3::transports::http                     [0m > [1] Sending: {"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                        [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 251.484µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 873248635 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 64.625µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > flushed 177 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 140.584µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 873485808 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 79.771µs
+ [34mDEBUG[0m [1mtokio_reactor                              [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > read 167 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                       [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                     [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                   [0m > incoming chunked header: 0x28 (40 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 389.297µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 874001634 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 59.889µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 52.18µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 874145990 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 77.823µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                     [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                        [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 162.499µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 874427058 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 61.765µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop poll - 42.442µs
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop time - Instant { tv_sec: 44226, tv_nsec: 874573825 }
+ [34mDEBUG[0m [1mtokio_core::reactor                        [0m > loop process, 64.17µs
+ [32mINFO [0m [1mledger_query_service::ethereum_web3_block_poller[0m > Starting listener for Ethereum from block 0 waiting for new blocks.
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [2] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":2} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.002658832s
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 877335599 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 270.855µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 187 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 646.084µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 878403709 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 289.224µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 232 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x69 (105 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 2.096519ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 880927870 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 248.725µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 246.46µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 881562662 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 272.287µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 632.978µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 882583155 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 209.915µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 139.251µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 883047696 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 227.775µs
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [3] Sending: {"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0x27c271aee6864292fa77f49edc2057982d8be669b409627632e7595ac432380f",true],"id":3} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 943.058µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 884332788 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 223.499µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 254 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 434.14µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 885105806 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 192.826µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 2551 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x977 (2423 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 3.2699ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 888683347 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 227.186µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 203.98µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 889236534 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.533µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 545.13µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 890127195 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 211.161µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 137.461µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44227, tv_nsec: 890591690 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.239µs
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [4] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":4} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 986.700186ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44228, tv_nsec: 877635009 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 271.811µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 187 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 653.358µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44228, tv_nsec: 878712102 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 245.99µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 164 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x25 (37 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 2.011227ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44228, tv_nsec: 881153215 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 253.265µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 250.815µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44228, tv_nsec: 881797609 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.777µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 548.479µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44228, tv_nsec: 882693962 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 211.258µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 141.197µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44228, tv_nsec: 883161783 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.768µs
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [5] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":5} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 992.622188ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44229, tv_nsec: 876127916 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 53.88µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 187 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 154.276µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44229, tv_nsec: 876370080 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 45.439µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 164 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x25 (37 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 568.229µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44229, tv_nsec: 877024399 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 49.041µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 48.57µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44229, tv_nsec: 877149309 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 51.462µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 125.293µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44229, tv_nsec: 877351935 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 47.407µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 30.385µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44229, tv_nsec: 877455862 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 50.99µs
+ [34mDEBUG[0m [1mhyper::server                                   [0m > Incoming stream
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Post AbsolutePath("/queries/bitcoin/transactions") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, content-type: application/json
+, accept-encoding: gzip
+, host: localhost:8080
+, content-length: 81
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > POST /queries/bitcoin/transactions application/json:
+ [32mINFO [0m [1m_                                               [0m > Matched: POST /queries/bitcoin/transactions application/json
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Created
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Location: http://localhost:8080/queries/bitcoin/transactions/1
+, Server: Rocket
+, Content-Length: 0
+, Date: Mon, 29 Oct 2018 07:03:46 GMT
+, }]
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mhyper::server                                   [0m > Incoming stream
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Post AbsolutePath("/queries/bitcoin/transactions") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, content-type: application/json
+, accept-encoding: gzip
+, host: localhost:8080
+, content-length: 81
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > POST /queries/bitcoin/transactions application/json:
+ [32mINFO [0m [1m_                                               [0m > Matched: POST /queries/bitcoin/transactions application/json
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Created
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Location: http://localhost:8080/queries/bitcoin/transactions/2
+, Server: Rocket
+, Content-Length: 0
+, Date: Mon, 29 Oct 2018 07:03:46 GMT
+, }]
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55892
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [6] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":6} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 999.141011ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 876673378 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 242.907µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 187 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 532.953µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 877582311 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 198.041µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 232 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x69 (105 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.774235ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 879671705 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 220.569µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 213.165µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 880294184 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 241.024µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 547.235µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 881199121 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 212.783µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 140.736µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 881667858 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 230.607µs
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [7] Sending: {"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0x213aa755c339ec317721265dcdb36e781fb85453d8b524d108b5c1a51ab872e9",true],"id":7} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 976.957µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 882990822 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 230.239µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 254 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 449.511µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 883790786 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 197.192µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 3529 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0xD49 (3401 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 4.416566ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 888582049 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 217.576µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 202.772µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 889123519 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 230.83µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 544.954µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 890014962 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 211.57µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 139.789µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44230, tv_nsec: 890482045 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.397µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/bitcoin/transactions/1") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/bitcoin/transactions/1:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 143
+, Date: Mon, 29 Oct 2018 07:03:47 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 143 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/bitcoin/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/bitcoin/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 143
+, Date: Mon, 29 Oct 2018 07:03:47 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 143 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55892
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [8] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":8} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 986.478245ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44231, tv_nsec: 877305743 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 233.145µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 187 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 542.979µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44231, tv_nsec: 878213087 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 199.117µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 164 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x25 (37 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.769314ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44231, tv_nsec: 880298935 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 215.896µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 210.742µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44231, tv_nsec: 880846584 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 228.733µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 552.841µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44231, tv_nsec: 881743739 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 259.853µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 140.137µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44231, tv_nsec: 882265494 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 228.945µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/bitcoin/transactions/1") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/bitcoin/transactions/1:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 143
+, Date: Mon, 29 Oct 2018 07:03:48 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 143 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/bitcoin/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/bitcoin/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 143
+, Date: Mon, 29 Oct 2018 07:03:48 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 143 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55892
+ [32mINFO [0m [1mledger_query_service::block_processor           [0m > Confirmed transaction 842868576fb0deb11dee270db7c19e178d927f9282f8c06353561da8c3b727da matches Query-ID: 1
+ [32mINFO [0m [1mledger_query_service::block_processor           [0m > Confirmed transaction 842868576fb0deb11dee270db7c19e178d927f9282f8c06353561da8c3b727da matches Query-ID: 2
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [9] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":9} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 994.20824ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44232, tv_nsec: 876816538 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 206.131µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 187 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 525.118µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44232, tv_nsec: 877663360 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 177.521µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 164 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x25 (37 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.357172ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44232, tv_nsec: 879300484 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 190.134µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 183.668µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44232, tv_nsec: 879779864 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 202.003µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 484.459µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44232, tv_nsec: 880612979 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 185.098µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 121.447µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44232, tv_nsec: 881020285 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 200.535µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/bitcoin/transactions/1") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/bitcoin/transactions/1:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 209
+, Date: Mon, 29 Oct 2018 07:03:49 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 209 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/bitcoin/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/bitcoin/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/bitcoin/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 209
+, Date: Mon, 29 Oct 2018 07:03:49 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 209 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55892
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Post AbsolutePath("/queries/ethereum/transactions") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, content-type: application/json
+, accept-encoding: gzip
+, host: localhost:8080
+, content-length: 405
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > POST /queries/ethereum/transactions application/json:
+ [32mINFO [0m [1m_                                               [0m > Matched: POST /queries/ethereum/transactions application/json
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Created
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Location: http://localhost:8080/queries/ethereum/transactions/1
+, Server: Rocket
+, Content-Length: 0
+, Date: Mon, 29 Oct 2018 07:03:49 GMT
+, }]
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55892
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Post AbsolutePath("/queries/ethereum/transactions") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, content-type: application/json
+, accept-encoding: gzip
+, host: localhost:8080
+, content-length: 131
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > POST /queries/ethereum/transactions application/json:
+ [32mINFO [0m [1m_                                               [0m > Matched: POST /queries/ethereum/transactions application/json
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Created
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Location: http://localhost:8080/queries/ethereum/transactions/2
+, Server: Rocket
+, Content-Length: 0
+, Date: Mon, 29 Oct 2018 07:03:49 GMT
+, }]
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [10] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":10} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 996.067625ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 877388282 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 233.681µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 582.569µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 878403105 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 220.88µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 233 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x6A (106 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.798532ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 880540080 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 226.732µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 208.154µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 881096922 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.804µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 547.012µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 881989128 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 212.422µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 139.994µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 882457495 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.008µs
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [11] Sending: {"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0xba974addb20cab65150a16872dea45685c24278138cc2dfaac4c3b4833e82fa6",true],"id":11} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 958.993µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 883759286 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.472µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 255 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 448.729µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 884618534 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 237.209µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 3157 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0xBD5 (3029 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 3.26126ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 888235151 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 217.02µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 204.269µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 888776857 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.044µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 559.128µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 889682449 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 209.928µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 138.05µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44233, tv_nsec: 890147077 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.584µs
+ [32mINFO [0m [1mledger_query_service::block_processor           [0m > Confirmed transaction 0xe53adcb49d578597512286dfc5f7f45992803dfa9d445528813f013a016e6b6d matches Query-ID: 1
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/1") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/1:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 510
+, Date: Mon, 29 Oct 2018 07:03:50 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 510 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55892
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 168
+, Date: Mon, 29 Oct 2018 07:03:50 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 168 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [12] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":12} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 987.097886ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44234, tv_nsec: 877589308 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 272.799µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 626.782µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44234, tv_nsec: 878639022 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 227.698µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 165 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x26 (38 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 2.115862ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44234, tv_nsec: 881118012 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 250.655µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 251.028µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44234, tv_nsec: 881759793 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 230.538µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 548.72µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44234, tv_nsec: 882654291 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 212.142µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 140.665µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44234, tv_nsec: 883122491 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.287µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 168
+, Date: Mon, 29 Oct 2018 07:03:51 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 168 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [13] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":13} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 993.84214ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44235, tv_nsec: 877310904 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 261.253µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 526.229µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44235, tv_nsec: 878234334 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 199.871µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 165 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x26 (38 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.891007ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44235, tv_nsec: 880442988 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 216.901µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 218.195µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44235, tv_nsec: 880999498 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 265.73µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 609.435µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44235, tv_nsec: 881993258 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.748µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 142.735µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44235, tv_nsec: 882506324 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 230.046µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 168
+, Date: Mon, 29 Oct 2018 07:03:52 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 168 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [14] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":14} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 994.101602ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44236, tv_nsec: 876952448 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 236.724µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 541.623µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44236, tv_nsec: 877860898 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 272.979µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 165 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x26 (38 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.447913ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44236, tv_nsec: 879748963 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 295.725µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 215.227µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44236, tv_nsec: 880424082 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 230.587µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 554.361µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44236, tv_nsec: 881324245 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 211.132µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 138.714µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44236, tv_nsec: 881789107 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 281.733µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 168
+, Date: Mon, 29 Oct 2018 07:03:53 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 168 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [15] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":15} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 994.736359ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44237, tv_nsec: 877006005 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 233.746µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 515.246µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44237, tv_nsec: 877895304 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 198.647µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 165 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x26 (38 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.703878ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44237, tv_nsec: 879914658 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 293.5µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 207.383µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44237, tv_nsec: 880550218 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 228.096µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 549.735µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44237, tv_nsec: 881443596 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 210.188µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 139.348µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44237, tv_nsec: 881909033 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 307.752µs
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 168
+, Date: Mon, 29 Oct 2018 07:03:54 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 168 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [16] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":16} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 994.686474ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 877050536 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 279.901µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 536.902µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 878010724 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 199.455µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 233 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x6A (106 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.507355ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 879837769 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 310.462µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 213.983µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 880493604 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.181µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 597.419µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 881493187 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 267.849µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 141.8µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 882019952 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.415µs
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [17] Sending: {"jsonrpc":"2.0","method":"eth_getBlockByHash","params":["0xd4b2fc1862658f7b7f072c4e07e5ca832c889c78deaf203f0b50017fc5855ff9",true],"id":17} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 989.321µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 883353106 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 231.063µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 255 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 493.616µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 884198425 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 199.301µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 2649 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x9D9 (2521 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 3.215054ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 887767662 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 214.26µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 212.353µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 888378772 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 259.947µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 647.352µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 889444159 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 221.467µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 139.606µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44238, tv_nsec: 889922501 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 229.107µs
+ [32mINFO [0m [1mledger_query_service::block_processor           [0m > Confirmed transaction 0xc1280150c1b282f124201df8a5ade69e06e78043b9674eb7b966d0673c8de6d3 matches Query-ID: 2
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Request Line: Get AbsolutePath("/queries/ethereum/transactions/2") Http11
+ [34mDEBUG[0m [1mhyper::server::request                          [0m > Headers { user-agent: reqwest/0.9.2
+, accept: */*
+, accept-encoding: gzip
+, host: localhost:8080
+, }
+ [32mINFO [0m [1mrocket::rocket                                  [0m > GET /queries/ethereum/transactions/2:
+ [32mINFO [0m [1m_                                               [0m > Matched: GET /queries/ethereum/transactions/<id>
+ [32mINFO [0m [1m_                                               [0m > Outcome: Success
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > writing head: Http11 Ok
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > headers [
+Headers { Content-Type: application/json
+, Server: Rocket
+, Content-Length: 236
+, Date: Mon, 29 Oct 2018 07:03:55 GMT
+, }]
+ [34mDEBUG[0m [1mhyper::server::response                         [0m > write 236 bytes
+ [32mINFO [0m [1m_                                               [0m > Response succeeded.
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive = true for 127.0.0.1:55888
+ [34mDEBUG[0m [1mhyper::server                                   [0m > ioerror in keepalive loop = Os { code: 11, kind: WouldBlock, message: "Resource temporarily unavailable" }
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive loop ending for 127.0.0.1:55892
+ [34mDEBUG[0m [1mweb3::transports::http                          [0m > [18] Sending: {"jsonrpc":"2.0","method":"eth_getFilterChanges","params":["0x0"],"id":18} to http://localhost:8545/
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > reuse idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 987.262173ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44239, tv_nsec: 877528210 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 269.564µs
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > flushed 188 bytes
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 656.116µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44239, tv_nsec: 878608033 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 258.983µs
+ [34mDEBUG[0m [1mtokio_reactor                                   [0m > loop process - 1 events, 0.000s
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > read 165 bytes
+ [34mDEBUG[0m [1mhyper::proto::h1::io                            [0m > parsed 3 headers (116 bytes)
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body is chunked encoded
+ [34mDEBUG[0m [1mhyper::proto::h1::decode                        [0m > incoming chunked header: 0x26 (38 bytes)
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 1.999291ms
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44239, tv_nsec: 881002189 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 247.543µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 237.263µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44239, tv_nsec: 881625108 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 262.403µs
+ [34mDEBUG[0m [1mhyper::proto::h1::conn                          [0m > incoming body completed
+ [34mDEBUG[0m [1mhyper::client::pool                             [0m > pooling idle connection for "http://localhost:8545"
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 668.788µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44239, tv_nsec: 882687729 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 305.998µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop poll - 158.291µs
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop time - Instant { tv_sec: 44239, tv_nsec: 883292285 }
+ [34mDEBUG[0m [1mtokio_core::reactor                             [0m > loop process, 265.53µs
+ [34mDEBUG[0m [1mhyper::server                                   [0m > ioerror in keepalive loop = Custom { kind: UnexpectedEof, error: StringError("end of stream before headers finished") }
+ [34mDEBUG[0m [1mhyper::server                                   [0m > keep_alive loop ending for 127.0.0.1:55888

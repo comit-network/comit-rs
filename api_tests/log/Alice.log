@@ -1,0 +1,120 @@
+[37m[2018-10-29 18:03:42][comit_node][[32mINFO[0m[37m]Set COMIT_NODE_CONFIG_PATH=./regtest/alice[0m
+RUN_MODE is not set, falling back to default: 'development' 
+[37m[2018-10-29 18:03:42][comit_node][[32mINFO[0m[37m]Starting up with ComitNodeSettings {
+    ethereum: Ethereum {
+        network_id: 1,
+        node_url: "http://localhost:8545/",
+        gas_price: 2000000000,
+        private_key: KeyPair {
+            secret_key: SecretKey(f01c140fb86e8b3587b239f71cfbe305bf3a0e1a3701d6186165fe29be06120e),
+            public_key: PublicKey(
+                PublicKey(
+                    6848bd5eb2bfc2513c075a2b37c6473135678cfbc85e4d83db6fb48b6df26369d8887d155f33a1c3bd8c037efdd2b0f57f8eb02057d95922f03a3ec5162eeb95
+                )
+            )
+        }
+    },
+    bitcoin: Bitcoin {
+        network: regtest,
+        satoshi_per_byte: 50.0,
+        node_url: "http://localhost:18443/",
+        node_username: "bitcoin",
+        node_password: "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg=",
+        extended_private_key: ExtendedPrivKey {
+            network: testnet,
+            depth: 0,
+            parent_fingerprint: Fingerprint([0, 0, 0, 0]),
+            child_number: Normal {
+                index: 0
+            },
+            secret_key: SecretKey(d14645573802900964c63e00e9e238aef9152b95e2f9aa1b534323951258d7fc),
+            chain_code: ChainCode([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        }
+    },
+    swap: Swap {
+        eth_refund_address: 0x3853005576eeca2ba7ec579ce04c1ce2f4cd162e
+    },
+    comit: Comit {
+        remote_comit_node_url: V4(
+            127.0.0.1:8011
+        ),
+        comit_listen: V4(
+            0.0.0.0:8001
+        )
+    },
+    http_api: HttpApi {
+        address: "0.0.0.0",
+        port: 8000,
+        logging: true
+    },
+    ledger_query_service: LedgerQueryService {
+        url: "http://localhost:8080/",
+        bitcoin: PollParameters {
+            poll_interval_secs: 1s
+        },
+        ethereum: PollParameters {
+            poll_interval_secs: 1s
+        }
+    }
+}[0m
+[37m[2018-10-29 18:03:42][web3::transports::http][[37mDEBUG[0m[37m][0] Sending: {"jsonrpc":"2.0","method":"eth_getTransactionCount","params":["0x3853005576eeca2ba7ec579ce04c1ce2f4cd162e","latest"],"id":0} to http://localhost:8545/[0m
+[37m[2018-10-29 18:03:42][comit_node][[32mINFO[0m[37m]ETH address derived from priv key: 0x3853…162e; AddressNonce: 0[0m
+[37m[2018-10-29 18:03:42][comit_node][[32mINFO[0m[37m]btc_bob_redeem_address: bcrt1quljadmac3nupeqk0cwu0ny2h2h7s3jz6h7hwjc[0m
+[37m[2018-10-29 18:03:42][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:18443/[0m
+[37m[2018-10-29 18:03:42][comit_node][[32mINFO[0m[37m]Blockchain info:
+Ok(BlockchainInfo { chain: regtest, blocks: 60, headers: 60, bestblockhash: "251ecd586a14c4a4d621e4246f7bee57c64c706262eda6e5b366514c0386238a", difficulty: 0.00000000046565423739069247, mediantime: 1540796632, verificationprogress: 1.0, initialblockdownload: false, chainwork: "000000000000000000000000000000000000000000000000000000000000007a", size_on_disk: 18997, pruned: false, pruneheight: None, automatic_pruning: None, prune_target_size: None, softforks: [SoftFork { id: "bip34", version: 2, reject: Reject { status: false } }, SoftFork { id: "bip66", version: 3, reject: Reject { status: false } }, SoftFork { id: "bip65", version: 4, reject: Reject { status: false } }], bip9_softforks: Bip9SoftFork { csv: Bip9SoftForkDetails { status: "defined", bit: None, start_time: 0, timeout: 9223372036854775807, since: 0 }, segwit: Bip9SoftForkDetails { status: "active", bit: None, start_time: -1, timeout: 9223372036854775807, since: 0 } }, warnings: "" })[0m
+[37m[2018-10-29 18:03:42][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:18443/[0m
+[37m[2018-10-29 18:03:42][comit_node][[32mINFO[0m[37m]Validation:
+Ok(AddressValidationResult { is_valid: true, address: Some(bcrt1quljadmac3nupeqk0cwu0ny2h2h7s3jz6h7hwjc), script_pub_key: Some("0014e7e5d6efb88cf81c82cfc3b8f9915755fd08c85a"), is_mine: None, is_watch_only: None, is_script: Some(false), script_type: None, redeem_script: None, addresses: None, sigs_required: None, pubkey: None, is_compressed: None, account: None, hd_key_path: None, hd_masterkey_id: None })[0m
+[37m[2018-10-29 18:03:42][gotham::start][[32mINFO[0m[37m] Gotham listening on http://0.0.0.0:8000[0m
+[37m[2018-10-29 18:03:42][comit_node::comit_server][[32mINFO[0m[37m]ComitServer listening at V4(0.0.0.0:8001)[0m
+[37m[2018-10-29 18:03:45][gotham::service][[37mDEBUG[0m[37m][DEBUG][2d935247-8565-46b8-84b2-f10b123a1301][Thread][ThreadId(18)][0m
+[37m[2018-10-29 18:03:45][comit_node::comit_client::bam][[37mDEBUG[0m[37m]Trying to get client for 127.0.0.1:8011[0m
+[37m[2018-10-29 18:03:45][comit_node::comit_client::bam][[32mINFO[0m[37m]No existing connection to 127.0.0.1:8011. Trying to connect.[0m
+[37m[2018-10-29 18:03:45][comit_node::comit_client::bam][[32mINFO[0m[37m]Connection to 127.0.0.1:8011 established[0m
+[37m[2018-10-29 18:03:45][comit_node::comit_client::bam][[37mDEBUG[0m[37m]Client for 127.0.0.1:8011 created by making a new connection[0m
+[37m[2018-10-29 18:03:45][comit_node::comit_client::bam][[37mDEBUG[0m[37m]Making swap request to 127.0.0.1:8011: Request { _type: "SWAP", headers: {"swap_protocol": Object({"value": String("COMIT-RFC-003")}), "source_asset": Object({"parameters": Object({"quantity": String("100000000")}), "value": String("Bitcoin")}), "source_ledger": Object({"value": String("Bitcoin")}), "target_asset": Object({"parameters": Object({"quantity": String("10000000000000000000")}), "value": String("Ether")}), "target_ledger": Object({"value": String("Ethereum")})}, body: Object({"secret_hash": String("10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8"), "source_ledger_lock_duration": Number(144), "source_ledger_refund_identity": String("f5dff8c762feccf4c8d85ec6dc3d7f5b4b5e47b1"), "target_ledger_success_identity": String("0x00a329c0648769a73afac7f9381e08fb43dbea72")}) }[0m
+[37m[2018-10-29 18:03:46][transport_protocol::json::frame][[37mDEBUG[0m[37m]Dispatching response frame Frame { _type: "RESPONSE", id: 0, payload: Object({"body": Object({"source_ledger_success_identity": String("8d9300b8588fe0e7bea25d15f653eee4203cbb19"), "target_ledger_lock_duration": Number(43200), "target_ledger_refund_identity": String("0x50358ea110e2ae0e509cd0dee177064c58e4a1e5")}), "status": String("OK20")}) } to stored handler.[0m
+[37m[2018-10-29 18:03:46][comit_node::comit_client::bam][[32mINFO[0m[37m]127.0.0.1:8011 accepted swap request: Response { status: OK(20), headers: {}, body: Object({"source_ledger_success_identity": String("8d9300b8588fe0e7bea25d15f653eee4203cbb19"), "target_ledger_lock_duration": Number(43200), "target_ledger_refund_identity": String("0x50358ea110e2ae0e509cd0dee177064c58e4a1e5")}), serialization_failure: false }[0m
+[37m[2018-10-29 18:03:46][comit_node::swap_protocols::rfc003::bitcoin][[37mDEBUG[0m[37m]BTC HTLC: Script(OP_IF OP_SHA256 OP_PUSHBYTES_32 10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8 OP_EQUALVERIFY OP_DUP OP_HASH160 OP_PUSHBYTES_20 8d9300b8588fe0e7bea25d15f653eee4203cbb19 OP_ELSE OP_PUSHBYTES_2 9000 OP_NOP3 OP_DROP OP_DUP OP_HASH160 OP_PUSHBYTES_20 f5dff8c762feccf4c8d85ec6dc3d7f5b4b5e47b1 OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG)[0m
+[37m[2018-10-29 18:03:46][gotham::service][[37mDEBUG[0m[37m][DEBUG][e5a251fb-50f3-4495-a2df-54270eda1c5b][Thread][ThreadId(18)][0m
+[37m[2018-10-29 18:03:46][comit_node::swap_protocols::rfc003::bitcoin][[37mDEBUG[0m[37m]BTC HTLC: Script(OP_IF OP_SHA256 OP_PUSHBYTES_32 10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8 OP_EQUALVERIFY OP_DUP OP_HASH160 OP_PUSHBYTES_20 8d9300b8588fe0e7bea25d15f653eee4203cbb19 OP_ELSE OP_PUSHBYTES_2 9000 OP_NOP3 OP_DROP OP_DUP OP_HASH160 OP_PUSHBYTES_20 f5dff8c762feccf4c8d85ec6dc3d7f5b4b5e47b1 OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG)[0m
+[37m[2018-10-29 18:03:46][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '201 Created' for http://localhost:8080/queries/bitcoin/transactions[0m
+[37m[2018-10-29 18:03:46][gotham::service][[37mDEBUG[0m[37m][DEBUG][af1e1677-f0dd-4dc5-bb1b-da51d2c31354][Thread][ThreadId(17)][0m
+[37m[2018-10-29 18:03:46][comit_node::swap_protocols::rfc003::bitcoin][[37mDEBUG[0m[37m]BTC HTLC: Script(OP_IF OP_SHA256 OP_PUSHBYTES_32 10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8 OP_EQUALVERIFY OP_DUP OP_HASH160 OP_PUSHBYTES_20 8d9300b8588fe0e7bea25d15f653eee4203cbb19 OP_ELSE OP_PUSHBYTES_2 9000 OP_NOP3 OP_DROP OP_DUP OP_HASH160 OP_PUSHBYTES_20 f5dff8c762feccf4c8d85ec6dc3d7f5b4b5e47b1 OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG)[0m
+[37m[2018-10-29 18:03:47][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:8080/queries/bitcoin/transactions/2[0m
+[37m[2018-10-29 18:03:48][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:8080/queries/bitcoin/transactions/2[0m
+[37m[2018-10-29 18:03:49][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:8080/queries/bitcoin/transactions/2[0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::alice_ledger_actor][[37mDEBUG[0m[37m]Ledger Query Service returned tx: 842868576fb0deb11dee270db7c19e178d927f9282f8c06353561da8c3b727da[0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::bitcoin][[37mDEBUG[0m[37m]BTC HTLC: Script(OP_IF OP_SHA256 OP_PUSHBYTES_32 10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8 OP_EQUALVERIFY OP_DUP OP_HASH160 OP_PUSHBYTES_20 8d9300b8588fe0e7bea25d15f653eee4203cbb19 OP_ELSE OP_PUSHBYTES_2 9000 OP_NOP3 OP_DROP OP_DUP OP_HASH160 OP_PUSHBYTES_20 f5dff8c762feccf4c8d85ec6dc3d7f5b4b5e47b1 OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG)[0m
+[37m[2018-10-29 18:03:49][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:18443/[0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Created new HTLC for ethereum: EtherHtlc {
+    refund_timeout: Seconds(
+        43200
+    ),
+    refund_address: 0x50358ea110e2ae0e509cd0dee177064c58e4a1e5,
+    success_address: 0x00a329c0648769a73afac7f9381e08fb43dbea72,
+    secret_hash: SecretHash(10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8)
+}[0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Final contract code: 6350000005602060006000376020602160206000600060026048f17f10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda860215114166054574203630000a8c010606b5760006000f35b7300a329c0648769a73afac7f9381e08fb43dbea72ff5b7350358ea110e2ae0e509cd0dee177064c58e4a1e5ff[0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Deploy header: 426000526063601b53610082600561001b01602039610082601bf3[0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Deployable contract: 426000526063601b53610082600561001b01602039610082601bf36350000005602060006000376020602160206000600060026048f17f10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda860215114166054574203630000a8c010606b5760006000f35b7300a329c0648769a73afac7f9381e08fb43dbea72ff5b7350358ea110e2ae0e509cd0dee177064c58e4a1e5ff[0m
+[37m[2018-10-29 18:03:49][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '201 Created' for http://localhost:8080/queries/ethereum/transactions[0m
+[37m[2018-10-29 18:03:49][gotham::service][[37mDEBUG[0m[37m][DEBUG][4e9bfef7-784b-4eba-bba9-ec7fa90b4171][Thread][ThreadId(21)][0m
+[37m[2018-10-29 18:03:49][comit_node::swap_protocols::rfc003::bitcoin][[37mDEBUG[0m[37m]BTC HTLC: Script(OP_IF OP_SHA256 OP_PUSHBYTES_32 10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8 OP_EQUALVERIFY OP_DUP OP_HASH160 OP_PUSHBYTES_20 8d9300b8588fe0e7bea25d15f653eee4203cbb19 OP_ELSE OP_PUSHBYTES_2 9000 OP_NOP3 OP_DROP OP_DUP OP_HASH160 OP_PUSHBYTES_20 f5dff8c762feccf4c8d85ec6dc3d7f5b4b5e47b1 OP_ENDIF OP_EQUALVERIFY OP_CHECKSIG)[0m
+[37m[2018-10-29 18:03:50][reqwest::async_impl::response][[37mDEBUG[0m[37m]Response: '200 OK' for http://localhost:8080/queries/ethereum/transactions/1[0m
+[37m[2018-10-29 18:03:50][comit_node::swap_protocols::rfc003::alice_ledger_actor][[37mDEBUG[0m[37m]Ledger Query Service returned tx: 0xe53adcb49d578597512286dfc5f7f45992803dfa9d445528813f013a016e6b6d[0m
+[37m[2018-10-29 18:03:50][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Created new HTLC for ethereum: EtherHtlc {
+    refund_timeout: Seconds(
+        43200
+    ),
+    refund_address: 0x50358ea110e2ae0e509cd0dee177064c58e4a1e5,
+    success_address: 0x00a329c0648769a73afac7f9381e08fb43dbea72,
+    secret_hash: SecretHash(10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda8)
+}[0m
+[37m[2018-10-29 18:03:50][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Final contract code: 6350000005602060006000376020602160206000600060026048f17f10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda860215114166054574203630000a8c010606b5760006000f35b7300a329c0648769a73afac7f9381e08fb43dbea72ff5b7350358ea110e2ae0e509cd0dee177064c58e4a1e5ff[0m
+[37m[2018-10-29 18:03:50][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Deploy header: 426000526063601b53610082600561001b01602039610082601bf3[0m
+[37m[2018-10-29 18:03:50][comit_node::swap_protocols::rfc003::ethereum::ether_htlc][[37mDEBUG[0m[37m]Deployable contract: 426000526063601b53610082600561001b01602039610082601bf36350000005602060006000376020602160206000600060026048f17f10b0e976f696388972e1c09e569d6cafaa9d206b183e640a3fa789ce35aafda860215114166054574203630000a8c010606b5760006000f35b7300a329c0648769a73afac7f9381e08fb43dbea72ff5b7350358ea110e2ae0e509cd0dee177064c58e4a1e5ff[0m
+[37m[2018-10-29 18:03:50][web3::transports::http][[37mDEBUG[0m[37m][1] Sending: {"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["0xe53adcb49d578597512286dfc5f7f45992803dfa9d445528813f013a016e6b6d"],"id":1} to http://localhost:8545/[0m
+[37m[2018-10-29 18:03:50][web3::transports::http][[37mDEBUG[0m[37m][2] Sending: {"jsonrpc":"2.0","method":"eth_getTransactionReceipt","params":["0xe53adcb49d578597512286dfc5f7f45992803dfa9d445528813f013a016e6b6d"],"id":2} to http://localhost:8545/[0m
+[37m[2018-10-29 18:03:52][gotham::service][[37mDEBUG[0m[37m][DEBUG][5377996f-9911-4094-a9ac-c06aae67192e][Thread][ThreadId(17)][0m

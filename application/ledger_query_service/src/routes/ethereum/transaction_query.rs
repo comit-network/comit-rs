@@ -1,9 +1,10 @@
-use block_processor::{Block, IsEqualTo, Query, QueryMatchResult, Transaction};
+use block_processor::{Block, Query, Transaction};
 use ethereum_support::{
     Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
 };
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
+use query_match_result::{IsEqualTo, QueryMatchResult};
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
 use rocket::{

@@ -1,9 +1,10 @@
-use block_processor::{Query, QueryMatchResult};
+use block_processor::Query;
 use ethereum_support::web3::types::{
     Block as EthereumBlock, Transaction as EthereumTransaction, U256,
 };
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
+use query_match_result::{Matches, QueryMatchResult};
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
 use rocket::{
@@ -62,20 +63,8 @@ fn created(url: String) -> Created<Option<()>> {
 
 impl Query<EthereumBlock<EthereumTransaction>> for EthereumBlockQuery {
     fn matches(&self, block: &EthereumBlock<EthereumTransaction>) -> QueryMatchResult {
-        match self.min_timestamp_secs {
-            Some(ref min_timestamp_secs) => {
-                let min_timestamp_secs = U256::from(*min_timestamp_secs);
-                if min_timestamp_secs <= block.timestamp {
-                    QueryMatchResult::yes()
-                } else {
-                    QueryMatchResult::no()
-                }
-            }
-            None => {
-                warn!("min_timestamp not set, nothing to compare");
-                QueryMatchResult::no()
-            }
-        }
+        self.min_timestamp_secs
+            .matches(|minimum_timestamp| U256::from(*minimum_timestamp) <= block.timestamp)
     }
 }
 

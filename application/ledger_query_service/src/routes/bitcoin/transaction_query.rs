@@ -2,9 +2,10 @@ use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, SpendsTo,
     Transaction as BitcoinTransaction,
 };
-use block_processor::{Block, Query, QueryMatchResult, Transaction};
+use block_processor::{Block, Query, Transaction};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
+use query_match_result::{Matches, QueryMatchResult};
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
 use rocket::{
@@ -68,19 +69,16 @@ fn created(url: String) -> Created<Option<()>> {
 
 impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
     fn matches(&self, transaction: &BitcoinTransaction) -> QueryMatchResult {
-        match self.to_address {
-            Some(ref address) => {
-                if transaction.spends_to(address) {
-                    QueryMatchResult::yes_with_confirmations(self.confirmations_needed)
-                } else {
-                    QueryMatchResult::no()
-                }
-            }
-            None => {
-                warn!("to_address not sent, no parameters to compare the transaction");
-                QueryMatchResult::no()
-            }
-        }
+        let BitcoinTransactionQuery {
+            to_address,
+            confirmations_needed,
+        } = self;
+
+        to_address
+            .matches(|address| transaction.spends_to(address))
+            .and(QueryMatchResult::yes_with_confirmations(
+                *confirmations_needed,
+            ))
     }
 }
 

@@ -1,7 +1,8 @@
 use bitcoin_support::MinedBlock as BitcoinBlock;
-use block_processor::{Query, QueryMatchResult};
+use block_processor::Query;
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
+use query_match_result::{Matches, QueryMatchResult};
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
 use rocket::{
@@ -59,19 +60,8 @@ fn created(url: String) -> Created<Option<()>> {
 
 impl Query<BitcoinBlock> for BitcoinBlockQuery {
     fn matches(&self, block: &BitcoinBlock) -> QueryMatchResult {
-        match self.min_height {
-            Some(ref height) => {
-                if *height <= block.height {
-                    QueryMatchResult::yes()
-                } else {
-                    QueryMatchResult::no()
-                }
-            }
-            None => {
-                warn!("min_height not set, nothing to compare");
-                QueryMatchResult::no()
-            }
-        }
+        self.min_height
+            .matches(|minimum_height| *minimum_height <= block.height)
     }
 }
 
