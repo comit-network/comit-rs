@@ -110,7 +110,7 @@ pub enum SwapOutcome {
 }
 
 #[derive(StateMachineFuture)]
-#[state_machine_future(context = "Context", derive(Clone))]
+#[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {

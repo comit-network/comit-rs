@@ -99,8 +99,8 @@ impl<
     }
 }
 
-fn gen_start_state() -> SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
-    SwapStates::Start(Start {
+fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
+    Start {
         source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                 .unwrap(),
@@ -114,7 +114,7 @@ fn gen_start_state() -> SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuan
         target_asset: EtherQuantity::from_eth(10.0),
         source_ledger_lock_duration: Blocks::from(144),
         secret: Secret::from(*b"hello world, you are beautiful!!"),
-    })
+    }
 }
 
 fn init<
@@ -138,25 +138,50 @@ fn init<
     (final_state_future, state_receiver.map_err(|_| ()))
 }
 
+macro_rules! run_state_machine {
+
+    ($state_machine:ident, $states:ident, $( $expected_state:expr ) , * ) => {
+
+        {
+            let mut expected_states = Vec::new();
+
+            $(
+                let state = $expected_state;
+                expected_states.push(SwapStates::from(state));
+            )
+            *
+
+            let number_of_expected_states = expected_states.len() + 1;
+
+            let mut runtime = tokio::runtime::Runtime::new().unwrap();
+
+            let state_machine_result = runtime.block_on($state_machine).unwrap();
+            let actual_states = runtime.block_on($states.take(number_of_expected_states as u64).collect()).unwrap();
+
+            expected_states.push(SwapStates::from(Final(state_machine_result)));
+
+            assert_eq!(actual_states, expected_states);
+        }
+    };
+
+    ($state_machine:ident, $states:ident) => {
+        run_state_machine!($state_machine, $states, );
+    };
+}
+
 #[test]
 fn when_swap_is_rejected_go_to_final_reject() {
-    let start_state = gen_start_state();
-    let test_futures = TestFutures {
-        response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
-        ..Default::default()
-    };
-    let (final_state_future, state_stream) = init(start_state.clone(), test_futures);
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let start = gen_start_state();
 
-    let outcome = runtime.block_on(final_state_future);
-    let next_state = runtime.block_on(state_stream.take(1).collect()).unwrap();
+    let (state_machine, states) = init(
+        start.clone().into(),
+        TestFutures {
+            response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
+            ..Default::default()
+        },
+    );
 
-    assert_eq!(outcome, Ok(SwapOutcome::Rejected));
-
-    match next_state[0] {
-        SwapStates::Final(ref final_outcome) => assert_eq!(final_outcome.0, outcome.unwrap()),
-        _ => panic!("Didn't get to final state!"),
-    };
+    run_state_machine!(state_machine, states);
 }
 
 #[test]
@@ -170,46 +195,38 @@ fn source_refunded() {
         ).unwrap(),
         target_ledger_lock_duration: Seconds(42),
     };
-    let start_state = gen_start_state();
-    let test_futures = TestFutures {
-        response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
-        source_htlc_funded: Some(Box::new(future::ok(OutPoint {
-            txid: Sha256dHash::from_data(b"funding"),
-            vout: 0,
-        }))),
-        source_htlc_refunded_target_htlc_funded: Some(Box::new(future::ok(Either::A(
-            Sha256dHash::from_data(b"refunded"),
-        )))),
-        ..Default::default()
-    };
-    let (final_state_future, state_stream) = init(start_state.clone(), test_futures);
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let outcome = runtime.block_on(final_state_future);
-    let states = runtime.block_on(state_stream.take(3).collect()).unwrap();
+    let start = gen_start_state();
 
-    assert_eq!(outcome, Ok(SwapOutcome::SourceRefunded));
+    let (state_machine, states) = init(
+        start.clone().into(),
+        TestFutures {
+            response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
+            source_htlc_funded: Some(Box::new(future::ok(OutPoint {
+                txid: Sha256dHash::from_data(b"funding"),
+                vout: 0,
+            }))),
+            source_htlc_refunded_target_htlc_funded: Some(Box::new(future::ok(Either::A(
+                Sha256dHash::from_data(b"refunded"),
+            )))),
+            ..Default::default()
+        },
+    );
 
-    match states[0] {
-        SwapStates::Accepted(Accepted { ref response, .. }) => assert_eq!(response, &bob_response),
-        _ => panic!("First state was not Accepted"),
-    };
-
-    match states[1] {
-        SwapStates::SourceFunded(SourceFunded {
-            ref source_htlc_id, ..
-        }) => assert_eq!(
-            source_htlc_id,
-            &OutPoint {
+    run_state_machine!(
+        state_machine,
+        states,
+        Accepted {
+            response: bob_response.clone(),
+            start: start.clone()
+        },
+        SourceFunded {
+            start: start.clone(),
+            response: bob_response,
+            source_htlc_id: OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0
             }
-        ),
-        _ => panic!("Second state wasn't SourceFunded"),
-    }
-
-    match states[2] {
-        SwapStates::Final(ref final_outcome) => assert_eq!(final_outcome.0, outcome.unwrap()),
-        _ => panic!("Third state wasn't Final"),
-    }
+        }
+    );
 }

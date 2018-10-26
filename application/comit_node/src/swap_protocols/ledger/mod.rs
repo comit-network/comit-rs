@@ -8,7 +8,14 @@ mod ethereum;
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
 
 pub trait Ledger:
-    Clone + Debug + Send + Sync + 'static + Default + Into<swap_protocols::wire_types::Ledger>
+    Clone
+    + Debug
+    + Send
+    + Sync
+    + 'static
+    + Default
+    + PartialEq
+    + Into<swap_protocols::wire_types::Ledger>
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;
@@ -18,6 +25,7 @@ pub trait Ledger:
         + Debug
         + Send
         + Sync
+        + PartialEq
         + 'static
         + From<Self::Address>
         + Serialize
