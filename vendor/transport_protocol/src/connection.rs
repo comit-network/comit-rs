@@ -54,25 +54,27 @@ impl<
             .map_err(ClosedReason::CodecError)
             .inspect(|frame| trace!("<--- Incoming {:?}", frame))
             .and_then(move |frame| {
-                frame_handler.handle(frame).then(|result| {
-                    // Some errors are non-fatal, keep going if we get these
-                    let result = match result {
-                        Err(::api::Error::UnexpectedResponse) => {
-                            warn!("Received unexpected response - ignoring it.");
-                            Ok(None)
-                        }
-                        Err(::api::Error::OutOfOrderRequest) => {
-                            warn!("Received out of order request - ignoring it.");
-                            Ok(None)
-                        }
-                        _ => result,
-                    };
-
-                    result.map_err(ClosedReason::InvalidFrame)
-                })
+                // Some errors are non-fatal, keep going if we get these
+                match frame_handler.handle(frame) {
+                    Err(::api::Error::UnexpectedResponse) => {
+                        warn!("Received unexpected response - ignoring it.");
+                        Ok(None)
+                    }
+                    Err(::api::Error::OutOfOrderRequest) => {
+                        warn!("Received out of order request - ignoring it.");
+                        Ok(None)
+                    }
+                    Ok(result) => Ok(result),
+                    Err(e) => Err(ClosedReason::InvalidFrame(e)),
+                }
             }).filter(Option::is_some)
-            .map(Option::unwrap)
-            .select(request_stream.map_err(|_| ClosedReason::InternalError))
+            .and_then(|option| {
+                // FIXME: When we have Never (https://github.com/rust-lang/rust/issues/35121)
+                // and Future.recover we should be able to clean this up
+                option
+                    .unwrap()
+                    .map_err(|_| unreachable!("frame_handler ensures the error never happens"))
+            }).select(request_stream.map_err(|_| ClosedReason::InternalError))
             .inspect(|frame| trace!("---> Outgoing {:?}", frame))
             .forward(sink.sink_map_err(ClosedReason::CodecError))
             .map(|_| ());

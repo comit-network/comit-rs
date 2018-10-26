@@ -8,7 +8,6 @@ pub enum Error {
     InvalidFieldFormat(String),
     UnexpectedResponse,
     OutOfOrderRequest,
-    HandlerError,
 }
 
 #[derive(Debug, PartialEq)]
@@ -17,6 +16,7 @@ pub enum RequestError {
     UnknownMandatoryHeaders(Vec<String>),
     MalformedHeader(String),
     MalformedField(String),
+    HandlerError,
 }
 
 impl RequestError {
@@ -26,6 +26,7 @@ impl RequestError {
             RequestError::UnknownMandatoryHeaders(_) => Status::SE(1),
             RequestError::MalformedHeader(_) => Status::SE(0),
             RequestError::MalformedField(_) => Status::SE(0),
+            RequestError::HandlerError => Status::SE(0),
         }
     }
 }
@@ -38,7 +39,7 @@ where
     fn handle(
         &mut self,
         frame: Frame,
-    ) -> Box<Future<Item = Option<Frame>, Error = Error> + Send + 'static>;
+    ) -> Result<Option<Box<Future<Item = Frame, Error = ()> + Send + 'static>>, Error>;
 }
 
 #[derive(Debug)]

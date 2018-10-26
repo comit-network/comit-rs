@@ -104,7 +104,7 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
     fn handle(
         &mut self,
         frame: json::Frame,
-    ) -> Box<Future<Item = Option<json::Frame>, Error = Error> + Send + 'static> {
+    ) -> Result<Option<Box<Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error> {
         match frame._type.as_str() {
             "REQUEST" => {
                 let mut payload = frame.payload;
@@ -116,41 +116,38 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
                 );
 
                 if frame.id < self.next_expected_id {
-                    return Box::new(future::err(Error::OutOfOrderRequest));
+                    return Err(Error::OutOfOrderRequest);
                 }
 
                 self.next_expected_id = frame.id + 1;
 
-                let response = self
-                    .dispatch_request(&_type, headers, body)
-                    .unwrap_or_else(Self::response_from_error);
-
-                // TODO: Validate generated response here
-                // TODO check if header or body in response failed to serialize here
-
                 let frame_id = frame.id;
 
-                Box::new(
-                    response
-                        .and_then(move |response| Ok(Some(response.into_frame(frame_id))))
-                        .map_err(|_| Error::HandlerError),
-                )
+                let response = self
+                    .dispatch_request(&_type, headers, body)
+                    .then(|result| match result {
+                        // TODO: Validate generated response here
+                        // TODO check if header or body in response failed to serialize here
+                        Ok(response) => Ok(response),
+                        Err(e) => Ok(Self::response_from_error(e)),
+                    }).and_then(move |response| Ok(response.into_frame(frame_id)));
+
+                Ok(Some(Box::new(response)))
             }
             "RESPONSE" => {
                 let mut response_source = self.response_source.lock().unwrap();
 
-                match response_source.get_awaiting_response(frame.id) {
-                    Some(sender) => {
-                        debug!("Dispatching response frame {:?} to stored handler.", frame);
+                let sender = response_source
+                    .get_awaiting_response(frame.id)
+                    .ok_or(Error::UnexpectedResponse)?;
 
-                        sender.send(frame).unwrap();
+                debug!("Dispatching response frame {:?} to stored handler.", frame);
 
-                        Box::new(future::ok(None))
-                    }
-                    None => Box::new(future::err(Error::UnexpectedResponse)),
-                }
+                sender.send(frame).unwrap();
+
+                Ok(None)
             }
-            _ => Box::new(future::err(Error::UnknownFrameType(frame._type))),
+            _ => Err(Error::UnknownFrameType(frame._type)),
         }
     }
 }
@@ -161,33 +158,45 @@ impl JsonFrameHandler {
         _type: &JsonValue,
         headers: JsonValue,
         body: JsonValue,
-    ) -> Result<Box<Future<Item = json::Response, Error = ()> + Send + 'static>, RequestError> {
-        let _type = _type
-            .as_str()
-            .ok_or_else(|| RequestError::MalformedField("type".to_string()))?;
+    ) -> Box<Future<Item = json::Response, Error = RequestError> + Send + 'static> {
+        let _type = match _type.as_str() {
+            Some(_type) => _type,
+            None => {
+                return Box::new(future::err(RequestError::MalformedField(
+                    "type".to_string(),
+                )))
+            }
+        };
 
         let request_headers = match headers {
             serde_json::Value::Object(map) => map,
             serde_json::Value::Null => serde_json::Map::default(),
-            _ => return Err(RequestError::MalformedField("headers".to_string())),
+            _ => {
+                return Box::new(future::err(RequestError::MalformedField(
+                    "headers".to_string(),
+                )))
+            }
         };
 
-        let parsed_headers = self
+        let parsed_headers = match self
             .config
             .known_headers_for(_type)
             .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))
             .and_then(|known_headers| {
                 Self::parse_headers(known_headers, request_headers).map_err(From::from)
-            })?;
+            }) {
+            Ok(parsed_headers) => parsed_headers,
+            Err(e) => return Box::new(future::err(e)),
+        };
 
         let request = json::Request::new(_type.to_string(), parsed_headers, body);
 
-        let request_handler = self
-            .config
-            .request_handler_for(_type)
-            .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))?;
+        let request_handler = match self.config.request_handler_for(_type) {
+            Some(request_handler) => request_handler,
+            None => return Box::new(future::err(RequestError::UnknownRequestType(_type.into()))),
+        };
 
-        Ok(request_handler(request))
+        Box::new(request_handler(request).map_err(|_| RequestError::HandlerError))
     }
 
     fn parse_headers(
@@ -263,9 +272,7 @@ impl JsonFrameHandler {
         (key, must_understand)
     }
 
-    fn response_from_error(
-        error: RequestError,
-    ) -> Box<Future<Item = json::Response, Error = ()> + Send + 'static> {
+    fn response_from_error(error: RequestError) -> json::Response {
         let status = error.status();
         let response = json::Response::new(status);
 
@@ -278,7 +285,7 @@ impl JsonFrameHandler {
             _ => response,
         };
 
-        Box::new(future::ok(response))
+        response
     }
 }
 
