@@ -72,7 +72,18 @@ function generate_btc_blocks_every() {
 
 function activate_segwit() {
     debug "Generating enough blocks to activate segwit";
-    generate_blocks 432;
+    count=0;
+    tries=3
+    while [ "$((count+=1))" -le "$tries" ] && ! generate_blocks 432; do
+        sleep 5;
+        if [ "$count" = "$tries" ]; then
+            log "Segwit activation failed so far trying one last time with verbose output:";
+            $curl -vvv --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
+                  "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"generate\", \"params\": [ 432 ]}" -H 'content-type: text/plain;' "$BITCOIN_RPC_URL";
+        else
+            debug "Failed to generate segwit blocks. Trying again $count/$tries";
+        fi
+    done
 }
 
 function setup() {
@@ -87,12 +98,12 @@ function setup() {
     #### Start all services
     (
         cd ./regtest;
-        log_file=/dev/null;
+        log "Starting up docker containers"
+        docker-compose up -d bitcoin ethereum
         if test -d "$LOG_DIR"; then
             log_file="$LOG_DIR/docker-compose.log"
+            docker-compose logs --tail=all >$log_file
         fi
-        log "Starting up docker containers"
-        docker-compose up bitcoin ethereum >"$log_file" 2>&1 &
     );
 
     sleep 5;
@@ -126,6 +137,7 @@ function fund_bitcoin_address() {
     export BTC_FUNDED_PUBLIC_KEY=03deeb9ed34ff51e5388873f4671373bc6e87c45566c79d52f08af1a974893a40f;
     export BTC_FUNDED_ADDRESS=bcrt1qd6msadw56awmjgsm9843kzgs7cth9q48cxvahx;
     export BTC_FUNDED_AMOUNT=5;
+    debug "Funding $BTC_FUNDED_ADDRESS with $BTC_FUNDED_AMOUNT BTC";
 
     output=$($curl --user $BITCOIN_RPC_USERNAME:$BITCOIN_RPC_PASSWORD --data-binary \
                    "{\"jsonrpc\": \"1.0\",\"id\":\"curltest\",\"method\":\"sendtoaddress\", \"params\": [ \"${BTC_FUNDED_ADDRESS}\", $BTC_FUNDED_AMOUNT]}" -H 'content-type: text/plain;' $BITCOIN_RPC_URL);
@@ -158,6 +170,8 @@ function fund_ethereum_address() {
     # perl -Mbigint -E 'my $val = ((shift) * 1_000_000_000_000_000_000); say $val->as_hex' 20
     export ETH_FUNDED_AMOUNT=0x1158e460913d00000 # 20 ethereum
 
+    debug "Funding $ETH_FUNDED_ADDRESS with $ETH_FUNDED_AMOUNT ETH";
+
     parity_dev_account=0x00a329c0648769a73afac7f9381e08fb43dbea72
 
     debug $(
@@ -183,8 +197,7 @@ test "$*" || { log "ERROR: The harness requires to test to run!"; exit 1; }
 setup;
 
 debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
-
-sleep 4;
+debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 activate_segwit;
 
 fund_bitcoin_address;

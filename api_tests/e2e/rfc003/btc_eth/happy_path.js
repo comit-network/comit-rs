@@ -38,8 +38,8 @@ describe('RFC003 Bitcoin for Ether', () => {
     });
 
     let alice_swap_id;
-    it("Alice should be able to make a swap request via HTTP api", (done) => {
-        chai.request(alice.comit_node_url())
+    it("Alice should be able to make a swap request via HTTP api", async () => {
+        return chai.request(alice.comit_node_url())
             .post('/swaps')
             .send({
                 "source_ledger"  : {
@@ -58,10 +58,9 @@ describe('RFC003 Bitcoin for Ether', () => {
                     "value" : "Ether",
                     "quantity" : target_asset.toString(),
                 }
-            }).end((err, res) => {
+            }).then((res) => {
                 res.should.have.status(201);
                 alice_swap_id = res.body.id;
-                done();
             });
     });
 
@@ -99,9 +98,4 @@ describe('RFC003 Bitcoin for Ether', () => {
         let diff = new_balance.minus(old_balance);
         diff.toString().should.equal(target_asset.toString());
     });
-
-    // it("Bob should redeem Bitcoin", async function() {
-    //     let bob_address = bitcoin.payments.p2pkh({ hash: "0475c3c7de62aa07bbeaa5ccb1b9945872019e4b"});
-
-    // })
 });

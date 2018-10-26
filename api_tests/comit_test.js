@@ -27,7 +27,7 @@ module.exports.bitcoin_rpc_client = () => {
 let web3;
 
 module.exports.web3 = () => {
-    return web3 = web3 || new Web3(new Web3.providers.HttpProvider(process.env.ETHEREUM_NODE_ENDPOINT));
+     return web3 = web3 || new Web3(new Web3.providers.HttpProvider(process.env.ETHEREUM_NODE_ENDPOINT));
 }
 
 class PlayerConf {
