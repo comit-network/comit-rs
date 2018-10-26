@@ -1,7 +1,5 @@
 use bitcoin_rpc_client::TransactionId;
-use bitcoin_support::{
-    Address, BitcoinQuantity, Blocks, IntoP2wpkhAddress, Network, OutPoint, PubkeyHash,
-};
+use bitcoin_support::{Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash};
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
 

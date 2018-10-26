@@ -1,4 +1,4 @@
-use bitcoin_support::{Blocks, OutPoint, PubkeyHash, TransactionId};
+use bitcoin_support::{Blocks, OutPoint};
 use secp256k1_support::KeyPair;
 use swap_protocols::{ledger::Bitcoin, rfc003::Ledger};
 

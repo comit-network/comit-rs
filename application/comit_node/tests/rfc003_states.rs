@@ -12,18 +12,11 @@ extern crate tokio_timer;
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use comit_node::{
     comit_client::SwapReject,
-    ledger_query_service::{
-        fake_query_service::SimpleFakeLedgerQueryService,
-        fetch_transaction_stream::FetchTransactionStream, BitcoinQuery,
-        LedgerQueryServiceApiClient,
-    },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            bitcoin,
-            ethereum::Seconds,
-            state_machine::{self, *},
-            AcceptResponse, Ledger, Request, Secret, SecretHash,
+            alice::state_machine::*, ethereum::Seconds, AcceptResponse, Ledger, Request, Secret,
+            SecretHash,
         },
         wire_types,
     },

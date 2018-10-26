@@ -1,11 +1,10 @@
 use bitcoin_support::BitcoinQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    rfc003::{
-        self, actions::StateActions, bitcoin, messages::AcceptResponse, secret::Secret,
-        state_machine::*, Ledger,
-    },
+    rfc003::{self, alice::state_machine::*, messages::AcceptResponse},
 };
+
+use super::StateActions;
 
 use super::{Action, BitcoinFund, BitcoinRefund, EtherRedeem};
 
@@ -50,7 +49,7 @@ impl<TA: Clone> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
             }) => vec![
                 Action::RedeemHtlc(EtherRedeem {
                     contract_address: target_htlc_id.clone(),
-                    execution_gas: unimplemented!(),
+                    execution_gas: 42, //TODO: generate gas cost directly
                     data: start.secret,
                 }),
                 Action::RefundHtlc(BitcoinRefund {
@@ -88,11 +87,11 @@ impl<TA: Clone> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
                 ..
             }) => vec![Action::RedeemHtlc(EtherRedeem {
                 contract_address: target_htlc_id.clone(),
-                execution_gas: unimplemented!(),
+                execution_gas: 42, //TODO: generate cas cost correctly
                 data: start.secret,
             })],
-            SS::Error(ref e) => vec![],
-            SS::Final(ref end_state) => vec![],
+            SS::Error(_) => vec![],
+            SS::Final(_) => vec![],
         }
     }
 }

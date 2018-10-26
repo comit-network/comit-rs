@@ -1,6 +1,4 @@
-use super::state_machine;
 use bitcoin_support::{BitcoinQuantity, Network};
-use comit_client;
 use ethereum_support::{web3::types::Bytes, Address as EthereumAddress, EtherQuantity};
 use event_store::EventStore;
 use failure::{err_msg, Error};
@@ -12,7 +10,7 @@ use ledger_query_service::{
     fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
     LedgerQueryServiceApiClient,
 };
-use std::{marker::PhantomData, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
@@ -22,7 +20,6 @@ use swap_protocols::{
             BitcoinHtlcFundingParams, BitcoinHtlcRedeemParams, BitcoinService,
             EtherHtlcFundingParams, EtherHtlcRedeemParams, EthereumService, LedgerHtlcService,
         },
-        messages::Request,
     },
 };
 use swaps::{alice_events::*, common::TradeId};
@@ -45,7 +42,11 @@ pub struct AliceLedgerPipeline<
 }
 
 #[derive(Debug)]
-pub struct AliceLedgerActor<C, E, CC, CF> {
+pub struct AliceLedgerActor<
+    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+    E: EventStore<TradeId>,
+> {
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,
     bitcoin_service: Arc<BitcoinService>,
@@ -53,14 +54,10 @@ pub struct AliceLedgerActor<C, E, CC, CF> {
     ethereum_service: Arc<EthereumService>,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
-    client_factory: Arc<CF>,
-    client_type: PhantomData<CC>,
 }
 
-impl<C, CC, CF, E> AliceLedgerActor<C, E, CC, CF>
+impl<C, E> AliceLedgerActor<C, E>
 where
-    CC: comit_client::Client,
-    CF: comit_client::ClientFactory<CC>,
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
     E: EventStore<TradeId>,
@@ -73,7 +70,6 @@ where
         ethereum_service: Arc<EthereumService>,
         bitcoin_poll_interval: Duration,
         ethereum_poll_interval: Duration,
-        client_factory: Arc<CF>,
     ) -> Self {
         AliceLedgerActor {
             event_store,
@@ -83,8 +79,6 @@ where
             ethereum_service,
             bitcoin_poll_interval,
             ethereum_poll_interval,
-            client_factory,
-            client_type: PhantomData,
         }
     }
 
@@ -98,7 +92,6 @@ where
         let bitcoin_network = self.bitcoin_network;
         let bitcoin_poll_interval = self.bitcoin_poll_interval;
         let ethereum_poll_interval = self.ethereum_poll_interval;
-        let client_factory = Arc::clone(&self.client_factory);
 
         let future = receiver
             .for_each(move |trade_id: TradeId| {
@@ -107,29 +100,44 @@ where
                 let bitcoin_service = bitcoin_service.clone();
                 let ethereum_service = ethereum_service.clone();
 
-                // let start_event: StartSwap<
-                //     Bitcoin,
-                //     Ethereum,
-                //     BitcoinQuantity,
-                //     EtherQuantity,
-                // > = event_store
-                //     .get_event(trade_id)
-                //     .expect("should have start event");
+                let pipeline = AliceLedgerPipeline::new(
+                    trade_id,
+                    event_store,
+                    ledger_query_service_api_client,
+                    bitcoin_service,
+                    bitcoin_network,
+                    ethereum_service,
+                    bitcoin_poll_interval,
+                    ethereum_poll_interval,
+                );
 
-                // state_machine::Swap::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::start(
-                //         secret: start_event.secret,
-                //         source_ledger_refund_identity: start_event.source_ledger_refund_identity,
-                //         target_ledger_success_identity: start_event.target_ledger_success_identity,
-                //         source_ledger_lock_duration: start_event.source_ledger_lock_duration,
-                //         target_asset: start_event.target_asset,
-                //         source_asset: start_event.source_asset,
-                //         source_ledger: start_event.source_ledger,
-                //         target_ledger: start_event.target_ledger,
-                //     },
-                //     unimplemented!(),
-                // ).map_err(|e| ())
-                // .map(|_| unimplemented!())
-                Ok(unimplemented!())
+                pipeline
+                    .watch_for_btc_funding()
+                    .inspect(|pipeline| {
+                        let source_funded =
+                            SourceFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
+                                pipeline.trade_id,
+                            );
+                        pipeline
+                            .event_store
+                            .add_event(pipeline.trade_id, source_funded)
+                            .expect("We cannot be in the wrong state");
+                    }).and_then(|pipeline| pipeline.watch_eth_deploy())
+                    .map(|(pipeline, contract_address)| {
+                        let target_funded =
+                            TargetFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
+                                contract_address,
+                            );
+                        pipeline
+                            .event_store
+                            .add_event(pipeline.trade_id, target_funded)
+                            .expect("We cannot be in the wrong state");
+                    }).map_err(move |e| {
+                        error!(
+                            "Halting actions on swap {} because of error: {:?}",
+                            trade_id, e
+                        )
+                    })
             }).map_err(|e| {
                 panic!("Issue with the unbounded channel: {:?}", e);
             });
@@ -167,7 +175,12 @@ where
     }
 
     pub fn watch_for_btc_funding(self) -> impl Future<Item = Self, Error = Error> {
-        let sent_swap_request: StartSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> = self
+        let sent_swap_request: SentSwapRequest<
+            Bitcoin,
+            Ethereum,
+            BitcoinQuantity,
+            EtherQuantity,
+        > = self
             .event_store
             .get_event(self.trade_id)
             .expect("We cannot be in the wrong state");
@@ -250,7 +263,12 @@ where
     }
 
     fn watch_eth_deploy(self) -> impl Future<Item = (Self, EthereumAddress), Error = Error> {
-        let sent_swap_request: StartSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> = self
+        let sent_swap_request: SentSwapRequest<
+            Bitcoin,
+            Ethereum,
+            BitcoinQuantity,
+            EtherQuantity,
+        > = self
             .event_store
             .get_event(self.trade_id)
             .expect("We cannot be in the wrong state");;

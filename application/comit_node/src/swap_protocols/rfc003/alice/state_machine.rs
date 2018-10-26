@@ -1,15 +1,11 @@
-use super::AcceptResponse;
+#![allow(missing_debug_implementations)]
 use comit_client::SwapResponseError;
 use failure;
 use futures::{future::Either, Async, Future};
 use ledger_query_service;
 use state_machine_future::{RentToOwn, StateMachineFuture};
-use std::{
-    hash::Hash,
-    sync::{Arc, RwLock},
-};
-use swap_protocols::rfc003::{ledger::Ledger, messages::Request, secret::Secret};
-use tokio::timer as tokio_timer;
+use std::sync::{Arc, RwLock};
+use swap_protocols::rfc003::{ledger::Ledger, messages::Request, secret::Secret, AcceptResponse};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineError {
@@ -29,10 +25,9 @@ impl From<ledger_query_service::Error> for StateMachineError {
 // see: https://github.com/rust-lang/rust/issues/21903
 #[allow(type_alias_bounds)]
 pub mod events {
+    use super::StateMachineError;
     use comit_client::SwapReject;
-    use swap_protocols::rfc003::{
-        ledger::Ledger, messages::AcceptResponse, state_machine::StateMachineError,
-    };
+    use swap_protocols::rfc003::{ledger::Ledger, messages::AcceptResponse};
     use tokio::{self, prelude::future::Either};
 
     type Future<I> = tokio::prelude::future::Future<Item = I, Error = StateMachineError> + Send;
@@ -216,7 +211,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                     response: swap_accepted,
                 }
             ),
-            Err(rejected) => transition_save!(context.state_repo, Final(SwapOutcome::Rejected)),
+            Err(_) => transition_save!(context.state_repo, Final(SwapOutcome::Rejected)),
         }
     }
 
@@ -256,7 +251,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                     &state.source_htlc_id
                 ).poll()
         ) {
-            Either::A(source_refunded_txid) => {
+            Either::A(_source_refunded_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::SourceRefunded))
             }
             Either::B(target_htlc_id) => {
@@ -285,7 +280,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
         {
             let state = state.take();
             match redeemed_or_refunded {
-                Either::A(source_redeemed_txid) => transition_save!(
+                Either::A(_source_redeemed_txid) => transition_save!(
                     context.state_repo,
                     SourceRedeemedTargetFunded {
                         start: state.start,
@@ -293,7 +288,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                         target_htlc_id: state.target_htlc_id,
                     }
                 ),
-                Either::B(source_refunded_txid) => transition_save!(
+                Either::B(_source_refunded_txid) => transition_save!(
                     context.state_repo,
                     SourceRefundedTargetFunded {
                         start: state.start,
@@ -322,7 +317,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                     }
                 )
             }
-            Either::B(target_refunded_txid) => {
+            Either::B(_target_refunded_txid) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
@@ -346,11 +341,11 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                 .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
                 .poll()
         ) {
-            Either::A(source_redeemed_txid) => transition_save!(
+            Either::A(_source_redeemed_txid) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::SourceRedeemedTargetRefunded)
             ),
-            Either::B(source_refunded_txid) => {
+            Either::B(_source_refunded_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::BothRefunded))
             }
         }
@@ -366,11 +361,11 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
-            Either::A(target_redeemed_txid) => transition_save!(
+            Either::A(_target_redeemed_txid) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::SourceRefundedTargetRedeemed)
             ),
-            Either::B(target_refunded_txid) => {
+            Either::B(_target_refunded_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::BothRefunded))
             }
         }
@@ -386,10 +381,10 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
-            Either::A(target_redeemed_txid) => {
+            Either::A(_target_redeemed_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::BothRedeemed))
             }
-            Either::B(target_refunded_txid) => transition_save!(
+            Either::B(_target_refunded_txid) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::SourceRedeemedTargetRefunded)
             ),
@@ -406,10 +401,10 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> PollSwap<SL, TL, SA, TA>
                 .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
                 .poll()
         ) {
-            Either::A(target_redeemed_txid) => {
+            Either::A(_target_redeemed_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::BothRedeemed))
             }
-            Either::B(target_refunded_txid) => transition_save!(
+            Either::B(_target_refunded_txid) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::SourceRefundedTargetRedeemed)
             ),
@@ -436,6 +431,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone + Send + Sync, TA: Clone + Send + Sync>
     SaveState<SL, TL, SA, TA> for mpsc::UnboundedSender<SwapStates<SL, TL, SA, TA>>
 {
     fn save(&self, state: SwapStates<SL, TL, SA, TA>) {
-        self.send(state);
+        // ignore error the subscriber is no longer interested in state updates
+        let _ = self.unbounded_send(state);
     }
 }

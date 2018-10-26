@@ -1,11 +1,11 @@
+#![allow(dead_code)] //FIXME: Remove this
 use bitcoin_support::{self, BitcoinQuantity, OutPoint};
 use bitcoin_witness;
 use ethereum_support;
 use secp256k1_support::KeyPair;
-use swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
-    rfc003::{bitcoin, secret::Secret},
-};
+use swap_protocols::rfc003::{bitcoin, secret::Secret};
+
+pub mod btc_eth;
 
 enum Action<Fund, Redeem, Refund> {
     FundHtlc(Fund),
@@ -57,6 +57,3 @@ struct EtherRedeem {
     pub execution_gas: u32,
     pub data: Secret,
 }
-
-pub mod btc_eth;
-pub mod eth_btc;

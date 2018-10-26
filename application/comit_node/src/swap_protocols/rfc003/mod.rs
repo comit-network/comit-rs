@@ -1,9 +1,8 @@
-pub mod actions;
+pub mod alice;
 pub mod alice_ledger_actor;
 pub mod bitcoin;
 pub mod ethereum;
 pub mod ledger_htlc_service;
-pub mod state_machine;
 
 mod ledger;
 mod messages;
