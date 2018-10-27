@@ -1,0 +1,207 @@
+[env]
+BITCOIND_ADDITIONAL_SLEEP_PERIOD = "500"
+
+# ###########################################################
+# Override defaults tasks to allow the use of default flows #
+
+# Overridden because: default task should be quick and default task was alias for dev-test-flow.
+[tasks.default]
+description = "Format, build and run the Rust tests. No clippy nor end-to-end."
+workspace = false
+dependencies = [
+     "format",
+     "build",
+     "test"
+]
+
+# Overridden because: added dependencies
+[tasks.pre-ci-flow]
+dependencies = [
+    "start-sccache",
+    "pull-docker-images",
+]
+
+# Overridden because: added dependencies
+[tasks.pre-build]
+dependencies = [
+    "check-format",
+    "clippy"
+]
+
+# Overridden because: specified alias
+[tasks.post-test]
+alias = "e2e"
+
+# Overridden because: added dependencies
+[tasks.post-ci-flow]
+dependencies = [
+    "clean-registry"
+]
+
+# Overridden because: specify env
+[tasks.ci-flow]
+workspace = false
+# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
+env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "$HOME/.cargo/bin/sccache" }
+
+# Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
+[tasks.format]
+description = "Runs cargo fmt to format the code."
+clear = true
+workspace = false
+install_script = ["rustup component add rustfmt-preview"]
+script = ["cargo fmt"]
+
+# Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
+[tasks.clippy]
+description = "Runs cargo clippy to check for warnings."
+clear = true
+workspace = false
+install_script = ["rustup component add clippy-preview"]
+script = ["cargo clippy --all --all-targets"]
+
+# Overridden because: we want --all-targests
+[tasks.build]
+workspace = false
+args = ["build", "--all", "--all-targets"]
+
+# Overridden because: we want --all-targests but not --verbose
+[tasks.build-verbose]
+workspace = false
+args = ["build", "--all", "--all-targets"]
+
+# Overridden because: we want --all-targests but not --verbose
+[tasks.test-verbose]
+workspace = false
+args = ["test", "--all", "--all-targets"]
+
+
+################
+# Task aliases #
+
+[tasks.all]
+workspace = false
+alias = "dev-test-flow"
+
+[tasks.e2e]
+workspace = false
+alias = "e2e-tests-flow"
+
+################
+# Custom tasks #
+
+[tasks.check-format]
+description = "Runs cargo fmt to check appropriate code format."
+workspace = false
+install_script = ["rustup component add rustfmt-preview"]
+script = ["cargo fmt -- --check"]
+
+[tasks.clean-registry]
+# The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
+# This command removes everything that is older than 30 days, thus keeping only very recent libraries.
+description = "Delete old files from the cargo registry cache."
+workspace = false
+private = true
+mac_alias = "clean-registry-mac"
+linux_alias = "clean-registry-linux"
+
+[tasks.clean-registry-linux]
+condition = { platforms = ["linux"] }
+workspace = false
+private = true
+force = true
+script = [
+'''
+find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
+    -mindepth 2 -type d -ctime 30 -exec rm -rf "{}" \;
+'''
+]
+
+[tasks.clean-registry-mac]
+condition = { platforms = ["mac"] }
+workspace = false
+private = true
+force = true
+script = [
+'''
+find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
+    -depth 2 -type d -mtime +30d -exec rm -rf "{}" \;
+'''
+]
+
+[tasks.pull-docker-images]
+# We use several docker images in our build through testcontainers.
+# Because those tests run in parallel, we pull the images here so that we only download them once.
+description = "Pull docker images needed to run tests."
+workspace = false
+private = true
+script = [
+'''
+docker pull parity/parity:v1.11.11
+docker pull coblox/bitcoin-core:0.16.1-r2
+docker pull ruimarinho/bitcoin-core:0.17.0-alpine
+'''
+]
+
+[tasks.start-sccache]
+description = "Setup sscache"
+workspace = false
+private = true
+install_script = ["which sccache || cargo install sccache"]
+env = { "SCCACHE_CACHE_SIZE" = "400M" }
+# Start sccache with limited cache size to avoid a constantly
+# growing caches (and thus continuously slower builds)
+script = [
+'''
+sccache --start-server
+sccache --show-stats
+'''
+]
+
+################
+# E2E Test flow #
+[tasks.e2e-tests-flow]
+description = "Defines the E2E-tests flow."
+workspace = false
+dependencies = [
+    "pre-e2e-tests",
+    "e2e-tests",
+    "post-e2e-tests",
+]
+
+[tasks.pre-e2e-tests]
+description = "Install dependencies for e2e tests."
+workspace = false
+private = true
+script_runner = "bash"
+script = [
+'''
+set +x;
+export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
+. "$NVM_SH"
+cd api_tests;
+nvm install;
+nvm use;
+npm install;
+'''
+]
+
+[tasks.e2e-tests]
+description = "Runs end-to-end tests."
+workspace = false
+private = true
+env = { "LOG_DIR" = "./log" }
+script_runner = "bash"
+script = [
+'''
+export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
+. "$NVM_SH"
+cd api_tests;
+nvm use;
+./harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat log/*; exit 1; }
+'''
+]
+
+[tasks.post-e2e-tests]
+workspace = false
+private = true

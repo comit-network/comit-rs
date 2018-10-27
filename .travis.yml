@@ -3,7 +3,7 @@ cache:
   directories:
   - "$HOME/.cargo"
   - "$HOME/.cache/sccache"
-  - "$HOME/api_tests/node_modules"
+  - "$TRAVIS_BUILD_DIR/api_tests/node_modules"
 sudo: required
 rust: nightly-2018-09-14
 addons:
@@ -11,27 +11,9 @@ addons:
     packages:
     - libzmq3-dev
 install: true
-services:
-- docker
-env:
-  global:
-  - COMIT_NODE_CONFIG_PATH=./application/comit_node/config #TODO rethink if this is here needed
-  - RUST_LOG=testcontainers=debug,bitcoin_rpc=debug
-  - RUST_BACKTRACE=full
-  - BITCOIND_ADDITIONAL_SLEEP_PERIOD=500
-  - KEEP_CONTAINERS=true
-  - RUST_TEST_THREADS=8 # Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-before_script:
-- .travis/keep-cargo-cache-small.sh
-- .travis/pull-docker-images.sh
-- .travis/setup-sccache.sh
-- .travis/install-additional-rustup-components.sh
-script:
-- cargo fmt -- --check
-- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all --all-targets
-- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo clippy --all --all-targets
-- RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
-- 'nvm install && nvm use && cd api_tests && npm install && DEBUG=1 LOG_DIR=./log ./harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat log/*; exit 1; }'
+services: docker
+before_script: which cargo-make || cargo install --debug cargo-make
+script: cargo make ci-flow
 notifications:
   email: false
   slack:
