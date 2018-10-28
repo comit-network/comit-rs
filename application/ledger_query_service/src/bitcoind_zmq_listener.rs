@@ -51,26 +51,25 @@ impl<P: BlockProcessor<BlockWithHeight>> BitcoindZmqListener<P> {
         match bytes {
             b"rawblock" => {
                 let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
-                let end_bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
+                let block_height = self.socket.recv_bytes(zmq::SNDMORE)?;
 
-                let mut end_bytes = Cursor::new(end_bytes);
-                let height = end_bytes.read_u32::<LittleEndian>();
+                let mut block_height = Cursor::new(block_height);
+                let block_height = block_height.read_u32::<LittleEndian>();
 
-                match deserialize(bytes.as_ref()) {
-                    Ok(block) => {
+                match (deserialize(bytes.as_ref()), block_height) {
+                    (Ok(block), Ok(height)) => {
                         trace!("Got {:?}", block);
-                        match height {
-                            Ok(height) => Ok(Some(BlockWithHeight { block, height })),
-                            Err(e) => {
-                                error!(
-                                    "Got new block but failed to extract the height because {:?}",
-                                    e
-                                );
-                                Ok(None)
-                            }
-                        }
+                        Ok(Some(BlockWithHeight { block, height }))
                     }
-                    Err(e) => {
+                    (Ok(_), Err(e)) => {
+                        error!(
+                            "Got new block but failed to extract the height because {:?}",
+                            e
+                        );
+                        Ok(None)
+                    }
+
+                    (Err(e), _) => {
                         error!("Got new block but failed to deserialize it because {:?}", e);
                         Ok(None)
                     }
