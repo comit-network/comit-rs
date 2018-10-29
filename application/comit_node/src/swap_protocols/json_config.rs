@@ -225,64 +225,57 @@ fn process<
         to_address: Some(htlc_address.clone()),
     };
 
-    // TODO: Should not wait here but composing together is hard :(
-    let query_id = match ledger_query_service_api_client.create(query).wait() {
-        Ok(query_id) => query_id,
-        Err(e) => {
-            error!(
-                "Declining trade because of problem with Bitcoin Ledger Query Service: {:?}",
-                e
+    let create_query = ledger_query_service_api_client
+        .create(query)
+        .map_err(Error::from)
+        .and_then(move |query_id| {
+            let stream = ledger_query_service_api_client.fetch_transaction_stream(
+                Interval::new_interval(bitcoin_poll_interval),
+                query_id.clone(),
             );
-            return json::Response::new(Status::RE(0));
-        }
-    };
 
-    let stream = ledger_query_service_api_client.fetch_transaction_stream(
-        Interval::new_interval(bitcoin_poll_interval),
-        query_id.clone(),
-    );
+            stream
+                .take(1)
+                .map_err(Error::from)
+                .for_each(move |transaction_id| {
+                    let (n, vout) = bitcoin_service
+                        .get_vout_matching(&transaction_id, &htlc_address.script_pubkey())?
+                        .ok_or(CounterpartyDeployError::NotFound)?;
 
-    tokio::spawn(
-        stream
-            .take(1)
-            .map_err(Error::from)
-            .for_each(move |transaction_id| {
-                let (n, vout) = bitcoin_service
-                    .get_vout_matching(&transaction_id, &htlc_address.script_pubkey())?
-                    .ok_or(CounterpartyDeployError::NotFound)?;
+                    if vout.value < order_taken.sell_amount.satoshi() {
+                        return Err(Error::from(CounterpartyDeployError::Underfunded));
+                    }
 
-                if vout.value < order_taken.sell_amount.satoshi() {
-                    return Err(Error::from(CounterpartyDeployError::Underfunded));
-                }
+                    debug!("Ledger Query Service returned tx: {}", transaction_id);
+                    let eth_htlc_txid = deploy_eth_htlc(
+                        trade_id,
+                        &event_store,
+                        &ethereum_service,
+                        OutPoint {
+                            txid: transaction_id,
+                            vout: n as u32,
+                        },
+                    )?;
 
-                debug!("Ledger Query Service returned tx: {}", transaction_id);
-                let eth_htlc_txid = deploy_eth_htlc(
-                    trade_id,
-                    &event_store,
-                    &ethereum_service,
-                    OutPoint {
-                        txid: transaction_id,
-                        vout: n as u32,
-                    },
-                )?;
+                    ledger_query_service_api_client.delete(&query_id);
 
-                ledger_query_service_api_client.delete(&query_id);
+                    watch_for_eth_htlc_and_redeem_btc_htlc(
+                        trade_id,
+                        ledger_query_service_api_client.clone(),
+                        eth_htlc_txid,
+                        ethereum_poll_interval,
+                        event_store.clone(),
+                        bitcoin_service.clone(),
+                        ethereum_service.clone(),
+                    )?;
 
-                watch_for_eth_htlc_and_redeem_btc_htlc(
-                    trade_id,
-                    ledger_query_service_api_client.clone(),
-                    eth_htlc_txid,
-                    ethereum_poll_interval,
-                    event_store.clone(),
-                    bitcoin_service.clone(),
-                    ethereum_service.clone(),
-                )?;
+                    Ok(())
+                })
+        });
 
-                Ok(())
-            }).map_err(|e| {
-                error!("Ledger Query Service Failure: {:#?}", e);
-            }),
-    );
+    tokio::spawn(create_query.map_err(|e| {
+        error!("Ledger Query Service Failure: {:#?}", e);
+    }));
 
     json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
         target_ledger_refund_identity: bob_refund_address,
@@ -347,60 +340,65 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
         ethereum_service.as_ref(), eth_htlc_created_tx_id
     )?;
 
-    // TODO: Should not wait here but composing together is hard :(
-    let query_id = ledger_query_service_api_client.create(query).wait()?;
+    let create_query = ledger_query_service_api_client
+        .create(query)
+        .map_err(Error::from)
+        .and_then(move |query_id| {
+            let stream = ledger_query_service_api_client
+                .fetch_transaction_stream(Interval::new_interval(poll_interval), query_id.clone());
 
-    let stream = ledger_query_service_api_client
-        .fetch_transaction_stream(Interval::new_interval(poll_interval), query_id.clone());
+            stream
+                .take(1)
+                .map_err(Error::from)
+                .for_each(move |transaction_id| {
+                    debug!(
+                        "Ledger Query Service returned tx sent to Ethereum HTLC: {}",
+                        transaction_id
+                    );
 
-    tokio::spawn(
-        stream
-            .take(1)
-            .map_err(Error::from)
-            .for_each(move |transaction_id| {
-                debug!(
-                    "Ledger Query Service returned tx sent to Ethereum HTLC: {}",
-                    transaction_id
-                );
+                    let secret = LedgerHtlcService::<
+                        Ethereum,
+                        EtherHtlcFundingParams,
+                        EtherHtlcRedeemParams,
+                        EthereumQuery,
+                    >::check_and_extract_secret(
+                        ethereum_service.as_ref(),
+                        eth_htlc_created_tx_id,
+                        transaction_id,
+                    )?;
 
-                let secret = LedgerHtlcService::<
-                    Ethereum,
-                    EtherHtlcFundingParams,
-                    EtherHtlcRedeemParams,
-                    EthereumQuery,
-                >::check_and_extract_secret(
-                    ethereum_service.as_ref(),
-                    eth_htlc_created_tx_id,
-                    transaction_id,
-                )?;
+                    let order_taken: OrderTaken<Ethereum, Bitcoin> =
+                        event_store.get_event(trade_id)?;
 
-                let order_taken: OrderTaken<Ethereum, Bitcoin> = event_store.get_event(trade_id)?;
+                    let trade_funded: TradeFunded<Ethereum, Bitcoin> =
+                        event_store.get_event(trade_id)?;
 
-                let trade_funded: TradeFunded<Ethereum, Bitcoin> =
-                    event_store.get_event(trade_id)?;
+                    let htlc_redeem_params = BitcoinHtlcRedeemParams {
+                        htlc_identifier: trade_funded.htlc_identifier,
+                        success_address: order_taken.bob_success_address,
+                        refund_address: order_taken.alice_refund_address,
+                        amount: order_taken.sell_amount,
+                        time_lock: order_taken.alice_contract_time_lock,
+                        keypair: order_taken.bob_success_keypair,
+                        secret,
+                    };
 
-                let htlc_redeem_params = BitcoinHtlcRedeemParams {
-                    htlc_identifier: trade_funded.htlc_identifier,
-                    success_address: order_taken.bob_success_address,
-                    refund_address: order_taken.alice_refund_address,
-                    amount: order_taken.sell_amount,
-                    time_lock: order_taken.alice_contract_time_lock,
-                    keypair: order_taken.bob_success_keypair,
-                    secret,
-                };
+                    let redeem_tx_id = bitcoin_service.redeem_htlc(trade_id, htlc_redeem_params)?;
 
-                let redeem_tx_id = bitcoin_service.redeem_htlc(trade_id, htlc_redeem_params)?;
+                    let contract_redeemed: BobContractRedeemed<
+                        Ethereum,
+                        Bitcoin,
+                    > = BobContractRedeemed::new(trade_id, redeem_tx_id.to_string());
+                    event_store.add_event(trade_id, contract_redeemed)?;
 
-                let contract_redeemed: BobContractRedeemed<Ethereum, Bitcoin> =
-                    BobContractRedeemed::new(trade_id, redeem_tx_id.to_string());
-                event_store.add_event(trade_id, contract_redeemed)?;
+                    ledger_query_service_api_client.delete(&query_id);
 
-                ledger_query_service_api_client.delete(&query_id);
+                    Ok(())
+                })
+        });
 
-                Ok(())
-            }).map_err(|e| {
-                error!("Ledger Query Service Failure: {:#?}", e);
-            }),
-    );
+    tokio::spawn(create_query.map_err(|e| {
+        error!("Ledger Query Service Failure: {:#?}", e);
+    }));
     Ok(())
 }
