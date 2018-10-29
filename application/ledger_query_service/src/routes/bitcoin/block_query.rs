@@ -1,4 +1,4 @@
-use bitcoin_support::BlockWithHeight as BitcoinBlock;
+use bitcoin_support::MinedBlock as BitcoinBlock;
 use block_processor::{Query, QueryMatchResult};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
@@ -116,7 +116,7 @@ pub fn delete_query(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_support::{Block, BlockHeader, BlockWithHeight, Sha256dHash};
+    use bitcoin_support::{Block, BlockHeader, MinedBlock, Sha256dHash};
     use spectral::prelude::*;
 
     #[test]
@@ -130,13 +130,13 @@ mod tests {
             nonce: 0,
         };
 
-        let block = BlockWithHeight {
-            block: Block {
+        let block = MinedBlock::new(
+            Block {
                 header: block_header,
                 txdata: vec![],
             },
-            height: 40,
-        };
+            40,
+        );
 
         let query = BitcoinBlockQuery {
             min_height: Some(42),
@@ -156,13 +156,13 @@ mod tests {
             nonce: 0,
         };
 
-        let block = BlockWithHeight {
-            block: Block {
+        let block = MinedBlock::new(
+            Block {
                 header: block_header,
                 txdata: vec![],
             },
-            height: 42,
-        };
+            42,
+        );
 
         let query = BitcoinBlockQuery {
             min_height: Some(42),
@@ -182,13 +182,13 @@ mod tests {
             nonce: 0,
         };
 
-        let block = BlockWithHeight {
-            block: Block {
+        let block = MinedBlock::new(
+            Block {
                 header: block_header,
                 txdata: vec![],
             },
-            height: 45,
-        };
+            45,
+        );
 
         let query = BitcoinBlockQuery {
             min_height: Some(42),

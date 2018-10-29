@@ -31,15 +31,15 @@ pub use bitcoin::{
 };
 
 pub use bitcoin_quantity::*;
-pub use block_with_height::*;
 pub use blocks::*;
+pub use mined_block::*;
 pub use pubkey::*;
 pub use transaction::*;
 pub use weight::*;
 
 mod bitcoin_quantity;
-mod block_with_height;
 mod blocks;
+mod mined_block;
 mod pubkey;
 mod transaction;
 mod weight;

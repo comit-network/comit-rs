@@ -9,7 +9,7 @@ extern crate serde_derive;
 extern crate bitcoin_support;
 
 use bitcoin_support::{
-    serialize::BitcoinHash, Address, Block, BlockHeader, BlockWithHeight, Sha256dHash, Transaction,
+    serialize::BitcoinHash, Address, Block, BlockHeader, MinedBlock, Sha256dHash, Transaction,
     TxOut,
 };
 use http::Uri;
@@ -169,13 +169,13 @@ fn given_query_when_matching_transaction_is_processed_returns_result() {
         nonce: 0,
     };
 
-    let block = BlockWithHeight {
-        block: Block {
+    let block = MinedBlock::new(
+        Block {
             header: block_header,
             txdata: vec![incoming_transaction],
         },
-        height: 1,
-    };
+        1,
+    );
 
     block_processor.process(&block);
 
@@ -279,13 +279,13 @@ fn given_pending_transaction_response_matching_transactions_is_empty() {
         nonce: 0,
     };
 
-    let block = BlockWithHeight {
-        block: Block {
+    let block = MinedBlock::new(
+        Block {
             header: block_header,
             txdata: vec![incoming_transaction],
         },
-        height: 1,
-    };
+        1,
+    );
 
     block_processor.process(&block);
 
@@ -348,13 +348,13 @@ fn given_block_query_when_block_is_generated_returns_result() {
             nonce: 2,
         };
 
-        let block = BlockWithHeight {
-            block: Block {
+        let block = MinedBlock::new(
+            Block {
                 header: block_header,
                 txdata: vec![],
             },
-            height: 2,
-        };
+            2,
+        );
 
         block_processor.process(&block);
 
@@ -379,13 +379,13 @@ fn given_block_query_when_block_is_generated_returns_result() {
             nonce: 0,
         };
 
-        let block = BlockWithHeight {
-            block: Block {
+        let block = MinedBlock::new(
+            Block {
                 header: block_header,
                 txdata: vec![],
             },
-            height: 42,
-        };
+            42,
+        );
 
         block_processor.process(&block);
 
@@ -399,6 +399,6 @@ fn given_block_query_when_block_is_generated_returns_result() {
 
         assert_that(body)
             .map(|b| &b.matching_blocks)
-            .contains(format!("{:x}", block.block.header.bitcoin_hash()));
+            .contains(format!("{:x}", block.as_ref().header.bitcoin_hash()));
     }
 }

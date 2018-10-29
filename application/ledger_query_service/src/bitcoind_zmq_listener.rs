@@ -1,4 +1,4 @@
-use bitcoin_support::{serialize::deserialize, BlockWithHeight};
+use bitcoin_support::{serialize::deserialize, MinedBlock};
 use block_processor::BlockProcessor;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
@@ -14,7 +14,7 @@ pub struct BitcoindZmqListener<P> {
     processor: P,
 }
 
-impl<P: BlockProcessor<BlockWithHeight>> BitcoindZmqListener<P> {
+impl<P: BlockProcessor<MinedBlock>> BitcoindZmqListener<P> {
     pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
         let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
@@ -44,7 +44,7 @@ impl<P: BlockProcessor<BlockWithHeight>> BitcoindZmqListener<P> {
         }
     }
 
-    fn receive_block(&mut self) -> Result<Option<BlockWithHeight>, zmq::Error> {
+    fn receive_block(&mut self) -> Result<Option<MinedBlock>, zmq::Error> {
         let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
         let bytes: &[u8] = bytes.as_ref();
 
@@ -59,7 +59,7 @@ impl<P: BlockProcessor<BlockWithHeight>> BitcoindZmqListener<P> {
                 match (deserialize(bytes.as_ref()), block_height) {
                     (Ok(block), Ok(height)) => {
                         trace!("Got {:?}", block);
-                        Ok(Some(BlockWithHeight { block, height }))
+                        Ok(Some(MinedBlock::new(block, height)))
                     }
                     (Ok(_), Err(e)) => {
                         error!(
