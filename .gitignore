@@ -86,3 +86,5 @@ fabric.properties
 
 # vi swap files
 *.swp
+
+apis_tests/log/*
