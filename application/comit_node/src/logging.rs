@@ -25,6 +25,7 @@ pub fn set_up_logging() {
         .level_for("comit_wallet", LevelFilter::Trace)
         .level_for("ethereum_htlc", LevelFilter::Trace)
         .level_for("ethereum_wallet", LevelFilter::Trace)
+        .level_for("transport_protocol", LevelFilter::Trace)
         .level_for("tokio_core::reactor", LevelFilter::Info)
         .level_for("tokio_reactor", LevelFilter::Info)
         .level_for("hyper", LevelFilter::Info)

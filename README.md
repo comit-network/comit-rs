@@ -35,7 +35,9 @@ Save these files in the same folder (let's say ~/swap_env) and set the path in `
 
 ## Testing
 
-- `run_tests.sh` runs the whole test suite including integration tests. 
+- `cargo make` runs the whole test suite including integration tests but not end-to-end.
+- `cargo make all` also runs the whole test suite, including end-to-end tests. 
+- `cargo make e2e` only runs end-to-end tests.
 
 ## Running
 

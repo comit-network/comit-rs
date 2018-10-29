@@ -87,7 +87,6 @@ function activate_segwit() {
 }
 
 function setup() {
-    cargo build
 
     #### Env variable to run all services
     set -a;
@@ -126,7 +125,7 @@ function setup() {
         export BITCOIN_ZMQ_ENDPOINT=tcp://127.0.0.1:28332;
         export ETHEREUM_WEB3_ENDPOINT=$ETHEREUM_NODE_ENDPOINT;
         export ETHEREUM_POLLING_TIME_SEC=1
-        export RUST_LOG=debug;
+        export RUST_LOG=warn,web3=debug,ledger_query_service=trace;
 
         start_target "ledger_query_service" "LQS";
     );
