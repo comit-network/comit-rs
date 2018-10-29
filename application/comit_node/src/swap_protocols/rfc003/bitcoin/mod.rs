@@ -8,6 +8,6 @@ pub use self::htlc::{Htlc, UnlockingError};
 
 impl Ledger for Bitcoin {
     type LockDuration = Blocks;
-    type HtlcId = OutPoint;
+    type HtlcLocation = OutPoint;
     type HtlcIdentity = KeyPair;
 }

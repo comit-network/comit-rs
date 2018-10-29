@@ -11,8 +11,7 @@ pub trait Ledger: swap_protocols::ledger::Ledger {
         + Serialize
         + DeserializeOwned
         + 'static;
-    //TODO: Rename "ContractLocation"
-    type HtlcId: PartialEq + Debug + Clone + DeserializeOwned + Serialize + Send + Sync;
+    type HtlcLocation: PartialEq + Debug + Clone + DeserializeOwned + Serialize + Send + Sync;
     type HtlcIdentity: Clone
         + Send
         + Sync

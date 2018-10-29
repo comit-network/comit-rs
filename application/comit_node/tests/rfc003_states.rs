@@ -70,7 +70,7 @@ impl<
         &mut self,
         request: &Start<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
-        source_htlc_id: &SL::HtlcId,
+        source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
@@ -79,14 +79,14 @@ impl<
 
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &TL::HtlcId,
+        target_htlc_id: &TL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
         unimplemented!()
     }
 
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_id: &SL::HtlcId,
+        source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
         unimplemented!()
     }

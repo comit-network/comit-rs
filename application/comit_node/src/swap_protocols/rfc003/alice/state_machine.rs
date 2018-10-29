@@ -33,11 +33,11 @@ pub mod events {
     type Future<I> = tokio::prelude::future::Future<Item = I, Error = StateMachineError> + Send;
 
     pub type Response<SL, TL> = Future<Result<AcceptResponse<SL, TL>, SwapReject>>;
-    pub type Funded<L: Ledger> = Future<L::HtlcId>;
+    pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
     pub type Refunded<L: Ledger> = Future<L::TxId>;
     pub type Redeemed<L: Ledger> = Future<L::TxId>;
     pub type SourceRefundedOrTargetFunded<SL: Ledger, TL: Ledger> =
-        Future<Either<SL::TxId, TL::HtlcId>>;
+        Future<Either<SL::TxId, TL::HtlcLocation>>;
     pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::TxId, L::TxId>>;
 
 }
@@ -67,17 +67,17 @@ pub trait Futures<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone>: Send {
         &mut self,
         start: &Start<SL, TL, SA, TA>,
         response: &AcceptResponse<SL, TL>,
-        source_htlc_id: &SL::HtlcId,
+        source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>>;
 
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &TL::HtlcId,
+        target_htlc_id: &TL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>>;
 
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_id: &SL::HtlcId,
+        source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>>;
 }
 
@@ -129,7 +129,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> {
     SourceFunded {
         start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
-        source_htlc_id: SL::HtlcId,
+        source_htlc_id: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(
@@ -141,29 +141,29 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> {
     BothFunded {
         start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
-        target_htlc_id: TL::HtlcId,
-        source_htlc_id: SL::HtlcId,
+        target_htlc_id: TL::HtlcLocation,
+        source_htlc_id: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRefunded {
         start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
-        source_htlc_id: SL::HtlcId,
+        source_htlc_id: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRefundedTargetFunded {
         start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
-        target_htlc_id: TL::HtlcId,
+        target_htlc_id: TL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRedeemedTargetFunded {
         start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
-        target_htlc_id: TL::HtlcId,
+        target_htlc_id: TL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -171,7 +171,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone> {
         start: Start<SL, TL, SA, TA>,
         response: AcceptResponse<SL, TL>,
         target_redeemed_txid: TL::TxId,
-        source_htlc_id: SL::HtlcId,
+        source_htlc_id: SL::HtlcLocation,
     },
 
     #[state_machine_future(ready)]
