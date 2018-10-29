@@ -7,7 +7,7 @@ use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiCli
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     json_config,
-    ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
         ledger_htlc_service::{BitcoinService, EthereumService},

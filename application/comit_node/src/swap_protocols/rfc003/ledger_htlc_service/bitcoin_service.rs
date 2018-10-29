@@ -1,14 +1,15 @@
 use bitcoin_fee_service::{self, BitcoinFeeService};
 use bitcoin_rpc_client::{self, *};
 use bitcoin_support::{
-    self, Address, BitcoinQuantity, Blocks, PubkeyHash, Script, Transaction, TxOut,
+    self, Address, BitcoinQuantity, Blocks, OutPoint, PubkeyHash, Script, Transaction,
+    TransactionId, TxOut,
 };
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use ledger_query_service::BitcoinQuery;
 use secp256k1_support::KeyPair;
 use std::sync::Arc;
 use swap_protocols::{
-    ledger::{bitcoin::Bitcoin, Ledger},
+    ledger::Bitcoin,
     rfc003::{
         bitcoin,
         ledger_htlc_service::{self, LedgerHtlcService},
@@ -68,7 +69,7 @@ pub struct BitcoinHtlcFundingParams {
 
 #[derive(Clone, Debug)]
 pub struct BitcoinHtlcRedeemParams {
-    pub htlc_identifier: <Bitcoin as Ledger>::HtlcId,
+    pub htlc_identifier: OutPoint,
     pub success_address: Address,
     pub refund_address: Address,
     pub amount: BitcoinQuantity,
@@ -83,7 +84,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
     fn fund_htlc(
         &self,
         htlc_funding_params: BitcoinHtlcFundingParams,
-    ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
+    ) -> Result<TransactionId, ledger_htlc_service::Error> {
         let htlc = bitcoin::Htlc::new(
             htlc_funding_params.success_pubkey_hash,
             htlc_funding_params.refund_pubkey_hash,
@@ -104,7 +105,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
         &self,
         trade_id: TradeId,
         htlc_redeem_params: BitcoinHtlcRedeemParams,
-    ) -> Result<<Bitcoin as Ledger>::TxId, ledger_htlc_service::Error> {
+    ) -> Result<TransactionId, ledger_htlc_service::Error> {
         let bob_success_address = htlc_redeem_params.success_address;
         let alice_refund_address = htlc_redeem_params.refund_address;
         let sell_amount = htlc_redeem_params.amount;
@@ -168,7 +169,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
     fn create_query_to_watch_redeeming(
         &self,
-        _htlc_funding_tx_id: <Bitcoin as Ledger>::TxId,
+        _htlc_funding_tx_id: TransactionId,
     ) -> Result<BitcoinQuery, ledger_htlc_service::Error> {
         unimplemented!()
     }
@@ -190,8 +191,8 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
     fn check_and_extract_secret(
         &self,
-        _create_htlc_tx_id: <Bitcoin as Ledger>::TxId,
-        _redeem_htlc_tx_id: <Bitcoin as Ledger>::TxId,
+        _create_htlc_tx_id: TransactionId,
+        _redeem_htlc_tx_id: TransactionId,
     ) -> Result<Secret, ledger_htlc_service::Error> {
         unimplemented!()
     }

@@ -20,7 +20,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use swap_protocols::{
-    ledger::{self, bitcoin::Bitcoin, ethereum::Ethereum},
+    ledger::{Bitcoin, Ethereum},
     rfc003::{self, bitcoin, Secret},
 };
 use swaps::{alice_events, common::TradeId};
@@ -244,8 +244,8 @@ pub fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
 }
 
 fn on_swap_response<
-    SL: ledger::Ledger,
-    TL: ledger::Ledger,
+    SL: rfc003::Ledger,
+    TL: rfc003::Ledger,
     SA: Clone + Send + Sync + 'static,
     TA: Clone + Send + Sync + 'static,
     E: EventStore<TradeId>,

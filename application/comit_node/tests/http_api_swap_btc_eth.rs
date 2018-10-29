@@ -23,7 +23,7 @@ use comit_node::{
     gotham_factory::create_gotham_router,
     key_store::KeyStore,
     swap_protocols::{
-        ledger::{bitcoin::Bitcoin, ethereum::Ethereum},
+        ledger::{Bitcoin, Ethereum},
         rfc003::{self, ethereum::Seconds},
     },
     swaps::common::TradeId,

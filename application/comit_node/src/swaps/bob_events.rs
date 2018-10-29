@@ -1,7 +1,7 @@
 use event_store::Event;
 use secp256k1_support::KeyPair;
 use std::marker::PhantomData;
-use swap_protocols::{ledger::Ledger, rfc003::SecretHash};
+use swap_protocols::rfc003::{Ledger, SecretHash};
 use swaps::common::TradeId;
 
 #[derive(Clone, Debug)]
@@ -26,7 +26,7 @@ pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TradeFunded<Buy: Ledger, Sell: Ledger> {
     pub uid: TradeId,
-    pub htlc_identifier: Sell::HtlcId,
+    pub htlc_identifier: Sell::HtlcLocation,
     phantom: PhantomData<Buy>,
 }
 
@@ -58,7 +58,7 @@ impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
 }
 
 impl<Buy: Ledger, Sell: Ledger> TradeFunded<Buy, Sell> {
-    pub fn new(uid: TradeId, htlc_identifier: Sell::HtlcId) -> TradeFunded<Buy, Sell> {
+    pub fn new(uid: TradeId, htlc_identifier: Sell::HtlcLocation) -> TradeFunded<Buy, Sell> {
         TradeFunded {
             uid,
             htlc_identifier,

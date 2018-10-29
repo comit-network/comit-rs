@@ -15,6 +15,8 @@ extern crate failure;
 extern crate log;
 #[macro_use]
 extern crate transport_protocol;
+#[macro_use]
+extern crate futures;
 
 #[cfg(test)]
 extern crate pretty_env_logger;
@@ -30,7 +32,6 @@ extern crate crypto;
 extern crate ethereum_support;
 extern crate event_store;
 extern crate fern;
-extern crate futures;
 extern crate gotham;
 extern crate hex;
 extern crate http_api_problem;
@@ -48,6 +49,8 @@ extern crate tokio;
 extern crate tokio_timer;
 extern crate url;
 extern crate uuid;
+#[macro_use]
+extern crate state_machine_future;
 
 pub mod bitcoin_fee_service;
 
