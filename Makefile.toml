@@ -164,6 +164,7 @@ sccache --show-stats
 description = "Defines the E2E-tests flow."
 workspace = false
 dependencies = [
+    "build",
     "pre-e2e-tests",
     "e2e-tests",
     "post-e2e-tests",

@@ -87,7 +87,6 @@ function activate_segwit() {
 }
 
 function setup() {
-    cargo build
 
     #### Env variable to run all services
     set -a;
