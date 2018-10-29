@@ -1,12 +1,9 @@
+use super::{Action, BitcoinFund, BitcoinRefund, EtherRedeem, StateActions};
 use bitcoin_support::BitcoinQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{self, alice::state_machine::*, messages::AcceptResponse},
 };
-
-use super::StateActions;
-
-use super::{Action, BitcoinFund, BitcoinRefund, EtherRedeem};
 
 pub fn bitcoin_htlc<TA: Clone>(
     start: &Start<Bitcoin, Ethereum, BitcoinQuantity, TA>,

@@ -1,4 +1,3 @@
-#![allow(dead_code)] //FIXME: Remove this
 use bitcoin_support::{self, BitcoinQuantity, OutPoint};
 use bitcoin_witness;
 use ethereum_support;

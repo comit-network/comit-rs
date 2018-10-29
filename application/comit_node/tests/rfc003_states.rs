@@ -9,6 +9,7 @@ extern crate hex;
 extern crate secp256k1_support;
 extern crate tokio;
 extern crate tokio_timer;
+
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use comit_node::{
     comit_client::SwapReject,
@@ -21,7 +22,6 @@ use comit_node::{
         wire_types,
     },
 };
-
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
@@ -132,9 +132,7 @@ fn init<
 }
 
 macro_rules! run_state_machine {
-
     ($state_machine:ident, $states:ident, $( $expected_state:expr ) , * ) => {
-
         {
             let mut expected_states = Vec::new();
 
