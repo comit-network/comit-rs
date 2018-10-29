@@ -31,7 +31,7 @@ script:
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all --all-targets
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo clippy --all --all-targets
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
-- 'cd api_tests && nvm install node && npm install && DEBUG=1 LOG_DIR=./log ./harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat log/*; exit 1; }'
+- 'nvm install && nvm use && cd api_tests && npm install && DEBUG=1 LOG_DIR=./log ./harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat log/*; exit 1; }'
 notifications:
   email: false
   slack:
