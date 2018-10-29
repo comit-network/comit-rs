@@ -11,12 +11,19 @@ use tokio::prelude::future::Future;
 pub struct DefaultLedgerQueryServiceApiClient {
     client: Client,
     create_bitcoin_transaction_query_endpoint: Url,
+    create_bitcoin_block_query_endpoint: Url,
     create_ethereum_transaction_query_endpoint: Url,
+    create_ethereum_block_query_endpoint: Url,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TransactionQueryResponse<T> {
     matching_transactions: Vec<T>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BlockQueryResponse<B> {
+    matching_blocks: Vec<B>,
 }
 
 impl DefaultLedgerQueryServiceApiClient {
@@ -26,8 +33,14 @@ impl DefaultLedgerQueryServiceApiClient {
             create_bitcoin_transaction_query_endpoint: endpoint
                 .join("queries/bitcoin/transactions")
                 .expect("invalid url"),
+            create_bitcoin_block_query_endpoint: endpoint
+                .join("queries/bitcoin/blocks")
+                .expect("invalid url"),
             create_ethereum_transaction_query_endpoint: endpoint
                 .join("queries/ethereum/transactions")
+                .expect("invalid url"),
+            create_ethereum_block_query_endpoint: endpoint
+                .join("queries/ethereum/blocks")
                 .expect("invalid url"),
         }
     }
@@ -99,6 +112,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
             BitcoinQuery::Transaction { .. } => {
                 self.create_bitcoin_transaction_query_endpoint.clone()
             }
+            BitcoinQuery::Block { .. } => self.create_bitcoin_block_query_endpoint.clone(),
         };
         self._create(endpoint, &query)
     }
@@ -124,6 +138,7 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
             EthereumQuery::Transaction { .. } => {
                 self.create_ethereum_transaction_query_endpoint.clone()
             }
+            EthereumQuery::Block { .. } => self.create_ethereum_block_query_endpoint.clone(),
         };
         self._create(endpoint, &query)
     }

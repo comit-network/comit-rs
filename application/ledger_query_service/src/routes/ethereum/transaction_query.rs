@@ -1,4 +1,4 @@
-use block_processor::{Block, Query, Transaction};
+use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use ethereum_support::{
     Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
 };
@@ -66,32 +66,46 @@ fn created(url: String) -> Created<Option<()>> {
 }
 
 impl Query<EthereumTransaction> for EthereumTransactionQuery {
-    fn matches(&self, transaction: &EthereumTransaction) -> bool {
-        let mut result = true;
+    fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
+        match self {
+            Self {
+                from_address: None,
+                to_address: None,
+                is_contract_creation: None,
+                transaction_data: None,
+            } => QueryMatchResult::no(),
+            Self {
+                from_address,
+                to_address,
+                is_contract_creation,
+                transaction_data,
+            } => {
+                let mut result = true;
 
-        if let Some(from_address) = self.from_address {
-            result = result && (transaction.from == from_address);
+                if let Some(from_address) = from_address {
+                    result = result && (transaction.from == *from_address);
+                }
+
+                if let Some(to_address) = to_address {
+                    result = result && (transaction.to == Some(*to_address));
+                }
+
+                if let Some(is_contract_creation) = is_contract_creation {
+                    // to_address is None for contract creations
+                    result = result && (*is_contract_creation == transaction.to.is_none());
+                }
+
+                if let Some(ref transaction_data) = transaction_data {
+                    result = result && (transaction.input == *transaction_data);
+                }
+
+                if result {
+                    QueryMatchResult::yes()
+                } else {
+                    QueryMatchResult::no()
+                }
+            }
         }
-
-        if let Some(to_address) = self.to_address {
-            result = result && (transaction.to == Some(to_address));
-        }
-
-        if let Some(is_contract_creation) = self.is_contract_creation {
-            // to_address is None for contract creations
-            result = result && (is_contract_creation == transaction.to.is_none());
-        }
-
-        if let Some(ref transaction_data) = self.transaction_data {
-            result = result && (transaction.input == *transaction_data);
-        }
-
-        result
-    }
-
-    // TODO: Implement this when adding number of confirmations needed for ethereum
-    fn confirmations_needed(&self) -> u32 {
-        0
     }
 }
 
@@ -183,7 +197,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_true();
+        assert_that(&query.matches(&transaction))
+            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
     }
 
     #[test]
@@ -209,7 +224,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_false();
+        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -237,7 +252,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_true();
+        assert_that(&query.matches(&transaction))
+            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
     }
 
     #[test]
@@ -265,7 +281,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_false();
+        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -293,7 +309,7 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_false();
+        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -319,11 +335,12 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert_that(&query.matches(&transaction)).is_true();
+        assert_that(&query.matches(&transaction))
+            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
     }
 
     #[test]
-    fn given_no_conditions_in_query_transaction_matches() {
+    fn given_no_conditions_in_query_transaction_fails() {
         let query = EthereumTransactionQuery {
             from_address: None,
             to_address: None,
@@ -345,7 +362,7 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert_that(&query.matches(&transaction)).is_true();
+        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
     }
 
 }

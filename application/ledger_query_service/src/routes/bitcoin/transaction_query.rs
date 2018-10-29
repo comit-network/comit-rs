@@ -1,8 +1,8 @@
 use bitcoin_support::{
-    serialize::BitcoinHash, Address, Block as BitcoinBlock, SpendsTo,
+    serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, SpendsTo,
     Transaction as BitcoinTransaction,
 };
-use block_processor::{Block, Query, Transaction};
+use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use http_api_problem::HttpApiProblem;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
@@ -67,19 +67,20 @@ fn created(url: String) -> Created<Option<()>> {
 }
 
 impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
-    fn matches(&self, transaction: &BitcoinTransaction) -> bool {
+    fn matches(&self, transaction: &BitcoinTransaction) -> QueryMatchResult {
         match self.to_address {
             Some(ref address) => {
-                return transaction.spends_to(address);
+                if transaction.spends_to(address) {
+                    QueryMatchResult::yes_with_confirmations(self.confirmations_needed)
+                } else {
+                    QueryMatchResult::no()
+                }
             }
-            None => trace!("to_address not sent, will not used for comparison"),
+            None => {
+                warn!("to_address not sent, no parameters to compare the transaction");
+                QueryMatchResult::no()
+            }
         }
-
-        false
-    }
-
-    fn confirmations_needed(&self) -> u32 {
-        self.confirmations_needed
     }
 }
 
@@ -93,13 +94,13 @@ impl Block for BitcoinBlock {
     type Transaction = BitcoinTransaction;
 
     fn blockhash(&self) -> String {
-        format!("{:x}", self.header.bitcoin_hash())
+        format!("{:x}", self.as_ref().header.bitcoin_hash())
     }
     fn prev_blockhash(&self) -> String {
-        format!("{:x}", self.header.prev_blockhash)
+        format!("{:x}", self.as_ref().header.prev_blockhash)
     }
     fn transactions(&self) -> &[BitcoinTransaction] {
-        self.txdata.as_slice()
+        self.as_ref().txdata.as_slice()
     }
 }
 

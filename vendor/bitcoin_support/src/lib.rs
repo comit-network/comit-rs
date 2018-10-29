@@ -32,12 +32,14 @@ pub use bitcoin::{
 
 pub use bitcoin_quantity::*;
 pub use blocks::*;
+pub use mined_block::*;
 pub use pubkey::*;
 pub use transaction::*;
 pub use weight::*;
 
 mod bitcoin_quantity;
 mod blocks;
+mod mined_block;
 mod pubkey;
 mod transaction;
 mod weight;

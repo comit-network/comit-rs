@@ -34,12 +34,17 @@ fn main() {
             //e.g. tcp://127.0.0.1:28332
             info!("Connect BitcoinZmqListener to {}", zmq_endpoint);
 
-            let query_repository = Arc::new(InMemoryQueryRepository::default());
-            let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+            let transaction_query_repository = Arc::new(InMemoryQueryRepository::default());
+            let transaction_query_result_repository =
+                Arc::new(InMemoryQueryResultRepository::default());
+            let block_query_repository = Arc::new(InMemoryQueryRepository::default());
+            let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
             let bitcoin_transaction_processor = DefaultBlockProcessor::new(
-                query_repository.clone(),
-                query_result_repository.clone(),
+                transaction_query_repository.clone(),
+                block_query_repository.clone(),
+                transaction_query_result_repository.clone(),
+                block_query_result_repository.clone(),
             );
 
             thread::spawn(move || {
@@ -51,7 +56,12 @@ fn main() {
                     Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
                 }
             });
-            server_builder.register_bitcoin(query_repository, query_result_repository)
+            server_builder.register_bitcoin(
+                transaction_query_repository,
+                transaction_query_result_repository,
+                block_query_repository,
+                block_query_result_repository,
+            )
         }
     };
 
@@ -66,12 +76,17 @@ fn main() {
             };
             let polling_wait_time = Duration::from_secs(polling_wait_time);
 
-            let query_repository = Arc::new(InMemoryQueryRepository::default());
-            let query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+            let transaction_query_repository = Arc::new(InMemoryQueryRepository::default());
+            let transaction_query_result_repository =
+                Arc::new(InMemoryQueryResultRepository::default());
+            let block_query_repository = Arc::new(InMemoryQueryRepository::default());
+            let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
             let ethereum_transaction_processor = DefaultBlockProcessor::new(
-                query_repository.clone(),
-                query_result_repository.clone(),
+                transaction_query_repository.clone(),
+                block_query_repository.clone(),
+                transaction_query_result_repository.clone(),
+                block_query_result_repository.clone(),
             );
 
             thread::spawn(move || {
@@ -86,7 +101,12 @@ fn main() {
                     Err(e) => error!("Failed to start EthereumSimpleListener! {:?}", e),
                 }
             });
-            server_builder.register_ethereum(query_repository, query_result_repository)
+            server_builder.register_ethereum(
+                transaction_query_repository,
+                transaction_query_result_repository,
+                block_query_repository,
+                block_query_result_repository,
+            )
         }
     };
 

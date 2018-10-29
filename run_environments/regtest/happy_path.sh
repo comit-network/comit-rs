@@ -68,6 +68,7 @@ function alice_wait_swap_status() {
     id=$1
     desired_status=$2;
     cmd="$cli swap status $id";
+    info "Desired status is: $desired_status"
     while ! { COMIT_NODE_URL=$ALICE_COMIT_NODE_URL exec_cmd $cmd | awk "NR==1 && !/status: $desired_status/{ exit 1; } { print; }"; } do
         sleep 1;
     done
@@ -233,7 +234,7 @@ secret=$(
     info "BTC: Total UTXOs before redeem: $old_unspent_num";
 
     # Waiting for Bob to see ETH redeem and redeem BTC
-    sleep 10;
+    sleep 15;
 
     generate_blocks;
 

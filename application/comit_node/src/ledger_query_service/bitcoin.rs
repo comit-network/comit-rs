@@ -7,6 +7,9 @@ pub enum BitcoinQuery {
     Transaction {
         to_address: Option<bitcoin_support::Address>,
     },
+    Block {
+        min_height: Option<u32>,
+    },
 }
 
 #[cfg(test)]
@@ -34,5 +37,14 @@ mod tests {
         let query = BitcoinQuery::Transaction { to_address };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(query, r#"{"to_address":null}"#)
+    }
+
+    #[test]
+    fn given_a_bitcoin_block_query_with_min_height_it_serializes_ok() {
+        let query = BitcoinQuery::Block {
+            min_height: Some(42),
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(query, r#"{"min_height":42}"#)
     }
 }

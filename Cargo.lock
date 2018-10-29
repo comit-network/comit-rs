@@ -1142,6 +1142,7 @@ name = "ledger_query_service"
 version = "0.1.0"
 dependencies = [
  "bitcoin_support 0.1.0",
+ "byteorder 1.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethereum_support 0.1.0",

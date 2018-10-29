@@ -10,6 +10,9 @@ pub enum EthereumQuery {
         is_contract_creation: Option<bool>,
         transaction_data: Option<Bytes>,
     },
+    Block {
+        min_timestamp_secs: Option<u32>,
+    },
 }
 
 #[cfg(test)]
@@ -50,5 +53,14 @@ mod tests {
             query,
             r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null}"#
         )
+    }
+
+    #[test]
+    fn given_a_ethereum_block_query_with_min_timestamp_it_serializes_ok() {
+        let query = EthereumQuery::Block {
+            min_timestamp_secs: Some(10),
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(query, r#"{"min_timestamp_secs":10}"#)
     }
 }
