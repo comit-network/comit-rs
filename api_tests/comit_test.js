@@ -57,7 +57,7 @@ class PlayerConf {
                     return rej(err);
                 }
                 res.should.have.status(200);
-                if (res.body.status == status) {
+                if (res.body.status === status) {
                     final_res(res.body);
                 }
                 else {
