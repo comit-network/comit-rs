@@ -278,14 +278,12 @@ impl JsonFrameHandler {
 
         warn!("Failed to dispatch request to handler because: {:?}", error);
 
-        let response = match error {
+        match error {
             RequestError::UnknownMandatoryHeaders(header_keys) => {
                 response.with_header("Unsupported-Headers", header_keys)
             }
             _ => response,
-        };
-
-        response
+        }
     }
 }
 
