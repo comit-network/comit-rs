@@ -3,6 +3,7 @@ cache:
   directories:
   - "$HOME/.cargo"
   - "$HOME/.cache/sccache"
+  - "$HOME/api_tests/node_modules"
 sudo: required
 rust: nightly-2018-09-14
 addons:
@@ -30,7 +31,7 @@ script:
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo build --all --all-targets
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo clippy --all --all-targets
 - RUSTC_WRAPPER=~/.cargo/bin/sccache cargo test --all
-- LOG_SERVICES=1 ./run_environments/regtest/harness.sh ./run_environments/regtest/happy_path.sh
+- 'nvm install && nvm use && cd api_tests && npm install && DEBUG=1 LOG_DIR=./log ./harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat log/*; exit 1; }'
 notifications:
   email: false
   slack:

@@ -20,6 +20,7 @@ fn main() {
 
     let mut config = rocket::Config::development().unwrap();
 
+    config.set_address("0.0.0.0").unwrap();
     config.set_port(8080);
 
     // TODO: Read that stuff from the environment

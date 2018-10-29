@@ -358,7 +358,10 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
             .take(1)
             .map_err(Error::from)
             .for_each(move |transaction_id| {
-                debug!("Ledger Query Service returned tx: {}", transaction_id);
+                debug!(
+                    "Ledger Query Service returned tx sent to Ethereum HTLC: {}",
+                    transaction_id
+                );
 
                 let secret = LedgerHtlcService::<
                     Ethereum,
