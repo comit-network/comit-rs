@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate log;
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
@@ -9,32 +7,25 @@ extern crate hex;
 extern crate secp256k1_support;
 extern crate tokio;
 extern crate tokio_timer;
-
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use comit_node::{
     comit_client::SwapReject,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::{
-            alice::state_machine::*, ethereum::Seconds, AcceptResponse, Ledger, Request, Secret,
-            SecretHash,
-        },
+        rfc003::{alice::*, ethereum::Seconds, AcceptResponse, Ledger, Request, Secret},
         wire_types,
     },
 };
+
+use comit_node::swap_protocols::rfc003::events;
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
-    Future, Stream,
+    sync::mpsc,
+    Stream,
 };
 use hex::FromHex;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex, RwLock},
-    time::Duration,
-};
-use tokio_timer::Interval;
+use std::{str::FromStr, sync::Arc};
 
 #[derive(Default)]
 struct TestFutures<SL: Ledger, TL: Ledger> {
@@ -60,17 +51,17 @@ impl<
 
     fn source_htlc_funded(
         &mut self,
-        start: &Start<SL, TL, SA, TA>,
-        response: &AcceptResponse<SL, TL>,
+        _start: &Start<SL, TL, SA, TA>,
+        _response: &AcceptResponse<SL, TL>,
     ) -> &mut Box<events::Funded<SL>> {
         self.source_htlc_funded.as_mut().unwrap()
     }
 
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        request: &Start<SL, TL, SA, TA>,
-        response: &AcceptResponse<SL, TL>,
-        source_htlc_id: &SL::HtlcLocation,
+        _request: &Start<SL, TL, SA, TA>,
+        _response: &AcceptResponse<SL, TL>,
+        _source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
@@ -79,14 +70,14 @@ impl<
 
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &TL::HtlcLocation,
+        _target_htlc_id: &TL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
         unimplemented!()
     }
 
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_id: &SL::HtlcLocation,
+        _source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
         unimplemented!()
     }
@@ -127,7 +118,7 @@ fn init<
         futures: Box::new(test_futures),
         state_repo: Arc::new(state_sender),
     };
-    let final_state_future = SwapFuture::new(state, context);
+    let final_state_future = Swap::start_in(state, context);
     (final_state_future, state_receiver.map_err(|_| ()))
 }
 
