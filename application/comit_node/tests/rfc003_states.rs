@@ -12,12 +12,15 @@ use comit_node::{
     comit_client::SwapReject,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::{alice::*, ethereum::Seconds, AcceptResponse, Ledger, Request, Secret},
+        rfc003::{
+            ethereum::Seconds,
+            events,
+            state_machine::{Futures, *},
+            AcceptResponse, Ledger, Request, Secret, SecretHash,
+        },
         wire_types,
     },
 };
-
-use comit_node::swap_protocols::rfc003::events;
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
@@ -40,9 +43,10 @@ impl<
         TL: Ledger,
         SA: Into<wire_types::Asset> + Clone,
         TA: Into<wire_types::Asset> + Clone,
-    > Futures<SL, TL, SA, TA> for TestFutures<SL, TL>
+        S: Into<SecretHash> + Clone,
+    > Futures<SL, TL, SA, TA, S> for TestFutures<SL, TL>
 {
-    fn send_request(
+    fn request_responded(
         &mut self,
         _request: &Request<SL, TL, SA, TA>,
     ) -> &mut Box<events::Response<SL, TL>> {
@@ -51,7 +55,7 @@ impl<
 
     fn source_htlc_funded(
         &mut self,
-        _start: &Start<SL, TL, SA, TA>,
+        _start: &Start<SL, TL, SA, TA, S>,
         _response: &AcceptResponse<SL, TL>,
     ) -> &mut Box<events::Funded<SL>> {
         self.source_htlc_funded.as_mut().unwrap()
@@ -59,7 +63,7 @@ impl<
 
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        _request: &Start<SL, TL, SA, TA>,
+        _request: &Start<SL, TL, SA, TA, S>,
         _response: &AcceptResponse<SL, TL>,
         _source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
@@ -83,7 +87,7 @@ impl<
     }
 }
 
-fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
+fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
     Start {
         source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
@@ -106,12 +110,13 @@ fn init<
     TL: Ledger,
     SA: Clone + Send + Sync + Into<wire_types::Asset> + 'static,
     TA: Clone + Send + Sync + Into<wire_types::Asset> + 'static,
+    S: Into<SecretHash> + Clone + Send + Sync + 'static,
 >(
-    state: SwapStates<SL, TL, SA, TA>,
+    state: SwapStates<SL, TL, SA, TA, S>,
     test_futures: TestFutures<SL, TL>,
 ) -> (
-    SwapFuture<SL, TL, SA, TA>,
-    impl Stream<Item = SwapStates<SL, TL, SA, TA>, Error = ()>,
+    SwapFuture<SL, TL, SA, TA, S>,
+    impl Stream<Item = SwapStates<SL, TL, SA, TA, S>, Error = ()>,
 ) {
     let (state_sender, state_receiver) = mpsc::unbounded();
     let context = Context {
