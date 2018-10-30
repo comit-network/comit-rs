@@ -49,22 +49,26 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
         &mut self,
         request: Req,
     ) -> Box<Future<Item = Res, Error = Error<Frame>> + Send> {
-        let response_source = self.response_source.clone();
-        let frame_id = self.next_id;
-        let frame = request.into_frame(frame_id);
+        let (request_frame, response_future) = {
+            let mut response_source = self.response_source.lock().unwrap();
 
-        let future = self.send_frame(frame).and_then(move |()| {
-            let mut response_source = response_source.lock().unwrap();
+            let frame_id = self.next_id;
 
-            response_source
+            let request_frame = request.into_frame(frame_id);
+            let response_future = response_source
                 .on_response_frame(frame_id)
-                .map(|f| f.into())
-                .map_err(|_| Error::Canceled)
-        });
+                .map(Res::from)
+                .map_err(|_| Error::Canceled);
 
-        self.next_id += 1;
+            self.next_id += 1;
 
-        Box::new(future)
+            (request_frame, response_future)
+        };
+
+        Box::new(
+            self.send_frame(request_frame)
+                .and_then(move |_| response_future),
+        )
     }
 
     pub fn send_frame(
