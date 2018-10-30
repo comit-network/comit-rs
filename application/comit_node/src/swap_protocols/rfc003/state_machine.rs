@@ -6,41 +6,9 @@ use swap_protocols::rfc003::{
     SwapOutcome,
 };
 
-pub trait Futures<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>:
-    Send
-{
-    fn request_responded(
-        &mut self,
-        request: &Request<SL, TL, SA, TA>,
-    ) -> &mut Box<events::Response<SL, TL>>;
-
-    fn source_htlc_funded(
-        &mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
-    ) -> &mut Box<events::Funded<SL>>;
-
-    fn source_htlc_refunded_target_htlc_funded(
-        &mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
-        source_htlc_id: &SL::HtlcLocation,
-    ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>>;
-
-    fn target_htlc_redeemed_or_refunded(
-        &mut self,
-        target_htlc_id: &TL::HtlcLocation,
-    ) -> &mut Box<events::RedeemedOrRefunded<TL>>;
-
-    fn source_htlc_redeemed_or_refunded(
-        &mut self,
-        source_htlc_id: &SL::HtlcLocation,
-    ) -> &mut Box<events::RedeemedOrRefunded<SL>>;
-}
-
 #[allow(missing_debug_implementations)]
 pub struct Context<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone> {
-    pub futures: Box<Futures<SL, TL, SA, TA, S>>,
+    pub events: Box<events::Events<SL, TL, SA, TA, S>>,
     pub state_repo: Arc<SaveState<SL, TL, SA, TA, S>>,
 }
 
@@ -142,7 +110,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
             secret_hash: state.secret.clone().into(),
         };
 
-        let response = try_ready!(context.futures.request_responded(&request).poll());
+        let response = try_ready!(context.events.request_responded(&request).poll());
 
         let state = state.take();
 
@@ -164,7 +132,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterAccepted<SL, TL, SA, TA, S>>, rfc003::Error> {
         let source_htlc_id = try_ready!(
             context
-                .futures
+                .events
                 .source_htlc_funded(&state.start, &state.response)
                 .poll()
         );
@@ -187,7 +155,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .source_htlc_refunded_target_htlc_funded(
                     &state.start,
                     &state.response,
@@ -217,7 +185,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
         context: &mut Context<SL, TL, SA, TA, S>,
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
-            .futures
+            .events
             .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
             .poll()?
         {
@@ -250,7 +218,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
 
         match try_ready!(
             context
-                .futures
+                .events
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
@@ -286,7 +254,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
                 .poll()
         ) {
@@ -306,7 +274,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
@@ -326,7 +294,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
@@ -346,7 +314,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
                 .poll()
         ) {

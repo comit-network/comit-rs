@@ -13,9 +13,13 @@ use comit_node::{
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
+            self,
             ethereum::Seconds,
-            events,
-            state_machine::{Futures, *},
+            events::{
+                self, Events, RequestResponded, SourceHtlcFunded, SourceHtlcRedeemedOrRefunded,
+                SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
+            },
+            state_machine::*,
             AcceptResponse, Ledger, Request, Secret, SecretHash,
         },
         wire_types,
@@ -25,67 +29,72 @@ use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
     sync::mpsc,
-    Stream,
+    Future, Stream,
 };
 use hex::FromHex;
 use std::{str::FromStr, sync::Arc};
 
 #[derive(Default)]
-struct TestFutures<SL: Ledger, TL: Ledger> {
-    pub response: Option<Box<events::Response<SL, TL>>>,
-    pub source_htlc_funded: Option<Box<events::Funded<SL>>>,
+struct FakeEvents {
+    pub response: Option<Box<events::Response<Bitcoin, Ethereum>>>,
+    pub source_htlc_funded: Option<Box<events::Funded<Bitcoin>>>,
     pub source_htlc_refunded_target_htlc_funded:
-        Option<Box<events::SourceRefundedOrTargetFunded<SL, TL>>>,
+        Option<Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>>>,
 }
 
-impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Into<wire_types::Asset> + Clone,
-        TA: Into<wire_types::Asset> + Clone,
-        S: Into<SecretHash> + Clone,
-    > Futures<SL, TL, SA, TA, S> for TestFutures<SL, TL>
-{
+impl RequestResponded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeEvents {
     fn request_responded(
         &mut self,
-        _request: &Request<SL, TL, SA, TA>,
-    ) -> &mut Box<events::Response<SL, TL>> {
+        request: &Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+    ) -> &mut Box<events::Response<Bitcoin, Ethereum>> {
         self.response.as_mut().unwrap()
     }
+}
 
+impl SourceHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> for FakeEvents {
     fn source_htlc_funded(
         &mut self,
-        _start: &Start<SL, TL, SA, TA, S>,
-        _response: &AcceptResponse<SL, TL>,
-    ) -> &mut Box<events::Funded<SL>> {
+        start: &Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        response: &AcceptResponse<Bitcoin, Ethereum>,
+    ) -> &mut Box<events::Funded<Bitcoin>> {
         self.source_htlc_funded.as_mut().unwrap()
     }
+}
 
+impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
+    for FakeEvents
+{
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        _request: &Start<SL, TL, SA, TA, S>,
-        _response: &AcceptResponse<SL, TL>,
-        _source_htlc_id: &SL::HtlcLocation,
-    ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
+        start: &Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        response: &AcceptResponse<Bitcoin, Ethereum>,
+        source_htlc_id: &bitcoin_support::OutPoint,
+    ) -> &mut Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
             .unwrap()
     }
+}
 
+impl TargetHtlcRedeemedOrRefunded<Ethereum> for FakeEvents {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        _target_htlc_id: &TL::HtlcLocation,
-    ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
-        unimplemented!()
-    }
-
-    fn source_htlc_redeemed_or_refunded(
-        &mut self,
-        _source_htlc_id: &SL::HtlcLocation,
-    ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
+        target_htlc_id: &ethereum_support::Address,
+    ) -> &mut Box<events::RedeemedOrRefunded<Ethereum>> {
         unimplemented!()
     }
 }
+
+impl SourceHtlcRedeemedOrRefunded<Bitcoin> for FakeEvents {
+    fn source_htlc_redeemed_or_refunded(
+        &mut self,
+        target_htlc_id: &bitcoin_support::OutPoint,
+    ) -> &mut Box<events::RedeemedOrRefunded<Bitcoin>> {
+        unimplemented!()
+    }
+}
+
+impl Events<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> for FakeEvents {}
 
 fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
     Start {
@@ -105,22 +114,19 @@ fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity,
     }
 }
 
-fn init<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Clone + Send + Sync + Into<wire_types::Asset> + 'static,
-    TA: Clone + Send + Sync + Into<wire_types::Asset> + 'static,
-    S: Into<SecretHash> + Clone + Send + Sync + 'static,
->(
-    state: SwapStates<SL, TL, SA, TA, S>,
-    test_futures: TestFutures<SL, TL>,
+fn init(
+    state: SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+    events: FakeEvents,
 ) -> (
-    SwapFuture<SL, TL, SA, TA, S>,
-    impl Stream<Item = SwapStates<SL, TL, SA, TA, S>, Error = ()>,
+    SwapFuture<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+    impl Stream<
+        Item = SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        Error = (),
+    >,
 ) {
     let (state_sender, state_receiver) = mpsc::unbounded();
     let context = Context {
-        futures: Box::new(test_futures),
+        events: Box::new(events),
         state_repo: Arc::new(state_sender),
     };
     let final_state_future = Swap::start_in(state, context);
@@ -162,7 +168,7 @@ fn when_swap_is_rejected_go_to_final_reject() {
 
     let (state_machine, states) = init(
         start.clone().into(),
-        TestFutures {
+        FakeEvents {
             response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
             ..Default::default()
         },
@@ -187,7 +193,7 @@ fn source_refunded() {
 
     let (state_machine, states) = init(
         start.clone().into(),
-        TestFutures {
+        FakeEvents {
             response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
             source_htlc_funded: Some(Box::new(future::ok(OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),

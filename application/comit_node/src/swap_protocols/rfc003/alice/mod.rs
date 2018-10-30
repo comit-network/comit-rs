@@ -1,3 +1,4 @@
 mod actions;
+mod events;
 
-pub use self::actions::btc_eth;
+pub use self::{actions::btc_eth, events::*};
