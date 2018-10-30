@@ -7,6 +7,7 @@ pub mod bitcoin;
 pub mod ethereum;
 pub mod events;
 pub mod ledger_htlc_service;
+pub mod state_machine;
 
 mod error;
 mod ledger;

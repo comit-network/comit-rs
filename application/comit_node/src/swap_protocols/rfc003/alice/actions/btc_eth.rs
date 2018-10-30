@@ -1,12 +1,13 @@
 use super::{Action, BitcoinFund, BitcoinRefund, EtherRedeem, StateActions};
 use bitcoin_support::BitcoinQuantity;
+use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    rfc003::{self, alice::state_machine::*, messages::AcceptResponse},
+    rfc003::{self, messages::AcceptResponse, state_machine::*, Secret},
 };
 
-pub fn bitcoin_htlc<TA: Clone>(
-    start: &Start<Bitcoin, Ethereum, BitcoinQuantity, TA>,
+pub fn bitcoin_htlc(
+    start: &Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
     response: &AcceptResponse<Bitcoin, Ethereum>,
 ) -> rfc003::bitcoin::Htlc {
     rfc003::bitcoin::Htlc::new(
@@ -17,8 +18,8 @@ pub fn bitcoin_htlc<TA: Clone>(
     )
 }
 
-impl<TA: Clone> StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
-    for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, TA>
+impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
+    for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
 {
     fn actions(&self) -> Vec<Action<BitcoinFund, EtherRedeem, BitcoinRefund>> {
         use self::SwapStates as SS;
