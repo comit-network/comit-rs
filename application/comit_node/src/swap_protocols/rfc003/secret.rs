@@ -90,6 +90,12 @@ impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {
     }
 }
 
+impl From<Secret> for SecretHash {
+    fn from(secret: Secret) -> Self {
+        secret.hash()
+    }
+}
+
 impl Secret {
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
         let random_bytes = rng.gen_random_bytes(SHA256_DIGEST_LENGTH);

@@ -1,5 +1,3 @@
-#[macro_use]
-extern crate log;
 extern crate bitcoin_rpc_client;
 extern crate bitcoin_support;
 extern crate comit_node;
@@ -9,15 +7,16 @@ extern crate hex;
 extern crate secp256k1_support;
 extern crate tokio;
 extern crate tokio_timer;
-
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use comit_node::{
     comit_client::SwapReject,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            alice::state_machine::*, ethereum::Seconds, AcceptResponse, Ledger, Request, Secret,
-            SecretHash,
+            ethereum::Seconds,
+            events,
+            state_machine::{Futures, *},
+            AcceptResponse, Ledger, Request, Secret, SecretHash,
         },
         wire_types,
     },
@@ -25,16 +24,11 @@ use comit_node::{
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
-    Future, Stream,
+    sync::mpsc,
+    Stream,
 };
 use hex::FromHex;
-use std::{
-    str::FromStr,
-    sync::{Arc, Mutex, RwLock},
-    time::Duration,
-};
-use tokio_timer::Interval;
+use std::{str::FromStr, sync::Arc};
 
 #[derive(Default)]
 struct TestFutures<SL: Ledger, TL: Ledger> {
@@ -49,9 +43,10 @@ impl<
         TL: Ledger,
         SA: Into<wire_types::Asset> + Clone,
         TA: Into<wire_types::Asset> + Clone,
-    > Futures<SL, TL, SA, TA> for TestFutures<SL, TL>
+        S: Into<SecretHash> + Clone,
+    > Futures<SL, TL, SA, TA, S> for TestFutures<SL, TL>
 {
-    fn send_request(
+    fn request_responded(
         &mut self,
         _request: &Request<SL, TL, SA, TA>,
     ) -> &mut Box<events::Response<SL, TL>> {
@@ -60,17 +55,17 @@ impl<
 
     fn source_htlc_funded(
         &mut self,
-        start: &Start<SL, TL, SA, TA>,
-        response: &AcceptResponse<SL, TL>,
+        _start: &Start<SL, TL, SA, TA, S>,
+        _response: &AcceptResponse<SL, TL>,
     ) -> &mut Box<events::Funded<SL>> {
         self.source_htlc_funded.as_mut().unwrap()
     }
 
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        request: &Start<SL, TL, SA, TA>,
-        response: &AcceptResponse<SL, TL>,
-        source_htlc_id: &SL::HtlcLocation,
+        _request: &Start<SL, TL, SA, TA, S>,
+        _response: &AcceptResponse<SL, TL>,
+        _source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
@@ -79,20 +74,20 @@ impl<
 
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &TL::HtlcLocation,
+        _target_htlc_id: &TL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<TL>> {
         unimplemented!()
     }
 
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_id: &SL::HtlcLocation,
+        _source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<events::RedeemedOrRefunded<SL>> {
         unimplemented!()
     }
 }
 
-fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
+fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
     Start {
         source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
@@ -115,19 +110,20 @@ fn init<
     TL: Ledger,
     SA: Clone + Send + Sync + Into<wire_types::Asset> + 'static,
     TA: Clone + Send + Sync + Into<wire_types::Asset> + 'static,
+    S: Into<SecretHash> + Clone + Send + Sync + 'static,
 >(
-    state: SwapStates<SL, TL, SA, TA>,
+    state: SwapStates<SL, TL, SA, TA, S>,
     test_futures: TestFutures<SL, TL>,
 ) -> (
-    SwapFuture<SL, TL, SA, TA>,
-    impl Stream<Item = SwapStates<SL, TL, SA, TA>, Error = ()>,
+    SwapFuture<SL, TL, SA, TA, S>,
+    impl Stream<Item = SwapStates<SL, TL, SA, TA, S>, Error = ()>,
 ) {
     let (state_sender, state_receiver) = mpsc::unbounded();
     let context = Context {
         futures: Box::new(test_futures),
         state_repo: Arc::new(state_sender),
     };
-    let final_state_future = SwapFuture::new(state, context);
+    let final_state_future = Swap::start_in(state, context);
     (final_state_future, state_receiver.map_err(|_| ()))
 }
 
