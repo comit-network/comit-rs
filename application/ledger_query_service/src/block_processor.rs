@@ -20,6 +20,7 @@ pub trait Block: Debug {
 
 pub trait Query<O>: Debug {
     fn matches(&self, object: &O) -> QueryMatchResult;
+    fn is_empty(&self) -> bool;
 }
 
 #[derive(Debug, PartialEq)]
@@ -233,6 +234,9 @@ mod tests {
                 QueryMatchResult::no()
             }
         }
+        fn is_empty(&self) -> bool {
+            false
+        }
     }
 
     #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
@@ -247,6 +251,10 @@ mod tests {
             } else {
                 QueryMatchResult::no()
             }
+        }
+
+        fn is_empty(&self) -> bool {
+            false
         }
     }
 

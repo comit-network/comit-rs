@@ -30,7 +30,10 @@ dependencies = [
 
 # Overridden because: specified alias
 [tasks.post-test]
-alias = "e2e"
+dependencies = [
+    "lqs",
+    "e2e",
+]
 
 # Overridden because: added dependencies
 [tasks.post-ci-flow]
@@ -86,6 +89,10 @@ alias = "dev-test-flow"
 [tasks.e2e]
 workspace = false
 alias = "e2e-tests-flow"
+
+[tasks.lqs]
+workspace = false
+alias = "lqs-tests-flow"
 
 ################
 # Custom tasks #
@@ -191,18 +198,55 @@ npm install;
 description = "Runs end-to-end tests."
 workspace = false
 private = true
-env = { "LOG_DIR" = "./log" }
+env = { "LOG_DIR" = "./e2e/log" }
 script_runner = "bash"
 script = [
 '''
+set +x;
 export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat log/*; exit 1; }
+./e2e/rfc003/btc_eth/harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat "$LOG_DIR/*"; exit 1; }
 '''
 ]
 
 [tasks.post-e2e-tests]
+workspace = false
+private = true
+
+######################################
+# Ledger Query Service API Test flow #
+[tasks.lqs-tests-flow]
+description = "Defines the ledger_query_service API tests flow."
+workspace = false
+dependencies = [
+    "build",
+    "pre-lqs-tests",
+    "lqs-tests",
+    "post-lqs-tests",
+]
+
+[tasks.pre-lqs-tests]
+alias = "pre-e2e-tests"
+
+[tasks.lqs-tests]
+description = "Runs ledger_query_service API tests."
+workspace = false
+private = true
+env = { "LOG_DIR" = "./ledger_query_service/log" }
+script_runner = "bash"
+script = [
+'''
+set +x;
+export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
+. "$NVM_SH"
+cd api_tests;
+nvm use;
+./ledger_query_service/harness.sh ./ledger_query_service/lqs_test.js || { cat "$LOG_DIR/*"; exit 1; }
+'''
+]
+
+[tasks.post-lqs-tests]
 workspace = false
 private = true
