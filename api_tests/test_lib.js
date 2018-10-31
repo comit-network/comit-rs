@@ -7,8 +7,8 @@ const Web3 = require('web3');
 const bitcoin = require('bitcoinjs-lib');
 
 module.exports.sleep = (time) => {
-    return new Promise((res,rej) => {
-        setTimeout(res,time);
+    return new Promise((res, rej) => {
+        setTimeout(res, time);
     });
 };
 
@@ -39,7 +39,7 @@ class PlayerConf {
     }
 
     eth_private_key() {
-        return Buffer.from(this.config.ethereum.private_key,"hex");
+        return Buffer.from(this.config.ethereum.private_key, "hex");
     }
 
     eth_address() {
@@ -47,13 +47,13 @@ class PlayerConf {
     }
 
     comit_node_url() {
-        return "http://" +  this.host + ":" + this.config.http_api.port;
+        return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_until(chai, id,status) {
+    poll_comit_node_until(chai, id, status) {
         return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url()).get('/swaps/' + id).end((err,res) => {
-                if(err) {
+            chai.request(this.comit_node_url()).get('/swaps/' + id).end((err, res) => {
+                if (err) {
                     return rej(err);
                 }
                 res.should.have.status(200);
@@ -62,7 +62,7 @@ class PlayerConf {
                 }
                 else {
                     setTimeout(() => {
-                        this.poll_until(chai,id,status).then((result) => {
+                        this.poll_comit_node_until(chai, id, status).then((result) => {
                             final_res(result);
                         });
                     }, 3000);
@@ -71,7 +71,7 @@ class PlayerConf {
         });
     }
 
-    async send_btc_to_address(to, value) {
+    async send_btc_to_p2wsh_address(to, value) {
         const txb = new bitcoin.TransactionBuilder();
         const utxo = this.bitcoin_utxo;
         const to_address = bitcoin.address.fromBech32(to);
@@ -87,14 +87,35 @@ class PlayerConf {
         );
         //TODO: Generate a new address and send it to there
         txb.addOutput('1cMh228HTCiwS8ZsaakH8A8wze1JR5ZsP', change);
-        txb.addOutput( bitcoin.payments.p2wsh({ hash: to_address.data }).output, value);
+        txb.addOutput(bitcoin.payments.p2wsh({hash: to_address.data}).output, value);
         txb.sign(0, private_key, null, null, input_amount);
 
         return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
+    async send_btc_to_p2wpkh_address(to, value) {
+        const txb = new bitcoin.TransactionBuilder();
+        const utxo = this.bitcoin_utxo;
+        const to_address = bitcoin.address.fromBech32(to);
+        const input_amount = utxo.value;
+        const private_key = bitcoin.ECPair.fromWIF(utxo.private_key);
+        const fee = 2500;
+        const change = input_amount - value - fee;
+        txb.addInput(
+            utxo.txid,
+            utxo.vout,
+            null,
+            bitcoin.payments.p2wpkh({pubkey: private_key.publicKey}).output
+        );
+        //TODO: Generate a new address and send it to there
+        txb.addOutput('1cMh228HTCiwS8ZsaakH8A8wze1JR5ZsP', change);
+        txb.addOutput(bitcoin.payments.p2wpkh({hash: to_address.data}).output, value);
+        txb.sign(0, private_key, null, null, input_amount);
 
-    async send_eth_transaction_to(to, data="0x0", value="0x0") {
+        return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
+    }
+
+    async send_eth_transaction_to(to, data = "0x0", value = "0x0") {
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
 
         const tx = new EthereumTx({
@@ -114,8 +135,45 @@ class PlayerConf {
     }
 }
 
+class LedgerQueryServiceConf {
+    constructor(host, port) {
+        this.host = host;
+        this.port = port;
+    }
 
-module.exports.player_conf = (name, utxo) => { return new PlayerConf(name,utxo); };
+    url() {
+        return "http://" + this.host + ":" + this.port;
+    }
+
+    poll_until_matches(chai, query_url) {
+        return new Promise((final_res, rej) => {
+            chai.request(query_url).get('').end((err, res) => {
+                if (err) {
+                    return rej(err);
+                }
+                res.should.have.status(200);
+                if (res.body.matches.length !== 0) {
+                    final_res(res.body);
+                }
+                else {
+                    setTimeout(() => {
+                        this.poll_until_matches(chai, query_url).then((result) => {
+                            final_res(result);
+                        });
+                    }, 200);
+                }
+            });
+        });
+    }
+}
+
+
+module.exports.player_conf = (name, utxo) => {
+    return new PlayerConf(name, utxo);
+};
+module.exports.ledger_query_service_conf = (host, port) => {
+    return new LedgerQueryServiceConf(host, port);
+};
 
 {
     const eth_funded_private_key = Buffer.from(process.env.ETH_FUNDED_PRIVATE_KEY, "hex");
