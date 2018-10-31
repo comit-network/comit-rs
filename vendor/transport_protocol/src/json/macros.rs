@@ -18,8 +18,10 @@ macro_rules! try_header {
 macro_rules! header {
     ($e:expr) => {
         header_internal!($e, {
+            extern crate futures;
+
             info!("Header was not present, early returning with error response (SE00)!");
-            return Response::new(Status::SE(0));
+            return Box::new(futures::future::ok(Response::new(Status::SE(0))));
         })
     };
 }
@@ -30,8 +32,11 @@ macro_rules! body {
         match $e {
             Ok(body) => body,
             Err(e) => {
+
+                extern crate futures;
+
                 error!("Failed to deserialize body: {:?}", e);
-                return Response::new(Status::SE(0))
+                return Box::new(futures::future::ok(Response::new(Status::SE(0))));
             }
         }
     };
@@ -43,8 +48,11 @@ macro_rules! header_internal {
         match $e {
             Some(Ok(header)) => header,
             Some(Err(e)) => {
+
+                extern crate futures;
+
                 error!("Failed to deserialize header: {:?}", e);
-                return Response::new(Status::SE(0))
+                return Box::new(futures::future::ok(Response::new(Status::SE(0))));
             },
             None => $none,
         }

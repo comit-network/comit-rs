@@ -1,7 +1,6 @@
 use common::place_order::{PriceHeader, ThingHeader};
-use transport_protocol::config::Config;
-
-use transport_protocol::{json::*, *};
+use futures::future;
+use transport_protocol::{config::Config, json::*, *};
 
 pub fn config() -> Config<Request, Response> {
     Config::default().on_request("BUY", &["THING"], |request: Request| {
@@ -12,6 +11,8 @@ pub fn config() -> Config<Request, Response> {
             ThingHeader::RetroEncabulator => 9001,
         };
 
-        Response::new(Status::OK(0)).with_header("PRICE", PriceHeader { value: price })
+        Box::new(future::ok(
+            Response::new(Status::OK(0)).with_header("PRICE", PriceHeader { value: price }),
+        ))
     })
 }
