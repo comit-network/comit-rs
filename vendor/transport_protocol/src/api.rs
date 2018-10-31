@@ -16,6 +16,7 @@ pub enum RequestError {
     UnknownMandatoryHeaders(Vec<String>),
     MalformedHeader(String),
     MalformedField(String),
+    HandlerError,
 }
 
 impl RequestError {
@@ -25,6 +26,7 @@ impl RequestError {
             RequestError::UnknownMandatoryHeaders(_) => Status::SE(1),
             RequestError::MalformedHeader(_) => Status::SE(0),
             RequestError::MalformedField(_) => Status::SE(0),
+            RequestError::HandlerError => Status::SE(0),
         }
     }
 }
@@ -34,7 +36,10 @@ where
     Self: Sized,
 {
     fn new(config: Config<Req, Res>) -> (Self, Arc<Mutex<ResponseFrameSource<Frame>>>);
-    fn handle(&mut self, frame: Frame) -> Result<Option<Frame>, Error>;
+    fn handle(
+        &mut self,
+        frame: Frame,
+    ) -> Result<Option<Box<Future<Item = Frame, Error = ()> + Send + 'static>>, Error>;
 }
 
 #[derive(Debug)]

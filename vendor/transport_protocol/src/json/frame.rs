@@ -1,6 +1,7 @@
 use api::{Error, FrameHandler, IntoFrame, ResponseFrameSource};
 use config::Config;
 use futures::{
+    future,
     sync::oneshot::{self, Sender},
     Future,
 };
@@ -100,7 +101,10 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
         (handler, response_source)
     }
 
-    fn handle(&mut self, frame: json::Frame) -> Result<Option<json::Frame>, Error> {
+    fn handle(
+        &mut self,
+        frame: json::Frame,
+    ) -> Result<Option<Box<Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error> {
         match frame._type.as_str() {
             "REQUEST" => {
                 let mut payload = frame.payload;
@@ -117,14 +121,18 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 
                 self.next_expected_id = frame.id + 1;
 
+                let frame_id = frame.id;
+
                 let response = self
                     .dispatch_request(&_type, headers, body)
-                    .unwrap_or_else(Self::response_from_error);
+                    .then(|result| match result {
+                        // TODO: Validate generated response here
+                        // TODO check if header or body in response failed to serialize here
+                        Ok(response) => Ok(response),
+                        Err(e) => Ok(Self::response_from_error(e)),
+                    }).and_then(move |response| Ok(response.into_frame(frame_id)));
 
-                // TODO: Validate generated response here
-                // TODO check if header or body in response failed to serialize here
-
-                Ok(Some(response.into_frame(frame.id)))
+                Ok(Some(Box::new(response)))
             }
             "RESPONSE" => {
                 let mut response_source = self.response_source.lock().unwrap();
@@ -150,33 +158,45 @@ impl JsonFrameHandler {
         _type: &JsonValue,
         headers: JsonValue,
         body: JsonValue,
-    ) -> Result<json::Response, RequestError> {
-        let _type = _type
-            .as_str()
-            .ok_or_else(|| RequestError::MalformedField("type".to_string()))?;
+    ) -> Box<Future<Item = json::Response, Error = RequestError> + Send + 'static> {
+        let _type = match _type.as_str() {
+            Some(_type) => _type,
+            None => {
+                return Box::new(future::err(RequestError::MalformedField(
+                    "type".to_string(),
+                )))
+            }
+        };
 
         let request_headers = match headers {
             serde_json::Value::Object(map) => map,
             serde_json::Value::Null => serde_json::Map::default(),
-            _ => return Err(RequestError::MalformedField("headers".to_string())),
+            _ => {
+                return Box::new(future::err(RequestError::MalformedField(
+                    "headers".to_string(),
+                )))
+            }
         };
 
-        let parsed_headers = self
+        let parsed_headers = match self
             .config
             .known_headers_for(_type)
             .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))
             .and_then(|known_headers| {
                 Self::parse_headers(known_headers, request_headers).map_err(From::from)
-            })?;
+            }) {
+            Ok(parsed_headers) => parsed_headers,
+            Err(e) => return Box::new(future::err(e)),
+        };
 
         let request = json::Request::new(_type.to_string(), parsed_headers, body);
 
-        let request_handler = self
-            .config
-            .request_handler_for(_type)
-            .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))?;
+        let request_handler = match self.config.request_handler_for(_type) {
+            Some(request_handler) => request_handler,
+            None => return Box::new(future::err(RequestError::UnknownRequestType(_type.into()))),
+        };
 
-        Ok(request_handler(request))
+        Box::new(request_handler(request).map_err(|_| RequestError::HandlerError))
     }
 
     fn parse_headers(
