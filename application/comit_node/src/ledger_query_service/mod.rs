@@ -1,4 +1,4 @@
-pub use self::{bitcoin::*, client::*, ethereum::*};
+pub use self::{bitcoin::*, cache::*, client::*, ethereum::*};
 use failure;
 use reqwest::{self, Url};
 use std::marker::PhantomData;
@@ -6,12 +6,13 @@ use swap_protocols::ledger::Ledger;
 use tokio::prelude::Future;
 
 mod bitcoin;
+mod cache;
 mod client;
 mod ethereum;
 pub mod fake_query_service;
 pub mod fetch_transaction_stream;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub struct QueryId<L: Ledger> {
     location: Url,
     ledger_type: PhantomData<L>,
@@ -32,16 +33,16 @@ impl<L: Ledger> QueryId<L> {
     }
 }
 
-#[derive(Fail, Debug)]
+#[derive(Fail, Debug, Clone)]
 pub enum Error {
     #[fail(display = "The request failed to send.")]
-    FailedRequest(#[cause] reqwest::Error),
+    FailedRequest,
     #[fail(display = "The response was somehow malformed.")]
-    MalformedResponse(failure::Error),
+    MalformedResponse,
 }
 
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: 'static + Send + Sync {
-    fn create(&self, query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send>;
+    fn create(&self, query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
     fn fetch_results(
         &self,
         query: &QueryId<L>,

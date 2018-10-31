@@ -50,20 +50,15 @@ impl DefaultLedgerQueryServiceApiClient {
             .post(create_endpoint)
             .json(&query)
             .send()
-            .map_err(Error::FailedRequest)
+            .map_err(|e| Error::FailedRequest)
             .and_then(|response| {
                 response
                     .headers()
                     .get(LOCATION)
-                    .ok_or_else(|| Error::MalformedResponse(format_err!("missing location")))
-                    .and_then(|value| {
-                        value
-                            .to_str()
-                            .map_err(|e| Error::MalformedResponse(failure::Error::from(e)))
-                    }).and_then(|location| {
-                        Url::parse(location)
-                            .map_err(|e| Error::MalformedResponse(failure::Error::from(e)))
-                    })
+                    .ok_or_else(|| Error::MalformedResponse)
+                    //                    .ok_or_else(|| Error::MalformedResponse(format_err!("missing location")))
+                    .and_then(|value| value.to_str().map_err(|e| Error::MalformedResponse))
+                    .and_then(|location| Url::parse(location).map_err(|e| Error::MalformedResponse))
             }).map(QueryId::new);
 
         Box::new(query_id)
@@ -78,7 +73,7 @@ impl DefaultLedgerQueryServiceApiClient {
             .get(query.as_ref().clone())
             .send()
             .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
-            .map_err(Error::FailedRequest)
+            .map_err(|e| Error::FailedRequest)
             .map(|response| response.matches);
 
         Box::new(transactions)
@@ -93,7 +88,7 @@ impl DefaultLedgerQueryServiceApiClient {
                 .delete(query.as_ref().clone())
                 .send()
                 .map(|_| ())
-                .map_err(Error::FailedRequest),
+                .map_err(|e| Error::FailedRequest),
         )
     }
 }
