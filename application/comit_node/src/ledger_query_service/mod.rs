@@ -1,6 +1,5 @@
 pub use self::{bitcoin::*, cache::*, client::*, ethereum::*};
-use failure;
-use reqwest::{self, Url};
+use reqwest::Url;
 use std::marker::PhantomData;
 use swap_protocols::ledger::Ledger;
 use tokio::prelude::Future;
@@ -41,11 +40,19 @@ pub enum Error {
     MalformedResponse,
 }
 
-pub trait LedgerQueryServiceApiClient<L: Ledger, Q>: 'static + Send + Sync {
-    fn create(&self, query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
+pub trait LedgerQueryServiceApiClient<L: Ledger, Q>:
+    'static + Send + Sync + CreateQuery<L, Q>
+{
     fn fetch_results(
         &self,
         query: &QueryId<L>,
     ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
     fn delete(&self, query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send>;
+}
+
+pub trait CreateQuery<L: Ledger, Q>: 'static + Send + Sync {
+    fn create_query(
+        &self,
+        query: Q,
+    ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
 }

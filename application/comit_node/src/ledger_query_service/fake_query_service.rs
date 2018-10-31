@@ -1,7 +1,8 @@
 use bitcoin_support::TransactionId as BitcoinTxId;
 use ethereum_support::H256 as EthereumTxId;
 use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, Error, LedgerQueryServiceApiClient, QueryId,
+    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error,
+    LedgerQueryServiceApiClient, QueryId,
 };
 use std::{fmt, marker::PhantomData, sync::Mutex};
 use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
@@ -13,14 +14,16 @@ pub struct SimpleFakeLedgerQueryService {
     pub ethereum_results: Vec<EthereumTxId>,
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
-    fn create(
+impl CreateQuery<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
+    fn create_query(
         &self,
         _query: BitcoinQuery,
     ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
+}
 
+impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
     fn fetch_results(
         &self,
         _query: &QueryId<Bitcoin>,
@@ -33,14 +36,16 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQuer
     }
 }
 
-impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
-    fn create(
+impl CreateQuery<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
+    fn create_query(
         &self,
         _query: EthereumQuery,
     ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
+}
 
+impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
     fn fetch_results(
         &self,
         _query: &QueryId<Ethereum>,
@@ -60,11 +65,13 @@ pub struct InvocationCountFakeLedgerQueryService<L: Ledger> {
     pub results: Vec<L::TxId>,
 }
 
-impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedgerQueryService<L> {
-    fn create(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+impl<L: Ledger, Q> CreateQuery<L, Q> for InvocationCountFakeLedgerQueryService<L> {
+    fn create_query(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
+}
 
+impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedgerQueryService<L> {
     fn fetch_results(
         &self,
         _query: &QueryId<L>,
@@ -121,13 +128,17 @@ impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
     }
 }
 
+impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> CreateQuery<L, Q>
+    for LedgerQueryServiceMock<L, Q>
+{
+    fn create_query(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+        Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
+    }
+}
+
 impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> LedgerQueryServiceApiClient<L, Q>
     for LedgerQueryServiceMock<L, Q>
 {
-    fn create(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
-        Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
-    }
-
     fn fetch_results(
         &self,
         _query: &QueryId<L>,

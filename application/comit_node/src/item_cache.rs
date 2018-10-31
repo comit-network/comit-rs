@@ -1,4 +1,5 @@
 use futures::{self, sync::oneshot};
+use std::fmt::{self, Debug, Formatter};
 use tokio::prelude::*;
 
 enum ItemOrFuture<T, E> {
@@ -6,6 +7,16 @@ enum ItemOrFuture<T, E> {
     Future(Box<Future<Item = T, Error = E> + Send + 'static>),
 }
 
+impl<T: Debug, E> Debug for ItemOrFuture<T, E> {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+        match self {
+            ItemOrFuture::Item(i) => write!(f, "ItemOrFuture::Item({:?})", i),
+            ItemOrFuture::Future(_) => write!(f, "ItemOrFuture::Future"),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ItemCache<T, E> {
     inner: ItemOrFuture<T, E>,
 }
@@ -53,7 +64,7 @@ impl<T: Clone, E> Future for ItemCache<T, E> {
     }
 }
 
-impl<T: Clone + Send + 'static, E: Clone + Send + 'static> ItemCache<T, E> {
+impl<T: Clone + Debug + Send + 'static, E: Clone + Debug + Send + 'static> ItemCache<T, E> {
     pub fn duplicate(self) -> (Self, Self) {
         let (first, second) = match self.inner {
             ItemOrFuture::Item(item) => {
@@ -65,10 +76,14 @@ impl<T: Clone + Send + 'static, E: Clone + Send + 'static> ItemCache<T, E> {
 
                 let composed = future
                     .and_then(|item| {
-                        item_sender.send(item.clone());
+                        item_sender
+                            .send(item.clone())
+                            .expect("receiver should not deallocate");
                         Ok(item)
                     }).map_err(|e| {
-                        error_sender.send(e.clone());
+                        error_sender
+                            .send(e.clone())
+                            .expect("receiver should not deallocate");
                         e
                     });
 
@@ -100,7 +115,7 @@ mod tests {
     fn polling_sender_of_oneshot_twice_results_in_error() {
         let (sender, mut receiver) = oneshot::channel();
 
-        sender.send(42);
+        sender.send(42).unwrap();
 
         assert_eq!(receiver.poll(), Ok(Async::Ready(42)));
         assert_eq!(receiver.poll(), Err(futures::Canceled));
@@ -113,7 +128,7 @@ mod tests {
         let mut item_cache: ItemCache<i32, futures::Canceled> =
             ItemOrFuture::Future(Box::new(receiver)).into();
 
-        sender.send(42);
+        sender.send(42).unwrap();
 
         assert_eq!(item_cache.poll(), Ok(Async::Ready(42)));
         assert_eq!(item_cache.poll(), Ok(Async::Ready(42)));
@@ -128,7 +143,7 @@ mod tests {
 
         let (mut first, mut second) = item_cache.duplicate();
 
-        sender.send(42);
+        sender.send(42).unwrap();
 
         assert_eq!(first.poll(), Ok(Async::Ready(42)));
         assert_eq!(second.poll(), Ok(Async::Ready(42)));
