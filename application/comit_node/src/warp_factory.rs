@@ -1,0 +1,65 @@
+use comit_client;
+use event_store;
+use futures::sync::mpsc::UnboundedSender;
+use http_api;
+use key_store::KeyStore;
+use rand::OsRng;
+use std::{
+    net::SocketAddr,
+    panic::RefUnwindSafe,
+    sync::{Arc, Mutex},
+};
+use swaps::common::TradeId;
+use warp::{self, filters::BoxedFilter, Filter, Reply};
+
+#[derive(Clone, Debug)]
+pub struct SwapState {
+    pub rng: Arc<Mutex<OsRng>>,
+    pub remote_comit_node_socket_addr: SocketAddr,
+    pub key_store: Arc<KeyStore>,
+    pub alice_actor_sender: Arc<Mutex<UnboundedSender<TradeId>>>,
+}
+
+pub fn create<
+    C: comit_client::Client + 'static,
+    F: comit_client::ClientFactory<C> + 'static,
+    E: event_store::EventStore<TradeId> + RefUnwindSafe,
+>(
+    event_store: Arc<E>,
+    client_factory: Arc<F>,
+    remote_comit_node_socket_addr: SocketAddr,
+    key_store: Arc<KeyStore>,
+    alice_actor_sender: UnboundedSender<TradeId>,
+) -> BoxedFilter<(impl Reply,)> {
+    let path = warp::path("swaps");
+
+    let rng = Arc::new(Mutex::new(
+        OsRng::new().expect("Failed to get randomness from OS"),
+    ));
+    let swap_state = SwapState {
+        rng,
+        remote_comit_node_socket_addr,
+        key_store,
+        alice_actor_sender: Arc::new(Mutex::new(alice_actor_sender)),
+    };
+    let swap_state = warp::any().map(move || swap_state.clone());
+
+    let client_factory = warp::any().map(move || client_factory.clone());
+    let event_store = warp::any().map(move || event_store.clone());
+
+    let post_swap = warp::post2()
+        .and(swap_state)
+        .and(client_factory)
+        .and(event_store.clone())
+        .and(warp::body::json())
+        .and_then(|swap_state, client_factory, event_store, swap| {
+            http_api::warp_swap::post_swap(swap_state, client_factory, event_store, swap)
+        });
+
+    let get_swap = warp::get2()
+        .and(event_store)
+        .and(warp::path::param())
+        .and_then(|event_store, trade_id| http_api::warp_swap::get_swap(event_store, trade_id));
+
+    path.and(post_swap.or(get_swap)).boxed()
+}

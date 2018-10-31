@@ -1,5 +1,5 @@
-use std::fmt;
-use uuid::Uuid;
+use std::{fmt, str::FromStr};
+use uuid::{ParseError, Uuid};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct TradeId(Uuid);
@@ -7,6 +7,13 @@ pub struct TradeId(Uuid);
 impl Default for TradeId {
     fn default() -> Self {
         TradeId(Uuid::new_v4())
+    }
+}
+
+impl FromStr for TradeId {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(s).map(TradeId)
     }
 }
 

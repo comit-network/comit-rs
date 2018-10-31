@@ -41,6 +41,7 @@ tokio-timer = "0.2"
 transport_protocol = { path = "../../vendor/transport_protocol" }
 url = "1.7"
 uuid = { version = "0.6", features = ["serde", "v4"] }
+warp = "0.1"
 
 [dev-dependencies]
 key_gen = { path = "../../vendor/key_gen"}

@@ -49,6 +49,7 @@ extern crate tokio;
 extern crate tokio_timer;
 extern crate url;
 extern crate uuid;
+extern crate warp;
 #[macro_use]
 extern crate state_machine_future;
 
@@ -67,3 +68,4 @@ pub mod logging;
 pub mod settings;
 pub mod swap_protocols;
 pub mod swaps;
+pub mod warp_factory;
