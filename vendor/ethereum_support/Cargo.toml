@@ -1,25 +1,20 @@
 [package]
 name = "ethereum_support"
 version = "0.1.0"
-authors = [
-    "Thomas Eizinger <thomas@coblox.tech>",
-    "Philipp Hoenisch <philipp@coblox.tech>",
-    "Franck Royer <franck@coblox.tech>",
-    "Lloyd Fournier <lloyd@coblox.tech>",
-]
+authors = [ "CoBloX developers <team@coblox.tech>" ]
 
 [dependencies]
-web3 = "0.4"
-secp256k1_support = { path = "../secp256k1_support" }
-tiny-keccak = "1.4.2"
-serde = "1.0.70"
-serde_derive = "1.0.70"
 bigdecimal = "0.0.12"
 byteorder = "1.2"
-num = "0.1.42"
 lazy_static = "1"
-regex = "1.0.0"
+num = "0.1"
+regex = "1.0"
+secp256k1_support = { path = "../secp256k1_support" }
+serde = "1.0.70"
+serde_derive = "1.0"
+tiny-keccak = "1.4"
+web3 = "0.4"
 
 [dev-dependencies]
-hex = "0.3.2"
+hex = "0.3"
 serde_json = "1"

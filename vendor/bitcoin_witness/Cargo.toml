@@ -1,22 +1,17 @@
 [package]
 name = "bitcoin_witness"
 version = "0.1.0"
-authors = [
-    "Thomas Eizinger <thomas@coblox.tech>",
-    "Philipp Hoenisch <philipp@coblox.tech>",
-    "Franck Royer <franck@coblox.tech>",
-    "Lloyd Fournier <lloyd@coblox.tech>",
-]
+authors = [ "CoBloX developers <team@coblox.tech>" ]
 
 [dependencies]
-secp256k1_support = { path = "../secp256k1_support" }
 bitcoin_support = { path = "../bitcoin_support" }
+secp256k1_support = { path = "../secp256k1_support" }
 
 [dev-dependencies]
 bitcoin_rpc_client = "0.4"
-hex = "0.3.2"
 bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
+env_logger = "0.5"
+hex = "0.3"
+spectral = "0.6"
 tc_bitcoincore_client = { path = "../tc_bitcoincore_client" }
 testcontainers = "0.3"
-env_logger = "0.5.11"
-spectral = "0.6"

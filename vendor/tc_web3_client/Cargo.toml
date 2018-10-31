@@ -1,12 +1,7 @@
 [package]
 name = "tc_web3_client"
 version = "0.1.0"
-authors = [
-    "Thomas Eizinger <thomas@coblox.tech>",
-    "Philipp Hoenisch <philipp@coblox.tech>",
-    "Franck Royer <franck@coblox.tech>",
-    "Lloyd Fournier <lloyd@coblox.tech>",
-]
+authors = [ "CoBloX developers <team@coblox.tech>" ]
 
 [dependencies]
 testcontainers = "0.3"
