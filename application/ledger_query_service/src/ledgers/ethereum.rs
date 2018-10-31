@@ -1,20 +1,8 @@
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use ethereum_support::{
-    Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
+    web3::types::U256, Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
 };
-use http_api_problem::HttpApiProblem;
-use link_factory::LinkFactory;
-use query_repository::QueryRepository;
-use query_result_repository::{QueryResult, QueryResultRepository};
-use rocket::{
-    response::{
-        status::{Created, NoContent},
-        Responder,
-    },
-    State,
-};
-use rocket_contrib::Json;
-use std::sync::Arc;
+use route_factory::QueryType;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct EthereumTransactionQuery {
@@ -24,45 +12,10 @@ pub struct EthereumTransactionQuery {
     transaction_data: Option<Bytes>,
 }
 
-#[post(
-    "/queries/ethereum/transactions",
-    format = "application/json",
-    data = "<query>"
-)]
-#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn handle_new_query<'r>(
-    query: Json<EthereumTransactionQuery>,
-    link_factory: State<LinkFactory>,
-    query_repository: State<Arc<QueryRepository<EthereumTransactionQuery>>>,
-) -> Result<impl Responder<'r>, HttpApiProblem> {
-    let query = query.into_inner();
-
-    if let EthereumTransactionQuery {
-        from_address: None,
-        to_address: None,
-        transaction_data: None,
-        ..
-    } = query
-    {
-        return Err(HttpApiProblem::with_title_from_status(400)
-            .set_detail("Query needs at least one condition"));
+impl QueryType for EthereumTransactionQuery {
+    fn route() -> &'static str {
+        "transactions"
     }
-
-    let result = query_repository.save(query);
-
-    match result {
-        Ok(id) => Ok(created(
-            link_factory.create_link(format!("/queries/ethereum/transactions/{}", id)),
-        )),
-        Err(_) => {
-            Err(HttpApiProblem::with_title_from_status(500)
-                .set_detail("Failed to create new query"))
-        }
-    }
-}
-
-fn created(url: String) -> Created<Option<()>> {
-    Created(url, None)
 }
 
 impl Query<EthereumTransaction> for EthereumTransactionQuery {
@@ -107,6 +60,10 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
             }
         }
     }
+
+    fn is_empty(&self) -> bool {
+        self.from_address.is_none() && self.to_address.is_none() && self.transaction_data.is_none()
+    }
 }
 
 impl Transaction for EthereumTransaction {
@@ -128,42 +85,37 @@ impl Block for EthereumBlock<EthereumTransaction> {
     }
 }
 
-#[derive(Serialize, Clone, Default, Debug)]
-pub struct RetrieveEthereumQueryResponse {
-    query: EthereumTransactionQuery,
-    matching_transactions: QueryResult,
+impl Query<EthereumBlock<EthereumTransaction>> for EthereumBlockQuery {
+    fn matches(&self, block: &EthereumBlock<EthereumTransaction>) -> QueryMatchResult {
+        match self.min_timestamp_secs {
+            Some(ref min_timestamp_secs) => {
+                let min_timestamp_secs = U256::from(*min_timestamp_secs);
+                if min_timestamp_secs <= block.timestamp {
+                    QueryMatchResult::yes()
+                } else {
+                    QueryMatchResult::no()
+                }
+            }
+            None => {
+                warn!("min_timestamp not set, nothing to compare");
+                QueryMatchResult::no()
+            }
+        }
+    }
+    fn is_empty(&self) -> bool {
+        self.min_timestamp_secs.is_none()
+    }
 }
 
-#[get("/queries/ethereum/transactions/<id>")]
-#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn retrieve_query(
-    id: u32,
-    query_repository: State<Arc<QueryRepository<EthereumTransactionQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository<EthereumTransactionQuery>>>,
-) -> Result<Json<RetrieveEthereumQueryResponse>, HttpApiProblem> {
-    let query = query_repository.get(id).ok_or_else(|| {
-        HttpApiProblem::with_title_from_status(404).set_detail("The requested query does not exist")
-    })?;
-
-    let result = query_result_repository.get(id).unwrap_or_default();
-
-    Ok(Json(RetrieveEthereumQueryResponse {
-        query,
-        matching_transactions: result,
-    }))
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct EthereumBlockQuery {
+    pub min_timestamp_secs: Option<u64>,
 }
 
-#[delete("/queries/ethereum/transactions/<id>")]
-#[allow(clippy::needless_pass_by_value)] // Rocket passes by value
-pub fn delete_query(
-    id: u32,
-    query_repository: State<Arc<QueryRepository<EthereumTransactionQuery>>>,
-    query_result_repository: State<Arc<QueryResultRepository<EthereumTransactionQuery>>>,
-) -> impl Responder<'static> {
-    query_repository.delete(id);
-    query_result_repository.delete(id);
-
-    NoContent
+impl QueryType for EthereumBlockQuery {
+    fn route() -> &'static str {
+        "blocks"
+    }
 }
 
 #[cfg(test)]
