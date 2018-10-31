@@ -92,7 +92,8 @@ mod tests {
     use futures::Async;
     use json;
     use serde_json;
-    use std::collections::HashMap;
+    use std::{collections::HashMap, time::Instant};
+    use tokio::runtime::Runtime;
 
     struct StaticResponseFrameSource {
         responses: HashMap<u32, json::Frame>,
@@ -199,4 +200,46 @@ mod tests {
         );
     }
 
+    #[derive(Default)]
+    struct RememberInvocation {
+        when: Option<Instant>,
+    }
+
+    impl ResponseFrameSource<json::Frame> for RememberInvocation {
+        fn on_response_frame(
+            &mut self,
+            frame_id: u32,
+        ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+            self.when = Some(Instant::now());
+
+            Box::new(future::ok(json::Response::new(Status::OK(0)).into_frame(0)))
+        }
+    }
+
+    #[test]
+    fn registers_response_before_sending_request() {
+        let response_frame_source = Arc::new(Mutex::new(RememberInvocation::default()));
+
+        let (mut client, requests) = Client::<json::Frame, json::Request, json::Response>::new(
+            response_frame_source.clone(),
+        );
+
+        let next_request = requests.into_future().map(|_| Instant::now());
+        let response = client.send_request(json::Request::new(
+            String::from("BAR"),
+            HashMap::default(),
+            serde_json::Value::Null,
+        ));
+
+        let combined = next_request.map_err(|_| ()).join(response.map_err(|_| ()));
+
+        let mut runtime = Runtime::new().unwrap();
+
+        let (send_timestamp, _) = runtime.block_on(combined).unwrap();
+
+        let response_frame_source = response_frame_source.lock().unwrap();
+        let register_timestamp = response_frame_source.when.unwrap();
+
+        assert!(register_timestamp < send_timestamp);
+    }
 }
