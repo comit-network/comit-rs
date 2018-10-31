@@ -3,20 +3,12 @@ use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    rfc003::{self, messages::AcceptResponse, state_machine::*, Secret},
+    rfc003::{
+        alice::{bitcoin_htlc, bitcoin_htlc_address},
+        state_machine::*,
+        Secret,
+    },
 };
-
-pub fn bitcoin_htlc(
-    start: &Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
-    response: &AcceptResponse<Bitcoin, Ethereum>,
-) -> rfc003::bitcoin::Htlc {
-    rfc003::bitcoin::Htlc::new(
-        response.source_ledger_success_identity,
-        start.source_identity,
-        start.secret.hash(),
-        start.source_ledger_lock_duration.into(),
-    )
-}
 
 impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
     for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
@@ -29,14 +21,10 @@ impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
                 ref start,
                 ref response,
                 ..
-            }) => {
-                let htlc = bitcoin_htlc(start, response);
-                let address = htlc.compute_address(start.source_ledger.network());
-                vec![Action::FundHtlc(BitcoinFund {
-                    address,
-                    value: start.source_asset,
-                })]
-            }
+            }) => vec![Action::FundHtlc(BitcoinFund {
+                address: bitcoin_htlc_address(start, response),
+                value: start.source_asset,
+            })],
             SS::SourceFunded { .. } => vec![],
             SS::BothFunded(BothFunded {
                 ref source_htlc_id,

@@ -12,7 +12,13 @@ use swap_protocols::rfc003::{
 };
 use tokio::{self, prelude::future::Either};
 
-type Future<I> = tokio::prelude::future::Future<Item = I, Error = rfc003::Error> + Send;
+mod default;
+
+pub use self::default::{DefaultEvents, Player};
+use ledger_query_service::Query;
+use swap_protocols::asset::Asset;
+
+type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
 pub type Response<SL, TL> = Future<Result<AcceptResponse<SL, TL>, SwapReject>>;
 pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
@@ -81,4 +87,15 @@ pub trait Events<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHas
     + TargetHtlcRedeemedOrRefunded<TL>
     + SourceHtlcRedeemedOrRefunded<SL>
 {
+}
+
+pub trait QueryFactory<SL, TL, SA, TA, S, Q>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Into<SecretHash> + Send + Sync + Clone,
+{
+    fn create(&self, start: &Start<SL, TL, SA, TA, S>, response: &AcceptResponse<SL, TL>) -> Q;
 }
