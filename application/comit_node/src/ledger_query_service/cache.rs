@@ -1,5 +1,5 @@
 use item_cache::ItemCache;
-use ledger_query_service::{CreateQuery, Error, QueryId};
+use ledger_query_service::{CreateQuery, Error, Query, QueryId};
 use std::{
     collections::HashMap,
     hash::Hash,
@@ -9,12 +9,12 @@ use swap_protocols::ledger::Ledger;
 use tokio::prelude::*;
 
 #[derive(Debug)]
-pub struct QueryIdCache<L: Ledger, Q: Eq + Hash, C> {
+pub struct QueryIdCache<L: Ledger, Q: Query, C> {
     query_ids: Mutex<HashMap<Q, ItemCache<QueryId<L>, Error>>>,
     inner: Arc<C>,
 }
 
-impl<L: Ledger, Q: Eq + Hash, C: CreateQuery<L, Q>> QueryIdCache<L, Q, C> {
+impl<L: Ledger, Q: Query, C: CreateQuery<L, Q>> QueryIdCache<L, Q, C> {
     pub fn wrap(inner: Arc<C>) -> Self {
         Self {
             query_ids: Mutex::new(HashMap::new()),
@@ -23,9 +23,7 @@ impl<L: Ledger, Q: Eq + Hash, C: CreateQuery<L, Q>> QueryIdCache<L, Q, C> {
     }
 }
 
-impl<L: Ledger, Q: Eq + Hash + Clone + Send + 'static, C: CreateQuery<L, Q>> CreateQuery<L, Q>
-    for QueryIdCache<L, Q, C>
-{
+impl<L: Ledger, Q: Query, C: CreateQuery<L, Q>> CreateQuery<L, Q> for QueryIdCache<L, Q, C> {
     fn create_query(
         &self,
         query: Q,
@@ -59,10 +57,12 @@ mod tests {
         how_many: Mutex<u32>,
     }
 
-    #[derive(PartialOrd, PartialEq, Eq, Hash, Clone)]
+    #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
     struct SomeQuery {
         criteria: u32,
     }
+
+    impl Query for SomeQuery {}
 
     impl CreateQuery<Bitcoin, SomeQuery> for CountInvocations {
         fn create_query(

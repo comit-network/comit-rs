@@ -1,4 +1,4 @@
-use ledger_query_service::{LedgerQueryServiceApiClient, QueryId};
+use ledger_query_service::{LedgerQueryServiceApiClient, Query, QueryId};
 use std::sync::Arc;
 use swap_protocols::ledger::Ledger;
 use tokio::prelude::{stream::iter_ok, *};
@@ -15,7 +15,7 @@ pub trait FetchTransactionStream<L: Ledger, Q> {
     ) -> Box<Stream<Item = L::TxId, Error = S::Error> + Send + 'static>;
 }
 
-impl<L: Ledger, C, Q> FetchTransactionStream<L, Q> for Arc<C>
+impl<L: Ledger, C, Q: Query> FetchTransactionStream<L, Q> for Arc<C>
 where
     C: LedgerQueryServiceApiClient<L, Q>,
 {

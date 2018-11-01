@@ -2,7 +2,7 @@ use bitcoin_support::TransactionId as BitcoinTxId;
 use ethereum_support::H256 as EthereumTxId;
 use ledger_query_service::{
     bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error,
-    LedgerQueryServiceApiClient, QueryId,
+    LedgerQueryServiceApiClient, Query, QueryId,
 };
 use std::{fmt, marker::PhantomData, sync::Mutex};
 use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
@@ -65,13 +65,15 @@ pub struct InvocationCountFakeLedgerQueryService<L: Ledger> {
     pub results: Vec<L::TxId>,
 }
 
-impl<L: Ledger, Q> CreateQuery<L, Q> for InvocationCountFakeLedgerQueryService<L> {
+impl<L: Ledger, Q: Query> CreateQuery<L, Q> for InvocationCountFakeLedgerQueryService<L> {
     fn create_query(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 }
 
-impl<L: Ledger, Q> LedgerQueryServiceApiClient<L, Q> for InvocationCountFakeLedgerQueryService<L> {
+impl<L: Ledger, Q: Query> LedgerQueryServiceApiClient<L, Q>
+    for InvocationCountFakeLedgerQueryService<L>
+{
     fn fetch_results(
         &self,
         _query: &QueryId<L>,
@@ -128,17 +130,13 @@ impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
     }
 }
 
-impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> CreateQuery<L, Q>
-    for LedgerQueryServiceMock<L, Q>
-{
+impl<L: Ledger, Q: Query> CreateQuery<L, Q> for LedgerQueryServiceMock<L, Q> {
     fn create_query(&self, _query: Q) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 }
 
-impl<L: Ledger, Q: fmt::Debug + Send + Sync + 'static> LedgerQueryServiceApiClient<L, Q>
-    for LedgerQueryServiceMock<L, Q>
-{
+impl<L: Ledger, Q: Query> LedgerQueryServiceApiClient<L, Q> for LedgerQueryServiceMock<L, Q> {
     fn fetch_results(
         &self,
         _query: &QueryId<L>,
