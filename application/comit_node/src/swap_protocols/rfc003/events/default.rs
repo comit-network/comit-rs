@@ -24,48 +24,37 @@ use swap_protocols::{
 };
 use tokio::timer::Interval;
 
-pub enum Player<COMIT_CLIENT> {
-    Alice { client: Arc<COMIT_CLIENT> },
+#[derive(Debug)]
+pub enum Player<ComitClient> {
+    Alice { client: Arc<ComitClient> },
     Bob,
 }
 
 #[allow(missing_debug_implementations)]
-pub struct DefaultEvents<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
-    COMIT_CLIENT,
-    SL_FETCH_QUERY_RESULTS,
-    SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
-    SL_CHFQ,
-> {
-    player: Player<COMIT_CLIENT>,
+pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TLQuery: Query> {
+    player: Player<ComitClient>,
     response: Option<Box<Response<SL, TL>>>,
     source_htlc_funded_query: Option<Box<Funded<SL>>>,
+
+    create_source_ledger_query: QueryIdCache<SL, SLQuery>,
+    source_ledger_fetch_query_results: Arc<FetchQueryResults<SL>>,
     source_ledger_tick_interval: Duration,
 
-    create_source_htlc_funded_query: QueryIdCache<SL, SL_HFQ, SL_CHFQ>,
-    source_ledger_fetch_query_results: Arc<SL_FETCH_QUERY_RESULTS>,
-
-    source_asset_type: PhantomData<SA>,
-    target_asset_type: PhantomData<TA>,
-    secret_type: PhantomData<S>,
+    _create_target_ledger_query: QueryIdCache<TL, TLQuery>,
+    _target_ledger_fetch_query_results: Arc<FetchQueryResults<TL>>,
+    _target_ledger_tick_interval: Duration,
 }
 
-impl<SL, TL, SA, TA, S, C, SL_FETCH_QUERY_RESULTS, SL_HFQ, SL_CHFQ> RequestResponded<SL, TL, SA, TA>
-    for DefaultEvents<SL, TL, SA, TA, S, C, SL_FETCH_QUERY_RESULTS, SL_HFQ, SL_CHFQ>
+impl<SL, TL, SA, TA, ComitClient, SLQuery, TLQuery> RequestResponded<SL, TL, SA, TA>
+    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    C: Client,
-    S: Into<SecretHash> + Clone + Send + Sync,
-    SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
-    SL_CHFQ: CreateQuery<SL, SL_HFQ>,
-    SL_FETCH_QUERY_RESULTS: FetchQueryResults<SL>,
+    ComitClient: Client,
+    SLQuery: Query,
+    TLQuery: Query,
 {
     fn request_responded(
         &mut self,
@@ -90,38 +79,17 @@ where
     }
 }
 
-impl<
-        SL,
-        TL,
-        SA,
-        TA,
-        S,
-        COMIT_CLIENT,
-        SL_FETCH_QUERY_RESULTS,
-        SL_HTLC_FUNDED_QUERY,
-        SL_CREATE_HTLC_FUNDED_QUERY,
-    > SourceHtlcFunded<SL, TL, SA, TA, S>
-    for DefaultEvents<
-        SL,
-        TL,
-        SA,
-        TA,
-        S,
-        COMIT_CLIENT,
-        SL_FETCH_QUERY_RESULTS,
-        SL_HTLC_FUNDED_QUERY,
-        SL_CREATE_HTLC_FUNDED_QUERY,
-    >
+impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> SourceHtlcFunded<SL, TL, SA, TA, S>
+    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
     SA: Asset + IsContainedInTransaction<SL, TL, SA, TA, S>,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
-    COMIT_CLIENT: Client,
-    SL_HTLC_FUNDED_QUERY: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
-    SL_CREATE_HTLC_FUNDED_QUERY: CreateQuery<SL, SL_HTLC_FUNDED_QUERY>,
-    SL_FETCH_QUERY_RESULTS: FetchQueryResults<SL>,
+    ComitClient: Client,
+    SLQuery: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
+    TLQuery: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
 {
     fn source_htlc_funded<'s>(
         &'s mut self,
@@ -133,8 +101,8 @@ where
         let source_asset = swap.source_asset.clone();
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
-        let query = SL_HTLC_FUNDED_QUERY::create(&swap);
-        let query_id = self.create_source_htlc_funded_query.create_query(query);
+        let query = SLQuery::create(&swap);
+        let query_id = self.create_source_ledger_query.create_query(query);
 
         self.source_htlc_funded_query.get_or_insert_with(move || {
             let funded_future = query_id
