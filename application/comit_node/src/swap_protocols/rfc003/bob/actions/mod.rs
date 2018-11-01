@@ -6,7 +6,7 @@ use swap_protocols::rfc003::{bitcoin, secret::Secret};
 
 pub mod btc_eth;
 
-enum Action<Fund, Redeem, Refund> {
+enum Action<Accept, Decline, Fund, Redeem, Refund> {
     Accept(Accept),
     Decline(Decline),
     FundHtlc(Fund),
@@ -14,9 +14,13 @@ enum Action<Fund, Redeem, Refund> {
     RefundHtlc(Refund),
 }
 
-trait StateActions<Fund, Redeem, Refund> {
-    fn actions(&self) -> Vec<Action<Fund, Redeem, Refund>>;
+trait StateActions<Accept, Decline, Fund, Redeem, Refund> {
+    fn actions(&self) -> Vec<Action<Accept, Decline, Fund, Redeem, Refund>>;
 }
+
+struct AcceptRequest;
+
+struct DeclineRequest;
 
 struct EtherDeploy {
     data: ethereum_support::Bytes,

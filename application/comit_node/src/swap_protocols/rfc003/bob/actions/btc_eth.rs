@@ -1,4 +1,6 @@
-use super::{Action, BitcoinRedeem, EtherDeploy, EtherRefund, StateActions};
+use super::{
+    AcceptRequest, Action, BitcoinRedeem, DeclineRequest, EtherDeploy, EtherRefund, StateActions,
+};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
@@ -30,13 +32,18 @@ pub fn bitcoin_htlc(
     )
 }
 
-impl StateActions<EtherDeploy, BitcoinRedeem, EtherRefund>
+impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, EtherRefund>
     for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>
 {
-    fn actions(&self) -> Vec<Action<EtherDeploy, BitcoinRedeem, EtherRefund>> {
+    fn actions(
+        &self,
+    ) -> Vec<Action<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, EtherRefund>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start { .. } => vec![],
+            SS::Start { .. } => vec![
+                Action::Accept(AcceptRequest),
+                Action::Decline(DeclineRequest),
+            ],
             SS::Accepted { .. } => vec![],
             SS::SourceFunded(SourceFunded {
                 ref start,
