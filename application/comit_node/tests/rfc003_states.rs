@@ -13,23 +13,21 @@ use comit_node::{
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            self,
             ethereum::Seconds,
             events::{
                 self, Events, RequestResponded, SourceHtlcFunded, SourceHtlcRedeemedOrRefunded,
                 SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
             },
             state_machine::*,
-            AcceptResponse, Ledger, Request, Secret, SecretHash,
+            AcceptResponse, Request, Secret,
         },
-        wire_types,
     },
 };
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
     sync::mpsc,
-    Future, Stream,
+    Stream,
 };
 use hex::FromHex;
 use std::{str::FromStr, sync::Arc};
@@ -45,7 +43,7 @@ struct FakeEvents {
 impl RequestResponded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeEvents {
     fn request_responded(
         &mut self,
-        request: &Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+        _request: &Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ) -> &mut Box<events::Response<Bitcoin, Ethereum>> {
         self.response.as_mut().unwrap()
     }
@@ -54,7 +52,7 @@ impl RequestResponded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for Fak
 impl SourceHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> for FakeEvents {
     fn source_htlc_funded(
         &mut self,
-        swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
     ) -> &mut Box<events::Funded<Bitcoin>> {
         self.source_htlc_funded.as_mut().unwrap()
     }
@@ -65,8 +63,8 @@ impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, Ethe
 {
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
-        source_htlc_id: &bitcoin_support::OutPoint,
+        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        _source_htlc_id: &bitcoin_support::OutPoint,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
@@ -77,7 +75,7 @@ impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, Ethe
 impl TargetHtlcRedeemedOrRefunded<Ethereum> for FakeEvents {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &ethereum_support::Address,
+        _target_htlc_id: &ethereum_support::Address,
     ) -> &mut Box<events::RedeemedOrRefunded<Ethereum>> {
         unimplemented!()
     }
@@ -86,7 +84,7 @@ impl TargetHtlcRedeemedOrRefunded<Ethereum> for FakeEvents {
 impl SourceHtlcRedeemedOrRefunded<Bitcoin> for FakeEvents {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &bitcoin_support::OutPoint,
+        _target_htlc_id: &bitcoin_support::OutPoint,
     ) -> &mut Box<events::RedeemedOrRefunded<Bitcoin>> {
         unimplemented!()
     }
