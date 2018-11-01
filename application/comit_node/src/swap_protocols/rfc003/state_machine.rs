@@ -2,7 +2,7 @@ use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
 use swap_protocols::rfc003::{
-    self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, SecretHash,
+    self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret, SecretHash,
     SwapOutcome,
 };
 
@@ -105,6 +105,8 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> 
         start: Start<SL, TL, SA, TA, S>,
         response: AcceptResponse<SL, TL>,
         target_htlc_id: TL::HtlcLocation,
+        source_htlc_id: SL::HtlcLocation,
+        secret: Secret,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -221,14 +223,20 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
         {
             let state = state.take();
             match redeemed_or_refunded {
-                Either::A(_source_redeemed_txid) => transition_save!(
-                    context.state_repo,
-                    SourceRedeemedTargetFunded {
-                        start: state.start,
-                        response: state.response,
-                        target_htlc_id: state.target_htlc_id,
-                    }
-                ),
+                Either::A(_source_redeemed_txid) => {
+                    let bytes = b"hello world, you are beautiful!!"; //TODO get the secret from somewhere
+                    let secret = Secret::from(*bytes);
+                    transition_save!(
+                        context.state_repo,
+                        SourceRedeemedTargetFunded {
+                            start: state.start,
+                            response: state.response,
+                            target_htlc_id: state.target_htlc_id,
+                            source_htlc_id: state.source_htlc_id,
+                            secret,
+                        }
+                    )
+                }
                 Either::B(_source_refunded_txid) => transition_save!(
                     context.state_repo,
                     SourceRefundedTargetFunded {
