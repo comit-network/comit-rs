@@ -5,24 +5,27 @@ pub use self::actions::btc_eth;
 use bitcoin_support::{self, BitcoinQuantity};
 use swap_protocols::{
     ledger::Bitcoin,
-    rfc003::{self, messages::AcceptResponse, state_machine::Start, Ledger, SecretHash},
+    rfc003::{
+        self,
+        messages::AcceptResponse,
+        state_machine::{OngoingSwap, Start},
+        Ledger, SecretHash,
+    },
 };
 
 pub fn bitcoin_htlc<TL: Ledger, TA: Clone, S: Into<SecretHash> + Clone>(
-    start: &Start<Bitcoin, TL, BitcoinQuantity, TA, S>,
-    response: &AcceptResponse<Bitcoin, TL>,
+    swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> rfc003::bitcoin::Htlc {
     rfc003::bitcoin::Htlc::new(
-        response.source_ledger_success_identity,
-        start.source_identity,
-        start.secret.clone().into(),
-        start.source_ledger_lock_duration.into(),
+        swap.source_ledger_success_identity,
+        swap.source_identity,
+        swap.secret.clone().into(),
+        swap.source_ledger_lock_duration.into(),
     )
 }
 
 pub fn bitcoin_htlc_address<TL: Ledger, TA: Clone, S: Into<SecretHash> + Clone>(
-    start: &Start<Bitcoin, TL, BitcoinQuantity, TA, S>,
-    response: &AcceptResponse<Bitcoin, TL>,
+    swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> bitcoin_support::Address {
-    bitcoin_htlc(start, response).compute_address(start.source_ledger.network())
+    bitcoin_htlc(swap).compute_address(swap.source_ledger.network())
 }

@@ -5,32 +5,11 @@ use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    rfc003::{self, messages::AcceptResponse, state_machine::*, SecretHash},
+    rfc003::{
+        self, alice::bitcoin_htlc, ethereum::ethereum_htlc, messages::AcceptResponse,
+        state_machine::*, SecretHash,
+    },
 };
-
-pub fn ethereum_htlc(
-    start: &Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>,
-    response: &AcceptResponse<Bitcoin, Ethereum>,
-) -> Box<rfc003::ethereum::Htlc> {
-    Box::new(rfc003::ethereum::EtherHtlc::new(
-        response.target_ledger_lock_duration.into(),
-        response.target_ledger_refund_identity,
-        start.target_identity,
-        start.secret.clone(),
-    ))
-}
-
-pub fn bitcoin_htlc(
-    start: &Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>,
-    response: &AcceptResponse<Bitcoin, Ethereum>,
-) -> rfc003::bitcoin::Htlc {
-    rfc003::bitcoin::Htlc::new(
-        response.source_ledger_success_identity,
-        start.source_identity,
-        start.secret.clone(),
-        start.source_ledger_lock_duration.into(),
-    )
-}
 
 impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, EtherRefund>
     for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>
@@ -45,23 +24,17 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 Action::Decline(DeclineRequest),
             ],
             SS::Accepted { .. } => vec![],
-            SS::SourceFunded(SourceFunded {
-                ref start,
-                ref response,
-                ..
-            }) => {
-                let htlc = ethereum_htlc(start, response);
+            SS::SourceFunded(SourceFunded { ref swap, .. }) => {
+                let htlc = ethereum_htlc(swap);
                 vec![Action::FundHtlc(EtherDeploy {
                     data: htlc.compile_to_hex().into(),
-                    value: start.target_asset,
+                    value: swap.target_asset,
                     gas_limit: 42, //TODO come up with correct gas_limit
                 })]
             }
             SS::BothFunded(BothFunded {
                 ref source_htlc_id,
                 ref target_htlc_id,
-                ref start,
-                ref response,
                 ..
             }) => vec![Action::RefundHtlc(EtherRefund {
                 contract_address: target_htlc_id.clone(),
@@ -77,17 +50,16 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 execution_gas: 42, //TODO: generate gas cost directly
             })],
             SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
-                ref start,
-                ref response,
+                ref swap,
                 ref target_htlc_id,
                 ref source_htlc_id,
                 ref secret,
             }) => vec![
                 Action::RedeemHtlc(BitcoinRedeem {
                     outpoint: source_htlc_id.clone(),
-                    htlc: bitcoin_htlc(start, response),
-                    value: start.source_asset,
-                    transient_keypair: start.source_identity.into(),
+                    htlc: bitcoin_htlc(swap),
+                    value: swap.source_asset,
+                    transient_keypair: swap.source_identity.into(),
                     secret: *secret,
                 }),
                 Action::RefundHtlc(EtherRefund {

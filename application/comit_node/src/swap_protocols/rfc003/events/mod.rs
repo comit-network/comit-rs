@@ -16,7 +16,7 @@ mod default;
 
 pub use self::default::{DefaultEvents, Player};
 use ledger_query_service::Query;
-use swap_protocols::asset::Asset;
+use swap_protocols::{asset::Asset, rfc003::state_machine::OngoingSwap};
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
@@ -43,11 +43,8 @@ pub trait SourceHtlcFunded<
     S: Into<SecretHash> + Clone,
 >: Send
 {
-    fn source_htlc_funded(
-        &mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
-    ) -> &mut Box<Funded<SL>>;
+    fn source_htlc_funded(&mut self, swap: &OngoingSwap<SL, TL, SA, TA, S>)
+        -> &mut Box<Funded<SL>>;
 }
 
 pub trait SourceHtlcRefundedTargetHtlcFunded<
@@ -60,8 +57,7 @@ pub trait SourceHtlcRefundedTargetHtlcFunded<
 {
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
         source_htlc_id: &SL::HtlcLocation,
     ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>>;
 }
@@ -97,5 +93,5 @@ where
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
-    fn create(&self, start: &Start<SL, TL, SA, TA, S>, response: &AcceptResponse<SL, TL>) -> Q;
+    fn create(&self, swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Q;
 }

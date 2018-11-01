@@ -18,7 +18,7 @@ use swap_protocols::{
         alice::bitcoin_htlc_address,
         events::{Funded, QueryFactory, RequestResponded, Response, SourceHtlcFunded},
         messages::{AcceptResponse, Request},
-        state_machine::Start,
+        state_machine::{OngoingSwap, Start},
         Ledger, SecretHash,
     },
 };
@@ -101,17 +101,14 @@ where
 {
     fn source_htlc_funded<'s>(
         &'s mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
     ) -> &'s mut Box<Funded<SL>> {
         let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
 
-        let source_asset = start.source_asset.clone();
+        let source_asset = swap.source_asset.clone();
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
-        let query = self
-            .source_htlc_funded_query_factory
-            .create(start, response);
+        let query = self.source_htlc_funded_query_factory.create(swap);
         let query_id = self.create_source_htlc_funded_query.create_query(query);
 
         self.source_htlc_funded_query.get_or_insert_with(move || {
