@@ -23,8 +23,8 @@ use swap_protocols::{
 };
 use tokio::timer::Interval;
 
-pub enum Player {
-    Alice,
+pub enum Player<COMIT_CLIENT> {
+    Alice { client: Arc<COMIT_CLIENT> },
     Bob,
 }
 
@@ -40,11 +40,10 @@ pub struct DefaultEvents<
     SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
     SL_CHFQ,
 > {
-    player: Player,
+    player: Player<COMIT_CLIENT>,
     response: Option<Box<Response<SL, TL>>>,
     source_htlc_funded_query: Option<Box<Funded<SL>>>,
     source_ledger_tick_interval: Duration,
-    client: Arc<COMIT_CLIENT>,
 
     create_source_htlc_funded_query: QueryIdCache<SL, SL_HFQ, SL_CHFQ>,
     source_ledger_fetch_query_results: Arc<SL_FETCH_QUERY_RESULTS>,
@@ -71,15 +70,22 @@ where
         &mut self,
         request: &Request<SL, TL, SA, TA>,
     ) -> &mut Box<Response<SL, TL>> {
-        let client = self.client.clone();
+        match self.player {
+            Player::Alice {ref client}=> {
+                let client = client.clone();
 
-        self.response.get_or_insert_with(|| {
-            Box::new(
-                client
-                    .send_swap_request(request.clone())
-                    .map_err(rfc003::Error::SwapResponse),
-            )
-        })
+                self.response.get_or_insert_with(|| {
+                    Box::new(
+                        client
+                            .send_swap_request(request.clone())
+                            .map_err(rfc003::Error::SwapResponse),
+                    )
+                })
+            },
+            Player::Bob => {
+                unimplemented!("return a future that resolves once the user sent a response to the COMIT node via the API")
+            }
+        }
     }
 }
 
