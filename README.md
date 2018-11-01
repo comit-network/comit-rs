@@ -54,3 +54,7 @@ The base image caches the compilation of the binaries and all its dependencies. 
 ## Contributing
 
 Contributions are welcome, please see [CONTRIBUTING](CONTRIBUTING.md) for more details
+
+## License
+
+This project is licensed under the terms of the [GNU GENERAL PUBLIC LICENSE v3](LICENSE.md).
