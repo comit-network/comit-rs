@@ -1,5 +1,5 @@
 use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error,
+    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
     LedgerQueryServiceApiClient, QueryId,
 };
 use reqwest::{async::Client, header::LOCATION, Url};
@@ -108,14 +108,16 @@ impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
-    fn fetch_results(
+impl FetchQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
+    fn fetch_query_results(
         &self,
         query: &QueryId<Bitcoin>,
     ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
         self._fetch_results(query)
     }
+}
 
+impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
     fn delete(&self, query: &QueryId<Bitcoin>) -> Box<Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }
@@ -136,14 +138,16 @@ impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient
     }
 }
 
-impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
-    fn fetch_results(
+impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
+    fn fetch_query_results(
         &self,
         query: &QueryId<Ethereum>,
     ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
         self._fetch_results(query)
     }
+}
 
+impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
     fn delete(&self, query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }

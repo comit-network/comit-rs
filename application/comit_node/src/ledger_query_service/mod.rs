@@ -43,12 +43,8 @@ pub enum Error {
 pub trait Query: Clone + Debug + Send + Sync + Eq + Hash + 'static {}
 
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q: Query>:
-    'static + Send + Sync + CreateQuery<L, Q>
+    'static + Send + Sync + CreateQuery<L, Q> + FetchQueryResults<L>
 {
-    fn fetch_results(
-        &self,
-        query: &QueryId<L>,
-    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
     fn delete(&self, query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send>;
 }
 
@@ -57,4 +53,11 @@ pub trait CreateQuery<L: Ledger, Q: Query>: 'static + Send + Sync {
         &self,
         query: Q,
     ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
+}
+
+pub trait FetchQueryResults<L: Ledger>: 'static + Send + Sync {
+    fn fetch_query_results(
+        &self,
+        query: &QueryId<L>,
+    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
 }
