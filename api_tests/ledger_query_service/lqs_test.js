@@ -76,6 +76,18 @@ describe("Test Ledger Query Service API", () => {
                 });
             });
 
+            it("LQS should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `inline_transactions`", async function () {
+                return bitcoin_rpc_client.generate(1).then(() => {
+                    return chai.request(location)
+                        .get('?inline_transactions=true')
+                        .then((res) => {
+                            res.body.query.to_address.should.equal(to_address);
+                            res.body.matches.should.have.lengthOf(1);
+                            console.log(res.body);
+                        });
+                });
+            });
+
             it("LQS should respond with no content when deleting an existing bitcoin transaction query", async function () {
                 return chai.request(location)
                     .delete('')
@@ -248,7 +260,8 @@ describe("Test Ledger Query Service API", () => {
             });
 
             let location;
-            const epoch_seconds_now = Math.round(Date.now() / 1000);;
+            const epoch_seconds_now = Math.round(Date.now() / 1000);
+            ;
             const min_timestamp_secs = epoch_seconds_now + 3;
             it("LQS should respond with location when creating a valid ethereum block query", async function () {
                 this.timeout(1000);

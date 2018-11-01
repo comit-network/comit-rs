@@ -2,6 +2,7 @@ use block_processor::Query;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
+use route_factory::{ExpandData, QueryParams};
 use serde::Serialize;
 use std::{env::VarError, sync::Arc};
 use warp::{self, Rejection, Reply};
@@ -25,7 +26,7 @@ pub fn non_empty_query<O, Q: Query<O>>(query: Q) -> Result<Q, Rejection> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn handle_new_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
+pub fn create_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
     link_factory: LinkFactory,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
@@ -48,22 +49,29 @@ pub fn handle_new_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
     O,
-    Q: Query<O> + Serialize + Send,
+    Q: Query<O> + Serialize + Send + ExpandData,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
     id: u32,
+    query_params: QueryParams,
 ) -> Result<impl Reply, Rejection> {
     let query = query_repository.get(id).ok_or_else(warp::reject);
     match query {
         Ok(query) => {
             let result = query_result_repository.get(id).unwrap_or_default();
-            Ok(warp::reply::json(&RetrieveQueryResponse {
-                query,
-                matches: result,
-            }))
+            match Q::expand_data(&result, &query_params) {
+                None => Ok(warp::reply::json(&RetrieveQueryResponse {
+                    query,
+                    matches: result,
+                })),
+                Some(expanded_result) => Ok(warp::reply::json(&RetrieveQueryResponse {
+                    query,
+                    matches: expanded_result,
+                })),
+            }
         }
         Err(e) => Err(e),
     }

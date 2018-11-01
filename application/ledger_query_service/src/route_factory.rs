@@ -1,7 +1,7 @@
 use block_processor::Query;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
-use query_result_repository::QueryResultRepository;
+use query_result_repository::{QueryResult, QueryResultRepository};
 use routes;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{env::VarError, sync::Arc};
@@ -16,6 +16,15 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
+pub trait ExpandData {
+    fn expand_data(result: &QueryResult, query_params: &QueryParams) -> Option<QueryResult>;
+}
+
+#[derive(Deserialize, Debug, Eq, PartialEq)]
+pub struct QueryParams {
+    inline_transactions: Option<bool>,
+}
+
 impl RouteFactory {
     pub fn new(link_factory: LinkFactory) -> RouteFactory {
         RouteFactory { link_factory }
@@ -23,7 +32,7 @@ impl RouteFactory {
 
     pub fn create<
         O: 'static,
-        Q: Query<O> + QueryType + DeserializeOwned + Serialize + Send + 'static,
+        Q: Query<O> + QueryType + ExpandData + DeserializeOwned + Serialize + Send + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
     >(
@@ -50,18 +59,19 @@ impl RouteFactory {
 
         let json_body = warp::body::json().and_then(routes::non_empty_query);
 
-        let handle = warp::post2()
+        let create = warp::post2()
             .and(link_factory.clone())
             .and(query_repository.clone())
             .and(warp::any().map(move || ledger_name))
             .and(warp::any().map(move || route))
             .and(json_body)
-            .and_then(routes::handle_new_query);
+            .and_then(routes::create_query);
 
         let retrieve = warp::get2()
             .and(query_repository.clone())
             .and(query_result_repository.clone())
             .and(warp::path::param())
+            .and(warp::query::<QueryParams>())
             .and_then(routes::retrieve_query);
 
         let delete = warp::delete2()
@@ -72,7 +82,7 @@ impl RouteFactory {
 
         endpoint
             .and(path)
-            .and(handle.or(retrieve).or(delete))
+            .and(create.or(retrieve).or(delete))
             .map(|_, reply| reply)
             .boxed()
     }

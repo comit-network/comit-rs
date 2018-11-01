@@ -3,7 +3,9 @@ use bitcoin_support::{
     Transaction as BitcoinTransaction,
 };
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
-use route_factory::QueryType;
+use query_result_repository::QueryResult;
+use route_factory::{ExpandData, QueryParams, QueryType};
+use serde::Serialize;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinTransactionQuery {
@@ -15,6 +17,12 @@ pub struct BitcoinTransactionQuery {
 impl QueryType for BitcoinTransactionQuery {
     fn route() -> &'static str {
         "transactions"
+    }
+}
+
+impl ExpandData for BitcoinTransactionQuery {
+    fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
+        None
     }
 }
 
@@ -71,6 +79,12 @@ pub struct BitcoinBlockQuery {
 impl QueryType for BitcoinBlockQuery {
     fn route() -> &'static str {
         "blocks"
+    }
+}
+
+impl ExpandData for BitcoinBlockQuery {
+    fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
+        None
     }
 }
 

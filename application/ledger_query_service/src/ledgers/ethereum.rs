@@ -2,7 +2,9 @@ use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use ethereum_support::{
     web3::types::U256, Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
 };
-use route_factory::QueryType;
+use query_result_repository::QueryResult;
+use route_factory::{ExpandData, QueryParams, QueryType};
+use serde::Serialize;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct EthereumTransactionQuery {
@@ -15,6 +17,12 @@ pub struct EthereumTransactionQuery {
 impl QueryType for EthereumTransactionQuery {
     fn route() -> &'static str {
         "transactions"
+    }
+}
+
+impl ExpandData for EthereumTransactionQuery {
+    fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
+        None
     }
 }
 
@@ -115,6 +123,12 @@ pub struct EthereumBlockQuery {
 impl QueryType for EthereumBlockQuery {
     fn route() -> &'static str {
         "blocks"
+    }
+}
+
+impl ExpandData for EthereumBlockQuery {
+    fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
+        None
     }
 }
 
