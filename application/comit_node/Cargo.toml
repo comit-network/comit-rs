@@ -16,8 +16,6 @@ event_store = { path = "../../vendor/event_store" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
-gotham = { git = "https://github.com/gotham-rs/gotham.git" }
-gotham_derive = { git = "https://github.com/gotham-rs/gotham.git" }
 hex = "0.3"
 http-api-problem = { version = "0.7", features = ["with_hyper"] }
 hyper = "0.12"

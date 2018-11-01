@@ -22,18 +22,17 @@ use comit_node::{
     gas_price_service::StaticGasPriceService,
     key_store::KeyStore,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
-    logging,
+    logging, route_factory,
     settings::ComitNodeSettings,
     swap_protocols::rfc003::{
         alice_ledger_actor::AliceLedgerActor,
         ledger_htlc_service::{BitcoinService, EthereumService},
     },
     swaps::common::TradeId,
-    warp_factory,
 };
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
-use std::{env::var, sync::Arc};
+use std::{env::var, net::SocketAddr, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -189,7 +188,7 @@ fn spawn_warp_instance(
     let (alice_actor_sender, alice_actor_future) = alice_actor.listen();
     runtime.spawn(alice_actor_future);
 
-    let routes = warp_factory::create(
+    let routes = route_factory::create(
         event_store,
         Arc::new(client_pool),
         remote_comit_node_url,
@@ -197,13 +196,13 @@ fn spawn_warp_instance(
         alice_actor_sender,
     );
 
-    let http_api_socket_address = settings.http_api.socket_address.clone();
+    let http_api_address = settings.http_api.address.clone();
+    let http_api_port = settings.http_api.port;
+    let http_socket_address = SocketAddr::new(http_api_address, http_api_port);
 
-    //let server = warp::serve(routes).bind(http_api_socket_address);
+    let server = warp::serve(routes).bind(http_socket_address);
 
-    ::std::thread::spawn(move || {
-        warp::serve(routes).run(http_api_socket_address);
-    });
+    runtime.spawn(server);
 }
 
 fn spawn_comit_server(

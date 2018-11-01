@@ -25,7 +25,8 @@ remote_comit_node_url = "127.0.0.1:8001"
 comit_listen = "0.0.0.0:8011"
 
 [http_api]
-socket_address="0.0.0.0:8010"
+address="0.0.0.0"
+port=8010
 logging=true
 
 [ledger_query_service]

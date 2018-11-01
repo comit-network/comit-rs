@@ -2,21 +2,18 @@ use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
 use comit_client::{self, SwapReject, SwapResponseError};
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
-use futures::{future, sync::mpsc::UnboundedSender, Future, Stream};
-use gotham::{
-    handler::{HandlerFuture, IntoHandlerError},
-    state::{FromState, State},
-};
-use gotham_factory::{self, ClientFactory, SwapId, SwapState};
+use futures::{sync::mpsc::UnboundedSender, Future};
 use http_api_problem::HttpApiProblem;
 use hyper::{header, Body, Response, StatusCode};
 use key_store::KeyStore;
 use mime;
 use rand::OsRng;
+use route_factory::SwapState;
 use serde_json;
 use std::{
     net::SocketAddr,
     ops::DerefMut,
+    panic::RefUnwindSafe,
     sync::{Arc, Mutex},
 };
 use swap_protocols::{
@@ -25,6 +22,7 @@ use swap_protocols::{
 };
 use swaps::{alice_events, common::TradeId};
 use tokio;
+use warp::{self, Rejection, Reply};
 
 #[derive(Debug)]
 pub enum Error {
@@ -92,73 +90,54 @@ pub struct SwapCreated {
     pub id: TradeId,
 }
 
-pub fn post_swap<C: comit_client::Client + 'static, E: EventStore<TradeId>>(
-    mut state: State,
-) -> Box<HandlerFuture> {
-    let f = Body::take_from(&mut state)
-        .concat2()
-        .then(|full_body| match full_body {
-            Ok(valid_body) => {
-                //TODO: Handle json ser/de generically for all routes
-                match serde_json::from_slice(valid_body.as_ref()) {
-                    Ok(swap) => {
-                        let result = {
-                            let swap_state = SwapState::borrow_from(&state);
-                            let client_factory = ClientFactory::<C>::borrow_from(&state);
-                            let event_store = gotham_factory::EventStore::<E>::borrow_from(&state);
-                            handle_post_swap(
-                                swap,
-                                &event_store.0,
-                                &swap_state.rng,
-                                &client_factory.0,
-                                swap_state.remote_comit_node_socket_addr,
-                                &swap_state.key_store,
-                                &swap_state.alice_actor_sender,
-                            )
-                        };
-                        match result {
-                            Ok(swap_created) => {
-                                let response = Response::builder()
-                                    .status(StatusCode::CREATED)
-                                    .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                                    .header(header::LOCATION, format!("/swaps/{}", swap_created.id))
-                                    .body(Body::from(
-                                        serde_json::to_string(&swap_created)
-                                            .expect("should always serialize"),
-                                    )).unwrap();
-                                Ok((state, response))
-                            }
-                            Err(e) => {
-                                error!("Problem with sending swap request: {:?}", e);
-                                let problem: HttpApiProblem = e.into();
-                                Ok((state, problem.into()))
-                            }
-                        }
-                    }
-                    Err(err) => {
-                        let response = Response::builder()
-                            .status(StatusCode::BAD_REQUEST)
-                            .body(Body::empty())
-                            .unwrap();
-                        error!(
-                            "POST /swap received invalid JSON {:?} {}",
-                            err,
-                            String::from_utf8_lossy(valid_body.as_ref())
-                        );
-                        Ok((state, response))
-                    }
-                }
-            }
-            Err(e) => Err((state, e.into_handler_error())),
-        });
-    Box::new(f)
+pub fn post_swap<
+    C: comit_client::Client + 'static,
+    F: comit_client::ClientFactory<C> + 'static,
+    E: event_store::EventStore<TradeId> + RefUnwindSafe,
+>(
+    swap_state: SwapState,
+    client_factory: Arc<F>,
+    event_store: Arc<E>,
+    swap: Swap,
+) -> Result<impl Reply, Rejection> {
+    let result = {
+        handle_post_swap(
+            swap,
+            &event_store,
+            &swap_state.rng,
+            &client_factory,
+            swap_state.remote_comit_node_socket_addr,
+            &swap_state.key_store,
+            &swap_state.alice_actor_sender,
+        )
+    };
+    match result {
+        Ok(swap_created) => {
+            let response = Response::builder()
+                .status(StatusCode::CREATED)
+                .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
+                .header(header::LOCATION, format!("/swaps/{}", swap_created.id))
+                .body(Body::from(
+                    serde_json::to_string(&swap_created).expect("should always serialize"),
+                )).unwrap();
+            Ok(response)
+        }
+        Err(e) => {
+            error!("Problem with sending swap request: {:?}", e);
+            Err(warp::reject::server_error())
+        }
+    }
 }
 
-fn handle_post_swap<C: comit_client::Client, E: EventStore<TradeId>>(
+fn handle_post_swap<
+    C: comit_client::Client,
+    F: comit_client::ClientFactory<C> + 'static,
+    E: EventStore<TradeId>,
+>(
     swap: Swap,
     event_store: &Arc<E>,
     rng: &Mutex<OsRng>,
-    client_factory: &Arc<comit_client::ClientFactory<C>>,
+    client_factory: &Arc<F>,
     comit_node_addr: SocketAddr,
     key_store: &Arc<KeyStore>,
     alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
@@ -304,26 +283,21 @@ enum SwapStatus {
     },
 }
 
-pub fn get_swap<E: EventStore<TradeId>>(state: State) -> Box<HandlerFuture> {
-    let result = {
-        let id = SwapId::borrow_from(&state).id;
-        let event_store = gotham_factory::EventStore::<E>::borrow_from(&state);
-        handle_get_swap(id, &event_store.0)
-    };
+pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
+    event_store: Arc<E>,
+    id: TradeId,
+) -> Result<impl Reply, Rejection> {
+    let result = handle_get_swap(id, &event_store);
 
-    let response = match result {
-        Some(swap_status) => Response::builder()
+    match result {
+        Some(swap_status) => Ok(Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
             .body(Body::from(
                 serde_json::to_string(&swap_status).expect("should always serialize"),
-            )).unwrap(),
-        None => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::empty())
-            .unwrap(),
-    };
-    Box::new(future::ok((state, response)))
+            )).unwrap()),
+        None => Err(warp::reject::bad_request()),
+    }
 }
 
 fn handle_get_swap<E: EventStore<TradeId>>(

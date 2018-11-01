@@ -52,14 +52,12 @@ pub fn create<
         .and(client_factory)
         .and(event_store.clone())
         .and(warp::body::json())
-        .and_then(|swap_state, client_factory, event_store, swap| {
-            http_api::warp_swap::post_swap(swap_state, client_factory, event_store, swap)
-        });
+        .and_then(http_api::swap::post_swap);
 
     let get_swap = warp::get2()
         .and(event_store)
         .and(warp::path::param())
-        .and_then(|event_store, trade_id| http_api::warp_swap::get_swap(event_store, trade_id));
+        .and_then(|event_store, trade_id| http_api::swap::get_swap(event_store, trade_id));
 
     path.and(post_swap.or(get_swap)).boxed()
 }
