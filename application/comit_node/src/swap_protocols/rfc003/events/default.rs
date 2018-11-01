@@ -16,7 +16,7 @@ use swap_protocols::{
     rfc003::{
         self,
         alice::bitcoin_htlc_address,
-        events::{Funded, QueryFactory, RequestResponded, Response, SourceHtlcFunded},
+        events::{FromOngoingSwap, Funded, RequestResponded, Response, SourceHtlcFunded},
         messages::{AcceptResponse, Request},
         state_machine::{OngoingSwap, Start},
         Ledger, SecretHash,
@@ -33,12 +33,12 @@ pub enum Player {
 pub struct DefaultEvents<
     SL: Ledger,
     TL: Ledger,
-    SA,
-    TA,
-    S,
+    SA: Asset,
+    TA: Asset,
+    S: Clone,
     COMIT_CLIENT,
     SL_FETCH_QUERY_RESULTS,
-    SL_HFQ: Query,
+    SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
     SL_CHFQ,
 > {
     player: Player,
@@ -47,7 +47,6 @@ pub struct DefaultEvents<
     source_ledger_tick_interval: Duration,
     client: Arc<COMIT_CLIENT>,
 
-    source_htlc_funded_query_factory: Arc<QueryFactory<SL, TL, SA, TA, S, SL_HFQ>>,
     create_source_htlc_funded_query: QueryIdCache<SL, SL_HFQ, SL_CHFQ>,
     source_ledger_fetch_query_results: Arc<SL_FETCH_QUERY_RESULTS>,
 
@@ -64,8 +63,8 @@ where
     SA: Asset,
     TA: Asset,
     C: Client,
-    SL_HFQ: Query,
     S: Into<SecretHash> + Clone + Send + Sync,
+    SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
     SL_CHFQ: CreateQuery<SL, SL_HFQ>,
     SL_FETCH_QUERY_RESULTS: FetchQueryResults<SL>,
 {
@@ -95,7 +94,7 @@ where
     TA: Asset,
     C: Client,
     S: Into<SecretHash> + Send + Sync + Clone,
-    SL_HFQ: Query,
+    SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
     SL_CHFQ: CreateQuery<SL, SL_HFQ>,
     SL_FETCH_QUERY_RESULTS: FetchQueryResults<SL>,
 {
@@ -108,7 +107,7 @@ where
         let source_asset = swap.source_asset.clone();
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
-        let query = self.source_htlc_funded_query_factory.create(swap);
+        let query = SL_HFQ::create(swap);
         let query_id = self.create_source_htlc_funded_query.create_query(query);
 
         self.source_htlc_funded_query.get_or_insert_with(move || {

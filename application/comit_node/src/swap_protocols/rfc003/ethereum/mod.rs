@@ -8,6 +8,7 @@ use swap_protocols::{
     ledger::Ethereum,
     rfc003::{state_machine::OngoingSwap, Ledger, SecretHash},
 };
+use swap_protocols::asset::Asset;
 
 mod erc20_htlc;
 mod ether_htlc;
@@ -46,7 +47,7 @@ impl Ledger for Ethereum {
     type HtlcIdentity = Address;
 }
 
-pub fn ethereum_htlc<SL: Ledger, SA: Clone, S: Into<SecretHash> + Clone>(
+pub fn ethereum_htlc<SL: Ledger, SA: Asset, S: Into<SecretHash> + Clone>(
     swap: &OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
 ) -> Box<Htlc> {
     Box::new(EtherHtlc::new(

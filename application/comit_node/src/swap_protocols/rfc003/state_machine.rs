@@ -1,13 +1,16 @@
 use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
-use swap_protocols::rfc003::{
-    self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret, SecretHash,
-    SwapOutcome,
+use swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret, SecretHash,
+        SwapOutcome,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone> {
+pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
     pub source_identity: SL::HtlcIdentity,
     pub target_identity: TL::HtlcIdentity,
     pub source_ledger: SL,
@@ -21,7 +24,7 @@ pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<Sec
     pub secret: S,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
     OngoingSwap<SL, TL, SA, TA, S>
 {
     pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponse<SL, TL>) -> Self {
@@ -42,7 +45,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
 }
 
 #[allow(missing_debug_implementations)]
-pub struct Context<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone> {
+pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
     pub events: Box<events::Events<SL, TL, SA, TA, S>>,
     pub state_repo: Arc<SaveState<SL, TL, SA, TA, S>>,
 }
@@ -50,7 +53,7 @@ pub struct Context<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretH
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 #[allow(missing_debug_implementations)]
-pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone> {
+pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
         source_identity: SL::HtlcIdentity,
@@ -120,7 +123,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> 
     Error(rfc003::Error),
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
     PollSwap<SL, TL, SA, TA, S> for Swap<SL, TL, SA, TA, S>
 {
     fn poll_start<'smf_poll>(

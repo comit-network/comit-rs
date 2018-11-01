@@ -40,7 +40,7 @@ pub enum Error {
     MalformedResponse,
 }
 
-pub trait Query: Clone + Debug + Send + Sync + Eq + Hash + 'static {}
+pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + 'static {}
 
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q: Query>:
     'static + Send + Sync + CreateQuery<L, Q> + FetchQueryResults<L>

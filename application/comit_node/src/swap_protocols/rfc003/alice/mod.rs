@@ -4,6 +4,7 @@ pub use self::actions::btc_eth;
 
 use bitcoin_support::{self, BitcoinQuantity};
 use swap_protocols::{
+    asset::Asset,
     ledger::Bitcoin,
     rfc003::{
         self,
@@ -13,7 +14,7 @@ use swap_protocols::{
     },
 };
 
-pub fn bitcoin_htlc<TL: Ledger, TA: Clone, S: Into<SecretHash> + Clone>(
+pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: Into<SecretHash> + Clone>(
     swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> rfc003::bitcoin::Htlc {
     rfc003::bitcoin::Htlc::new(
@@ -24,7 +25,7 @@ pub fn bitcoin_htlc<TL: Ledger, TA: Clone, S: Into<SecretHash> + Clone>(
     )
 }
 
-pub fn bitcoin_htlc_address<TL: Ledger, TA: Clone, S: Into<SecretHash> + Clone>(
+pub fn bitcoin_htlc_address<TL: Ledger, TA: Asset, S: Into<SecretHash> + Clone>(
     swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> bitcoin_support::Address {
     bitcoin_htlc(swap).compute_address(swap.source_ledger.network())

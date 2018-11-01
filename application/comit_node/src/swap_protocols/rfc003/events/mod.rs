@@ -28,7 +28,7 @@ pub type SourceRefundedOrTargetFunded<SL: Ledger, TL: Ledger> =
     Future<Either<SL::TxId, TL::HtlcLocation>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::TxId, L::TxId>>;
 
-pub trait RequestResponded<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone>: Send {
+pub trait RequestResponded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
     fn request_responded(
         &mut self,
         request: &Request<SL, TL, SA, TA>,
@@ -38,8 +38,8 @@ pub trait RequestResponded<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone>: Send {
 pub trait SourceHtlcFunded<
     SL: Ledger,
     TL: Ledger,
-    SA: Clone,
-    TA: Clone,
+    SA: Asset,
+    TA: Asset,
     S: Into<SecretHash> + Clone,
 >: Send
 {
@@ -50,8 +50,8 @@ pub trait SourceHtlcFunded<
 pub trait SourceHtlcRefundedTargetHtlcFunded<
     SL: Ledger,
     TL: Ledger,
-    SA: Clone,
-    TA: Clone,
+    SA: Asset,
+    TA: Asset,
     S: Into<SecretHash> + Clone,
 >: Send
 {
@@ -76,7 +76,7 @@ pub trait SourceHtlcRedeemedOrRefunded<SL: Ledger>: Send {
     ) -> &mut Box<RedeemedOrRefunded<SL>>;
 }
 
-pub trait Events<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>:
+pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>:
     RequestResponded<SL, TL, SA, TA>
     + SourceHtlcFunded<SL, TL, SA, TA, S>
     + SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>
@@ -85,13 +85,14 @@ pub trait Events<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHas
 {
 }
 
-pub trait QueryFactory<SL, TL, SA, TA, S, Q>: Send + Sync
+pub trait FromOngoingSwap<SL, TL, SA, TA, S>: Send + Sync
 where
     SL: Ledger,
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: Clone,
+    Self: Query,
 {
-    fn create(&self, swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Q;
+    fn create(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
 }
