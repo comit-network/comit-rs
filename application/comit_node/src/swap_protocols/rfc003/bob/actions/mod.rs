@@ -7,6 +7,8 @@ use swap_protocols::rfc003::{bitcoin, secret::Secret};
 pub mod btc_eth;
 
 enum Action<Fund, Redeem, Refund> {
+    Accept(Accept),
+    Decline(Decline),
     FundHtlc(Fund),
     RedeemHtlc(Redeem),
     RefundHtlc(Refund),

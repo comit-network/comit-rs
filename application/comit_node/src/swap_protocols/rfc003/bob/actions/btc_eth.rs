@@ -36,7 +36,7 @@ impl StateActions<EtherDeploy, BitcoinRedeem, EtherRefund>
     fn actions(&self) -> Vec<Action<EtherDeploy, BitcoinRedeem, EtherRefund>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start { .. } => vec![], //TODO what action is needed on start?
+            SS::Start { .. } => vec![],
             SS::Accepted { .. } => vec![],
             SS::SourceFunded(SourceFunded {
                 ref start,
@@ -62,20 +62,32 @@ impl StateActions<EtherDeploy, BitcoinRedeem, EtherRefund>
             })],
             SS::SourceFundedTargetRefunded { .. } => vec![],
             SS::SourceFundedTargetRedeemed { .. } => vec![],
-            SS::SourceRefundedTargetFunded { .. } => vec![],
+            SS::SourceRefundedTargetFunded(SourceRefundedTargetFunded {
+                ref target_htlc_id,
+                ..
+            }) => vec![Action::RefundHtlc(EtherRefund {
+                contract_address: target_htlc_id.clone(),
+                execution_gas: 42, //TODO: generate gas cost directly
+            })],
             SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
                 ref start,
                 ref response,
                 ref target_htlc_id,
                 ref source_htlc_id,
                 ref secret,
-            }) => vec![Action::RedeemHtlc(BitcoinRedeem {
-                outpoint: source_htlc_id.clone(),
-                htlc: bitcoin_htlc(start, response),
-                value: start.source_asset,
-                transient_keypair: start.source_identity.into(),
-                secret: *secret,
-            })],
+            }) => vec![
+                Action::RedeemHtlc(BitcoinRedeem {
+                    outpoint: source_htlc_id.clone(),
+                    htlc: bitcoin_htlc(start, response),
+                    value: start.source_asset,
+                    transient_keypair: start.source_identity.into(),
+                    secret: *secret,
+                }),
+                Action::RefundHtlc(EtherRefund {
+                    contract_address: target_htlc_id.clone(),
+                    execution_gas: 42, //TODO: generate gas cost directly
+                }),
+            ],
             SS::Error(_) => vec![],
             SS::Final(_) => vec![],
         }
