@@ -36,7 +36,7 @@ impl StateActions<EtherDeploy, BitcoinRedeem, EtherRefund>
     fn actions(&self) -> Vec<Action<EtherDeploy, BitcoinRedeem, EtherRefund>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start { .. } => vec![],
+            SS::Start { .. } => vec![], //TODO what action is needed on start?
             SS::Accepted { .. } => vec![],
             SS::SourceFunded(SourceFunded {
                 ref start,
@@ -74,7 +74,7 @@ impl StateActions<EtherDeploy, BitcoinRedeem, EtherRefund>
                 htlc: bitcoin_htlc(start, response),
                 value: start.source_asset,
                 transient_keypair: start.source_identity.into(),
-                data: *secret,
+                secret: *secret,
             })],
             SS::Error(_) => vec![],
             SS::Final(_) => vec![],

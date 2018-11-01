@@ -32,7 +32,7 @@ struct BitcoinRedeem {
     pub htlc: bitcoin::Htlc,
     pub value: BitcoinQuantity,
     pub transient_keypair: KeyPair,
-    pub data: Secret,
+    pub secret: Secret,
 }
 
 impl BitcoinRedeem {
@@ -44,7 +44,8 @@ impl BitcoinRedeem {
             inputs: vec![bitcoin_witness::PrimedInput::new(
                 self.outpoint,
                 self.value,
-                self.htlc.unlock_after_timeout(self.transient_keypair),
+                self.htlc
+                    .unlock_with_secret(self.transient_keypair, &self.secret),
             )],
             locktime: 0,
             output_address: to_address,
