@@ -13,7 +13,7 @@ addons:
 install: true
 services: docker
 before_script: which cargo-make || cargo install --debug cargo-make
-script: cargo make ci-flow
+script: cargo make travis
 notifications:
   email: false
   slack:
