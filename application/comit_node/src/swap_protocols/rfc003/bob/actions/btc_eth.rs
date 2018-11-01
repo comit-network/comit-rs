@@ -13,7 +13,7 @@ pub fn ethereum_htlc(
     response: &AcceptResponse<Bitcoin, Ethereum>,
 ) -> Box<rfc003::ethereum::Htlc> {
     Box::new(rfc003::ethereum::EtherHtlc::new(
-        response.target_ledger_lock_duration.into(), //TODO where to get the right time lock from
+        response.target_ledger_lock_duration.into(),
         response.target_ledger_refund_identity,
         start.target_identity,
         start.secret.clone(),
