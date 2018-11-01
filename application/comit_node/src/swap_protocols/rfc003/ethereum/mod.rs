@@ -5,10 +5,10 @@ pub use self::{erc20_htlc::*, ether_htlc::*};
 use ethereum_support::{web3::types::Address, EtherQuantity};
 use std::time::Duration;
 use swap_protocols::{
+    asset::Asset,
     ledger::Ethereum,
     rfc003::{state_machine::OngoingSwap, Ledger, SecretHash},
 };
-use swap_protocols::asset::Asset;
 
 mod erc20_htlc;
 mod ether_htlc;

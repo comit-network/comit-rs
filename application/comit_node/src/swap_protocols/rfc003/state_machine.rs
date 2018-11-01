@@ -4,8 +4,8 @@ use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret, SecretHash,
-        SwapOutcome,
+        self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret,
+        SecretHash, SwapOutcome,
     },
 };
 

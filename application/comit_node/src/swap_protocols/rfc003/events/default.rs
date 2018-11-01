@@ -18,6 +18,7 @@ use swap_protocols::{
         events::{FromOngoingSwap, Funded, RequestResponded, Response, SourceHtlcFunded},
         messages::{AcceptResponse, Request},
         state_machine::{OngoingSwap, Start},
+        validation::IsContainedInTransaction,
         Ledger, SecretHash,
     },
 };
@@ -89,30 +90,50 @@ where
     }
 }
 
-impl<SL, TL, SA, TA, S, C, SL_FETCH_QUERY_RESULTS, SL_HFQ, SL_CHFQ>
-    SourceHtlcFunded<SL, TL, SA, TA, S>
-    for DefaultEvents<SL, TL, SA, TA, S, C, SL_FETCH_QUERY_RESULTS, SL_HFQ, SL_CHFQ>
+impl<
+        SL,
+        TL,
+        SA,
+        TA,
+        S,
+        COMIT_CLIENT,
+        SL_FETCH_QUERY_RESULTS,
+        SL_HTLC_FUNDED_QUERY,
+        SL_CREATE_HTLC_FUNDED_QUERY,
+    > SourceHtlcFunded<SL, TL, SA, TA, S>
+    for DefaultEvents<
+        SL,
+        TL,
+        SA,
+        TA,
+        S,
+        COMIT_CLIENT,
+        SL_FETCH_QUERY_RESULTS,
+        SL_HTLC_FUNDED_QUERY,
+        SL_CREATE_HTLC_FUNDED_QUERY,
+    >
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset,
+    SA: Asset + IsContainedInTransaction<SL, TL, SA, TA, S>,
     TA: Asset,
-    C: Client,
-    S: Into<SecretHash> + Send + Sync + Clone,
-    SL_HFQ: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
-    SL_CHFQ: CreateQuery<SL, SL_HFQ>,
+    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    COMIT_CLIENT: Client,
+    SL_HTLC_FUNDED_QUERY: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
+    SL_CREATE_HTLC_FUNDED_QUERY: CreateQuery<SL, SL_HTLC_FUNDED_QUERY>,
     SL_FETCH_QUERY_RESULTS: FetchQueryResults<SL>,
 {
     fn source_htlc_funded<'s>(
         &'s mut self,
         swap: &OngoingSwap<SL, TL, SA, TA, S>,
     ) -> &'s mut Box<Funded<SL>> {
+        let swap = swap.clone();
         let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
 
         let source_asset = swap.source_asset.clone();
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
-        let query = SL_HFQ::create(swap);
+        let query = SL_HTLC_FUNDED_QUERY::create(&swap);
         let query_id = self.create_source_htlc_funded_query.create_query(query);
 
         self.source_htlc_funded_query.get_or_insert_with(move || {
@@ -127,7 +148,10 @@ where
                         .into_future()
                         .map(|(txid, _stream)| txid.expect("ticker stream should never terminate"))
                         .map_err(|(e, _stream)| rfc003::Error::LedgerQueryService)
-                        .and_then(move |tx_id| Ok(unimplemented!("validate tx here")))
+                        .and_then(move |tx_id| {
+                            SA::is_contained_in_transaction(swap, &tx_id)
+                                .map_err(|_| rfc003::Error::InsufficientFunding)
+                        })
                 });
 
             Box::new(funded_future)
