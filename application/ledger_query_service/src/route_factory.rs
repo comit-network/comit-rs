@@ -1,3 +1,5 @@
+use bitcoin_rpc_client;
+use bitcoin_support;
 use block_processor::Query;
 use link_factory::LinkFactory;
 use query_repository::QueryRepository;
@@ -6,6 +8,13 @@ use routes;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{env::VarError, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
+
+#[derive(Debug)]
+pub enum Error {
+    TransactionIdConversionFailure(bitcoin_support::hash::HexError),
+    BitcoinRpcConnectionFailure(bitcoin_rpc_client::ClientError),
+    BitcoinRpcResponseFailure(bitcoin_rpc_client::RpcError),
+}
 
 #[derive(DebugStub)]
 pub struct RouteFactory {
@@ -17,12 +26,22 @@ pub trait QueryType {
 }
 
 pub trait ExpandData {
-    fn expand_data(result: &QueryResult, query_params: &QueryParams) -> Option<QueryResult>;
+    type Client: 'static + Send + Sync;
+    type Item: Serialize;
+
+    fn expand_data(
+        result: &QueryResult,
+        client: Arc<Self::Client>,
+    ) -> Result<Vec<Self::Item>, Error>;
+}
+
+pub trait MustExpand {
+    fn must_expand(query_params: &QueryParams) -> bool;
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct QueryParams {
-    inline_transactions: Option<bool>,
+    pub inline_transactions: Option<bool>,
 }
 
 impl RouteFactory {
@@ -32,13 +51,21 @@ impl RouteFactory {
 
     pub fn create<
         O: 'static,
-        Q: Query<O> + QueryType + ExpandData + DeserializeOwned + Serialize + Send + 'static,
+        Q: Query<O>
+            + QueryType
+            + ExpandData
+            + MustExpand
+            + DeserializeOwned
+            + Serialize
+            + Send
+            + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
     >(
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
+        client: Arc<<Q as ExpandData>::Client>,
         endpoint: Result<String, VarError>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)> {
@@ -56,6 +83,7 @@ impl RouteFactory {
         let link_factory = warp::any().map(move || link_factory.clone());
         let query_repository = warp::any().map(move || query_repository.clone());
         let query_result_repository = warp::any().map(move || query_result_repository.clone());
+        let client = warp::any().map(move || client.clone());
 
         let json_body = warp::body::json().and_then(routes::non_empty_query);
 
@@ -70,6 +98,7 @@ impl RouteFactory {
         let retrieve = warp::get2()
             .and(query_repository.clone())
             .and(query_result_repository.clone())
+            .and(client.clone())
             .and(warp::path::param())
             .and(warp::query::<QueryParams>())
             .and_then(routes::retrieve_query);

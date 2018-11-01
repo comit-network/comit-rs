@@ -3,8 +3,9 @@ use ethereum_support::{
     web3::types::U256, Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
 };
 use query_result_repository::QueryResult;
-use route_factory::{ExpandData, QueryParams, QueryType};
+use route_factory::{Error, ExpandData, MustExpand, QueryParams, QueryType};
 use serde::Serialize;
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct EthereumTransactionQuery {
@@ -20,9 +21,17 @@ impl QueryType for EthereumTransactionQuery {
     }
 }
 
+impl MustExpand for EthereumTransactionQuery {
+    fn must_expand(_: &QueryParams) -> bool {
+        false
+    }
+}
+
 impl ExpandData for EthereumTransactionQuery {
-    fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
-        None
+    type Client = ();
+    type Item = ();
+    fn expand_data(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
+        unimplemented!()
     }
 }
 
@@ -126,9 +135,17 @@ impl QueryType for EthereumBlockQuery {
     }
 }
 
+impl MustExpand for EthereumBlockQuery {
+    fn must_expand(_: &QueryParams) -> bool {
+        false
+    }
+}
+
 impl ExpandData for EthereumBlockQuery {
-    fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
-        None
+    type Client = ();
+    type Item = ();
+    fn expand_data(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
+        unimplemented!()
     }
 }
 

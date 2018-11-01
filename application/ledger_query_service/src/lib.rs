@@ -13,6 +13,7 @@ extern crate serde;
 extern crate spectral;
 #[macro_use]
 extern crate log;
+extern crate bitcoin_rpc_client;
 extern crate byteorder;
 extern crate config;
 extern crate url;

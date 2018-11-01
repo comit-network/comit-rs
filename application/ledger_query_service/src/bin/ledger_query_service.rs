@@ -31,18 +31,19 @@ fn main() {
 
     info!("Starting up with {:#?}", settings);
 
-    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client::BitcoinCoreClient::new(
+    let bitcoin_rpc_client = bitcoin_rpc_client::BitcoinCoreClient::new(
         settings.bitcoin.node_url.as_str(),
         settings.bitcoin.node_username.as_str(),
         settings.bitcoin.node_password.as_str(),
-    ));
+    );
 
     // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(8080));
     let route_factory = RouteFactory::new(link_factory);
 
     let bitcoin_endpoint = var("BITCOIN_ZMQ_ENDPOINT");
-    let bitcoin_routes = create_bitcoin_routes(&route_factory, bitcoin_endpoint);
+    let bitcoin_routes =
+        create_bitcoin_routes(&route_factory, bitcoin_endpoint, bitcoin_rpc_client);
 
     let ethereum_endpoint = var("ETHEREUM_WEB3_ENDPOINT");
     let ethereum_routes = create_ethereum_routes(&route_factory, ethereum_endpoint);
@@ -54,12 +55,14 @@ fn main() {
 fn create_bitcoin_routes(
     route_factory: &RouteFactory,
     endpoint: Result<String, VarError>,
+    client: bitcoin_rpc_client::BitcoinCoreClient,
 ) -> BoxedFilter<(impl Reply,)> {
     let transaction_query_repository =
         Arc::new(InMemoryQueryRepository::<BitcoinTransactionQuery>::default());
     let block_query_repository = Arc::new(InMemoryQueryRepository::<BitcoinBlockQuery>::default());
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    let client = Arc::new(client);
 
     if let Ok(zmq_endpoint) = endpoint.clone() {
         info!("Connect BitcoinZmqListener to {}", zmq_endpoint);
@@ -86,6 +89,7 @@ fn create_bitcoin_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
+        client.clone(),
         endpoint.clone(),
         ledger_name,
     );
@@ -93,6 +97,7 @@ fn create_bitcoin_routes(
     let block_routes = route_factory.create(
         block_query_repository,
         block_query_result_repository,
+        Arc::new(()),
         endpoint,
         ledger_name,
     );
@@ -144,6 +149,7 @@ fn create_ethereum_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
+        Arc::new(()),
         endpoint.clone(),
         ledger_name,
     );
@@ -151,6 +157,7 @@ fn create_ethereum_routes(
     let block_routes = route_factory.create(
         block_query_repository,
         block_query_result_repository,
+        Arc::new(()),
         endpoint,
         ledger_name,
     );
