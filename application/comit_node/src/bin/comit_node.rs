@@ -197,10 +197,13 @@ fn spawn_warp_instance(
         alice_actor_sender,
     );
 
-    let _http_api_address = settings.http_api.address.clone();
-    let _http_api_port = settings.http_api.port;
+    let http_api_socket_address = settings.http_api.socket_address.clone();
 
-    warp::serve(routes).run(([0, 0, 0, 0], 8000));
+    //let server = warp::serve(routes).bind(http_api_socket_address);
+
+    ::std::thread::spawn(move || {
+        warp::serve(routes).run(http_api_socket_address);
+    });
 }
 
 fn spawn_comit_server(

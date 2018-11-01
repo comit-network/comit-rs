@@ -57,8 +57,8 @@ pub struct Comit {
 
 #[derive(Debug, Deserialize)]
 pub struct HttpApi {
-    pub address: String,
-    pub port: u16,
+    #[serde(with = "serde::socket_addr")]
+    pub socket_address: SocketAddr,
     pub logging: bool,
 }
 
