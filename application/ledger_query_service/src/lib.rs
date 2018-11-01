@@ -14,6 +14,8 @@ extern crate spectral;
 #[macro_use]
 extern crate log;
 extern crate byteorder;
+extern crate config;
+extern crate url;
 extern crate warp;
 extern crate zmq_rs as zmq;
 
@@ -28,6 +30,7 @@ mod query_repository;
 mod query_result_repository;
 pub mod route_factory;
 mod routes;
+pub mod settings;
 
 pub use bitcoind_zmq_listener::*;
 pub use block_processor::*;

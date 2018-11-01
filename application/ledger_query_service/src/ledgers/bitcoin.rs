@@ -1,6 +1,6 @@
 use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, SpendsTo,
-    Transaction as BitcoinTransaction,
+    Transaction as BitcoinTransaction, TransactionId,
 };
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use query_result_repository::QueryResult;
@@ -22,6 +22,11 @@ impl QueryType for BitcoinTransactionQuery {
 
 impl ExpandData for BitcoinTransactionQuery {
     fn expand_data(result: &QueryResult, _query_params: &QueryParams) -> Option<QueryResult> {
+        let mut expanded_result: Vec<String> = Vec::new();
+        //TODO: remove the clone
+        for tx_id in result.clone().0 {
+            let tx_id = TransactionId::from_hex(tx_id.as_str()).unwrap();
+        }
         None
     }
 }

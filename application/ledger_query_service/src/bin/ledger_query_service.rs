@@ -6,11 +6,13 @@ extern crate ledger_query_service;
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
+extern crate bitcoin_rpc_client;
 extern crate warp;
 
 use ledger_query_service::{
     bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
+    settings::Settings,
     BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
     InMemoryQueryResultRepository, LinkFactory, RouteFactory,
 };
@@ -24,6 +26,16 @@ use warp::{filters::BoxedFilter, Filter, Reply};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
+
+    let settings = load_settings();
+
+    info!("Starting up with {:#?}", settings);
+
+    let bitcoin_rpc_client = Arc::new(bitcoin_rpc_client::BitcoinCoreClient::new(
+        settings.bitcoin.node_url.as_str(),
+        settings.bitcoin.node_username.as_str(),
+        settings.bitcoin.node_password.as_str(),
+    ));
 
     // TODO: Read that stuff from the environment
     let link_factory = LinkFactory::new("http", "localhost", Some(8080));
@@ -144,4 +156,31 @@ fn create_ethereum_routes(
     );
 
     transaction_routes.or(block_routes).boxed()
+}
+
+fn load_settings() -> Settings {
+    let config_path = var_or_default(
+        "LEDGER_QUERY_SERVICE_CONFIG_PATH",
+        "~/.config/ledger_query_service".into(),
+    );
+    let default_config = format!("{}/{}", config_path.trim(), "default");
+
+    let settings = Settings::new(default_config);
+    settings.unwrap()
+}
+
+fn var_or_default(name: &str, default: String) -> String {
+    match var(name) {
+        Ok(value) => {
+            info!("Set {}={}", name, value);
+            value
+        }
+        Err(_) => {
+            eprintln!(
+                "{} is not set, falling back to default: '{}' ",
+                name, default
+            );
+            default
+        }
+    }
 }
