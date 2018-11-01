@@ -6,7 +6,7 @@ use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        self, alice::bitcoin_htlc, ethereum::ethereum_htlc, messages::AcceptResponse,
+        self, bitcoin::bitcoin_htlc, ethereum::ethereum_htlc, messages::AcceptResponse,
         state_machine::*, SecretHash,
     },
 };

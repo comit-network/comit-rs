@@ -15,7 +15,6 @@ use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
         self,
-        alice::bitcoin_htlc_address,
         events::{FromOngoingSwap, Funded, RequestResponded, Response, SourceHtlcFunded},
         messages::{AcceptResponse, Request},
         state_machine::{OngoingSwap, Start},

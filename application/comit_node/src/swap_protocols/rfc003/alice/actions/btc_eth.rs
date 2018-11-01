@@ -4,7 +4,7 @@ use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        alice::{bitcoin_htlc, bitcoin_htlc_address},
+        bitcoin::{bitcoin_htlc, bitcoin_htlc_address},
         state_machine::*,
         Secret,
     },
