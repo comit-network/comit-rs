@@ -42,6 +42,7 @@ dependencies = [
 [tasks.post-ci-flow]
 workspace = false
 dependencies = [
+    "stop-sccache",
     "clean-registry"
 ]
 
@@ -159,7 +160,7 @@ docker pull ruimarinho/bitcoin-core:0.17.0-alpine
 ]
 
 [tasks.start-sccache]
-description = "Setup sscache"
+description = "Setup & start sscache"
 workspace = false
 private = true
 install_script = ["which sccache || cargo install sccache"]
@@ -170,6 +171,16 @@ script = [
 '''
 sccache --start-server
 sccache --show-stats
+'''
+]
+
+[tasks.stop-sccache]
+description = "Stop sscache"
+workspace = false
+private = true
+script = [
+'''
+sccache --stop-server
 '''
 ]
 
