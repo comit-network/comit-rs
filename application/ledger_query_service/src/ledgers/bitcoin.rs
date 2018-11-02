@@ -1,9 +1,13 @@
+use bitcoin_rpc_client::{rpc::VerboseRawTransaction, BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, SpendsTo,
-    Transaction as BitcoinTransaction,
+    Transaction as BitcoinTransaction, TransactionId,
 };
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
-use route_factory::QueryType;
+use query_result_repository::QueryResult;
+use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
+use serde::Serialize;
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinTransactionQuery {
@@ -15,6 +19,35 @@ pub struct BitcoinTransactionQuery {
 impl QueryType for BitcoinTransactionQuery {
     fn route() -> &'static str {
         "transactions"
+    }
+}
+
+impl ShouldExpand for BitcoinTransactionQuery {
+    fn should_expand(query_params: &QueryParams) -> bool {
+        query_params.expand_results
+    }
+}
+
+impl ExpandResult for BitcoinTransactionQuery {
+    type Client = BitcoinCoreClient;
+    type Item = VerboseRawTransaction;
+
+    fn expand_result(
+        result: &QueryResult,
+        client: Arc<BitcoinCoreClient>,
+    ) -> Result<Vec<VerboseRawTransaction>, Error> {
+        let mut expanded_result: Vec<VerboseRawTransaction> = Vec::new();
+        for tx_id in result.clone().0 {
+            let tx_id =
+                TransactionId::from_hex(tx_id.as_str()).map_err(Error::TransactionIdConversion)?;
+
+            let transaction = client
+                .get_raw_transaction_verbose(&tx_id)
+                .map_err(Error::BitcoinRpcConnection)?
+                .map_err(Error::BitcoinRpcResponse)?;
+            expanded_result.push(transaction);
+        }
+        Ok(expanded_result)
     }
 }
 
@@ -71,6 +104,21 @@ pub struct BitcoinBlockQuery {
 impl QueryType for BitcoinBlockQuery {
     fn route() -> &'static str {
         "blocks"
+    }
+}
+
+impl ShouldExpand for BitcoinBlockQuery {
+    fn should_expand(_: &QueryParams) -> bool {
+        false
+    }
+}
+
+impl ExpandResult for BitcoinBlockQuery {
+    type Client = ();
+    type Item = ();
+
+    fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
+        unimplemented!()
     }
 }
 

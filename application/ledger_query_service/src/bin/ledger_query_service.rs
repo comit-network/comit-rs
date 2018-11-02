@@ -6,42 +6,39 @@ extern crate ledger_query_service;
 extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
+extern crate bitcoin_rpc_client;
 extern crate warp;
 
 use ledger_query_service::{
     bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
+    settings::{self, Settings},
     BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
-    InMemoryQueryResultRepository, LinkFactory, RouteFactory,
+    InMemoryQueryResultRepository, RouteFactory,
 };
-use std::{
-    env::{var, VarError},
-    sync::Arc,
-    thread,
-    time::Duration,
-};
+use std::{env::var, sync::Arc, thread};
 use warp::{filters::BoxedFilter, Filter, Reply};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
 
-    // TODO: Read that stuff from the environment
-    let link_factory = LinkFactory::new("http", "localhost", Some(8080));
-    let route_factory = RouteFactory::new(link_factory);
+    let settings = load_settings();
 
-    let bitcoin_endpoint = var("BITCOIN_ZMQ_ENDPOINT");
-    let bitcoin_routes = create_bitcoin_routes(&route_factory, bitcoin_endpoint);
+    info!("Starting up with {:#?}", settings);
 
-    let ethereum_endpoint = var("ETHEREUM_WEB3_ENDPOINT");
-    let ethereum_routes = create_ethereum_routes(&route_factory, ethereum_endpoint);
+    let route_factory = RouteFactory::new(settings.http_api.external_url);
+
+    let bitcoin_routes = create_bitcoin_routes(&route_factory, settings.bitcoin);
+
+    let ethereum_routes = create_ethereum_routes(&route_factory, settings.ethereum);
 
     let routes = bitcoin_routes.or(ethereum_routes);
-    warp::serve(routes).run(([127, 0, 0, 1], 8080));
+    warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
 }
 
 fn create_bitcoin_routes(
     route_factory: &RouteFactory,
-    endpoint: Result<String, VarError>,
+    settings: Option<settings::Bitcoin>,
 ) -> BoxedFilter<(impl Reply,)> {
     let transaction_query_repository =
         Arc::new(InMemoryQueryRepository::<BitcoinTransactionQuery>::default());
@@ -49,39 +46,53 @@ fn create_bitcoin_routes(
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    if let Ok(zmq_endpoint) = endpoint.clone() {
-        info!("Connect BitcoinZmqListener to {}", zmq_endpoint);
+    let client = match settings.clone() {
+        Some(settings) => {
+            let bitcoin_rpc_client = bitcoin_rpc_client::BitcoinCoreClient::new(
+                settings.node_url.as_str(),
+                settings.node_username.as_str(),
+                settings.node_password.as_str(),
+            );
 
-        let transaction_processor = DefaultBlockProcessor::new(
-            transaction_query_repository.clone(),
-            block_query_repository.clone(),
-            transaction_query_result_repository.clone(),
-            block_query_result_repository.clone(),
-        );
-        thread::spawn(move || {
-            let bitcoind_zmq_listener =
-                BitcoindZmqListener::new(zmq_endpoint.as_str(), transaction_processor);
+            info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
-            match bitcoind_zmq_listener {
-                Ok(mut listener) => listener.start(),
-                Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
-            }
-        });
-    }
+            let transaction_processor = DefaultBlockProcessor::new(
+                transaction_query_repository.clone(),
+                block_query_repository.clone(),
+                transaction_query_result_repository.clone(),
+                block_query_result_repository.clone(),
+            );
+            thread::spawn(move || {
+                let bitcoind_zmq_listener =
+                    BitcoindZmqListener::new(settings.zmq_endpoint.as_str(), transaction_processor);
+
+                match bitcoind_zmq_listener {
+                    Ok(mut listener) => listener.start(),
+                    Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
+                }
+            });
+
+            Some(Arc::new(bitcoin_rpc_client))
+        }
+        // This is not great but could not find a better way with warp
+        None => None,
+    };
 
     let ledger_name = "bitcoin";
 
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
-        endpoint.clone(),
+        client.clone(),
+        settings.is_none(),
         ledger_name,
     );
 
     let block_routes = route_factory.create(
         block_query_repository,
         block_query_result_repository,
-        endpoint,
+        None,
+        settings.is_none(),
         ledger_name,
     );
 
@@ -90,7 +101,7 @@ fn create_bitcoin_routes(
 
 fn create_ethereum_routes(
     route_factory: &RouteFactory,
-    endpoint: Result<String, VarError>,
+    settings: Option<settings::Ethereum>,
 ) -> BoxedFilter<(impl Reply,)> {
     let transaction_query_repository =
         Arc::new(InMemoryQueryRepository::<EthereumTransactionQuery>::default());
@@ -98,14 +109,8 @@ fn create_ethereum_routes(
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    if let Ok(web3_endpoint) = endpoint.clone() {
-        info!("Starting EthereumSimpleListener on {}", web3_endpoint);
-
-        let polling_wait_time = match var("ETHEREUM_POLLING_TIME_SEC") {
-            Err(_) => 17,
-            Ok(var) => var.parse().unwrap(),
-        };
-        let polling_wait_time = Duration::from_secs(polling_wait_time);
+    if let Some(settings) = settings.clone() {
+        info!("Starting EthereumSimpleListener on {}", settings.node_url);
 
         let transaction_processor = DefaultBlockProcessor::new(
             transaction_query_repository.clone(),
@@ -116,8 +121,8 @@ fn create_ethereum_routes(
 
         thread::spawn(move || {
             let web3_poller = EthereumWeb3BlockPoller::new(
-                web3_endpoint.as_str(),
-                polling_wait_time,
+                settings.node_url.as_str(),
+                settings.poll_interval_secs,
                 transaction_processor,
             );
             match web3_poller {
@@ -132,16 +137,30 @@ fn create_ethereum_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
-        endpoint.clone(),
+        None,
+        settings.is_none(),
         ledger_name,
     );
 
     let block_routes = route_factory.create(
         block_query_repository,
         block_query_result_repository,
-        endpoint,
+        None,
+        settings.is_none(),
         ledger_name,
     );
 
     transaction_routes.or(block_routes).boxed()
+}
+
+fn load_settings() -> Settings {
+    let config_path = match var("LEDGER_QUERY_SERVICE_CONFIG_PATH") {
+        Ok(value) => value,
+        Err(_) => "~/.config/ledger_query_service".into(),
+    };
+    info!("Using settings located in {}", config_path);
+    let default_config = format!("{}/{}", config_path.trim(), "default");
+
+    let settings = Settings::new(default_config);
+    settings.unwrap()
 }

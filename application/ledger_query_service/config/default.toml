@@ -1,0 +1,15 @@
+[bitcoin]
+network = "regtest"
+node_url = "http://localhost:18443"
+node_username = "bitcoin"
+node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+zmq_endpoint = "tcp://127.0.0.1:28332"
+
+[ethereum]
+node_url = "http://ethereum:8545"
+poll_interval_secs = 17
+
+[http_api]
+address_bind="0.0.0.0"
+port_bind=8080
+external_url="http://localhost:8080/"

@@ -65,8 +65,7 @@ function setup() {
     );
 
     LQS_PID=$(
-        export BITCOIN_ZMQ_ENDPOINT=tcp://127.0.0.1:28332;
-        export ETHEREUM_WEB3_ENDPOINT=$ETHEREUM_NODE_ENDPOINT;
+        export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service
         export ETHEREUM_POLLING_TIME_SEC=1
         export RUST_LOG=debug;
 

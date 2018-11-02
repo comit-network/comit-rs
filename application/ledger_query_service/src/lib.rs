@@ -13,7 +13,10 @@ extern crate serde;
 extern crate spectral;
 #[macro_use]
 extern crate log;
+extern crate bitcoin_rpc_client;
 extern crate byteorder;
+extern crate config;
+extern crate url;
 extern crate warp;
 extern crate zmq_rs as zmq;
 
@@ -23,11 +26,11 @@ mod ethereum_web3_block_poller;
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;
 mod ledgers;
-mod link_factory;
 mod query_repository;
 mod query_result_repository;
 pub mod route_factory;
 mod routes;
+pub mod settings;
 
 pub use bitcoind_zmq_listener::*;
 pub use block_processor::*;
@@ -36,7 +39,6 @@ pub use ethereum_web3_block_poller::*;
 pub use in_memory_query_repository::*;
 pub use in_memory_query_result_repository::*;
 pub use ledgers::*;
-pub use link_factory::*;
 pub use query_repository::*;
 pub use query_result_repository::*;
 pub use route_factory::*;

@@ -71,8 +71,21 @@ describe("Test Ledger Query Service API", () => {
                         return lqs.poll_until_matches(chai, location).then((body) => {
                             body.query.to_address.should.equal(to_address);
                             body.matches.should.have.lengthOf(1);
+                            body.matches[0].should.be.a('string');
                         });
                     });
+                });
+            });
+
+            it("LQS should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `expand_results`", async function () {
+                return bitcoin_rpc_client.generate(1).then(() => {
+                    return chai.request(location)
+                        .get('?expand_results=true')
+                        .then((res) => {
+                            res.body.query.to_address.should.equal(to_address);
+                            res.body.matches.should.have.lengthOf(1);
+                            res.body.matches[0].txid.should.be.a('string');
+                        });
                 });
             });
 
@@ -248,7 +261,7 @@ describe("Test Ledger Query Service API", () => {
             });
 
             let location;
-            const epoch_seconds_now = Math.round(Date.now() / 1000);;
+            const epoch_seconds_now = Math.round(Date.now() / 1000);
             const min_timestamp_secs = epoch_seconds_now + 3;
             it("LQS should respond with location when creating a valid ethereum block query", async function () {
                 this.timeout(1000);
