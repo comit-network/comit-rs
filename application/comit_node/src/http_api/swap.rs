@@ -153,9 +153,16 @@ pub fn post_swap<
     match result {
         Ok(swap_created) => {
             let json = warp::reply::json(&swap_created);
-            let json = warp::reply::with_header(json, "Content-Type", "application/json");
-            let json =
-                warp::reply::with_header(json, "Location", format!("/swaps/{}", swap_created.id));
+            let json = warp::reply::with_header(
+                json,
+                header::CONTENT_TYPE,
+                mime::APPLICATION_JSON.as_ref(),
+            );
+            let json = warp::reply::with_header(
+                json,
+                header::LOCATION,
+                format!("/swaps/{}", swap_created.id),
+            );
             let json = warp::reply::with_status(json, warp::http::StatusCode::CREATED);
             Ok(json)
         }
@@ -332,7 +339,11 @@ pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
     match result {
         Some(swap_status) => {
             let json = warp::reply::json(&swap_status);
-            let json = warp::reply::with_header(json, "Content-Type", "application/json");
+            let json = warp::reply::with_header(
+                json,
+                header::CONTENT_TYPE,
+                mime::APPLICATION_JSON.as_ref(),
+            );
             Ok(json)
         }
         None => Err(warp::reject::custom(HttpApiProblemStdError {
