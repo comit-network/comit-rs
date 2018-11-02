@@ -155,11 +155,6 @@ pub fn post_swap<
             let json = warp::reply::json(&swap_created);
             let json = warp::reply::with_header(
                 json,
-                header::CONTENT_TYPE,
-                mime::APPLICATION_JSON.as_ref(),
-            );
-            let json = warp::reply::with_header(
-                json,
                 header::LOCATION,
                 format!("/swaps/{}", swap_created.id),
             );
@@ -337,15 +332,7 @@ pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
     let result = handle_get_swap(id, &event_store);
 
     match result {
-        Some(swap_status) => {
-            let json = warp::reply::json(&swap_status);
-            let json = warp::reply::with_header(
-                json,
-                header::CONTENT_TYPE,
-                mime::APPLICATION_JSON.as_ref(),
-            );
-            Ok(json)
-        }
+        Some(swap_status) => Ok(warp::reply::json(&swap_status)),
         None => Err(warp::reject::custom(HttpApiProblemStdError {
             http_api_problem: Error::NotFound.into(),
         })),
