@@ -3,22 +3,33 @@ mod serde;
 use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
 use serde::Deserialize;
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, path::Path, time::Duration};
 use url;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
-    pub bitcoin: Bitcoin,
+    pub bitcoin: Option<Bitcoin>,
+    pub ethereum: Option<Ethereum>,
     //   pub http_api: HttpApi,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
     pub network: Network,
+    pub zmq_endpoint: String,
+    // Below could be options
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub node_username: String,
     pub node_password: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Ethereum {
+    #[serde(with = "serde::url")]
+    pub node_url: url::Url,
+    #[serde(with = "serde::duration")]
+    pub poll_interval_secs: Duration,
 }
 
 impl Settings {

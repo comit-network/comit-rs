@@ -6,7 +6,7 @@ use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
 use routes;
 use serde::{de::DeserializeOwned, Serialize};
-use std::{env::VarError, sync::Arc};
+use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Debug)]
@@ -65,13 +65,13 @@ impl RouteFactory {
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Arc<<Q as ExpandData>::Client>,
-        endpoint: Result<String, VarError>,
+        client: Option<Arc<<Q as ExpandData>::Client>>,
+        settings: Option<()>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)> {
         let endpoint = warp::any()
-            .map(move || endpoint.clone())
-            .and_then(routes::end_point_present);
+            .map(move || settings.clone())
+            .and_then(routes::settings_present);
 
         let route = Q::route();
 

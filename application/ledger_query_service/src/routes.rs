@@ -4,16 +4,16 @@ use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
 use route_factory::{ExpandData, MustExpand, QueryParams};
 use serde::Serialize;
-use std::{env::VarError, sync::Arc};
+use std::sync::Arc;
 use warp::{self, Rejection, Reply};
 
 // TODO: Replace warp::Rejection with http-api-problem::HttpApiProblem since it integrates with hyper
 // which warp uses under the hood
 #[allow(clippy::needless_pass_by_value)]
-pub fn end_point_present(endpoint_result: Result<String, VarError>) -> Result<(), Rejection> {
-    match endpoint_result {
-        Err(_) => Err(warp::reject::not_found()),
-        Ok(_) => Ok(()),
+pub fn settings_present(settings: Option<()>) -> Result<(), Rejection> {
+    match settings {
+        None => Err(warp::reject::not_found()),
+        Some(_) => Ok(()),
     }
 }
 
@@ -55,7 +55,7 @@ pub fn retrieve_query<
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<<Q as ExpandData>::Client>,
+    client: Option<Arc<<Q as ExpandData>::Client>>,
     id: u32,
     query_params: QueryParams,
 ) -> Result<impl Reply, Rejection> {
@@ -66,12 +66,18 @@ pub fn retrieve_query<
             let mut result = MatchResult::TransactionIds(query_result.0.clone());
 
             if Q::must_expand(&query_params) {
-                match Q::expand_data(&query_result, client) {
-                    Ok(data) => {
-                        result = MatchResult::Transactions(data);
-                    }
-                    Err(e) => {
-                        error!("Could not acquire expanded data: {:?}", e);
+                match client {
+                    Some(client) => match Q::expand_data(&query_result, client) {
+                        Ok(data) => {
+                            result = MatchResult::Transactions(data);
+                        }
+                        Err(e) => {
+                            error!("Could not acquire expanded data: {:?}", e);
+                            return Err(warp::reject());
+                        }
+                    },
+                    None => {
+                        error!("No Client available to expand data");
                         return Err(warp::reject());
                     }
                 }
