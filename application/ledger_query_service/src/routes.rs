@@ -7,16 +7,6 @@ use std::sync::Arc;
 use url::Url;
 use warp::{self, Rejection, Reply};
 
-// TODO: Replace warp::Rejection with http-api-problem::HttpApiProblem since it integrates with hyper
-// which warp uses under the hood
-#[allow(clippy::needless_pass_by_value)]
-pub fn settings_present(settings: Option<()>) -> Result<(), Rejection> {
-    match settings {
-        None => Err(warp::reject::not_found()),
-        Some(_) => Ok(()),
-    }
-}
-
 pub fn non_empty_query<O, Q: Query<O>>(query: Q) -> Result<Q, Rejection> {
     if query.is_empty() {
         Err(warp::reject())

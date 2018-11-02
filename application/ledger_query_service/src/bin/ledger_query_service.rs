@@ -80,13 +80,11 @@ fn create_bitcoin_routes(
 
     let ledger_name = "bitcoin";
 
-    let settings = settings.map(|_| ());
-
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
         client.clone(),
-        settings.clone(),
+        settings.is_none(),
         ledger_name,
     );
 
@@ -94,7 +92,7 @@ fn create_bitcoin_routes(
         block_query_repository,
         block_query_result_repository,
         None,
-        settings,
+        settings.is_none(),
         ledger_name,
     );
 
@@ -136,13 +134,11 @@ fn create_ethereum_routes(
 
     let ledger_name = "ethereum";
 
-    let settings = settings.map(|_| ());
-
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
         None,
-        settings.clone(),
+        settings.is_none(),
         ledger_name,
     );
 
@@ -150,7 +146,7 @@ fn create_ethereum_routes(
         block_query_repository,
         block_query_result_repository,
         None,
-        settings,
+        settings.is_none(),
         ledger_name,
     );
 

@@ -67,12 +67,18 @@ impl RouteFactory {
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
         client: Option<Arc<<Q as ExpandResult>::Client>>,
-        settings: Option<()>,
+        disable_route: bool,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)> {
         let endpoint = warp::any()
-            .map(move || settings.clone())
-            .and_then(routes::settings_present);
+            .map(move || disable_route.clone())
+            .and_then(|unused_route| {
+                if unused_route {
+                    Err(warp::reject::not_found())
+                } else {
+                    Ok(())
+                }
+            });
 
         let route = Q::route();
 
