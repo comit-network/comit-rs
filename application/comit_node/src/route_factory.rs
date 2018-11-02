@@ -1,7 +1,9 @@
 use comit_client;
 use event_store;
 use futures::sync::mpsc::UnboundedSender;
-use http_api;
+use http::StatusCode;
+use http_api::{self, swap::HttpApiProblemStdError};
+use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use key_store::KeyStore;
 use rand::OsRng;
 use std::{
@@ -10,7 +12,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use swaps::common::TradeId;
-use warp::{self, filters::BoxedFilter, Filter, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Rejection, Reply};
 
 #[derive(Clone, Debug)]
 pub struct SwapState {
@@ -59,5 +61,7 @@ pub fn create<
         .and(warp::path::param())
         .and_then(|event_store, trade_id| http_api::swap::get_swap(event_store, trade_id));
 
-    path.and(post_swap.or(get_swap)).boxed()
+    path.and(post_swap.or(get_swap))
+        .recover(http_api::swap::customize_error)
+        .boxed()
 }

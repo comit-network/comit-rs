@@ -31,6 +31,7 @@ extern crate ethereum_support;
 extern crate event_store;
 extern crate fern;
 extern crate hex;
+extern crate http;
 extern crate http_api_problem;
 extern crate hyper;
 extern crate mime;

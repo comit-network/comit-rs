@@ -3,7 +3,7 @@ use comit_client::{self, SwapReject, SwapResponseError};
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{sync::mpsc::UnboundedSender, Future};
-use http_api_problem::HttpApiProblem;
+use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, Body, Response, StatusCode};
 use key_store::KeyStore;
 use mime;
@@ -11,6 +11,8 @@ use rand::OsRng;
 use route_factory::SwapState;
 use serde_json;
 use std::{
+    error::Error as StdError,
+    fmt,
     net::SocketAddr,
     ops::DerefMut,
     panic::RefUnwindSafe,
@@ -29,6 +31,24 @@ pub enum Error {
     EventStore(event_store::Error),
     ClientFactory(comit_client::ClientFactoryError),
     Unsupported,
+    NotFound,
+}
+
+#[derive(Debug)]
+pub struct HttpApiProblemStdError {
+    pub http_api_problem: HttpApiProblem,
+}
+
+impl fmt::Display for HttpApiProblemStdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.http_api_problem.title)
+    }
+}
+
+impl StdError for HttpApiProblemStdError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        None
+    }
 }
 
 impl From<Error> for HttpApiProblem {
@@ -37,12 +57,13 @@ impl From<Error> for HttpApiProblem {
         match e {
             ClientFactory(e) => {
                 error!("Connection error: {:?}", e);
-                HttpApiProblem::new("couterparty-connection-error")
+                HttpApiProblem::new("counterparty-connection-error")
                     .set_status(500)
                     .set_detail("There was a problem connecting to the counterparty")
             }
             EventStore(_e) => HttpApiProblem::with_title_and_type_from_status(500),
             Unsupported => HttpApiProblem::new("swap-not-supported").set_status(400),
+            NotFound => HttpApiProblem::new("swap-not-found").set_status(404),
         }
     }
 }
@@ -90,6 +111,21 @@ pub struct SwapCreated {
     pub id: TradeId,
 }
 
+pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
+    if let Some(ref err) = rejection.find_cause::<HttpApiProblemStdError>() {
+        let code = err
+            .http_api_problem
+            .status
+            .unwrap_or(HttpStatusCode::InternalServerError);
+        let json = warp::reply::json(&err.http_api_problem);
+        return Ok(warp::reply::with_status(
+            json,
+            StatusCode::from_u16(code.to_u16()).unwrap(),
+        ));
+    }
+    return Err(rejection);
+}
+
 pub fn post_swap<
     C: comit_client::Client + 'static,
     F: comit_client::ClientFactory<C> + 'static,
@@ -124,7 +160,9 @@ pub fn post_swap<
         }
         Err(e) => {
             error!("Problem with sending swap request: {:?}", e);
-            Err(warp::reject::server_error())
+            Err(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: e.into(),
+            }))
         }
     }
 }
@@ -296,7 +334,9 @@ pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
             .body(Body::from(
                 serde_json::to_string(&swap_status).expect("should always serialize"),
             )).unwrap()),
-        None => Err(warp::reject::bad_request()),
+        None => Err(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: Error::NotFound.into(),
+        })),
     }
 }
 
