@@ -16,6 +16,7 @@ dependencies = [
 
 # Overridden because: added dependencies
 [tasks.pre-ci-flow]
+workspace = false
 dependencies = [
     "start-sccache",
     "pull-docker-images",
@@ -23,13 +24,15 @@ dependencies = [
 
 # Overridden because: added dependencies
 [tasks.pre-build]
+workspace = false
 dependencies = [
     "check-format",
     "clippy"
 ]
 
-# Overridden because: specified alias
+# Overridden because: specified dependencies
 [tasks.post-test]
+workspace = false
 dependencies = [
     "lqs",
     "e2e",
@@ -37,15 +40,15 @@ dependencies = [
 
 # Overridden because: added dependencies
 [tasks.post-ci-flow]
+workspace = false
 dependencies = [
+    "stop-sccache",
     "clean-registry"
 ]
 
-# Overridden because: specify env
+# Overridden because: added workspace
 [tasks.ci-flow]
 workspace = false
-# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "$HOME/.cargo/bin/sccache" }
 
 # Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
 [tasks.format]
@@ -124,6 +127,12 @@ find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
 '''
 ]
 
+[tasks.travis]
+workspace = false
+# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
+env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
+run_task = "ci-flow"
+
 [tasks.clean-registry-mac]
 condition = { platforms = ["mac"] }
 workspace = false
@@ -151,7 +160,7 @@ docker pull ruimarinho/bitcoin-core:0.17.0-alpine
 ]
 
 [tasks.start-sccache]
-description = "Setup sscache"
+description = "Setup & start sscache"
 workspace = false
 private = true
 install_script = ["which sccache || cargo install sccache"]
@@ -162,6 +171,16 @@ script = [
 '''
 sccache --start-server
 sccache --show-stats
+'''
+]
+
+[tasks.stop-sccache]
+description = "Stop sscache"
+workspace = false
+private = true
+script = [
+'''
+sccache --stop-server
 '''
 ]
 
@@ -207,7 +226,7 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./e2e/rfc003/btc_eth/harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { cat "$LOG_DIR/*"; exit 1; }
+./e2e/rfc003/btc_eth/harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
 '''
 ]
 
@@ -243,7 +262,7 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./ledger_query_service/harness.sh ./ledger_query_service/lqs_test.js || { cat "$LOG_DIR/*"; exit 1; }
+./ledger_query_service/harness.sh ./ledger_query_service/lqs_test.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
 '''
 ]
 
