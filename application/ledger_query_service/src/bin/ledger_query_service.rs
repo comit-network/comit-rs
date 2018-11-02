@@ -14,7 +14,7 @@ use ledger_query_service::{
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
     settings::{self, Settings},
     BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
-    InMemoryQueryResultRepository, LinkFactory, RouteFactory,
+    InMemoryQueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc, thread};
 use warp::{filters::BoxedFilter, Filter, Reply};
@@ -26,16 +26,14 @@ fn main() {
 
     info!("Starting up with {:#?}", settings);
 
-    // TODO: Read that stuff from the environment
-    let link_factory = LinkFactory::new("http", "localhost", Some(8080));
-    let route_factory = RouteFactory::new(link_factory);
+    let route_factory = RouteFactory::new(settings.http_api.external_url);
 
     let bitcoin_routes = create_bitcoin_routes(&route_factory, settings.bitcoin);
 
     let ethereum_routes = create_ethereum_routes(&route_factory, settings.ethereum);
 
     let routes = bitcoin_routes.or(ethereum_routes);
-    warp::serve(routes).run(([127, 0, 0, 1], 8080));
+    warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
 }
 
 fn create_bitcoin_routes(

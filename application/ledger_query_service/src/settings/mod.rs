@@ -3,14 +3,22 @@ mod serde;
 use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
 use serde::Deserialize;
-use std::{ffi::OsStr, path::Path, time::Duration};
+use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 use url;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
+    pub http_api: HttpApi,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
-    //   pub http_api: HttpApi,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct HttpApi {
+    pub address_bind: IpAddr,
+    pub port_bind: u16,
+    #[serde(with = "serde::url")]
+    pub external_url: url::Url,
 }
 
 #[derive(Debug, Deserialize, Clone)]

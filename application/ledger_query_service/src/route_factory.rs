@@ -1,12 +1,12 @@
 use bitcoin_rpc_client;
 use bitcoin_support;
 use block_processor::Query;
-use link_factory::LinkFactory;
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
 use routes;
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
+use url::Url;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Debug)]
@@ -18,7 +18,7 @@ pub enum Error {
 
 #[derive(DebugStub)]
 pub struct RouteFactory {
-    link_factory: LinkFactory,
+    external_url: Url,
 }
 
 pub trait QueryType {
@@ -45,8 +45,8 @@ pub struct QueryParams {
 }
 
 impl RouteFactory {
-    pub fn new(link_factory: LinkFactory) -> RouteFactory {
-        RouteFactory { link_factory }
+    pub fn new(external_url: Url) -> RouteFactory {
+        RouteFactory { external_url }
     }
 
     pub fn create<
@@ -79,8 +79,8 @@ impl RouteFactory {
             .and(warp::path(ledger_name))
             .and(warp::path(&route));
 
-        let link_factory = self.link_factory.clone();
-        let link_factory = warp::any().map(move || link_factory.clone());
+        let external_url = self.external_url.clone();
+        let external_url = warp::any().map(move || external_url.clone());
         let query_repository = warp::any().map(move || query_repository.clone());
         let query_result_repository = warp::any().map(move || query_result_repository.clone());
         let client = warp::any().map(move || client.clone());
@@ -88,7 +88,7 @@ impl RouteFactory {
         let json_body = warp::body::json().and_then(routes::non_empty_query);
 
         let create = warp::post2()
-            .and(link_factory.clone())
+            .and(external_url.clone())
             .and(query_repository.clone())
             .and(warp::any().map(move || ledger_name))
             .and(warp::any().map(move || route))

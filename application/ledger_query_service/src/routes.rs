@@ -1,10 +1,10 @@
 use block_processor::Query;
-use link_factory::LinkFactory;
 use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
 use route_factory::{ExpandData, MustExpand, QueryParams};
 use serde::Serialize;
 use std::sync::Arc;
+use url::Url;
 use warp::{self, Rejection, Reply};
 
 // TODO: Replace warp::Rejection with http-api-problem::HttpApiProblem since it integrates with hyper
@@ -27,7 +27,7 @@ pub fn non_empty_query<O, Q: Query<O>>(query: Q) -> Result<Q, Rejection> {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn create_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
-    link_factory: LinkFactory,
+    external_url: Url,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
     query_type: &'static str,
@@ -37,8 +37,10 @@ pub fn create_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
 
     match result {
         Ok(id) => {
-            let uri =
-                link_factory.create_link(format!("/queries/{}/{}/{}", ledger_name, query_type, id));
+            let uri = external_url
+                .join(format!("/queries/{}/{}/{}", ledger_name, query_type, id).as_str())
+                .expect("Should be able to join urls")
+                .to_string();
             let reply = warp::reply::with_status(warp::reply(), warp::http::StatusCode::CREATED);
             Ok(warp::reply::with_header(reply, "Location", uri))
         }
