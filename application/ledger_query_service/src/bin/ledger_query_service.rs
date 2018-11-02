@@ -154,28 +154,13 @@ fn create_ethereum_routes(
 }
 
 fn load_settings() -> Settings {
-    let config_path = var_or_default(
-        "LEDGER_QUERY_SERVICE_CONFIG_PATH",
-        "~/.config/ledger_query_service".into(),
-    );
+    let config_path = match var("LEDGER_QUERY_SERVICE_CONFIG_PATH") {
+        Ok(value) => value,
+        Err(_) => "~/.config/ledger_query_service".into(),
+    };
+    info!("Using settings located in {}", config_path);
     let default_config = format!("{}/{}", config_path.trim(), "default");
 
     let settings = Settings::new(default_config);
     settings.unwrap()
-}
-
-fn var_or_default(name: &str, default: String) -> String {
-    match var(name) {
-        Ok(value) => {
-            info!("Set {}={}", name, value);
-            value
-        }
-        Err(_) => {
-            eprintln!(
-                "{} is not set, falling back to default: '{}' ",
-                name, default
-            );
-            default
-        }
-    }
 }
