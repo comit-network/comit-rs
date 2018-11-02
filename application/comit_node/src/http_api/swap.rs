@@ -4,12 +4,10 @@ use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{sync::mpsc::UnboundedSender, Future};
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
-use hyper::{header, Body, Response, StatusCode};
+use hyper::{header, StatusCode};
 use key_store::KeyStore;
-use mime;
 use rand::OsRng;
 use route_factory::SwapState;
-use serde_json;
 use std::{
     error::Error as StdError,
     fmt,
