@@ -1,9 +1,7 @@
 use comit_client;
 use event_store;
 use futures::sync::mpsc::UnboundedSender;
-use http::StatusCode;
-use http_api::{self, swap::HttpApiProblemStdError};
-use http_api_problem::{HttpApiProblem, HttpStatusCode};
+use http_api;
 use key_store::KeyStore;
 use rand::OsRng;
 use std::{
@@ -12,7 +10,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use swaps::common::TradeId;
-use warp::{self, filters::BoxedFilter, Filter, Rejection, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Clone, Debug)]
 pub struct SwapState {

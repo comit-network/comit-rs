@@ -123,9 +123,10 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
             StatusCode::from_u16(code.to_u16()).unwrap(),
         ));
     }
-    return Err(rejection);
+    Err(rejection)
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<
     C: comit_client::Client + 'static,
     F: comit_client::ClientFactory<C> + 'static,
@@ -321,6 +322,7 @@ enum SwapStatus {
     },
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
     event_store: Arc<E>,
     id: TradeId,

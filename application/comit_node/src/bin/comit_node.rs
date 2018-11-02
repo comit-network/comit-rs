@@ -196,7 +196,7 @@ fn spawn_warp_instance(
         alice_actor_sender,
     );
 
-    let http_api_address = settings.http_api.address.clone();
+    let http_api_address = settings.http_api.address;
     let http_api_port = settings.http_api.port;
     let http_socket_address = SocketAddr::new(http_api_address, http_api_port);
 
