@@ -11,9 +11,9 @@ use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Debug)]
 pub enum Error {
-    TransactionIdConversionFailure(bitcoin_support::hash::HexError),
-    BitcoinRpcConnectionFailure(bitcoin_rpc_client::ClientError),
-    BitcoinRpcResponseFailure(bitcoin_rpc_client::RpcError),
+    TransactionIdConversion(bitcoin_support::hash::HexError),
+    BitcoinRpcConnection(bitcoin_rpc_client::ClientError),
+    BitcoinRpcResponse(bitcoin_rpc_client::RpcError),
 }
 
 #[derive(DebugStub)]
@@ -25,23 +25,24 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
-pub trait ExpandData {
+pub trait ExpandResult {
     type Client: 'static + Send + Sync;
     type Item: Serialize;
 
-    fn expand_data(
+    fn expand_result(
         result: &QueryResult,
         client: Arc<Self::Client>,
     ) -> Result<Vec<Self::Item>, Error>;
 }
 
-pub trait MustExpand {
-    fn must_expand(query_params: &QueryParams) -> bool;
+pub trait ShouldExpand {
+    fn should_expand(query_params: &QueryParams) -> bool;
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
 pub struct QueryParams {
-    pub inline_transactions: Option<bool>,
+    #[serde(default)]
+    pub expand_results: bool,
 }
 
 impl RouteFactory {
@@ -53,8 +54,8 @@ impl RouteFactory {
         O: 'static,
         Q: Query<O>
             + QueryType
-            + ExpandData
-            + MustExpand
+            + ExpandResult
+            + ShouldExpand
             + DeserializeOwned
             + Serialize
             + Send
@@ -65,7 +66,7 @@ impl RouteFactory {
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Option<Arc<<Q as ExpandData>::Client>>,
+        client: Option<Arc<<Q as ExpandResult>::Client>>,
         settings: Option<()>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)> {

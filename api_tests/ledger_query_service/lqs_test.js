@@ -77,10 +77,10 @@ describe("Test Ledger Query Service API", () => {
                 });
             });
 
-            it("LQS should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `inline_transactions`", async function () {
+            it("LQS should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `expand_results`", async function () {
                 return bitcoin_rpc_client.generate(1).then(() => {
                     return chai.request(location)
-                        .get('?inline_transactions=true')
+                        .get('?expand_results=true')
                         .then((res) => {
                             res.body.query.to_address.should.equal(to_address);
                             res.body.matches.should.have.lengthOf(1);

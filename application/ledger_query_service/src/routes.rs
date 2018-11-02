@@ -1,7 +1,7 @@
 use block_processor::Query;
 use query_repository::QueryRepository;
 use query_result_repository::QueryResultRepository;
-use route_factory::{ExpandData, MustExpand, QueryParams};
+use route_factory::{ExpandResult, QueryParams, ShouldExpand};
 use serde::Serialize;
 use std::sync::Arc;
 use url::Url;
@@ -51,13 +51,13 @@ pub fn create_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
     O,
-    Q: Query<O> + Serialize + MustExpand + Send + ExpandData,
+    Q: Query<O> + Serialize + ShouldExpand + Send + ExpandResult,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Option<Arc<<Q as ExpandData>::Client>>,
+    client: Option<Arc<<Q as ExpandResult>::Client>>,
     id: u32,
     query_params: QueryParams,
 ) -> Result<impl Reply, Rejection> {
@@ -65,13 +65,13 @@ pub fn retrieve_query<
     match query {
         Ok(query) => {
             let query_result = query_result_repository.get(id).unwrap_or_default();
-            let mut result = MatchResult::TransactionIds(query_result.0.clone());
+            let mut result = ResponsePayload::TransactionIds(query_result.0.clone());
 
-            if Q::must_expand(&query_params) {
+            if Q::should_expand(&query_params) {
                 match client {
-                    Some(client) => match Q::expand_data(&query_result, client) {
+                    Some(client) => match Q::expand_result(&query_result, client) {
                         Ok(data) => {
-                            result = MatchResult::Transactions(data);
+                            result = ResponsePayload::Transactions(data);
                         }
                         Err(e) => {
                             error!("Could not acquire expanded data: {:?}", e);
@@ -116,19 +116,19 @@ pub fn delete_query<
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
-enum MatchResult<T> {
+enum ResponsePayload<T> {
     TransactionIds(Vec<String>),
     Transactions(Vec<T>),
 }
 
-impl<T> Default for MatchResult<T> {
+impl<T> Default for ResponsePayload<T> {
     fn default() -> Self {
-        MatchResult::TransactionIds(Vec::new())
+        ResponsePayload::TransactionIds(Vec::new())
     }
 }
 
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct RetrieveQueryResponse<Q, T> {
     query: Q,
-    matches: MatchResult<T>,
+    matches: ResponsePayload<T>,
 }

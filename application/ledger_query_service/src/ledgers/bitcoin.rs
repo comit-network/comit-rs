@@ -5,7 +5,7 @@ use bitcoin_support::{
 };
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use query_result_repository::QueryResult;
-use route_factory::{Error, ExpandData, MustExpand, QueryParams, QueryType};
+use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -22,34 +22,29 @@ impl QueryType for BitcoinTransactionQuery {
     }
 }
 
-impl MustExpand for BitcoinTransactionQuery {
-    fn must_expand(query_params: &QueryParams) -> bool {
-        match query_params.inline_transactions {
-            Some(true) => true,
-            _ => false,
-        }
+impl ShouldExpand for BitcoinTransactionQuery {
+    fn should_expand(query_params: &QueryParams) -> bool {
+        query_params.expand_results
     }
 }
 
-impl ExpandData for BitcoinTransactionQuery {
+impl ExpandResult for BitcoinTransactionQuery {
     type Client = BitcoinCoreClient;
     type Item = VerboseRawTransaction;
 
-    fn expand_data(
+    fn expand_result(
         result: &QueryResult,
         client: Arc<BitcoinCoreClient>,
     ) -> Result<Vec<VerboseRawTransaction>, Error> {
         let mut expanded_result: Vec<VerboseRawTransaction> = Vec::new();
-        //TODO: remove the clone
         for tx_id in result.clone().0 {
-            let tx_id = TransactionId::from_hex(tx_id.as_str())
-                .map_err(Error::TransactionIdConversionFailure)?;
+            let tx_id =
+                TransactionId::from_hex(tx_id.as_str()).map_err(Error::TransactionIdConversion)?;
 
-            //TODO: verify warp does not die on a panic
             let transaction = client
                 .get_raw_transaction_verbose(&tx_id)
-                .map_err(Error::BitcoinRpcConnectionFailure)?
-                .map_err(Error::BitcoinRpcResponseFailure)?;
+                .map_err(Error::BitcoinRpcConnection)?
+                .map_err(Error::BitcoinRpcResponse)?;
             expanded_result.push(transaction);
         }
         Ok(expanded_result)
@@ -112,17 +107,17 @@ impl QueryType for BitcoinBlockQuery {
     }
 }
 
-impl MustExpand for BitcoinBlockQuery {
-    fn must_expand(_: &QueryParams) -> bool {
+impl ShouldExpand for BitcoinBlockQuery {
+    fn should_expand(_: &QueryParams) -> bool {
         false
     }
 }
 
-impl ExpandData for BitcoinBlockQuery {
+impl ExpandResult for BitcoinBlockQuery {
     type Client = ();
     type Item = ();
 
-    fn expand_data(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
+    fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }
 }
