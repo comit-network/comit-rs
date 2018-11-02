@@ -26,6 +26,8 @@ use swaps::{alice_events, common::TradeId};
 use tokio;
 use warp::{self, Rejection, Reply};
 
+pub const PATH: &str = "swaps";
+
 #[derive(Debug)]
 pub enum Error {
     EventStore(event_store::Error),

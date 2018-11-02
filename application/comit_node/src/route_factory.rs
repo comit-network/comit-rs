@@ -31,7 +31,7 @@ pub fn create<
     key_store: Arc<KeyStore>,
     alice_actor_sender: UnboundedSender<TradeId>,
 ) -> BoxedFilter<(impl Reply,)> {
-    let path = warp::path("swaps");
+    let path = warp::path(http_api::swap::PATH);
 
     let rng = Arc::new(Mutex::new(
         OsRng::new().expect("Failed to get randomness from OS"),
@@ -57,7 +57,7 @@ pub fn create<
     let get_swap = warp::get2()
         .and(event_store)
         .and(warp::path::param())
-        .and_then(|event_store, trade_id| http_api::swap::get_swap(event_store, trade_id));
+        .and_then(http_api::swap::get_swap);
 
     path.and(post_swap.or(get_swap))
         .recover(http_api::swap::customize_error)
