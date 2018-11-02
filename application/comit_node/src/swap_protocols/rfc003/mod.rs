@@ -9,6 +9,7 @@ pub mod ethereum;
 pub mod events;
 pub mod ledger_htlc_service;
 pub mod state_machine;
+pub mod validation;
 
 mod error;
 mod ledger;

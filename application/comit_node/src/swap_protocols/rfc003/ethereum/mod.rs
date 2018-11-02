@@ -2,9 +2,13 @@ use ethereum_support::Bytes;
 use hex;
 
 pub use self::{erc20_htlc::*, ether_htlc::*};
-use ethereum_support::web3::types::Address;
+use ethereum_support::{web3::types::Address, EtherQuantity};
 use std::time::Duration;
-use swap_protocols::{ledger::Ethereum, rfc003::Ledger};
+use swap_protocols::{
+    asset::Asset,
+    ledger::Ethereum,
+    rfc003::{state_machine::OngoingSwap, Ledger, SecretHash},
+};
 
 mod erc20_htlc;
 mod ether_htlc;
@@ -41,4 +45,15 @@ impl Ledger for Ethereum {
     type LockDuration = Seconds;
     type HtlcLocation = Address;
     type HtlcIdentity = Address;
+}
+
+pub fn ethereum_htlc<SL: Ledger, SA: Asset, S: Into<SecretHash> + Clone>(
+    swap: &OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
+) -> Box<Htlc> {
+    Box::new(EtherHtlc::new(
+        swap.target_ledger_lock_duration.into(),
+        swap.target_ledger_refund_identity,
+        swap.target_identity,
+        swap.secret.clone().into(),
+    ))
 }

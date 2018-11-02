@@ -1,3 +1,4 @@
+pub mod asset;
 pub mod ledger;
 pub mod rfc003;
 pub mod wire_types;

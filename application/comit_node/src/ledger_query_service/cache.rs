@@ -9,13 +9,13 @@ use swap_protocols::ledger::Ledger;
 use tokio::prelude::*;
 
 #[derive(Debug)]
-pub struct QueryIdCache<L: Ledger, Q: Query, C> {
+pub struct QueryIdCache<L: Ledger, Q: Query> {
     query_ids: Mutex<HashMap<Q, ItemCache<QueryId<L>, Error>>>,
-    inner: Arc<C>,
+    inner: Arc<CreateQuery<L, Q>>,
 }
 
-impl<L: Ledger, Q: Query, C: CreateQuery<L, Q>> QueryIdCache<L, Q, C> {
-    pub fn wrap(inner: Arc<C>) -> Self {
+impl<L: Ledger, Q: Query> QueryIdCache<L, Q> {
+    pub fn wrap(inner: Arc<CreateQuery<L, Q>>) -> Self {
         Self {
             query_ids: Mutex::new(HashMap::new()),
             inner,
@@ -23,7 +23,7 @@ impl<L: Ledger, Q: Query, C: CreateQuery<L, Q>> QueryIdCache<L, Q, C> {
     }
 }
 
-impl<L: Ledger, Q: Query, C: CreateQuery<L, Q>> CreateQuery<L, Q> for QueryIdCache<L, Q, C> {
+impl<L: Ledger, Q: Query> CreateQuery<L, Q> for QueryIdCache<L, Q> {
     fn create_query(
         &self,
         query: Q,
@@ -52,7 +52,7 @@ mod tests {
     use swap_protocols::ledger::Bitcoin;
     use tokio::runtime::Runtime;
 
-    #[derive(Default)]
+    #[derive(Default, Debug)]
     struct CountInvocations {
         how_many: Mutex<u32>,
     }
@@ -133,6 +133,7 @@ mod tests {
         assert_eq!(*invocations, 2);
     }
 
+    #[derive(Debug)]
     struct Controllable {
         next_response: Mutex<Option<Receiver<QueryId<Bitcoin>>>>,
     }

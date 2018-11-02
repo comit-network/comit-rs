@@ -1,53 +1,59 @@
 use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
-use swap_protocols::rfc003::{
-    self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret, SecretHash,
-    SwapOutcome,
+use swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret,
+        SecretHash, SwapOutcome,
+    },
 };
 
-pub trait Futures<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>:
-    Send
+#[derive(Debug, Clone, PartialEq)]
+pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
+    pub source_identity: SL::HtlcIdentity,
+    pub target_identity: TL::HtlcIdentity,
+    pub source_ledger: SL,
+    pub target_ledger: TL,
+    pub source_asset: SA,
+    pub target_asset: TA,
+    pub source_ledger_success_identity: SL::Identity,
+    pub target_ledger_refund_identity: TL::Identity,
+    pub source_ledger_lock_duration: SL::LockDuration,
+    pub target_ledger_lock_duration: TL::LockDuration,
+    pub secret: S,
+}
+
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
+    OngoingSwap<SL, TL, SA, TA, S>
 {
-    fn request_responded(
-        &mut self,
-        request: &Request<SL, TL, SA, TA>,
-    ) -> &mut Box<events::Response<SL, TL>>;
-
-    fn source_htlc_funded(
-        &mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
-    ) -> &mut Box<events::Funded<SL>>;
-
-    fn source_htlc_refunded_target_htlc_funded(
-        &mut self,
-        start: &Start<SL, TL, SA, TA, S>,
-        response: &AcceptResponse<SL, TL>,
-        source_htlc_id: &SL::HtlcLocation,
-    ) -> &mut Box<events::SourceRefundedOrTargetFunded<SL, TL>>;
-
-    fn target_htlc_redeemed_or_refunded(
-        &mut self,
-        target_htlc_id: &TL::HtlcLocation,
-    ) -> &mut Box<events::RedeemedOrRefunded<TL>>;
-
-    fn source_htlc_redeemed_or_refunded(
-        &mut self,
-        source_htlc_id: &SL::HtlcLocation,
-    ) -> &mut Box<events::RedeemedOrRefunded<SL>>;
+    pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponse<SL, TL>) -> Self {
+        OngoingSwap {
+            source_identity: start.source_identity,
+            target_identity: start.target_identity,
+            source_ledger: start.source_ledger,
+            target_ledger: start.target_ledger,
+            source_asset: start.source_asset,
+            target_asset: start.target_asset,
+            source_ledger_success_identity: response.source_ledger_success_identity,
+            target_ledger_refund_identity: response.target_ledger_refund_identity,
+            source_ledger_lock_duration: start.source_ledger_lock_duration,
+            target_ledger_lock_duration: response.target_ledger_lock_duration,
+            secret: start.secret,
+        }
+    }
 }
 
 #[allow(missing_debug_implementations)]
-pub struct Context<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone> {
-    pub futures: Box<Futures<SL, TL, SA, TA, S>>,
+pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
+    pub events: Box<events::Events<SL, TL, SA, TA, S>>,
     pub state_repo: Arc<SaveState<SL, TL, SA, TA, S>>,
 }
 
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 #[allow(missing_debug_implementations)]
-pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone> {
+pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
         source_identity: SL::HtlcIdentity,
@@ -62,14 +68,12 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> 
 
     #[state_machine_future(transitions(SourceFunded))]
     Accepted {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
     },
 
     #[state_machine_future(transitions(BothFunded, Final))]
     SourceFunded {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
         source_htlc_id: SL::HtlcLocation,
     },
 
@@ -80,30 +84,26 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> 
         SourceFundedTargetRedeemed
     ))]
     BothFunded {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_htlc_id: TL::HtlcLocation,
         source_htlc_id: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRefunded {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
         source_htlc_id: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRefundedTargetFunded {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_htlc_id: TL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRedeemedTargetFunded {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_htlc_id: TL::HtlcLocation,
         source_htlc_id: SL::HtlcLocation,
         secret: Secret,
@@ -111,8 +111,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> 
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRedeemed {
-        start: Start<SL, TL, SA, TA, S>,
-        response: AcceptResponse<SL, TL>,
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_redeemed_txid: TL::TxId,
         source_htlc_id: SL::HtlcLocation,
     },
@@ -124,7 +123,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> 
     Error(rfc003::Error),
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
     PollSwap<SL, TL, SA, TA, S> for Swap<SL, TL, SA, TA, S>
 {
     fn poll_start<'smf_poll>(
@@ -142,7 +141,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
             secret_hash: state.secret.clone().into(),
         };
 
-        let response = try_ready!(context.futures.request_responded(&request).poll());
+        let response = try_ready!(context.events.request_responded(&request).poll());
 
         let state = state.take();
 
@@ -150,8 +149,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
             Ok(swap_accepted) => transition_save!(
                 context.state_repo,
                 Accepted {
-                    start: state,
-                    response: swap_accepted,
+                    swap: OngoingSwap::new(state, swap_accepted),
                 }
             ),
             Err(_) => transition_save!(context.state_repo, Final(SwapOutcome::Rejected)),
@@ -162,20 +160,14 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
         state: &'smf_poll mut RentToOwn<'smf_poll, Accepted<SL, TL, SA, TA, S>>,
         context: &mut Context<SL, TL, SA, TA, S>,
     ) -> Result<Async<AfterAccepted<SL, TL, SA, TA, S>>, rfc003::Error> {
-        let source_htlc_id = try_ready!(
-            context
-                .futures
-                .source_htlc_funded(&state.start, &state.response)
-                .poll()
-        );
+        let source_htlc_id = try_ready!(context.events.source_htlc_funded(&state.swap).poll());
 
         let state = state.take();
 
         transition_save!(
             context.state_repo,
             SourceFunded {
-                start: state.start,
-                response: state.response,
+                swap: state.swap,
                 source_htlc_id,
             }
         )
@@ -187,12 +179,9 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
-                .source_htlc_refunded_target_htlc_funded(
-                    &state.start,
-                    &state.response,
-                    &state.source_htlc_id
-                ).poll()
+                .events
+                .source_htlc_refunded_target_htlc_funded(&state.swap, &state.source_htlc_id)
+                .poll()
         ) {
             Either::A(_source_refunded_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::SourceRefunded))
@@ -202,8 +191,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
                 transition_save!(
                     context.state_repo,
                     BothFunded {
-                        start: state.start,
-                        response: state.response,
+                        swap: state.swap,
                         source_htlc_id: state.source_htlc_id,
                         target_htlc_id,
                     }
@@ -217,7 +205,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
         context: &mut Context<SL, TL, SA, TA, S>,
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
-            .futures
+            .events
             .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
             .poll()?
         {
@@ -229,8 +217,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
                     transition_save!(
                         context.state_repo,
                         SourceRedeemedTargetFunded {
-                            start: state.start,
-                            response: state.response,
+                            swap: state.swap,
                             target_htlc_id: state.target_htlc_id,
                             source_htlc_id: state.source_htlc_id,
                             secret,
@@ -240,8 +227,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
                 Either::B(_source_refunded_txid) => transition_save!(
                     context.state_repo,
                     SourceRefundedTargetFunded {
-                        start: state.start,
-                        response: state.response,
+                        swap: state.swap,
                         target_htlc_id: state.target_htlc_id,
                     }
                 ),
@@ -250,7 +236,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
 
         match try_ready!(
             context
-                .futures
+                .events
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
@@ -259,8 +245,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
                 transition_save!(
                     context.state_repo,
                     SourceFundedTargetRedeemed {
-                        start: state.start,
-                        response: state.response,
+                        swap: state.swap,
                         target_redeemed_txid,
                         source_htlc_id: state.source_htlc_id,
                     }
@@ -271,8 +256,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
                 transition_save!(
                     context.state_repo,
                     SourceFundedTargetRefunded {
-                        start: state.start,
-                        response: state.response,
+                        swap: state.swap,
                         source_htlc_id: state.source_htlc_id,
                     }
                 )
@@ -286,7 +270,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
                 .poll()
         ) {
@@ -306,7 +290,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
@@ -326,7 +310,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
                 .poll()
         ) {
@@ -346,7 +330,7 @@ impl<SL: Ledger, TL: Ledger, SA: Clone, TA: Clone, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, rfc003::Error> {
         match try_ready!(
             context
-                .futures
+                .events
                 .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
                 .poll()
         ) {
