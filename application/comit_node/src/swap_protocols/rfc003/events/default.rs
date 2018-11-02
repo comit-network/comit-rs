@@ -15,9 +15,13 @@ use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
         self,
-        events::{FromOngoingSwap, Funded, RequestResponded, Response, SourceHtlcFunded},
-        messages::{AcceptResponse, Request},
-        state_machine::{OngoingSwap, Start},
+        events::{
+            Funded, NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery,
+            NewSourceHtlcRefundedQuery, NewTargetHtlcFundedQuery, NewTargetHtlcRedeemedQuery,
+            NewTargetHtlcRefundedQuery, RequestResponded, Response, SourceHtlcFunded,
+        },
+        messages::Request,
+        state_machine::OngoingSwap,
         validation::IsContainedInTransaction,
         Ledger, SecretHash,
     },
@@ -88,8 +92,14 @@ where
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
-    SLQuery: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
-    TLQuery: Query + FromOngoingSwap<SL, TL, SA, TA, S>,
+    SLQuery: Query
+        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+    TLQuery: Query
+        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
 {
     fn source_htlc_funded<'s>(
         &'s mut self,
@@ -101,7 +111,7 @@ where
         let source_asset = swap.source_asset.clone();
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
-        let query = SLQuery::create(&swap);
+        let query = SLQuery::new_source_htlc_funded_query(&swap);
         let query_id = self.create_source_ledger_query.create_query(query);
 
         self.source_htlc_funded_query.get_or_insert_with(move || {

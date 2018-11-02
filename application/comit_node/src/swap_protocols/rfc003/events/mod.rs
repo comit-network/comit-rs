@@ -85,7 +85,7 @@ pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHas
 {
 }
 
-pub trait FromOngoingSwap<SL, TL, SA, TA, S>: Send + Sync
+pub trait NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>: Send + Sync
 where
     SL: Ledger,
     TL: Ledger,
@@ -94,5 +94,63 @@ where
     S: Clone,
     Self: Query,
 {
-    fn create(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+    fn new_source_htlc_funded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+}
+
+pub trait NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Clone,
+    Self: Query,
+{
+    fn new_source_htlc_redeemed_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+}
+pub trait NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Clone,
+    Self: Query,
+{
+    fn new_source_htlc_refunded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+}
+
+pub trait NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Clone,
+    Self: Query,
+{
+    fn new_target_htlc_funded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+}
+
+pub trait NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Clone,
+    Self: Query,
+{
+    fn new_target_htlc_redeemed_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+}
+pub trait NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Clone,
+    Self: Query,
+{
+    fn new_target_htlc_refunded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
 }
