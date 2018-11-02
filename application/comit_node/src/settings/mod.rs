@@ -5,7 +5,12 @@ use config::{Config, ConfigError, File};
 use ethereum_support;
 use secp256k1_support::KeyPair;
 use serde::Deserialize;
-use std::{ffi::OsStr, net::SocketAddr, path::Path, time::Duration};
+use std::{
+    ffi::OsStr,
+    net::{IpAddr, SocketAddr},
+    path::Path,
+    time::Duration,
+};
 use url;
 
 #[derive(Debug, Deserialize)]
@@ -57,7 +62,7 @@ pub struct Comit {
 
 #[derive(Debug, Deserialize)]
 pub struct HttpApi {
-    pub address: String,
+    pub address: IpAddr,
     pub port: u16,
     pub logging: bool,
 }

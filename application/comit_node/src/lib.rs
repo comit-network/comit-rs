@@ -6,8 +6,6 @@
 #[macro_use]
 extern crate debug_stub_derive;
 #[macro_use]
-extern crate gotham_derive;
-#[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate failure;
@@ -32,7 +30,6 @@ extern crate crypto;
 extern crate ethereum_support;
 extern crate event_store;
 extern crate fern;
-extern crate gotham;
 extern crate hex;
 extern crate http_api_problem;
 extern crate hyper;
@@ -49,6 +46,7 @@ extern crate tokio;
 extern crate tokio_timer;
 extern crate url;
 extern crate uuid;
+extern crate warp;
 #[macro_use]
 extern crate state_machine_future;
 
@@ -58,12 +56,12 @@ pub mod comit_client;
 pub mod comit_server;
 pub mod ethereum_wallet;
 pub mod gas_price_service;
-pub mod gotham_factory;
 pub mod http_api;
 pub mod item_cache;
 pub mod key_store;
 pub mod ledger_query_service;
 pub mod logging;
+pub mod route_factory;
 pub mod settings;
 pub mod swap_protocols;
 pub mod swaps;

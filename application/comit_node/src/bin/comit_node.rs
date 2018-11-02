@@ -8,8 +8,8 @@ extern crate ethereum_support;
 #[macro_use]
 extern crate log;
 extern crate event_store;
-extern crate gotham;
 extern crate tokio;
+extern crate warp;
 
 use bitcoin_rpc_client::*;
 use bitcoin_support::Address as BitcoinAddress;
@@ -20,10 +20,9 @@ use comit_node::{
     comit_server::ComitServer,
     ethereum_wallet::InMemoryWallet,
     gas_price_service::StaticGasPriceService,
-    gotham_factory,
     key_store::KeyStore,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
-    logging,
+    logging, route_factory,
     settings::ComitNodeSettings,
     swap_protocols::rfc003::{
         alice_ledger_actor::AliceLedgerActor,
@@ -33,7 +32,7 @@ use comit_node::{
 };
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
-use std::{env::var, net::SocketAddr, str::FromStr, sync::Arc};
+use std::{env::var, net::SocketAddr, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -56,7 +55,7 @@ fn main() {
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-    spawn_gotham_instance(
+    spawn_warp_instance(
         &settings,
         Arc::clone(&key_store),
         Arc::clone(&event_store),
@@ -164,7 +163,7 @@ fn create_ledger_query_service_api_client(
     ))
 }
 
-fn spawn_gotham_instance(
+fn spawn_warp_instance(
     settings: &ComitNodeSettings,
     key_store: Arc<KeyStore>,
     event_store: Arc<InMemoryEventStore<TradeId>>,
@@ -189,7 +188,7 @@ fn spawn_gotham_instance(
     let (alice_actor_sender, alice_actor_future) = alice_actor.listen();
     runtime.spawn(alice_actor_future);
 
-    let router = gotham_factory::create_gotham_router(
+    let routes = route_factory::create(
         event_store,
         Arc::new(client_pool),
         remote_comit_node_url,
@@ -197,14 +196,13 @@ fn spawn_gotham_instance(
         alice_actor_sender,
     );
 
-    let http_api_address = settings.http_api.address.clone();
+    let http_api_address = settings.http_api.address;
     let http_api_port = settings.http_api.port;
+    let http_socket_address = SocketAddr::new(http_api_address, http_api_port);
 
-    gotham::start_on_executor(
-        SocketAddr::from_str(format!("{}:{}", http_api_address, http_api_port).as_str()).unwrap(),
-        router,
-        runtime.executor(),
-    );
+    let server = warp::serve(routes).bind(http_socket_address);
+
+    runtime.spawn(server);
 }
 
 fn spawn_comit_server(

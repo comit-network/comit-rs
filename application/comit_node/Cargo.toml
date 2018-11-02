@@ -16,10 +16,9 @@ event_store = { path = "../../vendor/event_store" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
-gotham = { git = "https://github.com/gotham-rs/gotham.git" }
-gotham_derive = { git = "https://github.com/gotham-rs/gotham.git" }
 hex = "0.3"
-http-api-problem = { version = "0.7", features = ["with_hyper"] }
+http-api-problem = "0.9"
+http = "0.1"
 hyper = "0.12"
 lazy_static = "1"
 log = "0.4"
@@ -41,6 +40,7 @@ tokio-timer = "0.2"
 transport_protocol = { path = "../../vendor/transport_protocol" }
 url = "1.7"
 uuid = { version = "0.6", features = ["serde", "v4"] }
+warp = "0.1"
 
 [dev-dependencies]
 key_gen = { path = "../../vendor/key_gen"}
