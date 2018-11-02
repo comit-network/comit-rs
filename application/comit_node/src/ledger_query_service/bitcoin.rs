@@ -1,7 +1,8 @@
 use bitcoin_support;
+use ledger_query_service::Query;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
 #[serde(untagged)]
 pub enum BitcoinQuery {
     Transaction {
@@ -11,6 +12,8 @@ pub enum BitcoinQuery {
         min_height: Option<u32>,
     },
 }
+
+impl Query for BitcoinQuery {}
 
 #[cfg(test)]
 mod tests {

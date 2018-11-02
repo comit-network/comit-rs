@@ -214,7 +214,7 @@ where
         );
 
         self.ledger_query_service_api_client
-            .create(query)
+            .create_query(query)
             .map_err(Error::from)
             .and_then(|query_id| {
                 let stream = self
@@ -303,7 +303,7 @@ where
 
         self.ledger_query_service_api_client
             .clone()
-            .create(query)
+            .create_query(query)
             .map_err(Error::from)
             .and_then(|query_id| {
                 let stream = self

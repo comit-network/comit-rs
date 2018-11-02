@@ -1,7 +1,8 @@
 use ethereum_support::web3::types::{Address, Bytes};
+use ledger_query_service::Query;
 use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
 #[serde(untagged)]
 pub enum EthereumQuery {
     Transaction {
@@ -14,6 +15,8 @@ pub enum EthereumQuery {
         min_timestamp_secs: Option<u32>,
     },
 }
+
+impl Query for EthereumQuery {}
 
 #[cfg(test)]
 mod tests {
@@ -62,5 +65,17 @@ mod tests {
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(query, r#"{"min_timestamp_secs":10}"#)
+    }
+
+    #[test]
+    fn transaction_query_with_data_serializes_correctly() {
+        let query = EthereumQuery::Transaction {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: None,
+            transaction_data: Some(Bytes::from(b"hello world!".to_vec())),
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(query, r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":"0x68656c6c6f20776f726c6421"}"#)
     }
 }

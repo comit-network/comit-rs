@@ -1,9 +1,9 @@
-use ledger_query_service::{LedgerQueryServiceApiClient, QueryId};
+use ledger_query_service::{FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId};
 use std::sync::Arc;
 use swap_protocols::ledger::Ledger;
 use tokio::prelude::{stream::iter_ok, *};
 
-pub trait FetchTransactionStream<L: Ledger, Q> {
+pub trait FetchTransactionStream<L: Ledger> {
     fn fetch_transaction_stream<
         I,
         E: Send + 'static,
@@ -15,9 +15,9 @@ pub trait FetchTransactionStream<L: Ledger, Q> {
     ) -> Box<Stream<Item = L::TxId, Error = S::Error> + Send + 'static>;
 }
 
-impl<L: Ledger, C, Q> FetchTransactionStream<L, Q> for Arc<C>
+impl<L: Ledger, C> FetchTransactionStream<L> for Arc<C>
 where
-    C: LedgerQueryServiceApiClient<L, Q>,
+    C: FetchQueryResults<L>,
 {
     fn fetch_transaction_stream<
         I,
@@ -35,7 +35,7 @@ where
         Box::new(
             ticker
                 .and_then(move |_| {
-                    inner_self.fetch_results(&query_id).or_else(|e| {
+                    inner_self.fetch_query_results(&query_id).or_else(|e| {
                         warn!("Falling back to empty list of transactions because {:?}", e);
                         Ok(Vec::new())
                     })

@@ -1,6 +1,6 @@
-use failure;
 use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, Error, LedgerQueryServiceApiClient, QueryId,
+    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
+    LedgerQueryServiceApiClient, QueryId,
 };
 use reqwest::{async::Client, header::LOCATION, Url};
 use serde::{Deserialize, Serialize};
@@ -50,20 +50,15 @@ impl DefaultLedgerQueryServiceApiClient {
             .post(create_endpoint)
             .json(&query)
             .send()
-            .map_err(Error::FailedRequest)
+            .map_err(|_| Error::FailedRequest)
             .and_then(|response| {
                 response
                     .headers()
                     .get(LOCATION)
-                    .ok_or_else(|| Error::MalformedResponse(format_err!("missing location")))
-                    .and_then(|value| {
-                        value
-                            .to_str()
-                            .map_err(|e| Error::MalformedResponse(failure::Error::from(e)))
-                    }).and_then(|location| {
-                        Url::parse(location)
-                            .map_err(|e| Error::MalformedResponse(failure::Error::from(e)))
-                    })
+                    .ok_or_else(|| Error::MalformedResponse)
+                    //                    .ok_or_else(|| Error::MalformedResponse(format_err!("missing location")))
+                    .and_then(|value| value.to_str().map_err(|_| Error::MalformedResponse))
+                    .and_then(|location| Url::parse(location).map_err(|_| Error::MalformedResponse))
             }).map(QueryId::new);
 
         Box::new(query_id)
@@ -78,7 +73,7 @@ impl DefaultLedgerQueryServiceApiClient {
             .get(query.as_ref().clone())
             .send()
             .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
-            .map_err(Error::FailedRequest)
+            .map_err(|_| Error::FailedRequest)
             .map(|response| response.matches);
 
         Box::new(transactions)
@@ -93,13 +88,13 @@ impl DefaultLedgerQueryServiceApiClient {
                 .delete(query.as_ref().clone())
                 .send()
                 .map(|_| ())
-                .map_err(Error::FailedRequest),
+                .map_err(|e| Error::FailedRequest),
         )
     }
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
-    fn create(
+impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
+    fn create_query(
         &self,
         query: BitcoinQuery,
     ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
@@ -111,21 +106,25 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQuerySe
         };
         self._create(endpoint, &query)
     }
+}
 
-    fn fetch_results(
+impl FetchQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
+    fn fetch_query_results(
         &self,
         query: &QueryId<Bitcoin>,
     ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
         self._fetch_results(query)
     }
+}
 
+impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
     fn delete(&self, query: &QueryId<Bitcoin>) -> Box<Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }
 }
 
-impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
-    fn create(
+impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
+    fn create_query(
         &self,
         query: EthereumQuery,
     ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
@@ -137,14 +136,18 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
         };
         self._create(endpoint, &query)
     }
+}
 
-    fn fetch_results(
+impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
+    fn fetch_query_results(
         &self,
         query: &QueryId<Ethereum>,
     ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
         self._fetch_results(query)
     }
+}
 
+impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
     fn delete(&self, query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }

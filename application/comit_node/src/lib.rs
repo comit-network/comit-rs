@@ -60,6 +60,7 @@ pub mod ethereum_wallet;
 pub mod gas_price_service;
 pub mod gotham_factory;
 pub mod http_api;
+pub mod item_cache;
 pub mod key_store;
 pub mod ledger_query_service;
 pub mod logging;

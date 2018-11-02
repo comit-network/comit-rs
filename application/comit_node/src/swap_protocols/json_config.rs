@@ -230,7 +230,7 @@ fn process<
     };
 
     let create_query = ledger_query_service_api_client
-        .create(query)
+        .create_query(query)
         .map_err(Error::from)
         .and_then(move |query_id| {
             let stream = ledger_query_service_api_client.fetch_transaction_stream(
@@ -345,7 +345,7 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
     )?;
 
     let create_query = ledger_query_service_api_client
-        .create(query)
+        .create_query(query)
         .map_err(Error::from)
         .and_then(move |query_id| {
             let stream = ledger_query_service_api_client
