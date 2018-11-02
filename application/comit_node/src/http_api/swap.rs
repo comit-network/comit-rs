@@ -151,16 +151,7 @@ pub fn post_swap<
         )
     };
     match result {
-        Ok(swap_created) => {
-            let response = Response::builder()
-                .status(StatusCode::CREATED)
-                .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-                .header(header::LOCATION, format!("/swaps/{}", swap_created.id))
-                .body(Body::from(
-                    serde_json::to_string(&swap_created).expect("should always serialize"),
-                )).unwrap();
-            Ok(response)
-        }
+        Ok(swap_created) => Ok(warp::reply::json(&swap_created)),
         Err(e) => {
             error!("Problem with sending swap request: {:?}", e);
             Err(warp::reject::custom(HttpApiProblemStdError {
@@ -332,12 +323,7 @@ pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
     let result = handle_get_swap(id, &event_store);
 
     match result {
-        Some(swap_status) => Ok(Response::builder()
-            .status(StatusCode::OK)
-            .header(header::CONTENT_TYPE, mime::APPLICATION_JSON.as_ref())
-            .body(Body::from(
-                serde_json::to_string(&swap_status).expect("should always serialize"),
-            )).unwrap()),
+        Some(swap_status) => Ok(warp::reply::json(&swap_status)),
         None => Err(warp::reject::custom(HttpApiProblemStdError {
             http_api_problem: Error::NotFound.into(),
         })),
