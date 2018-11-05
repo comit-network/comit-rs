@@ -1,6 +1,4 @@
-use bitcoin_rpc_client;
 use bitcoin_support::{BitcoinQuantity, OutPoint, Transaction, TransactionId};
-use futures::{future::IntoFuture, Future};
 use swap_protocols::{
     asset::Asset,
     ledger::Bitcoin,
@@ -30,6 +28,7 @@ where
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
+    #[allow(unreachable_code, unused_variables)] // TODO: remove once properly implemented
     fn is_contained_in_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
         tx: &TransactionId,

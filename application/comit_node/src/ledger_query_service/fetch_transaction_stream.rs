@@ -1,4 +1,4 @@
-use ledger_query_service::{FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId};
+use ledger_query_service::{FetchQueryResults, QueryId};
 use std::sync::Arc;
 use swap_protocols::ledger::Ledger;
 use tokio::prelude::{stream::iter_ok, *};

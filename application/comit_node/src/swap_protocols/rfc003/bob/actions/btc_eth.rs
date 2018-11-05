@@ -5,10 +5,7 @@ use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    rfc003::{
-        self, bitcoin::bitcoin_htlc, ethereum::ethereum_htlc, messages::AcceptResponse,
-        state_machine::*, SecretHash,
-    },
+    rfc003::{bitcoin::bitcoin_htlc, ethereum::ethereum_htlc, state_machine::*, SecretHash},
 };
 
 impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, EtherRefund>
@@ -33,9 +30,7 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 })]
             }
             SS::BothFunded(BothFunded {
-                ref source_htlc_id,
-                ref target_htlc_id,
-                ..
+                ref target_htlc_id, ..
             }) => vec![Action::RefundHtlc(EtherRefund {
                 contract_address: target_htlc_id.clone(),
                 execution_gas: 42, //TODO: generate gas cost directly

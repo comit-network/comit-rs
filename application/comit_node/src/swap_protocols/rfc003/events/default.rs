@@ -1,18 +1,15 @@
-use bitcoin_support::BitcoinQuantity;
 use comit_client::Client;
-use futures::{stream::Stream, Async, Future};
+use futures::{stream::Stream, Future};
 use ledger_query_service::{
-    self, fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, CreateQuery,
-    FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId, QueryIdCache,
+    fetch_transaction_stream::FetchTransactionStream, CreateQuery, FetchQueryResults, Query,
+    QueryIdCache,
 };
 use std::{
-    marker::PhantomData,
     sync::Arc,
     time::{Duration, Instant},
 };
 use swap_protocols::{
     asset::Asset,
-    ledger::Bitcoin,
     rfc003::{
         self,
         events::{
@@ -108,7 +105,6 @@ where
         let swap = swap.clone();
         let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
 
-        let source_asset = swap.source_asset.clone();
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
         let query = SLQuery::new_source_htlc_funded_query(&swap);
@@ -125,7 +121,7 @@ where
                         ).take(1)
                         .into_future()
                         .map(|(txid, _stream)| txid.expect("ticker stream should never terminate"))
-                        .map_err(|(e, _stream)| rfc003::Error::LedgerQueryService)
+                        .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                         .and_then(move |tx_id| {
                             SA::is_contained_in_transaction(swap, &tx_id)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)

@@ -7,7 +7,6 @@ use swap_protocols::rfc003::{
     self,
     ledger::Ledger,
     messages::{AcceptResponse, Request},
-    state_machine::Start,
     SecretHash,
 };
 use tokio::{self, prelude::future::Either};

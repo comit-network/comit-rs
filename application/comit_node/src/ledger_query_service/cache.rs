@@ -2,7 +2,6 @@ use item_cache::ItemCache;
 use ledger_query_service::{CreateQuery, Error, Query, QueryId};
 use std::{
     collections::HashMap,
-    hash::Hash,
     sync::{Arc, Mutex},
 };
 use swap_protocols::ledger::Ledger;

@@ -1,4 +1,4 @@
-use futures::{self, sync::oneshot};
+use futures::sync::oneshot;
 use std::fmt::{self, Debug, Formatter};
 use tokio::prelude::*;
 
@@ -110,6 +110,7 @@ impl<T: Clone + Debug + Send + 'static, E: Clone + Debug + Send + 'static> ItemC
 mod tests {
 
     use super::*;
+    use futures;
 
     #[test]
     fn polling_sender_of_oneshot_twice_results_in_error() {
