@@ -74,7 +74,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> 
     #[state_machine_future(transitions(BothFunded, Final))]
     SourceFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_id: SL::HtlcLocation,
+        source_htlc_location: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(
@@ -85,27 +85,27 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> 
     ))]
     BothFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_id: TL::HtlcLocation,
-        source_htlc_id: SL::HtlcLocation,
+        target_htlc_location: TL::HtlcLocation,
+        source_htlc_location: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRefunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_id: SL::HtlcLocation,
+        source_htlc_location: SL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRefundedTargetFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_id: TL::HtlcLocation,
+        target_htlc_location: TL::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRedeemedTargetFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_id: TL::HtlcLocation,
-        source_htlc_id: SL::HtlcLocation,
+        target_htlc_location: TL::HtlcLocation,
+        source_htlc_location: SL::HtlcLocation,
         secret: Secret,
     },
 
@@ -113,7 +113,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> 
     SourceFundedTargetRedeemed {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_redeemed_txid: TL::TxId,
-        source_htlc_id: SL::HtlcLocation,
+        source_htlc_location: SL::HtlcLocation,
     },
 
     #[state_machine_future(ready)]
@@ -160,7 +160,8 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         state: &'smf_poll mut RentToOwn<'smf_poll, Accepted<SL, TL, SA, TA, S>>,
         context: &mut Context<SL, TL, SA, TA, S>,
     ) -> Result<Async<AfterAccepted<SL, TL, SA, TA, S>>, rfc003::Error> {
-        let source_htlc_id = try_ready!(context.events.source_htlc_funded(&state.swap).poll());
+        let source_htlc_location =
+            try_ready!(context.events.source_htlc_funded(&state.swap).poll());
 
         let state = state.take();
 
@@ -168,7 +169,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
             context.state_repo,
             SourceFunded {
                 swap: state.swap,
-                source_htlc_id,
+                source_htlc_location,
             }
         )
     }
@@ -180,20 +181,20 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .source_htlc_refunded_target_htlc_funded(&state.swap, &state.source_htlc_id)
+                .source_htlc_refunded_target_htlc_funded(&state.swap, &state.source_htlc_location)
                 .poll()
         ) {
             Either::A(_source_refunded_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::SourceRefunded))
             }
-            Either::B(target_htlc_id) => {
+            Either::B(target_htlc_location) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
                     BothFunded {
                         swap: state.swap,
-                        source_htlc_id: state.source_htlc_id,
-                        target_htlc_id,
+                        source_htlc_location: state.source_htlc_location,
+                        target_htlc_location,
                     }
                 )
             }
@@ -206,7 +207,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
             .events
-            .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
+            .source_htlc_redeemed_or_refunded(&state.source_htlc_location)
             .poll()?
         {
             let state = state.take();
@@ -218,8 +219,8 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
                         context.state_repo,
                         SourceRedeemedTargetFunded {
                             swap: state.swap,
-                            target_htlc_id: state.target_htlc_id,
-                            source_htlc_id: state.source_htlc_id,
+                            target_htlc_location: state.target_htlc_location,
+                            source_htlc_location: state.source_htlc_location,
                             secret,
                         }
                     )
@@ -228,7 +229,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
                     context.state_repo,
                     SourceRefundedTargetFunded {
                         swap: state.swap,
-                        target_htlc_id: state.target_htlc_id,
+                        target_htlc_location: state.target_htlc_location,
                     }
                 ),
             }
@@ -237,7 +238,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
+                .target_htlc_redeemed_or_refunded(&state.target_htlc_location)
                 .poll()
         ) {
             Either::A(target_redeemed_txid) => {
@@ -247,7 +248,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
                     SourceFundedTargetRedeemed {
                         swap: state.swap,
                         target_redeemed_txid,
-                        source_htlc_id: state.source_htlc_id,
+                        source_htlc_location: state.source_htlc_location,
                     }
                 )
             }
@@ -257,7 +258,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
                     context.state_repo,
                     SourceFundedTargetRefunded {
                         swap: state.swap,
-                        source_htlc_id: state.source_htlc_id,
+                        source_htlc_location: state.source_htlc_location,
                     }
                 )
             }
@@ -271,7 +272,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
+                .source_htlc_redeemed_or_refunded(&state.source_htlc_location)
                 .poll()
         ) {
             Either::A(_source_redeemed_txid) => transition_save!(
@@ -291,7 +292,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
+                .target_htlc_redeemed_or_refunded(&state.target_htlc_location)
                 .poll()
         ) {
             Either::A(_target_redeemed_txid) => transition_save!(
@@ -311,7 +312,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .target_htlc_redeemed_or_refunded(&state.target_htlc_id)
+                .target_htlc_redeemed_or_refunded(&state.target_htlc_location)
                 .poll()
         ) {
             Either::A(_target_redeemed_txid) => {
@@ -331,7 +332,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .source_htlc_redeemed_or_refunded(&state.source_htlc_id)
+                .source_htlc_redeemed_or_refunded(&state.source_htlc_location)
                 .poll()
         ) {
             Either::A(_target_redeemed_txid) => {

@@ -30,35 +30,36 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 })]
             }
             SS::BothFunded(BothFunded {
-                ref target_htlc_id, ..
+                ref target_htlc_location,
+                ..
             }) => vec![Action::RefundHtlc(EtherRefund {
-                contract_address: target_htlc_id.clone(),
+                contract_address: target_htlc_location.clone(),
                 execution_gas: 42, //TODO: generate gas cost directly
             })],
             SS::SourceFundedTargetRefunded { .. } => vec![],
             SS::SourceFundedTargetRedeemed { .. } => vec![],
             SS::SourceRefundedTargetFunded(SourceRefundedTargetFunded {
-                ref target_htlc_id,
+                ref target_htlc_location,
                 ..
             }) => vec![Action::RefundHtlc(EtherRefund {
-                contract_address: target_htlc_id.clone(),
+                contract_address: target_htlc_location.clone(),
                 execution_gas: 42, //TODO: generate gas cost directly
             })],
             SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
                 ref swap,
-                ref target_htlc_id,
-                ref source_htlc_id,
+                ref target_htlc_location,
+                ref source_htlc_location,
                 ref secret,
             }) => vec![
                 Action::RedeemHtlc(BitcoinRedeem {
-                    outpoint: source_htlc_id.clone(),
+                    outpoint: source_htlc_location.clone(),
                     htlc: bitcoin_htlc(swap),
                     value: swap.source_asset,
                     transient_keypair: swap.source_identity.into(),
                     secret: *secret,
                 }),
                 Action::RefundHtlc(EtherRefund {
-                    contract_address: target_htlc_id.clone(),
+                    contract_address: target_htlc_location.clone(),
                     execution_gas: 42, //TODO: generate gas cost directly
                 }),
             ],

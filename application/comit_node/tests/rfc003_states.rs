@@ -64,7 +64,7 @@ impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, Ethe
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
         _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
-        _source_htlc_id: &bitcoin_support::OutPoint,
+        _source_htlc_location: &bitcoin_support::OutPoint,
     ) -> &mut Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
@@ -75,7 +75,7 @@ impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, Ethe
 impl TargetHtlcRedeemedOrRefunded<Ethereum> for FakeEvents {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        _target_htlc_id: &ethereum_support::Address,
+        _target_htlc_location: &ethereum_support::Address,
     ) -> &mut Box<events::RedeemedOrRefunded<Ethereum>> {
         unimplemented!()
     }
@@ -84,7 +84,7 @@ impl TargetHtlcRedeemedOrRefunded<Ethereum> for FakeEvents {
 impl SourceHtlcRedeemedOrRefunded<Bitcoin> for FakeEvents {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        _target_htlc_id: &bitcoin_support::OutPoint,
+        _target_htlc_location: &bitcoin_support::OutPoint,
     ) -> &mut Box<events::RedeemedOrRefunded<Bitcoin>> {
         unimplemented!()
     }
@@ -210,7 +210,7 @@ fn source_refunded() {
         },
         SourceFunded {
             swap: OngoingSwap::new(start.clone(), bob_response.clone()),
-            source_htlc_id: OutPoint {
+            source_htlc_location: OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0
             }
