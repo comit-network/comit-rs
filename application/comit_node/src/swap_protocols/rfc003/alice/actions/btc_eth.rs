@@ -23,18 +23,18 @@ impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
             })],
             SS::SourceFunded { .. } => vec![],
             SS::BothFunded(BothFunded {
-                ref source_htlc_id,
-                ref target_htlc_id,
+                ref source_htlc_location,
+                ref target_htlc_location,
                 ref swap,
                 ..
             }) => vec![
                 Action::RedeemHtlc(EtherRedeem {
-                    contract_address: target_htlc_id.clone(),
+                    contract_address: target_htlc_location.clone(),
                     execution_gas: 42, //TODO: generate gas cost directly
                     data: swap.secret,
                 }),
                 Action::RefundHtlc(BitcoinRefund {
-                    outpoint: source_htlc_id.clone(),
+                    outpoint: source_htlc_location.clone(),
                     htlc: bitcoin_htlc(swap),
                     value: swap.source_asset,
                     transient_keypair: swap.source_identity.into(),
@@ -42,30 +42,30 @@ impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
             ],
             SS::SourceFundedTargetRefunded(SourceFundedTargetRefunded {
                 ref swap,
-                ref source_htlc_id,
+                ref source_htlc_location,
                 ..
             })
             | SS::SourceFundedTargetRedeemed(SourceFundedTargetRedeemed {
                 ref swap,
-                ref source_htlc_id,
+                ref source_htlc_location,
                 ..
             }) => vec![Action::RefundHtlc(BitcoinRefund {
-                outpoint: source_htlc_id.clone(),
+                outpoint: source_htlc_location.clone(),
                 htlc: bitcoin_htlc(swap),
                 value: swap.source_asset,
                 transient_keypair: swap.source_identity.into(),
             })],
             SS::SourceRefundedTargetFunded(SourceRefundedTargetFunded {
-                ref target_htlc_id,
+                ref target_htlc_location,
                 ref swap,
                 ..
             })
             | SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
-                ref target_htlc_id,
+                ref target_htlc_location,
                 ref swap,
                 ..
             }) => vec![Action::RedeemHtlc(EtherRedeem {
-                contract_address: target_htlc_id.clone(),
+                contract_address: target_htlc_location.clone(),
                 execution_gas: 42, //TODO: generate cas cost correctly
                 data: swap.secret,
             })],

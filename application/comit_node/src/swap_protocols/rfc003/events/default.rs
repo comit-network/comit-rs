@@ -157,12 +157,13 @@ where
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
         swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_id: &SL::HtlcLocation,
+        source_htlc_location: &SL::HtlcLocation,
     ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>> {
         let swap = swap.clone();
 
         let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
-        let source_refunded_query = SLQuery::new_source_htlc_refunded_query(&swap, source_htlc_id);
+        let source_refunded_query =
+            SLQuery::new_source_htlc_refunded_query(&swap, source_htlc_location);
         let source_refunded_query_id = self
             .create_source_ledger_query
             .create_query(source_refunded_query);

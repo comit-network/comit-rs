@@ -57,21 +57,21 @@ pub trait SourceHtlcRefundedTargetHtlcFunded<
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
         swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_id: &SL::HtlcLocation,
+        source_htlc_location: &SL::HtlcLocation,
     ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>>;
 }
 
 pub trait TargetHtlcRedeemedOrRefunded<TL: Ledger>: Send {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_id: &TL::HtlcLocation,
+        target_htlc_location: &TL::HtlcLocation,
     ) -> &mut Box<RedeemedOrRefunded<TL>>;
 }
 
 pub trait SourceHtlcRedeemedOrRefunded<SL: Ledger>: Send {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_id: &SL::HtlcLocation,
+        source_htlc_location: &SL::HtlcLocation,
     ) -> &mut Box<RedeemedOrRefunded<SL>>;
 }
 
