@@ -40,7 +40,6 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TL
     source_htlc_funded_query: Option<Box<Funded<SL>>>,
     source_htlc_refunded_target_htlc_funded_query:
         Option<Box<SourceRefundedOrTargetFunded<SL, TL>>>,
-
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
