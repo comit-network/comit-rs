@@ -234,7 +234,7 @@ where
     SL: Ledger,
     TL: Ledger,
     SA: Asset,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
     SLQuery: Query
