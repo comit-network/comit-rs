@@ -13,11 +13,11 @@ use swap_protocols::{
     rfc003::{
         self,
         events::{
-            Funded, NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery,
+            Events, Funded, NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery,
             NewSourceHtlcRefundedQuery, NewTargetHtlcFundedQuery, NewTargetHtlcRedeemedQuery,
             NewTargetHtlcRefundedQuery, RedeemedOrRefunded, RequestResponded, Response,
-            SourceHtlcFunded, SourceHtlcRefundedTargetHtlcFunded, SourceRefundedOrTargetFunded,
-            TargetHtlcRedeemedOrRefunded,
+            SourceHtlcFunded, SourceHtlcRedeemedOrRefunded, SourceHtlcRefundedTargetHtlcFunded,
+            SourceRefundedOrTargetFunded, TargetHtlcRedeemedOrRefunded,
         },
         messages::Request,
         state_machine::OngoingSwap,
@@ -40,6 +40,7 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TL
     source_htlc_funded_query: Option<Box<Funded<SL>>>,
     source_htlc_refunded_target_htlc_funded_query:
         Option<Box<SourceRefundedOrTargetFunded<SL, TL>>>,
+    source_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<SL>>>,
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
@@ -314,3 +315,110 @@ where
             })
     }
 }
+
+impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery>
+    SourceHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
+    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    ComitClient: Client,
+    SLQuery: Query
+        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+    TLQuery: Query
+        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+{
+    fn source_htlc_redeemed_or_refunded(
+        &mut self,
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_location: &SL::HtlcLocation,
+    ) -> &mut Box<RedeemedOrRefunded<SL>> {
+        let swap = swap.clone();
+
+        let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
+        let source_refunded_query =
+            SLQuery::new_source_htlc_refunded_query(&swap, source_htlc_location);
+        let source_refunded_query_id = self
+            .create_source_ledger_query
+            .create_query(source_refunded_query);
+
+        let source_ledger_tick_interval = self.source_ledger_tick_interval;
+        let source_redeemed_query =
+            SLQuery::new_source_htlc_redeemed_query(&swap, source_htlc_location);
+        let source_redeemed_query_id = self
+            .create_source_ledger_query
+            .create_query(source_redeemed_query);
+
+        self.source_htlc_redeemed_or_refunded
+            .get_or_insert_with(move || {
+                let inner_source_ledger_fetch_query_results =
+                    source_ledger_fetch_query_results.clone();
+                let source_refunded_future = source_refunded_query_id
+                    .map_err(|_| rfc003::Error::LedgerQueryService)
+                    .and_then(move |query_id| {
+                        inner_source_ledger_fetch_query_results
+                            .fetch_transaction_stream(
+                                Interval::new(Instant::now(), source_ledger_tick_interval),
+                                query_id,
+                            ).take(1)
+                            .into_future()
+                            .map(|(txid, _stream)| {
+                                txid.expect("ticker stream should never terminate")
+                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                    });
+                let inner_source_ledger_fetch_query_results =
+                    source_ledger_fetch_query_results.clone();
+                let source_redeemed_future = source_redeemed_query_id
+                    .map_err(|_| rfc003::Error::LedgerQueryService)
+                    .and_then(move |query_id| {
+                        inner_source_ledger_fetch_query_results
+                            .fetch_transaction_stream(
+                                Interval::new(Instant::now(), source_ledger_tick_interval),
+                                query_id,
+                            ).take(1)
+                            .into_future()
+                            .map(|(txid, _stream)| {
+                                txid.expect("ticker stream should never terminate")
+                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                    });
+
+                Box::new(
+                    source_refunded_future
+                        .select2(source_redeemed_future)
+                        .map(|either| match either {
+                            Either::A((item, _stream)) => Either::A(item),
+                            Either::B((item, _stream)) => Either::B(item),
+                        }).map_err(|either| match either {
+                            Either::A((error, _stream)) => error,
+                            Either::B((error, _stream)) => error,
+                        }),
+                )
+            })
+    }
+}
+
+impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> Events<SL, TL, SA, TA, S>
+    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>,
+    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    ComitClient: Client,
+    SLQuery: Query
+        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+    TLQuery: Query
+        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+{}

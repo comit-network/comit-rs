@@ -207,7 +207,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
             .events
-            .source_htlc_redeemed_or_refunded(&state.source_htlc_location)
+            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
             .poll()?
         {
             let state = state.take();
@@ -272,7 +272,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .source_htlc_redeemed_or_refunded(&state.source_htlc_location)
+                .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
                 .poll()
         ) {
             Either::A(_source_redeemed_txid) => transition_save!(
@@ -332,7 +332,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .source_htlc_redeemed_or_refunded(&state.source_htlc_location)
+                .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
                 .poll()
         ) {
             Either::A(_target_redeemed_txid) => {
