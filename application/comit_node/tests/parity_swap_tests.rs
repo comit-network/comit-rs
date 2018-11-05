@@ -1,7 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
-extern crate bitcoin_support;
 extern crate comit_node;
 extern crate ethereum_support;
 extern crate hex;

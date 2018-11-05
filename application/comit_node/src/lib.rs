@@ -33,7 +33,6 @@ extern crate fern;
 extern crate hex;
 extern crate http_api_problem;
 extern crate hyper;
-extern crate mime;
 extern crate rand;
 extern crate reqwest;
 extern crate rlp;

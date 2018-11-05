@@ -88,7 +88,7 @@ impl DefaultLedgerQueryServiceApiClient {
                 .delete(query.as_ref().clone())
                 .send()
                 .map(|_| ())
-                .map_err(|e| Error::FailedRequest),
+                .map_err(|_| Error::FailedRequest),
         )
     }
 }
@@ -163,6 +163,6 @@ mod test {
     fn json_deserialize() {
         let json = r#"{"query":{"to_address":"bcrt1qtfd0gvmdhx2uz267a8a3rpm4v55t8nuzgka2f5xzm4e06tg2d2dqxugdz7","confirmations_needed":1},"matches":["b29cb185d467b3a5faeb7a3f312175e336dbfcc8e9fecc8ad86e9106031315c2"]}"#;
 
-        let blah: QueryResponse<TransactionId> = serde_json::from_str(json).unwrap();
+        let _: QueryResponse<TransactionId> = serde_json::from_str(json).unwrap();
     }
 }

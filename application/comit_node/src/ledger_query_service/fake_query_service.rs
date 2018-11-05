@@ -4,7 +4,7 @@ use ledger_query_service::{
     bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
     LedgerQueryServiceApiClient, Query, QueryId,
 };
-use std::{fmt, marker::PhantomData, sync::Mutex};
+use std::{marker::PhantomData, sync::Mutex};
 use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::{future::IntoFuture, Future};
 
