@@ -8,28 +8,43 @@ use swap_protocols::{
 #[derive(Debug, PartialEq)]
 pub struct PoorGuy;
 
-pub trait IsContainedInTransaction<SL, TL, SA, TA, S>: Send + Sync
+pub trait IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset + IsContainedInTransaction<SL, TL, SA, TA, S>,
+    SA: Asset,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
-    fn is_contained_in_transaction(
+    fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, TA, S>,
         tx: &SL::TxId, // TODO: should be full tx
     ) -> Result<SL::HtlcLocation, PoorGuy>;
 }
 
-impl<TL, TA, S> IsContainedInTransaction<Bitcoin, TL, BitcoinQuantity, TA, S> for BitcoinQuantity
+pub trait IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Into<SecretHash> + Send + Sync + Clone,
+{
+    fn is_contained_in_target_ledger_transaction(
+        swap: OngoingSwap<SL, TL, SA, TA, S>,
+        tx: &TL::TxId, // TODO: should be full tx
+    ) -> Result<TL::HtlcLocation, PoorGuy>;
+}
+
+impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, BitcoinQuantity, TA, S>
+    for BitcoinQuantity
 where
     TL: Ledger,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
     #[allow(unreachable_code, unused_variables)] // TODO: remove once properly implemented
-    fn is_contained_in_transaction(
+    fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
         tx: &TransactionId,
     ) -> Result<OutPoint, PoorGuy> {

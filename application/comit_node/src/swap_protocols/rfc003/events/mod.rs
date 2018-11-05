@@ -116,7 +116,10 @@ where
     S: Clone,
     Self: Query,
 {
-    fn new_source_htlc_refunded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+    fn new_source_htlc_refunded_query(
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_location: &SL::HtlcLocation,
+    ) -> Self;
 }
 
 pub trait NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>: Send + Sync

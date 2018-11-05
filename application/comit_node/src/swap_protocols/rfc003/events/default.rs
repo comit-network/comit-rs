@@ -1,5 +1,5 @@
 use comit_client::Client;
-use futures::{stream::Stream, Future};
+use futures::{future::Either, stream::Stream, Future};
 use ledger_query_service::{
     fetch_transaction_stream::FetchTransactionStream, CreateQuery, FetchQueryResults, Query,
     QueryIdCache,
@@ -16,10 +16,11 @@ use swap_protocols::{
             Funded, NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery,
             NewSourceHtlcRefundedQuery, NewTargetHtlcFundedQuery, NewTargetHtlcRedeemedQuery,
             NewTargetHtlcRefundedQuery, RequestResponded, Response, SourceHtlcFunded,
+            SourceHtlcRefundedTargetHtlcFunded, SourceRefundedOrTargetFunded,
         },
         messages::Request,
         state_machine::OngoingSwap,
-        validation::IsContainedInTransaction,
+        validation::{IsContainedInSourceLedgerTransaction, IsContainedInTargetLedgerTransaction},
         Ledger, SecretHash,
     },
 };
@@ -36,14 +37,16 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TL
     player: Player<ComitClient>,
     response: Option<Box<Response<SL, TL>>>,
     source_htlc_funded_query: Option<Box<Funded<SL>>>,
+    source_htlc_refunded_target_htlc_funded_query:
+        Option<Box<SourceRefundedOrTargetFunded<SL, TL>>>,
 
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
     source_ledger_fetch_query_results: Arc<FetchQueryResults<SL>>,
     source_ledger_tick_interval: Duration,
 
-    _create_target_ledger_query: QueryIdCache<TL, TLQuery>,
-    _target_ledger_fetch_query_results: Arc<FetchQueryResults<TL>>,
-    _target_ledger_tick_interval: Duration,
+    create_target_ledger_query: QueryIdCache<TL, TLQuery>,
+    target_ledger_fetch_query_results: Arc<FetchQueryResults<TL>>,
+    target_ledger_tick_interval: Duration,
 }
 
 impl<SL, TL, SA, TA, ComitClient, SLQuery, TLQuery> RequestResponded<SL, TL, SA, TA>
@@ -85,7 +88,7 @@ impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> SourceHtlcFunded<SL, TL, 
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset + IsContainedInTransaction<SL, TL, SA, TA, S>,
+    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
@@ -104,7 +107,6 @@ where
     ) -> &'s mut Box<Funded<SL>> {
         let swap = swap.clone();
         let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
-
         let source_ledger_tick_interval = self.source_ledger_tick_interval;
 
         let query = SLQuery::new_source_htlc_funded_query(&swap);
@@ -123,12 +125,101 @@ where
                         .map(|(txid, _stream)| txid.expect("ticker stream should never terminate"))
                         .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                         .and_then(move |tx_id| {
-                            SA::is_contained_in_transaction(swap, &tx_id)
+                            SA::is_contained_in_source_ledger_transaction(swap, &tx_id)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });
 
             Box::new(funded_future)
         })
+    }
+}
+
+impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery>
+    SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>
+    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
+where
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    ComitClient: Client,
+    SLQuery: Query
+        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+    TLQuery: Query
+        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
+        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+{
+    fn source_htlc_refunded_target_htlc_funded(
+        &mut self,
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_id: &SL::HtlcLocation,
+    ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>> {
+        let swap = swap.clone();
+
+        let source_ledger_fetch_query_results = self.source_ledger_fetch_query_results.clone();
+        let source_refunded_query = SLQuery::new_source_htlc_refunded_query(&swap, source_htlc_id);
+        let source_refunded_query_id = self
+            .create_source_ledger_query
+            .create_query(source_refunded_query);
+        let source_ledger_tick_interval = self.source_ledger_tick_interval;
+
+        let target_ledger_fetch_query_results = self.target_ledger_fetch_query_results.clone();
+        let target_funded_query = TLQuery::new_target_htlc_funded_query(&swap);
+        let target_funded_query_id = self
+            .create_target_ledger_query
+            .create_query(target_funded_query);
+        let target_ledger_tick_interval = self.target_ledger_tick_interval;
+
+        self.source_htlc_refunded_target_htlc_funded_query
+            .get_or_insert_with(move || {
+                let source_refunded_future = source_refunded_query_id
+                    .map_err(|_| rfc003::Error::LedgerQueryService)
+                    .and_then(move |query_id| {
+                        source_ledger_fetch_query_results
+                            .fetch_transaction_stream(
+                                Interval::new(Instant::now(), source_ledger_tick_interval),
+                                query_id,
+                            ).take(1)
+                            .into_future()
+                            .map(|(txid, _stream)| {
+                                txid.expect("ticker stream should never terminate")
+                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                    });
+
+                let target_funded_future = target_funded_query_id
+                    .map_err(|_| rfc003::Error::LedgerQueryService)
+                    .and_then(move |query_id| {
+                        target_ledger_fetch_query_results
+                            .fetch_transaction_stream(
+                                Interval::new(Instant::now(), target_ledger_tick_interval),
+                                query_id,
+                            ).take(1)
+                            .into_future()
+                            .map(|(txid, _stream)| {
+                                txid.expect("ticker stream should never terminate")
+                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .and_then(move |tx_id| {
+                                TA::is_contained_in_target_ledger_transaction(swap, &tx_id)
+                                    .map_err(|_| rfc003::Error::InsufficientFunding)
+                            })
+                    });
+
+                Box::new(
+                    source_refunded_future
+                        .select2(target_funded_future)
+                        .map(|either| match either {
+                            Either::A((item, _stream)) => Either::A(item),
+                            Either::B((item, _stream)) => Either::B(item),
+                        }).map_err(|either| match either {
+                            Either::A((error, _stream)) => error,
+                            Either::B((error, _stream)) => error,
+                        }),
+                )
+            })
     }
 }
