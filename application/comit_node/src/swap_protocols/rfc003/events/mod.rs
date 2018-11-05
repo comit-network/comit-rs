@@ -61,9 +61,17 @@ pub trait SourceHtlcRefundedTargetHtlcFunded<
     ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>>;
 }
 
-pub trait TargetHtlcRedeemedOrRefunded<TL: Ledger>: Send {
+pub trait TargetHtlcRedeemedOrRefunded<
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Into<SecretHash> + Clone,
+>: Send
+{
     fn target_htlc_redeemed_or_refunded(
         &mut self,
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
         target_htlc_location: &TL::HtlcLocation,
     ) -> &mut Box<RedeemedOrRefunded<TL>>;
 }
@@ -79,7 +87,7 @@ pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHas
     RequestResponded<SL, TL, SA, TA>
     + SourceHtlcFunded<SL, TL, SA, TA, S>
     + SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>
-    + TargetHtlcRedeemedOrRefunded<TL>
+    + TargetHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
     + SourceHtlcRedeemedOrRefunded<SL>
 {
 }
@@ -143,7 +151,10 @@ where
     S: Clone,
     Self: Query,
 {
-    fn new_target_htlc_redeemed_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+    fn new_target_htlc_redeemed_query(
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        target_htlc_location: &TL::HtlcLocation,
+    ) -> Self;
 }
 pub trait NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>: Send + Sync
 where
@@ -154,5 +165,8 @@ where
     S: Clone,
     Self: Query,
 {
-    fn new_target_htlc_refunded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+    fn new_target_htlc_refunded_query(
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        target_htlc_location: &TL::HtlcLocation,
+    ) -> Self;
 }

@@ -238,7 +238,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .target_htlc_redeemed_or_refunded(&state.target_htlc_location)
+                .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
                 .poll()
         ) {
             Either::A(target_redeemed_txid) => {
@@ -292,7 +292,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .target_htlc_redeemed_or_refunded(&state.target_htlc_location)
+                .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
                 .poll()
         ) {
             Either::A(_target_redeemed_txid) => transition_save!(
@@ -312,7 +312,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         match try_ready!(
             context
                 .events
-                .target_htlc_redeemed_or_refunded(&state.target_htlc_location)
+                .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
                 .poll()
         ) {
             Either::A(_target_redeemed_txid) => {
