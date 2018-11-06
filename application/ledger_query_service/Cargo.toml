@@ -21,6 +21,7 @@ zmq-rs = "0.1"
 
 [dev-dependencies]
 env_logger = "0.5"
+hex = "0.3"
 rand = "0.3"
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 spectral = "0.6"
