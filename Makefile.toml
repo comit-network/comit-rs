@@ -50,22 +50,6 @@ dependencies = [
 [tasks.ci-flow]
 workspace = false
 
-# Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
-[tasks.format]
-description = "Runs cargo fmt to format the code."
-clear = true
-workspace = false
-install_script = ["rustup component add rustfmt-preview"]
-script = ["cargo fmt"]
-
-# Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
-[tasks.clippy]
-description = "Runs cargo clippy to check for warnings."
-clear = true
-workspace = false
-install_script = ["rustup component add clippy-preview"]
-script = ["cargo clippy --all --all-targets"]
-
 # Overridden because: we want --all-targests
 [tasks.build]
 workspace = false
@@ -103,8 +87,10 @@ alias = "lqs-tests-flow"
 [tasks.check-format]
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
-install_script = ["rustup component add rustfmt-preview"]
-script = ["cargo fmt -- --check"]
+install_crate = { crate_name = "fmt", rustup_component_name = "rustfmt-preview", binary = "rustfmt", test_arg = "--help" }
+command = "cargo"
+args = ["fmt", "--", "--check"]
+
 
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
