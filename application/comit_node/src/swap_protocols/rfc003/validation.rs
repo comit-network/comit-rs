@@ -1,7 +1,7 @@
-use bitcoin_support::{BitcoinQuantity, OutPoint, Transaction, TransactionId};
+use bitcoin_support::{BitcoinQuantity, OutPoint, Transaction};
 use swap_protocols::{
     asset::Asset,
-    ledger::Bitcoin,
+    ledger::{Bitcoin, Ledger as SwapProtocolsLedger},
     rfc003::{bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, Ledger, SecretHash},
 };
 
@@ -18,7 +18,7 @@ where
 {
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        tx: &SL::TxId, // TODO: should be full tx
+        transaction: SL::Transaction,
     ) -> Result<SL::HtlcLocation, PoorGuy>;
 }
 
@@ -32,7 +32,7 @@ where
 {
     fn is_contained_in_target_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        tx: &TL::TxId, // TODO: should be full tx
+        tx: TL::Transaction,
     ) -> Result<TL::HtlcLocation, PoorGuy>;
 }
 
@@ -46,9 +46,9 @@ where
     #[allow(unreachable_code, unused_variables)] // TODO: remove once properly implemented
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
-        tx: &TransactionId,
+        transaction: <Bitcoin as SwapProtocolsLedger>::Transaction,
     ) -> Result<OutPoint, PoorGuy> {
-        let transaction: Transaction = unimplemented!();
+        let transaction: Transaction = transaction.into();
 
         let (vout, txout) = transaction
             .output
@@ -59,7 +59,7 @@ where
             }).unwrap();
 
         let location = OutPoint {
-            txid: *tx,
+            txid: transaction.txid(),
             vout: vout as u32,
         };
 

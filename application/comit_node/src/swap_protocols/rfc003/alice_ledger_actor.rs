@@ -7,7 +7,7 @@ use futures::{
     Future, Stream,
 };
 use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
+    fetch_transaction_stream::FetchTransactionIdStream, BitcoinQuery, EthereumQuery,
     LedgerQueryServiceApiClient,
 };
 use std::{sync::Arc, time::Duration};
@@ -219,7 +219,7 @@ where
             .and_then(|query_id| {
                 let stream = self
                     .ledger_query_service_api_client
-                    .fetch_transaction_stream(
+                    .fetch_transaction_id_stream(
                         Interval::new_interval(self.bitcoin_poll_interval),
                         query_id.clone(),
                     );
@@ -308,7 +308,7 @@ where
             .and_then(|query_id| {
                 let stream = self
                     .ledger_query_service_api_client
-                    .fetch_transaction_stream(
+                    .fetch_transaction_id_stream(
                         Interval::new_interval(self.bitcoin_poll_interval),
                         query_id.clone(),
                     );

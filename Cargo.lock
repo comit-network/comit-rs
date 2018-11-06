@@ -117,6 +117,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "bitcoin_quantity"
+version = "0.1.0"
+source = "git+https://github.com/coblox/bitcoin-quantity#aba5e108aaac9d88db1fca6fdc1e4c53cbf515b1"
+dependencies = [
+ "bigdecimal 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "bitcoin_rpc_client"
+version = "0.4.0"
+dependencies = [
+ "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_quantity 0.1.0 (git+https://github.com/coblox/bitcoin-quantity)",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jsonrpc_client 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "bitcoin_rpc_client"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -276,7 +299,7 @@ dependencies = [
 name = "comit_node"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.4.0",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
@@ -3058,6 +3081,7 @@ dependencies = [
 "checksum bigdecimal 0.0.12 (registry+https://github.com/rust-lang/crates.io-index)" = "a33704f529287dc275e16ef871c2407ff36c01f15b374e1c28f49a5fc340369f"
 "checksum bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)" = "804b37d4fcadce0ebf4cf87e0a60e71db95d5fac70d0c2cda8aae88a4d830d31"
 "checksum bitcoin-bech32 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f0a5cfe5abcb5040b36d4ea8acba95288fefebd7959b59475f2c4ec705974b4c"
+"checksum bitcoin_quantity 0.1.0 (git+https://github.com/coblox/bitcoin-quantity)" = "<none>"
 "checksum bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3158229a8bc2971b27eb9eada829577a3708f26cb0616104f9009024c70e69c4"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"

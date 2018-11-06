@@ -7,7 +7,7 @@ use failure::Error;
 use futures::{future, Future, Stream};
 use key_store::KeyStore;
 use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionStream, BitcoinQuery, EthereumQuery,
+    fetch_transaction_stream::FetchTransactionIdStream, BitcoinQuery, EthereumQuery,
     LedgerQueryServiceApiClient,
 };
 use std::{sync::Arc, time::Duration};
@@ -233,7 +233,7 @@ fn process<
         .create_query(query)
         .map_err(Error::from)
         .and_then(move |query_id| {
-            let stream = ledger_query_service_api_client.fetch_transaction_stream(
+            let stream = ledger_query_service_api_client.fetch_transaction_id_stream(
                 Interval::new_interval(bitcoin_poll_interval),
                 query_id.clone(),
             );
@@ -348,8 +348,10 @@ fn watch_for_eth_htlc_and_redeem_btc_htlc<
         .create_query(query)
         .map_err(Error::from)
         .and_then(move |query_id| {
-            let stream = ledger_query_service_api_client
-                .fetch_transaction_stream(Interval::new_interval(poll_interval), query_id.clone());
+            let stream = ledger_query_service_api_client.fetch_transaction_id_stream(
+                Interval::new_interval(poll_interval),
+                query_id.clone(),
+            );
 
             stream
                 .take(1)

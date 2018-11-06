@@ -24,8 +24,8 @@ pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
 pub type Refunded<L: Ledger> = Future<L::TxId>;
 pub type Redeemed<L: Ledger> = Future<L::TxId>;
 pub type SourceRefundedOrTargetFunded<SL: Ledger, TL: Ledger> =
-    Future<Either<SL::TxId, TL::HtlcLocation>>;
-pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::TxId, L::TxId>>;
+    Future<Either<SL::Transaction, TL::HtlcLocation>>;
+pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
 pub trait RequestResponded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
     fn request_responded(

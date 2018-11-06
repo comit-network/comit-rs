@@ -112,7 +112,7 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRedeemed {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_redeemed_txid: TL::TxId,
+        target_redeemed_tx: TL::Transaction,
         source_htlc_location: SL::HtlcLocation,
     },
 
@@ -241,13 +241,13 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
                 .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
                 .poll()
         ) {
-            Either::A(target_redeemed_txid) => {
+            Either::A(target_redeemed_tx) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
                     SourceFundedTargetRedeemed {
                         swap: state.swap,
-                        target_redeemed_txid,
+                        target_redeemed_tx,
                         source_htlc_location: state.source_htlc_location,
                     }
                 )

@@ -1,7 +1,7 @@
 use comit_client::Client;
 use futures::{future::Either, stream::Stream, Future};
 use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionStream, CreateQuery, FetchQueryResults, Query,
+    fetch_transaction_stream::FetchTransactionStream, CreateQuery, FetchFullQueryResults, Query,
     QueryIdCache,
 };
 use std::{
@@ -44,11 +44,11 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TL
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
-    source_ledger_fetch_query_results: Arc<FetchQueryResults<SL>>,
+    source_ledger_fetch_query_results: Arc<FetchFullQueryResults<SL>>,
     source_ledger_tick_interval: Duration,
 
     create_target_ledger_query: QueryIdCache<TL, TLQuery>,
-    target_ledger_fetch_query_results: Arc<FetchQueryResults<TL>>,
+    target_ledger_fetch_query_results: Arc<FetchFullQueryResults<TL>>,
     target_ledger_tick_interval: Duration,
 }
 
@@ -125,10 +125,10 @@ where
                             query_id,
                         ).take(1)
                         .into_future()
-                        .map(|(txid, _stream)| txid.expect("ticker stream should never terminate"))
+                        .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
                         .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
-                        .and_then(move |tx_id| {
-                            SA::is_contained_in_source_ledger_transaction(swap, &tx_id)
+                        .and_then(move |tx| {
+                            SA::is_contained_in_source_ledger_transaction(swap, tx)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });
@@ -208,7 +208,7 @@ where
                                 txid.expect("ticker stream should never terminate")
                             }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                             .and_then(move |tx_id| {
-                                TA::is_contained_in_target_ledger_transaction(swap, &tx_id)
+                                TA::is_contained_in_target_ledger_transaction(swap, tx_id)
                                     .map_err(|_| rfc003::Error::InsufficientFunding)
                             })
                     });
