@@ -28,7 +28,7 @@ impl UnlockScriptContains for Transaction {
                     txin.script_sig
                         .iter(true)
                         .any(|instruction| match instruction {
-                            PushBytes(data) => data.to_vec().eq(item),
+                            PushBytes(data) => (item as &[u8]) == data,
                             Op(_) => false,
                             Error(_) => false,
                         })
