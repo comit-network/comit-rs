@@ -1,19 +1,27 @@
-use super::{Action, BitcoinFund, BitcoinRefund, EtherRedeem, StateActions};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
+        actions::{
+            bitcoin::{BitcoinFund, BitcoinRefund},
+            ethereum::EtherRedeem,
+            Action, StateActions,
+        },
         bitcoin::{bitcoin_htlc, bitcoin_htlc_address},
         state_machine::*,
         Secret,
     },
 };
 
-impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
-    for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
-{
-    fn actions(&self) -> Vec<Action<BitcoinFund, EtherRedeem, BitcoinRefund>> {
+impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
+    type Accept = ();
+    type Decline = ();
+    type Fund = BitcoinFund;
+    type Redeem = EtherRedeem;
+    type Refund = BitcoinRefund;
+
+    fn actions(&self) -> Vec<Action<(), (), BitcoinFund, EtherRedeem, BitcoinRefund>> {
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![],

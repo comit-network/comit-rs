@@ -1,10 +1,9 @@
 #[macro_use]
 mod transition_save;
 
-pub mod alice;
+pub mod actions;
 pub mod alice_ledger_actor;
 pub mod bitcoin;
-pub mod bob;
 pub mod ethereum;
 pub mod events;
 pub mod ledger_htlc_service;

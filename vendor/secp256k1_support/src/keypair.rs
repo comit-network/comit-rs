@@ -4,7 +4,7 @@ use rand::Rng;
 use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
 use std::fmt;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct KeyPair {
     secret_key: SecretKey,
     public_key: PublicKey,

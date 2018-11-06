@@ -41,7 +41,7 @@ impl IntoP2wpkhAddress for PubkeyHash {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct PubkeyHash(Hash160);
 
 impl From<Hash160> for PubkeyHash {

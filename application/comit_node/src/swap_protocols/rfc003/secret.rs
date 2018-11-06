@@ -9,7 +9,7 @@ use std::{
 
 const SHA256_DIGEST_LENGTH: usize = 32;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SecretHash(pub Vec<u8>);
 
 impl Debug for SecretHash {
@@ -81,7 +81,7 @@ impl FromStr for SecretHash {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Secret([u8; SHA256_DIGEST_LENGTH]);
 
 impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {
