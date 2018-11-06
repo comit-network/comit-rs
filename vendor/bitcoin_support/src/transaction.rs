@@ -92,7 +92,7 @@ mod tests {
                 .unwrap();
         let data2 = hex::decode("01").unwrap();
 
-        let unlock_script = vec![pubkey, boolean];
+        let unlock_script = vec![data1, data2];
 
         assert_that(&realtx.unlock_script_contains(&unlock_script)).is_true();
     }
