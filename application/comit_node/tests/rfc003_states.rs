@@ -84,9 +84,12 @@ impl TargetHtlcRedeemedOrRefunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuant
     }
 }
 
-impl SourceHtlcRedeemedOrRefunded<Bitcoin> for FakeEvents {
+impl SourceHtlcRedeemedOrRefunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
+    for FakeEvents
+{
     fn source_htlc_redeemed_or_refunded(
         &mut self,
+        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
         _target_htlc_location: &bitcoin_support::OutPoint,
     ) -> &mut Box<events::RedeemedOrRefunded<Bitcoin>> {
         unimplemented!()

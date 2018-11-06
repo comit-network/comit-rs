@@ -76,9 +76,17 @@ pub trait TargetHtlcRedeemedOrRefunded<
     ) -> &mut Box<RedeemedOrRefunded<TL>>;
 }
 
-pub trait SourceHtlcRedeemedOrRefunded<SL: Ledger>: Send {
+pub trait SourceHtlcRedeemedOrRefunded<
+    SL: Ledger,
+    TL: Ledger,
+    SA: Asset,
+    TA: Asset,
+    S: Into<SecretHash> + Clone,
+>: Send
+{
     fn source_htlc_redeemed_or_refunded(
         &mut self,
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
         source_htlc_location: &SL::HtlcLocation,
     ) -> &mut Box<RedeemedOrRefunded<SL>>;
 }
@@ -88,7 +96,7 @@ pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHas
     + SourceHtlcFunded<SL, TL, SA, TA, S>
     + SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>
     + TargetHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
-    + SourceHtlcRedeemedOrRefunded<SL>
+    + SourceHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
 {
 }
 
@@ -113,7 +121,10 @@ where
     S: Clone,
     Self: Query,
 {
-    fn new_source_htlc_redeemed_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+    fn new_source_htlc_redeemed_query(
+        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_location: &SL::HtlcLocation,
+    ) -> Self;
 }
 pub trait NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>: Send + Sync
 where
