@@ -26,6 +26,7 @@ pub use bitcoin::{
         hash::{
             self, Hash160, Sha256dHash, Sha256dHash as TransactionId, Sha256dHash as BlockHash,
         },
+        misc::hex_bytes,
         privkey::Privkey as PrivateKey,
         Error,
     },
