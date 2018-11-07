@@ -30,7 +30,7 @@ pub fn create<
     S: state_store::StateStore<TradeId>,
 >(
     event_store: Arc<E>,
-    type_store: Arc<T>,
+    swap_metadata_store: Arc<T>,
     state_store: Arc<S>,
     client_factory: Arc<F>,
     remote_comit_node_socket_addr: SocketAddr,
@@ -52,21 +52,21 @@ pub fn create<
 
     let client_factory = warp::any().map(move || client_factory.clone());
     let event_store = warp::any().map(move || event_store.clone());
-    let type_store = warp::any().map(move || type_store.clone());
+    let swap_metadata_store = warp::any().map(move || swap_metadata_store.clone());
     let state_store = warp::any().map(move || state_store.clone());
 
     let post_swap = warp::post2()
         .and(swap_state)
         .and(client_factory)
         .and(event_store.clone())
-        .and(type_store.clone())
+        .and(swap_metadata_store.clone())
         .and(state_store.clone())
         .and(warp::body::json())
         .and_then(http_api::swap::post_swap);
 
     let get_swap = warp::get2()
         .and(event_store)
-        .and(type_store)
+        .and(swap_metadata_store)
         .and(state_store)
         .and(warp::path::param())
         .and_then(http_api::swap::get_swap);
