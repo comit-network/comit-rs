@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(PartialEq, Clone, Debug, Copy, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct BitcoinQuantity(u64);
 
 impl BitcoinQuantity {

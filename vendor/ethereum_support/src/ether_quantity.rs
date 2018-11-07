@@ -11,7 +11,7 @@ use serde::{
 use std::{f64, fmt, mem, str::FromStr};
 use U256;
 
-#[derive(PartialEq, Clone, Debug, Copy)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct EtherQuantity(U256);
 
 const U64SIZE: usize = mem::size_of::<u64>();

@@ -6,7 +6,7 @@ use serde::{
 };
 use std::fmt;
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct PublicKey(secp256k1::PublicKey);
 
 impl PublicKey {

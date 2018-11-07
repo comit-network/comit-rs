@@ -28,7 +28,7 @@ pub enum UnlockingError {
 // - BTC amount
 // - hashed secret
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Htlc {
     recipient_success_pubkey_hash: PubkeyHash,
     sender_refund_pubkey_hash: PubkeyHash,

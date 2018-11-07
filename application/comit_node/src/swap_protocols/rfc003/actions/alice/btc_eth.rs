@@ -1,19 +1,27 @@
-use super::{Action, BitcoinFund, BitcoinRefund, EtherRedeem, StateActions};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
+        actions::{
+            bitcoin::{BitcoinFund, BitcoinRefund},
+            ethereum::EtherRedeem,
+            Action, StateActions,
+        },
         bitcoin::{bitcoin_htlc, bitcoin_htlc_address},
         state_machine::*,
         Secret,
     },
 };
 
-impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
-    for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
-{
-    fn actions(&self) -> Vec<Action<BitcoinFund, EtherRedeem, BitcoinRefund>> {
+impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
+    type Accept = ();
+    type Decline = ();
+    type Fund = BitcoinFund;
+    type Redeem = EtherRedeem;
+    type Refund = BitcoinRefund;
+
+    fn actions(&self) -> Vec<Action<(), (), BitcoinFund, EtherRedeem, BitcoinRefund>> {
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![],
@@ -30,8 +38,9 @@ impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
             }) => vec![
                 Action::Redeem(EtherRedeem {
                     contract_address: *target_htlc_location,
-                    execution_gas: 42, //TODO: generate gas cost directly
                     data: swap.secret,
+                    gas_limit: 42.into(), //TODO come up with correct gas limit
+                    gas_cost: 42.into(),  //TODO come up with correct gas cost
                 }),
                 Action::Refund(BitcoinRefund {
                     outpoint: *source_htlc_location,
@@ -66,8 +75,9 @@ impl StateActions<BitcoinFund, EtherRedeem, BitcoinRefund>
                 ..
             }) => vec![Action::Redeem(EtherRedeem {
                 contract_address: *target_htlc_location,
-                execution_gas: 42, //TODO: generate cas cost correctly
                 data: swap.secret,
+                gas_limit: 42.into(), //TODO come up with correct gas limit
+                gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
             SS::Error(_) => vec![],
             SS::Final(_) => vec![],
