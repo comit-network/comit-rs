@@ -213,7 +213,7 @@ fn source_refunded() {
                     vin: Vec::new(),
                     vout: Vec::new(),
                     hex: SerializedRawTransaction(String::from("")),
-                    blockhash: Sha256dHash::from_data(b"blockash"),
+                    blockhash: Sha256dHash::from_data(b"blockhash"),
                     confirmations: 0,
                     time: 0,
                     blocktime: 0,
