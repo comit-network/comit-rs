@@ -96,7 +96,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
         let tx_id = self
             .client
-            .send_to_address(&htlc_address.into(), htlc_funding_params.amount.bitcoin())??;
+            .send_to_address(&htlc_address, htlc_funding_params.amount.bitcoin())??;
 
         Ok(tx_id)
     }
