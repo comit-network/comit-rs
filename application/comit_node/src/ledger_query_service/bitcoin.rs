@@ -73,6 +73,9 @@ mod tests {
             unlock_script,
         };
         let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"to_address":null,"unlock_script":[[1,2,3,4,5],[5,4,3,2,1]]}"#)
+        assert_eq!(
+            query,
+            r#"{"to_address":null,"unlock_script":[[1,2,3,4,5],[5,4,3,2,1]]}"#
+        )
     }
 }
