@@ -1,10 +1,12 @@
 use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::OutPoint;
 use ledger_query_service::BitcoinQuery;
 use swap_protocols::{
     asset::Asset,
     ledger::Bitcoin,
     rfc003::{
         bitcoin::bitcoin_htlc_address, events::NewSourceHtlcFundedQuery,
+        events::NewSourceHtlcRefundedQuery,
         state_machine::OngoingSwap, IntoSecretHash, Ledger,
     },
 };
@@ -20,6 +22,7 @@ where
     ) -> Self {
         BitcoinQuery::Transaction {
             to_address: Some(bitcoin_htlc_address(swap)),
+            unlock_script: None
         }
     }
 }
