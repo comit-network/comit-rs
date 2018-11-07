@@ -104,11 +104,10 @@ mod tests {
         rfc003::{ethereum::Seconds, state_machine::*, AcceptResponse, Secret},
     };
 
-    #[test]
-    fn transaction_contains_output_with_sufficient_money() {
-        let bitcoin_amount = 1.0;
-
-        let start = Start {
+    fn gen_start_state(
+        bitcoin_amount: f64,
+    ) -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
+        Start {
             source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
@@ -122,8 +121,11 @@ mod tests {
             target_asset: EtherQuantity::from_eth(10.0),
             source_ledger_lock_duration: Blocks::from(144),
             secret: Secret::from(*b"hello world, you are beautiful!!"),
-        };
-        let response = AcceptResponse {
+        }
+    }
+
+    fn gen_response() -> AcceptResponse<Bitcoin, Ethereum> {
+        AcceptResponse {
             target_ledger_refund_identity: ethereum_support::Address::from_str(
                 "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
             ).unwrap(),
@@ -131,7 +133,15 @@ mod tests {
                 "d38e554430c4035f2877a579a07a99886153f071",
             ).unwrap(),
             target_ledger_lock_duration: Seconds(42),
-        };
+        }
+    }
+
+    #[test]
+    fn transaction_contains_output_with_sufficient_money() {
+        let bitcoin_amount = 1.0;
+
+        let start = gen_start_state(bitcoin_amount);
+        let response = gen_response();
         let swap = OngoingSwap::new(start, response);
 
         let script = bitcoin_htlc_address(&swap).script_pubkey();
@@ -144,7 +154,6 @@ mod tests {
             addresses: None,
         };
 
-        let txid = Sha256dHash::from_data(b"a");
         let transaction_output = TransactionOutput {
             value: swap.clone().source_asset.bitcoin(),
             n: 1,
@@ -152,7 +161,7 @@ mod tests {
         };
 
         let transaction = VerboseRawTransaction {
-            txid,
+            txid: Sha256dHash::from_data(b"a"),
             hash: String::from(""),
             size: 0,
             vsize: 0,
@@ -180,30 +189,10 @@ mod tests {
 
     #[test]
     fn transaction_does_not_contain_output() {
-        let start = Start {
-            source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
-                &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                    .unwrap(),
-            ).unwrap(),
-            target_identity: ethereum_support::Address::from_str(
-                "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
-            ).unwrap(),
-            source_ledger: Bitcoin::regtest(),
-            target_ledger: Ethereum::default(),
-            source_asset: BitcoinQuantity::from_bitcoin(1.0),
-            target_asset: EtherQuantity::from_eth(10.0),
-            source_ledger_lock_duration: Blocks::from(144),
-            secret: Secret::from(*b"hello world, you are beautiful!!"),
-        };
-        let response = AcceptResponse {
-            target_ledger_refund_identity: ethereum_support::Address::from_str(
-                "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
-            ).unwrap(),
-            source_ledger_success_identity: bitcoin_support::PubkeyHash::from_hex(
-                "d38e554430c4035f2877a579a07a99886153f071",
-            ).unwrap(),
-            target_ledger_lock_duration: Seconds(42),
-        };
+        let bitcoin_amount = 1.0;
+
+        let start = gen_start_state(bitcoin_amount);
+        let response = gen_response();
         let swap = OngoingSwap::new(start, response);
 
         let transaction = VerboseRawTransaction {
@@ -231,30 +220,8 @@ mod tests {
     fn transaction_does_not_contain_enough_money() {
         let bitcoin_amount = 1.0;
 
-        let start = Start {
-            source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
-                &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                    .unwrap(),
-            ).unwrap(),
-            target_identity: ethereum_support::Address::from_str(
-                "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
-            ).unwrap(),
-            source_ledger: Bitcoin::regtest(),
-            target_ledger: Ethereum::default(),
-            source_asset: BitcoinQuantity::from_bitcoin(bitcoin_amount),
-            target_asset: EtherQuantity::from_eth(10.0),
-            source_ledger_lock_duration: Blocks::from(144),
-            secret: Secret::from(*b"hello world, you are beautiful!!"),
-        };
-        let response = AcceptResponse {
-            target_ledger_refund_identity: ethereum_support::Address::from_str(
-                "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
-            ).unwrap(),
-            source_ledger_success_identity: bitcoin_support::PubkeyHash::from_hex(
-                "d38e554430c4035f2877a579a07a99886153f071",
-            ).unwrap(),
-            target_ledger_lock_duration: Seconds(42),
-        };
+        let start = gen_start_state(bitcoin_amount);
+        let response = gen_response();
         let swap = OngoingSwap::new(start, response);
 
         let script = bitcoin_htlc_address(&swap).script_pubkey();
@@ -266,7 +233,6 @@ mod tests {
             addresses: None,
         };
 
-        let txid = Sha256dHash::from_data(b"a");
         let transaction_output = TransactionOutput {
             value: 0.5,
             n: 1,
@@ -274,7 +240,7 @@ mod tests {
         };
 
         let transaction = VerboseRawTransaction {
-            txid,
+            txid: Sha256dHash::from_data(b"a"),
             hash: String::from(""),
             size: 0,
             vsize: 0,
