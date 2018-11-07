@@ -57,63 +57,6 @@ pub struct InMemoryStateStore<K: Hash + Eq> {
     states: Mutex<HashMap<K, Box<Any + Send + Sync>>>,
 }
 
-impl<K: Hash + Eq + Clone> InMemoryStateStore<K> {
-    fn add_state<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
-        states: &mut HashMap<K, Box<Any + Send + Sync>>,
-        key: K,
-        state: SwapStates<SL, TL, SA, TA, SH>,
-    ) {
-        let value: Box<Any + Send + Sync> = Box::new(Arc::new(RwLock::new(state)));
-
-        let _old = states.insert(key, value);
-    }
-
-    fn get_state<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
-        states: &HashMap<K, Box<Any + Send + Sync>>,
-        key: &K,
-    ) -> Option<SwapStates<SL, TL, SA, TA, SH>> {
-        states.get(key).map(|state| {
-            let state = state
-                .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
-                .unwrap();
-            let state = state.read().unwrap();
-            state.clone()
-        })
-    }
-
-    fn get_save_state<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
-        states: &HashMap<K, Box<Any + Send + Sync>>,
-        key: &K,
-    ) -> Option<Arc<SaveState<SL, TL, SA, TA, SH>>> {
-        states
-            .get(key)
-            .map(|state| -> Arc<SaveState<SL, TL, SA, TA, SH>> {
-                let state = state
-                    .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
-                    .unwrap();
-                state.clone()
-            })
-    }
-}
-
 impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemoryStateStore<K> {
     fn insert<
         SL: Ledger,
@@ -132,7 +75,8 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
             return Err(Error::DuplicateKey);
         }
 
-        Self::add_state(&mut states, key, state);
+        let value: Box<Any + Send + Sync> = Box::new(Arc::new(RwLock::new(state)));
+        let _old = states.insert(key, value);
 
         Ok(())
     }
@@ -148,7 +92,15 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         key: &K,
     ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error> {
         let states = self.states.lock().unwrap();
-        Self::get_state::<SL, TL, SA, TA, SH>(&*states, key).ok_or(Error::NotFound)
+        states
+            .get(key)
+            .map(|state| {
+                let state = state
+                    .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
+                    .unwrap();
+                let state = state.read().unwrap();
+                state.clone()
+            }).ok_or(Error::NotFound)
     }
 
     fn save_state_for_key<
@@ -162,7 +114,14 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         key: &K,
     ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error> {
         let states = self.states.lock().unwrap();
-        Self::get_save_state::<SL, TL, SA, TA, SH>(&*states, key).ok_or(Error::NotFound)
+        states
+            .get(key)
+            .map(|state| -> Arc<SaveState<SL, TL, SA, TA, SH>> {
+                let state = state
+                    .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
+                    .unwrap();
+                state.clone()
+            }).ok_or(Error::NotFound)
     }
 }
 
