@@ -32,7 +32,8 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 vec![Action::Fund(EtherDeploy {
                     data: htlc.compile_to_hex().into(),
                     value: swap.target_asset,
-                    gas_limit: 42, //TODO come up with correct gas_limit
+                    gas_limit: 42.into(), //TODO come up with correct gas limit
+                    gas_cost: 42.into(),  //TODO come up with correct gas cost
                 })]
             }
             SS::BothFunded(BothFunded {
@@ -40,7 +41,8 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 ..
             }) => vec![Action::Refund(EtherRefund {
                 contract_address: *target_htlc_location,
-                execution_gas: 42, //TODO: generate gas cost directly
+                gas_limit: 42.into(), //TODO come up with correct gas_limit
+                gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
             SS::SourceFundedTargetRefunded { .. } => vec![],
             SS::SourceFundedTargetRedeemed { .. } => vec![],
@@ -49,7 +51,8 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 ..
             }) => vec![Action::Refund(EtherRefund {
                 contract_address: *target_htlc_location,
-                execution_gas: 42, //TODO: generate gas cost directly
+                gas_limit: 42.into(), //TODO come up with correct gas_limit
+                gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
             SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
                 ref swap,
@@ -66,7 +69,8 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 }),
                 Action::Refund(EtherRefund {
                     contract_address: *target_htlc_location,
-                    execution_gas: 42, //TODO: generate gas cost directly
+                    gas_limit: 42.into(), //TODO come up with correct gas_limit
+                    gas_cost: 42.into(),  //TODO come up with correct gas cost
                 }),
             ],
             SS::Error(_) => vec![],
@@ -80,10 +84,8 @@ mod tests {
 
     use super::*;
     use bitcoin_support;
-    use ethereum_support;
     use hex;
     use secp256k1_support;
-    use std::str::FromStr;
     use swap_protocols::rfc003::Secret;
 
     #[test]
@@ -93,9 +95,7 @@ mod tests {
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
             ).unwrap(),
-            target_identity: ethereum_support::Address::from_str(
-                "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
-            ).unwrap(),
+            target_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap(),
             source_ledger: Bitcoin::regtest(),
             target_ledger: Ethereum::default(),
             source_asset: BitcoinQuantity::from_bitcoin(1.0),

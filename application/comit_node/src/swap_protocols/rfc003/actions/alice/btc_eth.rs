@@ -38,8 +38,9 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
             }) => vec![
                 Action::Redeem(EtherRedeem {
                     contract_address: *target_htlc_location,
-                    execution_gas: 42, //TODO: generate gas cost directly
                     data: swap.secret,
+                    gas_limit: 42.into(), //TODO come up with correct gas limit
+                    gas_cost: 42.into(),  //TODO come up with correct gas cost
                 }),
                 Action::Refund(BitcoinRefund {
                     outpoint: *source_htlc_location,
@@ -74,8 +75,9 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 ..
             }) => vec![Action::Redeem(EtherRedeem {
                 contract_address: *target_htlc_location,
-                execution_gas: 42, //TODO: generate cas cost correctly
                 data: swap.secret,
+                gas_limit: 42.into(), //TODO come up with correct gas limit
+                gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
             SS::Error(_) => vec![],
             SS::Final(_) => vec![],
