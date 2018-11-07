@@ -1,4 +1,6 @@
-use bitcoin::{blockdata::transaction::Transaction, util::address::Address as BitcoinAddress};
+use bitcoin::{
+    blockdata::transaction::Transaction, util::address::Address as BitcoinAddress, TxOut,
+};
 use script::Instruction::{Error, Op, PushBytes};
 
 pub trait SpendsTo {
@@ -35,6 +37,21 @@ impl UnlockScriptContains for Transaction {
                 })
             })
         })
+    }
+}
+
+pub trait ContainsOutput {
+    fn contains_output(&self, address: &BitcoinAddress) -> Option<(usize, &TxOut)>;
+}
+
+impl ContainsOutput for Transaction {
+    fn contains_output(&self, address: &BitcoinAddress) -> Option<(usize, &TxOut)> {
+        let address_script_pubkey = address.script_pubkey();
+
+        self.output
+            .iter()
+            .enumerate()
+            .find(|(_, txout)| txout.script_pubkey == address_script_pubkey)
     }
 }
 
