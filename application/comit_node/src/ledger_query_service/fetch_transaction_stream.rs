@@ -241,7 +241,7 @@ mod tests {
             ).unwrap(),
         ])));
 
-        let stream = ledger_query_service.fetch_transaction_stream(
+        let stream = ledger_query_service.fetch_transaction_id_stream(
             receiver,
             QueryId::new("http://localhost/results/1".parse().unwrap()),
         );
@@ -300,7 +300,7 @@ mod tests {
         let (sender, receiver) = mpsc::unbounded();
         let ledger_query_service =
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
-        let stream = ledger_query_service.fetch_transaction_stream(
+        let stream = ledger_query_service.fetch_transaction_id_stream(
             receiver,
             QueryId::new("http://localhost/results/1".parse().unwrap()),
         );

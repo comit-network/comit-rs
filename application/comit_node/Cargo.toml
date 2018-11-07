@@ -4,7 +4,7 @@ version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
 
 [dependencies]
-bitcoin_rpc_client = { path = "../../../bitcoinrpc-rust-client" }
+bitcoin_rpc_client = "0.4"
 bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
 bitcoin_support = { path = "../../vendor/bitcoin_support"}
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }

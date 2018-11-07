@@ -43,7 +43,6 @@ where
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
-    #[allow(unreachable_code, unused_variables)] // TODO: remove once properly implemented
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
         transaction: <Bitcoin as SwapProtocolsLedger>::Transaction,
@@ -54,9 +53,8 @@ where
             .output
             .iter()
             .enumerate()
-            .find(|(vout, txout)| {
-                txout.script_pubkey == bitcoin_htlc_address(&swap).script_pubkey()
-            }).unwrap();
+            .find(|(_, txout)| txout.script_pubkey == bitcoin_htlc_address(&swap).script_pubkey())
+            .unwrap();
 
         let location = OutPoint {
             txid: transaction.txid(),
