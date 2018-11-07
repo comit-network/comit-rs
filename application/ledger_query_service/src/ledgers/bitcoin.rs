@@ -1,7 +1,7 @@
 use bitcoin_rpc_client::{rpc::VerboseRawTransaction, BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, SpendsTo,
-    Transaction as BitcoinTransaction, TransactionId,
+    Transaction as BitcoinTransaction, TransactionId, UnlockScriptContains,
 };
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use query_result_repository::QueryResult;
@@ -12,6 +12,7 @@ use std::sync::Arc;
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BitcoinTransactionQuery {
     pub to_address: Option<Address>,
+    pub unlock_script: Option<Vec<Vec<u8>>>,
     #[serde(default = "default_confirmations")]
     confirmations_needed: u32,
 }
@@ -57,17 +58,32 @@ fn default_confirmations() -> u32 {
 
 impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
     fn matches(&self, transaction: &BitcoinTransaction) -> QueryMatchResult {
-        match self.to_address {
-            Some(ref address) => {
-                if transaction.spends_to(address) {
-                    QueryMatchResult::yes_with_confirmations(self.confirmations_needed)
+        match self {
+            Self {
+                to_address: None,
+                unlock_script: None,
+                confirmations_needed: _,
+            } => QueryMatchResult::no(),
+            Self {
+                to_address,
+                unlock_script,
+                confirmations_needed,
+            } => {
+                let mut result = true;
+
+                if let Some(to_address) = to_address {
+                    result = result && transaction.spends_to(to_address);
+                }
+
+                if let Some(unlock_script) = unlock_script {
+                    result = result && transaction.unlock_script_contains(unlock_script)
+                }
+
+                if result {
+                    QueryMatchResult::yes_with_confirmations(*confirmations_needed)
                 } else {
                     QueryMatchResult::no()
                 }
-            }
-            None => {
-                warn!("to_address not sent, no parameters to compare the transaction");
-                QueryMatchResult::no()
             }
         }
     }
@@ -146,8 +162,13 @@ impl Query<BitcoinBlock> for BitcoinBlockQuery {
 
 #[cfg(test)]
 mod tests {
+    extern crate hex;
+
     use super::*;
-    use bitcoin_support::{Block, BlockHeader, MinedBlock, Sha256dHash};
+    use bitcoin_support::{
+        serialize::deserialize, Block, BlockHeader, MinedBlock, Sha256dHash,
+        Transaction as BitcoinTransaction,
+    };
     use spectral::prelude::*;
 
     #[test]
@@ -226,6 +247,60 @@ mod tests {
         };
 
         assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::yes());
+    }
+
+    #[test]
+    fn given_transaction_with_to_then_to_address_query_matches() {
+        let hex_tx = hex::decode("0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000").unwrap();
+        let tx: Result<BitcoinTransaction, _> = deserialize(&hex_tx);
+        let realtx = tx.unwrap();
+
+        let query = BitcoinTransactionQuery {
+            to_address: Some("329XTScM6cJgu8VZvaqYWpfuxT1eQDSJkP".parse().unwrap()),
+            unlock_script: None,
+            confirmations_needed: 0,
+        };
+
+        assert_that(&query.matches(&realtx)).is_equal_to(QueryMatchResult::yes());
+    }
+
+    #[test]
+    fn given_a_wittness_transaction_with_unlock_script_then_unlock_script_query_matches() {
+        let hex_tx = hex::decode("0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000").unwrap();
+        let tx: Result<BitcoinTransaction, _> = deserialize(&hex_tx);
+        let realtx = tx.unwrap();
+
+        let pubkey =
+            hex::decode("0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f")
+                .unwrap();
+        let boolean = hex::decode("01").unwrap();
+
+        let query = BitcoinTransactionQuery {
+            to_address: None,
+            unlock_script: Some(vec![pubkey, boolean]),
+            confirmations_needed: 0,
+        };
+
+        assert_that(&query.matches(&realtx)).is_equal_to(QueryMatchResult::yes());
+    }
+
+    #[test]
+    fn given_a_wittness_transaction_with_differen_unlock_script_then_unlock_script_query_wont_match(
+) {
+        let hex_tx = hex::decode("0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000").unwrap();
+        let tx: Result<BitcoinTransaction, _> = deserialize(&hex_tx);
+        let realtx = tx.unwrap();
+
+        let pubkey = hex::decode("102030405060708090").unwrap();
+        let boolean = hex::decode("00").unwrap();
+
+        let query = BitcoinTransactionQuery {
+            to_address: None,
+            unlock_script: Some(vec![pubkey, boolean]),
+            confirmations_needed: 0,
+        };
+
+        assert_that(&query.matches(&realtx)).is_equal_to(QueryMatchResult::no());
     }
 
 }
