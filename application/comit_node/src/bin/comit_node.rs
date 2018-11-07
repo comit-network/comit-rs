@@ -121,7 +121,7 @@ fn create_ethereum_service(settings: &ComitNodeSettings) -> Arc<EthereumService>
 
 fn create_bitcoin_service(
     settings: &ComitNodeSettings,
-    key_store: &Arc<KeyStore>,
+    key_store: &KeyStore,
 ) -> Arc<BitcoinService> {
     let settings = &settings.bitcoin;
 
