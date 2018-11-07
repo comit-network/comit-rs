@@ -16,9 +16,15 @@ use std::{
     panic::RefUnwindSafe,
     sync::{Arc, Mutex},
 };
+use swap_metadata_store::{self, SwapMetadataStore, Types};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    rfc003::{self, bitcoin, Secret},
+    rfc003::{
+        self, bitcoin,
+        state_machine::{Start, SwapStates},
+        state_store::{self, StateStore},
+        Secret, SecretHash,
+    },
 };
 use swaps::{alice_events, common::TradeId};
 use tokio;
@@ -80,7 +86,7 @@ impl From<comit_client::ClientFactoryError> for Error {
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value")]
 pub enum Ledger {
     Bitcoin {
@@ -91,14 +97,14 @@ pub enum Ledger {
     },
 }
 
-#[derive(Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value")]
 pub enum Asset {
     Bitcoin { quantity: BitcoinQuantity },
     Ether { quantity: EtherQuantity },
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug)]
 pub struct Swap {
     source_ledger: Ledger,
     target_ledger: Ledger,
@@ -131,16 +137,22 @@ pub fn post_swap<
     C: comit_client::Client + 'static,
     F: comit_client::ClientFactory<C> + 'static,
     E: event_store::EventStore<TradeId> + RefUnwindSafe,
+    T: swap_metadata_store::SwapMetadataStore<TradeId>,
+    S: state_store::StateStore<TradeId>,
 >(
     swap_state: SwapState,
     client_factory: Arc<F>,
     event_store: Arc<E>,
+    type_store: Arc<T>,
+    state_store: Arc<S>,
     swap: Swap,
 ) -> Result<impl Reply, Rejection> {
     let result = {
         handle_post_swap(
             swap,
             &event_store,
+            &type_store,
+            &state_store,
             &swap_state.rng,
             &client_factory,
             swap_state.remote_comit_node_socket_addr,
@@ -172,9 +184,13 @@ fn handle_post_swap<
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
     E: EventStore<TradeId>,
+    T: SwapMetadataStore<TradeId>,
+    S: StateStore<TradeId>,
 >(
     swap: Swap,
     event_store: &Arc<E>,
+    type_store: &Arc<T>,
+    state_store: &Arc<S>,
     rng: &Mutex<OsRng>,
     client_factory: &Arc<F>,
     comit_node_addr: SocketAddr,
@@ -188,6 +204,10 @@ fn handle_post_swap<
     };
     let client = client_factory.client_for(comit_node_addr)?;
 
+    {
+        handle_state_for_post_swap(swap.clone(), id, key_store, type_store, state_store, secret);
+    }
+
     match (swap.source_ledger, swap.target_ledger) {
         (
             Ledger::Bitcoin {
@@ -198,7 +218,7 @@ fn handle_post_swap<
                 identity: target_ledger_final_identity,
             },
         ) => {
-            let source_ledger = Bitcoin::regtest();
+            let source_ledger = Bitcoin::default(); //TODO: fix with #376
             let target_ledger = Ethereum::default();
             match (swap.source_asset, swap.target_asset) {
                 (
@@ -228,7 +248,8 @@ fn handle_post_swap<
                         source_ledger_lock_duration,
                     };
 
-                    event_store.add_event(id, sent_event)?;
+                    event_store.add_event(id.clone(), sent_event)?;
+
                     let response_future = client.send_swap_request(rfc003::Request {
                         secret_hash,
                         source_ledger_refund_identity,
@@ -259,6 +280,79 @@ fn handle_post_swap<
         }
         _ => Err(Error::Unsupported),
     }
+}
+
+fn handle_state_for_post_swap<
+    T: swap_metadata_store::SwapMetadataStore<TradeId>,
+    S: state_store::StateStore<TradeId>,
+>(
+    swap: Swap,
+    id: TradeId,
+    key_store: &Arc<KeyStore>,
+    type_store: &Arc<T>,
+    state_store: &Arc<S>,
+    secret: Secret,
+) {
+    match (
+        swap.source_ledger,
+        swap.target_ledger,
+        swap.source_asset,
+        swap.target_asset,
+    ) {
+        (
+            Ledger::Bitcoin {
+                identity: _source_ledger_refund_identity, //TODO: probably use that
+            },
+            Ledger::Ethereum {
+                identity: target_ledger_final_identity,
+            },
+            Asset::Bitcoin {
+                quantity: source_asset,
+            },
+            Asset::Ether {
+                quantity: target_asset,
+            },
+        ) => {
+            {
+                use swap_metadata_store::{Asset, Ledger, Role};
+                let types = Types {
+                    source_ledger: Ledger::Bitcoin,
+                    source_asset: Asset::Bitcoin,
+                    target_ledger: Ledger::Ethereum,
+                    target_asset: Asset::Ether,
+                    role: Role::Alice,
+                };
+
+                let _ = type_store.add(id, types);
+            }
+            {
+                let source_ledger_refund_identity =
+                    key_store.get_transient_keypair(&id.into(), b"REFUND");
+
+                let source_ledger_lock_duration = BTC_BLOCKS_IN_24H;
+
+                let state = SwapStates::Start(Start::<
+                    Bitcoin,
+                    Ethereum,
+                    BitcoinQuantity,
+                    EtherQuantity,
+                    Secret,
+                > {
+                    source_identity: source_ledger_refund_identity,
+                    target_identity: target_ledger_final_identity,
+                    source_ledger: Bitcoin::default(), //TODO: fix with #376
+                    target_ledger: Ethereum::default(),
+                    source_asset,
+                    target_asset,
+                    source_ledger_lock_duration,
+                    secret,
+                });
+
+                let _ = state_store.insert(id, state);
+            }
+        }
+        _ => panic!("Unsupported ledger combination"),
+    };
 }
 
 fn on_swap_response<
@@ -323,11 +417,16 @@ enum SwapStatus {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
+pub fn get_swap<E: EventStore<TradeId>, T: SwapMetadataStore<TradeId>, S: StateStore<TradeId>>(
     event_store: Arc<E>,
+    type_store: Arc<T>,
+    state_store: Arc<S>,
     id: TradeId,
 ) -> Result<impl Reply, Rejection> {
-    let result = handle_get_swap(id, &event_store);
+    let types = type_store.get(&id);
+    info!("Types found: {:?}", types);
+
+    let result = handle_get_swap(id, &event_store, &type_store, &state_store);
 
     match result {
         Some(swap_status) => Ok(warp::reply::json(&swap_status)),
@@ -337,10 +436,20 @@ pub fn get_swap<E: EventStore<TradeId> + RefUnwindSafe>(
     }
 }
 
-fn handle_get_swap<E: EventStore<TradeId>>(
+fn handle_get_swap<
+    E: EventStore<TradeId>,
+    T: SwapMetadataStore<TradeId>,
+    S: StateStore<TradeId>,
+>(
     id: TradeId,
     event_store: &Arc<E>,
+    type_store: &Arc<T>,
+    state_store: &Arc<S>,
 ) -> Option<SwapStatus> {
+    {
+        handle_state_for_get_swap(type_store, state_store, &id);
+    }
+
     let requested = event_store.get_event::<alice_events::SentSwapRequest<
         Bitcoin,
         Ethereum,
@@ -407,5 +516,42 @@ fn handle_get_swap<E: EventStore<TradeId>>(
         _ => unreachable!(
             "The only type of error you can get from event store at this point is NotFound"
         ),
+    }
+}
+
+fn handle_state_for_get_swap<
+    T: swap_metadata_store::SwapMetadataStore<TradeId>,
+    S: state_store::StateStore<TradeId>,
+>(
+    type_store: &Arc<T>,
+    state_store: &Arc<S>,
+    id: &TradeId,
+) {
+    use swap_metadata_store::{Asset, Ledger, Role};
+
+    match type_store.get(&id) {
+        Err(e) => error!("Could not retrieve types: {:?}", e),
+        Ok(Types {
+            source_ledger: Ledger::Bitcoin,
+            target_ledger: Ledger::Ethereum,
+            source_asset: Asset::Bitcoin,
+            target_asset: Asset::Ether,
+            role,
+        }) => match role {
+            Role::Alice => match state_store
+                .get::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>(id)
+            {
+                Err(e) => error!("Could not retrieve state: {:?}", e),
+                Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
+            },
+            Role::Bob => match state_store
+                .get::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>(id)
+            {
+                //Note: Today we do not store a start state for Bob
+                Err(e) => error!("Could not retrieve state: {:?}", e),
+                Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
+            },
+        },
+        _ => unreachable!("No other type is expected to be found in the store"),
     }
 }

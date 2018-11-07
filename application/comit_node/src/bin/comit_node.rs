@@ -24,9 +24,11 @@ use comit_node::{
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging, route_factory,
     settings::ComitNodeSettings,
+    swap_metadata_store::InMemorySwapMetadataStore,
     swap_protocols::rfc003::{
         alice_ledger_actor::AliceLedgerActor,
         ledger_htlc_service::{BitcoinService, EthereumService},
+        state_store::InMemoryStateStore,
     },
     swaps::common::TradeId,
 };
@@ -49,6 +51,8 @@ fn main() {
             .expect("Could not HD derive keys from the private key"),
     );
     let event_store = Arc::new(InMemoryEventStore::default());
+    let type_store = Arc::new(InMemorySwapMetadataStore::default());
+    let state_store = Arc::new(InMemoryStateStore::default());
     let ethereum_service = create_ethereum_service(&settings);
     let bitcoin_service = create_bitcoin_service(&settings, Arc::clone(&key_store));
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
@@ -59,6 +63,8 @@ fn main() {
         &settings,
         Arc::clone(&key_store),
         Arc::clone(&event_store),
+        Arc::clone(&type_store),
+        Arc::clone(&state_store),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
@@ -167,6 +173,8 @@ fn spawn_warp_instance(
     settings: &ComitNodeSettings,
     key_store: Arc<KeyStore>,
     event_store: Arc<InMemoryEventStore<TradeId>>,
+    type_store: Arc<InMemorySwapMetadataStore<TradeId>>,
+    state_store: Arc<InMemoryStateStore<TradeId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
@@ -190,6 +198,8 @@ fn spawn_warp_instance(
 
     let routes = route_factory::create(
         event_store,
+        type_store,
+        state_store,
         Arc::new(client_pool),
         remote_comit_node_url,
         key_store,

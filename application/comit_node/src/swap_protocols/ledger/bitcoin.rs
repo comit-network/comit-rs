@@ -20,6 +20,7 @@ impl Bitcoin {
     }
 }
 
+//TODO: fix with #376
 impl Default for Bitcoin {
     fn default() -> Self {
         Bitcoin {

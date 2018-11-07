@@ -15,6 +15,8 @@ extern crate log;
 extern crate transport_protocol;
 #[macro_use]
 extern crate futures;
+#[macro_use]
+extern crate state_machine_future;
 
 #[cfg(test)]
 extern crate pretty_env_logger;
@@ -46,11 +48,8 @@ extern crate tokio_timer;
 extern crate url;
 extern crate uuid;
 extern crate warp;
-#[macro_use]
-extern crate state_machine_future;
 
 pub mod bitcoin_fee_service;
-
 pub mod comit_client;
 pub mod comit_server;
 pub mod ethereum_wallet;
@@ -62,5 +61,6 @@ pub mod ledger_query_service;
 pub mod logging;
 pub mod route_factory;
 pub mod settings;
+pub mod swap_metadata_store;
 pub mod swap_protocols;
 pub mod swaps;
