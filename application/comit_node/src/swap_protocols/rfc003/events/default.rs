@@ -190,9 +190,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
 
                 let target_funded_future = target_funded_query_id
@@ -204,11 +203,10 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
-                            .and_then(move |tx_id| {
-                                TA::is_contained_in_target_ledger_transaction(swap, tx_id)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .and_then(move |tx| {
+                                TA::is_contained_in_target_ledger_transaction(swap, tx)
                                     .map_err(|_| rfc003::Error::InsufficientFunding)
                             })
                     });
@@ -281,9 +279,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
                 let inner_target_ledger_fetch_query_results =
                     target_ledger_fetch_query_results.clone();
@@ -296,9 +293,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
 
                 Box::new(
@@ -369,9 +365,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
                 let inner_source_ledger_fetch_query_results =
                     source_ledger_fetch_query_results.clone();
@@ -384,9 +379,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
 
                 Box::new(
