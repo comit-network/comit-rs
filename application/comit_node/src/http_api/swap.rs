@@ -248,7 +248,7 @@ fn handle_post_swap<
                         source_ledger_lock_duration,
                     };
 
-                    event_store.add_event(id.clone(), sent_event)?;
+                    event_store.add_event(id, sent_event)?;
 
                     let response_future = client.send_swap_request(rfc003::Request {
                         secret_hash,

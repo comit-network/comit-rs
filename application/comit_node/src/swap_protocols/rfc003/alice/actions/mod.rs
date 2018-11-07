@@ -7,9 +7,9 @@ use swap_protocols::rfc003::{bitcoin, secret::Secret};
 pub mod btc_eth;
 
 enum Action<Fund, Redeem, Refund> {
-    FundHtlc(Fund),
-    RedeemHtlc(Redeem),
-    RefundHtlc(Refund),
+    Fund(Fund),
+    Redeem(Redeem),
+    Refund(Refund),
 }
 
 trait StateActions<Fund, Redeem, Refund> {

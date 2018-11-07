@@ -54,7 +54,7 @@ fn main() {
     let type_store = Arc::new(InMemorySwapMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let ethereum_service = create_ethereum_service(&settings);
-    let bitcoin_service = create_bitcoin_service(&settings, Arc::clone(&key_store));
+    let bitcoin_service = create_bitcoin_service(&settings, &key_store);
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
@@ -121,7 +121,7 @@ fn create_ethereum_service(settings: &ComitNodeSettings) -> Arc<EthereumService>
 
 fn create_bitcoin_service(
     settings: &ComitNodeSettings,
-    key_store: Arc<KeyStore>,
+    key_store: &Arc<KeyStore>,
 ) -> Arc<BitcoinService> {
     let settings = &settings.bitcoin;
 
@@ -143,9 +143,7 @@ fn create_bitcoin_service(
     match bitcoin_rpc_client.get_blockchain_info() {
         Ok(blockchain_info) => {
             info!("Blockchain info:\n{:?}", blockchain_info);
-            match bitcoin_rpc_client.validate_address(&bitcoin_rpc_client::Address::from(
-                btc_bob_redeem_address.clone(),
-            )) {
+            match bitcoin_rpc_client.validate_address(&btc_bob_redeem_address.clone()) {
                 Ok(address_validation) => info!("Validation:\n{:?}", address_validation),
                 Err(e) => error!("Could not validate BTC_BOB_REDEEM_ADDRESS: {:?}", e),
             };

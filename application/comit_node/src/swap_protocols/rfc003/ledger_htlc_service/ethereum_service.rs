@@ -122,7 +122,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
         htlc_funding_params: EtherHtlcFundingParams,
     ) -> Result<H256, ledger_htlc_service::Error> {
         let contract = EtherHtlc::new(
-            htlc_funding_params.time_lock.into(),
+            htlc_funding_params.time_lock,
             htlc_funding_params.refund_address,
             htlc_funding_params.success_address,
             htlc_funding_params.secret_hash,
@@ -192,7 +192,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
 
     fn create_query_to_watch_funding(&self, htlc_params: EtherHtlcFundingParams) -> EthereumQuery {
         let data = EtherHtlc::new(
-            htlc_params.time_lock.into(),
+            htlc_params.time_lock,
             htlc_params.refund_address,
             htlc_params.success_address,
             htlc_params.secret_hash,
@@ -295,7 +295,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, 
             EthereumService::increment_nonce(nonce);
 
             let htlc = Erc20Htlc::new(
-                htlc_funding_params.time_lock.into(),
+                htlc_funding_params.time_lock,
                 htlc_funding_params.refund_address,
                 htlc_funding_params.success_address,
                 htlc_funding_params.secret_hash,

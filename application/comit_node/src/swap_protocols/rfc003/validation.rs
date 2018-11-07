@@ -59,7 +59,7 @@ where
             }).unwrap();
 
         let location = OutPoint {
-            txid: tx.clone(),
+            txid: *tx,
             vout: vout as u32,
         };
 

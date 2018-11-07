@@ -323,7 +323,7 @@ where
                         debug!("Ledger Query Service returned tx: {:?}", transaction_id);
 
                         let expected_data: Bytes = EtherHtlc::new(
-                            ethereum_htlc_params.time_lock.into(),
+                            ethereum_htlc_params.time_lock,
                             ethereum_htlc_params.refund_address,
                             ethereum_htlc_params.success_address,
                             ethereum_htlc_params.secret_hash,

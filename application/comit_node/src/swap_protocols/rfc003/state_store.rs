@@ -27,6 +27,7 @@ pub trait StateStore<K>: Send + Sync + 'static {
         key: K,
         state: SwapStates<SL, TL, SA, TA, SH>,
     ) -> Result<(), Error>;
+
     fn get<
         SL: Ledger,
         TL: Ledger,
@@ -37,6 +38,8 @@ pub trait StateStore<K>: Send + Sync + 'static {
         &self,
         key: &K,
     ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>;
+
+    #[allow(clippy::type_complexity)]
     fn save_state_for_key<
         SL: Ledger,
         TL: Ledger,

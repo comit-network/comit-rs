@@ -33,7 +33,7 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 ref target_htlc_location,
                 ..
             }) => vec![Action::RefundHtlc(EtherRefund {
-                contract_address: target_htlc_location.clone(),
+                contract_address: *target_htlc_location,
                 execution_gas: 42, //TODO: generate gas cost directly
             })],
             SS::SourceFundedTargetRefunded { .. } => vec![],
@@ -42,7 +42,7 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 ref target_htlc_location,
                 ..
             }) => vec![Action::RefundHtlc(EtherRefund {
-                contract_address: target_htlc_location.clone(),
+                contract_address: *target_htlc_location,
                 execution_gas: 42, //TODO: generate gas cost directly
             })],
             SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
@@ -52,14 +52,14 @@ impl StateActions<AcceptRequest, DeclineRequest, EtherDeploy, BitcoinRedeem, Eth
                 ref secret,
             }) => vec![
                 Action::RedeemHtlc(BitcoinRedeem {
-                    outpoint: source_htlc_location.clone(),
+                    outpoint: *source_htlc_location,
                     htlc: bitcoin_htlc(swap),
                     value: swap.source_asset,
-                    transient_keypair: swap.source_identity.into(),
+                    transient_keypair: swap.source_identity,
                     secret: *secret,
                 }),
                 Action::RefundHtlc(EtherRefund {
-                    contract_address: target_htlc_location.clone(),
+                    contract_address: *target_htlc_location,
                     execution_gas: 42, //TODO: generate gas cost directly
                 }),
             ],
