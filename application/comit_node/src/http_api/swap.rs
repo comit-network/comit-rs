@@ -308,7 +308,7 @@ fn handle_state_for_post_swap<
     ) {
         (
             Ledger::Bitcoin {
-                identity: _source_ledger_refund_identity, //TODO: probably use that
+                identity: _source_ledger_refund_identity, //TODO: need to be used, see #384
             },
             Ledger::Ethereum {
                 identity: target_ledger_final_identity,
