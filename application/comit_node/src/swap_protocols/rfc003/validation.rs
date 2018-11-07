@@ -7,7 +7,7 @@ use swap_protocols::{
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    PoorGuy,
+    InsufficientOutput,
     OutputNotFound,
 }
 
@@ -78,7 +78,7 @@ where
         if has_enough_money {
             Ok(location)
         } else {
-            Err(Error::PoorGuy)
+            Err(Error::InsufficientOutput)
         }
     }
 }
@@ -257,6 +257,6 @@ mod tests {
 
         let result = BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction);
 
-        assert_eq!(result.err(), Some(ValidationError::PoorGuy))
+        assert_eq!(result.err(), Some(ValidationError::InsufficientOutput))
     }
 }
