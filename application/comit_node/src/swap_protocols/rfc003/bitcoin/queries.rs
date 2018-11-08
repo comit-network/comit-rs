@@ -1,12 +1,13 @@
 use bitcoin_support::{BitcoinQuantity, OutPoint};
-use hex;
 use ledger_query_service::BitcoinQuery;
 use swap_protocols::{
     asset::Asset,
     ledger::Bitcoin,
     rfc003::{
         bitcoin::bitcoin_htlc_address,
-        events::{NewSourceHtlcFundedQuery, NewSourceHtlcRefundedQuery},
+        events::{
+            NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery, NewSourceHtlcRefundedQuery,
+        },
         state_machine::OngoingSwap,
        IntoSecretHash, Ledger,
     },
@@ -48,6 +49,23 @@ where
                     .to_vec(),
                 vec![0u8],
             ]),
+        }
+    }
+}
+
+impl<TL, TA, S> NewSourceHtlcRedeemedQuery<Bitcoin, TL, BitcoinQuantity, TA, S> for BitcoinQuery
+where
+    TL: Ledger,
+    TA: Asset,
+    S: Into<SecretHash> + Clone,
+{
+    fn new_source_htlc_redeemed_query(
+        swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
+        _source_htlc_location: &OutPoint, //TODO:  this will be used once we have filter by `to_address` implemented
+    ) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: None,
+            unlock_script: Some(vec![vec![1u8]]),
         }
     }
 }
