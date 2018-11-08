@@ -345,8 +345,8 @@ fn handle_state_for_post_swap<
                     EtherQuantity,
                     Secret,
                 > {
-                    source_identity: source_ledger_refund_identity,
-                    target_identity: target_ledger_final_identity,
+                    source_ledger_refund_identity,
+                    target_ledger_success_identity: target_ledger_final_identity,
                     source_ledger: Bitcoin::default(), //TODO: fix with #376
                     target_ledger: Ethereum::default(),
                     source_asset,

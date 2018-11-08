@@ -11,13 +11,13 @@ use swap_protocols::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
-    pub source_identity: SL::HtlcIdentity,
-    pub target_identity: TL::HtlcIdentity,
     pub source_ledger: SL,
     pub target_ledger: TL,
     pub source_asset: SA,
     pub target_asset: TA,
     pub source_ledger_success_identity: SL::Identity,
+    pub source_ledger_refund_identity: SL::HtlcIdentity,
+    pub target_ledger_success_identity: TL::HtlcIdentity,
     pub target_ledger_refund_identity: TL::Identity,
     pub source_ledger_lock_duration: SL::LockDuration,
     pub target_ledger_lock_duration: TL::LockDuration,
@@ -29,13 +29,13 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
 {
     pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponse<SL, TL>) -> Self {
         OngoingSwap {
-            source_identity: start.source_identity,
-            target_identity: start.target_identity,
             source_ledger: start.source_ledger,
             target_ledger: start.target_ledger,
             source_asset: start.source_asset,
             target_asset: start.target_asset,
             source_ledger_success_identity: response.source_ledger_success_identity,
+            source_ledger_refund_identity: start.source_ledger_refund_identity,
+            target_ledger_success_identity: start.target_ledger_success_identity,
             target_ledger_refund_identity: response.target_ledger_refund_identity,
             source_ledger_lock_duration: start.source_ledger_lock_duration,
             target_ledger_lock_duration: response.target_ledger_lock_duration,
@@ -56,8 +56,8 @@ pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretH
 pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
-        source_identity: SL::HtlcIdentity,
-        target_identity: TL::HtlcIdentity,
+        source_ledger_refund_identity: SL::HtlcIdentity,
+        target_ledger_success_identity: TL::HtlcIdentity,
         source_ledger: SL,
         target_ledger: TL,
         source_asset: SA,
@@ -135,8 +135,8 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
             target_asset: state.target_asset.clone(),
             source_ledger: state.source_ledger.clone(),
             target_ledger: state.target_ledger.clone(),
-            source_ledger_refund_identity: state.source_identity.clone().into(),
-            target_ledger_success_identity: state.target_identity.clone().into(),
+            source_ledger_refund_identity: state.source_ledger_refund_identity.clone().into(),
+            target_ledger_success_identity: state.target_ledger_success_identity.clone().into(),
             source_ledger_lock_duration: state.source_ledger_lock_duration.clone(),
             secret_hash: state.secret.clone().into(),
         };

@@ -53,7 +53,7 @@ pub fn ethereum_htlc<SL: Ledger, SA: Asset, S: Into<SecretHash> + Clone>(
     Box::new(EtherHtlc::new(
         swap.target_ledger_lock_duration,
         swap.target_ledger_refund_identity,
-        swap.target_identity,
+        swap.target_ledger_success_identity,
         swap.secret.clone().into(),
     ))
 }

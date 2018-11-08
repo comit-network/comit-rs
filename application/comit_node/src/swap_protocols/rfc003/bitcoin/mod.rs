@@ -25,7 +25,7 @@ pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: Into<SecretHash> + Clone>(
 ) -> Htlc {
     Htlc::new(
         swap.source_ledger_success_identity,
-        swap.source_identity,
+        swap.source_ledger_refund_identity,
         swap.secret.clone().into(),
         swap.source_ledger_lock_duration.into(),
     )
