@@ -1,4 +1,4 @@
-pub use self::{bitcoin::*, cache::*, client::*, ethereum::*};
+pub use self::{bitcoin::*, cache::*, client::*, ethereum::*, first_match::*};
 use reqwest::Url;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 use swap_protocols::ledger::Ledger;
@@ -10,6 +10,7 @@ mod client;
 mod ethereum;
 pub mod fake_query_service;
 pub mod fetch_transaction_stream;
+mod first_match;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub struct QueryId<L: Ledger> {
@@ -62,7 +63,7 @@ pub trait FetchQueryResults<L: Ledger>: 'static + Send + Sync {
     ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
 }
 
-pub trait FetchFullQueryResults<L: Ledger>: 'static + Send + Sync {
+pub trait FetchFullQueryResults<L: Ledger>: 'static + Send + Sync + Debug {
     fn fetch_full_query_results(
         &self,
         query: &QueryId<L>,
