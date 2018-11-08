@@ -20,9 +20,10 @@ use comit_node::{
     comit_server::ComitServer,
     ethereum_wallet::InMemoryWallet,
     gas_price_service::StaticGasPriceService,
+    http_api::route_factory,
     key_store::KeyStore,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
-    logging, route_factory,
+    logging,
     settings::ComitNodeSettings,
     swap_metadata_store::InMemorySwapMetadataStore,
     swap_protocols::rfc003::{
