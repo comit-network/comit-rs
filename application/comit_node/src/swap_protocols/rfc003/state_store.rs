@@ -142,11 +142,13 @@ mod tests {
     fn store_get_and_save_state() {
         let state_store = InMemoryStateStore::default();
         let start_state = Start {
-            source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
+            source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
             ).unwrap(),
-            target_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap(),
+            target_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
+                .parse()
+                .unwrap(),
             source_ledger: Bitcoin::regtest(),
             target_ledger: Ethereum::default(),
             source_asset: BitcoinQuantity::from_bitcoin(1.0),

@@ -46,7 +46,7 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                     outpoint: *source_htlc_location,
                     htlc: bitcoin_htlc(swap),
                     value: swap.source_asset,
-                    transient_keypair: swap.source_identity,
+                    transient_keypair: swap.source_ledger_refund_identity,
                 }),
             ],
             SS::SourceFundedTargetRefunded(SourceFundedTargetRefunded {
@@ -62,7 +62,7 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 outpoint: *source_htlc_location,
                 htlc: bitcoin_htlc(swap),
                 value: swap.source_asset,
-                transient_keypair: swap.source_identity,
+                transient_keypair: swap.source_ledger_refund_identity,
             })],
             SS::SourceRefundedTargetFunded(SourceRefundedTargetFunded {
                 ref target_htlc_location,

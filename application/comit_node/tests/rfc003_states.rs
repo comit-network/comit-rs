@@ -101,11 +101,11 @@ impl Events<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> for FakeE
 
 fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
     Start {
-        source_identity: secp256k1_support::KeyPair::from_secret_key_slice(
+        source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                 .unwrap(),
         ).unwrap(),
-        target_identity: ethereum_support::Address::from_str(
+        target_ledger_success_identity: ethereum_support::Address::from_str(
             "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
         ).unwrap(),
         source_ledger: Bitcoin::regtest(),
