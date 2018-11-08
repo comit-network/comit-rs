@@ -311,7 +311,7 @@ fn handle_state_for_post_swap<
                 identity: _source_ledger_refund_identity, //TODO: need to be used, see #384
             },
             Ledger::Ethereum {
-                identity: target_ledger_success_identity,
+                identity: target_ledger_final_identity,
             },
             Asset::Bitcoin {
                 quantity: source_asset,
@@ -346,7 +346,7 @@ fn handle_state_for_post_swap<
                     Secret,
                 > {
                     source_ledger_refund_identity,
-                    target_ledger_success_identity,
+                    target_ledger_success_identity: target_ledger_final_identity,
                     source_ledger: Bitcoin::default(), //TODO: fix with #376
                     target_ledger: Ethereum::default(),
                     source_asset,
