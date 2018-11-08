@@ -21,7 +21,7 @@ use swap_protocols::{
 };
 
 #[derive(Debug)]
-pub enum Player<ComitClient> {
+pub enum Role<ComitClient> {
     Alice { client: Arc<ComitClient> },
     Bob,
 }
@@ -59,8 +59,8 @@ where
         &mut self,
         request: &Request<SL, TL, SA, TA>,
     ) -> &mut Box<Response<SL, TL>> {
-        match self.player {
-            Player::Alice {ref client}=> {
+        match self.role {
+            Role::Alice {ref client}=> {
                 let client = client.clone();
 
                 self.response.get_or_insert_with(|| {
@@ -71,7 +71,7 @@ where
                     )
                 })
             },
-            Player::Bob => {
+            Role::Bob => {
                 unimplemented!("return a future that resolves once the user sent a response to the COMIT node via the API")
             }
         }
