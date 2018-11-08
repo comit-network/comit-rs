@@ -1,4 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
+use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint};
 use swap_protocols::{
     asset::Asset,
     ledger::Bitcoin,
@@ -50,7 +50,6 @@ where
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
         transaction: <Bitcoin as Ledger>::Transaction,
     ) -> Result<OutPoint, Error<BitcoinQuantity>> {
-        let transaction: Transaction = transaction.into();
         let address = bitcoin_htlc_address(&swap);
 
         let (vout, txout) = transaction
@@ -98,7 +97,7 @@ mod tests {
         ScriptPubKey, ScriptType, SerializedRawTransaction, TransactionOutput,
         VerboseRawTransaction,
     };
-    use bitcoin_support::{BitcoinQuantity, Blocks, Sha256dHash};
+    use bitcoin_support::{BitcoinQuantity, Blocks, Sha256dHash, Transaction};
     use ethereum_support::EtherQuantity;
     use hex::FromHex;
     use std::str::FromStr;

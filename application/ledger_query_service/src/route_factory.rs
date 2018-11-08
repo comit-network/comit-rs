@@ -28,12 +28,11 @@ pub trait QueryType {
 pub trait ExpandResult {
     type Client: 'static + Send + Sync;
     type Item: Serialize;
-    type ReturnItem: Serialize;
 
     fn expand_result(
         result: &QueryResult,
         client: Arc<Self::Client>,
-    ) -> Result<Vec<Self::ReturnItem>, Error>;
+    ) -> Result<Vec<Self::Item>, Error>;
 }
 
 pub trait ShouldExpand {

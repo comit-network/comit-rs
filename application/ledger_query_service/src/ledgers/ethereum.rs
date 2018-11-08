@@ -4,7 +4,6 @@ use ethereum_support::{
 };
 use query_result_repository::QueryResult;
 use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
-use serde::Serialize;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -30,7 +29,6 @@ impl ShouldExpand for EthereumTransactionQuery {
 impl ExpandResult for EthereumTransactionQuery {
     type Client = ();
     type Item = ();
-    type ReturnItem = ();
 
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
@@ -146,7 +144,6 @@ impl ShouldExpand for EthereumBlockQuery {
 impl ExpandResult for EthereumBlockQuery {
     type Client = ();
     type Item = ();
-    type ReturnItem = ();
 
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
