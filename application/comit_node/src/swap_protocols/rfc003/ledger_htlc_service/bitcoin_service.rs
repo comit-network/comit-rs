@@ -186,6 +186,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
         BitcoinQuery::Transaction {
             to_address: Some(htlc_address),
+            from_outpoint: None,
             unlock_script: None,
         }
     }

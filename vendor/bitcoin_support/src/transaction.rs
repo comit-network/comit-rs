@@ -1,5 +1,6 @@
 use bitcoin::{
-    blockdata::transaction::Transaction, util::address::Address as BitcoinAddress, TxOut,
+    blockdata::transaction::Transaction, util::address::Address as BitcoinAddress, OutPoint, TxIn,
+    TxOut,
 };
 use script::Instruction::{Error, Op, PushBytes};
 
@@ -7,8 +8,16 @@ pub trait SpendsTo {
     fn spends_to(&self, address: &BitcoinAddress) -> bool;
 }
 
-pub trait UnlockScriptContains {
-    fn unlock_script_contains(&self, script: &Vec<Vec<u8>>) -> bool;
+pub trait SpendsFrom {
+    fn spends_from(&self, outpoint: &OutPoint) -> bool;
+}
+
+pub trait SpendsFromWith {
+    fn spends_from_with(&self, outpoint: &OutPoint, script: &Vec<Vec<u8>>) -> bool;
+}
+
+pub trait SpendsWith {
+    fn spends_with(&self, script: &Vec<Vec<u8>>) -> bool;
 }
 
 impl SpendsTo for Transaction {
@@ -22,22 +31,44 @@ impl SpendsTo for Transaction {
     }
 }
 
-impl UnlockScriptContains for Transaction {
-    fn unlock_script_contains(&self, unlock_script: &Vec<Vec<u8>>) -> bool {
-        self.input.iter().any(|txin| {
-            unlock_script.iter().all(|item| {
-                txin.witness.contains(item) || unlock_script.iter().all(|item| {
-                    txin.script_sig
-                        .iter(true)
-                        .any(|instruction| match instruction {
-                            PushBytes(data) => (item as &[u8]) == data,
-                            Op(_) => false,
-                            Error(_) => false,
-                        })
-                })
-            })
-        })
+impl SpendsFrom for Transaction {
+    fn spends_from(&self, outpoint: &OutPoint) -> bool {
+        self.input
+            .iter()
+            .map(|input| &input.previous_output)
+            .any(|previous_outpoint| previous_outpoint == outpoint)
     }
+}
+
+impl SpendsFromWith for Transaction {
+    fn spends_from_with(&self, outpoint: &OutPoint, unlock_script: &Vec<Vec<u8>>) -> bool {
+        self.input
+            .iter()
+            .filter(|previous_outpoint| &previous_outpoint.previous_output == outpoint)
+            .any(|txin| any_unlock_script_matches(txin, unlock_script))
+    }
+}
+
+impl SpendsWith for Transaction {
+    fn spends_with(&self, unlock_script: &Vec<Vec<u8>>) -> bool {
+        self.input
+            .iter()
+            .any(|txin| any_unlock_script_matches(txin, unlock_script))
+    }
+}
+
+fn any_unlock_script_matches(txin: &TxIn, unlock_script: &Vec<Vec<u8>>) -> bool {
+    unlock_script.iter().all(|item| {
+        txin.witness.contains(item) || unlock_script.iter().all(|item| {
+            txin.script_sig
+                .iter(true)
+                .any(|instruction| match instruction {
+                    PushBytes(data) => (item as &[u8]) == data,
+                    Op(_) => false,
+                    Error(_) => false,
+                })
+        })
+    })
 }
 
 pub trait FindOutput {
@@ -58,7 +89,9 @@ impl FindOutput for Transaction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::{blockdata::transaction::TxOut, network::serialize::deserialize};
+    use bitcoin::{
+        blockdata::transaction::TxOut, network::serialize::deserialize, util::hash::Sha256dHash,
+    };
     use hex;
     use spectral::prelude::*;
 
@@ -73,6 +106,52 @@ mod tests {
 
     fn create_unlock_script_stack(data: Vec<&str>) -> Vec<Vec<u8>> {
         data.iter().map(|data| hex::decode(data).unwrap()).collect()
+    }
+
+    fn create_outpoint(tx: &str, vout: u32) -> OutPoint {
+        OutPoint {
+            txid: Sha256dHash::from_hex(tx).unwrap(),
+            vout,
+        }
+    }
+
+    fn create_valid_p2wsh_unlock_script() -> Vec<Vec<u8>> {
+        create_unlock_script_stack(vec![
+            "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
+            "01",
+        ])
+    }
+
+    fn create_invalid_p2wsh_unlock_script() -> Vec<Vec<u8>> {
+        create_unlock_script_stack(vec![
+            "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
+            "00",
+        ])
+    }
+
+    fn create_valid_p2sh_unlock_script() -> Vec<Vec<u8>> {
+        create_unlock_script_stack(vec!["3045022100deeb1f13b5927b5e32d877f3c42a4b028e2e0ce5010fdb4e7f7b5e2921c1dcd2022068631cb285e8c1be9f061d2968a18c3163b780656f30a049effee640e80d9bff01",
+                                        "3045022100ee80e164622c64507d243bd949217d666d8b16486e153ac6a1f8e04c351b71a502203691bef46236ca2b4f5e60a82a853a33d6712d6a1e7bf9a65e575aeb7328db8c01"])
+    }
+
+    fn create_invalid_p2sh_unlock_script() -> Vec<Vec<u8>> {
+        create_unlock_script_stack(vec!["3045022100deeb1f13b5927b5e32d877f3c42a4b028e2e0ce5010fdb4e7f7b5e2921c1dcd2022068631cb285e8c1be9f061d2968a18c3163b780656f30a049effee640e80d9bff01",
+                                        "3045022100deeb1f13b5927b5e32d877f3c42a4b028e2e0ce5010fdb4e7f7b5e2921c1dcd2022068631cb285e8c1be9f061d2968a18c3163b780656f30a049effee640e80d9bff01",
+                                        "0101"])
+    }
+
+    fn create_valid_p2sh_outpoint() -> OutPoint {
+        create_outpoint(
+            "02b082113e35d5386285094c2829e7e2963fa0b5369fb7f4b79c4c90877dcd3d",
+            0u32,
+        )
+    }
+
+    fn create_invalid_p2sh_outpoint() -> OutPoint {
+        create_outpoint(
+            "ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024",
+            1u32,
+        )
     }
 
     #[test]
@@ -112,43 +191,77 @@ mod tests {
     }
 
     #[test]
-    fn a_wittness_tx_with_unlock_script_then_unlock_script_contains_matches() {
+    fn a_witness_tx_with_unlock_script_then_unlock_script_contains_matches() {
         let tx = parse_raw_tx(WITNESS_TX);
-        let unlock_script = create_unlock_script_stack(vec![
-            "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
-            "01",
-        ]);
 
-        assert_that(&tx.unlock_script_contains(&unlock_script)).is_true();
+        let unlock_script = create_valid_p2wsh_unlock_script();
+
+        assert_that(&tx.spends_with(&unlock_script)).is_true();
     }
 
     #[test]
-    fn a_wittness_tx_with_differen_unlock_script_then_unlock_script_contains_wont_match() {
+    fn a_witness_tx_with_different_unlock_script_then_unlock_script_contains_wont_match() {
         let tx = parse_raw_tx(WITNESS_TX);
 
-        let unlock_script = create_unlock_script_stack(vec!["102030405060708090", "00"]);
+        let unlock_script = create_invalid_p2wsh_unlock_script();
 
-        assert_that(&tx.unlock_script_contains(&unlock_script)).is_false();
+        assert_that(&tx.spends_with(&unlock_script)).is_false();
     }
 
     #[test]
     fn a_p2sh_tx_with_unlock_script_then_unlock_script_matches() {
         let tx = parse_raw_tx(STANDRD_TX);
 
-        let unlock_script = create_unlock_script_stack(vec!["3045022100deeb1f13b5927b5e32d877f3c42a4b028e2e0ce5010fdb4e7f7b5e2921c1dcd2022068631cb285e8c1be9f061d2968a18c3163b780656f30a049effee640e80d9bff01",
-                                                            "3045022100ee80e164622c64507d243bd949217d666d8b16486e153ac6a1f8e04c351b71a502203691bef46236ca2b4f5e60a82a853a33d6712d6a1e7bf9a65e575aeb7328db8c01"]);
+        let unlock_script = create_valid_p2sh_unlock_script();
 
-        assert_that(&tx.unlock_script_contains(&unlock_script)).is_true();
+        assert_that(&tx.spends_with(&unlock_script)).is_true();
     }
 
     #[test]
     fn a_p2sh_tx_with_additional_unlock_script_then_unlock_script_wont_match() {
         let tx = parse_raw_tx(STANDRD_TX);
 
-        let unlock_script = create_unlock_script_stack(vec!["3045022100deeb1f13b5927b5e32d877f3c42a4b028e2e0ce5010fdb4e7f7b5e2921c1dcd2022068631cb285e8c1be9f061d2968a18c3163b780656f30a049effee640e80d9bff01",
-                                                            "3045022100deeb1f13b5927b5e32d877f3c42a4b028e2e0ce5010fdb4e7f7b5e2921c1dcd2022068631cb285e8c1be9f061d2968a18c3163b780656f30a049effee640e80d9bff01",
-                                                            "0101"]);
+        let unlock_script = create_invalid_p2sh_unlock_script();
 
-        assert_that(&tx.unlock_script_contains(&unlock_script)).is_false();
+        assert_that(&tx.spends_with(&unlock_script)).is_false();
     }
+
+    #[test]
+    fn a_tx_with_spends_from_outpoint_matches() {
+        let tx = parse_raw_tx(STANDRD_TX);
+
+        let outpoint = create_valid_p2sh_outpoint();
+
+        assert_that(&tx.spends_from(&outpoint)).is_true();
+    }
+
+    #[test]
+    fn a_tx_with_spends_from_different_outpoint_wont_matches() {
+        let tx = parse_raw_tx(STANDRD_TX);
+
+        let outpoint = create_invalid_p2sh_outpoint();
+
+        assert_that(&tx.spends_from(&outpoint)).is_false();
+    }
+
+    #[test]
+    fn a_tx_spending_from_tx_with_specific_script_then_spend_from_with_matches() {
+        let tx = parse_raw_tx(STANDRD_TX);
+
+        let unlock_script = create_valid_p2sh_unlock_script();
+        let outpoint = create_valid_p2sh_outpoint();
+
+        assert_that(&tx.spends_from_with(&outpoint, &unlock_script)).is_true();
+    }
+
+    #[test]
+    fn a_tx_spending_from_tx_with_different_script_then_spend_from_with_wont_match() {
+        let tx = parse_raw_tx(STANDRD_TX);
+
+        let unlock_script = create_invalid_p2sh_unlock_script();
+        let outpoint = create_valid_p2sh_outpoint();
+
+        assert_that(&tx.spends_from_with(&outpoint, &unlock_script)).is_false();
+    }
+
 }

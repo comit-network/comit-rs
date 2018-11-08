@@ -24,6 +24,7 @@ where
     ) -> Self {
         BitcoinQuery::Transaction {
             to_address: Some(bitcoin_htlc_address(swap)),
+            from_outpoint: None,
             unlock_script: None,
         }
     }
@@ -37,12 +38,13 @@ where
 {
     fn new_source_htlc_refunded_query(
         swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
-        _source_htlc_location: &OutPoint, //TODO:  this will be used once we have filter by `to_address` implemented
+        source_htlc_location: &OutPoint,
     ) -> Self {
         BitcoinQuery::Transaction {
             to_address: None,
+            from_outpoint: Some(source_htlc_location.clone()),
             unlock_script: Some(vec![
-                swap.source_identity
+                swap.source_ledger_refund_identity
                     .public_key()
                     .inner()
                     .serialize()
@@ -60,11 +62,12 @@ where
     S: Into<SecretHash> + Clone,
 {
     fn new_source_htlc_redeemed_query(
-        swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
-        _source_htlc_location: &OutPoint, //TODO:  this will be used once we have filter by `to_address` implemented
+        _swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
+        source_htlc_location: &OutPoint,
     ) -> Self {
         BitcoinQuery::Transaction {
             to_address: None,
+            from_outpoint: Some(source_htlc_location.clone()),
             unlock_script: Some(vec![vec![1u8]]),
         }
     }
