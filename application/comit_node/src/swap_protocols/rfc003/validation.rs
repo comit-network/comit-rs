@@ -100,6 +100,7 @@ mod tests {
     use bitcoin_support::{BitcoinQuantity, Blocks, Sha256dHash, Transaction};
     use ethereum_support::EtherQuantity;
     use hex::FromHex;
+    use spectral::prelude::*;
     use std::str::FromStr;
     use swap_protocols::{
         ledger::Ethereum,
@@ -186,10 +187,9 @@ mod tests {
         );
 
         let txid = bitcoin_transaction.txid();
-
         let expected_outpoint = OutPoint { txid, vout: 0 };
 
-        assert_eq!(result.ok(), Some(expected_outpoint))
+        assert_that(&result).is_ok_containing(expected_outpoint)
     }
 
     #[test]
@@ -219,7 +219,7 @@ mod tests {
         let result =
             BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction.into());
 
-        assert_eq!(result.err(), Some(ValidationError::WrongTransaction))
+        assert_that(&result).is_err_containing(ValidationError::WrongTransaction)
     }
 
     #[test]
@@ -266,12 +266,11 @@ mod tests {
         let result =
             BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction.into());
 
-        assert_eq!(
-            result.err(),
-            Some(ValidationError::UnexpectedAsset {
-                found: BitcoinQuantity::from_bitcoin(provided_bitcoin_amount),
-                expected: BitcoinQuantity::from_bitcoin(bitcoin_amount),
-            })
-        )
+        let expected_error = ValidationError::UnexpectedAsset {
+            found: BitcoinQuantity::from_bitcoin(provided_bitcoin_amount),
+            expected: BitcoinQuantity::from_bitcoin(bitcoin_amount),
+        };
+
+        assert_that(&result).is_err_containing(expected_error)
     }
 }
