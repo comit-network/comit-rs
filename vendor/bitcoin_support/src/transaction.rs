@@ -40,18 +40,18 @@ impl UnlockScriptContains for Transaction {
     }
 }
 
-pub trait ContainsOutput {
-    fn contains_output(&self, address: &BitcoinAddress) -> Option<(usize, &TxOut)>;
+pub trait FindOutput {
+    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(usize, &TxOut)>;
 }
 
-impl ContainsOutput for Transaction {
-    fn contains_output(&self, address: &BitcoinAddress) -> Option<(usize, &TxOut)> {
-        let address_script_pubkey = address.script_pubkey();
+impl FindOutput for Transaction {
+    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(usize, &TxOut)> {
+        let to_address_script_pubkey = to_address.script_pubkey();
 
         self.output
             .iter()
             .enumerate()
-            .find(|(_, txout)| txout.script_pubkey == address_script_pubkey)
+            .find(|(_, txout)| txout.script_pubkey == to_address_script_pubkey)
     }
 }
 

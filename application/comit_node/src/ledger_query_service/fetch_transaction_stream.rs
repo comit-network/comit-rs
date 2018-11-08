@@ -67,42 +67,6 @@ where
     }
 }
 
-impl<L: Ledger> FetchTransactionIdStream<L> for Arc<FetchQueryResults<L>> {
-    fn fetch_transaction_id_stream<
-        I,
-        E: Send + 'static,
-        S: Stream<Item = I, Error = E> + Send + 'static,
-    >(
-        &self,
-        ticker: S,
-        query_id: QueryId<L>,
-    ) -> Box<Stream<Item = <L as Ledger>::TxId, Error = S::Error> + Send + 'static> {
-        let mut emitted_transactions = Vec::new();
-
-        let inner_self = self.clone();
-
-        Box::new(
-            ticker
-                .and_then(move |_| {
-                    inner_self.fetch_query_results(&query_id).or_else(|e| {
-                        warn!("Falling back to empty list of transactions because {:?}", e);
-                        Ok(Vec::new())
-                    })
-                }).map(iter_ok)
-                .flatten()
-                .filter(move |transaction| {
-                    let is_new_transaction = !emitted_transactions.contains(transaction);
-
-                    if is_new_transaction {
-                        emitted_transactions.push(transaction.clone());
-                    }
-
-                    is_new_transaction
-                }),
-        )
-    }
-}
-
 impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
     fn fetch_transaction_stream<
         I,

@@ -1,4 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, ContainsOutput, OutPoint, Transaction};
+use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ledger as SwapProtocolsLedger},
@@ -6,9 +6,9 @@ use swap_protocols::{
 };
 
 #[derive(Debug, PartialEq)]
-pub enum Error {
-    InsufficientOutput,
-    OutputNotFound,
+pub enum Error<A: Asset> {
+    UnexpectedAsset { found: A, expected: A },
+    WrongTransaction,
 }
 
 pub trait IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
@@ -22,7 +22,7 @@ where
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, TA, S>,
         transaction: SL::Transaction,
-    ) -> Result<SL::HtlcLocation, Error>;
+    ) -> Result<SL::HtlcLocation, Error<SA>>;
 }
 
 pub trait IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
@@ -36,7 +36,7 @@ where
     fn is_contained_in_target_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, TA, S>,
         tx: TL::Transaction,
-    ) -> Result<TL::HtlcLocation, Error>;
+    ) -> Result<TL::HtlcLocation, Error<TA>>;
 }
 
 impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, BitcoinQuantity, TA, S>
@@ -49,13 +49,13 @@ where
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
         transaction: <Bitcoin as SwapProtocolsLedger>::Transaction,
-    ) -> Result<OutPoint, Error> {
+    ) -> Result<OutPoint, Error<BitcoinQuantity>> {
         let transaction: Transaction = transaction.into();
         let address = bitcoin_htlc_address(&swap);
 
         let (vout, txout) = transaction
-            .contains_output(&address)
-            .ok_or(Error::OutputNotFound)?;
+            .find_output(&address)
+            .ok_or(Error::WrongTransaction)?;
 
         let location = OutPoint {
             txid: transaction.txid(),
@@ -78,7 +78,10 @@ where
         if has_enough_money {
             Ok(location)
         } else {
-            Err(Error::InsufficientOutput)
+            Err(Error::UnexpectedAsset {
+                found: actual_value,
+                expected: required_value,
+            })
         }
     }
 }
@@ -213,7 +216,7 @@ mod tests {
 
         let result = BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction);
 
-        assert_eq!(result.err(), Some(ValidationError::OutputNotFound))
+        assert_eq!(result.err(), Some(ValidationError::WrongTransaction))
     }
 
     #[test]
@@ -233,8 +236,10 @@ mod tests {
             addresses: None,
         };
 
+        let provided_bitcoin_amount = 0.5;
+
         let transaction_output = TransactionOutput {
-            value: 0.5,
+            value: provided_bitcoin_amount,
             n: 1,
             script_pub_key,
         };
@@ -257,6 +262,12 @@ mod tests {
 
         let result = BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction);
 
-        assert_eq!(result.err(), Some(ValidationError::InsufficientOutput))
+        assert_eq!(
+            result.err(),
+            Some(ValidationError::UnexpectedAsset {
+                found: BitcoinQuantity::from_bitcoin(provided_bitcoin_amount),
+                expected: BitcoinQuantity::from_bitcoin(bitcoin_amount),
+            })
+        )
     }
 }
