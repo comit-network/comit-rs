@@ -7,7 +7,7 @@ use http_api::route_factory::SwapState;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, StatusCode};
 use key_store::KeyStore;
-use rand::OsRng;
+use rand;
 use std::{
     error::Error as StdError,
     fmt,
@@ -153,7 +153,6 @@ pub fn post_swap<
             &event_store,
             &swap_metadata_store,
             &state_store,
-            &swap_state.rng,
             &client_factory,
             swap_state.remote_comit_node_socket_addr,
             &swap_state.key_store,
@@ -191,17 +190,13 @@ fn handle_post_swap<
     event_store: &Arc<E>,
     swap_metadata_store: &Arc<T>,
     state_store: &Arc<S>,
-    rng: &Mutex<OsRng>,
     client_factory: &Arc<F>,
     comit_node_addr: SocketAddr,
     key_store: &Arc<KeyStore>,
     alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
 ) -> Result<SwapCreated, Error> {
     let id = TradeId::default();
-    let secret = {
-        let mut rng = rng.lock().unwrap();
-        Secret::generate(&mut *rng)
-    };
+    let secret = Secret::generate(&mut rand::thread_rng());
     let client = client_factory.client_for(comit_node_addr)?;
 
     {
