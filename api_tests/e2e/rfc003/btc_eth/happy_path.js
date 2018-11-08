@@ -47,7 +47,7 @@ describe('RFC003 Bitcoin for Ether', () => {
     let alice_swap_id;
     it("Alice should be able to make a swap request via HTTP api", async () => {
         return chai.request(alice.comit_node_url())
-            .post('/swaps')
+            .post('/swaps/rfc003')
             .send({
                 "source_ledger": {
                     "value": "Bitcoin",
