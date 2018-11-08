@@ -11,13 +11,13 @@ use swap_protocols::{
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
-    pub source_ledger_refund_identity: SL::HtlcIdentity,
-    pub target_ledger_success_identity: TL::HtlcIdentity,
     pub source_ledger: SL,
     pub target_ledger: TL,
     pub source_asset: SA,
     pub target_asset: TA,
     pub source_ledger_success_identity: SL::Identity,
+    pub source_ledger_refund_identity: SL::HtlcIdentity,
+    pub target_ledger_success_identity: TL::HtlcIdentity,
     pub target_ledger_refund_identity: TL::Identity,
     pub source_ledger_lock_duration: SL::LockDuration,
     pub target_ledger_lock_duration: TL::LockDuration,
