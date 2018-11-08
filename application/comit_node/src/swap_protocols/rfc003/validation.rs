@@ -2,7 +2,7 @@ use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint};
 use swap_protocols::{
     asset::Asset,
     ledger::Bitcoin,
-    rfc003::{self, bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, SecretHash},
+    rfc003::{self, bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, IntoSecretHash},
     Ledger,
 };
 
@@ -18,7 +18,7 @@ where
     TL: rfc003::Ledger,
     Self: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: IntoSecretHash,
 {
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<SL, TL, Self, TA, S>,
@@ -32,7 +32,7 @@ where
     TL: rfc003::Ledger,
     SA: Asset,
     Self: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: IntoSecretHash,
 {
     fn is_contained_in_target_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, Self, S>,
@@ -44,7 +44,7 @@ impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, TA, S> for Bit
 where
     TL: rfc003::Ledger,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: IntoSecretHash,
 {
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,

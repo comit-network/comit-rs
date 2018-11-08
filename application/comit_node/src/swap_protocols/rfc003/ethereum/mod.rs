@@ -7,7 +7,7 @@ use std::time::Duration;
 use swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
-    rfc003::{state_machine::OngoingSwap, Ledger, SecretHash},
+    rfc003::{state_machine::OngoingSwap, IntoSecretHash, Ledger},
 };
 
 mod erc20_htlc;
@@ -47,7 +47,7 @@ impl Ledger for Ethereum {
     type HtlcIdentity = Address;
 }
 
-pub fn ethereum_htlc<SL: Ledger, SA: Asset, S: Into<SecretHash> + Clone>(
+pub fn ethereum_htlc<SL: Ledger, SA: Asset, S: IntoSecretHash>(
     swap: &OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
 ) -> Box<Htlc> {
     Box::new(EtherHtlc::new(

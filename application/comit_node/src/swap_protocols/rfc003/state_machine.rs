@@ -4,8 +4,8 @@ use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, messages::Request, AcceptResponse, SaveState, Secret,
-        SecretHash, SwapOutcome,
+        self, events, ledger::Ledger, messages::Request, AcceptResponse, IntoSecretHash, SaveState,
+        Secret, SwapOutcome,
     },
 };
 
@@ -24,7 +24,7 @@ pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
     pub secret: S,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>
     OngoingSwap<SL, TL, SA, TA, S>
 {
     pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponse<SL, TL>) -> Self {
@@ -45,7 +45,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
 }
 
 #[allow(missing_debug_implementations)]
-pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
+pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> {
     pub events: Box<events::Events<SL, TL, SA, TA, S>>,
     pub state_repo: Arc<SaveState<SL, TL, SA, TA, S>>,
 }
@@ -53,7 +53,7 @@ pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretH
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 #[allow(missing_debug_implementations)]
-pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone> {
+pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
         source_ledger_refund_identity: SL::HtlcIdentity,
@@ -123,8 +123,8 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> 
     Error(rfc003::Error),
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
-    PollSwap<SL, TL, SA, TA, S> for Swap<SL, TL, SA, TA, S>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<SL, TL, SA, TA, S>
+    for Swap<SL, TL, SA, TA, S>
 {
     fn poll_start<'s, 'c>(
         state: &'s mut RentToOwn<'s, Start<SL, TL, SA, TA, S>>,

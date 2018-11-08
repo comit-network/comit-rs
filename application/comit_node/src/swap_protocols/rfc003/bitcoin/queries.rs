@@ -5,7 +5,7 @@ use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
         bitcoin::bitcoin_htlc_address, events::NewSourceHtlcFundedQuery,
-        state_machine::OngoingSwap, Ledger, SecretHash,
+        state_machine::OngoingSwap, IntoSecretHash, Ledger,
     },
 };
 
@@ -13,7 +13,7 @@ impl<TL, TA, S> NewSourceHtlcFundedQuery<Bitcoin, TL, BitcoinQuantity, TA, S> fo
 where
     TL: Ledger,
     TA: Asset,
-    S: Into<SecretHash> + Clone,
+    S: IntoSecretHash,
 {
     fn new_source_htlc_funded_query(
         swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,

@@ -22,7 +22,7 @@ use swap_protocols::{
         messages::Request,
         state_machine::OngoingSwap,
         validation::{IsContainedInSourceLedgerTransaction, IsContainedInTargetLedgerTransaction},
-        Ledger, SecretHash,
+        IntoSecretHash, Ledger,
     },
 };
 use tokio::timer::Interval;
@@ -93,7 +93,7 @@ where
     TL: Ledger,
     SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    S: IntoSecretHash,
     ComitClient: Client,
     SLQuery: Query
         + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
@@ -146,7 +146,7 @@ where
     TL: Ledger,
     SA: Asset,
     TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
-    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    S: IntoSecretHash,
     ComitClient: Client,
     SLQuery: Query
         + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
@@ -234,7 +234,7 @@ where
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    S: IntoSecretHash,
     ComitClient: Client,
     SLQuery: Query
         + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
@@ -320,7 +320,7 @@ where
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    S: IntoSecretHash,
     ComitClient: Client,
     SLQuery: Query
         + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
@@ -405,7 +405,7 @@ where
     TL: Ledger,
     SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
     TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
-    S: Into<SecretHash> + Send + Sync + Clone + 'static,
+    S: IntoSecretHash,
     ComitClient: Client,
     SLQuery: Query
         + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>

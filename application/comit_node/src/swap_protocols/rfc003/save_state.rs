@@ -2,17 +2,17 @@ use futures::sync::mpsc;
 use std::sync::RwLock;
 use swap_protocols::{
     asset::Asset,
-    rfc003::{state_machine::SwapStates, Ledger, SecretHash},
+    rfc003::{state_machine::SwapStates, IntoSecretHash, Ledger},
 };
 
-pub trait SaveState<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>:
+pub trait SaveState<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
     Send + Sync
 {
     fn save(&self, state: SwapStates<SL, TL, SA, TA, S>);
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone + Send + Sync>
-    SaveState<SL, TL, SA, TA, S> for RwLock<SwapStates<SL, TL, SA, TA, S>>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> SaveState<SL, TL, SA, TA, S>
+    for RwLock<SwapStates<SL, TL, SA, TA, S>>
 {
     fn save(&self, state: SwapStates<SL, TL, SA, TA, S>) {
         let _self = &mut *self.write().unwrap();
@@ -20,8 +20,8 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone +
     }
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone + Send + Sync>
-    SaveState<SL, TL, SA, TA, S> for mpsc::UnboundedSender<SwapStates<SL, TL, SA, TA, S>>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> SaveState<SL, TL, SA, TA, S>
+    for mpsc::UnboundedSender<SwapStates<SL, TL, SA, TA, S>>
 {
     fn save(&self, state: SwapStates<SL, TL, SA, TA, S>) {
         // ignore error the subscriber is no longer interested in state updates

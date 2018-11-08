@@ -81,6 +81,14 @@ impl FromStr for SecretHash {
     }
 }
 
+pub trait IntoSecretHash:
+    PartialEq + Debug + Clone + Send + Sync + Into<SecretHash> + 'static
+{
+}
+
+impl IntoSecretHash for Secret {}
+impl IntoSecretHash for SecretHash {}
+
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
 pub struct Secret([u8; SHA256_DIGEST_LENGTH]);
 

@@ -11,7 +11,7 @@ pub use self::{
 };
 use swap_protocols::{
     asset::Asset,
-    rfc003::{state_machine::OngoingSwap, SecretHash},
+    rfc003::{state_machine::OngoingSwap, IntoSecretHash},
 };
 
 impl Ledger for Bitcoin {
@@ -20,7 +20,7 @@ impl Ledger for Bitcoin {
     type HtlcIdentity = KeyPair;
 }
 
-pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: Into<SecretHash> + Clone>(
+pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: IntoSecretHash>(
     swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> Htlc {
     Htlc::new(
@@ -31,7 +31,7 @@ pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: Into<SecretHash> + Clone>(
     )
 }
 
-pub fn bitcoin_htlc_address<TL: Ledger, TA: Asset, S: Into<SecretHash> + Clone>(
+pub fn bitcoin_htlc_address<TL: Ledger, TA: Asset, S: IntoSecretHash>(
     swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> Address {
     bitcoin_htlc(swap).compute_address(swap.source_ledger.network())
