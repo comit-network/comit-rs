@@ -10,22 +10,22 @@ use std::{
 };
 use swap_metadata_store;
 use swap_protocols::rfc003::state_store;
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Clone, Debug)]
 pub struct SwapState {
     pub remote_comit_node_socket_addr: SocketAddr,
     pub key_store: Arc<KeyStore>,
-    pub alice_actor_sender: Arc<Mutex<UnboundedSender<TradeId>>>,
+    pub alice_actor_sender: Arc<Mutex<UnboundedSender<SwapId>>>,
 }
 
 pub fn create<
     C: comit_client::Client + 'static,
     F: comit_client::ClientFactory<C> + 'static,
-    E: event_store::EventStore<TradeId> + RefUnwindSafe,
-    T: swap_metadata_store::SwapMetadataStore<TradeId>,
-    S: state_store::StateStore<TradeId>,
+    E: event_store::EventStore<SwapId> + RefUnwindSafe,
+    T: swap_metadata_store::SwapMetadataStore<SwapId>,
+    S: state_store::StateStore<SwapId>,
 >(
     event_store: Arc<E>,
     swap_metadata_store: Arc<T>,
@@ -33,7 +33,7 @@ pub fn create<
     client_factory: Arc<F>,
     remote_comit_node_socket_addr: SocketAddr,
     key_store: Arc<KeyStore>,
-    alice_actor_sender: UnboundedSender<TradeId>,
+    alice_actor_sender: UnboundedSender<SwapId>,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = warp::path(http_api::rfc003::swap::PATH);

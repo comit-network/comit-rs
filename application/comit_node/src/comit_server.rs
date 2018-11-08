@@ -15,13 +15,13 @@ use swap_protocols::{
     wire_types::SwapResponse,
     SwapRequestHandler,
 };
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 use tokio::{self, net::TcpListener};
 use transport_protocol::{connection::Connection, json};
 
 #[derive(Debug)]
 pub struct ComitServer<
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
     BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 > {
@@ -37,7 +37,7 @@ pub struct ComitServer<
 
 impl<E, BLQS> ComitServer<E, BLQS>
 where
-    E: EventStore<TradeId> + Send + Sync,
+    E: EventStore<SwapId> + Send + Sync,
     BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 {

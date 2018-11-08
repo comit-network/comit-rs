@@ -2,11 +2,11 @@ use event_store::Event;
 use secp256k1_support::KeyPair;
 use std::marker::PhantomData;
 use swap_protocols::rfc003::{Ledger, SecretHash};
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 
 #[derive(Clone, Debug)]
 pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
+    pub uid: SwapId,
 
     pub contract_secret_lock: SecretHash,
     pub alice_contract_time_lock: Sell::LockDuration,
@@ -25,14 +25,14 @@ pub struct OrderTaken<Buy: Ledger, Sell: Ledger> {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TradeFunded<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
+    pub uid: SwapId,
     pub htlc_identifier: Sell::HtlcLocation,
     phantom: PhantomData<Buy>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContractDeployed<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
+    pub uid: SwapId,
     pub transaction_id: String,
     phantom: PhantomData<Buy>,
     phantom2: PhantomData<Sell>,
@@ -40,14 +40,14 @@ pub struct ContractDeployed<Buy: Ledger, Sell: Ledger> {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ContractRedeemed<Buy: Ledger, Sell: Ledger> {
-    pub uid: TradeId,
+    pub uid: SwapId,
     pub transaction_id: String,
     phantom: PhantomData<Buy>,
     phantom2: PhantomData<Sell>,
 }
 
 impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractDeployed<Buy, Sell> {
+    pub fn new(uid: SwapId, transaction_id: String) -> ContractDeployed<Buy, Sell> {
         ContractDeployed {
             uid,
             transaction_id,
@@ -58,7 +58,7 @@ impl<Buy: Ledger, Sell: Ledger> ContractDeployed<Buy, Sell> {
 }
 
 impl<Buy: Ledger, Sell: Ledger> TradeFunded<Buy, Sell> {
-    pub fn new(uid: TradeId, htlc_identifier: Sell::HtlcLocation) -> TradeFunded<Buy, Sell> {
+    pub fn new(uid: SwapId, htlc_identifier: Sell::HtlcLocation) -> TradeFunded<Buy, Sell> {
         TradeFunded {
             uid,
             htlc_identifier,
@@ -68,7 +68,7 @@ impl<Buy: Ledger, Sell: Ledger> TradeFunded<Buy, Sell> {
 }
 
 impl<Buy: Ledger, Sell: Ledger> ContractRedeemed<Buy, Sell> {
-    pub fn new(uid: TradeId, transaction_id: String) -> ContractRedeemed<Buy, Sell> {
+    pub fn new(uid: SwapId, transaction_id: String) -> ContractRedeemed<Buy, Sell> {
         ContractRedeemed {
             uid,
             transaction_id,

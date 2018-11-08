@@ -1,7 +1,7 @@
 use event_store::Event;
 use std::marker::PhantomData;
 use swap_protocols::rfc003::{Ledger, Secret};
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 
 #[derive(Clone, Debug)]
 pub struct SentSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
@@ -83,12 +83,12 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SourceFunded<SL: Ledger, TL: Ledger, SA, TA> {
-    pub uid: TradeId,
+    pub uid: SwapId,
     phantom: PhantomData<(SL, TL, SA, TA)>,
 }
 
 impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
-    pub fn new(uid: TradeId) -> SourceFunded<SL, TL, SA, TA> {
+    pub fn new(uid: SwapId) -> SourceFunded<SL, TL, SA, TA> {
         SourceFunded {
             uid,
             phantom: PhantomData,

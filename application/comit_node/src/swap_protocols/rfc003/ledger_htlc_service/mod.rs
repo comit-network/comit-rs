@@ -1,6 +1,6 @@
 pub use self::{bitcoin_service::*, ethereum_service::*};
 use swap_protocols::{ledger::Ledger, rfc003::Secret};
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 
 mod bitcoin_service;
 mod ethereum_service;
@@ -23,7 +23,7 @@ pub trait LedgerHtlcService<L: Ledger, H, R, Q>: Send + Sync {
     fn fund_htlc(&self, htlc_funding_params: H) -> Result<L::TxId, Error>;
 
     #[allow(clippy::too_many_arguments)]
-    fn redeem_htlc(&self, trade_id: TradeId, htlc_redeem_params: R) -> Result<L::TxId, Error>;
+    fn redeem_htlc(&self, trade_id: SwapId, htlc_redeem_params: R) -> Result<L::TxId, Error>;
 
     fn create_query_to_watch_redeeming(&self, htlc_funding_tx_id: L::TxId) -> Result<Q, Error>;
 

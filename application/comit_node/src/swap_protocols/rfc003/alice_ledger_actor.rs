@@ -22,16 +22,16 @@ use swap_protocols::{
         },
     },
 };
-use swaps::{alice_events::*, common::TradeId};
+use swaps::{alice_events::*, common::SwapId};
 use tokio_timer::Interval;
 
 #[derive(Debug)]
 pub struct AliceLedgerPipeline<
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
 > {
-    trade_id: TradeId,
+    trade_id: SwapId,
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,
     bitcoin_service: Arc<BitcoinService>,
@@ -45,7 +45,7 @@ pub struct AliceLedgerPipeline<
 pub struct AliceLedgerActor<
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
 > {
     event_store: Arc<E>,
     ledger_query_service_api_client: Arc<C>,
@@ -60,7 +60,7 @@ impl<C, E> AliceLedgerActor<C, E>
 where
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
 {
     pub fn new(
         event_store: Arc<E>,
@@ -82,7 +82,7 @@ where
         }
     }
 
-    pub fn listen(&self) -> (UnboundedSender<TradeId>, impl Future<Item = (), Error = ()>) {
+    pub fn listen(&self) -> (UnboundedSender<SwapId>, impl Future<Item = (), Error = ()>) {
         let (sender, receiver) = mpsc::unbounded();
 
         let ledger_query_service_api_client = self.ledger_query_service_api_client.clone();
@@ -94,7 +94,7 @@ where
         let ethereum_poll_interval = self.ethereum_poll_interval;
 
         let future = receiver
-            .for_each(move |trade_id: TradeId| {
+            .for_each(move |trade_id: SwapId| {
                 let ledger_query_service_api_client = ledger_query_service_api_client.clone();
                 let event_store = event_store.clone();
                 let bitcoin_service = bitcoin_service.clone();
@@ -150,10 +150,10 @@ impl<C, E> AliceLedgerPipeline<C, E>
 where
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
 {
     pub fn new(
-        trade_id: TradeId,
+        trade_id: SwapId,
         event_store: Arc<E>,
         ledger_query_service_api_client: Arc<C>,
         bitcoin_service: Arc<BitcoinService>,

@@ -31,7 +31,7 @@ use comit_node::{
         ledger_htlc_service::{BitcoinService, EthereumService},
         state_store::InMemoryStateStore,
     },
-    swaps::common::TradeId,
+    swaps::common::SwapId,
 };
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
@@ -171,9 +171,9 @@ fn create_ledger_query_service_api_client(
 fn spawn_warp_instance(
     settings: &ComitNodeSettings,
     key_store: Arc<KeyStore>,
-    event_store: Arc<InMemoryEventStore<TradeId>>,
-    swap_metadata_store: Arc<InMemorySwapMetadataStore<TradeId>>,
-    state_store: Arc<InMemoryStateStore<TradeId>>,
+    event_store: Arc<InMemoryEventStore<SwapId>>,
+    swap_metadata_store: Arc<InMemorySwapMetadataStore<SwapId>>,
+    state_store: Arc<InMemoryStateStore<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
@@ -216,7 +216,7 @@ fn spawn_warp_instance(
 
 fn spawn_comit_server(
     settings: &ComitNodeSettings,
-    event_store: Arc<InMemoryEventStore<TradeId>>,
+    event_store: Arc<InMemoryEventStore<SwapId>>,
     key_store: Arc<KeyStore>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
