@@ -30,6 +30,8 @@ impl ShouldExpand for EthereumTransactionQuery {
 impl ExpandResult for EthereumTransactionQuery {
     type Client = ();
     type Item = ();
+    type ReturnItem = ();
+
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }
@@ -144,6 +146,8 @@ impl ShouldExpand for EthereumBlockQuery {
 impl ExpandResult for EthereumBlockQuery {
     type Client = ();
     type Item = ();
+    type ReturnItem = ();
+
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }

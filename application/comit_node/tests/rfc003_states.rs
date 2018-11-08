@@ -217,7 +217,7 @@ fn source_refunded() {
                     confirmations: 0,
                     time: 0,
                     blocktime: 0,
-                },
+                }.into(),
             )))),
             ..Default::default()
         },

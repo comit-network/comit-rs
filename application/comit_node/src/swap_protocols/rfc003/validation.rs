@@ -12,36 +12,35 @@ pub enum Error<A: Asset> {
     WrongTransaction,
 }
 
-pub trait IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
+pub trait IsContainedInSourceLedgerTransaction<SL, TL, TA, S>: Send + Sync
 where
     SL: rfc003::Ledger,
     TL: rfc003::Ledger,
-    SA: Asset,
+    Self: Asset,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
     fn is_contained_in_source_ledger_transaction(
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
+        swap: OngoingSwap<SL, TL, Self, TA, S>,
         transaction: SL::Transaction,
-    ) -> Result<SL::HtlcLocation, Error<SA>>;
+    ) -> Result<SL::HtlcLocation, Error<Self>>;
 }
 
-pub trait IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
+pub trait IsContainedInTargetLedgerTransaction<SL, TL, SA, S>: Send + Sync
 where
     SL: rfc003::Ledger,
     TL: rfc003::Ledger,
     SA: Asset,
-    TA: Asset,
+    Self: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
     fn is_contained_in_target_ledger_transaction(
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
+        swap: OngoingSwap<SL, TL, SA, Self, S>,
         tx: TL::Transaction,
-    ) -> Result<TL::HtlcLocation, Error<TA>>;
+    ) -> Result<TL::HtlcLocation, Error<Self>>;
 }
 
-impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, BitcoinQuantity, TA, S>
-    for BitcoinQuantity
+impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, TA, S> for BitcoinQuantity
 where
     TL: rfc003::Ledger,
     TA: Asset,
@@ -180,11 +179,14 @@ mod tests {
             blocktime: 0,
         };
 
-        let bitcoin_transaction: Transaction = transaction.clone().into();
-        let txid = bitcoin_transaction.txid();
+        let bitcoin_transaction: Transaction = transaction.into();
 
-        let result =
-            BitcoinQuantity::is_contained_in_source_ledger_transaction(swap.clone(), transaction);
+        let result = BitcoinQuantity::is_contained_in_source_ledger_transaction(
+            swap.clone(),
+            bitcoin_transaction.clone(),
+        );
+
+        let txid = bitcoin_transaction.txid();
 
         let expected_outpoint = OutPoint { txid, vout: 0 };
 
@@ -215,7 +217,8 @@ mod tests {
             blocktime: 0,
         };
 
-        let result = BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction);
+        let result =
+            BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction.into());
 
         assert_eq!(result.err(), Some(ValidationError::WrongTransaction))
     }
@@ -261,7 +264,8 @@ mod tests {
             blocktime: 0,
         };
 
-        let result = BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction);
+        let result =
+            BitcoinQuantity::is_contained_in_source_ledger_transaction(swap, transaction.into());
 
         assert_eq!(
             result.err(),

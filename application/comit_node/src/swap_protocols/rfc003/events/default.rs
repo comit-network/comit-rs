@@ -91,7 +91,7 @@ impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> SourceHtlcFunded<SL, TL, 
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>,
+    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
@@ -145,7 +145,7 @@ where
     SL: Ledger,
     TL: Ledger,
     SA: Asset,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
     SLQuery: Query
@@ -403,8 +403,8 @@ impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> Events<SL, TL, SA, TA, S>
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
+    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
     SLQuery: Query

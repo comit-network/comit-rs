@@ -1,6 +1,5 @@
-use bitcoin_rpc_client::rpc::VerboseRawTransaction;
 use bitcoin_support::{
-    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, TransactionId,
+    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
@@ -37,7 +36,7 @@ impl Ledger for Bitcoin {
     type Pubkey = PublicKey;
     type Address = Address;
     type Identity = PubkeyHash;
-    type Transaction = VerboseRawTransaction;
+    type Transaction = Transaction;
 
     fn symbol() -> String {
         String::from("BTC")

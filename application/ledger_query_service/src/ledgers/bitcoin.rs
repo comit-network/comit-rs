@@ -32,12 +32,13 @@ impl ShouldExpand for BitcoinTransactionQuery {
 impl ExpandResult for BitcoinTransactionQuery {
     type Client = BitcoinCoreClient;
     type Item = VerboseRawTransaction;
+    type ReturnItem = BitcoinTransaction;
 
     fn expand_result(
         result: &QueryResult,
         client: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<VerboseRawTransaction>, Error> {
-        let mut expanded_result: Vec<VerboseRawTransaction> = Vec::new();
+    ) -> Result<Vec<BitcoinTransaction>, Error> {
+        let mut expanded_result: Vec<BitcoinTransaction> = Vec::new();
         for tx_id in result.clone().0 {
             let tx_id =
                 TransactionId::from_hex(tx_id.as_str()).map_err(Error::TransactionIdConversion)?;
@@ -46,7 +47,7 @@ impl ExpandResult for BitcoinTransactionQuery {
                 .get_raw_transaction_verbose(&tx_id)
                 .map_err(Error::BitcoinRpcConnection)?
                 .map_err(Error::BitcoinRpcResponse)?;
-            expanded_result.push(transaction);
+            expanded_result.push(transaction.into());
         }
         Ok(expanded_result)
     }
@@ -132,6 +133,7 @@ impl ShouldExpand for BitcoinBlockQuery {
 impl ExpandResult for BitcoinBlockQuery {
     type Client = ();
     type Item = ();
+    type ReturnItem = ();
 
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
