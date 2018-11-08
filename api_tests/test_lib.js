@@ -50,9 +50,9 @@ class PlayerConf {
         return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_comit_node_until(chai, id, status) {
+    poll_comit_node_until(chai, location, status) {
         return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url()).get('/swaps/' + id).end((err, res) => {
+            chai.request(this.comit_node_url()).get(location).end((err, res) => {
                 if (err) {
                     return rej(err);
                 }
@@ -62,7 +62,7 @@ class PlayerConf {
                 }
                 else {
                     setTimeout(() => {
-                        this.poll_comit_node_until(chai, id, status).then((result) => {
+                        this.poll_comit_node_until(chai, location, status).then((result) => {
                             final_res(result);
                         });
                     }, 3000);
