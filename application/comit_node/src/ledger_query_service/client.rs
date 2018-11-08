@@ -1,6 +1,6 @@
 use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
-    LedgerQueryServiceApiClient, QueryId,
+    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
+    FetchQueryResults, LedgerQueryServiceApiClient, QueryId,
 };
 use reqwest::{async::Client, header::LOCATION, Url};
 use serde::{Deserialize, Serialize};
@@ -56,7 +56,6 @@ impl DefaultLedgerQueryServiceApiClient {
                     .headers()
                     .get(LOCATION)
                     .ok_or_else(|| Error::MalformedResponse)
-                    //                    .ok_or_else(|| Error::MalformedResponse(format_err!("missing location")))
                     .and_then(|value| value.to_str().map_err(|_| Error::MalformedResponse))
                     .and_then(|location| Url::parse(location).map_err(|_| Error::MalformedResponse))
             }).map(QueryId::new);
@@ -64,7 +63,7 @@ impl DefaultLedgerQueryServiceApiClient {
         Box::new(query_id)
     }
 
-    fn _fetch_results<L: Ledger>(
+    fn fetch_results<L: Ledger>(
         &self,
         query: &QueryId<L>,
     ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send> {
@@ -73,6 +72,24 @@ impl DefaultLedgerQueryServiceApiClient {
             .get(query.as_ref().clone())
             .send()
             .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
+            .map_err(|_| Error::FailedRequest)
+            .map(|response| response.matches);
+
+        Box::new(transactions)
+    }
+
+    fn fetch_full_results<L: Ledger>(
+        &self,
+        query: &QueryId<L>,
+    ) -> Box<Future<Item = Vec<L::Transaction>, Error = Error> + Send> {
+        let mut url = query.as_ref().clone();
+        url.set_query(Some("expand_results=true"));
+
+        let transactions = self
+            .client
+            .get(url)
+            .send()
+            .and_then(|mut response| response.json::<QueryResponse<L::Transaction>>())
             .map_err(|_| Error::FailedRequest)
             .map(|response| response.matches);
 
@@ -113,7 +130,16 @@ impl FetchQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
         &self,
         query: &QueryId<Bitcoin>,
     ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
-        self._fetch_results(query)
+        self.fetch_results(query)
+    }
+}
+
+impl FetchFullQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
+    fn fetch_full_query_results(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::Transaction>, Error = Error> + Send> {
+        self.fetch_full_results(query)
     }
 }
 
@@ -143,7 +169,7 @@ impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
         &self,
         query: &QueryId<Ethereum>,
     ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
-        self._fetch_results(query)
+        self.fetch_results(query)
     }
 }
 

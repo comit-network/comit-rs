@@ -2,7 +2,6 @@ mod serde;
 
 use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
-use serde::Deserialize;
 use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 use url;
 

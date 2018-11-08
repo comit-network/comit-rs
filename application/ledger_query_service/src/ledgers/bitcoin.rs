@@ -1,4 +1,4 @@
-use bitcoin_rpc_client::{rpc::VerboseRawTransaction, BitcoinCoreClient, BitcoinRpcApi};
+use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, SpendsTo,
     Transaction as BitcoinTransaction, TransactionId, UnlockScriptContains,
@@ -6,7 +6,6 @@ use bitcoin_support::{
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use query_result_repository::QueryResult;
 use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
-use serde::Serialize;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -31,13 +30,13 @@ impl ShouldExpand for BitcoinTransactionQuery {
 
 impl ExpandResult for BitcoinTransactionQuery {
     type Client = BitcoinCoreClient;
-    type Item = VerboseRawTransaction;
+    type Item = BitcoinTransaction;
 
     fn expand_result(
         result: &QueryResult,
         client: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<VerboseRawTransaction>, Error> {
-        let mut expanded_result: Vec<VerboseRawTransaction> = Vec::new();
+    ) -> Result<Vec<BitcoinTransaction>, Error> {
+        let mut expanded_result: Vec<BitcoinTransaction> = Vec::new();
         for tx_id in result.clone().0 {
             let tx_id =
                 TransactionId::from_hex(tx_id.as_str()).map_err(Error::TransactionIdConversion)?;
@@ -46,7 +45,7 @@ impl ExpandResult for BitcoinTransactionQuery {
                 .get_raw_transaction_verbose(&tx_id)
                 .map_err(Error::BitcoinRpcConnection)?
                 .map_err(Error::BitcoinRpcResponse)?;
-            expanded_result.push(transaction);
+            expanded_result.push(transaction.into());
         }
         Ok(expanded_result)
     }

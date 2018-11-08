@@ -1,7 +1,7 @@
 use comit_client::Client;
 use futures::{future::Either, stream::Stream, Future};
 use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionStream, CreateQuery, FetchQueryResults, Query,
+    fetch_transaction_stream::FetchTransactionStream, CreateQuery, FetchFullQueryResults, Query,
     QueryIdCache,
 };
 use std::{
@@ -44,11 +44,11 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TL
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
-    source_ledger_fetch_query_results: Arc<FetchQueryResults<SL>>,
+    source_ledger_fetch_query_results: Arc<FetchFullQueryResults<SL>>,
     source_ledger_tick_interval: Duration,
 
     create_target_ledger_query: QueryIdCache<TL, TLQuery>,
-    target_ledger_fetch_query_results: Arc<FetchQueryResults<TL>>,
+    target_ledger_fetch_query_results: Arc<FetchFullQueryResults<TL>>,
     target_ledger_tick_interval: Duration,
 }
 
@@ -91,7 +91,7 @@ impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> SourceHtlcFunded<SL, TL, 
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>,
+    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
@@ -125,10 +125,10 @@ where
                             query_id,
                         ).take(1)
                         .into_future()
-                        .map(|(txid, _stream)| txid.expect("ticker stream should never terminate"))
+                        .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
                         .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
-                        .and_then(move |tx_id| {
-                            SA::is_contained_in_source_ledger_transaction(swap, &tx_id)
+                        .and_then(move |tx| {
+                            SA::is_contained_in_source_ledger_transaction(swap, tx)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });
@@ -145,7 +145,7 @@ where
     SL: Ledger,
     TL: Ledger,
     SA: Asset,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
     SLQuery: Query
@@ -190,9 +190,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
 
                 let target_funded_future = target_funded_query_id
@@ -204,11 +203,10 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
-                            .and_then(move |tx_id| {
-                                TA::is_contained_in_target_ledger_transaction(swap, &tx_id)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .and_then(move |tx| {
+                                TA::is_contained_in_target_ledger_transaction(swap, tx)
                                     .map_err(|_| rfc003::Error::InsufficientFunding)
                             })
                     });
@@ -281,9 +279,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
                 let inner_target_ledger_fetch_query_results =
                     target_ledger_fetch_query_results.clone();
@@ -296,9 +293,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
 
                 Box::new(
@@ -369,9 +365,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
                 let inner_source_ledger_fetch_query_results =
                     source_ledger_fetch_query_results.clone();
@@ -384,9 +379,8 @@ where
                                 query_id,
                             ).take(1)
                             .into_future()
-                            .map(|(txid, _stream)| {
-                                txid.expect("ticker stream should never terminate")
-                            }).map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
+                            .map(|(tx, _stream)| tx.expect("ticker stream should never terminate"))
+                            .map_err(|(_, _stream)| rfc003::Error::LedgerQueryService)
                     });
 
                 Box::new(
@@ -409,8 +403,8 @@ impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> Events<SL, TL, SA, TA, S>
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>,
+    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
+    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
     S: Into<SecretHash> + Send + Sync + Clone + 'static,
     ComitClient: Client,
     SLQuery: Query

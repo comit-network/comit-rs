@@ -84,7 +84,8 @@ describe("Test Ledger Query Service API", () => {
                         .then((res) => {
                             res.body.query.to_address.should.equal(to_address);
                             res.body.matches.should.have.lengthOf(1);
-                            res.body.matches[0].txid.should.be.a('string');
+                            res.body.matches[0].output.should.have.lengthOf(2);
+                            res.body.matches[0].output[0].should.be.a('object');
                         });
                 });
             });

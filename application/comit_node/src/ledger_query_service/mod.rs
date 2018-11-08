@@ -61,3 +61,10 @@ pub trait FetchQueryResults<L: Ledger>: 'static + Send + Sync {
         query: &QueryId<L>,
     ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
 }
+
+pub trait FetchFullQueryResults<L: Ledger>: 'static + Send + Sync {
+    fn fetch_full_query_results(
+        &self,
+        query: &QueryId<L>,
+    ) -> Box<Future<Item = Vec<L::Transaction>, Error = Error> + Send>;
+}
