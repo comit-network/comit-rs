@@ -1,8 +1,9 @@
 use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 use swap_protocols::{
     asset::Asset,
-    ledger::{Bitcoin, Ledger as SwapProtocolsLedger},
-    rfc003::{bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, Ledger, SecretHash},
+    ledger::Bitcoin,
+    rfc003::{self, bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, SecretHash},
+    Ledger,
 };
 
 #[derive(Debug, PartialEq)]
@@ -13,8 +14,8 @@ pub enum Error<A: Asset> {
 
 pub trait IsContainedInSourceLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
 where
-    SL: Ledger,
-    TL: Ledger,
+    SL: rfc003::Ledger,
+    TL: rfc003::Ledger,
     SA: Asset,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
@@ -27,8 +28,8 @@ where
 
 pub trait IsContainedInTargetLedgerTransaction<SL, TL, SA, TA, S>: Send + Sync
 where
-    SL: Ledger,
-    TL: Ledger,
+    SL: rfc003::Ledger,
+    TL: rfc003::Ledger,
     SA: Asset,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
@@ -42,13 +43,13 @@ where
 impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, BitcoinQuantity, TA, S>
     for BitcoinQuantity
 where
-    TL: Ledger,
+    TL: rfc003::Ledger,
     TA: Asset,
     S: Into<SecretHash> + Send + Sync + Clone,
 {
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
-        transaction: <Bitcoin as SwapProtocolsLedger>::Transaction,
+        transaction: <Bitcoin as Ledger>::Transaction,
     ) -> Result<OutPoint, Error<BitcoinQuantity>> {
         let transaction: Transaction = transaction.into();
         let address = bitcoin_htlc_address(&swap);
