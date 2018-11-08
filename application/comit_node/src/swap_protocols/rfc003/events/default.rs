@@ -28,7 +28,7 @@ pub enum Role<ComitClient> {
 
 #[allow(missing_debug_implementations)]
 pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TLQuery: Query> {
-    player: Player<ComitClient>,
+    role: Role<ComitClient>,
 
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
     source_ledger_first_match: FirstMatch<SL>,

@@ -16,7 +16,7 @@ use swap_protocols::{
 };
 use tokio::{self, prelude::future::Either};
 
-pub use self::default::{DefaultEvents, Player};
+pub use self::default::{DefaultEvents, Role};
 
 mod default;
 

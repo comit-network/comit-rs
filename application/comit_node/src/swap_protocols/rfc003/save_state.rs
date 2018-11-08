@@ -1,12 +1,12 @@
 use futures::sync::mpsc;
-use std::sync::RwLock;
+use std::{fmt::Debug, sync::RwLock};
 use swap_protocols::{
     asset::Asset,
     rfc003::{state_machine::SwapStates, IntoSecretHash, Ledger},
 };
 
 pub trait SaveState<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
-    Send + Sync
+    Send + Sync + Debug
 {
     fn save(&self, state: SwapStates<SL, TL, SA, TA, S>);
 }
