@@ -126,9 +126,9 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> 
 impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
     PollSwap<SL, TL, SA, TA, S> for Swap<SL, TL, SA, TA, S>
 {
-    fn poll_start<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, Start<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_start<'s, 'c>(
+        state: &'s mut RentToOwn<'s, Start<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterStart<SL, TL, SA, TA, S>>, rfc003::Error> {
         let request = Request {
             source_asset: state.source_asset.clone(),
@@ -156,9 +156,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         }
     }
 
-    fn poll_accepted<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, Accepted<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_accepted<'s, 'c>(
+        state: &'s mut RentToOwn<'s, Accepted<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterAccepted<SL, TL, SA, TA, S>>, rfc003::Error> {
         let source_htlc_location =
             try_ready!(context.events.source_htlc_funded(&state.swap).poll());
@@ -174,9 +174,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         )
     }
 
-    fn poll_source_funded<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, SourceFunded<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_source_funded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, SourceFunded<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         match try_ready!(
             context
@@ -201,9 +201,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         }
     }
 
-    fn poll_both_funded<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, BothFunded<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_both_funded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, BothFunded<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
             .events
@@ -265,9 +265,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         }
     }
 
-    fn poll_source_funded_target_refunded<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, SourceFundedTargetRefunded<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_source_funded_target_refunded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, SourceFundedTargetRefunded<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, rfc003::Error> {
         match try_ready!(
             context
@@ -285,9 +285,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         }
     }
 
-    fn poll_source_refunded_target_funded<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, SourceRefundedTargetFunded<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_source_refunded_target_funded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, SourceRefundedTargetFunded<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, rfc003::Error> {
         match try_ready!(
             context
@@ -305,9 +305,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         }
     }
 
-    fn poll_source_redeemed_target_funded<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, SourceRedeemedTargetFunded<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_source_redeemed_target_funded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, SourceRedeemedTargetFunded<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, rfc003::Error> {
         match try_ready!(
             context
@@ -325,9 +325,9 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>
         }
     }
 
-    fn poll_source_funded_target_redeemed<'smf_poll>(
-        state: &'smf_poll mut RentToOwn<'smf_poll, SourceFundedTargetRedeemed<SL, TL, SA, TA, S>>,
-        context: &mut Context<SL, TL, SA, TA, S>,
+    fn poll_source_funded_target_redeemed<'s, 'c>(
+        state: &'s mut RentToOwn<'s, SourceFundedTargetRedeemed<SL, TL, SA, TA, S>>,
+        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, rfc003::Error> {
         match try_ready!(
             context
