@@ -3,11 +3,11 @@ use comit_client::{self, SwapReject, SwapResponseError};
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use futures::{sync::mpsc::UnboundedSender, Future};
+use http_api::route_factory::SwapState;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, StatusCode};
 use key_store::KeyStore;
 use rand::OsRng;
-use route_factory::SwapState;
 use std::{
     error::Error as StdError,
     fmt,
@@ -30,7 +30,7 @@ use swaps::{alice_events, common::TradeId};
 use tokio;
 use warp::{self, Rejection, Reply};
 
-pub const PATH: &str = "swaps";
+pub const PATH: &str = "rfc003";
 
 #[derive(Debug)]
 pub enum Error {

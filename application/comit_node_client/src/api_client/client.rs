@@ -84,7 +84,7 @@ impl ApiClient for DefaultApiClient {
     fn send_swap_request(&self, swap_request: SwapRequest) -> Result<SwapCreated, reqwest::Error> {
         let client = reqwest::Client::new();
         client
-            .post(format!("{}/swaps", self.url.0).as_str())
+            .post(format!("{}/swaps/rfc003", self.url.0).as_str())
             .json(&swap_request)
             .send()
             .and_then(|mut res| res.json::<SwapCreated>())

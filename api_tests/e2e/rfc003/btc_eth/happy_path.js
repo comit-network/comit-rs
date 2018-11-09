@@ -45,9 +45,10 @@ describe('RFC003 Bitcoin for Ether', () => {
     });
 
     let alice_swap_id;
+    let swap_location;
     it("Alice should be able to make a swap request via HTTP api", async () => {
         return chai.request(alice.comit_node_url())
-            .post('/swaps')
+            .post('/swaps/rfc003')
             .send({
                 "source_ledger": {
                     "value": "Bitcoin",
@@ -67,6 +68,8 @@ describe('RFC003 Bitcoin for Ether', () => {
                 }
             }).then((res) => {
                 res.should.have.status(201);
+                swap_location = res.headers.location;
+                swap_location.should.be.a('string');
                 alice_swap_id = res.body.id;
             });
     });
@@ -75,7 +78,7 @@ describe('RFC003 Bitcoin for Ether', () => {
 
     it("The request should eventually be accepted by Bob", function (done) {
         this.timeout(10000);
-        alice.poll_comit_node_until(chai, alice_swap_id, "accepted").then((status) => {
+        alice.poll_comit_node_until(chai, swap_location, "accepted").then((status) => {
             alice_funding_required = status.funding_required;
             done();
         });
@@ -91,7 +94,7 @@ describe('RFC003 Bitcoin for Ether', () => {
     it("Bob should eventually deploy the Ethereum HTLC and Alice should see it", function (done) {
         this.slow(7000);
         this.timeout(10000);
-        alice.poll_comit_node_until(chai, alice_swap_id, "redeemable").then((status) => {
+        alice.poll_comit_node_until(chai, swap_location, "redeemable").then((status) => {
             redeem_details = status;
             done();
         });

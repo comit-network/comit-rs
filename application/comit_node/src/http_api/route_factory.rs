@@ -37,8 +37,8 @@ pub fn create<
     key_store: Arc<KeyStore>,
     alice_actor_sender: UnboundedSender<TradeId>,
 ) -> BoxedFilter<(impl Reply,)> {
-    let path = warp::path(http_api::swap::PATH);
-
+    let path = warp::path(http_api::PATH);
+    let rfc003 = warp::path(http_api::rfc003::swap::PATH);
     let rng = Arc::new(Mutex::new(
         OsRng::new().expect("Failed to get randomness from OS"),
     ));
@@ -55,23 +55,23 @@ pub fn create<
     let swap_metadata_store = warp::any().map(move || swap_metadata_store.clone());
     let state_store = warp::any().map(move || state_store.clone());
 
-    let post_swap = warp::post2()
+    let rfc003_post_swap = warp::post2()
         .and(swap_state)
         .and(client_factory)
         .and(event_store.clone())
         .and(swap_metadata_store.clone())
         .and(state_store.clone())
         .and(warp::body::json())
-        .and_then(http_api::swap::post_swap);
+        .and_then(http_api::rfc003::swap::post_swap);
 
-    let get_swap = warp::get2()
+    let rfc003_get_swap = warp::get2()
         .and(event_store)
         .and(swap_metadata_store)
         .and(state_store)
         .and(warp::path::param())
-        .and_then(http_api::swap::get_swap);
+        .and_then(http_api::rfc003::swap::get_swap);
 
-    path.and(post_swap.or(get_swap))
-        .recover(http_api::swap::customize_error)
+    path.and(rfc003_get_swap.or(rfc003.and(rfc003_post_swap)))
+        .recover(http_api::rfc003::swap::customize_error)
         .boxed()
 }

@@ -59,7 +59,6 @@ pub mod item_cache;
 pub mod key_store;
 pub mod ledger_query_service;
 pub mod logging;
-pub mod route_factory;
 pub mod settings;
 pub mod swap_metadata_store;
 pub mod swap_protocols;
