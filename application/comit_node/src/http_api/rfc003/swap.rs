@@ -367,7 +367,7 @@ fn on_swap_response<
     id: SwapId,
     event_store: &Arc<E>,
     alice_actor_sender: &Arc<Mutex<UnboundedSender<SwapId>>>,
-    result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
+    result: Result<Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
     match result {
         Ok(Ok(accepted)) => {

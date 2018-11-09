@@ -145,7 +145,7 @@ mod tests {
         rfc003::{
             ethereum::{ethereum_htlc, Seconds},
             state_machine::*,
-            AcceptResponse, Secret,
+            AcceptResponseBody, Secret,
         },
     };
 
@@ -172,8 +172,8 @@ mod tests {
         }
     }
 
-    fn gen_response() -> AcceptResponse<Bitcoin, Ethereum> {
-        AcceptResponse {
+    fn gen_response() -> AcceptResponseBody<Bitcoin, Ethereum> {
+        AcceptResponseBody {
             target_ledger_refund_identity: ethereum_support::Address::from_str(
                 "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
             )

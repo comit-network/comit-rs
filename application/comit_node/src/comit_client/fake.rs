@@ -20,9 +20,9 @@ pub struct FakeClient {
 impl FakeClient {
     pub fn resolve_request<SL: rfc003::Ledger, TL: rfc003::Ledger>(
         &self,
-        response: Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
+        response: Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
     ) {
-        let type_id = TypeId::of::<rfc003::AcceptResponse<SL, TL>>();
+        let type_id = TypeId::of::<rfc003::AcceptResponseBody<SL, TL>>();
         let mut pending_requests = self.pending_requests.lock().unwrap();
         pending_requests
             .remove(&type_id)
@@ -43,11 +43,11 @@ impl Client for FakeClient {
         _request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
-                Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
+                Item = Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,
     > {
-        let type_id = TypeId::of::<rfc003::AcceptResponse<SL, TL>>();
+        let type_id = TypeId::of::<rfc003::AcceptResponseBody<SL, TL>>();
         let (sender, receiver) = oneshot::channel::<Box<Any + Send>>();
 
         {
@@ -60,7 +60,7 @@ impl Client for FakeClient {
         Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
             use std::borrow::Borrow;
             let _any: &(Any + Send) = response.borrow();
-            _any.downcast_ref::<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>>()
+            _any.downcast_ref::<Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>>()
                 .unwrap()
                 .to_owned()
         }))

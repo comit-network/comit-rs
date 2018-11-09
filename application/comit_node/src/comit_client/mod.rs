@@ -18,7 +18,7 @@ pub trait Client: Send + Sync {
         request: rfc003::Request<SL, TL, SA, TA>,
     ) -> Box<
         Future<
-                Item = Result<rfc003::AcceptResponse<SL, TL>, SwapReject>,
+                Item = Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,
     >;

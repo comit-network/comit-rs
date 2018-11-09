@@ -283,7 +283,7 @@ fn process<
         error!("Ledger Query Service Failure: {:#?}", e);
     }));
 
-    json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
+    json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponseBody::<Bitcoin, Ethereum> {
         target_ledger_refund_identity: bob_refund_address,
         source_ledger_success_identity: bob_success_keypair.public_key().into(),
         target_ledger_lock_duration: twelve_hours,

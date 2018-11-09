@@ -20,7 +20,7 @@ use comit_node::{
                 SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
             },
             state_machine::*,
-            AcceptResponse, Request, Secret,
+            AcceptResponseBody, Request, Secret,
         },
     },
 };
@@ -184,7 +184,7 @@ fn when_swap_is_rejected_go_to_final_reject() {
 
 #[test]
 fn source_refunded() {
-    let bob_response = AcceptResponse {
+    let bob_response = AcceptResponseBody {
         target_ledger_refund_identity: ethereum_support::Address::from_str(
             "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
         )
