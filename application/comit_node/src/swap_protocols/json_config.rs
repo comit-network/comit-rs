@@ -227,6 +227,8 @@ fn process<
 
     let query = BitcoinQuery::Transaction {
         to_address: Some(htlc_address.clone()),
+        from_outpoint: None,
+        unlock_script: None,
     };
 
     let create_query = ledger_query_service_api_client
