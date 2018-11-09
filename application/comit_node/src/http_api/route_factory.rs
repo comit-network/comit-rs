@@ -3,7 +3,6 @@ use event_store;
 use futures::sync::mpsc::UnboundedSender;
 use http_api;
 use key_store::KeyStore;
-use rand::OsRng;
 use std::{
     net::SocketAddr,
     panic::RefUnwindSafe,
@@ -16,7 +15,6 @@ use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Clone, Debug)]
 pub struct SwapState {
-    pub rng: Arc<Mutex<OsRng>>,
     pub remote_comit_node_socket_addr: SocketAddr,
     pub key_store: Arc<KeyStore>,
     pub alice_actor_sender: Arc<Mutex<UnboundedSender<TradeId>>>,
@@ -39,11 +37,7 @@ pub fn create<
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = warp::path(http_api::rfc003::swap::PATH);
-    let rng = Arc::new(Mutex::new(
-        OsRng::new().expect("Failed to get randomness from OS"),
-    ));
     let swap_state = SwapState {
-        rng,
         remote_comit_node_socket_addr,
         key_store,
         alice_actor_sender: Arc::new(Mutex::new(alice_actor_sender)),

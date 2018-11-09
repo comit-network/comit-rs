@@ -1,6 +1,6 @@
 use crypto::{digest::Digest, sha2::Sha256};
 use hex;
-use rand::{OsRng, Rng};
+use rand::{Rng, ThreadRng};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt::{self, Debug},
@@ -199,7 +199,7 @@ pub trait RandomnessSource {
     fn gen_random_bytes(&mut self, nbytes: usize) -> Vec<u8>;
 }
 
-impl RandomnessSource for OsRng {
+impl RandomnessSource for ThreadRng {
     fn gen_random_bytes(&mut self, nbytes: usize) -> Vec<u8> {
         let mut buf: Vec<u8> = vec![0; nbytes];
         self.fill_bytes(&mut buf);
@@ -212,10 +212,11 @@ mod tests {
     use super::*;
     use std::vec::Vec;
     extern crate serde_json;
+    use rand;
 
     #[test]
     fn gen_random_bytes_not_zeros() {
-        let mut rng = OsRng::new().unwrap();
+        let mut rng = rand::thread_rng();
 
         let empty_buf: Vec<u8> = vec![0; 32];
         let buf = rng.gen_random_bytes(32);
@@ -250,7 +251,7 @@ mod tests {
 
     #[test]
     fn round_trip_secret_serialization() {
-        let mut rng = OsRng::new().unwrap();
+        let mut rng = rand::thread_rng();
 
         let secret = Secret::generate(&mut rng);
 
