@@ -37,7 +37,7 @@ tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
 tiny-keccak = "1.4"
 tokio = "0.1"
 tokio-timer = "0.2"
-transport_protocol = { path = "../../vendor/transport_protocol" }
+bam = { path = "../../vendor/bam" }
 url = "1.7"
 uuid = { version = "0.6", features = ["serde", "v4"] }
 warp = "0.1"

@@ -1,3 +1,4 @@
+use bam::{self, config::Config, connection::Connection, json, Status};
 use comit_client::{Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError};
 use futures::Future;
 use serde_json;
@@ -8,19 +9,17 @@ use std::{
 };
 use swap_protocols::{bam_types, rfc003};
 use tokio::{self, net::TcpStream};
-use transport_protocol::{self, config::Config, connection::Connection, json, Status};
 
 #[derive(Debug)]
 pub struct BamClient {
     comit_node_socket_addr: SocketAddr,
-    bam_client:
-        Arc<Mutex<transport_protocol::client::Client<json::Frame, json::Request, json::Response>>>,
+    bam_client: Arc<Mutex<bam::client::Client<json::Frame, json::Request, json::Response>>>,
 }
 
 impl BamClient {
     pub fn new(
         comit_node_socket_addr: SocketAddr,
-        bam_client: transport_protocol::client::Client<json::Frame, json::Request, json::Response>,
+        bam_client: bam::client::Client<json::Frame, json::Request, json::Response>,
     ) -> Self {
         BamClient {
             comit_node_socket_addr,

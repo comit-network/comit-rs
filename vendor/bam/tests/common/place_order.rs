@@ -1,5 +1,5 @@
+use bam::{config::Config, json::*, *};
 use futures::future;
-use transport_protocol::{config::Config, json::*, *};
 
 pub fn config() -> Config<Request, Response> {
     Config::default().on_request("PLACE-ORDER", &["PRODUCT-TYPE"], |request: Request| {

@@ -1,3 +1,4 @@
+extern crate bam;
 extern crate futures;
 extern crate memsocket;
 extern crate pretty_env_logger;
@@ -6,12 +7,11 @@ extern crate serde_json;
 extern crate spectral;
 extern crate tokio;
 extern crate tokio_codec;
-extern crate transport_protocol;
 
+use bam::{config::Config, connection::Connection, json::*, shutdown_handle, *};
 use futures::future::{self, Future};
 use spectral::prelude::*;
 use std::collections::HashMap;
-use transport_protocol::{config::Config, connection::Connection, json::*, shutdown_handle, *};
 
 struct Ping;
 

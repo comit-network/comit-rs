@@ -1,3 +1,8 @@
+use bam::{
+    config::Config,
+    json::{self, Request, Response},
+    Status,
+};
 use bitcoin_support::{
     Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint,
 };
@@ -32,11 +37,6 @@ use swaps::{
 };
 use tokio;
 use tokio_timer::Interval;
-use transport_protocol::{
-    config::Config,
-    json::{self, Request, Response},
-    Status,
-};
 
 pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>

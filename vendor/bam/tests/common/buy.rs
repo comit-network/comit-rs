@@ -1,6 +1,6 @@
+use bam::{config::Config, json::*, *};
 use common::place_order::{PriceHeader, ThingHeader};
 use futures::future;
-use transport_protocol::{config::Config, json::*, *};
 
 pub fn config() -> Config<Request, Response> {
     Config::default().on_request("BUY", &["THING"], |request: Request| {

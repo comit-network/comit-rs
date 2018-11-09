@@ -1,15 +1,15 @@
-use futures::{Future, Stream};
-use memsocket::{self, UnboundedSocket};
-use std::sync::{Arc, Mutex};
-use tokio::io::{AsyncRead, AsyncWrite, ReadHalf, WriteHalf};
-use tokio_codec::{FramedRead, LinesCodec};
-use transport_protocol::{
+use bam::{
     client::Client,
     config::Config,
     connection::{self, Connection},
     json::{self, Frame, JsonFrameCodec, JsonFrameHandler, Request, Response},
     shutdown_handle::ShutdownHandle,
 };
+use futures::{Future, Stream};
+use memsocket::{self, UnboundedSocket};
+use std::sync::{Arc, Mutex};
+use tokio::io::{AsyncRead, AsyncWrite, ReadHalf, WriteHalf};
+use tokio_codec::{FramedRead, LinesCodec};
 
 pub struct Alice {
     read: Arc<Mutex<FramedRead<ReadHalf<UnboundedSocket>, LinesCodec>>>,

@@ -1,5 +1,5 @@
+extern crate bam;
 extern crate tokio;
-extern crate transport_protocol;
 #[macro_use]
 extern crate lazy_static;
 #[macro_use]
@@ -24,6 +24,14 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 
 mod mocks;
+use bam::{
+    client::*,
+    config::Config,
+    connection::*,
+    json::*,
+    shutdown_handle::{self, ShutdownHandle},
+    Status,
+};
 use bitcoin_support::{BitcoinQuantity, Blocks, IntoP2wpkhAddress, TransactionId};
 use comit_node::{
     bitcoin_fee_service::StaticBitcoinFeeService,
@@ -52,14 +60,6 @@ use spectral::prelude::*;
 use std::{str::FromStr, sync::Arc, time::Duration};
 use testcontainers::{clients::Cli, images::parity_parity::ParityEthereum, Docker};
 use tokio::runtime::Runtime;
-use transport_protocol::{
-    client::*,
-    config::Config,
-    connection::*,
-    json::*,
-    shutdown_handle::{self, ShutdownHandle},
-    Status,
-};
 
 fn setup<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>

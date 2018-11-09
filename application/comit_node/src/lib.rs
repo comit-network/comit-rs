@@ -11,7 +11,7 @@ extern crate failure;
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate transport_protocol;
+extern crate bam;
 #[macro_use]
 extern crate futures;
 #[macro_use]

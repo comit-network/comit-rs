@@ -1,3 +1,4 @@
+use bam::{connection::Connection, json};
 use bitcoin_support::{BitcoinQuantity, Network};
 use ethereum_support::EtherQuantity;
 use event_store::EventStore;
@@ -17,7 +18,6 @@ use swap_protocols::{
 };
 use swaps::common::SwapId;
 use tokio::{self, net::TcpListener};
-use transport_protocol::{connection::Connection, json};
 
 #[derive(Debug)]
 pub struct ComitServer<

@@ -5,19 +5,19 @@ extern crate serde_derive;
 extern crate futures;
 #[macro_use]
 extern crate log;
+extern crate bam;
 extern crate memsocket;
 extern crate pretty_env_logger;
 extern crate spectral;
 extern crate tokio;
 extern crate tokio_codec;
-extern crate transport_protocol;
 #[macro_use]
 pub mod common;
 
+use bam::{json::*, *};
 use common::{setup::start_server_with, *};
 use futures::*;
 use std::{collections::HashMap, time::Duration};
-use transport_protocol::{json::*, *};
 
 #[test]
 fn do_something_on_response() {
