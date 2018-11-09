@@ -41,6 +41,15 @@ describe('RFC003 Bitcoin for Ether', () => {
         });
     });
 
+    it("No action should be found for a random id", async () => {
+        return chai.request(alice.comit_node_url())
+            .post('/swaps/rfc003/7b289045-a9e5-426f-98c8-38d89fc9167c/accept')
+            .send({
+            }).then((res) => {
+                res.should.have.status(404);
+            });
+    });
+
     let alice_swap_id;
     let swap_location;
     it("Alice should be able to make a swap request via HTTP api", async () => {

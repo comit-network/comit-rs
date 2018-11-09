@@ -28,9 +28,11 @@ pub struct Metadata {
     pub role: RoleKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "Metadata not found")]
     NotFound,
+    #[fail(display = "Metadata already exists")]
     DuplicateKey,
 }
 

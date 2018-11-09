@@ -31,6 +31,7 @@ use comit_node::{
             self,
             alice_ledger_actor::AliceLedgerActor,
             ledger_htlc_service::{BitcoinService, EthereumService},
+            pending_response_store::PendingResponseStore,
             state_store::InMemoryStateStore,
         },
         InMemoryMetadataStore,
@@ -63,6 +64,7 @@ fn main() {
     let event_store = Arc::new(InMemoryEventStore::default());
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
+    let pending_response_store = Arc::new(PendingResponseStore::default());
     let ethereum_service = create_ethereum_service(&settings);
     let bitcoin_service = create_bitcoin_service(&settings, &key_store);
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
@@ -74,6 +76,7 @@ fn main() {
         Arc::clone(&event_store),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
+        pending_response_store.clone(),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
@@ -215,6 +218,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
+    pending_response_store: Arc<PendingResponseStore<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
@@ -244,6 +248,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
         metadata_store,
         key_store,
         state_store,
+        pending_response_store,
         client_factory,
         event_store,
         comit_node_addr,

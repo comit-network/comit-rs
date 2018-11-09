@@ -20,6 +20,7 @@ extern crate state_machine_future;
 extern crate maplit;
 #[macro_use]
 extern crate frunk;
+#[macro_use]
 extern crate serde_json;
 
 #[cfg(test)]

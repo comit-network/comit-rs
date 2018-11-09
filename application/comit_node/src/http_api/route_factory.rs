@@ -33,13 +33,22 @@ pub fn create<
         .and_then(http_api::rfc003::swap::post_swap);
 
     let rfc003_get_swap = warp::get2()
+        .and(event_store.clone())
+        .and(metadata_store.clone())
+        .and(state_store.clone())
+        .and(warp::path::param::<SwapId>())
+        .and_then(http_api::rfc003::swap::get_swap);
+
+    let rfc003_post_action = warp::post2()
         .and(event_store)
         .and(metadata_store)
         .and(state_store)
-        .and(warp::path::param())
-        .and_then(http_api::rfc003::swap::get_swap);
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path::param::<http_api::rfc003::action::Action>())
+        .and(warp::body::json())
+        .and_then(http_api::rfc003::action::post);
 
-    path.and(rfc003_get_swap.or(rfc003.and(rfc003_post_swap)))
+    path.and(rfc003_get_swap.or(rfc003.and(rfc003_post_action.or(rfc003_post_swap))))
         .recover(http_api::rfc003::swap::customize_error)
         .boxed()
 }

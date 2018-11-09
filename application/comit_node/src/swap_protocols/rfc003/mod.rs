@@ -10,6 +10,7 @@ pub mod ethereum;
 pub mod events;
 pub mod is_contained_in_transaction;
 pub mod ledger_htlc_service;
+pub mod pending_response_store;
 pub mod roles;
 pub mod state_machine;
 pub mod state_store;
