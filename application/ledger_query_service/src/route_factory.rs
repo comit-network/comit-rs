@@ -120,6 +120,7 @@ impl RouteFactory {
             .and(path)
             .and(create.or(retrieve).or(delete))
             .map(|_, reply| reply)
+            .recover(routes::customize_error)
             .boxed()
     }
 }
