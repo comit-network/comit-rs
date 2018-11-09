@@ -236,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn a_tx_with_spends_from_different_outpoint_wont_matches() {
+    fn a_tx_which_spends_from_different_outpoint_does_not_match() {
         let tx = parse_raw_tx(STANDRD_TX);
 
         let outpoint = create_invalid_p2sh_outpoint();
@@ -255,7 +255,7 @@ mod tests {
     }
 
     #[test]
-    fn a_tx_spending_from_tx_with_different_script_then_spend_from_with_wont_match() {
+    fn a_tx_spending_from_tx_with_different_script_then_spends_from_with_does_not_match() {
         let tx = parse_raw_tx(STANDRD_TX);
 
         let unlock_script = create_invalid_p2sh_unlock_script();

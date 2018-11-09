@@ -9,7 +9,7 @@ use swap_protocols::{
             NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery, NewSourceHtlcRefundedQuery,
         },
         state_machine::OngoingSwap,
-       IntoSecretHash, Ledger,
+        IntoSecretHash, Ledger,
     },
 };
 
@@ -34,7 +34,7 @@ impl<TL, TA, S> NewSourceHtlcRefundedQuery<Bitcoin, TL, BitcoinQuantity, TA, S> 
 where
     TL: Ledger,
     TA: Asset,
-    S: Into<SecretHash> + Clone,
+    S: IntoSecretHash,
 {
     fn new_source_htlc_refunded_query(
         swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
@@ -59,7 +59,7 @@ impl<TL, TA, S> NewSourceHtlcRedeemedQuery<Bitcoin, TL, BitcoinQuantity, TA, S> 
 where
     TL: Ledger,
     TA: Asset,
-    S: Into<SecretHash> + Clone,
+    S: IntoSecretHash,
 {
     fn new_source_htlc_redeemed_query(
         _swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,

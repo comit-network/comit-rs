@@ -60,12 +60,6 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
     fn matches(&self, transaction: &BitcoinTransaction) -> QueryMatchResult {
         match self {
             Self {
-                to_address: None,
-                from_outpoint: None,
-                unlock_script: None,
-                confirmations_needed: _,
-            } => QueryMatchResult::no(),
-            Self {
                 to_address,
                 from_outpoint,
                 unlock_script,
@@ -73,17 +67,19 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
             } => {
                 let mut result = true;
 
-                if let Some(to_address) = to_address {
-                    result = result && transaction.spends_to(to_address);
-                }
+                result = result && match to_address {
+                    Some(to_address) => transaction.spends_to(to_address),
+                    _ => result,
+                };
 
-                if let (Some(from_outpoint), Some(unlock_script)) = (from_outpoint, unlock_script) {
-                    result = result && transaction.spends_from_with(from_outpoint, unlock_script)
-                } else if let Some(from_outpoint) = from_outpoint {
-                    result = result && transaction.spends_from(from_outpoint);
-                } else if let Some(unlock_script) = unlock_script {
-                    result = result && transaction.spends_with(unlock_script)
-                }
+                result = result && match (from_outpoint, unlock_script) {
+                    (Some(from_outpoint), Some(unlock_script)) => {
+                        transaction.spends_from_with(from_outpoint, unlock_script)
+                    }
+                    (Some(from_outpoint), None) => transaction.spends_from(from_outpoint),
+                    (None, Some(unlock_script)) => transaction.spends_with(unlock_script),
+                    (_, _) => result,
+                };
 
                 if result {
                     QueryMatchResult::yes_with_confirmations(*confirmations_needed)
@@ -289,7 +285,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_wittness_transaction_with_unlock_script_then_unlock_script_query_matches() {
+    fn given_a_witness_transaction_with_unlock_script_then_unlock_script_query_matches() {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec![
             "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
@@ -307,7 +303,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_wittness_transaction_with_differen_unlock_script_then_unlock_script_query_wont_match(
+    fn given_a_witness_transaction_with_different_unlock_script_then_unlock_script_query_wont_match(
 ) {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec!["102030405060708090", "00"]);
@@ -323,7 +319,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_wittness_transaction_with_unlock_script_then_spends_from_with_query_match() {
+    fn given_a_witness_transaction_with_unlock_script_then_spends_from_with_query_match() {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec![
             "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
