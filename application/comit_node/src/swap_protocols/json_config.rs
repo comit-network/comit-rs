@@ -28,7 +28,7 @@ use swaps::{
     bob_events::{
         ContractDeployed, ContractRedeemed as BobContractRedeemed, OrderTaken, TradeFunded,
     },
-    common::TradeId,
+    common::SwapId,
 };
 use tokio;
 use tokio_timer::Interval;
@@ -41,7 +41,7 @@ use transport_protocol::{
 pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
         + SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 >(
@@ -152,7 +152,7 @@ pub fn json_config<
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
 fn process<
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
     C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
         + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
 >(
@@ -170,7 +170,7 @@ fn process<
         .source_ledger
         .address_for_identity(request.source_ledger_refund_identity);
 
-    let trade_id = TradeId::default();
+    let trade_id = SwapId::default();
 
     let bob_success_keypair =
         key_store.get_transient_keypair(&trade_id.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
@@ -296,8 +296,8 @@ enum CounterpartyDeployError {
     NotFound,
 }
 
-fn deploy_eth_htlc<E: EventStore<TradeId>>(
-    trade_id: TradeId,
+fn deploy_eth_htlc<E: EventStore<SwapId>>(
+    trade_id: SwapId,
     event_store: &Arc<E>,
     ethereum_service: &Arc<EthereumService>,
     htlc_identifier: OutPoint,
@@ -325,9 +325,9 @@ fn deploy_eth_htlc<E: EventStore<TradeId>>(
 
 fn watch_for_eth_htlc_and_redeem_btc_htlc<
     C: LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
 >(
-    trade_id: TradeId,
+    trade_id: SwapId,
     ledger_query_service_api_client: Arc<C>,
     eth_htlc_created_tx_id: H256,
     poll_interval: Duration,

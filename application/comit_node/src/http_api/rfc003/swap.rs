@@ -26,7 +26,7 @@ use swap_protocols::{
         Secret, SecretHash,
     },
 };
-use swaps::{alice_events, common::TradeId};
+use swaps::{alice_events, common::SwapId};
 use tokio;
 use warp::{self, Rejection, Reply};
 
@@ -114,7 +114,7 @@ pub struct Swap {
 
 #[derive(Serialize, Debug)]
 pub struct SwapCreated {
-    pub id: TradeId,
+    pub id: SwapId,
 }
 
 pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
@@ -136,9 +136,9 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 pub fn post_swap<
     C: comit_client::Client + 'static,
     F: comit_client::ClientFactory<C> + 'static,
-    E: event_store::EventStore<TradeId> + RefUnwindSafe,
-    T: swap_metadata_store::SwapMetadataStore<TradeId>,
-    S: state_store::StateStore<TradeId>,
+    E: event_store::EventStore<SwapId> + RefUnwindSafe,
+    T: swap_metadata_store::SwapMetadataStore<SwapId>,
+    S: state_store::StateStore<SwapId>,
 >(
     swap_state: SwapState,
     client_factory: Arc<F>,
@@ -152,7 +152,7 @@ pub fn post_swap<
             swap,
             &event_store,
             &swap_metadata_store,
-            &state_store,
+            state_store.as_ref(),
             &client_factory,
             swap_state.remote_comit_node_socket_addr,
             &swap_state.key_store,
@@ -182,25 +182,25 @@ pub fn post_swap<
 fn handle_post_swap<
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
-    E: EventStore<TradeId>,
-    T: SwapMetadataStore<TradeId>,
-    S: StateStore<TradeId>,
+    E: EventStore<SwapId>,
+    T: SwapMetadataStore<SwapId>,
+    S: StateStore<SwapId>,
 >(
     swap: Swap,
     event_store: &Arc<E>,
     swap_metadata_store: &Arc<T>,
-    state_store: &Arc<S>,
+    state_store: &S,
     client_factory: &Arc<F>,
     comit_node_addr: SocketAddr,
     key_store: &Arc<KeyStore>,
-    alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
+    alice_actor_sender: &Arc<Mutex<UnboundedSender<SwapId>>>,
 ) -> Result<SwapCreated, Error> {
-    let id = TradeId::default();
+    let id = SwapId::default();
     let secret = Secret::generate(&mut rand::thread_rng());
     let client = client_factory.client_for(comit_node_addr)?;
 
     {
-        handle_state_for_post_swap(
+        spawn_state_machine(
             swap.clone(),
             id,
             key_store,
@@ -284,15 +284,15 @@ fn handle_post_swap<
     }
 }
 
-fn handle_state_for_post_swap<
-    T: swap_metadata_store::SwapMetadataStore<TradeId>,
-    S: state_store::StateStore<TradeId>,
+fn spawn_state_machine<
+    T: swap_metadata_store::SwapMetadataStore<SwapId>,
+    S: state_store::StateStore<SwapId>,
 >(
     swap: Swap,
-    id: TradeId,
+    id: SwapId,
     key_store: &Arc<KeyStore>,
     swap_metadata_store: &Arc<T>,
-    state_store: &Arc<S>,
+    state_store: &S,
     secret: Secret,
 ) {
     match (
@@ -362,11 +362,11 @@ fn on_swap_response<
     TL: rfc003::Ledger,
     SA: Clone + Send + Sync + 'static,
     TA: Clone + Send + Sync + 'static,
-    E: EventStore<TradeId>,
+    E: EventStore<SwapId>,
 >(
-    id: TradeId,
+    id: SwapId,
     event_store: &Arc<E>,
-    alice_actor_sender: &Arc<Mutex<UnboundedSender<TradeId>>>,
+    alice_actor_sender: &Arc<Mutex<UnboundedSender<SwapId>>>,
     result: Result<Result<rfc003::AcceptResponse<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
     match result {
@@ -419,11 +419,11 @@ enum SwapStatus {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<E: EventStore<TradeId>, T: SwapMetadataStore<TradeId>, S: StateStore<TradeId>>(
+pub fn get_swap<E: EventStore<SwapId>, T: SwapMetadataStore<SwapId>, S: StateStore<SwapId>>(
     event_store: Arc<E>,
     swap_metadata_store: Arc<T>,
     state_store: Arc<S>,
-    id: TradeId,
+    id: SwapId,
 ) -> Result<impl Reply, Rejection> {
     let swap_metadata = swap_metadata_store.get(&id);
     info!(
@@ -441,12 +441,8 @@ pub fn get_swap<E: EventStore<TradeId>, T: SwapMetadataStore<TradeId>, S: StateS
     }
 }
 
-fn handle_get_swap<
-    E: EventStore<TradeId>,
-    T: SwapMetadataStore<TradeId>,
-    S: StateStore<TradeId>,
->(
-    id: TradeId,
+fn handle_get_swap<E: EventStore<SwapId>, T: SwapMetadataStore<SwapId>, S: StateStore<SwapId>>(
+    id: SwapId,
     event_store: &Arc<E>,
     swap_metadata_store: &Arc<T>,
     state_store: &Arc<S>,
@@ -525,12 +521,12 @@ fn handle_get_swap<
 }
 
 fn handle_state_for_get_swap<
-    T: swap_metadata_store::SwapMetadataStore<TradeId>,
-    S: state_store::StateStore<TradeId>,
+    T: swap_metadata_store::SwapMetadataStore<SwapId>,
+    S: state_store::StateStore<SwapId>,
 >(
     swap_metadata_store: &Arc<T>,
     state_store: &Arc<S>,
-    id: &TradeId,
+    id: &SwapId,
 ) {
     use swap_metadata_store::{Asset, Ledger, Role};
 

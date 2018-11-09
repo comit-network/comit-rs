@@ -3,19 +3,22 @@
 #![allow(type_alias_bounds)]
 
 use comit_client::SwapReject;
-use swap_protocols::rfc003::{
-    self,
-    ledger::Ledger,
-    messages::{AcceptResponse, Request},
-    SecretHash,
+use ledger_query_service::Query;
+use swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self,
+        ledger::Ledger,
+        messages::{AcceptResponse, Request},
+        state_machine::OngoingSwap,
+        IntoSecretHash,
+    },
 };
 use tokio::{self, prelude::future::Either};
 
-mod default;
+pub use self::default::{DefaultEvents, Role};
 
-pub use self::default::{DefaultEvents, Player};
-use ledger_query_service::Query;
-use swap_protocols::{asset::Asset, rfc003::state_machine::OngoingSwap};
+mod default;
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
@@ -34,13 +37,8 @@ pub trait RequestResponded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
     ) -> &mut Box<Response<SL, TL>>;
 }
 
-pub trait SourceHtlcFunded<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Into<SecretHash> + Clone,
->: Send
+pub trait SourceHtlcFunded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
+    Send
 {
     fn source_htlc_funded(&mut self, swap: &OngoingSwap<SL, TL, SA, TA, S>)
         -> &mut Box<Funded<SL>>;
@@ -51,7 +49,7 @@ pub trait SourceHtlcRefundedTargetHtlcFunded<
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Clone,
+    S: IntoSecretHash,
 >: Send
 {
     fn source_htlc_refunded_target_htlc_funded(
@@ -66,7 +64,7 @@ pub trait TargetHtlcRedeemedOrRefunded<
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Clone,
+    S: IntoSecretHash,
 >: Send
 {
     fn target_htlc_redeemed_or_refunded(
@@ -81,7 +79,7 @@ pub trait SourceHtlcRedeemedOrRefunded<
     TL: Ledger,
     SA: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Clone,
+    S: IntoSecretHash,
 >: Send
 {
     fn source_htlc_redeemed_or_refunded(
@@ -91,7 +89,7 @@ pub trait SourceHtlcRedeemedOrRefunded<
     ) -> &mut Box<RedeemedOrRefunded<SL>>;
 }
 
-pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Into<SecretHash> + Clone>:
+pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
     RequestResponded<SL, TL, SA, TA>
     + SourceHtlcFunded<SL, TL, SA, TA, S>
     + SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>

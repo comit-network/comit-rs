@@ -1,8 +1,9 @@
 use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint};
+use ethereum_support::{self, EtherQuantity};
 use swap_protocols::{
     asset::Asset,
-    ledger::Bitcoin,
-    rfc003::{self, bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, SecretHash},
+    ledger::{Bitcoin, Ethereum},
+    rfc003::{self, bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, IntoSecretHash},
     Ledger,
 };
 
@@ -18,7 +19,7 @@ where
     TL: rfc003::Ledger,
     Self: Asset,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: IntoSecretHash,
 {
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<SL, TL, Self, TA, S>,
@@ -32,7 +33,7 @@ where
     TL: rfc003::Ledger,
     SA: Asset,
     Self: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: IntoSecretHash,
 {
     fn is_contained_in_target_ledger_transaction(
         swap: OngoingSwap<SL, TL, SA, Self, S>,
@@ -44,7 +45,7 @@ impl<TL, TA, S> IsContainedInSourceLedgerTransaction<Bitcoin, TL, TA, S> for Bit
 where
     TL: rfc003::Ledger,
     TA: Asset,
-    S: Into<SecretHash> + Send + Sync + Clone,
+    S: IntoSecretHash,
 {
     fn is_contained_in_source_ledger_transaction(
         swap: OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
@@ -82,6 +83,20 @@ where
                 expected: required_value,
             })
         }
+    }
+}
+
+impl<SL, SA, S> IsContainedInTargetLedgerTransaction<SL, Ethereum, SA, S> for EtherQuantity
+where
+    SL: rfc003::Ledger,
+    SA: Asset,
+    S: IntoSecretHash,
+{
+    fn is_contained_in_target_ledger_transaction(
+        _swap: OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
+        _tx: ethereum_support::Transaction,
+    ) -> Result<<Ethereum as rfc003::Ledger>::HtlcLocation, Error<EtherQuantity>> {
+        unimplemented!()
     }
 }
 

@@ -6,7 +6,7 @@ use std::{
 };
 use swap_protocols::{
     asset::Asset,
-    rfc003::{state_machine::SwapStates, Ledger, SaveState, SecretHash},
+    rfc003::{state_machine::SwapStates, IntoSecretHash, Ledger, SaveState},
 };
 
 #[derive(Debug)]
@@ -16,37 +16,19 @@ pub enum Error {
 }
 
 pub trait StateStore<K>: Send + Sync + 'static {
-    fn insert<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
+    fn insert<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: K,
         state: SwapStates<SL, TL, SA, TA, SH>,
-    ) -> Result<(), Error>;
+    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>;
 
-    fn get<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
+    fn get<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
     ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>;
 
     #[allow(clippy::type_complexity)]
-    fn save_state_for_key<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
+    fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
     ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>;
@@ -58,36 +40,26 @@ pub struct InMemoryStateStore<K: Hash + Eq> {
 }
 
 impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemoryStateStore<K> {
-    fn insert<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
+    fn insert<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: K,
         state: SwapStates<SL, TL, SA, TA, SH>,
-    ) -> Result<(), Error> {
+    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error> {
         let mut states = self.states.lock().unwrap();
 
         if states.contains_key(&key) {
             return Err(Error::DuplicateKey);
         }
 
-        let value: Box<Any + Send + Sync> = Box::new(Arc::new(RwLock::new(state)));
+        let state = Arc::new(RwLock::new(state));
+
+        let value: Box<Any + Send + Sync> = Box::new(state.clone());
         let _old = states.insert(key, value);
 
-        Ok(())
+        Ok(state)
     }
 
-    fn get<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
+    fn get<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
     ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error> {
@@ -103,13 +75,7 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
             }).ok_or(Error::NotFound)
     }
 
-    fn save_state_for_key<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Asset,
-        TA: Asset,
-        SH: Into<SecretHash> + Clone + Send + Sync + 'static,
-    >(
+    fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
     ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error> {

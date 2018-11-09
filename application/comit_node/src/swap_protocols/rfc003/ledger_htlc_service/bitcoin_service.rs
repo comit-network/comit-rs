@@ -16,7 +16,7 @@ use swap_protocols::{
         Secret, SecretHash,
     },
 };
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 
 impl From<bitcoin_rpc_client::ClientError> for ledger_htlc_service::Error {
     fn from(error: bitcoin_rpc_client::ClientError) -> Self {
@@ -103,7 +103,7 @@ impl LedgerHtlcService<Bitcoin, BitcoinHtlcFundingParams, BitcoinHtlcRedeemParam
 
     fn redeem_htlc(
         &self,
-        trade_id: TradeId,
+        trade_id: SwapId,
         htlc_redeem_params: BitcoinHtlcRedeemParams,
     ) -> Result<TransactionId, ledger_htlc_service::Error> {
         let bob_success_address = htlc_redeem_params.success_address;

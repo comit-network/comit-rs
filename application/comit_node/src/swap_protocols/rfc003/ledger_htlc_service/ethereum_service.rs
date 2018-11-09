@@ -20,7 +20,7 @@ use swap_protocols::{
         Secret, SecretHash,
     },
 };
-use swaps::common::TradeId;
+use swaps::common::SwapId;
 
 impl From<gas_price_service::Error> for ledger_htlc_service::Error {
     fn from(error: gas_price_service::Error) -> Self {
@@ -150,7 +150,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
 
     fn redeem_htlc(
         &self,
-        _trade_id: TradeId,
+        _trade_id: SwapId,
         htlc_redeem_params: EtherHtlcRedeemParams,
     ) -> Result<H256, ledger_htlc_service::Error> {
         let contract_address = htlc_redeem_params.contract_address;
@@ -330,7 +330,7 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, 
 
     fn redeem_htlc(
         &self,
-        _trade_id: TradeId,
+        _trade_id: SwapId,
         _htlc_redeem_params: Erc20HtlcRedeemParams,
     ) -> Result<H256, ledger_htlc_service::Error> {
         unimplemented!()
