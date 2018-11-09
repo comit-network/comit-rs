@@ -32,13 +32,13 @@ use comit_node::{
     key_store::FakeKeyStoreFactory,
     ledger_query_service::fake_query_service::SimpleFakeLedgerQueryService,
     swap_protocols::{
+        bam_types::SwapResponse,
         json_config,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
             ledger_htlc_service::{BitcoinService, EthereumService},
         },
-        wire_types::SwapResponse,
         SwapRequestHandler,
     },
 };

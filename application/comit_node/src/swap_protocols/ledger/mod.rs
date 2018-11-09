@@ -15,7 +15,7 @@ pub trait Ledger:
     + 'static
     + Default
     + PartialEq
-    + Into<swap_protocols::wire_types::Ledger>
+    + Into<swap_protocols::bam_types::Ledger>
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;

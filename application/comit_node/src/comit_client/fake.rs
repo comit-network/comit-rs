@@ -9,7 +9,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-use swap_protocols::{rfc003, wire_types};
+use swap_protocols::{bam_types, rfc003};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -36,8 +36,8 @@ impl Client for FakeClient {
     fn send_swap_request<
         SL: rfc003::Ledger,
         TL: rfc003::Ledger,
-        SA: Into<wire_types::Asset>,
-        TA: Into<wire_types::Asset>,
+        SA: Into<bam_types::Asset>,
+        TA: Into<bam_types::Asset>,
     >(
         &self,
         _request: rfc003::Request<SL, TL, SA, TA>,

@@ -6,13 +6,13 @@ use key_store::KeyStore;
 use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
+    bam_types::SwapResponse,
     json_config,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
         ledger_htlc_service::{BitcoinService, EthereumService},
     },
-    wire_types::SwapResponse,
     SwapRequestHandler,
 };
 use swaps::common::SwapId;

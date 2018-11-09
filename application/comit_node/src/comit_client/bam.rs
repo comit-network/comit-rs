@@ -6,7 +6,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex, RwLock},
 };
-use swap_protocols::{rfc003, wire_types};
+use swap_protocols::{bam_types, rfc003};
 use tokio::{self, net::TcpStream};
 use transport_protocol::{self, config::Config, connection::Connection, json, Status};
 
@@ -33,8 +33,8 @@ impl Client for BamClient {
     fn send_swap_request<
         SL: rfc003::Ledger,
         TL: rfc003::Ledger,
-        SA: Into<wire_types::Asset>,
-        TA: Into<wire_types::Asset>,
+        SA: Into<bam_types::Asset>,
+        TA: Into<bam_types::Asset>,
     >(
         &self,
         request: rfc003::Request<SL, TL, SA, TA>,

@@ -1,7 +1,7 @@
 pub mod asset;
+pub mod bam_types;
 pub mod ledger;
 pub mod rfc003;
-pub mod wire_types;
 
 mod handler;
 mod json_config;

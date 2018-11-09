@@ -12,6 +12,7 @@ use ledger_query_service::{
 };
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
+    bam_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
     handler::SwapRequestHandler,
     ledger::{Bitcoin, Ethereum, Ledger},
     rfc003::{
@@ -22,7 +23,6 @@ use swap_protocols::{
             EthereumService, LedgerHtlcService,
         },
     },
-    wire_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
 };
 use swaps::{
     bob_events::{
@@ -74,7 +74,7 @@ pub fn json_config<
             };
 
             // Too many things called Ledger so just import this on to this local namespace
-            use swap_protocols::wire_types::{Asset, Ledger};
+            use swap_protocols::bam_types::{Asset, Ledger};
 
             match headers.swap_protocol {
                 SwapProtocol::ComitRfc003 => match headers {

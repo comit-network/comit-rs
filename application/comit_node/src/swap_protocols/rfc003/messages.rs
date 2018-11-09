@@ -1,6 +1,6 @@
 use swap_protocols::{
+    bam_types::{Asset, SwapProtocol, SwapRequestHeaders},
     rfc003::{ledger::Ledger, SecretHash},
-    wire_types::{Asset, SwapProtocol, SwapRequestHeaders},
 };
 
 #[derive(Clone, Debug, PartialEq)]
