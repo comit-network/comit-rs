@@ -34,7 +34,7 @@ describe("Test Ledger Query Service API", () => {
                 return chai.request(lqs.url())
                     .get('/queries/bitcoin/transactions/1')
                     .then((res) => {
-                        res.should.have.status(400);
+                        res.should.have.status(404);
                     });
             });
 
@@ -106,7 +106,7 @@ describe("Test Ledger Query Service API", () => {
                 return chai.request(lqs.url())
                     .get('/queries/bitcoin/blocks/1')
                     .then((res) => {
-                        res.should.have.status(400);
+                        res.should.have.status(404);
                     });
             });
 
@@ -190,7 +190,7 @@ describe("Test Ledger Query Service API", () => {
                 return chai.request(lqs.url())
                     .get('/queries/ethereum/transactions/1')
                     .then((res) => {
-                        res.should.have.status(400);
+                        res.should.have.status(404);
                     });
             });
 
@@ -257,7 +257,7 @@ describe("Test Ledger Query Service API", () => {
                 return chai.request(lqs.url())
                     .get('/queries/ethereum/blocks/1')
                     .then((res) => {
-                        res.should.have.status(400);
+                        res.should.have.status(404);
                     });
             });
 

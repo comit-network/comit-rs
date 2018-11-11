@@ -16,6 +16,8 @@ extern crate log;
 extern crate bitcoin_rpc_client;
 extern crate byteorder;
 extern crate config;
+extern crate http_api_problem;
+extern crate hyper;
 extern crate url;
 extern crate warp;
 extern crate zmq_rs as zmq;
