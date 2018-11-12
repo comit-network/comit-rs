@@ -16,7 +16,6 @@ use std::{
     panic::RefUnwindSafe,
     sync::{Arc, Mutex},
 };
-use swap_metadata_store::{self, SwapMetadata, SwapMetadataStore};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
@@ -25,6 +24,7 @@ use swap_protocols::{
         state_store::{self, StateStore},
         Secret, SecretHash,
     },
+    Assets, Ledgers, Metadata, MetadataStore, Roles,
 };
 use swaps::{alice_events, common::SwapId};
 use tokio;
@@ -137,13 +137,13 @@ pub fn post_swap<
     C: comit_client::Client + 'static,
     F: comit_client::ClientFactory<C> + 'static,
     E: event_store::EventStore<SwapId> + RefUnwindSafe,
-    T: swap_metadata_store::SwapMetadataStore<SwapId>,
+    T: MetadataStore<SwapId>,
     S: state_store::StateStore<SwapId>,
 >(
     swap_state: SwapState,
     client_factory: Arc<F>,
     event_store: Arc<E>,
-    swap_metadata_store: Arc<T>,
+    metadata_store: Arc<T>,
     state_store: Arc<S>,
     swap: Swap,
 ) -> Result<impl Reply, Rejection> {
@@ -151,7 +151,7 @@ pub fn post_swap<
         handle_post_swap(
             swap,
             &event_store,
-            &swap_metadata_store,
+            &metadata_store,
             state_store.as_ref(),
             &client_factory,
             swap_state.remote_comit_node_socket_addr,
@@ -183,12 +183,12 @@ fn handle_post_swap<
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
     E: EventStore<SwapId>,
-    T: SwapMetadataStore<SwapId>,
+    T: MetadataStore<SwapId>,
     S: StateStore<SwapId>,
 >(
     swap: Swap,
     event_store: &Arc<E>,
-    swap_metadata_store: &Arc<T>,
+    metadata_store: &Arc<T>,
     state_store: &S,
     client_factory: &Arc<F>,
     comit_node_addr: SocketAddr,
@@ -204,7 +204,7 @@ fn handle_post_swap<
             swap.clone(),
             id,
             key_store,
-            swap_metadata_store,
+            metadata_store,
             state_store,
             secret,
         );
@@ -284,14 +284,11 @@ fn handle_post_swap<
     }
 }
 
-fn spawn_state_machine<
-    T: swap_metadata_store::SwapMetadataStore<SwapId>,
-    S: state_store::StateStore<SwapId>,
->(
+fn spawn_state_machine<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     swap: Swap,
     id: SwapId,
     key_store: &Arc<KeyStore>,
-    swap_metadata_store: &Arc<T>,
+    metadata_store: &Arc<T>,
     state_store: &S,
     secret: Secret,
 ) {
@@ -316,16 +313,15 @@ fn spawn_state_machine<
             },
         ) => {
             {
-                use swap_metadata_store::{Asset, Ledger, Role};
-                let swap_metadata = SwapMetadata {
-                    source_ledger: Ledger::Bitcoin,
-                    source_asset: Asset::Bitcoin,
-                    target_ledger: Ledger::Ethereum,
-                    target_asset: Asset::Ether,
-                    role: Role::Alice,
+                let metadata = Metadata {
+                    source_ledger: Ledgers::Bitcoin,
+                    source_asset: Assets::Bitcoin,
+                    target_ledger: Ledgers::Ethereum,
+                    target_asset: Assets::Ether,
+                    role: Roles::Alice,
                 };
 
-                let _ = swap_metadata_store.insert(id, swap_metadata);
+                let _ = metadata_store.insert(id, metadata);
             }
             {
                 let source_ledger_refund_identity =
@@ -421,19 +417,16 @@ enum SwapStatus {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<E: EventStore<SwapId>, T: SwapMetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     event_store: Arc<E>,
-    swap_metadata_store: Arc<T>,
+    metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    let swap_metadata = swap_metadata_store.get(&id);
-    info!(
-        "Fetched metadata of swap with id {}: {:?}",
-        id, swap_metadata
-    );
+    let metadata = metadata_store.get(&id);
+    info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
 
-    let result = handle_get_swap(id, &event_store, &swap_metadata_store, &state_store);
+    let result = handle_get_swap(id, &event_store, &metadata_store, &state_store);
 
     match result {
         Some(swap_status) => Ok(warp::reply::json(&swap_status)),
@@ -443,14 +436,14 @@ pub fn get_swap<E: EventStore<SwapId>, T: SwapMetadataStore<SwapId>, S: StateSto
     }
 }
 
-fn handle_get_swap<E: EventStore<SwapId>, T: SwapMetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn handle_get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     id: SwapId,
     event_store: &Arc<E>,
-    swap_metadata_store: &Arc<T>,
+    metadata_store: &Arc<T>,
     state_store: &Arc<S>,
 ) -> Option<SwapStatus> {
     {
-        handle_state_for_get_swap(swap_metadata_store, state_store, &id);
+        handle_state_for_get_swap(metadata_store, state_store, &id);
     }
 
     let requested = event_store.get_event::<alice_events::SentSwapRequest<
@@ -522,32 +515,27 @@ fn handle_get_swap<E: EventStore<SwapId>, T: SwapMetadataStore<SwapId>, S: State
     }
 }
 
-fn handle_state_for_get_swap<
-    T: swap_metadata_store::SwapMetadataStore<SwapId>,
-    S: state_store::StateStore<SwapId>,
->(
-    swap_metadata_store: &Arc<T>,
+fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
+    metadata_store: &Arc<T>,
     state_store: &Arc<S>,
     id: &SwapId,
 ) {
-    use swap_metadata_store::{Asset, Ledger, Role};
-
-    match swap_metadata_store.get(&id) {
-        Err(e) => error!("Could not retrieve swap_metadata: {:?}", e),
-        Ok(SwapMetadata {
-            source_ledger: Ledger::Bitcoin,
-            target_ledger: Ledger::Ethereum,
-            source_asset: Asset::Bitcoin,
-            target_asset: Asset::Ether,
+    match metadata_store.get(&id) {
+        Err(e) => error!("Could not retrieve metadata: {:?}", e),
+        Ok(Metadata {
+            source_ledger: Ledgers::Bitcoin,
+            target_ledger: Ledgers::Ethereum,
+            source_asset: Assets::Bitcoin,
+            target_asset: Assets::Ether,
             role,
         }) => match role {
-            Role::Alice => match state_store
+            Roles::Alice => match state_store
                 .get::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>(id)
             {
                 Err(e) => error!("Could not retrieve state: {:?}", e),
                 Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
             },
-            Role::Bob => match state_store
+            Roles::Bob => match state_store
                 .get::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>(id)
             {
                 Err(e) => error!("Could not retrieve state: {:?}", e),
