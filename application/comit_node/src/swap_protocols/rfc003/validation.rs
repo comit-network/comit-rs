@@ -65,7 +65,7 @@ where
         let actual_value = BitcoinQuantity::from_satoshi(txout.value);
         let required_value = swap.source_asset;
 
-        println!("Value of HTLC at {:?} is {}", location, actual_value);
+        debug!("Value of HTLC at {:?} is {}", location, actual_value);
 
         let has_enough_money = actual_value >= required_value;
 
