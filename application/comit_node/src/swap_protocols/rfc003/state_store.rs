@@ -72,7 +72,8 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
                     .unwrap();
                 let state = state.read().unwrap();
                 state.clone()
-            }).ok_or(Error::NotFound)
+            })
+            .ok_or(Error::NotFound)
     }
 
     fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
@@ -87,7 +88,8 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
                     .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
                     .unwrap();
                 state.clone()
-            }).ok_or(Error::NotFound)
+            })
+            .ok_or(Error::NotFound)
     }
 }
 
@@ -111,7 +113,8 @@ mod tests {
             source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
-            ).unwrap(),
+            )
+            .unwrap(),
             target_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),

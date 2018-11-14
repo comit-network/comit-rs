@@ -13,7 +13,8 @@ impl FakeKeyStoreFactory {
                 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8,
                 9, 0, 1, 2,
             ][..],
-        ).unwrap();
+        )
+        .unwrap();
         let extended_privkey = ExtendedPrivKey {
             network: Network::Regtest,
             depth: 0,

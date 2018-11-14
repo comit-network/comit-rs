@@ -45,7 +45,8 @@ fn redeem_single_p2wpkh() {
         )],
         output_address: alice_addr.clone(),
         locktime: 0,
-    }.sign_with_fee(fee);
+    }
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 
@@ -112,7 +113,8 @@ fn redeem_two_p2wpkh() {
         ],
         output_address: alice_addr.clone(),
         locktime: 0,
-    }.sign_with_fee(fee);
+    }
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 

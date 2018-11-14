@@ -130,7 +130,8 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
                         // TODO check if header or body in response failed to serialize here
                         Ok(response) => Ok(response),
                         Err(e) => Ok(Self::response_from_error(e)),
-                    }).and_then(move |response| Ok(response.into_frame(frame_id)));
+                    })
+                    .and_then(move |response| Ok(response.into_frame(frame_id)));
 
                 Ok(Some(Box::new(response)))
             }

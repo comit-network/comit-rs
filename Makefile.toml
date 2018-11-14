@@ -50,36 +50,20 @@ dependencies = [
 [tasks.ci-flow]
 workspace = false
 
-# Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
-[tasks.format]
-description = "Runs cargo fmt to format the code."
-clear = true
-workspace = false
-install_script = ["rustup component add rustfmt-preview"]
-script = ["cargo fmt"]
-
-# Overridden because: https://github.com/sagiegurari/cargo-make/issues/119
-[tasks.clippy]
-description = "Runs cargo clippy to check for warnings."
-clear = true
-workspace = false
-install_script = ["rustup component add clippy-preview"]
-script = ["cargo clippy --all --all-targets"]
-
 # Overridden because: we want --all-targests
 [tasks.build]
 workspace = false
 args = ["build", "--all", "--all-targets"]
 
-# Overridden because: we want --all-targests but not --verbose
+# Overridden because: we want --all-targests
 [tasks.build-verbose]
 workspace = false
-args = ["build", "--all", "--all-targets"]
+args = ["build", "--all", "--all-targets", "--verbose"]
 
-# Overridden because: we want --all-targests but not --verbose
+# Overridden because: we want --all-targests
 [tasks.test-verbose]
 workspace = false
-args = ["test", "--all", "--all-targets"]
+args = ["test", "--all", "--all-targets", "--verbose"]
 
 
 ################
@@ -103,8 +87,10 @@ alias = "lqs-tests-flow"
 [tasks.check-format]
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
-install_script = ["rustup component add rustfmt-preview"]
-script = ["cargo fmt -- --check"]
+install_crate = { crate_name = "fmt", rustup_component_name = "rustfmt-preview", binary = "rustfmt", test_arg = "--help" }
+command = "cargo"
+args = ["fmt", "--", "--check"]
+
 
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
@@ -163,26 +149,19 @@ docker pull ruimarinho/bitcoin-core:0.17.0-alpine
 description = "Setup & start sscache"
 workspace = false
 private = true
-install_script = ["which sccache || cargo install sccache"]
+install_script = ["which sccache || (unset RUSTC_WRAPPER; cargo install sccache)"]
 env = { "SCCACHE_CACHE_SIZE" = "400M" }
 # Start sccache with limited cache size to avoid a constantly
 # growing caches (and thus continuously slower builds)
-script = [
-'''
-sccache --start-server
-sccache --show-stats
-'''
-]
+command = "sccache"
+args = ["--start-server"]
 
 [tasks.stop-sccache]
 description = "Stop sscache"
 workspace = false
 private = true
-script = [
-'''
-sccache --stop-server
-'''
-]
+command = "sccache"
+args = ["--stop-server"]
 
 ################
 # E2E Test flow #

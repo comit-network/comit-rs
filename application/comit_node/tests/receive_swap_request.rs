@@ -83,11 +83,10 @@ fn setup<
     let (alice_server, alice_shutdown_handle) = shutdown_handle::new(alice_server);
 
     let ledger_query_service = Arc::new(SimpleFakeLedgerQueryService {
-        bitcoin_results: vec![
-            TransactionId::from_hex(
-                "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4",
-            ).unwrap(),
-        ],
+        bitcoin_results: vec![TransactionId::from_hex(
+            "7e7c52b1f46e7ea2511e885d8c0e5df9297f65b6fff6907ceb1377d0582e45f4",
+        )
+        .unwrap()],
         ethereum_results: Vec::new(),
     });
     let docker = Cli::default();
@@ -96,7 +95,8 @@ fn setup<
 
     let alice_keypair = KeyPair::from_secret_key_hex(
         "63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992",
-    ).unwrap();
+    )
+    .unwrap();
 
     let ethereum_service = Arc::new(EthereumService::new(
         Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
@@ -114,7 +114,8 @@ fn setup<
         Arc::new(BitcoinRpcClientMock::new(
             TransactionId::from_hex(
                 "d54994ece1d11b19785c7248868696250ab195605b469632b7bd68130e880c9a",
-            ).unwrap(),
+            )
+            .unwrap(),
         )),
         bitcoin_support::Network::Regtest,
         bitcoin_fee_service.clone(),
@@ -135,7 +136,8 @@ fn setup<
         ),
         JsonFrameCodec::default(),
         bob,
-    ).start::<JsonFrameHandler>();
+    )
+    .start::<JsonFrameHandler>();
     let (bob_server, bob_shutdown_handle) = shutdown_handle::new(bob_server);
 
     runtime.spawn(alice_server.map_err(|_| ()));
@@ -253,7 +255,8 @@ fn can_receive_swap_request() {
 
     impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>
         for CaptureSwapMessage
-    {}
+    {
+    }
 
     let _ = pretty_env_logger::try_init();
 

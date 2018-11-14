@@ -207,7 +207,8 @@ mod tests {
                 "63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f2345\
                  1af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f\
                  567028403b27576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac"
-            ).unwrap()
+            )
+            .unwrap()
         );
     }
 

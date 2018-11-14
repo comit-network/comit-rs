@@ -88,15 +88,18 @@ impl LndClient {
                 // is running on at "DNS Name". Hence "localhost" (or the machine hostname for added security)
                 // must be passed here
                 tokio_tls_api::connect_async(&connector, "localhost", socket).map_err(Error::Tls)
-            }).and_then(move |socket| {
+            })
+            .and_then(move |socket| {
                 // Bind the HTTP/2.0 connection
                 Connection::handshake(socket, reactor).map_err(Error::Tower)
-            }).and_then(move |conn| {
+            })
+            .and_then(move |conn| {
                 add_origin::Builder::new()
                     .uri(origin_uri)
                     .build(conn)
                     .map_err(Error::AddOrigin)
-            }).map(Lightning::new);
+            })
+            .map(Lightning::new);
 
         let client = core.run({ tcp_stream })?;
 

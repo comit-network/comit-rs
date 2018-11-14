@@ -185,7 +185,8 @@ where
                         .map(|either| match either {
                             Either::A((item, _stream)) => Either::A(item),
                             Either::B((item, _stream)) => Either::B(item),
-                        }).map_err(|either| match either {
+                        })
+                        .map_err(|either| match either {
                             Either::A((error, _stream)) => error,
                             Either::B((error, _stream)) => error,
                         }),
@@ -250,7 +251,8 @@ where
                         .map(|either| match either {
                             Either::A((item, _stream)) => Either::A(item),
                             Either::B((item, _stream)) => Either::B(item),
-                        }).map_err(|either| match either {
+                        })
+                        .map_err(|either| match either {
                             Either::A((error, _stream)) => error,
                             Either::B((error, _stream)) => error,
                         }),
@@ -315,7 +317,8 @@ where
                         .map(|either| match either {
                             Either::A((item, _stream)) => Either::A(item),
                             Either::B((item, _stream)) => Either::B(item),
-                        }).map_err(|either| match either {
+                        })
+                        .map_err(|either| match either {
                             Either::A((error, _stream)) => error,
                             Either::B((error, _stream)) => error,
                         }),
@@ -341,4 +344,5 @@ where
         + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
         + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
         + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-{}
+{
+}

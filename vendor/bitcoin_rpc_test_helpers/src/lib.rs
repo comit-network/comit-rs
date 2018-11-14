@@ -44,7 +44,8 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
                 rpc::TxOutConfirmations::AtLeast(1),
                 None,
                 Some(vec![address.clone().into()]),
-            ).unwrap()
+            )
+            .unwrap()
             .unwrap();
 
         unspent.into_iter().find(|utxo| utxo.txid == *txid)
