@@ -7,11 +7,7 @@ use futures::{
 };
 use key_store::KeyStore;
 use rand::thread_rng;
-use std::{
-    marker::PhantomData,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{marker::PhantomData, net::SocketAddr, sync::Arc};
 use swap_protocols::{
     asset::Asset,
     metadata_store::{Metadata, MetadataStore},
@@ -44,7 +40,7 @@ pub struct CreateSwap<
     pub client_factory: Arc<F>,
     pub event_store: Arc<EventStore>,
     pub comit_node_addr: SocketAddr,
-    pub alice_actor_sender: Arc<Mutex<UnboundedSender<SwapId>>>,
+    pub alice_actor_sender: UnboundedSender<SwapId>,
     pub phantom_data: PhantomData<C>,
 }
 
@@ -63,7 +59,7 @@ impl<
         let state_store = Arc::clone(&self.state_store);
 
         let event_store = Arc::clone(&self.event_store);
-        let alice_actor_sender = Arc::clone(&self.alice_actor_sender);
+        let alice_actor_sender = self.alice_actor_sender.clone();
         let client_factory = Arc::clone(&self.client_factory);
         let comit_node_addr = self.comit_node_addr.clone();
 
@@ -113,7 +109,7 @@ impl<
                                 secret_hash: start_state.secret.hash(),
                             },
                             Arc::clone(&event_store),
-                            Arc::clone(&alice_actor_sender),
+                            alice_actor_sender.clone(),
                             Arc::clone(&client_factory),
                             comit_node_addr.clone(),
                             secret,
@@ -157,7 +153,7 @@ fn send_swap_request<
     id: SwapId,
     swap_request: Request<SL, TL, SA, TA>,
     event_store: Arc<E>,
-    alice_actor_sender: Arc<Mutex<UnboundedSender<SwapId>>>,
+    alice_actor_sender: UnboundedSender<SwapId>,
     client_factory: Arc<F>,
     comit_node_addr: SocketAddr,
     secret: Secret,
@@ -182,7 +178,7 @@ fn send_swap_request<
     let response_future = client.send_swap_request(swap_request);
 
     response_future.then(move |response| {
-        on_swap_response::<SL, TL, SA, TA, E>(id, &event_store, &alice_actor_sender, response);
+        on_swap_response::<SL, TL, SA, TA, E>(id, &event_store, alice_actor_sender, response);
         Ok(())
     })
 }
@@ -196,11 +192,9 @@ fn on_swap_response<
 >(
     id: SwapId,
     event_store: &Arc<E>,
-    alice_actor_sender: &Arc<Mutex<UnboundedSender<SwapId>>>,
+    alice_actor_sender: UnboundedSender<SwapId>,
     result: Result<Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>, SwapResponseError>,
 ) {
-    use std::ops::DerefMut;
-
     match result {
         Ok(Ok(accepted)) => {
             event_store
@@ -214,10 +208,6 @@ fn on_swap_response<
                 )
                 .expect("It should not be possible to be in the wrong state");
 
-            let mut alice_actor_sender = alice_actor_sender
-                .lock()
-                .expect("Issue with unlocking alice actor sender");
-            let alice_actor_sender = alice_actor_sender.deref_mut();
             alice_actor_sender
                 .unbounded_send(id)
                 .expect("Receiver should always be in scope");

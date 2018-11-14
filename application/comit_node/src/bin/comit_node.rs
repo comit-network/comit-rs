@@ -37,15 +37,11 @@ use comit_node::{
     },
     swaps::common::SwapId,
 };
+
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
 use futures::sync::mpsc::{self, UnboundedSender};
-use std::{
-    env::var,
-    marker::PhantomData,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -244,7 +240,7 @@ fn spawn_create_swap_instance_for_rfc003(
         client_factory,
         event_store,
         comit_node_addr,
-        alice_actor_sender: Arc::new(Mutex::new(alice_actor_sender)),
+        alice_actor_sender,
         phantom_data: PhantomData,
     };
 
