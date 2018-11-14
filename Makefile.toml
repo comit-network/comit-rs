@@ -55,15 +55,15 @@ workspace = false
 workspace = false
 args = ["build", "--all", "--all-targets"]
 
-# Overridden because: we want --all-targests but not --verbose
+# Overridden because: we want --all-targests
 [tasks.build-verbose]
 workspace = false
-args = ["build", "--all", "--all-targets"]
+args = ["build", "--all", "--all-targets", "--verbose"]
 
-# Overridden because: we want --all-targests but not --verbose
+# Overridden because: we want --all-targests
 [tasks.test-verbose]
 workspace = false
-args = ["test", "--all", "--all-targets"]
+args = ["test", "--all", "--all-targets", "--verbose"]
 
 
 ################
