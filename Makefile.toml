@@ -149,26 +149,19 @@ docker pull ruimarinho/bitcoin-core:0.17.0-alpine
 description = "Setup & start sscache"
 workspace = false
 private = true
-install_script = ["which sccache || cargo install sccache"]
+install_script = ["which sccache || (unset RUSTC_WRAPPER; cargo install sccache)"]
 env = { "SCCACHE_CACHE_SIZE" = "400M" }
 # Start sccache with limited cache size to avoid a constantly
 # growing caches (and thus continuously slower builds)
-script = [
-'''
-sccache --start-server
-sccache --show-stats
-'''
-]
+command = "sccache"
+args = ["--start-server"]
 
 [tasks.stop-sccache]
 description = "Stop sscache"
 workspace = false
 private = true
-script = [
-'''
-sccache --stop-server
-'''
-]
+command = "sccache"
+args = ["--stop-server"]
 
 ################
 # E2E Test flow #
