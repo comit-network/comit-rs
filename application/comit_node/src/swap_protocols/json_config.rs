@@ -176,7 +176,7 @@ fn process<
         key_store.get_transient_keypair(&trade_id.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
     let bob_success_address: BitcoinAddress = bob_success_keypair
         .public_key()
-        .into_p2wpkh_address(request.source_ledger.network());
+        .into_p2wpkh_address(request.source_ledger.network);
     debug!(
         "Generated transient success address for Bob is {}",
         bob_success_address

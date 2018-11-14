@@ -34,5 +34,5 @@ pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: IntoSecretHash>(
 pub fn bitcoin_htlc_address<TL: Ledger, TA: Asset, S: IntoSecretHash>(
     swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
 ) -> Address {
-    bitcoin_htlc(swap).compute_address(swap.source_ledger.network())
+    bitcoin_htlc(swap).compute_address(swap.source_ledger.network)
 }

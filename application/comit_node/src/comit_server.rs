@@ -19,22 +19,6 @@ use swap_protocols::{
 use swaps::common::SwapId;
 use tokio::{self, net::TcpListener};
 
-#[derive(Debug)]
-pub struct ComitServer<
-    E: EventStore<SwapId>,
-    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
-        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-> {
-    event_store: Arc<E>,
-    my_keystore: Arc<KeyStore>,
-    ethereum_service: Arc<EthereumService>,
-    bitcoin_service: Arc<BitcoinService>,
-    ledger_query_service: Arc<BLQS>,
-    bitcoin_network: Network,
-    bitcoin_poll_interval: Duration,
-    ethereum_poll_interval: Duration,
-}
-
 impl<E, BLQS> ComitServer<E, BLQS>
 where
     E: EventStore<SwapId> + Send + Sync,
@@ -99,6 +83,22 @@ where
 
 #[derive(Default)]
 struct MySwapHandler {}
+
+#[derive(Debug)]
+pub struct ComitServer<
+    E: EventStore<SwapId>,
+    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+> {
+    event_store: Arc<E>,
+    my_keystore: Arc<KeyStore>,
+    ethereum_service: Arc<EthereumService>,
+    bitcoin_service: Arc<BitcoinService>,
+    ledger_query_service: Arc<BLQS>,
+    bitcoin_network: Network,
+    bitcoin_poll_interval: Duration,
+    ethereum_poll_interval: Duration,
+}
 
 impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
     for MySwapHandler

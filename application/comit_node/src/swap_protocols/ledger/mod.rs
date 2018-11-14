@@ -6,6 +6,7 @@ mod bitcoin;
 mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
+use http_api::ledger::{FromHttpLedger, ToHttpLedger};
 
 pub trait Ledger:
     Clone
@@ -16,6 +17,8 @@ pub trait Ledger:
     + Default
     + PartialEq
     + Into<swap_protocols::bam_types::Ledger>
+    + FromHttpLedger
+    + ToHttpLedger
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;

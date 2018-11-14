@@ -1,33 +1,23 @@
-use bitcoin_support::{self, BitcoinQuantity, PubkeyHash, BTC_BLOCKS_IN_24H};
-use comit_client::{self, SwapReject, SwapResponseError};
+use bitcoin_support::{self, BitcoinQuantity};
+use comit_client;
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
-use futures::{sync::mpsc::UnboundedSender, Future};
-use http_api::route_factory::SwapState;
+use futures::sync::mpsc::UnboundedSender;
+use http_api;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, StatusCode};
-use key_store::KeyStore;
-use rand;
-use std::{
-    error::Error as StdError,
-    fmt,
-    net::SocketAddr,
-    ops::DerefMut,
-    panic::RefUnwindSafe,
-    sync::{Arc, Mutex},
-};
+use std::{error::Error as StdError, fmt, marker::PhantomData, sync::Arc};
 use swap_protocols::{
+    asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self, bitcoin,
-        state_machine::{Start, SwapStates},
         state_store::{self, StateStore},
-        Secret, SecretHash,
+        Ledger, Secret, SecretHash,
     },
     Assets, Ledgers, Metadata, MetadataStore, Roles,
 };
 use swaps::{alice_events, common::SwapId};
-use tokio;
 use warp::{self, Rejection, Reply};
 
 pub const PATH: &str = "rfc003";
@@ -87,29 +77,30 @@ impl From<comit_client::ClientFactoryError> for Error {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(tag = "value")]
-pub enum Ledger {
-    Bitcoin {
-        identity: bitcoin_support::PubkeyHash,
-    },
-    Ethereum {
-        identity: ethereum_support::Address,
-    },
+pub struct SwapRequestBody<SL: Ledger, TL: Ledger, SA, TA> {
+    #[serde(with = "http_api::ledger::serde")]
+    source_ledger: SL,
+    #[serde(with = "http_api::ledger::serde")]
+    target_ledger: TL,
+
+    source_asset: PhantomData<SA>,
+    target_asset: PhantomData<TA>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-#[serde(tag = "value")]
-pub enum Asset {
-    Bitcoin { quantity: BitcoinQuantity },
-    Ether { quantity: EtherQuantity },
+#[serde(untagged)]
+pub enum SwapCombinations {
+    BitcoinEthereumBitcoinQuantityEthereumQuantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+    ),
 }
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct Swap {
-    source_ledger: Ledger,
-    target_ledger: Ledger,
-    source_asset: Asset,
-    target_asset: Asset,
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> From<SwapRequestBody<SL, TL, SA, TA>>
+    for rfc003::AliceSwapRequest<SL, TL, SA, TA>
+{
+    fn from(request_body: SwapRequestBody<SL, TL, SA, TA>) -> Self {
+        unimplemented!()
+    }
 }
 
 #[derive(Serialize, Debug)]
@@ -133,268 +124,39 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<
-    C: comit_client::Client + 'static,
-    F: comit_client::ClientFactory<C> + 'static,
-    E: event_store::EventStore<SwapId> + RefUnwindSafe,
-    T: MetadataStore<SwapId>,
-    S: state_store::StateStore<SwapId>,
->(
-    swap_state: SwapState,
-    client_factory: Arc<F>,
-    event_store: Arc<E>,
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    swap: Swap,
+pub fn post_swap(
+    swap_request: SwapCombinations,
+    sender: UnboundedSender<(SwapId, rfc003::AliceSwapRequests)>,
 ) -> Result<impl Reply, Rejection> {
-    let result = {
-        handle_post_swap(
-            swap,
-            &event_store,
-            &metadata_store,
-            state_store.as_ref(),
-            &client_factory,
-            swap_state.remote_comit_node_socket_addr,
-            &swap_state.key_store,
-            &swap_state.alice_actor_sender,
-        )
-    };
-    match result {
-        Ok(swap_created) => {
-            let json = warp::reply::json(&swap_created);
-            let json = warp::reply::with_header(
-                json,
-                header::LOCATION,
-                format!("/swaps/{}", swap_created.id),
-            );
-            let json = warp::reply::with_status(json, warp::http::StatusCode::CREATED);
-            Ok(json)
-        }
-        Err(e) => {
-            error!("Problem with sending swap request: {:?}", e);
-            Err(warp::reject::custom(HttpApiProblemStdError {
-                http_api_problem: e.into(),
-            }))
-        }
-    }
-}
-
-fn handle_post_swap<
-    C: comit_client::Client,
-    F: comit_client::ClientFactory<C> + 'static,
-    E: EventStore<SwapId>,
-    T: MetadataStore<SwapId>,
-    S: StateStore<SwapId>,
->(
-    swap: Swap,
-    event_store: &Arc<E>,
-    metadata_store: &Arc<T>,
-    state_store: &S,
-    client_factory: &Arc<F>,
-    comit_node_addr: SocketAddr,
-    key_store: &Arc<KeyStore>,
-    alice_actor_sender: &Arc<Mutex<UnboundedSender<SwapId>>>,
-) -> Result<SwapCreated, Error> {
     let id = SwapId::default();
-    let secret = Secret::generate(&mut rand::thread_rng());
-    let client = client_factory.client_for(comit_node_addr)?;
 
-    {
-        spawn_state_machine(
-            swap.clone(),
-            id,
-            key_store,
-            metadata_store,
-            state_store,
-            secret,
-        );
-    }
-
-    match (swap.source_ledger, swap.target_ledger) {
-        (
-            Ledger::Bitcoin {
-                //XXX: Not used for now
-                identity: _source_ledger_final_identity,
-            },
-            Ledger::Ethereum {
-                identity: target_ledger_final_identity,
-            },
-        ) => {
-            let source_ledger = Bitcoin::default(); //TODO: fix with #376
-            let target_ledger = Ethereum::default();
-            match (swap.source_asset, swap.target_asset) {
-                (
-                    Asset::Bitcoin {
-                        quantity: source_asset,
-                    },
-                    Asset::Ether {
-                        quantity: target_asset,
-                    },
-                ) => {
-                    let source_ledger_refund_identity: PubkeyHash = key_store
-                        .get_transient_keypair(&id.into(), b"REFUND")
-                        .public_key()
-                        .into();
-                    let target_ledger_success_identity = target_ledger_final_identity;
-
-                    let source_ledger_lock_duration = BTC_BLOCKS_IN_24H;
-                    let secret_hash = secret.hash();
-                    let sent_event = alice_events::SentSwapRequest {
-                        source_ledger: source_ledger.clone(),
-                        target_ledger: target_ledger.clone(),
-                        source_asset,
-                        target_asset,
-                        secret,
-                        target_ledger_success_identity,
-                        source_ledger_refund_identity,
-                        source_ledger_lock_duration,
-                    };
-
-                    event_store.add_event(id, sent_event)?;
-
-                    let response_future = client.send_swap_request(rfc003::Request {
-                        secret_hash,
-                        source_ledger_refund_identity,
-                        target_ledger_success_identity,
-                        source_ledger_lock_duration,
-                        target_asset,
-                        source_asset,
-                        source_ledger,
-                        target_ledger,
-                    });
-
-                    let event_store = event_store.clone();
-                    let alice_actor_sender = alice_actor_sender.clone();
-
-                    tokio::spawn(response_future.then(move |response| {
-                        on_swap_response::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, E>(
-                            id,
-                            &event_store,
-                            &alice_actor_sender,
-                            response,
-                        );
-                        Ok(())
-                    }));
-                    Ok(SwapCreated { id })
-                }
-                _ => Err(Error::Unsupported),
-            }
+    let requests = match swap_request {
+        SwapCombinations::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
+            rfc003::AliceSwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(body.into())
         }
-        _ => Err(Error::Unsupported),
-    }
-}
-
-fn spawn_state_machine<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
-    swap: Swap,
-    id: SwapId,
-    key_store: &Arc<KeyStore>,
-    metadata_store: &Arc<T>,
-    state_store: &S,
-    secret: Secret,
-) {
-    match (
-        swap.source_ledger,
-        swap.target_ledger,
-        swap.source_asset,
-        swap.target_asset,
-    ) {
-        (
-            Ledger::Bitcoin {
-                identity: _source_ledger_refund_identity, //TODO: need to be used, see #384
-            },
-            Ledger::Ethereum {
-                identity: target_ledger_final_identity,
-            },
-            Asset::Bitcoin {
-                quantity: source_asset,
-            },
-            Asset::Ether {
-                quantity: target_asset,
-            },
-        ) => {
-            {
-                let metadata = Metadata {
-                    source_ledger: Ledgers::Bitcoin,
-                    source_asset: Assets::Bitcoin,
-                    target_ledger: Ledgers::Ethereum,
-                    target_asset: Assets::Ether,
-                    role: Roles::Alice,
-                };
-
-                let _ = metadata_store.insert(id, metadata);
-            }
-            {
-                let source_ledger_refund_identity =
-                    key_store.get_transient_keypair(&id.into(), b"REFUND");
-
-                let source_ledger_lock_duration = BTC_BLOCKS_IN_24H;
-
-                let state = SwapStates::Start(Start::<
-                    Bitcoin,
-                    Ethereum,
-                    BitcoinQuantity,
-                    EtherQuantity,
-                    Secret,
-                > {
-                    source_ledger_refund_identity,
-                    target_ledger_success_identity: target_ledger_final_identity,
-                    source_ledger: Bitcoin::default(), //TODO: fix with #376
-                    target_ledger: Ethereum::default(),
-                    source_asset,
-                    target_asset,
-                    source_ledger_lock_duration,
-                    secret,
-                });
-
-                let _ = state_store.insert(id, state);
-            }
-        }
-        _ => panic!("Unsupported ledger combination"),
     };
-}
 
-fn on_swap_response<
-    SL: rfc003::Ledger,
-    TL: rfc003::Ledger,
-    SA: Clone + Send + Sync + 'static,
-    TA: Clone + Send + Sync + 'static,
-    E: EventStore<SwapId>,
->(
-    id: SwapId,
-    event_store: &Arc<E>,
-    alice_actor_sender: &Arc<Mutex<UnboundedSender<SwapId>>>,
-    result: Result<Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>, SwapResponseError>,
-) {
-    match result {
-        Ok(Ok(accepted)) => {
-            event_store
-                .add_event(
-                    id,
-                    alice_events::SwapRequestAccepted::<SL, TL, SA, TA>::new(
-                        accepted.target_ledger_refund_identity,
-                        accepted.source_ledger_success_identity,
-                        accepted.target_ledger_lock_duration,
-                    ),
-                )
-                .expect("It should not be possible to be in the wrong state");
-
-            let mut alice_actor_sender = alice_actor_sender
-                .lock()
-                .expect("Issue with unlocking alice actor sender");
-            let alice_actor_sender = alice_actor_sender.deref_mut();
-            alice_actor_sender
-                .unbounded_send(id)
-                .expect("Receiver should always be in scope");
-        }
-        _ => {
-            event_store
-                .add_event(
-                    id,
-                    alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
-                )
-                .expect("It should not be possible to be in the wrong state");
-        }
+    if let Err(e) = sender.unbounded_send((id, requests)) {
+        error!(
+            "Swap request {:?} for id {} could not dispatched.",
+            e.into_inner(),
+            id
+        );
+        return Err(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: HttpApiProblem::with_title_from_status(500),
+        }));
     }
+
+    let swap_created = SwapCreated { id };
+    let body = warp::reply::json(&swap_created);
+    let response = warp::reply::with_header(
+        body,
+        header::LOCATION,
+        format!("/swaps/{}", swap_created.id),
+    );
+    let response = warp::reply::with_status(response, warp::http::StatusCode::CREATED);
+
+    Ok(response)
 }
 
 #[derive(Deserialize, Debug, Serialize)]
@@ -488,7 +250,7 @@ fn handle_get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStor
                             );
                             Some(SwapStatus::Accepted {
                                 funding_required: htlc
-                                    .compute_address(requested.source_ledger.network()),
+                                    .compute_address(requested.source_ledger.network),
                             })
                         }
                     }

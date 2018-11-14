@@ -6,7 +6,7 @@ use swap_protocols::ledger::Ledger;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Bitcoin {
-    network: Network,
+    pub network: Network,
 }
 
 impl Bitcoin {
@@ -44,11 +44,5 @@ impl Ledger for Bitcoin {
 
     fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
         pubkeyhash.into_p2wpkh_address(self.network)
-    }
-}
-
-impl Bitcoin {
-    pub fn network(&self) -> Network {
-        self.network
     }
 }

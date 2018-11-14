@@ -212,7 +212,9 @@ mod tests {
         ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
             self.when = Some(Instant::now());
 
-            Box::new(future::ok(json::Response::new(Status::OK(0)).into_frame(0)))
+            Box::new(future::ok(
+                json::Response::new(Status::OK(0)).into_frame(frame_id),
+            ))
         }
     }
 
