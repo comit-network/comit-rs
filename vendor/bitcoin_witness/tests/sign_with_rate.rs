@@ -58,9 +58,7 @@ fn sign_with_rate() {
 
     client.generate(1).unwrap().unwrap();
 
-    assert!(
-        client
-            .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
-            .is_some()
-    )
+    assert!(client
+        .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
+        .is_some())
 }

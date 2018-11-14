@@ -32,11 +32,13 @@ impl PrimedInput {
             // value of the most likely signature length
             Witness::Signature(_) => vec![0u8; 71],
             Witness::PublicKey(public_key) => public_key.inner().serialize().to_vec(),
-            Witness::Bool(_bool) => if *_bool {
-                vec![1u8]
-            } else {
-                vec![]
-            },
+            Witness::Bool(_bool) => {
+                if *_bool {
+                    vec![1u8]
+                } else {
+                    vec![]
+                }
+            }
             Witness::PrevScript => self.input_parameters.prev_script.clone().into_bytes(),
         }
     }

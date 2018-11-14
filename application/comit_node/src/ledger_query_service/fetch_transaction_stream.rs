@@ -52,7 +52,8 @@ where
                         warn!("Falling back to empty list of transactions because {:?}", e);
                         Ok(Vec::new())
                     })
-                }).map(iter_ok)
+                })
+                .map(iter_ok)
                 .flatten()
                 .filter(move |transaction| {
                     let is_new_transaction = !emitted_transactions.contains(transaction);
@@ -88,7 +89,8 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
                         warn!("Falling back to empty list of transactions because {:?}", e);
                         Ok(Vec::new())
                     })
-                }).map(iter_ok)
+                })
+                .map(iter_ok)
                 .flatten()
                 .filter(move |transaction| {
                     let is_new_transaction = !emitted_transactions.contains(transaction);
@@ -128,13 +130,16 @@ mod tests {
         ledger_query_service.set_next_result(Box::new(future::ok(vec![
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
-            ).unwrap(),
+            )
+            .unwrap(),
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000002",
-            ).unwrap(),
+            )
+            .unwrap(),
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000003",
-            ).unwrap(),
+            )
+            .unwrap(),
         ])));
 
         let stream = ledger_query_service.fetch_transaction_id_stream(
@@ -153,7 +158,8 @@ mod tests {
             Some(
                 TransactionId::from_hex(
                     "0000000000000000000000000000000000000000000000000000000000000001"
-                ).unwrap()
+                )
+                .unwrap()
             )
         );
 
@@ -166,7 +172,8 @@ mod tests {
             Some(
                 TransactionId::from_hex(
                     "0000000000000000000000000000000000000000000000000000000000000002"
-                ).unwrap()
+                )
+                .unwrap()
             )
         );
 
@@ -179,7 +186,8 @@ mod tests {
             Some(
                 TransactionId::from_hex(
                     "0000000000000000000000000000000000000000000000000000000000000003"
-                ).unwrap()
+                )
+                .unwrap()
             )
         );
         assert_eq!(
@@ -199,11 +207,10 @@ mod tests {
         let ledger_query_service =
             Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_result(Box::new(future::ok(vec![
-            TransactionId::from_hex(
-                "0000000000000000000000000000000000000000000000000000000000000001",
-            ).unwrap(),
-        ])));
+        ledger_query_service.set_next_result(Box::new(future::ok(vec![TransactionId::from_hex(
+            "0000000000000000000000000000000000000000000000000000000000000001",
+        )
+        .unwrap()])));
 
         let stream = ledger_query_service.fetch_transaction_id_stream(
             receiver,
@@ -221,17 +228,20 @@ mod tests {
             Some(
                 TransactionId::from_hex(
                     "0000000000000000000000000000000000000000000000000000000000000001"
-                ).unwrap()
+                )
+                .unwrap()
             )
         );
 
         ledger_query_service.set_next_result(Box::new(future::ok(vec![
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
-            ).unwrap(),
+            )
+            .unwrap(),
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000002",
-            ).unwrap(),
+            )
+            .unwrap(),
         ])));
 
         sender.unbounded_send(()).unwrap();
@@ -245,7 +255,8 @@ mod tests {
             Some(
                 TransactionId::from_hex(
                     "0000000000000000000000000000000000000000000000000000000000000002"
-                ).unwrap()
+                )
+                .unwrap()
             )
         );
 
@@ -277,7 +288,8 @@ mod tests {
                 stream
                     .into_future()
                     .select2(Delay::new(Instant::now() + Duration::from_secs(1))),
-            ).map_err(|_| ())
+            )
+            .map_err(|_| ())
             .unwrap();
 
         // A stream of no items will never complete.

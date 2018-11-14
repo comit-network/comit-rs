@@ -35,7 +35,8 @@ fn given_two_servers_both_can_ping_each_other() {
         }),
         JsonFrameCodec::default(),
         alice,
-    ).start::<JsonFrameHandler>();
+    )
+    .start::<JsonFrameHandler>();
     let (alice_server, _alice_shutdown_handle) = shutdown_handle::new(alice_server);
 
     let (bob_server, mut alice_client) = Connection::new(
@@ -44,7 +45,8 @@ fn given_two_servers_both_can_ping_each_other() {
         }),
         JsonFrameCodec::default(),
         bob,
-    ).start::<JsonFrameHandler>();
+    )
+    .start::<JsonFrameHandler>();
     let (bob_server, _bob_shutdown_handle) = shutdown_handle::new(bob_server);
 
     runtime.spawn(alice_server.map_err(|_| ()));

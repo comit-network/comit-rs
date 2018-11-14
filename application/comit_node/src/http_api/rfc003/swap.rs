@@ -379,7 +379,8 @@ fn on_swap_response<
                         accepted.source_ledger_success_identity,
                         accepted.target_ledger_lock_duration,
                     ),
-                ).expect("It should not be possible to be in the wrong state");
+                )
+                .expect("It should not be possible to be in the wrong state");
 
             let mut alice_actor_sender = alice_actor_sender
                 .lock()
@@ -394,7 +395,8 @@ fn on_swap_response<
                 .add_event(
                     id,
                     alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
-                ).expect("It should not be possible to be in the wrong state");
+                )
+                .expect("It should not be possible to be in the wrong state");
         }
     }
 }

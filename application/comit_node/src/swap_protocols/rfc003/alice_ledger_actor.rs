@@ -122,7 +122,8 @@ where
                             .event_store
                             .add_event(pipeline.trade_id, source_funded)
                             .expect("We cannot be in the wrong state");
-                    }).and_then(|pipeline| pipeline.watch_eth_deploy())
+                    })
+                    .and_then(|pipeline| pipeline.watch_eth_deploy())
                     .map(|(pipeline, contract_address)| {
                         let target_funded =
                             TargetFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
@@ -132,13 +133,15 @@ where
                             .event_store
                             .add_event(pipeline.trade_id, target_funded)
                             .expect("We cannot be in the wrong state");
-                    }).map_err(move |e| {
+                    })
+                    .map_err(move |e| {
                         error!(
                             "Halting actions on swap {} because of error: {:?}",
                             trade_id, e
                         )
                     })
-            }).map_err(|e| {
+            })
+            .map_err(|e| {
                 panic!("Issue with the unbounded channel: {:?}", e);
             });
 
@@ -233,7 +236,8 @@ where
                             "LQS stream terminated before it found ethereum deployment transaction",
                         )
                         })
-                    }).and_then(move |transaction_id| {
+                    })
+                    .and_then(move |transaction_id| {
                         debug!("Ledger Query Service returned tx: {}", transaction_id);
 
                         let bitcoin_htlc_params = bitcoin_htlc_params.clone();
@@ -243,7 +247,8 @@ where
                             bitcoin_htlc_params.refund_pubkey_hash,
                             bitcoin_htlc_params.secret_hash,
                             bitcoin_htlc_params.time_lock.into(),
-                        ).compute_address(self.bitcoin_network);
+                        )
+                        .compute_address(self.bitcoin_network);
 
                         let (_n, vout) = self
                             .bitcoin_service

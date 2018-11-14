@@ -52,7 +52,8 @@ impl FromHex for PublicKey {
                 hex::decode(hex)
                     .map_err(PubkeyFromHexError::InvalidHex)?
                     .as_ref(),
-            ).map_err(PubkeyFromHexError::Secp256k1)?,
+            )
+            .map_err(PubkeyFromHexError::Secp256k1)?,
         ))
     }
 }
@@ -106,12 +107,14 @@ mod test {
                     3, 23, 183, 225, 206, 31, 159, 148, 195, 42, 67, 115, 146, 41, 248, 140, 11, 3,
                     51, 41, 111, 180, 110, 143, 114, 134, 88, 73, 198, 174, 52, 184, 78,
                 ],
-            ).unwrap(),
+            )
+            .unwrap(),
         );
 
         let from_hex = PublicKey::from_hex(
             "0317b7e1ce1f9f94c32a43739229f88c0b0333296fb46e8f72865849c6ae34b84e",
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!(pubkey, from_hex);
     }

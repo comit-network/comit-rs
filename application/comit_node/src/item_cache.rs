@@ -80,7 +80,8 @@ impl<T: Clone + Debug + Send + 'static, E: Clone + Debug + Send + 'static> ItemC
                             .send(item.clone())
                             .expect("receiver should not deallocate");
                         Ok(item)
-                    }).map_err(|e| {
+                    })
+                    .map_err(|e| {
                         error_sender
                             .send(e.clone())
                             .expect("receiver should not deallocate");

@@ -178,12 +178,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<S
         state: &'s mut RentToOwn<'s, SourceFunded<SL, TL, SA, TA, S>>,
         context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
-        match try_ready!(
-            context
-                .events
-                .source_htlc_refunded_target_htlc_funded(&state.swap, &state.source_htlc_location)
-                .poll()
-        ) {
+        match try_ready!(context
+            .events
+            .source_htlc_refunded_target_htlc_funded(&state.swap, &state.source_htlc_location)
+            .poll())
+        {
             Either::A(_source_refunded_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::SourceRefunded))
             }
@@ -235,12 +234,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<S
             }
         }
 
-        match try_ready!(
-            context
-                .events
-                .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
-                .poll()
-        ) {
+        match try_ready!(context
+            .events
+            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .poll())
+        {
             Either::A(target_redeemed_tx) => {
                 let state = state.take();
                 transition_save!(
@@ -269,12 +267,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<S
         state: &'s mut RentToOwn<'s, SourceFundedTargetRefunded<SL, TL, SA, TA, S>>,
         context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, rfc003::Error> {
-        match try_ready!(
-            context
-                .events
-                .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
-                .poll()
-        ) {
+        match try_ready!(context
+            .events
+            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
+            .poll())
+        {
             Either::A(_source_redeemed_txid) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::SourceRedeemedTargetRefunded)
@@ -289,12 +286,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<S
         state: &'s mut RentToOwn<'s, SourceRefundedTargetFunded<SL, TL, SA, TA, S>>,
         context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, rfc003::Error> {
-        match try_ready!(
-            context
-                .events
-                .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
-                .poll()
-        ) {
+        match try_ready!(context
+            .events
+            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .poll())
+        {
             Either::A(_target_redeemed_txid) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::SourceRefundedTargetRedeemed)
@@ -309,12 +305,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<S
         state: &'s mut RentToOwn<'s, SourceRedeemedTargetFunded<SL, TL, SA, TA, S>>,
         context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, rfc003::Error> {
-        match try_ready!(
-            context
-                .events
-                .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
-                .poll()
-        ) {
+        match try_ready!(context
+            .events
+            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .poll())
+        {
             Either::A(_target_redeemed_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::BothRedeemed))
             }
@@ -329,12 +324,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<S
         state: &'s mut RentToOwn<'s, SourceFundedTargetRedeemed<SL, TL, SA, TA, S>>,
         context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, rfc003::Error> {
-        match try_ready!(
-            context
-                .events
-                .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
-                .poll()
-        ) {
+        match try_ready!(context
+            .events
+            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
+            .poll())
+        {
             Either::A(_target_redeemed_txid) => {
                 transition_save!(context.state_repo, Final(SwapOutcome::BothRedeemed))
             }

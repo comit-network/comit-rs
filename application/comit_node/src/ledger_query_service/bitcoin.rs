@@ -76,7 +76,8 @@ mod tests {
         let from_outpoint = Some(OutPoint {
             txid: Sha256dHash::from_hex(
                 "02b082113e35d5386285094c2829e7e2963fa0b5369fb7f4b79c4c90877dcd3d",
-            ).unwrap(),
+            )
+            .unwrap(),
             vout: 0u32,
         });
 

@@ -196,7 +196,8 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
             htlc_params.refund_address,
             htlc_params.success_address,
             htlc_params.secret_hash,
-        ).compile_to_hex()
+        )
+        .compile_to_hex()
         .into();
 
         EthereumQuery::Transaction {
@@ -485,7 +486,8 @@ mod tests {
                     Address::new(),
                     Address::new(),
                     "".parse().unwrap(),
-                ).compile_to_hex(),
+                )
+                .compile_to_hex(),
                 gas_price,
                 U256::from(10),
                 nonce,
@@ -520,7 +522,8 @@ mod tests {
                     Address::new(),
                     Address::new(),
                     "".parse().unwrap(),
-                ).compile_to_hex(),
+                )
+                .compile_to_hex(),
                 gas_price,
                 U256::from(10),
                 nonce,
@@ -541,7 +544,8 @@ mod tests {
         let keypair = KeyPair::from_secret_key_slice(
             &hex::decode("29b7de7fed2f25726c247b70fc51e73ab03398d230da42e8a550e405e744ed7a")
                 .unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
         let wallet = Arc::new(StaticFakeWallet::from_key_pair(keypair));
 
         let gas_price_service = gas_price_service::StaticGasPriceService::new(1000);
@@ -593,7 +597,8 @@ mod tests {
                 Address::from("97a561cef28e387e726378bb41d89b13e5a940ba"),
                 params.token_contract_address,
                 params.amount,
-            ).compile_to_hex(),
+            )
+            .compile_to_hex(),
             1000,
             0,
             1,

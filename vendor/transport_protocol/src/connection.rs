@@ -67,14 +67,16 @@ impl<
                     Ok(result) => Ok(result),
                     Err(e) => Err(ClosedReason::InvalidFrame(e)),
                 }
-            }).filter(Option::is_some)
+            })
+            .filter(Option::is_some)
             .and_then(|option| {
                 // FIXME: When we have Never (https://github.com/rust-lang/rust/issues/35121)
                 // and Future.recover we should be able to clean this up
                 option
                     .unwrap()
                     .map_err(|_| unreachable!("frame_handler ensures the error never happens"))
-            }).select(request_stream.map_err(|_| ClosedReason::InternalError))
+            })
+            .select(request_stream.map_err(|_| ClosedReason::InternalError))
             .inspect(|frame| trace!("---> Outgoing {:?}", frame))
             .forward(sink.sink_map_err(ClosedReason::CodecError))
             .map(|_| ());

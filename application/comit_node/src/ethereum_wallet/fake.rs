@@ -25,7 +25,8 @@ impl StaticFakeWallet {
     pub fn account0() -> Self {
         let secret_key_data = <[u8; 32]>::from_hex(
             "e8aafba2be13ee611059bc756878933bee789cc1aec7c35e23054a44d071c80b",
-        ).unwrap();
+        )
+        .unwrap();
 
         let keypair = KeyPair::from_secret_key_slice(&secret_key_data).unwrap();
         StaticFakeWallet(InMemoryWallet::new(keypair, 1))

@@ -37,7 +37,8 @@ impl ParityClient {
                     condition: None,
                 },
                 PARITY_DEV_PASSWORD,
-            ).wait()
+            )
+            .wait()
             .unwrap();
     }
 
@@ -59,7 +60,8 @@ impl ParityClient {
                     condition: None,
                 },
                 "",
-            ).wait()
+            )
+            .wait()
             .unwrap();
 
         let receipt = self
@@ -119,7 +121,8 @@ impl ParityClient {
                     data: Some(Bytes(hex::decode(payload).unwrap())),
                 },
                 None,
-            ).wait()
+            )
+            .wait()
             .unwrap();
 
         U256::from(result.0.as_slice())
@@ -145,7 +148,8 @@ impl ParityClient {
                     condition: None,
                 },
                 "",
-            ).wait()
+            )
+            .wait()
             .unwrap();
 
         let receipt = self

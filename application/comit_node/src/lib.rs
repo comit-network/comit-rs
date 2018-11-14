@@ -2,7 +2,6 @@
 #![deny(unsafe_code)]
 #![feature(plugin, decl_macro)]
 
-
 #[macro_use]
 extern crate debug_stub_derive;
 #[macro_use]

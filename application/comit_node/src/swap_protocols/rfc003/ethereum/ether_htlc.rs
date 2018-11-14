@@ -71,7 +71,8 @@ impl Htlc for EtherHtlc {
             .replace(
                 Self::CONTRACT_START_POSITION_PLACEHOLDER,
                 &header_length_as_hex,
-            ).replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
+            )
+            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
         debug!("Final contract code: {}", &contract_code);
         debug!("Deploy header: {}", &deploy_header);
@@ -97,7 +98,8 @@ mod tests {
             Address::new(),
             SecretHash::from_str(
                 "1000000000000000000000000000000000000000000000000000000000000001",
-            ).unwrap(),
+            )
+            .unwrap(),
         );
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
@@ -115,7 +117,8 @@ mod tests {
             Address::new(),
             SecretHash::from_str(
                 "0000000000000000000000000000000000000000000000000000000000000000",
-            ).unwrap(),
+            )
+            .unwrap(),
         );
 
         let compiled_code = htlc.compile_to_hex().0;

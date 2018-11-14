@@ -129,10 +129,12 @@ mod tests {
             source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
-            ).unwrap(),
+            )
+            .unwrap(),
             target_ledger_success_identity: ethereum_support::Address::from_str(
                 "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
-            ).unwrap(),
+            )
+            .unwrap(),
             source_ledger: Bitcoin::regtest(),
             target_ledger: Ethereum::default(),
             source_asset: BitcoinQuantity::from_bitcoin(bitcoin_amount),
@@ -146,10 +148,12 @@ mod tests {
         AcceptResponse {
             target_ledger_refund_identity: ethereum_support::Address::from_str(
                 "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
-            ).unwrap(),
+            )
+            .unwrap(),
             source_ledger_success_identity: bitcoin_support::PubkeyHash::from_hex(
                 "d38e554430c4035f2877a579a07a99886153f071",
-            ).unwrap(),
+            )
+            .unwrap(),
             target_ledger_lock_duration: Seconds(42),
         }
     }

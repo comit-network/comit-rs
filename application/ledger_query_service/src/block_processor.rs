@@ -120,7 +120,8 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
                     }
                     QueryMatchResult::No => None,
                 }
-            }).for_each(|(query_id, block_id)| result_repository.add_result(query_id, block_id))
+            })
+            .for_each(|(query_id, block_id)| result_repository.add_result(query_id, block_id))
     }
 
     fn update_pending_transactions(&mut self) {
@@ -190,7 +191,8 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
                     }
                     QueryMatchResult::No => None,
                 }
-            }).for_each(|(query_id, tx_id)| result_repository.add_result(query_id, tx_id))
+            })
+            .for_each(|(query_id, tx_id)| result_repository.add_result(query_id, tx_id))
     }
 }
 
@@ -380,7 +382,7 @@ mod tests {
 
     #[test]
     fn given_double_confirmation_query_when_matching_transaction_is_processed_and_confirmed_adds_result(
-) {
+    ) {
         let harness = Setup::new(1, 1, 2, 0, 0);
         let mut block_processor = harness.block_processor;
 
@@ -412,7 +414,7 @@ mod tests {
 
     #[test]
     fn given_single_confirmation_query_when_non_matching_transaction_is_processed_does_not_add_result(
-) {
+    ) {
         let harness = Setup::new(1, 2, 1, 0, 0);
         let mut block_processor = harness.block_processor;
 

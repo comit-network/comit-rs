@@ -15,10 +15,7 @@ use std::{collections::HashMap, env::var, str::FromStr, string::String};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(
-    name = "Comit Node Client",
-    about = "CLI for the COMIT Node."
-)]
+#[structopt(name = "Comit Node Client", about = "CLI for the COMIT Node.")]
 enum Opt {
     /// Sends a Swap request
     #[structopt(name = "swap")]
@@ -54,10 +51,7 @@ enum SwapCommand {
         btc_addr: bitcoin_support::Address,
 
         /// The redemption address
-        #[structopt(
-            name = "Ethereum Address",
-            parse(try_from_str = "parse_eth_addr")
-        )]
+        #[structopt(name = "Ethereum Address", parse(try_from_str = "parse_eth_addr"))]
         eth_addr: ethereum_support::Address,
     },
 

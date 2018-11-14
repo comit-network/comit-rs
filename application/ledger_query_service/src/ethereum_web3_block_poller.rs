@@ -62,7 +62,8 @@ impl<P: BlockProcessor<Block<EthereumTransaction>>> EthereumWeb3BlockPoller<P> {
             .for_each(|block| {
                 processor.process(&block);
                 Ok(())
-            }).wait();
+            })
+            .wait();
 
         info!("Ethereum block polling has stopped: {:?}", result);
     }

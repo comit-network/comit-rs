@@ -135,7 +135,8 @@ mod tests {
                 .ledger_query_service
                 .ethereum
                 .poll_interval_secs,
-        ).is_equal_to(&Duration::from_secs(20));
+        )
+        .is_equal_to(&Duration::from_secs(20));
     }
 
 }

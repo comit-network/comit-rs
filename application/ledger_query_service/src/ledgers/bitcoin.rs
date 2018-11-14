@@ -67,19 +67,21 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
             } => {
                 let mut result = true;
 
-                result = result && match to_address {
-                    Some(to_address) => transaction.spends_to(to_address),
-                    _ => result,
-                };
+                result = result
+                    && match to_address {
+                        Some(to_address) => transaction.spends_to(to_address),
+                        _ => result,
+                    };
 
-                result = result && match (from_outpoint, unlock_script) {
-                    (Some(from_outpoint), Some(unlock_script)) => {
-                        transaction.spends_from_with(from_outpoint, unlock_script)
-                    }
-                    (Some(from_outpoint), None) => transaction.spends_from(from_outpoint),
-                    (None, Some(unlock_script)) => transaction.spends_with(unlock_script),
-                    (_, _) => result,
-                };
+                result = result
+                    && match (from_outpoint, unlock_script) {
+                        (Some(from_outpoint), Some(unlock_script)) => {
+                            transaction.spends_from_with(from_outpoint, unlock_script)
+                        }
+                        (Some(from_outpoint), None) => transaction.spends_from(from_outpoint),
+                        (None, Some(unlock_script)) => transaction.spends_with(unlock_script),
+                        (_, _) => result,
+                    };
 
                 if result {
                     QueryMatchResult::yes_with_confirmations(*confirmations_needed)
@@ -304,7 +306,7 @@ mod tests {
 
     #[test]
     fn given_a_witness_transaction_with_different_unlock_script_then_unlock_script_query_wont_match(
-) {
+    ) {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec!["102030405060708090", "00"]);
 

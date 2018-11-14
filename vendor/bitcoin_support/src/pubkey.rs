@@ -34,7 +34,8 @@ impl IntoP2wpkhAddress for PubkeyHash {
                         Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
                         Network::Bitcoin => bitcoin_bech32::constants::Network::Bitcoin,
                     },
-                ).expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
+                )
+                .expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
             ),
             network,
         }
@@ -204,7 +205,8 @@ mod test {
     fn roudtrip_serialization_of_pubkeyhash() {
         let public_key = PublicKey::from_hex(
             "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
-        ).unwrap();
+        )
+        .unwrap();
         let pubkey_hash: PubkeyHash = public_key.into();
         let serialized = serde_json::to_string(&pubkey_hash).unwrap();
         assert_eq!(serialized, "\"ac2db2f2615c81b83fe9366450799b4992931575\"");

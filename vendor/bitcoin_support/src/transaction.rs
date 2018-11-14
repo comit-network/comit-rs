@@ -59,15 +59,16 @@ impl SpendsWith for Transaction {
 
 fn any_unlock_script_matches(txin: &TxIn, unlock_script: &Vec<Vec<u8>>) -> bool {
     unlock_script.iter().all(|item| {
-        txin.witness.contains(item) || unlock_script.iter().all(|item| {
-            txin.script_sig
-                .iter(true)
-                .any(|instruction| match instruction {
-                    PushBytes(data) => (item as &[u8]) == data,
-                    Op(_) => false,
-                    Error(_) => false,
-                })
-        })
+        txin.witness.contains(item)
+            || unlock_script.iter().all(|item| {
+                txin.script_sig
+                    .iter(true)
+                    .any(|instruction| match instruction {
+                        PushBytes(data) => (item as &[u8]) == data,
+                        Op(_) => false,
+                        Error(_) => false,
+                    })
+            })
     })
 }
 

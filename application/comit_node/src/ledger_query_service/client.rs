@@ -58,7 +58,8 @@ impl DefaultLedgerQueryServiceApiClient {
                     .ok_or_else(|| Error::MalformedResponse)
                     .and_then(|value| value.to_str().map_err(|_| Error::MalformedResponse))
                     .and_then(|location| Url::parse(location).map_err(|_| Error::MalformedResponse))
-            }).map(QueryId::new);
+            })
+            .map(QueryId::new);
 
         Box::new(query_id)
     }

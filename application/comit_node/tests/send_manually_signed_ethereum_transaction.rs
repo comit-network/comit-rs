@@ -41,7 +41,8 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
                 condition: None,
             },
             "",
-        ).wait()
+        )
+        .wait()
         .unwrap();
 
     let get_nonce = || {
