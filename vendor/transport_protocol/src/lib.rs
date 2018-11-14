@@ -1,6 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(tool_lints)]
+
 #[macro_use]
 extern crate serde_derive;
 extern crate serde;
