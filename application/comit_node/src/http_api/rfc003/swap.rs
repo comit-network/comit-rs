@@ -9,6 +9,7 @@ use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, StatusCode};
 use std::{error::Error as StdError, fmt, sync::Arc};
 use swap_protocols::{
+    asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self, bitcoin,
@@ -77,8 +78,10 @@ impl From<comit_client::ClientFactoryError> for Error {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, LabelledGeneric)]
-pub struct SwapRequestBody<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct SwapRequestBody<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> {
+    #[serde(with = "http_api::asset::serde")]
     source_asset: SA,
+    #[serde(with = "http_api::asset::serde")]
     target_asset: TA,
     #[serde(with = "http_api::ledger::serde")]
     source_ledger: SL,
