@@ -9,7 +9,7 @@ use swap_protocols::{
     rfc003::{
         self,
         ledger::Ledger,
-        messages::{AcceptResponse, Request},
+        messages::{AcceptResponseBody, Request},
         state_machine::OngoingSwap,
         IntoSecretHash,
     },
@@ -22,7 +22,7 @@ mod default;
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
-pub type Response<SL, TL> = Future<Result<AcceptResponse<SL, TL>, SwapReject>>;
+pub type Response<SL, TL> = Future<Result<AcceptResponseBody<SL, TL>, SwapReject>>;
 pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
 pub type Refunded<L: Ledger> = Future<L::TxId>;
 pub type Redeemed<L: Ledger> = Future<L::TxId>;

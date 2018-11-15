@@ -51,21 +51,23 @@ describe('RFC003 Bitcoin for Ether', () => {
             .post('/swaps/rfc003')
             .send({
                 "source_ledger": {
-                    "value": "Bitcoin",
-                    "identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                    "name": "Bitcoin",
+                    "network": "regtest"
                 },
                 "target_ledger": {
-                    "value": "Ethereum",
-                    "identity": alice_final_address,
+                    "name": "Ethereum"
                 },
                 "source_asset": {
-                    "value": "Bitcoin",
+                    "name": "Bitcoin",
                     "quantity": "100000000"
                 },
                 "target_asset": {
-                    "value": "Ether",
+                    "name": "Ether",
                     "quantity": target_asset.toString(),
-                }
+                },
+                "source_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                "target_ledger_success_identity": alice_final_address,
+                "source_ledger_lock_duration": 144
             }).then((res) => {
                 res.should.have.status(201);
                 swap_location = res.headers.location;

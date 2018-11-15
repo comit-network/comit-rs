@@ -1,3 +1,4 @@
+use bam::{connection::Connection, json};
 use bitcoin_support::{BitcoinQuantity, Network};
 use ethereum_support::EtherQuantity;
 use event_store::EventStore;
@@ -6,34 +7,17 @@ use key_store::KeyStore;
 use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
 use std::{io, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
+    bam_types::SwapResponse,
     json_config,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
         ledger_htlc_service::{BitcoinService, EthereumService},
     },
-    wire_types::SwapResponse,
     SwapRequestHandler,
 };
 use swaps::common::SwapId;
 use tokio::{self, net::TcpListener};
-use transport_protocol::{connection::Connection, json};
-
-#[derive(Debug)]
-pub struct ComitServer<
-    E: EventStore<SwapId>,
-    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
-        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-> {
-    event_store: Arc<E>,
-    my_keystore: Arc<KeyStore>,
-    ethereum_service: Arc<EthereumService>,
-    bitcoin_service: Arc<BitcoinService>,
-    ledger_query_service: Arc<BLQS>,
-    bitcoin_network: Network,
-    bitcoin_poll_interval: Duration,
-    ethereum_poll_interval: Duration,
-}
 
 impl<E, BLQS> ComitServer<E, BLQS>
 where
@@ -99,6 +83,22 @@ where
 
 #[derive(Default)]
 struct MySwapHandler {}
+
+#[derive(Debug)]
+pub struct ComitServer<
+    E: EventStore<SwapId>,
+    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
+        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
+> {
+    event_store: Arc<E>,
+    my_keystore: Arc<KeyStore>,
+    ethereum_service: Arc<EthereumService>,
+    bitcoin_service: Arc<BitcoinService>,
+    ledger_query_service: Arc<BLQS>,
+    bitcoin_network: Network,
+    bitcoin_poll_interval: Duration,
+    ethereum_poll_interval: Duration,
+}
 
 impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
     for MySwapHandler

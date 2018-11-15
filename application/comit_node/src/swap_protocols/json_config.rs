@@ -1,3 +1,8 @@
+use bam::{
+    config::Config,
+    json::{self, Request, Response},
+    Status,
+};
 use bitcoin_support::{
     Address as BitcoinAddress, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint,
 };
@@ -12,6 +17,7 @@ use ledger_query_service::{
 };
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
+    bam_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
     handler::SwapRequestHandler,
     ledger::{Bitcoin, Ethereum, Ledger},
     rfc003::{
@@ -22,7 +28,6 @@ use swap_protocols::{
             EthereumService, LedgerHtlcService,
         },
     },
-    wire_types::{SwapProtocol, SwapRequestHeaders, SwapResponse},
 };
 use swaps::{
     bob_events::{
@@ -32,11 +37,6 @@ use swaps::{
 };
 use tokio;
 use tokio_timer::Interval;
-use transport_protocol::{
-    config::Config,
-    json::{self, Request, Response},
-    Status,
-};
 
 pub fn json_config<
     H: SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
@@ -74,7 +74,7 @@ pub fn json_config<
             };
 
             // Too many things called Ledger so just import this on to this local namespace
-            use swap_protocols::wire_types::{Asset, Ledger};
+            use swap_protocols::bam_types::{Asset, Ledger};
 
             match headers.swap_protocol {
                 SwapProtocol::ComitRfc003 => match headers {
@@ -176,7 +176,7 @@ fn process<
         key_store.get_transient_keypair(&trade_id.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
     let bob_success_address: BitcoinAddress = bob_success_keypair
         .public_key()
-        .into_p2wpkh_address(request.source_ledger.network());
+        .into_p2wpkh_address(request.source_ledger.network);
     debug!(
         "Generated transient success address for Bob is {}",
         bob_success_address
@@ -283,7 +283,7 @@ fn process<
         error!("Ledger Query Service Failure: {:#?}", e);
     }));
 
-    json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponse::<Bitcoin, Ethereum> {
+    json::Response::new(Status::OK(20)).with_body(rfc003::AcceptResponseBody::<Bitcoin, Ethereum> {
         target_ledger_refund_identity: bob_refund_address,
         source_ledger_success_identity: bob_success_keypair.public_key().into(),
         target_ledger_lock_duration: twelve_hours,

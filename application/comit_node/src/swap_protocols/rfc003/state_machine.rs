@@ -4,8 +4,8 @@ use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, messages::Request, AcceptResponse, IntoSecretHash, SaveState,
-        Secret, SwapOutcome,
+        self, events, ledger::Ledger, messages::Request, AcceptResponseBody, IntoSecretHash,
+        SaveState, Secret, SwapOutcome,
     },
 };
 
@@ -27,7 +27,7 @@ pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
 impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>
     OngoingSwap<SL, TL, SA, TA, S>
 {
-    pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponse<SL, TL>) -> Self {
+    pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponseBody<SL, TL>) -> Self {
         OngoingSwap {
             source_ledger: start.source_ledger,
             target_ledger: start.target_ledger,

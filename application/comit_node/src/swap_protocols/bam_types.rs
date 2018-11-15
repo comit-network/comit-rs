@@ -1,8 +1,8 @@
+use bam::Status;
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use serde::Serialize;
 use swap_protocols::ledger::{Bitcoin, Ethereum};
-use transport_protocol::Status;
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "value", content = "parameters")]

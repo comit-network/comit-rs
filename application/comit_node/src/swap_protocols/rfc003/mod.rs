@@ -2,6 +2,7 @@
 mod transition_save;
 
 pub mod actions;
+pub mod alice;
 pub mod alice_ledger_actor;
 pub mod bitcoin;
 pub mod ethereum;

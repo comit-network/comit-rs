@@ -4,6 +4,7 @@ members = [
     "application/comit_node",
     "application/comit_node_client",
     "application/ledger_query_service",
+    "vendor/bam",
     "vendor/bitcoin_rpc_test_helpers",
     "vendor/bitcoin_support",
     "vendor/bitcoin_witness",
@@ -14,7 +15,6 @@ members = [
     "vendor/secp256k1_support",
     "vendor/tc_bitcoincore_client",
     "vendor/tc_web3_client",
-    "vendor/transport_protocol",
 ]
 
 [replace]

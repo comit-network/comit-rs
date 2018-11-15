@@ -1,6 +1,6 @@
 use swap_protocols::{
+    bam_types::{Asset, SwapProtocol, SwapRequestHeaders},
     rfc003::{ledger::Ledger, SecretHash},
-    wire_types::{Asset, SwapProtocol, SwapRequestHeaders},
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -57,7 +57,7 @@ impl<SL: Ledger, TL: Ledger, SA, TA> Request<SL, TL, SA, TA> {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
-pub struct AcceptResponse<SL: Ledger, TL: Ledger> {
+pub struct AcceptResponseBody<SL: Ledger, TL: Ledger> {
     pub target_ledger_refund_identity: TL::Identity,
     pub source_ledger_success_identity: SL::Identity,
     pub target_ledger_lock_duration: TL::LockDuration,

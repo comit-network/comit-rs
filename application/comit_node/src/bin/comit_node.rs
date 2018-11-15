@@ -8,6 +8,7 @@ extern crate ethereum_support;
 #[macro_use]
 extern crate log;
 extern crate event_store;
+extern crate futures;
 extern crate tokio;
 extern crate warp;
 
@@ -25,17 +26,22 @@ use comit_node::{
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
     settings::ComitNodeSettings,
-    swap_metadata_store::InMemorySwapMetadataStore,
-    swap_protocols::rfc003::{
-        alice_ledger_actor::AliceLedgerActor,
-        ledger_htlc_service::{BitcoinService, EthereumService},
-        state_store::InMemoryStateStore,
+    swap_protocols::{
+        rfc003::{
+            self,
+            alice_ledger_actor::AliceLedgerActor,
+            ledger_htlc_service::{BitcoinService, EthereumService},
+            state_store::InMemoryStateStore,
+        },
+        InMemoryMetadataStore,
     },
     swaps::common::SwapId,
 };
+
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
-use std::{env::var, net::SocketAddr, sync::Arc};
+use futures::sync::mpsc::{self, UnboundedSender};
+use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -52,7 +58,7 @@ fn main() {
             .expect("Could not HD derive keys from the private key"),
     );
     let event_store = Arc::new(InMemoryEventStore::default());
-    let swap_metadata_store = Arc::new(InMemorySwapMetadataStore::default());
+    let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let ethereum_service = create_ethereum_service(&settings);
     let bitcoin_service = create_bitcoin_service(&settings, &key_store);
@@ -60,17 +66,27 @@ fn main() {
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-    spawn_warp_instance(
+    let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
-        Arc::clone(&key_store),
         Arc::clone(&event_store),
-        Arc::clone(&swap_metadata_store),
+        Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
+        Arc::clone(&key_store),
         &mut runtime,
     );
+
+    spawn_warp_instance(
+        &settings,
+        Arc::clone(&event_store),
+        Arc::clone(&metadata_store),
+        Arc::clone(&state_store),
+        sender,
+        &mut runtime,
+    );
+
     spawn_comit_server(
         &settings,
         Arc::clone(&event_store),
@@ -170,17 +186,34 @@ fn create_ledger_query_service_api_client(
 
 fn spawn_warp_instance(
     settings: &ComitNodeSettings,
-    key_store: Arc<KeyStore>,
     event_store: Arc<InMemoryEventStore<SwapId>>,
-    swap_metadata_store: Arc<InMemorySwapMetadataStore<SwapId>>,
+    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
+    state_store: Arc<InMemoryStateStore<SwapId>>,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
+    runtime: &mut tokio::runtime::Runtime,
+) {
+    let routes = route_factory::create(event_store, metadata_store, state_store, sender);
+
+    let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
+
+    let server = warp::serve(routes).bind(http_socket_address);
+
+    runtime.spawn(server);
+}
+
+fn spawn_alice_swap_request_handler_for_rfc003(
+    settings: &ComitNodeSettings,
+    event_store: Arc<InMemoryEventStore<SwapId>>,
+    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
+    key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
-) {
-    let client_pool = comit_client::bam::BamClientPool::default();
-    let remote_comit_node_url = settings.comit.remote_comit_node_url;
+) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequests)> {
+    let client_factory = Arc::new(comit_client::bam::BamClientPool::default());
+    let comit_node_addr = settings.comit.remote_comit_node_url;
 
     let alice_actor = AliceLedgerActor::new(
         Arc::clone(&event_store),
@@ -195,23 +228,23 @@ fn spawn_warp_instance(
     let (alice_actor_sender, alice_actor_future) = alice_actor.listen();
     runtime.spawn(alice_actor_future);
 
-    let routes = route_factory::create(
-        event_store,
-        swap_metadata_store,
-        state_store,
-        Arc::new(client_pool),
-        remote_comit_node_url,
+    let (sender, receiver) = mpsc::unbounded();
+
+    let alice_swap_request_handler = rfc003::alice::SwapRequestsHandler {
+        receiver,
+        metadata_store,
         key_store,
+        state_store,
+        client_factory,
+        event_store,
+        comit_node_addr,
         alice_actor_sender,
-    );
+        phantom_data: PhantomData,
+    };
 
-    let http_api_address = settings.http_api.address;
-    let http_api_port = settings.http_api.port;
-    let http_socket_address = SocketAddr::new(http_api_address, http_api_port);
+    runtime.spawn(alice_swap_request_handler.start());
 
-    let server = warp::serve(routes).bind(http_socket_address);
-
-    runtime.spawn(server);
+    sender
 }
 
 fn spawn_comit_server(

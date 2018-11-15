@@ -1,25 +1,25 @@
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate bam;
 extern crate futures;
 extern crate memsocket;
 extern crate pretty_env_logger;
 extern crate spectral;
 extern crate tokio;
 extern crate tokio_codec;
-extern crate transport_protocol;
 #[macro_use]
 extern crate log;
 
 #[macro_use]
 pub mod common;
+use bam::{connection, json};
 use common::{
     setup::{create_server_with, start_server_with},
     *,
 };
 use futures::future::Future;
 use spectral::prelude::*;
-use transport_protocol::{connection, json};
 
 #[test]
 fn ping_message() {
@@ -100,9 +100,9 @@ fn handle_unknown_frame_type() {
 
     match bob_shutdown {
         Ok(_) => panic!("should have shutdown with error"),
-        Err(connection::ClosedReason::InvalidFrame(
-            transport_protocol::Error::UnknownFrameType(ref frame_type),
-        )) => assert_eq!(frame_type, "I_DONT_EXIST"),
+        Err(connection::ClosedReason::InvalidFrame(bam::Error::UnknownFrameType(
+            ref frame_type,
+        ))) => assert_eq!(frame_type, "I_DONT_EXIST"),
         _ => panic!("Expected an UnknownFrameType error"),
     }
 }

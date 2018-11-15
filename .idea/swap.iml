@@ -41,9 +41,9 @@
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_witness/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_witness/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_witness/benches" isTestSource="true" />
-      <sourceFolder url="file://$MODULE_DIR$/vendor/transport_protocol/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/bam/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/transport_protocol/examples" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/vendor/transport_protocol/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/bam/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/transport_protocol/benches" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/ganache_rust_web3/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/ganache_rust_web3/examples" isTestSource="false" />
@@ -81,6 +81,8 @@
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/bam/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/bam/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/application/bitcoin_htlc/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node_client/target" />
@@ -89,6 +91,7 @@
       <excludeFolder url="file://$MODULE_DIR$/application/ethereum_wallet/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/ledger_query_service/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/logging/target" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/bam/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_rpc_test_helpers/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_witness/target" />

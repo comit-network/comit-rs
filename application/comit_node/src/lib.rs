@@ -11,11 +11,14 @@ extern crate failure;
 #[macro_use]
 extern crate log;
 #[macro_use]
-extern crate transport_protocol;
+extern crate bam;
 #[macro_use]
 extern crate futures;
 #[macro_use]
 extern crate state_machine_future;
+#[macro_use]
+extern crate frunk;
+extern crate frunk_core;
 
 #[cfg(test)]
 extern crate pretty_env_logger;
@@ -59,6 +62,5 @@ pub mod key_store;
 pub mod ledger_query_service;
 pub mod logging;
 pub mod settings;
-pub mod swap_metadata_store;
 pub mod swap_protocols;
 pub mod swaps;
