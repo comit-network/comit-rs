@@ -65,6 +65,12 @@ args = ["build", "--all", "--all-targets", "--verbose"]
 workspace = false
 args = ["test", "--all", "--all-targets", "--verbose"]
 
+[tasks.init]
+script = [
+'''
+git config core.hooksPath .githooks
+'''
+]
 
 ################
 # Task aliases #
