@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-PROJECT_RUST_VERSION=nightly-2018-09-14
+PROJECT_RUST_VERSION=nightly-2018-11-13
 
 rustup toolchain install ${PROJECT_RUST_VERSION}
 
