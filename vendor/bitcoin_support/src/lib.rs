@@ -1,8 +1,8 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 #![feature(const_fn)]
-extern crate bigdecimal;
 extern crate bitcoin;
+extern crate bitcoin_quantity;
 extern crate hex;
 extern crate secp256k1_support;
 extern crate serde;
@@ -39,7 +39,6 @@ pub use pubkey::*;
 pub use transaction::*;
 pub use weight::*;
 
-mod bitcoin_quantity;
 mod blocks;
 mod mined_block;
 mod pubkey;
