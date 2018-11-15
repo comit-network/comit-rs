@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpAsset {
     name: String,
-    #[serde(default)]
+    #[serde(default, flatten)]
     parameters: HashMap<String, serde_json::Value>,
 }
 
@@ -56,7 +56,6 @@ impl HttpAsset {
 #[derive(Debug)]
 pub enum Error {
     WrongAsset,
-    WrongDataType,
     ParameterNotFound,
     Serde(serde_json::Error),
 }
@@ -68,8 +67,8 @@ impl fmt::Display for Error {
 }
 
 macro_rules! impl_from_http_quantity_asset {
-    ($name:ident) => {
-        impl FromHttpAsset for $name {
+    ($asset_type:ty, $name:ident) => {
+        impl FromHttpAsset for $asset_type {
             #[allow(unused_mut)]
             fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
                 let _ = asset.is_asset(stringify!($name))?;
@@ -81,8 +80,8 @@ macro_rules! impl_from_http_quantity_asset {
 }
 
 macro_rules! impl_to_http_quantity_asset {
-    ($name:ident) => {
-        impl ToHttpAsset for $name {
+    ($asset_type:ty, $name:ident) => {
+        impl ToHttpAsset for $asset_type {
             fn to_http_asset(&self) -> Result<HttpAsset, Error> {
                 Ok(HttpAsset::with_asset(stringify!($name)).with_parameter("quantity", &self)?)
             }
@@ -91,9 +90,9 @@ macro_rules! impl_to_http_quantity_asset {
 }
 
 macro_rules! impl_http_quantity_asset {
-    ($name:ident) => {
-        impl_from_http_quantity_asset!($name);
-        impl_to_http_quantity_asset!($name);
+    ($asset_type:ty, $name:ident) => {
+        impl_from_http_quantity_asset!($asset_type, $name);
+        impl_to_http_quantity_asset!($asset_type, $name);
     };
 }
 

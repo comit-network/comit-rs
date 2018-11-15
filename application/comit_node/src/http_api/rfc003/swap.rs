@@ -306,3 +306,54 @@ fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStor
         _ => unreachable!("No other type is expected to be found in the store"),
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use hex::FromHex;
+    use serde_json;
+    use spectral::prelude::*;
+
+    #[test]
+    fn can_deserialize_swap_request_body() {
+        let body = r#"{
+                "source_ledger": {
+                    "name": "Bitcoin",
+                    "network": "regtest"
+                },
+                "target_ledger": {
+                    "name": "Ethereum"
+                },
+                "source_asset": {
+                    "name": "Bitcoin",
+                    "quantity": "100000000"
+                },
+                "target_asset": {
+                    "name": "Ether",
+                    "quantity": "10000000000000000000"
+                },
+                "source_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                "target_ledger_success_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                "source_ledger_lock_duration": 144
+            }"#;
+
+        let body = serde_json::from_str(body);
+
+        assert_that(&body).is_ok_containing(SwapRequestBody {
+            source_asset: BitcoinQuantity::from_bitcoin(1.0),
+            target_asset: EtherQuantity::from_eth(10.0),
+            source_ledger: Bitcoin::regtest(),
+            target_ledger: Ethereum::default(),
+            source_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
+                "ac2db2f2615c81b83fe9366450799b4992931575",
+            )
+            .unwrap(),
+            target_ledger_success_identity: ethereum_support::Address::from(
+                "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+            ),
+            source_ledger_lock_duration: bitcoin_support::Blocks::new(144),
+        })
+    }
+
+}

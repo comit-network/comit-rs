@@ -5,7 +5,7 @@ use std::{collections::HashMap, fmt};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpLedger {
     name: String,
-    #[serde(default)]
+    #[serde(default, flatten)]
     parameters: HashMap<String, serde_json::Value>,
 }
 
@@ -56,7 +56,6 @@ impl HttpLedger {
 #[derive(Debug)]
 pub enum Error {
     WrongLedger,
-    WrongDataType,
     ParameterNotFound,
     Serde(serde_json::Error),
 }

@@ -23,6 +23,6 @@ mod asset_impls {
     use bitcoin_support::BitcoinQuantity;
     use ethereum_support::EtherQuantity;
 
-    impl_http_quantity_asset!(BitcoinQuantity);
-    impl_http_quantity_asset!(EtherQuantity);
+    impl_http_quantity_asset!(BitcoinQuantity, Bitcoin);
+    impl_http_quantity_asset!(EtherQuantity, Ether);
 }
