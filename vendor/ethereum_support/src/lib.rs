@@ -4,6 +4,7 @@
 extern crate bigdecimal;
 extern crate num;
 extern crate regex;
+extern crate rlp;
 extern crate secp256k1_support;
 extern crate tiny_keccak;
 extern crate web3 as web3_crate;
@@ -14,9 +15,11 @@ extern crate serde;
 
 pub use web3_crate::types::*;
 
+mod contract_address;
 mod ether_quantity;
 mod key;
 
+pub use contract_address::*;
 pub use ether_quantity::*;
 pub use key::*;
 
