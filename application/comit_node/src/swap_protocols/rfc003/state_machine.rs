@@ -82,10 +82,11 @@ where
     },
 
     #[state_machine_future(transitions(
+        SourceFundedTargetRedeemed,
         SourceFundedTargetRefunded,
         SourceRefundedTargetFunded,
         SourceRedeemedTargetFunded,
-        SourceFundedTargetRedeemed
+        Error
     ))]
     BothFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
@@ -109,8 +110,6 @@ where
     SourceRedeemedTargetFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_htlc_location: TL::HtlcLocation,
-        source_htlc_location: SL::HtlcLocation,
-        secret: Secret,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -118,6 +117,7 @@ where
         swap: OngoingSwap<SL, TL, SA, TA, S>,
         target_redeemed_tx: TL::Transaction,
         source_htlc_location: SL::HtlcLocation,
+        secret: Secret,
     },
 
     #[state_machine_future(ready)]
@@ -212,29 +212,34 @@ where
     ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
             .events
-            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
+            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
             .poll()?
         {
             let state = state.take();
+            let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
-                Either::A(_source_redeemed_txid) => {
-                    let bytes = b"hello world, you are beautiful!!"; //TODO get the secret from somewhere
-                    let secret = Secret::from(*bytes);
-                    transition_save!(
+                Either::A(target_redeemed_tx) => {
+                    match target_redeemed_tx.extract_secret(&secret_hash) {
+                        Some(secret) => transition_save!(
+                            context.state_repo,
+                            SourceFundedTargetRedeemed {
+                                swap: state.swap,
+                                target_redeemed_tx,
+                                source_htlc_location: state.source_htlc_location,
+                                secret,
+                            }
+                        ),
+                        None => transition_save!(
                         context.state_repo,
-                        SourceRedeemedTargetFunded {
-                            swap: state.swap,
-                            target_htlc_location: state.target_htlc_location,
-                            source_htlc_location: state.source_htlc_location,
-                            secret,
-                        }
-                    )
+                        Error (rfc003::Error::Internal(format!("Somehow reached transition with an invalid secret, transaction: {:?}", target_redeemed_tx).to_string()))
+                    ),
+                    }
                 }
-                Either::B(_source_refunded_txid) => transition_save!(
+                Either::B(_target_refunded_txid) => transition_save!(
                     context.state_repo,
-                    SourceRefundedTargetFunded {
+                    SourceFundedTargetRefunded {
                         swap: state.swap,
-                        target_htlc_location: state.target_htlc_location,
+                        source_htlc_location: state.source_htlc_location,
                     }
                 ),
             }
@@ -242,27 +247,26 @@ where
 
         match try_ready!(context
             .events
-            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
             .poll())
         {
-            Either::A(target_redeemed_tx) => {
+            Either::A(_source_redeemed_tx) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
-                    SourceFundedTargetRedeemed {
+                    SourceRedeemedTargetFunded {
                         swap: state.swap,
-                        target_redeemed_tx,
-                        source_htlc_location: state.source_htlc_location,
+                        target_htlc_location: state.target_htlc_location,
                     }
                 )
             }
-            Either::B(_target_refunded_txid) => {
+            Either::B(_source_refunded_txid) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
-                    SourceFundedTargetRefunded {
+                    SourceRefundedTargetFunded {
                         swap: state.swap,
-                        source_htlc_location: state.source_htlc_location,
+                        target_htlc_location: state.target_htlc_location,
                     }
                 )
             }

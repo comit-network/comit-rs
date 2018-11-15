@@ -45,7 +45,14 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
             SS::SourceFundedTargetRefunded { .. } => vec![],
-            SS::SourceFundedTargetRedeemed { .. } => vec![],
+            SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
+                ref target_htlc_location,
+                ..
+            }) => vec![Action::Refund(EtherRefund {
+                contract_address: *target_htlc_location,
+                gas_limit: 42.into(), //TODO come up with correct gas_limit
+                gas_cost: 42.into(),  //TODO come up with correct gas cost
+            })],
             SS::SourceRefundedTargetFunded(SourceRefundedTargetFunded {
                 ref target_htlc_location,
                 ..
@@ -54,25 +61,18 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 gas_limit: 42.into(), //TODO come up with correct gas_limit
                 gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
-            SS::SourceRedeemedTargetFunded(SourceRedeemedTargetFunded {
+            SS::SourceFundedTargetRedeemed(SourceFundedTargetRedeemed {
                 ref swap,
-                ref target_htlc_location,
                 ref source_htlc_location,
                 ref secret,
-            }) => vec![
-                Action::Redeem(BitcoinRedeem {
-                    outpoint: *source_htlc_location,
-                    htlc: bitcoin_htlc(swap),
-                    value: swap.source_asset,
-                    transient_keypair: swap.source_ledger_refund_identity,
-                    secret: *secret,
-                }),
-                Action::Refund(EtherRefund {
-                    contract_address: *target_htlc_location,
-                    gas_limit: 42.into(), //TODO come up with correct gas_limit
-                    gas_cost: 42.into(),  //TODO come up with correct gas cost
-                }),
-            ],
+                ..
+            }) => vec![Action::Redeem(BitcoinRedeem {
+                outpoint: *source_htlc_location,
+                htlc: bitcoin_htlc(swap),
+                value: swap.source_asset,
+                transient_keypair: swap.source_ledger_refund_identity,
+                secret: *secret,
+            })],
             SS::Error(_) => vec![],
             SS::Final(_) => vec![],
         }
