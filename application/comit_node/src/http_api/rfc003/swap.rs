@@ -2,13 +2,13 @@ use bitcoin_support::{self, BitcoinQuantity};
 use comit_client;
 use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
+use frunk;
 use futures::sync::mpsc::UnboundedSender;
 use http_api;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, StatusCode};
-use std::{error::Error as StdError, fmt, marker::PhantomData, sync::Arc};
+use std::{error::Error as StdError, fmt, sync::Arc};
 use swap_protocols::{
-    asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self, bitcoin,
@@ -76,15 +76,17 @@ impl From<comit_client::ClientFactoryError> for Error {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, LabelledGeneric)]
 pub struct SwapRequestBody<SL: Ledger, TL: Ledger, SA, TA> {
+    source_asset: SA,
+    target_asset: TA,
     #[serde(with = "http_api::ledger::serde")]
     source_ledger: SL,
     #[serde(with = "http_api::ledger::serde")]
     target_ledger: TL,
-
-    source_asset: PhantomData<SA>,
-    target_asset: PhantomData<TA>,
+    source_ledger_refund_identity: SL::Identity,
+    target_ledger_success_identity: TL::Identity,
+    source_ledger_lock_duration: SL::LockDuration,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -93,14 +95,6 @@ pub enum SwapCombinations {
     BitcoinEthereumBitcoinQuantityEthereumQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
-}
-
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> From<SwapRequestBody<SL, TL, SA, TA>>
-    for rfc003::AliceSwapRequest<SL, TL, SA, TA>
-{
-    fn from(request_body: SwapRequestBody<SL, TL, SA, TA>) -> Self {
-        unimplemented!()
-    }
 }
 
 #[derive(Serialize, Debug)]
@@ -132,7 +126,9 @@ pub fn post_swap(
 
     let requests = match swap_request {
         SwapCombinations::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
-            rfc003::AliceSwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(body.into())
+            rfc003::AliceSwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+                frunk::labelled_convert_from(body),
+            )
         }
     };
 

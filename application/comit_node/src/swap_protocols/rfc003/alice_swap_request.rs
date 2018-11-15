@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::Ledger,
 };
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, LabelledGeneric)]
 pub struct AliceSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_asset: SA,
     pub target_asset: TA,

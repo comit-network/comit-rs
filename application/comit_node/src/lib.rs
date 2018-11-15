@@ -16,6 +16,9 @@ extern crate bam;
 extern crate futures;
 #[macro_use]
 extern crate state_machine_future;
+#[macro_use]
+extern crate frunk;
+extern crate frunk_core;
 
 #[cfg(test)]
 extern crate pretty_env_logger;

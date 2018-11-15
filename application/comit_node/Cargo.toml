@@ -4,6 +4,7 @@ version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
 
 [dependencies]
+bam = { path = "../../vendor/bam" }
 bitcoin_rpc_client = "0.4"
 bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
 bitcoin_support = { path = "../../vendor/bitcoin_support"}
@@ -15,10 +16,12 @@ ethereum_support = { path = "../../vendor/ethereum_support" }
 event_store = { path = "../../vendor/event_store" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
+frunk = "0.2"
+frunk_core = "0.2"
 futures = "0.1"
 hex = "0.3"
-http-api-problem = "0.9"
 http = "0.1"
+http-api-problem = "0.9"
 hyper = "0.12"
 lazy_static = "1"
 log = "0.4"
@@ -37,7 +40,6 @@ tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
 tiny-keccak = "1.4"
 tokio = "0.1"
 tokio-timer = "0.2"
-bam = { path = "../../vendor/bam" }
 url = "1.7"
 uuid = { version = "0.6", features = ["serde", "v4"] }
 warp = "0.1"
