@@ -2,6 +2,7 @@
 mod transition_save;
 
 pub mod actions;
+pub mod alice;
 pub mod alice_ledger_actor;
 pub mod bitcoin;
 pub mod ethereum;
@@ -11,8 +12,6 @@ pub mod state_machine;
 pub mod state_store;
 pub mod validation;
 
-mod alice_swap_request;
-mod create_swap;
 mod error;
 mod ledger;
 mod messages;
@@ -21,8 +20,6 @@ mod save_state;
 mod secret;
 
 pub use self::{
-    alice_swap_request::{AliceSwapRequest, AliceSwapRequests},
-    create_swap::CreateSwap,
     error::Error,
     ledger::Ledger,
     messages::*,

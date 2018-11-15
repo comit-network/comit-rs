@@ -123,13 +123,13 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
     swap_request: SwapCombinations,
-    sender: UnboundedSender<(SwapId, rfc003::AliceSwapRequests)>,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
 ) -> Result<impl Reply, Rejection> {
     let id = SwapId::default();
 
     let requests = match swap_request {
         SwapCombinations::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
-            rfc003::AliceSwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+            rfc003::alice::SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
                 frunk::labelled_convert_from(body),
             )
         }

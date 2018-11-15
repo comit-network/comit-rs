@@ -7,7 +7,7 @@ use swap_protocols::{
 };
 
 #[derive(Clone, Debug, PartialEq, LabelledGeneric)]
-pub struct AliceSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct SwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_asset: SA,
     pub target_asset: TA,
     pub source_ledger: SL,
@@ -17,8 +17,8 @@ pub struct AliceSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
     pub source_ledger_lock_duration: SL::LockDuration,
 }
 
-impl From<AliceSwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {
-    fn from(_: AliceSwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>) -> Self {
+impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {
+    fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>) -> Self {
         Self {
             source_ledger: Ledgers::Bitcoin,
             target_ledger: Ledgers::Ethereum,
@@ -30,8 +30,8 @@ impl From<AliceSwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> f
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum AliceSwapRequests {
+pub enum SwapRequests {
     BitcoinEthereumBitcoinQuantityEthereumQuantity(
-        AliceSwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+        SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
 }

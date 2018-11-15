@@ -13,7 +13,7 @@ use swap_protocols::{
     metadata_store::{Metadata, MetadataStore},
     rfc003::{
         self,
-        alice_swap_request::AliceSwapRequests,
+        alice::SwapRequests,
         messages::Request,
         state_machine::{Start, SwapStates},
         state_store::StateStore,
@@ -23,7 +23,7 @@ use swap_protocols::{
 use swaps::{alice_events, common::SwapId};
 
 #[derive(Debug)]
-pub struct CreateSwap<
+pub struct SwapRequestsHandler<
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
     EventStore,
@@ -31,7 +31,7 @@ pub struct CreateSwap<
     StateStore,
 > {
     // new dependencies
-    pub receiver: UnboundedReceiver<(SwapId, AliceSwapRequests)>,
+    pub receiver: UnboundedReceiver<(SwapId, SwapRequests)>,
     pub metadata_store: Arc<MetadataStore>,
     pub key_store: Arc<KeyStore>,
     pub state_store: Arc<StateStore>,
@@ -50,9 +50,9 @@ impl<
         E: EventStore<SwapId>,
         M: MetadataStore<SwapId>,
         S: StateStore<SwapId>,
-    > CreateSwap<C, F, E, M, S>
+    > SwapRequestsHandler<C, F, E, M, S>
 {
-    pub fn listen(self) -> impl Future<Item = (), Error = ()> {
+    pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let receiver = self.receiver;
         let key_store = Arc::clone(&self.key_store);
         let metadata_store = Arc::clone(&self.metadata_store);
@@ -66,7 +66,7 @@ impl<
         receiver
             .for_each(move |(id, requests)| {
                 match requests {
-                    AliceSwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
+                    SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
                         // TODO: Store this somewhere
                         let _source_ledger_refund_identity = request.source_ledger_refund_identity;
 

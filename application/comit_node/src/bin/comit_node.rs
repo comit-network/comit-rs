@@ -66,7 +66,7 @@ fn main() {
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let sender = spawn_create_swap_instance_for_rfc003(
+    let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
         Arc::clone(&event_store),
         Arc::clone(&metadata_store),
@@ -189,7 +189,7 @@ fn spawn_warp_instance(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    sender: UnboundedSender<(SwapId, rfc003::AliceSwapRequests)>,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(event_store, metadata_store, state_store, sender);
@@ -201,7 +201,7 @@ fn spawn_warp_instance(
     runtime.spawn(server);
 }
 
-fn spawn_create_swap_instance_for_rfc003(
+fn spawn_alice_swap_request_handler_for_rfc003(
     settings: &ComitNodeSettings,
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
@@ -211,7 +211,7 @@ fn spawn_create_swap_instance_for_rfc003(
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
     key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
-) -> UnboundedSender<(SwapId, rfc003::AliceSwapRequests)> {
+) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequests)> {
     let client_factory = Arc::new(comit_client::bam::BamClientPool::default());
     let comit_node_addr = settings.comit.remote_comit_node_url;
 
@@ -230,7 +230,7 @@ fn spawn_create_swap_instance_for_rfc003(
 
     let (sender, receiver) = mpsc::unbounded();
 
-    let create_swap = rfc003::CreateSwap {
+    let alice_swap_request_handler = rfc003::alice::SwapRequestsHandler {
         receiver,
         metadata_store,
         key_store,
@@ -242,7 +242,7 @@ fn spawn_create_swap_instance_for_rfc003(
         phantom_data: PhantomData,
     };
 
-    runtime.spawn(create_swap.listen());
+    runtime.spawn(alice_swap_request_handler.start());
 
     sender
 }
