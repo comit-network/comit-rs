@@ -2,6 +2,7 @@ use bitcoin_support::{Address, BitcoinQuantity, Blocks, OutPoint};
 use secp256k1_support::KeyPair;
 use swap_protocols::{ledger::Bitcoin, rfc003::Ledger};
 
+mod extract_secret;
 mod htlc;
 mod queries;
 

@@ -17,6 +17,7 @@ use swap_protocols::{
 use tokio::{self, prelude::future::Either};
 
 pub use self::default::{DefaultEvents, Role};
+use swap_protocols::rfc003::ExtractSecret;
 
 mod default;
 
@@ -71,7 +72,9 @@ pub trait TargetHtlcRedeemedOrRefunded<
         &mut self,
         swap: &OngoingSwap<SL, TL, SA, TA, S>,
         target_htlc_location: &TL::HtlcLocation,
-    ) -> &mut Box<RedeemedOrRefunded<TL>>;
+    ) -> &mut Box<RedeemedOrRefunded<TL>>
+    where
+        TL::Transaction: ExtractSecret;
 }
 
 pub trait SourceHtlcRedeemedOrRefunded<

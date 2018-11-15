@@ -4,8 +4,8 @@ use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, messages::Request, AcceptResponseBody, IntoSecretHash,
-        SaveState, Secret, SwapOutcome,
+        self, events, ledger::Ledger, messages::Request, AcceptResponseBody, ExtractSecret,
+        IntoSecretHash, SaveState, Secret, SwapOutcome,
     },
 };
 
@@ -24,8 +24,9 @@ pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
     pub secret: S,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>
-    OngoingSwap<SL, TL, SA, TA, S>
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> OngoingSwap<SL, TL, SA, TA, S>
+where
+    TL::Transaction: ExtractSecret,
 {
     pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponseBody<SL, TL>) -> Self {
         OngoingSwap {
@@ -53,7 +54,10 @@ pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHa
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 #[allow(missing_debug_implementations)]
-pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> {
+pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>
+where
+    TL::Transaction: ExtractSecret,
+{
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
         source_ledger_refund_identity: SL::HtlcIdentity,
@@ -125,6 +129,8 @@ pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> {
 
 impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<SL, TL, SA, TA, S>
     for Swap<SL, TL, SA, TA, S>
+where
+    TL::Transaction: ExtractSecret,
 {
     fn poll_start<'s, 'c>(
         state: &'s mut RentToOwn<'s, Start<SL, TL, SA, TA, S>>,

@@ -25,5 +25,5 @@ pub use self::{
     messages::*,
     outcome::SwapOutcome,
     save_state::SaveState,
-    secret::{IntoSecretHash, RandomnessSource, Secret, SecretFromErr, SecretHash},
+    secret::{ExtractSecret, IntoSecretHash, RandomnessSource, Secret, SecretFromErr, SecretHash},
 };
