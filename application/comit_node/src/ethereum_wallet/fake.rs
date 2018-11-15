@@ -1,6 +1,6 @@
 use hex::FromHex;
 
-use ethereum_support::{Address, U256};
+use ethereum_support::Address;
 use ethereum_wallet::{
     transaction::{SignedTransaction, UnsignedTransaction},
     wallet::{InMemoryWallet, Wallet},
@@ -16,8 +16,8 @@ impl Wallet for StaticFakeWallet {
         self.0.sign(tx)
     }
 
-    fn calculate_contract_address(&self, nonce: U256) -> Address {
-        self.0.calculate_contract_address(nonce)
+    fn address(&self) -> Address {
+        self.0.address()
     }
 }
 

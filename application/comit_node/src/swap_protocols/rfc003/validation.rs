@@ -1,9 +1,12 @@
 use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint};
-use ethereum_support::{self, EtherQuantity};
+use ethereum_support::{self, CalculateContractAddress, EtherQuantity};
 use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ethereum},
-    rfc003::{self, bitcoin::bitcoin_htlc_address, state_machine::OngoingSwap, IntoSecretHash},
+    rfc003::{
+        self, bitcoin::bitcoin_htlc_address, ethereum::ethereum_htlc, state_machine::OngoingSwap,
+        IntoSecretHash,
+    },
     Ledger,
 };
 
@@ -93,10 +96,27 @@ where
     S: IntoSecretHash,
 {
     fn is_contained_in_target_ledger_transaction(
-        _swap: OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
-        _tx: ethereum_support::Transaction,
-    ) -> Result<<Ethereum as rfc003::Ledger>::HtlcLocation, Error<EtherQuantity>> {
-        unimplemented!()
+        swap: OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
+        tx: ethereum_support::Transaction,
+    ) -> Result<ethereum_support::Address, Error<EtherQuantity>> {
+        if tx.to != None {
+            return Err(Error::WrongTransaction);
+        }
+
+        if tx.input != ethereum_htlc(&swap).compile_to_hex().into() {
+            return Err(Error::WrongTransaction);
+        }
+
+        if tx.value < swap.target_asset.wei() {
+            return Err(Error::UnexpectedAsset {
+                found: EtherQuantity::from_wei(tx.value),
+                expected: swap.target_asset,
+            });
+        }
+
+        let from_address: ethereum_support::Address = tx.from;
+
+        Ok(from_address.calculate_contract_address(&tx.nonce))
     }
 }
 
@@ -113,17 +133,25 @@ mod tests {
         VerboseRawTransaction,
     };
     use bitcoin_support::{BitcoinQuantity, Blocks, Sha256dHash, Transaction};
-    use ethereum_support::EtherQuantity;
+    use ethereum_support::{
+        web3::types::{Bytes, H256, U256},
+        EtherQuantity,
+    };
     use hex::FromHex;
     use spectral::prelude::*;
     use std::str::FromStr;
     use swap_protocols::{
         ledger::Ethereum,
-        rfc003::{ethereum::Seconds, state_machine::*, AcceptResponse, Secret},
+        rfc003::{
+            ethereum::{ethereum_htlc, Seconds},
+            state_machine::*,
+            AcceptResponse, Secret,
+        },
     };
 
     fn gen_start_state(
         bitcoin_amount: f64,
+        ether_amount: U256,
     ) -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
         Start {
             source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
@@ -138,7 +166,7 @@ mod tests {
             source_ledger: Bitcoin::regtest(),
             target_ledger: Ethereum::default(),
             source_asset: BitcoinQuantity::from_bitcoin(bitcoin_amount),
-            target_asset: EtherQuantity::from_eth(10.0),
+            target_asset: EtherQuantity::from_wei(ether_amount),
             source_ledger_lock_duration: Blocks::from(144),
             secret: Secret::from(*b"hello world, you are beautiful!!"),
         }
@@ -159,10 +187,10 @@ mod tests {
     }
 
     #[test]
-    fn transaction_contains_output_with_sufficient_money() {
+    fn bitcoin_transaction_contains_output_with_sufficient_money() {
         let bitcoin_amount = 1.0;
 
-        let start = gen_start_state(bitcoin_amount);
+        let start = gen_start_state(bitcoin_amount, U256::from(10));
         let response = gen_response();
         let swap = OngoingSwap::new(start, response);
 
@@ -212,10 +240,10 @@ mod tests {
     }
 
     #[test]
-    fn transaction_does_not_contain_output() {
+    fn bitcoin_transaction_does_not_contain_output() {
         let bitcoin_amount = 1.0;
 
-        let start = gen_start_state(bitcoin_amount);
+        let start = gen_start_state(bitcoin_amount, U256::from(10));
         let response = gen_response();
         let swap = OngoingSwap::new(start, response);
 
@@ -242,10 +270,10 @@ mod tests {
     }
 
     #[test]
-    fn transaction_does_not_contain_enough_money() {
+    fn bitcoin_transaction_does_not_contain_enough_money() {
         let bitcoin_amount = 1.0;
 
-        let start = gen_start_state(bitcoin_amount);
+        let start = gen_start_state(bitcoin_amount, U256::from(10));
         let response = gen_response();
         let swap = OngoingSwap::new(start, response);
 
@@ -289,6 +317,135 @@ mod tests {
             found: BitcoinQuantity::from_bitcoin(provided_bitcoin_amount),
             expected: BitcoinQuantity::from_bitcoin(bitcoin_amount),
         };
+
+        assert_that(&result).is_err_containing(expected_error)
+    }
+
+    #[test]
+    pub fn ethereum_tx_has_correct_funding_and_correct_data_should_return_contract_address() {
+        let ether_amount = U256::from(10);
+
+        let start = gen_start_state(1.0, ether_amount);
+        let response = gen_response();
+        let swap = OngoingSwap::new(start, response);
+
+        let provided_ether_amount = U256::from(10);
+        let ethereum_transaction = ethereum_support::Transaction {
+            hash: H256::from(123),
+            nonce: U256::from(1),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: "0a81e8be41b21f651a71aab1a85c6813b8bbccf8".parse().unwrap(),
+            to: None,
+            value: provided_ether_amount,
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: ethereum_htlc(&swap).compile_to_hex().into(),
+        };
+
+        let expected_address =
+            ethereum_support::Address::from_str("994a1e7928556ba81b85bf3c665a3f4a0f0d4cd9")
+                .unwrap();
+
+        let result =
+            EtherQuantity::is_contained_in_target_ledger_transaction(swap, ethereum_transaction);
+
+        assert_that(&result).is_ok_containing(expected_address)
+    }
+
+    #[test]
+    pub fn ethereum_tx_has_incorrect_funding_and_correct_data_should_return_error() {
+        let ether_amount = U256::from(10);
+
+        let start = gen_start_state(1.0, ether_amount);
+        let response = gen_response();
+        let swap = OngoingSwap::new(start, response);
+
+        let provided_ether_amount = U256::from(9);
+        let ethereum_transaction = ethereum_support::Transaction {
+            hash: H256::from(123),
+            nonce: U256::from(1),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: "0a81e8be41b21f651a71aab1a85c6813b8bbccf8".parse().unwrap(),
+            to: None,
+            value: provided_ether_amount,
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: ethereum_htlc(&swap).compile_to_hex().into(),
+        };
+
+        let result =
+            EtherQuantity::is_contained_in_target_ledger_transaction(swap, ethereum_transaction);
+
+        let expected_error = ValidationError::UnexpectedAsset {
+            found: EtherQuantity::from_wei(provided_ether_amount),
+            expected: EtherQuantity::from_wei(ether_amount),
+        };
+
+        assert_that(&result).is_err_containing(expected_error)
+    }
+
+    #[test]
+    pub fn ethereum_tx_has_correct_funding_but_incorrect_data_should_return_error() {
+        let ether_amount = U256::from(10);
+
+        let start = gen_start_state(1.0, ether_amount);
+        let response = gen_response();
+        let swap = OngoingSwap::new(start, response);
+
+        let provided_ether_amount = U256::from(9);
+        let ethereum_transaction = ethereum_support::Transaction {
+            hash: H256::from(123),
+            nonce: U256::from(1),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: "0a81e8be41b21f651a71aab1a85c6813b8bbccf8".parse().unwrap(),
+            to: None,
+            value: provided_ether_amount,
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: Bytes::from(vec![1, 2, 3]),
+        };
+
+        let result =
+            EtherQuantity::is_contained_in_target_ledger_transaction(swap, ethereum_transaction);
+
+        let expected_error = ValidationError::WrongTransaction;
+
+        assert_that(&result).is_err_containing(expected_error)
+    }
+
+    #[test]
+    pub fn ethereum_tx_has_correct_funding_but_not_sending_to_0_should_return_error() {
+        let ether_amount = U256::from(10);
+
+        let start = gen_start_state(1.0, ether_amount);
+        let response = gen_response();
+        let swap = OngoingSwap::new(start, response);
+
+        let provided_ether_amount = U256::from(9);
+        let ethereum_transaction = ethereum_support::Transaction {
+            hash: H256::from(123),
+            nonce: U256::from(1),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: "0a81e8be41b21f651a71aab1a85c6813b8bbccf8".parse().unwrap(),
+            to: Some("0000000000000000000000000000000000000001".parse().unwrap()),
+            value: provided_ether_amount,
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: ethereum_htlc(&swap).compile_to_hex().into(),
+        };
+
+        let result =
+            EtherQuantity::is_contained_in_target_ledger_transaction(swap, ethereum_transaction);
+
+        let expected_error = ValidationError::WrongTransaction;
 
         assert_that(&result).is_err_containing(expected_error)
     }

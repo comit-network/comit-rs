@@ -3,7 +3,7 @@ use ethereum_support::{
         transports::{EventLoopHandle, Http},
         Web3,
     },
-    *,
+    CalculateContractAddress, *,
 };
 use ethereum_wallet::{UnsignedTransaction, Wallet};
 use gas_price_service::{self, GasPriceService};
@@ -274,10 +274,10 @@ impl LedgerHtlcService<Ethereum, Erc20HtlcFundingParams, Erc20HtlcRedeemParams, 
             let mut lock = self.nonce.lock()?;
 
             let nonce = lock.deref_mut();
+            let address: ethereum_support::Address = self.wallet.address();
+            let next_nonce = *nonce + U256::from(1);
 
-            let htlc_address = self
-                .wallet
-                .calculate_contract_address(*nonce + U256::from(1));
+            let htlc_address = address.calculate_contract_address(&next_nonce);
 
             let approval_transaction = UnsignedTransaction::new_erc20_approval(
                 htlc_funding_params.token_contract_address,
