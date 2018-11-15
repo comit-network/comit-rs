@@ -194,9 +194,7 @@ fn spawn_warp_instance(
 ) {
     let routes = route_factory::create(event_store, metadata_store, state_store, sender);
 
-    let http_api_address = settings.http_api.address;
-    let http_api_port = settings.http_api.port;
-    let http_socket_address = SocketAddr::new(http_api_address, http_api_port);
+    let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
     let server = warp::serve(routes).bind(http_socket_address);
 
