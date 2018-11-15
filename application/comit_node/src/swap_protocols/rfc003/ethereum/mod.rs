@@ -1,7 +1,7 @@
 use ethereum_support::Bytes;
 use hex;
 
-pub use self::{erc20_htlc::*, ether_htlc::*};
+pub use self::{erc20_htlc::*, ether_htlc::*, queries::*};
 use ethereum_support::{web3::types::Address, EtherQuantity};
 use std::time::Duration;
 use swap_protocols::{
@@ -12,6 +12,7 @@ use swap_protocols::{
 
 mod erc20_htlc;
 mod ether_htlc;
+mod queries;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ByteCode(pub String);
