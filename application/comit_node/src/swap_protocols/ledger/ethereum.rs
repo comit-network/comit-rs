@@ -13,10 +13,6 @@ impl Ledger for Ethereum {
     type Identity = Address;
     type Transaction = Transaction;
 
-    fn symbol() -> String {
-        String::from("ETH")
-    }
-
     fn address_for_identity(&self, address: Address) -> Address {
         address
     }

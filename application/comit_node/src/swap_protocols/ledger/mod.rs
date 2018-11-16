@@ -42,6 +42,5 @@ pub trait Ledger:
         + PartialEq
         + 'static;
 
-    fn symbol() -> String;
     fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }

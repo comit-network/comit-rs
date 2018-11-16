@@ -38,10 +38,6 @@ impl Ledger for Bitcoin {
     type Identity = PubkeyHash;
     type Transaction = Transaction;
 
-    fn symbol() -> String {
-        String::from("BTC")
-    }
-
     fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
         pubkeyhash.into_p2wpkh_address(self.network)
     }
