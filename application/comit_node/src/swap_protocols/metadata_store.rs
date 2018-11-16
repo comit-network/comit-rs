@@ -16,6 +16,7 @@ pub enum Ledgers {
 pub enum Assets {
     Bitcoin,
     Ether,
+    Erc20,
 }
 
 #[derive(Clone, Copy, Debug)]
