@@ -2,8 +2,3 @@
 name = "PAY"
 decimal = "18"
 address = "0xB97048628DB6B661D4C2aA833e95Dbe1A905B280"
-
-[[tokens]]
-name = "WAX"
-decimal = "8"
-address = "0x39Bb259F66E1C59d5ABEF88375979b4D20D98022"

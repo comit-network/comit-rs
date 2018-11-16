@@ -170,7 +170,7 @@ mod tests {
         assert_that(&settings).is_ok();
         let settings = settings.unwrap();
 
-        assert_that(&settings.tokens.len()).is_equal_to(2);
+        assert_that(&settings.tokens.len()).is_equal_to(1);
         let token = &settings.tokens[0];
         assert_that(token).is_equal_to(Erc20Token {
             name: String::from("PAY"),
