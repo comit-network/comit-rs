@@ -86,7 +86,6 @@ where
         SourceFundedTargetRefunded,
         SourceRefundedTargetFunded,
         SourceRedeemedTargetFunded,
-        Error
     ))]
     BothFunded {
         swap: OngoingSwap<SL, TL, SA, TA, S>,
@@ -229,10 +228,9 @@ where
                                 secret,
                             }
                         ),
-                        None => transition_save!(
-                        context.state_repo,
-                        Error (rfc003::Error::Internal(format!("Somehow reached transition with an invalid secret, transaction: {:?}", target_redeemed_tx).to_string()))
-                    ),
+                        None => {
+                            return Err(rfc003::Error::Internal(format!("Somehow reached transition with an invalid secret, transaction: {:?}", target_redeemed_tx).to_string()));
+                        }
                     }
                 }
                 Either::B(_target_refunded_txid) => transition_save!(
