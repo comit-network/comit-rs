@@ -131,62 +131,40 @@ pub mod test {
     use super::*;
     use bitcoin_support::{self, BitcoinQuantity};
     use ethereum_support::{self, EtherQuantity};
-    use secp256k1_support::KeyPair;
     use swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::ethereum::Seconds,
     };
 
-    pub struct Alisha {}
-
-    impl Debug for Alisha {
-        fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-            write!(fmt, "Alisha")
-        }
-    }
+    pub type Alisha = Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
+    pub type Bobisha = Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
 
     impl PartialEq<Alisha> for Alisha {
         fn eq(&self, _: &Alisha) -> bool {
-            unreachable!()
+            unreachable!(
+                "Rust erroneously forces me to be PartialEq even though I'm never instantiated"
+            )
         }
     }
 
-    impl Clone for Alisha {
-        fn clone(&self) -> Self {
-            unreachable!()
+    impl PartialEq<Bobisha> for Bobisha {
+        fn eq(&self, _: &Bobisha) -> bool {
+            unreachable!(
+                "Rust erroneously forces me to be PartialEq even though I'm never instantiated"
+            )
         }
-    }
-
-    impl Role for Alisha {
-        type SourceLedger = Bitcoin;
-        type TargetLedger = Ethereum;
-        type SourceAsset = BitcoinQuantity;
-        type TargetAsset = EtherQuantity;
-        type SourceSuccessHtlcIdentity = bitcoin_support::PubkeyHash;
-        type SourceRefundHtlcIdentity = KeyPair;
-        type TargetSuccessHtlcIdentity = ethereum_support::Address;
-        type TargetRefundHtlcIdentity = ethereum_support::Address;
-        type Secret = Secret;
     }
 
     #[allow(missing_debug_implementations)]
-    pub struct AlishaResponseSource {
-        pub response: Option<
-            Box<
-                StateMachineResponseFuture<
-                    bitcoin_support::PubkeyHash,
-                    ethereum_support::Address,
-                    Seconds,
-                >,
-            >,
-        >,
+    pub struct FakeResponseSource<R: Role> {
+        pub response: Option<Box<ResponseFuture<R>>>,
     }
 
-    impl ResponseSource<Alisha> for AlishaResponseSource {
+    impl<R: Role> ResponseSource<R> for FakeResponseSource<R> {
         fn request_responded(
             &mut self,
-            _request: &Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
-        ) -> &mut ResponseFuture<Alisha> {
+            _request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
+        ) -> &mut ResponseFuture<R> {
             self.response.as_mut().unwrap()
         }
     }
