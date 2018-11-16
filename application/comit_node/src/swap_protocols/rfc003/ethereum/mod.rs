@@ -12,6 +12,7 @@ use swap_protocols::{
 
 mod erc20_htlc;
 mod ether_htlc;
+mod extract_secret;
 mod queries;
 
 #[derive(Deserialize, Serialize, Debug)]

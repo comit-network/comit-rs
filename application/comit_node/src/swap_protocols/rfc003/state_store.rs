@@ -6,7 +6,7 @@ use std::{
 };
 use swap_protocols::{
     asset::Asset,
-    rfc003::{state_machine::SwapStates, IntoSecretHash, Ledger, SaveState},
+    rfc003::{state_machine::SwapStates, ExtractSecret, IntoSecretHash, Ledger, SaveState},
 };
 
 #[derive(Debug)]
@@ -20,18 +20,24 @@ pub trait StateStore<K>: Send + Sync + 'static {
         &self,
         key: K,
         state: SwapStates<SL, TL, SA, TA, SH>,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>;
+    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
+    where
+        TL::Transaction: ExtractSecret;
 
     fn get<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
-    ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>;
+    ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>
+    where
+        TL::Transaction: ExtractSecret;
 
     #[allow(clippy::type_complexity)]
     fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>;
+    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
+    where
+        TL::Transaction: ExtractSecret;
 }
 
 #[derive(Default, Debug)]
@@ -44,7 +50,10 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         &self,
         key: K,
         state: SwapStates<SL, TL, SA, TA, SH>,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error> {
+    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
+    where
+        TL::Transaction: ExtractSecret,
+    {
         let mut states = self.states.lock().unwrap();
 
         if states.contains_key(&key) {
@@ -62,7 +71,10 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
     fn get<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
-    ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error> {
+    ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>
+    where
+        TL::Transaction: ExtractSecret,
+    {
         let states = self.states.lock().unwrap();
         states
             .get(key)
@@ -79,7 +91,10 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
     fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
         &self,
         key: &K,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error> {
+    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
+    where
+        TL::Transaction: ExtractSecret,
+    {
         let states = self.states.lock().unwrap();
         states
             .get(key)
