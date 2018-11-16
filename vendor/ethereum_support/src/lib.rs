@@ -6,6 +6,8 @@ extern crate num;
 extern crate regex;
 extern crate rlp;
 extern crate secp256k1_support;
+#[cfg(test)]
+extern crate spectral;
 extern crate tiny_keccak;
 extern crate web3 as web3_crate;
 
