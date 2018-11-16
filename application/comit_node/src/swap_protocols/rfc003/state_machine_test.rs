@@ -1,29 +1,20 @@
-extern crate bitcoin_rpc_client;
-extern crate bitcoin_support;
-extern crate comit_node;
-extern crate ethereum_support;
-extern crate futures;
-extern crate hex;
-extern crate secp256k1_support;
-extern crate tokio;
-extern crate tokio_timer;
 use bitcoin_rpc_client::rpc::{SerializedRawTransaction, VerboseRawTransaction};
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
-use comit_node::{
-    comit_client::SwapReject,
-    swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
-        rfc003::{
-            ethereum::Seconds,
-            events::{
-                self, Events, RequestResponded, SourceHtlcFunded, SourceHtlcRedeemedOrRefunded,
-                SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
-            },
-            state_machine::*,
-            AcceptResponseBody, Request, Secret,
+use comit_client::SwapReject;
+use swap_protocols::{
+    ledger::{Bitcoin, Ethereum},
+    rfc003::{
+        ethereum::Seconds,
+        events::{
+            self, Events, HtlcFunded, SourceHtlcRedeemedOrRefunded,
+            SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
         },
+        roles::test::{Alisha, AlishaResponseSource},
+        state_machine::*,
+        Secret,
     },
 };
+
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
@@ -35,71 +26,58 @@ use std::{str::FromStr, sync::Arc};
 
 #[derive(Default)]
 struct FakeEvents {
-    pub response: Option<Box<events::Response<Bitcoin, Ethereum>>>,
     pub source_htlc_funded: Option<Box<events::Funded<Bitcoin>>>,
     pub source_htlc_refunded_target_htlc_funded:
         Option<Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>>>,
 }
 
-impl RequestResponded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeEvents {
-    fn request_responded(
+impl HtlcFunded<Bitcoin, BitcoinQuantity> for FakeEvents {
+    fn htlc_funded(
         &mut self,
-        _request: &Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
-    ) -> &mut Box<events::Response<Bitcoin, Ethereum>> {
-        self.response.as_mut().unwrap()
-    }
-}
-
-impl SourceHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> for FakeEvents {
-    fn source_htlc_funded(
-        &mut self,
-        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
-    ) -> &mut Box<events::Funded<Bitcoin>> {
+        _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+    ) -> &mut events::Funded<Bitcoin> {
         self.source_htlc_funded.as_mut().unwrap()
     }
 }
 
-impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
+impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>
     for FakeEvents
 {
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        _source_htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        _target_htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         _source_htlc_location: &bitcoin_support::OutPoint,
-    ) -> &mut Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>> {
+    ) -> &mut events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum> {
         self.source_htlc_refunded_target_htlc_funded
             .as_mut()
             .unwrap()
     }
 }
 
-impl TargetHtlcRedeemedOrRefunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
-    for FakeEvents
-{
+impl TargetHtlcRedeemedOrRefunded<Ethereum, EtherQuantity> for FakeEvents {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        _target_htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         _target_htlc_location: &ethereum_support::Address,
-    ) -> &mut Box<events::RedeemedOrRefunded<Ethereum>> {
+    ) -> &mut events::RedeemedOrRefunded<Ethereum> {
         unimplemented!()
     }
 }
 
-impl SourceHtlcRedeemedOrRefunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>
-    for FakeEvents
-{
+impl SourceHtlcRedeemedOrRefunded<Bitcoin, BitcoinQuantity> for FakeEvents {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        _swap: &OngoingSwap<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+        _source_htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
         _target_htlc_location: &bitcoin_support::OutPoint,
-    ) -> &mut Box<events::RedeemedOrRefunded<Bitcoin>> {
+    ) -> &mut events::RedeemedOrRefunded<Bitcoin> {
         unimplemented!()
     }
 }
 
-impl Events<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> for FakeEvents {}
+impl Events<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeEvents {}
 
-fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
+fn gen_start_state() -> Start<Alisha> {
     Start {
         source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
@@ -120,19 +98,18 @@ fn gen_start_state() -> Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity,
 }
 
 fn init(
-    state: SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
+    response_source: AlishaResponseSource,
+    state: SwapStates<Alisha>,
     events: FakeEvents,
 ) -> (
-    SwapFuture<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
-    impl Stream<
-        Item = SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>,
-        Error = (),
-    >,
+    SwapFuture<Alisha>,
+    impl Stream<Item = SwapStates<Alisha>, Error = ()>,
 ) {
     let (state_sender, state_receiver) = mpsc::unbounded();
     let context = Context {
         events: Box::new(events),
         state_repo: Arc::new(state_sender),
+        response_source: Box::new(response_source),
     };
     let final_state_future = Swap::start_in(state, context);
     (final_state_future, state_receiver.map_err(|_| ()))
@@ -147,9 +124,9 @@ macro_rules! run_state_machine {
                 let state = $expected_state;
                 expected_states.push(SwapStates::from(state));
             )
-            *
+                *
 
-            let number_of_expected_states = expected_states.len() + 1;
+                let number_of_expected_states = expected_states.len() + 1;
 
             let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
@@ -172,9 +149,11 @@ fn when_swap_is_rejected_go_to_final_reject() {
     let start = gen_start_state();
 
     let (state_machine, states) = init(
+        AlishaResponseSource {
+            response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
+        },
         start.clone().into(),
         FakeEvents {
-            response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
             ..Default::default()
         },
     );
@@ -184,7 +163,7 @@ fn when_swap_is_rejected_go_to_final_reject() {
 
 #[test]
 fn source_refunded() {
-    let bob_response = AcceptResponseBody {
+    let bob_response = StateMachineResponse {
         target_ledger_refund_identity: ethereum_support::Address::from_str(
             "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
         )
@@ -199,9 +178,11 @@ fn source_refunded() {
     let start = gen_start_state();
 
     let (state_machine, states) = init(
+        AlishaResponseSource {
+            response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
+        },
         start.clone().into(),
         FakeEvents {
-            response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
             source_htlc_funded: Some(Box::new(future::ok(OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0,
@@ -232,10 +213,10 @@ fn source_refunded() {
         state_machine,
         states,
         Accepted {
-            swap: OngoingSwap::new(start.clone(), bob_response.clone()),
+            swap: OngoingSwap::new(start.clone(), bob_response.clone().into()),
         },
         SourceFunded {
-            swap: OngoingSwap::new(start.clone(), bob_response.clone()),
+            swap: OngoingSwap::new(start.clone(), bob_response.clone().into()),
             source_htlc_location: OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0

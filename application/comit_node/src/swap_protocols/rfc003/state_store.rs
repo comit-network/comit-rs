@@ -4,10 +4,7 @@ use std::{
     hash::Hash,
     sync::{Arc, Mutex, RwLock},
 };
-use swap_protocols::{
-    asset::Asset,
-    rfc003::{state_machine::SwapStates, ExtractSecret, IntoSecretHash, Ledger, SaveState},
-};
+use swap_protocols::rfc003::{roles::Role, state_machine::SwapStates, SaveState};
 
 #[derive(Debug)]
 pub enum Error {
@@ -16,28 +13,12 @@ pub enum Error {
 }
 
 pub trait StateStore<K>: Send + Sync + 'static {
-    fn insert<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
-        &self,
-        key: K,
-        state: SwapStates<SL, TL, SA, TA, SH>,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
-    where
-        TL::Transaction: ExtractSecret;
+    fn insert<R: Role>(&self, key: K, state: SwapStates<R>) -> Result<Arc<SaveState<R>>, Error>;
 
-    fn get<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
-        &self,
-        key: &K,
-    ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>
-    where
-        TL::Transaction: ExtractSecret;
+    fn get<R: Role>(&self, key: &K) -> Result<SwapStates<R>, Error>;
 
     #[allow(clippy::type_complexity)]
-    fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
-        &self,
-        key: &K,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
-    where
-        TL::Transaction: ExtractSecret;
+    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Arc<SaveState<R>>, Error>;
 }
 
 #[derive(Default, Debug)]
@@ -46,14 +27,7 @@ pub struct InMemoryStateStore<K: Hash + Eq> {
 }
 
 impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemoryStateStore<K> {
-    fn insert<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
-        &self,
-        key: K,
-        state: SwapStates<SL, TL, SA, TA, SH>,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
-    where
-        TL::Transaction: ExtractSecret,
-    {
+    fn insert<R: Role>(&self, key: K, state: SwapStates<R>) -> Result<Arc<SaveState<R>>, Error> {
         let mut states = self.states.lock().unwrap();
 
         if states.contains_key(&key) {
@@ -68,40 +42,24 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         Ok(state)
     }
 
-    fn get<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
-        &self,
-        key: &K,
-    ) -> Result<SwapStates<SL, TL, SA, TA, SH>, Error>
-    where
-        TL::Transaction: ExtractSecret,
-    {
+    fn get<R: Role>(&self, key: &K) -> Result<SwapStates<R>, Error> {
         let states = self.states.lock().unwrap();
         states
             .get(key)
             .map(|state| {
-                let state = state
-                    .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
-                    .unwrap();
+                let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
                 let state = state.read().unwrap();
                 state.clone()
             })
             .ok_or(Error::NotFound)
     }
 
-    fn save_state_for_key<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, SH: IntoSecretHash>(
-        &self,
-        key: &K,
-    ) -> Result<Arc<SaveState<SL, TL, SA, TA, SH>>, Error>
-    where
-        TL::Transaction: ExtractSecret,
-    {
+    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Arc<SaveState<R>>, Error> {
         let states = self.states.lock().unwrap();
         states
             .get(key)
-            .map(|state| -> Arc<SaveState<SL, TL, SA, TA, SH>> {
-                let state = state
-                    .downcast_ref::<Arc<RwLock<SwapStates<SL, TL, SA, TA, SH>>>>()
-                    .unwrap();
+            .map(|state| -> Arc<SaveState<R>> {
+                let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
                 state.clone()
             })
             .ok_or(Error::NotFound)
@@ -118,13 +76,13 @@ mod tests {
     use spectral::prelude::*;
     use swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::{state_machine::Start, Secret},
+        rfc003::{roles::test::Alisha, state_machine::Start, Secret},
     };
 
     #[test]
     fn store_get_and_save_state() {
         let state_store = InMemoryStateStore::default();
-        let start_state = Start {
+        let start_state = Start::<Alisha> {
             source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
@@ -145,10 +103,10 @@ mod tests {
         let id = 1;
 
         let res = state_store.insert(id, state.clone());
-        assert_that(&res).is_ok();
+        assert!(res.is_ok());
 
         let res = state_store.get(&id);
-        assert_that(&res).is_ok().is_equal_to(state);
+        assert_that(&res).is_ok_containing(state);
 
         let save_state = state_store.save_state_for_key(&id).unwrap();
 

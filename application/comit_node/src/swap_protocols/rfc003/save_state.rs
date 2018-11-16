@@ -1,35 +1,20 @@
 use futures::sync::mpsc;
-use std::{fmt::Debug, sync::RwLock};
-use swap_protocols::{
-    asset::Asset,
-    rfc003::{state_machine::SwapStates, ExtractSecret, IntoSecretHash, Ledger},
-};
+use std::sync::RwLock;
+use swap_protocols::rfc003::{roles::Role, state_machine::SwapStates};
 
-pub trait SaveState<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
-    Send + Sync + Debug
-where
-    TL::Transaction: ExtractSecret,
-{
-    fn save(&self, state: SwapStates<SL, TL, SA, TA, S>);
+pub trait SaveState<R: Role>: Send + Sync {
+    fn save(&self, state: SwapStates<R>);
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> SaveState<SL, TL, SA, TA, S>
-    for RwLock<SwapStates<SL, TL, SA, TA, S>>
-where
-    TL::Transaction: ExtractSecret,
-{
-    fn save(&self, state: SwapStates<SL, TL, SA, TA, S>) {
+impl<R: Role> SaveState<R> for RwLock<SwapStates<R>> {
+    fn save(&self, state: SwapStates<R>) {
         let _self = &mut *self.write().unwrap();
         *_self = state;
     }
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> SaveState<SL, TL, SA, TA, S>
-    for mpsc::UnboundedSender<SwapStates<SL, TL, SA, TA, S>>
-where
-    TL::Transaction: ExtractSecret,
-{
-    fn save(&self, state: SwapStates<SL, TL, SA, TA, S>) {
+impl<R: Role> SaveState<R> for mpsc::UnboundedSender<SwapStates<R>> {
+    fn save(&self, state: SwapStates<R>) {
         // ignore error the subscriber is no longer interested in state updates
         let _ = self.unbounded_send(state);
     }

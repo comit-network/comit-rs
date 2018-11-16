@@ -1,19 +1,17 @@
 use ethereum_support::Bytes;
 use hex;
+use swap_protocols::rfc003::state_machine::HtlcParams;
 
 pub use self::{erc20_htlc::*, ether_htlc::*, queries::*};
 use ethereum_support::{web3::types::Address, EtherQuantity};
 use std::time::Duration;
-use swap_protocols::{
-    asset::Asset,
-    ledger::Ethereum,
-    rfc003::{state_machine::OngoingSwap, IntoSecretHash, Ledger},
-};
+use swap_protocols::{ledger::Ethereum, rfc003::Ledger};
 
 mod erc20_htlc;
 mod ether_htlc;
 mod extract_secret;
 mod queries;
+mod validation;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ByteCode(pub String);
@@ -49,13 +47,13 @@ impl Ledger for Ethereum {
     type HtlcIdentity = Address;
 }
 
-pub fn ethereum_htlc<SL: Ledger, SA: Asset, S: IntoSecretHash>(
-    swap: &OngoingSwap<SL, Ethereum, SA, EtherQuantity, S>,
-) -> Box<Htlc> {
-    Box::new(EtherHtlc::new(
-        swap.target_ledger_lock_duration,
-        swap.target_ledger_refund_identity,
-        swap.target_ledger_success_identity,
-        swap.secret.clone().into(),
-    ))
+impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
+    fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
+        EtherHtlc::new(
+            htlc_params.lock_duration,
+            htlc_params.refund_identity,
+            htlc_params.success_identity,
+            htlc_params.secret_hash,
+        )
+    }
 }

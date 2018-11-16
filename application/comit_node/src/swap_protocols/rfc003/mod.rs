@@ -8,6 +8,7 @@ pub mod bitcoin;
 pub mod ethereum;
 pub mod events;
 pub mod ledger_htlc_service;
+pub mod roles;
 pub mod state_machine;
 pub mod state_store;
 pub mod validation;
@@ -19,11 +20,14 @@ mod outcome;
 mod save_state;
 mod secret;
 
+#[cfg(test)]
+mod state_machine_test;
+
 pub use self::{
     error::Error,
     ledger::Ledger,
     messages::*,
     outcome::SwapOutcome,
     save_state::SaveState,
-    secret::{ExtractSecret, IntoSecretHash, RandomnessSource, Secret, SecretFromErr, SecretHash},
+    secret::{ExtractSecret, RandomnessSource, Secret, SecretFromErr, SecretHash},
 };

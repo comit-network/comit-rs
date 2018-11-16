@@ -1,18 +1,18 @@
 use bitcoin_support::{Address, BitcoinQuantity, Blocks, OutPoint};
 use secp256k1_support::KeyPair;
-use swap_protocols::{ledger::Bitcoin, rfc003::Ledger};
+use swap_protocols::{
+    ledger::Bitcoin,
+    rfc003::{state_machine::HtlcParams, Ledger},
+};
 
 mod extract_secret;
 mod htlc;
 mod queries;
+mod validation;
 
 pub use self::{
     htlc::{Htlc, UnlockingError},
     queries::*,
-};
-use swap_protocols::{
-    asset::Asset,
-    rfc003::{state_machine::OngoingSwap, IntoSecretHash},
 };
 
 impl Ledger for Bitcoin {
@@ -21,19 +21,19 @@ impl Ledger for Bitcoin {
     type HtlcIdentity = KeyPair;
 }
 
-pub fn bitcoin_htlc<TL: Ledger, TA: Asset, S: IntoSecretHash>(
-    swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
-) -> Htlc {
-    Htlc::new(
-        swap.source_ledger_success_identity,
-        swap.source_ledger_refund_identity,
-        swap.secret.clone().into(),
-        swap.source_ledger_lock_duration.into(),
-    )
+impl From<HtlcParams<Bitcoin, BitcoinQuantity>> for Htlc {
+    fn from(htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>) -> Self {
+        Htlc::new(
+            htlc_params.success_identity,
+            htlc_params.refund_identity,
+            htlc_params.secret_hash,
+            htlc_params.lock_duration.into(),
+        )
+    }
 }
 
-pub fn bitcoin_htlc_address<TL: Ledger, TA: Asset, S: IntoSecretHash>(
-    swap: &OngoingSwap<Bitcoin, TL, BitcoinQuantity, TA, S>,
-) -> Address {
-    bitcoin_htlc(swap).compute_address(swap.source_ledger.network)
+impl HtlcParams<Bitcoin, BitcoinQuantity> {
+    pub fn compute_address(&self) -> Address {
+        Htlc::from(self.clone()).compute_address(self.ledger.network)
+    }
 }

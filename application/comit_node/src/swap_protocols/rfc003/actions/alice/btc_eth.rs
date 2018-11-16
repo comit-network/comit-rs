@@ -8,13 +8,12 @@ use swap_protocols::{
             ethereum::EtherRedeem,
             Action, StateActions,
         },
-        bitcoin::{bitcoin_htlc, bitcoin_htlc_address},
+        roles::Alice,
         state_machine::*,
-        Secret,
     },
 };
 
-impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret> {
+impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     type Accept = ();
     type Decline = ();
     type Fund = BitcoinFund;
@@ -26,7 +25,7 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
         match *self {
             SS::Start { .. } => vec![],
             SS::Accepted(Accepted { ref swap, .. }) => vec![Action::Fund(BitcoinFund {
-                address: bitcoin_htlc_address(swap),
+                address: swap.source_htlc_params().compute_address(),
                 value: swap.source_asset,
             })],
             SS::SourceFunded { .. } => vec![],
@@ -44,7 +43,7 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 }),
                 Action::Refund(BitcoinRefund {
                     outpoint: *source_htlc_location,
-                    htlc: bitcoin_htlc(swap),
+                    htlc: swap.source_htlc_params().into(),
                     value: swap.source_asset,
                     transient_keypair: swap.source_ledger_refund_identity,
                 }),
@@ -60,7 +59,7 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 ..
             }) => vec![Action::Refund(BitcoinRefund {
                 outpoint: *source_htlc_location,
-                htlc: bitcoin_htlc(swap),
+                htlc: swap.source_htlc_params().into(),
                 value: swap.source_asset,
                 transient_keypair: swap.source_ledger_refund_identity,
             })],

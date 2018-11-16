@@ -8,14 +8,13 @@ use swap_protocols::{
             ethereum::{EtherDeploy, EtherRefund},
             Accept, Action, Decline, StateActions,
         },
-        bitcoin::bitcoin_htlc,
-        ethereum::ethereum_htlc,
+        ethereum::{EtherHtlc, Htlc},
+        roles::Bob,
         state_machine::*,
-        SecretHash,
     },
 };
 
-impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash> {
+impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     type Accept = Accept;
     type Decline = Decline;
     type Fund = EtherDeploy;
@@ -28,7 +27,7 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
             SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
             SS::Accepted { .. } => vec![],
             SS::SourceFunded(SourceFunded { ref swap, .. }) => {
-                let htlc = ethereum_htlc(swap);
+                let htlc: EtherHtlc = swap.target_htlc_params().into();
                 vec![Action::Fund(EtherDeploy {
                     data: htlc.compile_to_hex().into(),
                     value: swap.target_asset,
@@ -68,51 +67,13 @@ impl StateActions for SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuanti
                 ..
             }) => vec![Action::Redeem(BitcoinRedeem {
                 outpoint: *source_htlc_location,
-                htlc: bitcoin_htlc(swap),
+                htlc: swap.source_htlc_params().into(),
                 value: swap.source_asset,
-                transient_keypair: swap.source_ledger_refund_identity,
+                transient_keypair: swap.source_ledger_success_identity,
                 secret: *secret,
             })],
             SS::Error(_) => vec![],
             SS::Final(_) => vec![],
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use bitcoin_support;
-    use hex;
-    use secp256k1_support;
-    use swap_protocols::rfc003::Secret;
-
-    #[test]
-    fn given_state_instance_when_calling_actions_should_not_need_to_specify_type_arguments() {
-        let swap_state = SwapStates::from(Start {
-            source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
-                &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                    .unwrap(),
-            )
-            .unwrap(),
-            target_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
-                .parse()
-                .unwrap(),
-            source_ledger: Bitcoin::regtest(),
-            target_ledger: Ethereum::default(),
-            source_asset: BitcoinQuantity::from_bitcoin(1.0),
-            target_asset: EtherQuantity::from_eth(10.0),
-            source_ledger_lock_duration: bitcoin_support::Blocks::from(144),
-            secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
-        });
-
-        let actions = swap_state.actions();
-
-        assert_eq!(
-            actions,
-            vec![Action::Accept(Accept), Action::Decline(Decline)]
-        );
-    }
-
 }

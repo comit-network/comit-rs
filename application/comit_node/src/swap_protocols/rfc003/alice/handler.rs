@@ -15,6 +15,7 @@ use swap_protocols::{
         self,
         alice::SwapRequests,
         messages::Request,
+        roles::Alice,
         state_machine::{Start, SwapStates},
         state_store::StateStore,
         ExtractSecret, Ledger, Secret,
@@ -123,7 +124,7 @@ impl<
 
 fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateStore<SwapId>>(
     id: SwapId,
-    start_state: Start<SL, TL, SA, TA, Secret>,
+    start_state: Start<Alice<SL, TL, SA, TA>>,
     state_store: &S,
 ) where
     TL::Transaction: ExtractSecret,
