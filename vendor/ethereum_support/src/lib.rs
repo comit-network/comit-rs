@@ -16,10 +16,12 @@ extern crate serde;
 pub use web3_crate::types::*;
 
 mod contract_address;
+mod erc20_quantity;
 mod ether_quantity;
 mod key;
 
 pub use contract_address::*;
+pub use erc20_quantity::*;
 pub use ether_quantity::*;
 pub use key::*;
 

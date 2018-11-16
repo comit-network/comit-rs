@@ -2,7 +2,7 @@ mod serde;
 
 use bitcoin_support::{ExtendedPrivKey, Network};
 use config::{Config, ConfigError, File};
-use ethereum_support;
+use ethereum_support::{self, Address};
 use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{
@@ -21,6 +21,7 @@ pub struct ComitNodeSettings {
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
+    pub tokens: Vec<Erc20Token>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -81,10 +82,18 @@ pub struct PollParameters {
     pub poll_interval_secs: Duration,
 }
 
+#[derive(Debug, Deserialize, PartialEq)]
+pub struct Erc20Token {
+    pub name: String,
+    pub decimal: u16,
+    pub address: Address,
+}
+
 impl ComitNodeSettings {
-    pub fn new<D: AsRef<OsStr>, R: AsRef<OsStr>>(
+    pub fn new<D: AsRef<OsStr>, R: AsRef<OsStr>, S: AsRef<OsStr>>(
         default_config: D,
         run_mode_config: R,
+        erc20_config: S,
     ) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
@@ -94,6 +103,9 @@ impl ComitNodeSettings {
         // Note that this file is optional, and can be used to hold keys by run_mode
         let environment_config_file = Path::new(&run_mode_config);
 
+        // Create erc20 token config file path
+        let erc20_config_file = Path::new(&erc20_config);
+
         // Start off by merging in the "default" configuration file
         config.merge(File::from(default_config_file))?;
 
@@ -101,6 +113,9 @@ impl ComitNodeSettings {
         // Default to 'development' env
         // Note that this file is _optional, in our case this holds all the keys
         config.merge(File::from(environment_config_file).required(false))?;
+
+        // Load erc20 token config file
+        config.merge(File::from(erc20_config_file))?;
 
         // Add in a local configuration file
         // This file shouldn't be checked in to git
@@ -116,17 +131,26 @@ mod tests {
 
     use super::*;
     use spectral::prelude::*;
+    use std::str::FromStr;
+
+    fn comit_settings() -> Result<ComitNodeSettings, ConfigError> {
+        ComitNodeSettings::new(
+            "./config/default.toml",
+            "./config/development.toml",
+            "./config/erc20.toml",
+        )
+    }
 
     #[test]
     fn can_read_default_config() {
-        let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
+        let settings = comit_settings();
 
         assert_that(&settings).is_ok();
     }
 
     #[test]
     fn can_read_nested_parameters() {
-        let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
+        let settings = comit_settings();
 
         assert_that(&settings).is_ok();
         assert_that(
@@ -137,6 +161,22 @@ mod tests {
                 .poll_interval_secs,
         )
         .is_equal_to(&Duration::from_secs(20));
+    }
+
+    #[test]
+    fn can_get_erc20token_list_from_config_file() {
+        let settings = comit_settings();
+
+        assert_that(&settings).is_ok();
+        let settings = settings.unwrap();
+
+        assert_that(&settings.tokens.len()).is_equal_to(2);
+        let token = &settings.tokens[0];
+        assert_that(token).is_equal_to(Erc20Token {
+            name: String::from("PAY"),
+            decimal: 18,
+            address: Address::from_str("B97048628DB6B661D4C2aA833e95Dbe1A905B280").unwrap(),
+        });
     }
 
 }
