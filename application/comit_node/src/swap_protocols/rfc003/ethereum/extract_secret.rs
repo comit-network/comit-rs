@@ -4,14 +4,23 @@ use swap_protocols::rfc003::secret::{ExtractSecret, Secret, SecretHash};
 impl ExtractSecret for Transaction {
     fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret> {
         let data = &self.input.0;
-        debug!("Transaction data: {:?}", data);
+        info!(
+            "Attempting to extract secret for {:?} from transaction {:?}",
+            secret_hash, self.hash
+        );
         match Secret::from_vec(&data) {
             Ok(secret) => match secret.hash() == *secret_hash {
                 true => Some(secret),
-                false => None,
+                false => {
+                    error!(
+                        "Input ({:?}) in transaction {:?} is NOT the pre-image to {:?}",
+                        data, self.hash, secret_hash
+                    );
+                    None
+                }
             },
             Err(e) => {
-                error!("Could not get secret out of transaction data: {:?}", e);
+                error!("Failed to create secret from {:?}: {:?}", data, e);
                 None
             }
         }
@@ -22,10 +31,12 @@ impl ExtractSecret for Transaction {
 mod test {
     use super::*;
     use ethereum_support::{Bytes, H256, U256};
+    use pretty_env_logger;
     use spectral::prelude::*;
     use std::str::FromStr;
 
     fn setup(secret: &Secret) -> Transaction {
+        let _ = pretty_env_logger::try_init();
         Transaction {
             hash: H256::from(123),
             nonce: U256::from(1),
