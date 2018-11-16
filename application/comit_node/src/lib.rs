@@ -17,8 +17,10 @@ extern crate futures;
 #[macro_use]
 extern crate state_machine_future;
 #[macro_use]
+extern crate maplit;
+#[macro_use]
 extern crate frunk;
-extern crate frunk_core;
+extern crate serde_json;
 
 #[cfg(test)]
 extern crate pretty_env_logger;
@@ -34,6 +36,7 @@ extern crate crypto;
 extern crate ethereum_support;
 extern crate event_store;
 extern crate fern;
+extern crate frunk_core;
 extern crate hex;
 extern crate http_api_problem;
 extern crate hyper;
@@ -43,7 +46,6 @@ extern crate rlp;
 extern crate rustc_hex;
 extern crate secp256k1_support;
 extern crate serde;
-extern crate serde_json;
 extern crate tiny_keccak;
 extern crate tokio;
 extern crate tokio_timer;
@@ -51,6 +53,7 @@ extern crate url;
 extern crate uuid;
 extern crate warp;
 
+pub mod bam_api;
 pub mod bitcoin_fee_service;
 pub mod comit_client;
 pub mod comit_server;

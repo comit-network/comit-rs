@@ -2,10 +2,11 @@
 // see: https://github.com/rust-lang/rust/issues/21903
 #![allow(type_alias_bounds)]
 
+use comit_client;
 use ledger_query_service::Query;
 use swap_protocols::{
     asset::Asset,
-    rfc003::{self, ledger::Ledger, messages::Request},
+    rfc003::{self, ledger::Ledger},
 };
 use tokio::{self, prelude::future::Either};
 
@@ -63,7 +64,12 @@ pub trait LedgerEvents<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
 pub trait CommunicationEvents<R: Role> {
     fn request_responded(
         &mut self,
-        request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
+        request: &comit_client::rfc003::Request<
+            R::SourceLedger,
+            R::TargetLedger,
+            R::SourceAsset,
+            R::TargetAsset,
+        >,
     ) -> &mut ResponseFuture<R>;
 }
 

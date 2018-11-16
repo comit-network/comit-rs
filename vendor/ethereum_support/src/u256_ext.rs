@@ -1,7 +1,7 @@
 use bigdecimal::BigDecimal;
 use num::{
-    bigint::{BigInt, Sign},
-    ToPrimitive,
+    bigint::{BigInt, ParseBigIntError, Sign},
+    BigUint, ToPrimitive,
 };
 use regex::Regex;
 use std::{f64, mem};
@@ -25,12 +25,33 @@ pub trait RemoveTrailingZeros {
     fn remove_trailing_zeros(&self, decimals: i64) -> String;
 }
 
+pub trait FromDecimalStr
+where
+    Self: Sized,
+{
+    type Err;
+
+    fn from_decimal_str(value: &str) -> Result<Self, Self::Err>;
+}
+
+pub trait FromBigUInt
+where
+    Self: Sized,
+{
+    fn from_big_uint(big_uint: BigUint) -> Self;
+}
+
+pub trait IntoBigInt
+where
+    Self: Sized,
+{
+    fn into_big_int(self) -> BigInt;
+}
+
 impl ToBigDecimal for U256 {
     fn to_bigdec(&self, decimals: i64) -> BigDecimal {
-        let mut bytes = [0u8; U64SIZE * 4];
-        self.to_little_endian(&mut bytes);
-        let bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
-        BigDecimal::new(bigint, decimals)
+        let big_int = self.into_big_int();
+        BigDecimal::new(big_int, decimals)
     }
 }
 
@@ -44,6 +65,33 @@ impl RemoveTrailingZeros for U256 {
     fn remove_trailing_zeros(&self, decimals: i64) -> String {
         let fmt_dec = format!("{}", self.to_bigdec(decimals));
         TRAILING_ZEROS.replace(fmt_dec.as_str(), "").to_string()
+    }
+}
+
+impl FromDecimalStr for U256 {
+    type Err = ParseBigIntError;
+
+    fn from_decimal_str(value: &str) -> Result<Self, Self::Err> {
+        let big_unit = value.parse()?;
+        Ok(U256::from_big_uint(big_unit))
+    }
+}
+
+impl FromBigUInt for U256 {
+    fn from_big_uint(big_unit: BigUint) -> Self {
+        let bytes = big_unit.to_bytes_be();
+        let mut buf = [0u8; 32];
+        let start = 32 - bytes.len();
+        buf[start..].clone_from_slice(&bytes[..]);
+        U256::from(buf)
+    }
+}
+
+impl IntoBigInt for U256 {
+    fn into_big_int(self) -> BigInt {
+        let mut bytes = [0u8; U64SIZE * 4];
+        self.to_little_endian(&mut bytes);
+        BigInt::from_bytes_le(Sign::Plus, &bytes)
     }
 }
 

@@ -1,18 +1,19 @@
 pub mod bam;
 pub mod fake;
+pub mod rfc003;
 
 use futures::Future;
 use std::{io, net::SocketAddr, sync::Arc};
 
 use std::{fmt::Debug, panic::RefUnwindSafe};
-use swap_protocols::{bam_types, rfc003};
+use swap_protocols::{self, asset::Asset};
 
 pub trait Client: Send + Sync + 'static {
     fn send_swap_request<
-        SL: rfc003::Ledger,
-        TL: rfc003::Ledger,
-        SA: Into<bam_types::Asset>,
-        TA: Into<bam_types::Asset>,
+        SL: swap_protocols::rfc003::Ledger,
+        TL: swap_protocols::rfc003::Ledger,
+        SA: Asset,
+        TA: Asset,
     >(
         &self,
         request: rfc003::Request<SL, TL, SA, TA>,

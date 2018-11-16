@@ -1,11 +1,11 @@
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
-use swap_protocols;
 
 mod bitcoin;
 mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
+use bam_api::header::{FromBamHeader, ToBamHeader};
 use http_api::ledger::{FromHttpLedger, ToHttpLedger};
 
 pub trait Ledger:
@@ -16,9 +16,10 @@ pub trait Ledger:
     + 'static
     + Default
     + PartialEq
-    + Into<swap_protocols::bam_types::Ledger>
     + FromHttpLedger
     + ToHttpLedger
+    + FromBamHeader
+    + ToBamHeader
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;

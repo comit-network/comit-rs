@@ -14,7 +14,6 @@ use swap_protocols::{
     rfc003::{
         self,
         alice::SwapRequests,
-        messages::Request,
         roles::Alice,
         state_machine::{Start, SwapStates},
         state_store::StateStore,
@@ -94,7 +93,7 @@ impl<
                         // This is legacy code
                         send_swap_request(
                             id,
-                            Request {
+                            comit_client::rfc003::Request {
                                 source_asset: start_state.source_asset,
                                 target_asset: start_state.target_asset,
                                 source_ledger: start_state.source_ledger,
@@ -152,7 +151,7 @@ fn send_swap_request<
     E: EventStore<SwapId>,
 >(
     id: SwapId,
-    swap_request: Request<SL, TL, SA, TA>,
+    swap_request: comit_client::rfc003::Request<SL, TL, SA, TA>,
     event_store: Arc<E>,
     alice_actor_sender: UnboundedSender<SwapId>,
     client_factory: Arc<F>,
@@ -194,7 +193,10 @@ fn on_swap_response<
     id: SwapId,
     event_store: &Arc<E>,
     alice_actor_sender: UnboundedSender<SwapId>,
-    result: Result<Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>, SwapResponseError>,
+    result: Result<
+        Result<comit_client::rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
+        SwapResponseError,
+    >,
 ) {
     match result {
         Ok(Ok(accepted)) => {

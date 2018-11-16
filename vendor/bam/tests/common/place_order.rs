@@ -7,7 +7,7 @@ pub fn config() -> Config<Request, Response> {
 
         let response = match product_type {
             ProductType::Phone => {
-                let phone_spec = request.get_body::<PhoneSpec>().unwrap();
+                let phone_spec = request.get_body::<PhoneSpec>().unwrap().unwrap();
                 let price = 420;
 
                 let price = if phone_spec.os == "iOS" {

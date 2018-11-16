@@ -1,8 +1,8 @@
+use bam_api::header::{FromBamHeader, ToBamHeader};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
 use http_api::asset::{FromHttpAsset, ToHttpAsset};
 use std::fmt::Debug;
-use swap_protocols::bam_types;
 
 pub trait Asset:
     Clone
@@ -13,7 +13,8 @@ pub trait Asset:
     + PartialEq
     + FromHttpAsset
     + ToHttpAsset
-    + Into<bam_types::Asset>
+    + FromBamHeader
+    + ToBamHeader
 {
 }
 

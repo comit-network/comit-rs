@@ -25,5 +25,20 @@ mod asset_impls {
 
     impl_http_quantity_asset!(BitcoinQuantity, Bitcoin);
     impl_http_quantity_asset!(EtherQuantity, Ether);
-    impl_http_quantity_asset!(Erc20Quantity, Erc20);
+
+    impl FromHttpAsset for Erc20Quantity {
+        fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
+            unimplemented!(
+                "allow to specify only the asset name here, read the rest from the config"
+            )
+        }
+    }
+
+    impl ToHttpAsset for Erc20Quantity {
+        fn to_http_asset(&self) -> Result<HttpAsset, Error> {
+            unimplemented!(
+                "allow to specify only the asset name here, read the rest from the config"
+            )
+        }
+    }
 }

@@ -9,7 +9,6 @@ use swap_protocols::{
         self,
         events::{CommunicationEvents, ResponseFuture, StateMachineResponseFuture},
         ledger::Ledger,
-        messages::Request,
     },
 };
 
@@ -25,7 +24,7 @@ impl<C: comit_client::Client, SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>
 {
     fn request_responded(
         &mut self,
-        request: &Request<SL, TL, SA, TA>,
+        request: &comit_client::rfc003::Request<SL, TL, SA, TA>,
     ) -> &mut ResponseFuture<Alice<SL, TL, SA, TA>> {
         let client = Arc::clone(&self.client);
         self.response_future.get_or_insert_with(|| {
