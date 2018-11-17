@@ -2,7 +2,7 @@ mod serde;
 
 use bitcoin_support::{ExtendedPrivKey, Network};
 use config::{Config, ConfigError, File};
-use ethereum_support::{self, Address};
+use ethereum_support::{Address, Erc20Token};
 use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{
@@ -50,7 +50,7 @@ pub struct Bitcoin {
 #[derive(Debug, Deserialize)]
 pub struct Swap {
     //TODO this should be generated on the fly per swap from the ethereum private key with #185
-    pub eth_refund_address: ethereum_support::Address,
+    pub eth_refund_address: Address,
 }
 
 #[derive(Debug, Deserialize)]
@@ -80,13 +80,6 @@ pub struct LedgerQueryService {
 pub struct PollParameters {
     #[serde(with = "serde::duration")]
     pub poll_interval_secs: Duration,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct Erc20Token {
-    pub name: String,
-    pub decimal: u16,
-    pub address: Address,
 }
 
 impl ComitNodeSettings {
@@ -173,8 +166,8 @@ mod tests {
         assert_that(&settings.tokens.len()).is_equal_to(1);
         let token = &settings.tokens[0];
         assert_that(token).is_equal_to(Erc20Token {
-            name: String::from("PAY"),
-            decimal: 18,
+            symbol: String::from("PAY"),
+            decimals: 18,
             address: Address::from_str("B97048628DB6B661D4C2aA833e95Dbe1A905B280").unwrap(),
         });
     }

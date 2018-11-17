@@ -12,18 +12,18 @@ const U64SIZE: usize = mem::size_of::<u64>();
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Erc20Quantity {
-    name: String,
-    decimals: u16,
-    address: Address,
+    token: Erc20Token,
     amount: U256,
 }
 
 impl Erc20Quantity {
-    pub fn with_wei(name: String, decimals: u16, address: Address, wei: U256) -> Self {
+    pub fn with_wei(symbol: String, decimals: u16, address: Address, wei: U256) -> Self {
         Erc20Quantity {
-            name,
-            decimals,
-            address,
+            token: Erc20Token {
+                symbol,
+                decimals,
+                address,
+            },
             amount: wei,
         }
     }
@@ -42,8 +42,15 @@ impl Erc20Quantity {
 
         let bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
 
-        BigDecimal::new(bigint, self.decimals.into())
+        BigDecimal::new(bigint, self.token.decimals.into())
     }
+}
+
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Erc20Token {
+    pub symbol: String,
+    pub decimals: u16,
+    pub address: Address,
 }
 
 lazy_static! {
@@ -57,7 +64,7 @@ impl fmt::Display for Erc20Quantity {
         // thing in all cases.
         let fmt_dec = format!("{}", self.to_bigdec());
         let removed_trailing_zeros = TRAILING_ZEROS.replace(fmt_dec.as_str(), "");
-        write!(f, "{} {}", removed_trailing_zeros, self.name)
+        write!(f, "{} {}", removed_trailing_zeros, self.token.symbol)
     }
 }
 
