@@ -1,16 +1,35 @@
-use swap_protocols::ledger::Ethereum;
-
-use ethereum_support::{self, EtherQuantity};
-use swap_protocols::rfc003::{
-    state_machine::HtlcParams,
-    validation::{Error, IsContainedInTransaction},
+use ethereum_support::{self, CalculateContractAddress, EtherQuantity};
+use swap_protocols::{
+    ledger::Ethereum,
+    rfc003::{
+        ethereum::{EtherHtlc, Htlc},
+        state_machine::HtlcParams,
+        validation::{Error, IsContainedInTransaction},
+    },
 };
 
 impl IsContainedInTransaction<Ethereum> for EtherQuantity {
     fn is_contained_in_transaction(
-        _htlc_params: &HtlcParams<Ethereum, EtherQuantity>,
-        _transaction: ethereum_support::Transaction,
+        htlc_params: &HtlcParams<Ethereum, EtherQuantity>,
+        tx: ethereum_support::Transaction,
     ) -> Result<ethereum_support::Address, Error<Self>> {
-        unimplemented!()
+        if tx.to != None {
+            return Err(Error::WrongTransaction);
+        }
+
+        if tx.input != EtherHtlc::from(htlc_params.clone()).compile_to_hex().into() {
+            return Err(Error::WrongTransaction);
+        }
+
+        if tx.value < htlc_params.asset.wei() {
+            return Err(Error::UnexpectedAsset {
+                found: EtherQuantity::from_wei(tx.value),
+                expected: htlc_params.asset,
+            });
+        }
+
+        let from_address: ethereum_support::Address = tx.from;
+
+        Ok(from_address.calculate_contract_address(&tx.nonce))
     }
 }
