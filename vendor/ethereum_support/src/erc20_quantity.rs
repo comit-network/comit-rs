@@ -103,12 +103,12 @@ mod tests {
         let erc20quantity = Erc20Quantity::with_wei(String::from("PAY"), 16, address, wei);
 
         let serialized = serde_json::to_string(&erc20quantity).unwrap();
-        assert_eq!(serialized, r#"{"name":"PAY","decimals":16,"address":"0xb97048628db6b661d4c2aa833e95dbe1a905b280","amount":"0xde0b6b3a7640000"}"#)
+        assert_eq!(serialized, r#"{"token":{"symbol":"PAY","decimals":16,"address":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"},"amount":"0xde0b6b3a7640000"}"#)
     }
 
     #[test]
     fn given_a_deserialized_erc20quantity_will_deserialize() {
-        let serialized = r#"{"name":"PAY","decimals":16,"address":"0xb97048628db6b661d4c2aa833e95dbe1a905b280","amount":"0xde0b6b3a7640000"}"#;
+        let serialized = r#"{"token":{"symbol":"PAY","decimals":16,"address":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"},"amount":"0xde0b6b3a7640000"}"#;
 
         let deserialized: Erc20Quantity = serde_json::from_str(serialized).unwrap();
 
