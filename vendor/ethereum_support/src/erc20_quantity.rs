@@ -1,14 +1,9 @@
-use bigdecimal::BigDecimal;
-use num::{
-    bigint::{BigInt, Sign},
-    ToPrimitive,
-};
+use num::ToPrimitive;
 use regex::Regex;
-use std::{f64, fmt, mem};
+use std::{f64, fmt};
+use u256_ext::ToBigDecimal;
 use web3::types::Address;
 use U256;
-
-const U64SIZE: usize = mem::size_of::<u64>();
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Erc20Quantity {
@@ -29,20 +24,14 @@ impl Erc20Quantity {
     }
 
     pub fn to_full_token(&self) -> f64 {
-        self.to_bigdec().to_f64().unwrap()
+        self.amount
+            .to_bigdec(self.token.decimals.into())
+            .to_f64()
+            .unwrap()
     }
 
     pub fn wei(&self) -> U256 {
         self.amount
-    }
-
-    fn to_bigdec(&self) -> BigDecimal {
-        let mut bytes = [0u8; U64SIZE * 4];
-        self.amount.to_little_endian(&mut bytes);
-
-        let bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
-
-        BigDecimal::new(bigint, self.token.decimals.into())
     }
 }
 
@@ -62,7 +51,7 @@ impl fmt::Display for Erc20Quantity {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
         // thing in all cases.
-        let fmt_dec = format!("{}", self.to_bigdec());
+        let fmt_dec = format!("{}", self.amount.to_bigdec(self.token.decimals.into()));
         let removed_trailing_zeros = TRAILING_ZEROS.replace(fmt_dec.as_str(), "");
         write!(f, "{} {}", removed_trailing_zeros, self.token.symbol)
     }

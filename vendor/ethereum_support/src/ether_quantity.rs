@@ -1,20 +1,16 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
-use num::{
-    bigint::{BigInt, BigUint, Sign},
-    FromPrimitive, ToPrimitive,
-};
+use num::{bigint::BigUint, FromPrimitive, ToPrimitive};
 use regex::Regex;
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
-use std::{f64, fmt, mem, str::FromStr};
+use std::{f64, fmt, str::FromStr};
+use u256_ext::ToBigDecimal;
 use U256;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct EtherQuantity(U256);
-
-const U64SIZE: usize = mem::size_of::<u64>();
 
 impl EtherQuantity {
     fn from_eth_bigdec(decimal: &BigDecimal) -> EtherQuantity {
@@ -40,17 +36,8 @@ impl EtherQuantity {
         EtherQuantity(buf.into())
     }
 
-    fn to_ethereum_bigdec(&self) -> BigDecimal {
-        let mut bytes = [0u8; U64SIZE * 4];
-        self.0.to_little_endian(&mut bytes);
-
-        let bigint = BigInt::from_bytes_le(Sign::Plus, &bytes);
-
-        BigDecimal::new(bigint, 18)
-    }
-
     pub fn ethereum(&self) -> f64 {
-        self.to_ethereum_bigdec().to_f64().unwrap()
+        self.0.to_bigdec(18).to_f64().unwrap()
     }
 
     pub fn wei(&self) -> U256 {
@@ -67,7 +54,7 @@ impl fmt::Display for EtherQuantity {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
         // thing in all cases.
-        let fmt_dec = format!("{}", self.to_ethereum_bigdec());
+        let fmt_dec = format!("{}", self.0.to_bigdec(18));
         let removed_trailing_zeros = TRAILING_ZEROS.replace(fmt_dec.as_str(), "");
         write!(f, "{} ETH", removed_trailing_zeros)
     }
@@ -113,7 +100,7 @@ impl Serialize for EtherQuantity {
     where
         S: Serializer,
     {
-        let (bigint, _exponent) = self.to_ethereum_bigdec().as_bigint_and_exponent();
+        let (bigint, _exponent) = self.0.to_bigdec(18).as_bigint_and_exponent();
         serializer.serialize_str(bigint.to_string().as_str())
     }
 }

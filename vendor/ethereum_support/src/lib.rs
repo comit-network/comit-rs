@@ -23,11 +23,13 @@ mod contract_address;
 mod erc20_quantity;
 mod ether_quantity;
 mod key;
+mod u256_ext;
 
 pub use contract_address::*;
 pub use erc20_quantity::*;
 pub use ether_quantity::*;
 pub use key::*;
+pub use u256_ext::*;
 
 pub use web3_crate::futures::Future;
 
