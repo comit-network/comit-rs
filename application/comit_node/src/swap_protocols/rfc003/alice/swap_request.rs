@@ -2,7 +2,7 @@ use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
-    metadata_store::{Assets, Ledgers, Metadata, Roles},
+    metadata_store::{AssetKind, LedgerKind, Metadata, RoleKind},
     rfc003::Ledger,
 };
 
@@ -20,17 +20,17 @@ pub struct SwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
 impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {
     fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>) -> Self {
         Self {
-            source_ledger: Ledgers::Bitcoin,
-            target_ledger: Ledgers::Ethereum,
-            source_asset: Assets::Bitcoin,
-            target_asset: Assets::Ether,
-            role: Roles::Alice,
+            source_ledger: LedgerKind::Bitcoin,
+            target_ledger: LedgerKind::Ethereum,
+            source_asset: AssetKind::Bitcoin,
+            target_asset: AssetKind::Ether,
+            role: RoleKind::Alice,
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapRequests {
+pub enum SwapRequestKind {
     BitcoinEthereumBitcoinQuantityEthereumQuantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),

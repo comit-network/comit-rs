@@ -14,6 +14,6 @@ pub enum SwapResponse<SL: Ledger, TL: Ledger> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapResponses {
+pub enum SwapResponseKind {
     BitcoinEthereum(SwapResponse<Bitcoin, Ethereum>),
 }

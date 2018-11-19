@@ -198,7 +198,7 @@ fn spawn_warp_instance(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(event_store, metadata_store, state_store, sender);
@@ -220,7 +220,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
     key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
-) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequests)> {
+) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)> {
     let client_factory = Arc::new(comit_client::bam::BamClientPool::default());
     let comit_node_addr = settings.comit.remote_comit_node_url;
 
@@ -269,8 +269,8 @@ fn spawn_bob_swap_request_handler_for_rfc003(
     runtime: &mut tokio::runtime::Runtime,
 ) -> UnboundedSender<(
     SwapId,
-    rfc003::bob::SwapRequests,
-    oneshot::Sender<Result<rfc003::bob::SwapResponses, failure::Error>>,
+    rfc003::bob::SwapRequestKind,
+    oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
 )> {
     let (sender, receiver) = mpsc::unbounded();
 
@@ -296,8 +296,8 @@ fn spawn_comit_server(
     settings: &ComitNodeSettings,
     sender: UnboundedSender<(
         SwapId,
-        rfc003::bob::SwapRequests,
-        oneshot::Sender<Result<rfc003::bob::SwapResponses, failure::Error>>,
+        rfc003::bob::SwapRequestKind,
+        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
     )>,
 
     runtime: &mut tokio::runtime::Runtime,

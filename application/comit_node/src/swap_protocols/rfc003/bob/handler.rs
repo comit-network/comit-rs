@@ -21,7 +21,7 @@ use swap_protocols::{
     metadata_store::MetadataStore,
     rfc003::{
         self,
-        bob::SwapRequests,
+        bob::SwapRequestKind,
         ethereum::Seconds,
         ledger_htlc_service::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
@@ -44,8 +44,8 @@ pub struct SwapRequestHandler<E, C, MetadataStore, StateStore> {
     // new dependencies
     pub receiver: UnboundedReceiver<(
         SwapId,
-        SwapRequests,
-        oneshot::Sender<Result<rfc003::bob::SwapResponses, failure::Error>>,
+        SwapRequestKind,
+        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
     )>,
     pub metadata_store: Arc<MetadataStore>,
     pub state_store: Arc<StateStore>,
@@ -85,7 +85,7 @@ impl<
 
         receiver
             .for_each(move |(id, requests, response_sender)| match requests {
-                rfc003::bob::SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+                rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
                     request,
                 ) => {
                     if let Err(e) = metadata_store.insert(id, request.clone()) {
@@ -130,7 +130,7 @@ impl<
                     );
 
                     response_sender
-                        .send(result.map(rfc003::bob::SwapResponses::BitcoinEthereum))
+                        .send(result.map(rfc003::bob::SwapResponseKind::BitcoinEthereum))
                         .map_err(|_| ())
                 }
             })

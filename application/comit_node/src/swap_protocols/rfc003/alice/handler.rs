@@ -13,7 +13,7 @@ use swap_protocols::{
     metadata_store::MetadataStore,
     rfc003::{
         self,
-        alice::SwapRequests,
+        alice::SwapRequestKind,
         roles::Alice,
         state_machine::{Start, SwapStates},
         state_store::StateStore,
@@ -31,7 +31,7 @@ pub struct SwapRequestHandler<
     StateStore,
 > {
     // new dependencies
-    pub receiver: UnboundedReceiver<(SwapId, SwapRequests)>,
+    pub receiver: UnboundedReceiver<(SwapId, SwapRequestKind)>,
     pub metadata_store: Arc<MetadataStore>,
     pub key_store: Arc<KeyStore>,
     pub state_store: Arc<StateStore>,
@@ -66,7 +66,7 @@ impl<
         receiver
             .for_each(move |(id, requests)| {
                 match requests {
-                    SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
+                    SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
                         // TODO: Store this somewhere
                         let _source_ledger_refund_identity = request.source_ledger_refund_identity;
 

@@ -1,19 +1,19 @@
 use std::{collections::HashMap, hash::Hash, sync::Mutex};
 
 #[derive(Clone, Copy, Debug)]
-pub enum Roles {
+pub enum RoleKind {
     Alice,
     Bob,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Ledgers {
+pub enum LedgerKind {
     Bitcoin,
     Ethereum,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Assets {
+pub enum AssetKind {
     Bitcoin,
     Ether,
     Erc20,
@@ -21,11 +21,11 @@ pub enum Assets {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Metadata {
-    pub source_ledger: Ledgers,
-    pub target_ledger: Ledgers,
-    pub source_asset: Assets,
-    pub target_asset: Assets,
-    pub role: Roles,
+    pub source_ledger: LedgerKind,
+    pub target_ledger: LedgerKind,
+    pub source_asset: AssetKind,
+    pub target_asset: AssetKind,
+    pub role: RoleKind,
 }
 
 #[derive(Debug)]

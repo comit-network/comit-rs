@@ -19,8 +19,8 @@ use swaps::common::SwapId;
 pub fn swap_config(
     sender: mpsc::UnboundedSender<(
         SwapId,
-        rfc003::bob::SwapRequests,
-        oneshot::Sender<Result<rfc003::bob::SwapResponses, failure::Error>>,
+        rfc003::bob::SwapRequestKind,
+        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
     )>,
 ) -> Config<Request, Response> {
     Config::default().on_request(
@@ -43,16 +43,16 @@ pub fn swap_config(
 
                     if let Ok(swap_request) = decode_request(&request) {
 
-                        let requests =
-                            rfc003::bob::SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+                        let request_kind =
+                            rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
                                 swap_request,
                             );
-                        sender.unbounded_send((swap_id, requests, response_sender)).unwrap();
+                        sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
                     }
 
                     Box::new(response_receiver.then(move |result| {
                         match result {
-                            Ok(Ok(rfc003::bob::SwapResponses::BitcoinEthereum(response))) => Ok(response.into()),
+                            Ok(Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response))) => Ok(response.into()),
                             Ok(Err(e)) => {
 
                                 error!("Error while processing swap request {}: {:?}", swap_id, e);

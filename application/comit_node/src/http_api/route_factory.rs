@@ -17,7 +17,7 @@ pub fn create<
     event_store: Arc<E>,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = warp::path(http_api::rfc003::swap::PATH);
