@@ -1,8 +1,7 @@
-use comit_client::SwapReject;
-use futures::{future::Either, Async, Future};
+use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
-use swap_protocols::rfc003::secret::LedgerExtractSecret;
+use swap_protocols::rfc003::LedgerExtractSecret;
 
 use swap_protocols::{
     self,
@@ -31,18 +30,6 @@ impl<SL: Ledger, TL: Ledger> From<AcceptResponseBody<SL, TL>>
         }
     }
 }
-
-pub type StateMachineResponseFuture<SLSI, TLRI, TLLD> = Future<
-        Item = Result<StateMachineResponse<SLSI, TLRI, TLLD>, SwapReject>,
-        Error = rfc003::Error,
-    > + Send;
-
-#[allow(type_alias_bounds)]
-pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
-    R::SourceSuccessHtlcIdentity,
-    R::TargetRefundHtlcIdentity,
-    <R::TargetLedger as Ledger>::LockDuration,
->;
 
 #[derive(Clone, Debug)]
 pub struct HtlcParams<L: Ledger, A: Asset> {
@@ -116,19 +103,12 @@ impl<R: Role> OngoingSwap<R> {
     }
 }
 
-pub trait ResponseSource<R: Role> {
-    fn request_responded(
-        &mut self,
-        request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
-    ) -> &mut ResponseFuture<R>;
-}
-
 #[allow(missing_debug_implementations)]
 pub struct Context<R: Role> {
-    pub events:
-        Box<events::Events<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>>,
+    pub ledger_events:
+        Box<events::LedgerEvents<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>>,
     pub state_repo: Arc<SaveState<R>>,
-    pub response_source: Box<ResponseSource<R> + Send>,
+    pub response_event: Box<events::ResponseEvent<R> + Send>,
 }
 
 #[derive(StateMachineFuture)]
@@ -217,7 +197,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             secret_hash: state.secret.clone().into(),
         };
 
-        let response = try_ready!(context.response_source.request_responded(&request).poll());
+        let response = try_ready!(context.response_event.request_responded(&request).poll());
 
         let state = state.take();
 
@@ -237,7 +217,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
         let source_htlc_location = try_ready!(context
-            .events
+            .ledger_events
             .htlc_funded(state.swap.source_htlc_params())
             .poll());
 
@@ -257,7 +237,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceFunded<R>>, rfc003::Error> {
         match try_ready!(context
-            .events
+            .ledger_events
             .source_htlc_refunded_target_htlc_funded(
                 state.swap.source_htlc_params(),
                 state.swap.target_htlc_params(),
@@ -287,7 +267,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterBothFunded<R>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
-            .events
+            .ledger_events
             .target_htlc_redeemed_or_refunded(
                 state.swap.target_htlc_params(),
                 &state.target_htlc_location,
@@ -327,7 +307,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         }
 
         match try_ready!(context
-            .events
+            .ledger_events
             .source_htlc_redeemed_or_refunded(
                 state.swap.source_htlc_params(),
                 &state.source_htlc_location
@@ -362,7 +342,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, rfc003::Error> {
         match try_ready!(context
-            .events
+            .ledger_events
             .source_htlc_redeemed_or_refunded(
                 state.swap.source_htlc_params(),
                 &state.source_htlc_location
@@ -384,7 +364,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, rfc003::Error> {
         match try_ready!(context
-            .events
+            .ledger_events
             .target_htlc_redeemed_or_refunded(
                 state.swap.target_htlc_params(),
                 &state.target_htlc_location
@@ -406,7 +386,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, rfc003::Error> {
         match try_ready!(context
-            .events
+            .ledger_events
             .target_htlc_redeemed_or_refunded(
                 state.swap.target_htlc_params(),
                 &state.target_htlc_location
@@ -428,7 +408,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, rfc003::Error> {
         match try_ready!(context
-            .events
+            .ledger_events
             .source_htlc_redeemed_or_refunded(
                 state.swap.source_htlc_params(),
                 &state.source_htlc_location

@@ -3,7 +3,6 @@ use ledger_query_service::BitcoinQuery;
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        bitcoin::Htlc,
         events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
         state_machine::HtlcParams,
     },
@@ -11,9 +10,8 @@ use swap_protocols::{
 
 impl NewHtlcFundedQuery<Bitcoin, BitcoinQuantity> for BitcoinQuery {
     fn new_htlc_funded_query(htlc_params: &HtlcParams<Bitcoin, BitcoinQuantity>) -> Self {
-        let htlc: Htlc = htlc_params.clone().into();
         BitcoinQuery::Transaction {
-            to_address: Some(htlc.compute_address(htlc_params.ledger.network)),
+            to_address: Some(htlc_params.compute_address()),
             from_outpoint: None,
             unlock_script: None,
         }

@@ -5,19 +5,19 @@ use swap_protocols::{
     rfc003::{
         self,
         events::{
-            Events, Funded, HtlcFunded, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
+            Funded, HtlcFunded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
             NewHtlcRefundedQuery, RedeemedOrRefunded, SourceHtlcRedeemedOrRefunded,
             SourceHtlcRefundedTargetHtlcFunded, SourceRefundedOrTargetFunded,
             TargetHtlcRedeemedOrRefunded,
         },
+        is_contained_in_transaction::IsContainedInTransaction,
         state_machine::HtlcParams,
-        validation::IsContainedInTransaction,
         Ledger,
     },
 };
 
 #[allow(missing_debug_implementations)]
-pub struct DefaultEvents<SL: Ledger, TL: Ledger, SLQuery: Query, TLQuery: Query> {
+pub struct LqsEvents<SL: Ledger, TL: Ledger, SLQuery: Query, TLQuery: Query> {
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
     source_ledger_first_match: FirstMatch<SL>,
 
@@ -31,7 +31,7 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, SLQuery: Query, TLQuery: Query>
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 }
 
-impl<SL, TL, SA, SLQuery, TLQuery> HtlcFunded<SL, SA> for DefaultEvents<SL, TL, SLQuery, TLQuery>
+impl<SL, TL, SA, SLQuery, TLQuery> HtlcFunded<SL, SA> for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
@@ -63,7 +63,7 @@ where
 }
 
 impl<SL, TL, SA, TA, SLQuery, TLQuery> SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA>
-    for DefaultEvents<SL, TL, SLQuery, TLQuery>
+    for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
@@ -125,7 +125,7 @@ where
 }
 
 impl<SL, TL, TA, SLQuery, TLQuery> TargetHtlcRedeemedOrRefunded<TL, TA>
-    for DefaultEvents<SL, TL, SLQuery, TLQuery>
+    for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
@@ -179,7 +179,7 @@ where
 }
 
 impl<SL, TL, SA, SLQuery, TLQuery> SourceHtlcRedeemedOrRefunded<SL, SA>
-    for DefaultEvents<SL, TL, SLQuery, TLQuery>
+    for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
@@ -232,8 +232,8 @@ where
     }
 }
 
-impl<SL, TL, SA, TA, SLQuery, TLQuery> Events<SL, TL, SA, TA>
-    for DefaultEvents<SL, TL, SLQuery, TLQuery>
+impl<SL, TL, SA, TA, SLQuery, TLQuery> LedgerEvents<SL, TL, SA, TA>
+    for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,

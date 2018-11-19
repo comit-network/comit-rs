@@ -3,8 +3,8 @@ use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
         ethereum::{EtherHtlc, Htlc},
+        is_contained_in_transaction::{Error, IsContainedInTransaction},
         state_machine::HtlcParams,
-        validation::{Error, IsContainedInTransaction},
     },
 };
 

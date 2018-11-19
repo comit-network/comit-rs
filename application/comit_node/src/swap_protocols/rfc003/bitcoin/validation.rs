@@ -2,8 +2,8 @@ use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
+        is_contained_in_transaction::{Error, IsContainedInTransaction},
         state_machine::HtlcParams,
-        validation::{Error, IsContainedInTransaction},
     },
 };
 

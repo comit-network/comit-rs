@@ -6,15 +6,12 @@ use swap_protocols::{
     rfc003::{
         ethereum::Seconds,
         events::{
-            self, Events, HtlcFunded, SourceHtlcRedeemedOrRefunded,
+            self, HtlcFunded, LedgerEvents, SourceHtlcRedeemedOrRefunded,
             SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
         },
-        roles::{
-            test::{Alisha, Bobisha, FakeResponseSource},
-            Bob, Role,
-        },
+        roles::test::{Alisha, Bobisha, FakeResponseEvent},
         state_machine::*,
-        Ledger, Secret,
+        Secret,
     },
 };
 
@@ -28,13 +25,13 @@ use hex::FromHex;
 use std::{str::FromStr, sync::Arc};
 
 #[derive(Default)]
-struct FakeEvents {
+struct FakeLedgerEvents {
     pub source_htlc_funded: Option<Box<events::Funded<Bitcoin>>>,
     pub source_htlc_refunded_target_htlc_funded:
         Option<Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>>>,
 }
 
-impl HtlcFunded<Bitcoin, BitcoinQuantity> for FakeEvents {
+impl HtlcFunded<Bitcoin, BitcoinQuantity> for FakeLedgerEvents {
     fn htlc_funded(
         &mut self,
         _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
@@ -44,7 +41,7 @@ impl HtlcFunded<Bitcoin, BitcoinQuantity> for FakeEvents {
 }
 
 impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>
-    for FakeEvents
+    for FakeLedgerEvents
 {
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
@@ -58,7 +55,7 @@ impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, Ethe
     }
 }
 
-impl TargetHtlcRedeemedOrRefunded<Ethereum, EtherQuantity> for FakeEvents {
+impl TargetHtlcRedeemedOrRefunded<Ethereum, EtherQuantity> for FakeLedgerEvents {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
         _target_htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -68,7 +65,7 @@ impl TargetHtlcRedeemedOrRefunded<Ethereum, EtherQuantity> for FakeEvents {
     }
 }
 
-impl SourceHtlcRedeemedOrRefunded<Bitcoin, BitcoinQuantity> for FakeEvents {
+impl SourceHtlcRedeemedOrRefunded<Bitcoin, BitcoinQuantity> for FakeLedgerEvents {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
         _source_htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
@@ -78,7 +75,7 @@ impl SourceHtlcRedeemedOrRefunded<Bitcoin, BitcoinQuantity> for FakeEvents {
     }
 }
 
-impl Events<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeEvents {}
+impl LedgerEvents<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeLedgerEvents {}
 
 fn gen_start_state() -> Start<Alisha> {
     Start {
@@ -101,12 +98,12 @@ fn gen_start_state() -> Start<Alisha> {
 }
 
 macro_rules! init {
-    ($role:ty, $response_source:expr, $state:expr, $events:expr) => {{
+    ($role:ty, $response_event:expr, $state:expr, $events:expr) => {{
         let (state_sender, state_receiver) = mpsc::unbounded();
         let context = Context {
-            events: Box::new($events),
+            ledger_events: Box::new($events),
             state_repo: Arc::new(state_sender),
-            response_source: Box::new($response_source),
+            response_event: Box::new($response_event),
         };
         let state: SwapStates<$role> = $state;
         let final_state_future = Swap::start_in(state, context);
@@ -149,11 +146,11 @@ fn when_swap_is_rejected_go_to_final_reject() {
 
     let (state_machine, states) = init!(
         Alisha,
-        FakeResponseSource::<Alisha> {
+        FakeResponseEvent::<Alisha> {
             response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
         },
         start.clone().into(),
-        FakeEvents {
+        FakeLedgerEvents {
             ..Default::default()
         }
     );
@@ -179,11 +176,11 @@ fn source_refunded() {
 
     let (state_machine, states) = init!(
         Alisha,
-        FakeResponseSource::<Alisha> {
+        FakeResponseEvent::<Alisha> {
             response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
         },
         start.clone().into(),
-        FakeEvents {
+        FakeLedgerEvents {
             source_htlc_funded: Some(Box::new(future::ok(OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0,
@@ -260,11 +257,11 @@ fn bob_transition_source_refunded() {
 
     let (state_machine, states) = init!(
         Bobisha,
-        FakeResponseSource::<Bobisha> {
+        FakeResponseEvent::<Bobisha> {
             response: Some(Box::new(future::ok(Ok(response.clone()))))
         },
         start.clone().into(),
-        FakeEvents {
+        FakeLedgerEvents {
             source_htlc_funded: Some(Box::new(future::ok(OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0,

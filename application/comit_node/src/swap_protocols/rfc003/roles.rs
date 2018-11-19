@@ -1,21 +1,9 @@
-use comit_client;
-use futures::Future;
-use std::{
-    fmt::{self, Debug},
-    marker::PhantomData,
-    sync::Arc,
-};
+use std::{fmt::Debug, marker::PhantomData};
 
 use swap_protocols::{
     self,
     asset::Asset,
-    rfc003::{
-        self,
-        ledger::Ledger,
-        messages::Request,
-        state_machine::{ResponseFuture, ResponseSource, StateMachineResponseFuture},
-        Secret, SecretHash,
-    },
+    rfc003::{ledger::Ledger, Secret, SecretHash},
 };
 
 pub trait Role: Send + Clone + 'static {
@@ -54,47 +42,9 @@ pub trait Role: Send + Clone + 'static {
     type Secret: Send + Sync + Clone + Into<SecretHash> + Debug + PartialEq;
 }
 
-#[allow(dead_code)] // TODO: Remove "allow" when used
-struct AliceComitClient<C, SL: Ledger, TL: Ledger> {
-    #[allow(clippy::type_complexity)]
-    response_future:
-        Option<Box<StateMachineResponseFuture<SL::Identity, TL::Identity, TL::LockDuration>>>,
-    client: Arc<C>,
-}
-
-impl<C: comit_client::Client, SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>
-    ResponseSource<Alice<SL, TL, SA, TA>> for AliceComitClient<C, SL, TL>
-{
-    fn request_responded(
-        &mut self,
-        request: &Request<SL, TL, SA, TA>,
-    ) -> &mut ResponseFuture<Alice<SL, TL, SA, TA>> {
-        let client = Arc::clone(&self.client);
-        self.response_future.get_or_insert_with(|| {
-            Box::new(
-                client
-                    .send_swap_request(request.clone())
-                    .map_err(rfc003::Error::SwapResponse)
-                    .map(|result| result.map(Into::into)),
-            )
-        })
-    }
-}
-
+#[derive(Clone, Debug)]
 pub struct Alice<SL: Ledger, TL: Ledger, SA, TA> {
     phantom_data: PhantomData<(SL, TL, SA, TA)>,
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> Debug for Alice<SL, TL, SA, TA> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "Alice")
-    }
-}
-
-impl<SL: Ledger, TL: Ledger, SA, TA> Clone for Alice<SL, TL, SA, TA> {
-    fn clone(&self) -> Alice<SL, TL, SA, TA> {
-        unreachable!("Rust is requiring me to be clone erroneously")
-    }
 }
 
 impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> Role for Alice<SL, TL, SA, TA> {
@@ -129,11 +79,14 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> Role for Bob<SL, TL, SA, TA> 
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use bitcoin_support::{self, BitcoinQuantity};
-    use ethereum_support::{self, EtherQuantity};
+    use bitcoin_support::BitcoinQuantity;
+    use ethereum_support::EtherQuantity;
     use swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::ethereum::Seconds,
+        rfc003::{
+            events::{ResponseEvent, ResponseFuture},
+            messages::Request,
+        },
     };
 
     pub type Alisha = Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
@@ -156,11 +109,11 @@ pub mod test {
     }
 
     #[allow(missing_debug_implementations)]
-    pub struct FakeResponseSource<R: Role> {
+    pub struct FakeResponseEvent<R: Role> {
         pub response: Option<Box<ResponseFuture<R>>>,
     }
 
-    impl<R: Role> ResponseSource<R> for FakeResponseSource<R> {
+    impl<R: Role> ResponseEvent<R> for FakeResponseEvent<R> {
         fn request_responded(
             &mut self,
             _request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,

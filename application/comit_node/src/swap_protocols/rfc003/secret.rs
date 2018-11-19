@@ -6,7 +6,6 @@ use std::{
     fmt::{self, Debug},
     str::FromStr,
 };
-use swap_protocols::Ledger;
 
 const SHA256_DIGEST_LENGTH: usize = 32;
 
@@ -210,25 +209,6 @@ impl RandomnessSource for ThreadRng {
 
 pub trait ExtractSecret {
     fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret>;
-}
-
-pub trait LedgerExtractSecret: Ledger {
-    fn extract_secret_from_transaction(
-        txn: &Self::Transaction,
-        secret_hash: &SecretHash,
-    ) -> Option<Secret>;
-}
-
-impl<L: Ledger> LedgerExtractSecret for L
-where
-    L::Transaction: ExtractSecret,
-{
-    fn extract_secret_from_transaction(
-        txn: &Self::Transaction,
-        secret_hash: &SecretHash,
-    ) -> Option<Secret> {
-        txn.extract_secret(secret_hash)
-    }
 }
 
 #[cfg(test)]
