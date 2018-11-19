@@ -2,6 +2,6 @@ mod handler;
 mod swap_request;
 
 pub use self::{
-    handler::SwapRequestsHandler,
+    handler::SwapRequestHandler,
     swap_request::{SwapRequest, SwapRequests},
 };

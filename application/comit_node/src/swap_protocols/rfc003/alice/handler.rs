@@ -23,7 +23,7 @@ use swap_protocols::{
 use swaps::{alice_events, common::SwapId};
 
 #[derive(Debug)]
-pub struct SwapRequestsHandler<
+pub struct SwapRequestHandler<
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
     EventStore,
@@ -50,7 +50,7 @@ impl<
         E: EventStore<SwapId>,
         M: MetadataStore<SwapId>,
         S: StateStore<SwapId>,
-    > SwapRequestsHandler<C, F, E, M, S>
+    > SwapRequestHandler<C, F, E, M, S>
 {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let receiver = self.receiver;

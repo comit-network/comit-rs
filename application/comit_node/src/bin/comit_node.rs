@@ -239,7 +239,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
 
     let (sender, receiver) = mpsc::unbounded();
 
-    let alice_swap_request_handler = rfc003::alice::SwapRequestsHandler {
+    let alice_swap_request_handler = rfc003::alice::SwapRequestHandler {
         receiver,
         metadata_store,
         key_store,
@@ -274,7 +274,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
 )> {
     let (sender, receiver) = mpsc::unbounded();
 
-    let bob_swap_request_handler = rfc003::bob::SwapRequestsHandler {
+    let bob_swap_request_handler = rfc003::bob::SwapRequestHandler {
         receiver,
         metadata_store,
         event_store,

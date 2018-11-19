@@ -40,7 +40,7 @@ use swaps::{
 use tokio::timer::Interval;
 
 #[derive(Debug)]
-pub struct SwapRequestsHandler<E, C, MetadataStore, StateStore> {
+pub struct SwapRequestHandler<E, C, MetadataStore, StateStore> {
     // new dependencies
     pub receiver: UnboundedReceiver<(
         SwapId,
@@ -66,7 +66,7 @@ impl<
             + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
         M: MetadataStore<SwapId>,
         S: StateStore<SwapId>,
-    > SwapRequestsHandler<E, C, M, S>
+    > SwapRequestHandler<E, C, M, S>
 {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let (receiver, metadata_store, bitcoin_poll_interval, ethereum_poll_interval) = (
