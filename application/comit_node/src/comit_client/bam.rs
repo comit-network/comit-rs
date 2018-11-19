@@ -1,5 +1,5 @@
 use bam::{self, config::Config, connection::Connection, json, Status};
-use bam_api::header::ToBamHeader;
+use bam_api::{self, header::ToBamHeader};
 use comit_client::{
     rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
 };
@@ -55,13 +55,14 @@ impl Client for BamClient {
             "SWAP".into(),
             convert_args!(
                 keys = String::from,
+                values = to_json_value,
                 hashmap!(
-                "source_ledger" => serde_json::to_value(request.source_ledger.to_bam_header().unwrap()).unwrap(),
-                "target_ledger" => serde_json::to_value(request.target_ledger.to_bam_header().unwrap()).unwrap(),
-                "source_asset" => serde_json::to_value(request.source_asset.to_bam_header().unwrap()).unwrap(),
-                "target_asset" => serde_json::to_value(request.target_asset.to_bam_header().unwrap()).unwrap(),
-                "swap_protocol" => serde_json::to_value(SwapProtocols::Rfc003.to_bam_header().unwrap()).unwrap(),
-            )
+                    "source_ledger" => request.source_ledger.to_bam_header(),
+                    "target_ledger" => request.target_ledger.to_bam_header(),
+                    "source_asset" => request.source_asset.to_bam_header(),
+                    "target_asset" => request.target_asset.to_bam_header(),
+                    "swap_protocol" => SwapProtocols::Rfc003.to_bam_header(),
+                )
             ),
             serde_json::to_value(rfc003::RequestBody::<SL, TL> {
                 source_ledger_refund_identity,
@@ -69,7 +70,7 @@ impl Client for BamClient {
                 source_ledger_lock_duration,
                 secret_hash,
             })
-            .unwrap(),
+            .expect("should not fail to serialize"),
         );
 
         debug!(
@@ -114,6 +115,14 @@ impl Client for BamClient {
 
         Box::new(response)
     }
+}
+
+fn to_json_value(
+    bam_header: Result<bam_api::header::Header, bam_api::header::Error>,
+) -> serde_json::Value {
+    let header = bam_header.expect("converting to bam-header must not fail");
+
+    serde_json::to_value(header).expect("converting bam-header to json must not fail")
 }
 
 #[derive(Default, Debug)]
