@@ -89,6 +89,10 @@ class WalletConf {
     }
 
     async send_eth_transaction_to(to, data = "0x0", value = "0x0") {
+        if (!to) {
+          throw "`to` cannot be null";
+        }
+
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
 
         const tx = new EthereumTx({
@@ -98,6 +102,25 @@ class WalletConf {
             to: to,
             data: data,
             value: value,
+            chainId: 1
+        });
+
+        tx.sign(this.eth_private_key());
+        const serializedTx = tx.serialize();
+        let hex = '0x' + serializedTx.toString('hex');
+        return web3.eth.sendSignedTransaction(hex);
+    }
+
+    async deploy_eth_contract(data = "0x0") {
+        let nonce = await web3.eth.getTransactionCount(this.eth_address());
+
+        const tx = new EthereumTx({
+            nonce: "0x" + nonce.toString(16),
+            gasPrice: '0x1',
+            gasLimit: '0x3D0900',
+            to: null,
+            data: data,
+            value: "0x0",
             chainId: 1
         });
 

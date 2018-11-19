@@ -9,11 +9,10 @@ const assert = require('assert');
 const fs = require('fs');
 const ethutil = require('ethereumjs-util');
 
-
 const web3 = test_lib.web3();
 
 const toby_eth_private_key = Buffer.from("fed52717ddb17a45e718a0903024224ab69a2456157aaa16e606e65b9943c899", "hex");
-const toby_eth_address = "0x" + ethutil.privateToAddress(toby_eth_private_key).toString("hex");
+const token_contract_deploy = "0x" + fs.readFileSync("../application/comit_node/tests/parity_client/erc20_token_contract.asm.hex", 'utf8').trim();
 
 const toby = test_lib.wallet_conf(toby_eth_private_key, {
     txid: process.env.BTC_FUNDED_TX,
@@ -24,12 +23,12 @@ const toby = test_lib.wallet_conf(toby_eth_private_key, {
 
 describe('RFC003: Setup ERC20 token contract', () => {
 
-    before(() => {
-        test_lib.fund_eth(20).then(() => {
+    before(async () => {
+        await test_lib.fund_eth(20).then(() => {
             console.log(`Gave 20 Ether to funded address`);
-            test_lib.give_eth_to(toby_eth_address, 10)
+            test_lib.give_eth_to(toby.eth_address(), 10)
                 .then(receipt => {
-                    console.log(`Giving 10 Ether to Toby; success: ${receipt[0].status}`);
+                    console.log(`Giving 20 Ether to Toby; success: ${receipt[0].status}`);
                 }).catch(error => {
                 console.log(`Error on giving Ether to Toby: ${error}`);
             });
@@ -39,8 +38,8 @@ describe('RFC003: Setup ERC20 token contract', () => {
     });
 
     it("Creation of new token contract should be successful", async function () {
-        return toby.send_eth_transaction_to("").then(receipt => {
-            console.log(receipt);
+        return toby.deploy_eth_contract(token_contract_deploy).then(receipt => {
+            receipt.contractAddress.should.equal("0x0c4526600167e15124350e6921A889D7D5778Aa2", "Contract address should be deterministic.");
         });
     });
 });
