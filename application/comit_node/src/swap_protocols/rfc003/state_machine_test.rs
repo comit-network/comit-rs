@@ -1,4 +1,3 @@
-use bitcoin_rpc_client::rpc::{SerializedRawTransaction, VerboseRawTransaction};
 use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use comit_client::SwapReject;
 use swap_protocols::{
@@ -186,22 +185,12 @@ fn source_refunded() {
                 vout: 0,
             }))),
             source_htlc_refunded_target_htlc_funded: Some(Box::new(future::ok(Either::A(
-                VerboseRawTransaction {
-                    txid: Sha256dHash::from_data(b"refunded"),
-                    hash: String::from(""),
-                    size: 0,
-                    vsize: 0,
+                bitcoin_support::Transaction {
                     version: 1,
-                    locktime: 42,
-                    vin: Vec::new(),
-                    vout: Vec::new(),
-                    hex: SerializedRawTransaction(String::from("")),
-                    blockhash: Sha256dHash::from_data(b"blockhash"),
-                    confirmations: 0,
-                    time: 0,
-                    blocktime: 0,
+                    lock_time: 42,
+                    input: vec![],
+                    output: vec![],
                 }
-                .into(),
             )))),
             ..Default::default()
         }
@@ -267,22 +256,12 @@ fn bob_transition_source_refunded() {
                 vout: 0,
             }))),
             source_htlc_refunded_target_htlc_funded: Some(Box::new(future::ok(Either::A(
-                VerboseRawTransaction {
-                    txid: Sha256dHash::from_data(b"refunded"),
-                    hash: String::from(""),
-                    size: 0,
-                    vsize: 0,
+                bitcoin_support::Transaction {
                     version: 1,
-                    locktime: 42,
-                    vin: Vec::new(),
-                    vout: Vec::new(),
-                    hex: SerializedRawTransaction(String::from("")),
-                    blockhash: Sha256dHash::from_data(b"blockhash"),
-                    confirmations: 0,
-                    time: 0,
-                    blocktime: 0,
+                    lock_time: 42,
+                    input: vec![],
+                    output: vec![],
                 }
-                .into(),
             )))),
             ..Default::default()
         }

@@ -52,18 +52,14 @@ mod tests {
     extern crate bitcoin_support;
 
     use super::{Error as ValidationError, *};
-    use bitcoin_rpc_client::rpc::{
-        ScriptPubKey, ScriptType, SerializedRawTransaction, TransactionOutput,
-        VerboseRawTransaction,
-    };
-    use bitcoin_support::{BitcoinQuantity, Blocks, Sha256dHash, Transaction};
+    use bitcoin_support::{BitcoinQuantity, Blocks, Transaction, TxOut};
     use hex::FromHex;
     use spectral::prelude::*;
     use swap_protocols::rfc003::{state_machine::*, Secret};
 
-    fn gen_htlc_params(bitcoin_amount: f64) -> HtlcParams<Bitcoin, BitcoinQuantity> {
+    fn gen_htlc_params(bitcoin_amount: BitcoinQuantity) -> HtlcParams<Bitcoin, BitcoinQuantity> {
         HtlcParams {
-            asset: BitcoinQuantity::from_bitcoin(bitcoin_amount),
+            asset: bitcoin_amount,
             ledger: Bitcoin::regtest(),
             success_identity: bitcoin_support::PubkeyHash::from_hex(
                 "d38e554430c4035f2877a579a07a99886153f071",
@@ -80,38 +76,20 @@ mod tests {
 
     #[test]
     fn transaction_contains_output_with_sufficient_money() {
-        let bitcoin_amount = 1.0;
+        let bitcoin_amount = BitcoinQuantity::from_bitcoin(1.0);
         let htlc_params = gen_htlc_params(bitcoin_amount);
-        let script = htlc_params.compute_address().script_pubkey();
+        let script_pubkey = htlc_params.compute_address().script_pubkey();
 
-        let script_pub_key = ScriptPubKey {
-            asm: String::from(""),
-            hex: script.clone(),
-            req_sigs: None,
-            script_type: ScriptType::NullData,
-            addresses: None,
+        let transaction_output = TxOut {
+            value: htlc_params.asset.satoshi(),
+            script_pubkey,
         };
 
-        let transaction_output = TransactionOutput {
-            value: htlc_params.asset.bitcoin(),
-            n: 1,
-            script_pub_key,
-        };
-
-        let transaction = VerboseRawTransaction {
-            txid: Sha256dHash::from_data(b"a"),
-            hash: String::from(""),
-            size: 0,
-            vsize: 0,
+        let transaction = Transaction {
             version: 1,
-            locktime: 42,
-            vin: Vec::new(),
-            vout: vec![transaction_output],
-            hex: SerializedRawTransaction(String::from("")),
-            blockhash: Sha256dHash::from_data(b"blockhash"),
-            confirmations: 0,
-            time: 0,
-            blocktime: 0,
+            lock_time: 42,
+            input: vec![],
+            output: vec![transaction_output],
         };
 
         let bitcoin_transaction: Transaction = transaction.into();
@@ -127,22 +105,12 @@ mod tests {
 
     #[test]
     fn transaction_does_not_contain_output() {
-        let bitcoin_amount = 1.0;
-
-        let transaction = VerboseRawTransaction {
-            txid: Sha256dHash::from_data(b"refunded"),
-            hash: String::from(""),
-            size: 0,
-            vsize: 0,
+        let bitcoin_amount = BitcoinQuantity::from_bitcoin(1.0);
+        let transaction = Transaction {
             version: 1,
-            locktime: 42,
-            vin: Vec::new(),
-            vout: Vec::new(),
-            hex: SerializedRawTransaction(String::from("")),
-            blockhash: Sha256dHash::from_data(b"blockhash"),
-            confirmations: 0,
-            time: 0,
-            blocktime: 0,
+            lock_time: 42,
+            input: vec![],
+            output: vec![],
         };
 
         let result = BitcoinQuantity::is_contained_in_transaction(
@@ -155,47 +123,30 @@ mod tests {
 
     #[test]
     fn transaction_does_not_contain_enough_money() {
-        let bitcoin_amount = 1.0;
+        let bitcoin_amount = BitcoinQuantity::from_bitcoin(1.0);
         let htlc_params = gen_htlc_params(bitcoin_amount);
 
-        let script = htlc_params.compute_address().script_pubkey();
-        let script_pub_key = ScriptPubKey {
-            asm: String::from(""),
-            hex: script.clone(),
-            req_sigs: None,
-            script_type: ScriptType::NullData,
-            addresses: None,
+        let script_pubkey = htlc_params.compute_address().script_pubkey();
+
+        let provided_bitcoin_amount = BitcoinQuantity::from_bitcoin(0.5);
+
+        let transaction_output = TxOut {
+            value: provided_bitcoin_amount.satoshi(),
+            script_pubkey,
         };
 
-        let provided_bitcoin_amount = 0.5;
-
-        let transaction_output = TransactionOutput {
-            value: provided_bitcoin_amount,
-            n: 1,
-            script_pub_key,
-        };
-
-        let transaction = VerboseRawTransaction {
-            txid: Sha256dHash::from_data(b"a"),
-            hash: String::from(""),
-            size: 0,
-            vsize: 0,
+        let transaction = Transaction {
             version: 1,
-            locktime: 42,
-            vin: Vec::new(),
-            vout: vec![transaction_output],
-            hex: SerializedRawTransaction(String::from("")),
-            blockhash: Sha256dHash::from_data(b"blockhash"),
-            confirmations: 0,
-            time: 0,
-            blocktime: 0,
+            lock_time: 42,
+            input: vec![],
+            output: vec![transaction_output],
         };
 
         let result = BitcoinQuantity::is_contained_in_transaction(&htlc_params, transaction.into());
 
         let expected_error = ValidationError::UnexpectedAsset {
-            found: BitcoinQuantity::from_bitcoin(provided_bitcoin_amount),
-            expected: BitcoinQuantity::from_bitcoin(bitcoin_amount),
+            found: provided_bitcoin_amount,
+            expected: bitcoin_amount,
         };
 
         assert_that(&result).is_err_containing(expected_error)
