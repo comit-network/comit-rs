@@ -83,7 +83,6 @@ fn main() {
 
     spawn_warp_instance(
         &settings,
-        Arc::clone(&event_store),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         sender,
@@ -195,13 +194,12 @@ fn create_ledger_query_service_api_client(
 
 fn spawn_warp_instance(
     settings: &ComitNodeSettings,
-    event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(event_store, metadata_store, state_store, sender);
+    let routes = route_factory::create(metadata_store, state_store, sender);
 
     let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -247,7 +245,6 @@ fn spawn_alice_swap_request_handler_for_rfc003(
         client_factory,
         event_store,
         comit_node_addr,
-        alice_actor_sender,
         phantom_data: PhantomData,
     };
 

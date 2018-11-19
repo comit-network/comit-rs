@@ -5,6 +5,8 @@
 #[macro_use]
 extern crate debug_stub_derive;
 #[macro_use]
+extern crate enum_display_derive;
+#[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate failure;
@@ -44,6 +46,7 @@ extern crate rand;
 extern crate reqwest;
 extern crate rlp;
 extern crate rustc_hex;
+extern crate rustic_hal;
 extern crate secp256k1_support;
 extern crate serde;
 extern crate tiny_keccak;

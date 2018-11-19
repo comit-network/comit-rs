@@ -1,33 +1,33 @@
-use bitcoin_support::{self, BitcoinQuantity};
-use comit_client;
-use ethereum_support::{self, EtherQuantity};
-use event_store::{self, EventStore};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::EtherQuantity;
 use frunk;
 use futures::sync::mpsc::UnboundedSender;
 use http_api;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::{header, StatusCode};
+use rustic_hal::HalResource;
 use std::{error::Error as StdError, fmt, sync::Arc};
 use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        self, bitcoin,
+        self,
+        actions::StateActions,
         roles::{Alice, Bob},
         state_store::{self, StateStore},
-        Ledger, Secret,
+        Ledger,
     },
     AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind,
 };
-use swaps::{alice_events, common::SwapId};
+use swaps::common::SwapId;
 use warp::{self, Rejection, Reply};
 
 pub const PATH: &str = "rfc003";
 
+type ActionName = String;
+
 #[derive(Debug)]
 pub enum Error {
-    EventStore(event_store::Error),
-    ClientFactory(comit_client::ClientFactoryError),
     Unsupported,
     NotFound,
 }
@@ -53,28 +53,9 @@ impl From<Error> for HttpApiProblem {
     fn from(e: Error) -> Self {
         use self::Error::*;
         match e {
-            ClientFactory(e) => {
-                error!("Connection error: {:?}", e);
-                HttpApiProblem::new("counterparty-connection-error")
-                    .set_status(500)
-                    .set_detail("There was a problem connecting to the counterparty")
-            }
-            EventStore(_e) => HttpApiProblem::with_title_and_type_from_status(500),
             Unsupported => HttpApiProblem::new("swap-not-supported").set_status(400),
             NotFound => HttpApiProblem::new("swap-not-found").set_status(404),
         }
-    }
-}
-
-impl From<event_store::Error> for Error {
-    fn from(e: event_store::Error) -> Self {
-        Error::EventStore(e)
-    }
-}
-
-impl From<comit_client::ClientFactoryError> for Error {
-    fn from(e: comit_client::ClientFactoryError) -> Self {
-        Error::ClientFactory(e)
     }
 }
 
@@ -159,153 +140,116 @@ pub fn post_swap(
     Ok(response)
 }
 
-#[derive(Deserialize, Debug, Serialize)]
-#[serde(tag = "status")]
-enum SwapStatus {
-    #[serde(rename = "pending")]
-    Pending,
-    #[serde(rename = "accepted")]
-    Accepted {
-        funding_required: bitcoin_support::Address,
-    },
-    #[serde(rename = "rejected")]
-    Rejected,
-    #[serde(rename = "redeemable")]
-    Redeemable {
-        contract_address: ethereum_support::Address,
-        data: Secret,
-        gas: u64,
-    },
+#[derive(Debug, Serialize)]
+pub struct State {
+    name: String,
+    alpha_ledger: String,
+    beta_ledger: String,
+    alpha_asset: String,
+    beta_asset: String,
+    role: String,
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    event_store: Arc<E>,
+pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    let metadata = metadata_store.get(&id);
-    info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
-
-    let result = handle_get_swap(id, &event_store, &metadata_store, &state_store);
+    let result = handle_get_swap(&metadata_store, &state_store, &id);
 
     match result {
-        Some(swap_status) => Ok(warp::reply::json(&swap_status)),
+        Some((state, actions)) => {
+            let mut response = HalResource::new(state);
+            for action in actions {
+                let route = format!("{}/{}/{}/{}", http_api::PATH, PATH, id, action);
+                response.with_link("redeem", route);
+            }
+            Ok(warp::reply::json(&response))
+        }
         None => Err(warp::reject::custom(HttpApiProblemStdError {
             http_api_problem: Error::NotFound.into(),
         })),
     }
 }
 
-fn handle_get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    id: SwapId,
-    event_store: &Arc<E>,
+fn handle_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     metadata_store: &Arc<T>,
     state_store: &Arc<S>,
-) -> Option<SwapStatus> {
-    {
-        handle_state_for_get_swap(metadata_store, state_store, &id);
-    }
-
-    let requested = event_store.get_event::<alice_events::SentSwapRequest<
-        Bitcoin,
-        Ethereum,
-        BitcoinQuantity,
-        EtherQuantity,
-    >>(id);
-
-    match requested {
-        Ok(requested) => {
-            let accepted = event_store.get_event::<alice_events::SwapRequestAccepted<
-                Bitcoin,
-                Ethereum,
-                BitcoinQuantity,
-                EtherQuantity,
-            >>(id);
-            match accepted {
-                Ok(accepted) => {
-                    let beta_funded = event_store.get_event::<alice_events::BetaFunded<
-                        Bitcoin,
-                        Ethereum,
-                        BitcoinQuantity,
-                        EtherQuantity,
-                    >>(id);
-
-                    match beta_funded {
-                        Ok(beta_funded) => {
-                            Some(SwapStatus::Redeemable {
-                                contract_address: beta_funded.address,
-                                data: requested.secret,
-                                // TODO: check how much gas we should tell the customer to pay
-                                gas: 3500,
-                            })
+    id: &SwapId,
+) -> Option<(State, Vec<ActionName>)> {
+    match metadata_store.get(&id) {
+        Err(e) => {
+            debug!("Could not retrieve metadata: {:?}", e);
+            None
+        }
+        Ok(
+            metadata @ Metadata {
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Ether,
+                ..
+            },
+        ) => {
+            info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
+            match metadata.role {
+                RoleKind::Alice => {
+                    match state_store
+                        .get::<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
+                    {
+                        Err(e) => {
+                            error!("Could not retrieve state: {:?}", e);
+                            None
                         }
-                        Err(_) => {
-                            let htlc = bitcoin::Htlc::new(
-                                accepted.alpha_ledger_success_identity,
-                                requested.alpha_ledger_refund_identity,
-                                requested.secret.hash(),
-                                requested.alpha_ledger_lock_duration.into(),
-                            );
-                            Some(SwapStatus::Accepted {
-                                funding_required: htlc
-                                    .compute_address(requested.alpha_ledger.network),
-                            })
+                        Ok(state) => {
+                            info!("Here is the state we have retrieved: {:?}", state);
+
+                            let actions: Vec<ActionName> =
+                                state.actions().iter().map(|action| action.name()).collect();
+                            Some((
+                                State {
+                                    name: state.name(),
+                                    alpha_ledger: format!("{}", metadata.alpha_ledger),
+                                    beta_ledger: format!("{}", metadata.beta_ledger),
+                                    alpha_asset: format!("{}", metadata.alpha_asset),
+                                    beta_asset: format!("{}", metadata.beta_asset),
+                                    role: format!("{}", metadata.role),
+                                },
+                                actions,
+                            ))
                         }
                     }
                 }
-                Err(_) => {
-                    let rejected = event_store.get_event::<alice_events::SwapRequestRejected<
-                        Bitcoin,
-                        Ethereum,
-                        BitcoinQuantity,
-                        EtherQuantity,
-                    >>(id);
+                RoleKind::Bob => {
+                    match state_store
+                        .get::<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
+                    {
+                        Err(e) => {
+                            error!("Could not retrieve state: {:?}", e);
+                            None
+                        }
+                        Ok(state) => {
+                            info!("Here is the state we have retrieved: {:?}", state);
 
-                    match rejected {
-                        Ok(_rejected) => Some(SwapStatus::Rejected),
-                        Err(_) => Some(SwapStatus::Pending),
+                            let actions: Vec<ActionName> =
+                                state.actions().iter().map(|action| action.name()).collect();
+                            Some((
+                                State {
+                                    name: state.name(),
+                                    alpha_ledger: format!("{}", metadata.alpha_ledger),
+                                    beta_ledger: format!("{}", metadata.beta_ledger),
+                                    alpha_asset: format!("{}", metadata.alpha_asset),
+                                    beta_asset: format!("{}", metadata.beta_asset),
+                                    role: format!("{}", metadata.role),
+                                },
+                                actions,
+                            ))
+                        }
                     }
                 }
             }
         }
-        Err(event_store::Error::NotFound) => None,
-        _ => unreachable!(
-            "The only type of error you can get from event store at this point is NotFound"
-        ),
-    }
-}
-
-fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
-    metadata_store: &Arc<T>,
-    state_store: &Arc<S>,
-    id: &SwapId,
-) {
-    match metadata_store.get(&id) {
-        Err(e) => error!("Could not retrieve metadata: {:?}", e),
-        Ok(Metadata {
-            alpha_ledger: LedgerKind::Bitcoin,
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Ether,
-            role,
-        }) => match role {
-            RoleKind::Alice => {
-                match state_store
-                    .get::<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
-                {
-                    Err(e) => error!("Could not retrieve state: {:?}", e),
-                    Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
-                }
-            }
-            RoleKind::Bob => match state_store
-                .get::<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
-            {
-                Err(e) => error!("Could not retrieve state: {:?}", e),
-                Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
-            },
-        },
         _ => unreachable!("No other type is expected to be found in the store"),
     }
 }

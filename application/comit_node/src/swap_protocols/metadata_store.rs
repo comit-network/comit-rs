@@ -1,18 +1,18 @@
-use std::{collections::HashMap, hash::Hash, sync::Mutex};
+use std::{collections::HashMap, fmt::Display, hash::Hash, sync::Mutex};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 pub enum RoleKind {
     Alice,
     Bob,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 pub enum LedgerKind {
     Bitcoin,
     Ethereum,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Display)]
 pub enum AssetKind {
     Bitcoin,
     Ether,

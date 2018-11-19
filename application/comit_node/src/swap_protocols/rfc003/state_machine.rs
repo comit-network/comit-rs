@@ -422,3 +422,21 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         }
     }
 }
+
+impl<R: Role> SwapStates<R> {
+    pub fn name(&self) -> String {
+        use self::SwapStates as SS;
+        match *self {
+            SS::Start { .. } => String::from("Start"),
+            SS::Accepted { .. } => String::from("Accepted"),
+            SS::AlphaFunded { .. } => String::from("AlphaFunded"),
+            SS::BothFunded { .. } => String::from("BothFunded"),
+            SS::AlphaFundedBetaRefunded { .. } => String::from("AlphaFundedBetaRefunded"),
+            SS::AlphaRefundedBetaFunded { .. } => String::from("AlphaRefundedBetaFunded"),
+            SS::AlphaFundedBetaRedeemed { .. } => String::from("AlphaFundedBetaRedeemed"),
+            SS::AlphaRedeemedBetaFunded { .. } => String::from("AlphaRedeemedBetaFunded"),
+            SS::Error(_) => String::from("Error"),
+            SS::Final(_) => String::from("Final"),
+        }
+    }
+}
