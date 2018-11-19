@@ -1,12 +1,11 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use num::{bigint::BigUint, FromPrimitive};
-use regex::Regex;
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
 use std::{f64, fmt, str::FromStr};
-use u256_ext::{ToBigDecimal, ToFloat};
+use u256_ext::{RemoveTrailingZeros, ToBigDecimal, ToFloat};
 use U256;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -45,18 +44,10 @@ impl EtherQuantity {
     }
 }
 
-lazy_static! {
-    static ref TRAILING_ZEROS: Regex = Regex::new(r"\.?0*$").unwrap();
-}
-
 impl fmt::Display for EtherQuantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        // At time of writing BigDecimal always puts . and pads zeroes
-        // up to the precision in f, so TRAILING_ZEROS does the right
-        // thing in all cases.
-        let fmt_dec = format!("{}", self.0.to_bigdec(18));
-        let removed_trailing_zeros = TRAILING_ZEROS.replace(fmt_dec.as_str(), "");
-        write!(f, "{} ETH", removed_trailing_zeros)
+        let removed_trailing_zeroes = self.0.remove_trailing_zeros(18);
+        write!(f, "{} ETH", removed_trailing_zeroes)
     }
 }
 

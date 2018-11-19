@@ -1,6 +1,5 @@
-use regex::Regex;
 use std::{f64, fmt};
-use u256_ext::{ToBigDecimal, ToFloat};
+use u256_ext::{RemoveTrailingZeros, ToFloat};
 use web3::types::Address;
 use U256;
 
@@ -38,17 +37,14 @@ pub struct Erc20Token {
     pub address: Address,
 }
 
-lazy_static! {
-    static ref TRAILING_ZEROS: Regex = Regex::new(r"\.?0*$").unwrap();
-}
-
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
         // thing in all cases.
-        let fmt_dec = format!("{}", self.amount.to_bigdec(self.token.decimals.into()));
-        let removed_trailing_zeros = TRAILING_ZEROS.replace(fmt_dec.as_str(), "");
+        let removed_trailing_zeros = self
+            .amount
+            .remove_trailing_zeros(self.token.decimals.into());
         write!(f, "{} {}", removed_trailing_zeros, self.token.symbol)
     }
 }
