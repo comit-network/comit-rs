@@ -5,10 +5,8 @@ use swap_protocols::{
     rfc003::{
         self,
         events::{
-            Funded, HtlcFunded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
-            NewHtlcRefundedQuery, RedeemedOrRefunded, SourceHtlcRedeemedOrRefunded,
-            SourceHtlcRefundedTargetHtlcFunded, SourceRefundedOrTargetFunded,
-            TargetHtlcRedeemedOrRefunded,
+            Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery,
+            RedeemedOrRefunded, SourceRefundedOrTargetFunded,
         },
         is_contained_in_transaction::IsContainedInTransaction,
         state_machine::HtlcParams,
@@ -31,15 +29,23 @@ pub struct LqsEvents<SL: Ledger, TL: Ledger, SLQuery: Query, TLQuery: Query> {
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 }
 
-impl<SL, TL, SA, SLQuery, TLQuery> HtlcFunded<SL, SA> for LqsEvents<SL, TL, SLQuery, TLQuery>
+impl<SL, TL, SA, TA, SLQuery, TLQuery> LedgerEvents<SL, TL, SA, TA>
+    for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
     SA: Asset + IsContainedInTransaction<SL>,
-    SLQuery: Query + NewHtlcFundedQuery<SL, SA>,
-    TLQuery: Query,
+    TA: Asset + IsContainedInTransaction<TL>,
+    SLQuery: Query
+        + NewHtlcRefundedQuery<SL, SA>
+        + NewHtlcFundedQuery<SL, SA>
+        + NewHtlcRedeemedQuery<SL, SA>,
+    TLQuery: Query
+        + NewHtlcRefundedQuery<TL, TA>
+        + NewHtlcFundedQuery<TL, TA>
+        + NewHtlcRedeemedQuery<TL, TA>,
 {
-    fn htlc_funded<'s>(&'s mut self, htlc_params: HtlcParams<SL, SA>) -> &'s mut Funded<SL> {
+    fn source_htlc_funded(&mut self, htlc_params: HtlcParams<SL, SA>) -> &mut Funded<SL> {
         let source_ledger_first_match = self.source_ledger_first_match.clone();
 
         let query = SLQuery::new_htlc_funded_query(&htlc_params);
@@ -60,18 +66,7 @@ where
             Box::new(funded_future)
         })
     }
-}
 
-impl<SL, TL, SA, TA, SLQuery, TLQuery> SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA>
-    for LqsEvents<SL, TL, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset + IsContainedInTransaction<TL>,
-    SLQuery: Query + NewHtlcRefundedQuery<SL, SA>,
-    TLQuery: Query + NewHtlcFundedQuery<TL, TA>,
-{
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
         source_htlc_params: HtlcParams<SL, SA>,
@@ -122,17 +117,7 @@ where
                 )
             })
     }
-}
 
-impl<SL, TL, TA, SLQuery, TLQuery> TargetHtlcRedeemedOrRefunded<TL, TA>
-    for LqsEvents<SL, TL, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    TA: Asset,
-    TLQuery: Query + NewHtlcRefundedQuery<TL, TA> + NewHtlcRedeemedQuery<TL, TA>,
-    SLQuery: Query,
-{
     fn target_htlc_redeemed_or_refunded(
         &mut self,
         target_htlc_params: HtlcParams<TL, TA>,
@@ -176,17 +161,7 @@ where
                 )
             })
     }
-}
 
-impl<SL, TL, SA, SLQuery, TLQuery> SourceHtlcRedeemedOrRefunded<SL, SA>
-    for LqsEvents<SL, TL, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    SLQuery: Query + NewHtlcRefundedQuery<SL, SA> + NewHtlcRedeemedQuery<SL, SA>,
-    TLQuery: Query,
-{
     fn source_htlc_redeemed_or_refunded(
         &mut self,
         source_htlc_params: HtlcParams<SL, SA>,
@@ -230,22 +205,4 @@ where
                 )
             })
     }
-}
-
-impl<SL, TL, SA, TA, SLQuery, TLQuery> LedgerEvents<SL, TL, SA, TA>
-    for LqsEvents<SL, TL, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset + IsContainedInTransaction<SL>,
-    TA: Asset + IsContainedInTransaction<TL>,
-    SLQuery: Query
-        + NewHtlcFundedQuery<SL, SA>
-        + NewHtlcRefundedQuery<SL, SA>
-        + NewHtlcRedeemedQuery<SL, SA>,
-    TLQuery: Query
-        + NewHtlcFundedQuery<TL, TA>
-        + NewHtlcRefundedQuery<TL, TA>
-        + NewHtlcRedeemedQuery<TL, TA>,
-{
 }

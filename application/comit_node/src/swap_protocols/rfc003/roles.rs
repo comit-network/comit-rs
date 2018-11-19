@@ -84,7 +84,7 @@ pub mod test {
     use swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            events::{ResponseEvent, ResponseFuture},
+            events::{CommunicationEvents, ResponseFuture},
             messages::Request,
         },
     };
@@ -109,11 +109,11 @@ pub mod test {
     }
 
     #[allow(missing_debug_implementations)]
-    pub struct FakeResponseEvent<R: Role> {
+    pub struct FakeCommunicationEvents<R: Role> {
         pub response: Option<Box<ResponseFuture<R>>>,
     }
 
-    impl<R: Role> ResponseEvent<R> for FakeResponseEvent<R> {
+    impl<R: Role> CommunicationEvents<R> for FakeCommunicationEvents<R> {
         fn request_responded(
             &mut self,
             _request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,

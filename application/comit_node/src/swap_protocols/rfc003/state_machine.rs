@@ -108,7 +108,7 @@ pub struct Context<R: Role> {
     pub ledger_events:
         Box<events::LedgerEvents<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>>,
     pub state_repo: Arc<SaveState<R>>,
-    pub response_event: Box<events::ResponseEvent<R> + Send>,
+    pub response_event: Box<events::CommunicationEvents<R> + Send>,
 }
 
 #[derive(StateMachineFuture)]
@@ -218,7 +218,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
         let source_htlc_location = try_ready!(context
             .ledger_events
-            .htlc_funded(state.swap.source_htlc_params())
+            .source_htlc_funded(state.swap.source_htlc_params())
             .poll());
 
         let state = state.take();

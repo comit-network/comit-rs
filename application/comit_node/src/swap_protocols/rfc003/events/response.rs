@@ -7,7 +7,7 @@ use swap_protocols::{
     asset::Asset,
     rfc003::{
         self,
-        events::{ResponseEvent, ResponseFuture, StateMachineResponseFuture},
+        events::{CommunicationEvents, ResponseFuture, StateMachineResponseFuture},
         ledger::Ledger,
         messages::Request,
     },
@@ -21,7 +21,7 @@ struct AliceComitClient<C, SL: Ledger, TL: Ledger> {
 }
 
 impl<C: comit_client::Client, SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>
-    ResponseEvent<Alice<SL, TL, SA, TA>> for AliceComitClient<C, SL, TL>
+    CommunicationEvents<Alice<SL, TL, SA, TA>> for AliceComitClient<C, SL, TL>
 {
     fn request_responded(
         &mut self,

@@ -37,50 +37,34 @@ pub type SourceRefundedOrTargetFunded<SL: Ledger, TL: Ledger> =
     Future<Either<SL::Transaction, TL::HtlcLocation>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
-pub trait LedgerEvents<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>:
-    HtlcFunded<SL, SA>
-    + SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA>
-    + SourceHtlcRedeemedOrRefunded<SL, SA>
-    + TargetHtlcRedeemedOrRefunded<TL, TA>
-{
-}
+pub trait LedgerEvents<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
+    fn source_htlc_funded(&mut self, htlc_params: HtlcParams<SL, SA>) -> &mut Funded<SL>;
 
-pub trait ResponseEvent<R: Role> {
-    fn request_responded(
-        &mut self,
-        request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
-    ) -> &mut ResponseFuture<R>;
-}
-
-pub trait HtlcFunded<L: Ledger, A: Asset>: Send {
-    fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L>;
-}
-
-pub trait SourceHtlcRefundedTargetHtlcFunded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>:
-    Send
-{
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
         source_htlc_params: HtlcParams<SL, SA>,
         target_htlc_params: HtlcParams<TL, TA>,
         source_htlc_location: &SL::HtlcLocation,
     ) -> &mut SourceRefundedOrTargetFunded<SL, TL>;
-}
 
-pub trait SourceHtlcRedeemedOrRefunded<L: Ledger, A: Asset>: Send {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_params: HtlcParams<L, A>,
-        htlc_location: &L::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<L>;
-}
+        source_htlc_params: HtlcParams<SL, SA>,
+        htlc_location: &SL::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<SL>;
 
-pub trait TargetHtlcRedeemedOrRefunded<L: Ledger, A: Asset>: Send {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_params: HtlcParams<L, A>,
-        htlc_location: &L::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<L>;
+        target_htlc_params: HtlcParams<TL, TA>,
+        htlc_location: &TL::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<TL>;
+}
+
+pub trait CommunicationEvents<R: Role> {
+    fn request_responded(
+        &mut self,
+        request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
+    ) -> &mut ResponseFuture<R>;
 }
 
 pub trait NewHtlcFundedQuery<L: Ledger, A: Asset>: Send + Sync

@@ -4,11 +4,8 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         ethereum::Seconds,
-        events::{
-            self, HtlcFunded, LedgerEvents, SourceHtlcRedeemedOrRefunded,
-            SourceHtlcRefundedTargetHtlcFunded, TargetHtlcRedeemedOrRefunded,
-        },
-        roles::test::{Alisha, Bobisha, FakeResponseEvent},
+        events::{self, LedgerEvents},
+        roles::test::{Alisha, Bobisha, FakeCommunicationEvents},
         state_machine::*,
         Secret,
     },
@@ -30,18 +27,14 @@ struct FakeLedgerEvents {
         Option<Box<events::SourceRefundedOrTargetFunded<Bitcoin, Ethereum>>>,
 }
 
-impl HtlcFunded<Bitcoin, BitcoinQuantity> for FakeLedgerEvents {
-    fn htlc_funded(
+impl LedgerEvents<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeLedgerEvents {
+    fn source_htlc_funded(
         &mut self,
         _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
     ) -> &mut events::Funded<Bitcoin> {
         self.source_htlc_funded.as_mut().unwrap()
     }
-}
 
-impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>
-    for FakeLedgerEvents
-{
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
         _source_htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
@@ -52,9 +45,7 @@ impl SourceHtlcRefundedTargetHtlcFunded<Bitcoin, Ethereum, BitcoinQuantity, Ethe
             .as_mut()
             .unwrap()
     }
-}
 
-impl TargetHtlcRedeemedOrRefunded<Ethereum, EtherQuantity> for FakeLedgerEvents {
     fn target_htlc_redeemed_or_refunded(
         &mut self,
         _target_htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -62,9 +53,7 @@ impl TargetHtlcRedeemedOrRefunded<Ethereum, EtherQuantity> for FakeLedgerEvents 
     ) -> &mut events::RedeemedOrRefunded<Ethereum> {
         unimplemented!()
     }
-}
 
-impl SourceHtlcRedeemedOrRefunded<Bitcoin, BitcoinQuantity> for FakeLedgerEvents {
     fn source_htlc_redeemed_or_refunded(
         &mut self,
         _source_htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
@@ -73,8 +62,6 @@ impl SourceHtlcRedeemedOrRefunded<Bitcoin, BitcoinQuantity> for FakeLedgerEvents
         unimplemented!()
     }
 }
-
-impl LedgerEvents<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> for FakeLedgerEvents {}
 
 fn gen_start_state() -> Start<Alisha> {
     Start {
@@ -145,7 +132,7 @@ fn when_swap_is_rejected_go_to_final_reject() {
 
     let (state_machine, states) = init!(
         Alisha,
-        FakeResponseEvent::<Alisha> {
+        FakeCommunicationEvents::<Alisha> {
             response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
         },
         start.clone().into(),
@@ -175,7 +162,7 @@ fn source_refunded() {
 
     let (state_machine, states) = init!(
         Alisha,
-        FakeResponseEvent::<Alisha> {
+        FakeCommunicationEvents::<Alisha> {
             response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
         },
         start.clone().into(),
@@ -246,7 +233,7 @@ fn bob_transition_source_refunded() {
 
     let (state_machine, states) = init!(
         Bobisha,
-        FakeResponseEvent::<Bobisha> {
+        FakeCommunicationEvents::<Bobisha> {
             response: Some(Box::new(future::ok(Ok(response.clone()))))
         },
         start.clone().into(),
