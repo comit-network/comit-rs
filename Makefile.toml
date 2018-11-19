@@ -201,8 +201,15 @@ npm install;
 [tasks.e2e-tests]
 description = "Runs end-to-end tests."
 workspace = false
-private = true
-env = { "LOG_DIR" = "./e2e/log" }
+dependencies = [
+    "btc-eth",
+    "btc-erc20",
+]
+
+[tasks.btc-eth]
+description = "Runs RFC003 BTC<->ETH end-to-end tests."
+workspace = false
+env = { "LOG_DIR" = "./e2e/rfc003/btc_eth/log" }
 script_runner = "bash"
 script = [
 '''
@@ -212,6 +219,22 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 cd api_tests;
 nvm use;
 ./e2e/rfc003/btc_eth/harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+'''
+]
+
+[tasks.btc-erc20]
+description = "Runs RFC003 BTC<->ERC20 end-to-end tests."
+workspace = false
+env = { "LOG_DIR" = "./e2e/rfc003/btc_erc20/log" }
+script_runner = "bash"
+script = [
+'''
+set +x;
+export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
+. "$NVM_SH"
+cd api_tests;
+nvm use;
+./e2e/rfc003/btc_erc20/harness.sh ./e2e/rfc003/btc_erc20/happy_path.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
 '''
 ]
 
