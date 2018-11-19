@@ -1,5 +1,5 @@
-use std::{f64, fmt};
-use u256_ext::{RemoveTrailingZeros, ToFloat};
+use std::fmt;
+use u256_ext::RemoveTrailingZeros;
 use web3::types::Address;
 use U256;
 
@@ -21,11 +21,7 @@ impl Erc20Quantity {
         }
     }
 
-    pub fn to_full_token(&self) -> f64 {
-        self.amount.to_float(self.token.decimals.into())
-    }
-
-    pub fn wei(&self) -> U256 {
+    pub fn amount(&self) -> U256 {
         self.amount
     }
 }
