@@ -1,8 +1,8 @@
 mod serde;
 
-use bitcoin_support::{ExtendedPrivKey, Network};
+use bitcoin_support;
 use config::{Config, ConfigError, File};
-use ethereum_support::{Address, Erc20Token};
+use ethereum_support;
 use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{
@@ -21,7 +21,7 @@ pub struct ComitNodeSettings {
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
-    pub tokens: Vec<Erc20Token>,
+    pub tokens: Vec<ethereum_support::Erc20Token>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -37,20 +37,20 @@ pub struct Ethereum {
 
 #[derive(Debug, Deserialize)]
 pub struct Bitcoin {
-    pub network: Network,
+    pub network: bitcoin_support::Network,
     pub satoshi_per_byte: f64,
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub node_username: String,
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
-    pub extended_private_key: ExtendedPrivKey,
+    pub extended_private_key: bitcoin_support::ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Swap {
     //TODO this should be generated on the fly per swap from the ethereum private key with #185
-    pub eth_refund_address: Address,
+    pub eth_refund_address: ethereum_support::Address,
 }
 
 #[derive(Debug, Deserialize)]
@@ -165,10 +165,13 @@ mod tests {
 
         assert_that(&settings.tokens.len()).is_equal_to(1);
         let token = &settings.tokens[0];
-        assert_that(token).is_equal_to(Erc20Token {
+        assert_that(token).is_equal_to(ethereum_support::Erc20Token {
             symbol: String::from("PAY"),
             decimals: 18,
-            address: Address::from_str("B97048628DB6B661D4C2aA833e95Dbe1A905B280").unwrap(),
+            address: ethereum_support::Address::from_str(
+                "B97048628DB6B661D4C2aA833e95Dbe1A905B280",
+            )
+            .unwrap(),
         });
     }
 
