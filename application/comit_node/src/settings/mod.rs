@@ -1,6 +1,6 @@
 mod serde;
 
-use bitcoin_support::{ExtendedPrivKey, Network};
+use bitcoin_support;
 use config::{Config, ConfigError, File};
 use ethereum_support;
 use secp256k1_support::KeyPair;
@@ -17,10 +17,10 @@ use url;
 pub struct ComitNodeSettings {
     pub ethereum: Ethereum,
     pub bitcoin: Bitcoin,
-    pub swap: Swap,
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
+    pub tokens: Vec<ethereum_support::Erc20Token>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -36,20 +36,14 @@ pub struct Ethereum {
 
 #[derive(Debug, Deserialize)]
 pub struct Bitcoin {
-    pub network: Network,
+    pub network: bitcoin_support::Network,
     pub satoshi_per_byte: f64,
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub node_username: String,
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
-    pub extended_private_key: ExtendedPrivKey,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Swap {
-    //TODO this should be generated on the fly per swap from the ethereum private key with #185
-    pub eth_refund_address: ethereum_support::Address,
+    pub extended_private_key: bitcoin_support::ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]
@@ -82,9 +76,10 @@ pub struct PollParameters {
 }
 
 impl ComitNodeSettings {
-    pub fn new<D: AsRef<OsStr>, R: AsRef<OsStr>>(
+    pub fn new<D: AsRef<OsStr>, R: AsRef<OsStr>, S: AsRef<OsStr>>(
         default_config: D,
         run_mode_config: R,
+        erc20_config: S,
     ) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
@@ -94,6 +89,9 @@ impl ComitNodeSettings {
         // Note that this file is optional, and can be used to hold keys by run_mode
         let environment_config_file = Path::new(&run_mode_config);
 
+        // Create erc20 token config file path
+        let erc20_config_file = Path::new(&erc20_config);
+
         // Start off by merging in the "default" configuration file
         config.merge(File::from(default_config_file))?;
 
@@ -101,6 +99,9 @@ impl ComitNodeSettings {
         // Default to 'development' env
         // Note that this file is _optional, in our case this holds all the keys
         config.merge(File::from(environment_config_file).required(false))?;
+
+        // Load erc20 token config file
+        config.merge(File::from(erc20_config_file))?;
 
         // Add in a local configuration file
         // This file shouldn't be checked in to git
@@ -116,17 +117,26 @@ mod tests {
 
     use super::*;
     use spectral::prelude::*;
+    use std::str::FromStr;
+
+    fn comit_settings() -> Result<ComitNodeSettings, ConfigError> {
+        ComitNodeSettings::new(
+            "./config/default.toml",
+            "./config/development.toml",
+            "./config/erc20.toml",
+        )
+    }
 
     #[test]
     fn can_read_default_config() {
-        let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
+        let settings = comit_settings();
 
         assert_that(&settings).is_ok();
     }
 
     #[test]
     fn can_read_nested_parameters() {
-        let settings = ComitNodeSettings::new("./config/default.toml", "./config/development.toml");
+        let settings = comit_settings();
 
         assert_that(&settings).is_ok();
         assert_that(
@@ -137,6 +147,25 @@ mod tests {
                 .poll_interval_secs,
         )
         .is_equal_to(&Duration::from_secs(20));
+    }
+
+    #[test]
+    fn can_get_erc20token_list_from_config_file() {
+        let settings = comit_settings();
+
+        assert_that(&settings).is_ok();
+        let settings = settings.unwrap();
+
+        assert_that(&settings.tokens.len()).is_equal_to(1);
+        let token = &settings.tokens[0];
+        assert_that(token).is_equal_to(ethereum_support::Erc20Token {
+            symbol: String::from("PAY"),
+            decimals: 18,
+            address: ethereum_support::Address::from_str(
+                "B97048628DB6B661D4C2aA833e95Dbe1A905B280",
+            )
+            .unwrap(),
+        });
     }
 
 }

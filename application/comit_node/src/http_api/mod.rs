@@ -21,8 +21,9 @@ mod ledger_impls {
 mod asset_impls {
     use super::asset::{Error, FromHttpAsset, HttpAsset, ToHttpAsset};
     use bitcoin_support::BitcoinQuantity;
-    use ethereum_support::EtherQuantity;
+    use ethereum_support::{Erc20Quantity, EtherQuantity};
 
     impl_http_quantity_asset!(BitcoinQuantity, Bitcoin);
     impl_http_quantity_asset!(EtherQuantity, Ether);
+    impl_http_quantity_asset!(Erc20Quantity, Erc20);
 }

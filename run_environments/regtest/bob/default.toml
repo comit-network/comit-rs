@@ -15,9 +15,6 @@ node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 # private_key="40cd99d83421fa2c19459f019d83ca641ca64b2e99d65109b35660da7cc0ea5d"
 extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSAKhjQEcrsZTSsJWvjX4XvtRLPMq3q5xKqoW1A5p3RBmwDLdFZ5J"
 
-[swap]
-eth_refund_address="0x147ba99ef89c152f8004e91999fee87bda6cbc3e"
-
 [comit]
 remote_comit_node_url = "127.0.0.1:8001"
 comit_listen = "0.0.0.0:8011"

@@ -1,6 +1,6 @@
 use bam::Status;
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EtherQuantity;
+use ethereum_support::{Erc20Quantity, EtherQuantity};
 use serde::Serialize;
 use swap_protocols::ledger::{Bitcoin, Ethereum};
 
@@ -16,6 +16,7 @@ pub enum Ledger {
 pub enum Asset {
     Bitcoin { quantity: BitcoinQuantity },
     Ether { quantity: EtherQuantity },
+    Erc20 { quantity: Erc20Quantity },
 }
 
 impl From<BitcoinQuantity> for Asset {
@@ -27,6 +28,12 @@ impl From<BitcoinQuantity> for Asset {
 impl From<EtherQuantity> for Asset {
     fn from(quantity: EtherQuantity) -> Self {
         Asset::Ether { quantity }
+    }
+}
+
+impl From<Erc20Quantity> for Asset {
+    fn from(quantity: Erc20Quantity) -> Self {
+        Asset::Erc20 { quantity }
     }
 }
 
