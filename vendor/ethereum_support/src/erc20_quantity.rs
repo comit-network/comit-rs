@@ -35,9 +35,6 @@ pub struct Erc20Token {
 
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        // At time of writing BigDecimal always puts . and pads zeroes
-        // up to the precision in f, so TRAILING_ZEROS does the right
-        // thing in all cases.
         let removed_trailing_zeros = self
             .amount
             .remove_trailing_zeros(self.token.decimals.into());

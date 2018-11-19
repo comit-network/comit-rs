@@ -42,6 +42,9 @@ impl ToFloat for U256 {
 
 impl RemoveTrailingZeros for U256 {
     fn remove_trailing_zeros(&self, decimals: i64) -> String {
+        // At time of writing BigDecimal always puts . and pads zeroes
+        // up to the precision in f, so TRAILING_ZEROS does the right
+        // thing in all cases.
         let fmt_dec = format!("{}", self.to_bigdec(decimals));
         TRAILING_ZEROS.replace(fmt_dec.as_str(), "").to_string()
     }
