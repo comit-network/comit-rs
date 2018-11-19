@@ -1,5 +1,5 @@
 use std::fmt;
-use u256_ext::RemoveTrailingZeros;
+use u256_ext::ToDecimalStr;
 use web3::types::Address;
 use U256;
 
@@ -47,12 +47,7 @@ pub struct Erc20Token {
 
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        // At time of writing BigDecimal always puts . and pads zeroes
-        // up to the precision in f, so TRAILING_ZEROS does the right
-        // thing in all cases.
-        let removed_trailing_zeros = self
-            .amount
-            .remove_trailing_zeros(self.token.decimals.into());
-        write!(f, "{} {}", removed_trailing_zeros, self.token.symbol)
+        let nice_decimal = self.amount.to_decimal_str(self.token.decimals.into());
+        write!(f, "{} {}", nice_decimal, self.token.symbol)
     }
 }

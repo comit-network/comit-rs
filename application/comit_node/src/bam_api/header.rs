@@ -1,12 +1,12 @@
 use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use serde_json;
-use std::{collections::HashMap, fmt};
+use std::{collections::BTreeMap, fmt};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Header {
     value: String,
     #[serde(default)]
-    parameters: HashMap<String, serde_json::Value>,
+    parameters: BTreeMap<String, serde_json::Value>,
 }
 
 impl Header {
@@ -34,7 +34,7 @@ impl Header {
     pub fn with_value(value: &'static str) -> Header {
         Header {
             value: String::from(value),
-            parameters: HashMap::new(),
+            parameters: BTreeMap::new(),
         }
     }
 

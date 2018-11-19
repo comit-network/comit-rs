@@ -5,7 +5,7 @@ use serde::{
     ser::{Serialize, Serializer},
 };
 use std::{f64, fmt, str::FromStr};
-use u256_ext::{FromBigUInt, FromDecimalStr, RemoveTrailingZeros, ToBigDecimal, ToFloat};
+use u256_ext::{FromBigUInt, FromDecimalStr, ToBigDecimal, ToDecimalStr, ToFloat};
 use U256;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -14,7 +14,7 @@ pub struct EtherQuantity(U256);
 impl EtherQuantity {
     fn from_eth_bigdec(decimal: &BigDecimal) -> EtherQuantity {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
-        let wei = U256::from_big_uint(wei_bigint.to_biguint().unwrap());
+        let wei = U256::from_biguint(wei_bigint.to_biguint().unwrap());
         EtherQuantity(wei)
     }
 
@@ -39,8 +39,8 @@ impl EtherQuantity {
 
 impl fmt::Display for EtherQuantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let removed_trailing_zeroes = self.0.remove_trailing_zeros(18);
-        write!(f, "{} ETH", removed_trailing_zeroes)
+        let nice_decimals = self.0.to_decimal_str(18);
+        write!(f, "{} ETH", nice_decimals)
     }
 }
 
