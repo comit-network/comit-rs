@@ -77,3 +77,39 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use bitcoin_support;
+    use hex::FromHex;
+    use swap_protocols::rfc003::{roles::test::Bobisha, Secret};
+
+    #[test]
+    fn given_state_instance_when_calling_actions_should_not_need_to_specify_type_arguments() {
+        let swap_state = SwapStates::from(Start::<Bobisha> {
+            source_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
+                "875638cac0b0ae9f826575e190f2788918c354c2",
+            )
+            .unwrap(),
+            target_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
+                .parse()
+                .unwrap(),
+            source_ledger: Bitcoin::regtest(),
+            target_ledger: Ethereum::default(),
+            source_asset: BitcoinQuantity::from_bitcoin(1.0),
+            target_asset: EtherQuantity::from_eth(10.0),
+            source_ledger_lock_duration: bitcoin_support::Blocks::from(144),
+            secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
+        });
+
+        let actions = swap_state.actions();
+
+        assert_eq!(
+            actions,
+            vec![Action::Accept(Accept), Action::Decline(Decline)]
+        );
+    }
+
+}
