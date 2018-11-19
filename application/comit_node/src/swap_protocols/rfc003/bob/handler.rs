@@ -16,7 +16,8 @@ use ledger_query_service::{
 };
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
-    ledger::{Bitcoin, Ethereum, Ledger},
+    asset::Asset,
+    ledger::{Bitcoin, Ethereum},
     metadata_store::MetadataStore,
     rfc003::{
         self,
@@ -26,6 +27,10 @@ use swap_protocols::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
             EthereumService, LedgerHtlcService,
         },
+        roles::Bob,
+        state_machine::*,
+        state_store::StateStore,
+        Ledger,
     },
 };
 use swaps::{
@@ -35,7 +40,7 @@ use swaps::{
 use tokio::timer::Interval;
 
 #[derive(Debug)]
-pub struct SwapRequestsHandler<E, C, MetadataStore> {
+pub struct SwapRequestsHandler<E, C, MetadataStore, StateStore> {
     // new dependencies
     pub receiver: UnboundedReceiver<(
         SwapId,
@@ -43,6 +48,7 @@ pub struct SwapRequestsHandler<E, C, MetadataStore> {
         oneshot::Sender<Result<rfc003::bob::SwapResponses, failure::Error>>,
     )>,
     pub metadata_store: Arc<MetadataStore>,
+    pub state_store: Arc<StateStore>,
 
     // legacy dependencies
     pub event_store: Arc<E>,
@@ -59,7 +65,8 @@ impl<
         C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
             + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
         M: MetadataStore<SwapId>,
-    > SwapRequestsHandler<E, C, M>
+        S: StateStore<SwapId>,
+    > SwapRequestsHandler<E, C, M, S>
 {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let (receiver, metadata_store, bitcoin_poll_interval, ethereum_poll_interval) = (
@@ -69,7 +76,7 @@ impl<
             self.ethereum_poll_interval,
         );
         let key_store = Arc::clone(&self.key_store);
-        //        let state_store = Arc::clone(&self.state_store);
+        let state_store = Arc::clone(&self.state_store);
 
         let event_store = Arc::clone(&self.event_store);
         let ethereum_service = Arc::clone(&self.ethereum_service);
@@ -88,7 +95,24 @@ impl<
                         return Ok(());
                     }
 
-                    // TODO: Spawn state machine here
+                    {
+                        let request = request.clone();
+
+                        let start_state = Start {
+                            source_ledger_refund_identity: request.source_ledger_refund_identity,
+                            target_ledger_success_identity: request.target_ledger_success_identity,
+                            source_ledger: request.source_ledger,
+                            target_ledger: request.target_ledger,
+                            source_asset: request.source_asset,
+                            target_asset: request.target_asset,
+                            source_ledger_lock_duration: request.source_ledger_lock_duration,
+                            secret: request.secret_hash,
+                        };
+
+                        spawn_state_machine(id, start_state, state_store.as_ref());
+                    }
+
+                    // Legacy code below
 
                     let network = request.source_ledger.network;
 
@@ -114,6 +138,18 @@ impl<
     }
 }
 
+fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateStore<SwapId>>(
+    id: SwapId,
+    start_state: Start<Bob<SL, TL, SA, TA>>,
+    state_store: &S,
+) {
+    let state = SwapStates::Start(start_state);
+
+    // TODO: spawn state machine from state here
+
+    state_store.insert(id, state).expect("handle errors :)");
+}
+
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
 fn process<
@@ -132,9 +168,13 @@ fn process<
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
 ) -> Result<rfc003::bob::SwapResponse<Bitcoin, Ethereum>, failure::Error> {
-    let alice_refund_address: BitcoinAddress = request
-        .source_ledger
-        .address_for_identity(request.source_ledger_refund_identity);
+    let alice_refund_address: BitcoinAddress = {
+        use swap_protocols::Ledger;
+
+        request
+            .source_ledger
+            .address_for_identity(request.source_ledger_refund_identity)
+    };
 
     let bob_success_keypair =
         key_store.get_transient_keypair(&swap_id.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);

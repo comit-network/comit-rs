@@ -43,7 +43,7 @@ pub trait Role: Send + Clone + 'static {
 }
 
 #[derive(Clone, Debug)]
-pub struct Alice<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct Alice<SL, TL, SA, TA> {
     phantom_data: PhantomData<(SL, TL, SA, TA)>,
 }
 
