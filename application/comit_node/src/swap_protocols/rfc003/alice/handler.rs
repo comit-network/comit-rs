@@ -18,7 +18,7 @@ use swap_protocols::{
         roles::Alice,
         state_machine::{Start, SwapStates},
         state_store::StateStore,
-        ExtractSecret, Ledger, Secret,
+        Ledger, Secret,
     },
 };
 use swaps::{alice_events, common::SwapId};
@@ -126,9 +126,7 @@ fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateSto
     id: SwapId,
     start_state: Start<Alice<SL, TL, SA, TA>>,
     state_store: &S,
-) where
-    TL::Transaction: ExtractSecret,
-{
+) {
     let state = SwapStates::Start(start_state);
 
     // TODO: spawn state machine from state here

@@ -207,10 +207,6 @@ impl RandomnessSource for ThreadRng {
     }
 }
 
-pub trait ExtractSecret {
-    fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret>;
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

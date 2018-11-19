@@ -26,9 +26,9 @@ mod state_machine_test;
 
 pub use self::{
     error::Error,
-    ledger::{Ledger, LedgerExtractSecret},
+    ledger::{ExtractSecret, Ledger},
     messages::*,
     outcome::SwapOutcome,
     save_state::SaveState,
-    secret::{ExtractSecret, RandomnessSource, Secret, SecretFromErr, SecretHash},
+    secret::{RandomnessSource, Secret, SecretFromErr, SecretHash},
 };

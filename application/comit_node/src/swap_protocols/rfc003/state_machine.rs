@@ -1,7 +1,7 @@
 use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
-use swap_protocols::rfc003::LedgerExtractSecret;
+use swap_protocols::rfc003::ExtractSecret;
 
 use swap_protocols::{
     self,
@@ -278,10 +278,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
                 Either::A(target_redeemed_tx) => {
-                    match R::TargetLedger::extract_secret_from_transaction(
-                        &target_redeemed_tx,
-                        &secret_hash,
-                    ) {
+                    match R::TargetLedger::extract_secret(&target_redeemed_tx, &secret_hash) {
                         Some(secret) => transition_save!(
                             context.state_repo,
                             SourceFundedTargetRedeemed {
