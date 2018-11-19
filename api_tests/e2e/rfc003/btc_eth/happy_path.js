@@ -17,7 +17,7 @@ const bob_config = Toml.parse(fs.readFileSync(process.env.BOB_CONFIG_FILE, 'utf8
 const bob_eth_private_key = Buffer.from(bob_config.ethereum.private_key, "hex");
 const bob_eth_address = "0x" + ethutil.privateToAddress(bob_eth_private_key).toString("hex");
 const alice_initial_eth = "0.1";
-const alice = test_lib.player_conf("alice", {
+const alice = test_lib.comit_conf("alice", {
     txid: process.env.BTC_FUNDED_TX,
     value: parseInt(process.env.BTC_FUNDED_AMOUNT + '00000000'),
     private_key: process.env.BTC_FUNDED_PRIVATE_KEY,
@@ -36,7 +36,7 @@ describe('RFC003 Bitcoin for Ether', () => {
             Promise.all(
                 [
                     test_lib.give_eth_to(bob_eth_address, bob_initial_eth),
-                    test_lib.give_eth_to(alice.eth_address(), alice_initial_eth)
+                    test_lib.give_eth_to(alice.wallet.eth_address(), alice_initial_eth)
                 ]
             ).then(receipt => {
                 console.log(`Giving ${bob_initial_eth} Ether to Bob; success: ${receipt[0].status}`);
@@ -93,7 +93,7 @@ describe('RFC003 Bitcoin for Ether', () => {
 
     it("Alice should be able to manually fund the bitcoin HTLC", async function () {
         this.slow(500);
-        return alice.send_btc_to_p2wsh_address(alice_funding_required, 100000000);
+        return alice.wallet.send_btc_to_p2wsh_address(alice_funding_required, 100000000);
     });
 
     let redeem_details;
@@ -112,7 +112,7 @@ describe('RFC003 Bitcoin for Ether', () => {
         this.timeout(10000);
         await test_lib.sleep(2000);
         let old_balance = new BigNumber(await web3.eth.getBalance(alice_final_address));
-        await alice.send_eth_transaction_to(redeem_details.contract_address, "0x" + redeem_details.data);
+        await alice.wallet.send_eth_transaction_to(redeem_details.contract_address, "0x" + redeem_details.data);
         await test_lib.sleep(2000);
         let new_balance = new BigNumber(await web3.eth.getBalance(alice_final_address));
         let diff = new_balance.minus(old_balance);

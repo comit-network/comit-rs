@@ -30,45 +30,18 @@ module.exports.web3 = () => {
     return web3 = web3 || new Web3(new Web3.providers.HttpProvider(process.env.ETHEREUM_NODE_ENDPOINT));
 };
 
-class PlayerConf {
-    constructor(name, bitcoin_utxo) {
-        this.name = name;
-        this.host = process.env[this.name.toUpperCase() + "_COMIT_NODE_HOST"];
-        this.config = Toml.parse(fs.readFileSync(process.env[name.toUpperCase() + "_CONFIG_FILE"], 'utf8'));
+class WalletConf {
+    constructor(eth_private_key, bitcoin_utxo) {
+        this.eth_private_key_hex = eth_private_key;
         this.bitcoin_utxo = bitcoin_utxo;
     }
 
     eth_private_key() {
-        return Buffer.from(this.config.ethereum.private_key, "hex");
+        return Buffer.from(this.eth_private_key_hex, "hex");
     }
 
     eth_address() {
         return "0x" + ethutil.privateToAddress(this.eth_private_key()).toString("hex");
-    }
-
-    comit_node_url() {
-        return "http://" + this.host + ":" + this.config.http_api.port;
-    }
-
-    poll_comit_node_until(chai, location, status) {
-        return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url()).get(location).end((err, res) => {
-                if (err) {
-                    return rej(err);
-                }
-                res.should.have.status(200);
-                if (res.body.status === status) {
-                    final_res(res.body);
-                }
-                else {
-                    setTimeout(() => {
-                        this.poll_comit_node_until(chai, location, status).then((result) => {
-                            final_res(result);
-                        });
-                    }, 3000);
-                }
-            });
-        });
     }
 
     async send_btc_to_p2wsh_address(to, value) {
@@ -135,6 +108,41 @@ class PlayerConf {
     }
 }
 
+class ComitConf {
+    constructor(name, bitcoin_utxo) {
+        this.name = name;
+        this.host = process.env[this.name.toUpperCase() + "_COMIT_NODE_HOST"];
+        this.config = Toml.parse(fs.readFileSync(process.env[name.toUpperCase() + "_CONFIG_FILE"], 'utf8'));
+        this.wallet = new WalletConf(this.config.ethereum.private_key, bitcoin_utxo);
+    }
+
+    comit_node_url() {
+        return "http://" + this.host + ":" + this.config.http_api.port;
+    }
+
+    poll_comit_node_until(chai, location, status) {
+        return new Promise((final_res, rej) => {
+            chai.request(this.comit_node_url()).get(location).end((err, res) => {
+                if (err) {
+                    return rej(err);
+                }
+                res.should.have.status(200);
+                if (res.body.status === status) {
+                    final_res(res.body);
+                }
+                else {
+                    setTimeout(() => {
+                        this.poll_comit_node_until(chai, location, status).then((result) => {
+                            final_res(result);
+                        });
+                    }, 3000);
+                }
+            });
+        });
+    }
+
+}
+
 class LedgerQueryServiceConf {
     constructor(host, port) {
         this.host = host;
@@ -167,9 +175,12 @@ class LedgerQueryServiceConf {
     }
 }
 
+module.exports.comit_conf = (name, utxo) => {
+    return new ComitConf(name, utxo);
+};
 
-module.exports.player_conf = (name, utxo) => {
-    return new PlayerConf(name, utxo);
+module.exports.wallet_conf = (eth_private_key, utxo) => {
+    return new WalletConf(eth_private_key, utxo);
 };
 module.exports.ledger_query_service_conf = (host, port) => {
     return new LedgerQueryServiceConf(host, port);

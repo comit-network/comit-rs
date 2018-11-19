@@ -12,7 +12,7 @@ const Web3 = require('web3');
 const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
 const lqs = test_lib.ledger_query_service_conf("localhost", 8080);
 const web3 = test_lib.web3();
-const alice = test_lib.player_conf("alice", {
+const wallet = test_lib.wallet_conf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {
     txid: process.env.BTC_FUNDED_TX,
     value: parseInt(process.env.BTC_FUNDED_AMOUNT + '00000000'),
     private_key: process.env.BTC_FUNDED_PRIVATE_KEY,
@@ -74,7 +74,7 @@ describe("Test Ledger Query Service API", () => {
 
             it("LQS should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function () {
                 this.slow(1000);
-                return alice.send_btc_to_p2wpkh_address(to_address, 100000000).then(() => {
+                return wallet.send_btc_to_p2wpkh_address(to_address, 100000000).then(() => {
                     return bitcoin_rpc_client.generate(1).then(() => {
                         return lqs.poll_until_matches(chai, location).then((body) => {
                             body.query.to_address.should.equal(to_address);
@@ -185,12 +185,12 @@ describe("Test Ledger Query Service API", () => {
             before(async function () {
                 Promise.all(
                     [
-                        await test_lib.give_eth_to(alice.eth_address(), "10")
+                        await test_lib.give_eth_to(wallet.eth_address(), "10")
                     ]
                 ).then(receipt => {
-                    console.log(`Giving 10 Ether to Alice; success : ${receipt[0].status}`);
+                    console.log(`Giving 10 Ether to the wallet; success: ${receipt[0].status}`);
                 }).catch(error => {
-                    console.log(`Error on giving Ether to Alice: ${error}`);
+                    console.log(`Error on giving Ether to the wallet: ${error}`);
                 });
             });
 
@@ -228,7 +228,7 @@ describe("Test Ledger Query Service API", () => {
             });
 
             it("LQS should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function () {
-                return alice.send_eth_transaction_to("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "", 1).then(() => {
+                return wallet.send_eth_transaction_to("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "", 1).then(() => {
                     return chai.request(location)
                         .get('')
                         .then((res) => {
@@ -241,7 +241,7 @@ describe("Test Ledger Query Service API", () => {
 
             it("LQS should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function () {
                 this.slow(2000);
-                return alice.send_eth_transaction_to(to_address, "", 5).then(() => {
+                return wallet.send_eth_transaction_to(to_address, "", 5).then(() => {
                     return lqs.poll_until_matches(chai, location).then((body) => {
                         body.query.to_address.should.equal(to_address);
                         body.matches.should.lengthOf(1);
@@ -301,7 +301,7 @@ describe("Test Ledger Query Service API", () => {
                 this.timeout(80000);
                 this.slow(6000);
                 return sleep(3000).then(() => {
-                    return alice.send_eth_transaction_to("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "", 1);
+                    return wallet.send_eth_transaction_to("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "", 1);
                 }).then(() => {
                     return lqs.poll_until_matches(chai, location).then((body) => {
                         body.query.min_timestamp_secs.should.equal(min_timestamp_secs);
