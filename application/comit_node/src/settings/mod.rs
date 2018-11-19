@@ -17,7 +17,6 @@ use url;
 pub struct ComitNodeSettings {
     pub ethereum: Ethereum,
     pub bitcoin: Bitcoin,
-    pub swap: Swap,
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
@@ -45,12 +44,6 @@ pub struct Bitcoin {
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: bitcoin_support::ExtendedPrivKey,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Swap {
-    //TODO this should be generated on the fly per swap from the ethereum private key with #185
-    pub eth_refund_address: ethereum_support::Address,
 }
 
 #[derive(Debug, Deserialize)]
