@@ -1,9 +1,15 @@
 use bitcoin_support::Transaction;
-use swap_protocols::rfc003::secret::{ExtractSecret, Secret, SecretHash};
+use swap_protocols::{
+    ledger::Bitcoin,
+    rfc003::{
+        secret::{Secret, SecretHash},
+        ExtractSecret,
+    },
+};
 
-impl ExtractSecret for Transaction {
-    fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret> {
-        self.input.iter().find_map(|txin| {
+impl ExtractSecret for Bitcoin {
+    fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
+        transaction.input.iter().find_map(|txin| {
             txin.witness
                 .iter()
                 .find_map(|script_item| match Secret::from_vec(&script_item) {
@@ -50,7 +56,7 @@ mod test {
         let secret = Secret::from(*b"This is our favourite passphrase");
         let transaction = setup(&secret);
 
-        assert_that!(transaction.extract_secret(&secret.hash()))
+        assert_that!(Bitcoin::extract_secret(&transaction, &secret.hash()))
             .is_some()
             .is_equal_to(&secret);
     }
@@ -65,7 +71,7 @@ mod test {
              bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
         )
         .unwrap();
-        assert_that!(transaction.extract_secret(&secret_hash)).is_none();
+        assert_that!(Bitcoin::extract_secret(&transaction, &secret_hash)).is_none();
     }
 
     #[test]
@@ -77,7 +83,7 @@ mod test {
                 .unwrap();
         let secret = Secret::from_vec(&hex_secret).unwrap();
 
-        assert_that!(transaction.extract_secret(&secret.hash()))
+        assert_that!(Bitcoin::extract_secret(&transaction, &secret.hash()))
             .is_some()
             .is_equal_to(&secret);
     }

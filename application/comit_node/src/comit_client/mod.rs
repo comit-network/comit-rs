@@ -7,7 +7,7 @@ use std::{io, net::SocketAddr, sync::Arc};
 use std::{fmt::Debug, panic::RefUnwindSafe};
 use swap_protocols::{bam_types, rfc003};
 
-pub trait Client: Send + Sync {
+pub trait Client: Send + Sync + 'static {
     fn send_swap_request<
         SL: rfc003::Ledger,
         TL: rfc003::Ledger,

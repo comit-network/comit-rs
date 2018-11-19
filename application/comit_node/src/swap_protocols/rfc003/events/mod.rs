@@ -2,28 +2,34 @@
 // see: https://github.com/rust-lang/rust/issues/21903
 #![allow(type_alias_bounds)]
 
-use comit_client::SwapReject;
 use ledger_query_service::Query;
 use swap_protocols::{
     asset::Asset,
-    rfc003::{
-        self,
-        ledger::Ledger,
-        messages::{AcceptResponseBody, Request},
-        state_machine::OngoingSwap,
-        IntoSecretHash,
-    },
+    rfc003::{self, ledger::Ledger, messages::Request},
 };
 use tokio::{self, prelude::future::Either};
 
-pub use self::default::{DefaultEvents, Role};
-use swap_protocols::rfc003::ExtractSecret;
-
-mod default;
+pub use self::lqs::LqsEvents;
+mod lqs;
+mod response;
+use comit_client::SwapReject;
+use swap_protocols::rfc003::{
+    roles::Role,
+    state_machine::{HtlcParams, StateMachineResponse},
+};
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
-pub type Response<SL, TL> = Future<Result<AcceptResponseBody<SL, TL>, SwapReject>>;
+pub type StateMachineResponseFuture<SLSI, TLRI, TLLD> =
+    Future<Result<StateMachineResponse<SLSI, TLRI, TLLD>, SwapReject>>;
+
+#[allow(type_alias_bounds)]
+pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
+    R::SourceSuccessHtlcIdentity,
+    R::TargetRefundHtlcIdentity,
+    <R::TargetLedger as Ledger>::LockDuration,
+>;
+
 pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
 pub type Refunded<L: Ledger> = Future<L::TxId>;
 pub type Redeemed<L: Ledger> = Future<L::TxId>;
@@ -31,154 +37,59 @@ pub type SourceRefundedOrTargetFunded<SL: Ledger, TL: Ledger> =
     Future<Either<SL::Transaction, TL::HtlcLocation>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
-pub trait RequestResponded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
-    fn request_responded(
-        &mut self,
-        request: &Request<SL, TL, SA, TA>,
-    ) -> &mut Box<Response<SL, TL>>;
-}
+pub trait LedgerEvents<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
+    fn source_htlc_funded(&mut self, htlc_params: HtlcParams<SL, SA>) -> &mut Funded<SL>;
 
-pub trait SourceHtlcFunded<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
-    Send
-{
-    fn source_htlc_funded(&mut self, swap: &OngoingSwap<SL, TL, SA, TA, S>)
-        -> &mut Box<Funded<SL>>;
-}
-
-pub trait SourceHtlcRefundedTargetHtlcFunded<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: IntoSecretHash,
->: Send
-{
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_params: HtlcParams<SL, SA>,
+        target_htlc_params: HtlcParams<TL, TA>,
         source_htlc_location: &SL::HtlcLocation,
-    ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>>;
-}
+    ) -> &mut SourceRefundedOrTargetFunded<SL, TL>;
 
-pub trait TargetHtlcRedeemedOrRefunded<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: IntoSecretHash,
->: Send
-{
-    fn target_htlc_redeemed_or_refunded(
-        &mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_location: &TL::HtlcLocation,
-    ) -> &mut Box<RedeemedOrRefunded<TL>>
-    where
-        TL::Transaction: ExtractSecret;
-}
-
-pub trait SourceHtlcRedeemedOrRefunded<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: IntoSecretHash,
->: Send
-{
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_location: &SL::HtlcLocation,
-    ) -> &mut Box<RedeemedOrRefunded<SL>>;
+        source_htlc_params: HtlcParams<SL, SA>,
+        htlc_location: &SL::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<SL>;
+
+    fn target_htlc_redeemed_or_refunded(
+        &mut self,
+        target_htlc_params: HtlcParams<TL, TA>,
+        htlc_location: &TL::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<TL>;
 }
 
-pub trait Events<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>:
-    RequestResponded<SL, TL, SA, TA>
-    + SourceHtlcFunded<SL, TL, SA, TA, S>
-    + SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>
-    + TargetHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
-    + SourceHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
-{
+pub trait CommunicationEvents<R: Role> {
+    fn request_responded(
+        &mut self,
+        request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
+    ) -> &mut ResponseFuture<R>;
 }
 
-pub trait NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>: Send + Sync
+pub trait NewHtlcFundedQuery<L: Ledger, A: Asset>: Send + Sync
 where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
     Self: Query,
 {
-    fn new_source_htlc_funded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
+    fn new_htlc_funded_query(htlc_params: &HtlcParams<L, A>) -> Self;
 }
 
-pub trait NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>: Send + Sync
+pub trait NewHtlcRedeemedQuery<L: Ledger, A: Asset>: Send + Sync
 where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
     Self: Query,
 {
-    fn new_source_htlc_redeemed_query(
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_location: &SL::HtlcLocation,
-    ) -> Self;
-}
-pub trait NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>: Send + Sync
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
-    Self: Query,
-{
-    fn new_source_htlc_refunded_query(
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_location: &SL::HtlcLocation,
+    fn new_htlc_redeemed_query(
+        htlc_params: &HtlcParams<L, A>,
+        htlc_location: &L::HtlcLocation,
     ) -> Self;
 }
 
-pub trait NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>: Send + Sync
+pub trait NewHtlcRefundedQuery<L: Ledger, A: Asset>: Send + Sync
 where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
     Self: Query,
 {
-    fn new_target_htlc_funded_query(swap: &OngoingSwap<SL, TL, SA, TA, S>) -> Self;
-}
-
-pub trait NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>: Send + Sync
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
-    Self: Query,
-{
-    fn new_target_htlc_redeemed_query(
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_location: &TL::HtlcLocation,
-    ) -> Self;
-}
-pub trait NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>: Send + Sync
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: Clone,
-    Self: Query,
-{
-    fn new_target_htlc_refunded_query(
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_location: &TL::HtlcLocation,
+    fn new_htlc_refunded_query(
+        htlc_params: &HtlcParams<L, A>,
+        htlc_location: &L::HtlcLocation,
     ) -> Self;
 }

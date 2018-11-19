@@ -13,8 +13,9 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self, bitcoin,
+        roles::{Alice, Bob},
         state_store::{self, StateStore},
-        Ledger, Secret, SecretHash,
+        Ledger, Secret,
     },
     Assets, Ledgers, Metadata, MetadataStore, Roles,
 };
@@ -290,14 +291,16 @@ fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStor
             target_asset: Assets::Ether,
             role,
         }) => match role {
-            Roles::Alice => match state_store
-                .get::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, Secret>(id)
-            {
-                Err(e) => error!("Could not retrieve state: {:?}", e),
-                Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
-            },
+            Roles::Alice => {
+                match state_store
+                    .get::<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
+                {
+                    Err(e) => error!("Could not retrieve state: {:?}", e),
+                    Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
+                }
+            }
             Roles::Bob => match state_store
-                .get::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, SecretHash>(id)
+                .get::<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
             {
                 Err(e) => error!("Could not retrieve state: {:?}", e),
                 Ok(state) => info!("Here is the state we have retrieved: {:?}", state),

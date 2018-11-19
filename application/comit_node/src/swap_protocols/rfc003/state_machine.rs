@@ -1,34 +1,70 @@
-use futures::{future::Either, Async, Future};
+use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
+use swap_protocols::rfc003::ExtractSecret;
+
 use swap_protocols::{
+    self,
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, messages::Request, AcceptResponseBody, ExtractSecret,
-        IntoSecretHash, SaveState, Secret, SwapOutcome,
+        self, events, ledger::Ledger, messages::Request, roles::Role, AcceptResponseBody,
+        SaveState, Secret, SecretHash, SwapOutcome,
     },
 };
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct OngoingSwap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: Clone> {
-    pub source_ledger: SL,
-    pub target_ledger: TL,
-    pub source_asset: SA,
-    pub target_asset: TA,
-    pub source_ledger_success_identity: SL::Identity,
-    pub source_ledger_refund_identity: SL::HtlcIdentity,
-    pub target_ledger_success_identity: TL::HtlcIdentity,
-    pub target_ledger_refund_identity: TL::Identity,
-    pub source_ledger_lock_duration: SL::LockDuration,
-    pub target_ledger_lock_duration: TL::LockDuration,
-    pub secret: S,
+#[derive(Debug, Clone)]
+pub struct StateMachineResponse<SLSI, TLRI, TLLD> {
+    pub source_ledger_success_identity: SLSI,
+    pub target_ledger_refund_identity: TLRI,
+    pub target_ledger_lock_duration: TLLD,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> OngoingSwap<SL, TL, SA, TA, S>
-where
-    TL::Transaction: ExtractSecret,
+impl<SL: Ledger, TL: Ledger> From<AcceptResponseBody<SL, TL>>
+    for StateMachineResponse<SL::Identity, TL::Identity, TL::LockDuration>
 {
-    pub fn new(start: Start<SL, TL, SA, TA, S>, response: AcceptResponseBody<SL, TL>) -> Self {
+    fn from(accept_response: AcceptResponseBody<SL, TL>) -> Self {
+        Self {
+            source_ledger_success_identity: accept_response.source_ledger_success_identity,
+            target_ledger_refund_identity: accept_response.target_ledger_refund_identity,
+            target_ledger_lock_duration: accept_response.target_ledger_lock_duration,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct HtlcParams<L: Ledger, A: Asset> {
+    pub asset: A,
+    pub ledger: L,
+    pub success_identity: L::Identity,
+    pub refund_identity: L::Identity,
+    pub lock_duration: L::LockDuration,
+    pub secret_hash: SecretHash,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OngoingSwap<R: Role> {
+    pub source_ledger: R::SourceLedger,
+    pub target_ledger: R::TargetLedger,
+    pub source_asset: R::SourceAsset,
+    pub target_asset: R::TargetAsset,
+    pub source_ledger_success_identity: R::SourceSuccessHtlcIdentity,
+    pub source_ledger_refund_identity: R::SourceRefundHtlcIdentity,
+    pub target_ledger_success_identity: R::TargetSuccessHtlcIdentity,
+    pub target_ledger_refund_identity: R::TargetRefundHtlcIdentity,
+    pub source_ledger_lock_duration: <R::SourceLedger as Ledger>::LockDuration,
+    pub target_ledger_lock_duration: <R::TargetLedger as Ledger>::LockDuration,
+    pub secret: R::Secret,
+}
+
+impl<R: Role> OngoingSwap<R> {
+    pub fn new(
+        start: Start<R>,
+        response: StateMachineResponse<
+            R::SourceSuccessHtlcIdentity,
+            R::TargetRefundHtlcIdentity,
+            <R::TargetLedger as Ledger>::LockDuration,
+        >,
+    ) -> Self {
         OngoingSwap {
             source_ledger: start.source_ledger,
             target_ledger: start.target_ledger,
@@ -43,42 +79,61 @@ where
             secret: start.secret,
         }
     }
+
+    pub fn source_htlc_params(&self) -> HtlcParams<R::SourceLedger, R::SourceAsset> {
+        HtlcParams {
+            asset: self.source_asset.clone(),
+            ledger: self.source_ledger.clone(),
+            success_identity: self.source_ledger_success_identity.clone().into(),
+            refund_identity: self.source_ledger_refund_identity.clone().into(),
+            lock_duration: self.source_ledger_lock_duration.clone(),
+            secret_hash: self.secret.clone().into(),
+        }
+    }
+
+    pub fn target_htlc_params(&self) -> HtlcParams<R::TargetLedger, R::TargetAsset> {
+        HtlcParams {
+            asset: self.target_asset.clone(),
+            ledger: self.target_ledger.clone(),
+            success_identity: self.target_ledger_success_identity.clone().into(),
+            refund_identity: self.target_ledger_refund_identity.clone().into(),
+            lock_duration: self.target_ledger_lock_duration.clone(),
+            secret_hash: self.secret.clone().into(),
+        }
+    }
 }
 
 #[allow(missing_debug_implementations)]
-pub struct Context<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> {
-    pub events: Box<events::Events<SL, TL, SA, TA, S>>,
-    pub state_repo: Arc<SaveState<SL, TL, SA, TA, S>>,
+pub struct Context<R: Role> {
+    pub ledger_events:
+        Box<events::LedgerEvents<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>>,
+    pub state_repo: Arc<SaveState<R>>,
+    pub response_event: Box<events::CommunicationEvents<R> + Send>,
 }
 
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
-#[allow(missing_debug_implementations)]
-pub enum Swap<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash>
-where
-    TL::Transaction: ExtractSecret,
-{
+#[allow(missing_debug_implementations, clippy::too_many_arguments)]
+pub enum Swap<R: Role> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
-        source_ledger_refund_identity: SL::HtlcIdentity,
-        target_ledger_success_identity: TL::HtlcIdentity,
-        source_ledger: SL,
-        target_ledger: TL,
-        source_asset: SA,
-        target_asset: TA,
-        source_ledger_lock_duration: SL::LockDuration,
-        secret: S,
+        source_ledger_refund_identity: R::SourceRefundHtlcIdentity,
+        target_ledger_success_identity: R::TargetSuccessHtlcIdentity,
+        source_ledger: R::SourceLedger,
+        target_ledger: R::TargetLedger,
+        source_asset: R::SourceAsset,
+        target_asset: R::TargetAsset,
+        source_ledger_lock_duration: <R::SourceLedger as Ledger>::LockDuration,
+        secret: R::Secret,
     },
 
     #[state_machine_future(transitions(SourceFunded))]
-    Accepted {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-    },
+    Accepted { swap: OngoingSwap<R> },
 
     #[state_machine_future(transitions(BothFunded, Final))]
     SourceFunded {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_location: SL::HtlcLocation,
+        swap: OngoingSwap<R>,
+        source_htlc_location: <R::SourceLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(
@@ -88,34 +143,34 @@ where
         SourceRedeemedTargetFunded,
     ))]
     BothFunded {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_location: TL::HtlcLocation,
-        source_htlc_location: SL::HtlcLocation,
+        swap: OngoingSwap<R>,
+        target_htlc_location: <R::TargetLedger as Ledger>::HtlcLocation,
+        source_htlc_location: <R::SourceLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRefunded {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-        source_htlc_location: SL::HtlcLocation,
+        swap: OngoingSwap<R>,
+        source_htlc_location: <R::SourceLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRefundedTargetFunded {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_location: TL::HtlcLocation,
+        swap: OngoingSwap<R>,
+        target_htlc_location: <R::TargetLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceRedeemedTargetFunded {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_htlc_location: TL::HtlcLocation,
+        swap: OngoingSwap<R>,
+        target_htlc_location: <R::TargetLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
     SourceFundedTargetRedeemed {
-        swap: OngoingSwap<SL, TL, SA, TA, S>,
-        target_redeemed_tx: TL::Transaction,
-        source_htlc_location: SL::HtlcLocation,
+        swap: OngoingSwap<R>,
+        target_redeemed_tx: <R::TargetLedger as swap_protocols::Ledger>::Transaction,
+        source_htlc_location: <R::SourceLedger as Ledger>::HtlcLocation,
         secret: Secret,
     },
 
@@ -126,15 +181,11 @@ where
     Error(rfc003::Error),
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: IntoSecretHash> PollSwap<SL, TL, SA, TA, S>
-    for Swap<SL, TL, SA, TA, S>
-where
-    TL::Transaction: ExtractSecret,
-{
+impl<R: Role> PollSwap<R> for Swap<R> {
     fn poll_start<'s, 'c>(
-        state: &'s mut RentToOwn<'s, Start<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
-    ) -> Result<Async<AfterStart<SL, TL, SA, TA, S>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, Start<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
+    ) -> Result<Async<AfterStart<R>>, rfc003::Error> {
         let request = Request {
             source_asset: state.source_asset.clone(),
             target_asset: state.target_asset.clone(),
@@ -146,7 +197,7 @@ where
             secret_hash: state.secret.clone().into(),
         };
 
-        let response = try_ready!(context.events.request_responded(&request).poll());
+        let response = try_ready!(context.response_event.request_responded(&request).poll());
 
         let state = state.take();
 
@@ -162,11 +213,13 @@ where
     }
 
     fn poll_accepted<'s, 'c>(
-        state: &'s mut RentToOwn<'s, Accepted<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
-    ) -> Result<Async<AfterAccepted<SL, TL, SA, TA, S>>, rfc003::Error> {
-        let source_htlc_location =
-            try_ready!(context.events.source_htlc_funded(&state.swap).poll());
+        state: &'s mut RentToOwn<'s, Accepted<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
+    ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
+        let source_htlc_location = try_ready!(context
+            .ledger_events
+            .source_htlc_funded(state.swap.source_htlc_params())
+            .poll());
 
         let state = state.take();
 
@@ -180,12 +233,16 @@ where
     }
 
     fn poll_source_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, SourceFunded<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
-    ) -> Result<Async<AfterSourceFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, SourceFunded<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
+    ) -> Result<Async<AfterSourceFunded<R>>, rfc003::Error> {
         match try_ready!(context
-            .events
-            .source_htlc_refunded_target_htlc_funded(&state.swap, &state.source_htlc_location)
+            .ledger_events
+            .source_htlc_refunded_target_htlc_funded(
+                state.swap.source_htlc_params(),
+                state.swap.target_htlc_params(),
+                &state.source_htlc_location
+            )
             .poll())
         {
             Either::A(_source_refunded_txid) => {
@@ -206,19 +263,22 @@ where
     }
 
     fn poll_both_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, BothFunded<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
-    ) -> Result<Async<AfterBothFunded<SL, TL, SA, TA, S>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, BothFunded<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
+    ) -> Result<Async<AfterBothFunded<R>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
-            .events
-            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .ledger_events
+            .target_htlc_redeemed_or_refunded(
+                state.swap.target_htlc_params(),
+                &state.target_htlc_location,
+            )
             .poll()?
         {
             let state = state.take();
             let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
                 Either::A(target_redeemed_tx) => {
-                    match target_redeemed_tx.extract_secret(&secret_hash) {
+                    match R::TargetLedger::extract_secret(&target_redeemed_tx, &secret_hash) {
                         Some(secret) => transition_save!(
                             context.state_repo,
                             SourceFundedTargetRedeemed {
@@ -244,8 +304,11 @@ where
         }
 
         match try_ready!(context
-            .events
-            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
+            .ledger_events
+            .source_htlc_redeemed_or_refunded(
+                state.swap.source_htlc_params(),
+                &state.source_htlc_location
+            )
             .poll())
         {
             Either::A(_source_redeemed_tx) => {
@@ -272,12 +335,15 @@ where
     }
 
     fn poll_source_funded_target_refunded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, SourceFundedTargetRefunded<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
+        state: &'s mut RentToOwn<'s, SourceFundedTargetRefunded<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceFundedTargetRefunded>, rfc003::Error> {
         match try_ready!(context
-            .events
-            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
+            .ledger_events
+            .source_htlc_redeemed_or_refunded(
+                state.swap.source_htlc_params(),
+                &state.source_htlc_location
+            )
             .poll())
         {
             Either::A(_source_redeemed_txid) => transition_save!(
@@ -291,12 +357,15 @@ where
     }
 
     fn poll_source_refunded_target_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, SourceRefundedTargetFunded<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
+        state: &'s mut RentToOwn<'s, SourceRefundedTargetFunded<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceRefundedTargetFunded>, rfc003::Error> {
         match try_ready!(context
-            .events
-            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .ledger_events
+            .target_htlc_redeemed_or_refunded(
+                state.swap.target_htlc_params(),
+                &state.target_htlc_location
+            )
             .poll())
         {
             Either::A(_target_redeemed_txid) => transition_save!(
@@ -310,12 +379,15 @@ where
     }
 
     fn poll_source_redeemed_target_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, SourceRedeemedTargetFunded<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
+        state: &'s mut RentToOwn<'s, SourceRedeemedTargetFunded<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceRedeemedTargetFunded>, rfc003::Error> {
         match try_ready!(context
-            .events
-            .target_htlc_redeemed_or_refunded(&state.swap, &state.target_htlc_location)
+            .ledger_events
+            .target_htlc_redeemed_or_refunded(
+                state.swap.target_htlc_params(),
+                &state.target_htlc_location
+            )
             .poll())
         {
             Either::A(_target_redeemed_txid) => {
@@ -329,12 +401,15 @@ where
     }
 
     fn poll_source_funded_target_redeemed<'s, 'c>(
-        state: &'s mut RentToOwn<'s, SourceFundedTargetRedeemed<SL, TL, SA, TA, S>>,
-        context: &'c mut RentToOwn<'c, Context<SL, TL, SA, TA, S>>,
+        state: &'s mut RentToOwn<'s, SourceFundedTargetRedeemed<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterSourceFundedTargetRedeemed>, rfc003::Error> {
         match try_ready!(context
-            .events
-            .source_htlc_redeemed_or_refunded(&state.swap, &state.source_htlc_location)
+            .ledger_events
+            .source_htlc_redeemed_or_refunded(
+                state.swap.source_htlc_params(),
+                &state.source_htlc_location
+            )
             .poll())
         {
             Either::A(_target_redeemed_txid) => {

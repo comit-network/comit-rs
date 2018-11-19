@@ -1,42 +1,27 @@
-use comit_client::Client;
 use futures::{future::Either, Future};
 use ledger_query_service::{CreateQuery, FirstMatch, Query, QueryIdCache};
-use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     rfc003::{
         self,
         events::{
-            Events, Funded, NewSourceHtlcFundedQuery, NewSourceHtlcRedeemedQuery,
-            NewSourceHtlcRefundedQuery, NewTargetHtlcFundedQuery, NewTargetHtlcRedeemedQuery,
-            NewTargetHtlcRefundedQuery, RedeemedOrRefunded, RequestResponded, Response,
-            SourceHtlcFunded, SourceHtlcRedeemedOrRefunded, SourceHtlcRefundedTargetHtlcFunded,
-            SourceRefundedOrTargetFunded, TargetHtlcRedeemedOrRefunded,
+            Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery,
+            RedeemedOrRefunded, SourceRefundedOrTargetFunded,
         },
-        messages::Request,
-        state_machine::OngoingSwap,
-        validation::{IsContainedInSourceLedgerTransaction, IsContainedInTargetLedgerTransaction},
-        IntoSecretHash, Ledger,
+        is_contained_in_transaction::IsContainedInTransaction,
+        state_machine::HtlcParams,
+        Ledger,
     },
 };
 
-#[derive(Debug)]
-pub enum Role<ComitClient> {
-    Alice { client: Arc<ComitClient> },
-    Bob,
-}
-
 #[allow(missing_debug_implementations)]
-pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TLQuery: Query> {
-    role: Role<ComitClient>,
-
+pub struct LqsEvents<SL: Ledger, TL: Ledger, SLQuery: Query, TLQuery: Query> {
     create_source_ledger_query: QueryIdCache<SL, SLQuery>,
     source_ledger_first_match: FirstMatch<SL>,
 
     create_target_ledger_query: QueryIdCache<TL, TLQuery>,
     target_ledger_first_match: FirstMatch<TL>,
 
-    response: Option<Box<Response<SL, TL>>>,
     source_htlc_funded_query: Option<Box<Funded<SL>>>,
     source_htlc_refunded_target_htlc_funded_query:
         Option<Box<SourceRefundedOrTargetFunded<SL, TL>>>,
@@ -44,66 +29,26 @@ pub struct DefaultEvents<SL: Ledger, TL: Ledger, ComitClient, SLQuery: Query, TL
     target_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<TL>>>,
 }
 
-impl<SL, TL, SA, TA, ComitClient, SLQuery, TLQuery> RequestResponded<SL, TL, SA, TA>
-    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
+impl<SL, TL, SA, TA, SLQuery, TLQuery> LedgerEvents<SL, TL, SA, TA>
+    for LqsEvents<SL, TL, SLQuery, TLQuery>
 where
     SL: Ledger,
     TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    ComitClient: Client,
-    SLQuery: Query,
-    TLQuery: Query,
-{
-    fn request_responded(
-        &mut self,
-        request: &Request<SL, TL, SA, TA>,
-    ) -> &mut Box<Response<SL, TL>> {
-        match self.role {
-            Role::Alice {ref client}=> {
-                let client = client.clone();
-
-                self.response.get_or_insert_with(|| {
-                    Box::new(
-                        client
-                            .send_swap_request(request.clone())
-                            .map_err(rfc003::Error::SwapResponse),
-                    )
-                })
-            },
-            Role::Bob => {
-                unimplemented!("return a future that resolves once the user sent a response to the COMIT node via the API")
-            }
-        }
-    }
-}
-
-impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> SourceHtlcFunded<SL, TL, SA, TA, S>
-    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
-    TA: Asset,
-    S: IntoSecretHash,
-    ComitClient: Client,
+    SA: Asset + IsContainedInTransaction<SL>,
+    TA: Asset + IsContainedInTransaction<TL>,
     SLQuery: Query
-        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+        + NewHtlcRefundedQuery<SL, SA>
+        + NewHtlcFundedQuery<SL, SA>
+        + NewHtlcRedeemedQuery<SL, SA>,
     TLQuery: Query
-        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
+        + NewHtlcRefundedQuery<TL, TA>
+        + NewHtlcFundedQuery<TL, TA>
+        + NewHtlcRedeemedQuery<TL, TA>,
 {
-    fn source_htlc_funded<'s>(
-        &'s mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
-    ) -> &'s mut Box<Funded<SL>> {
-        let swap = swap.clone();
+    fn source_htlc_funded(&mut self, htlc_params: HtlcParams<SL, SA>) -> &mut Funded<SL> {
         let source_ledger_first_match = self.source_ledger_first_match.clone();
 
-        let query = SLQuery::new_source_htlc_funded_query(&swap);
+        let query = SLQuery::new_htlc_funded_query(&htlc_params);
         let query_id = self.create_source_ledger_query.create_query(query);
 
         self.source_htlc_funded_query.get_or_insert_with(move || {
@@ -113,7 +58,7 @@ where
                     source_ledger_first_match
                         .first_match_of(query_id)
                         .and_then(move |tx| {
-                            SA::is_contained_in_source_ledger_transaction(swap, tx)
+                            SA::is_contained_in_transaction(&htlc_params, tx)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });
@@ -121,43 +66,22 @@ where
             Box::new(funded_future)
         })
     }
-}
 
-impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery>
-    SourceHtlcRefundedTargetHtlcFunded<SL, TL, SA, TA, S>
-    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
-    S: IntoSecretHash,
-    ComitClient: Client,
-    SLQuery: Query
-        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-    TLQuery: Query
-        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-{
     fn source_htlc_refunded_target_htlc_funded(
         &mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_params: HtlcParams<SL, SA>,
+        target_htlc_params: HtlcParams<TL, TA>,
         source_htlc_location: &SL::HtlcLocation,
-    ) -> &mut Box<SourceRefundedOrTargetFunded<SL, TL>> {
-        let swap = swap.clone();
-
+    ) -> &mut SourceRefundedOrTargetFunded<SL, TL> {
         let source_ledger_first_match = self.source_ledger_first_match.clone();
         let source_refunded_query =
-            SLQuery::new_source_htlc_refunded_query(&swap, source_htlc_location);
+            SLQuery::new_htlc_refunded_query(&source_htlc_params, source_htlc_location);
         let source_refunded_query_id = self
             .create_source_ledger_query
             .create_query(source_refunded_query);
 
         let target_ledger_first_match = self.target_ledger_first_match.clone();
-        let target_funded_query = TLQuery::new_target_htlc_funded_query(&swap);
+        let target_funded_query = TLQuery::new_htlc_funded_query(&target_htlc_params);
         let target_funded_query_id = self
             .create_target_ledger_query
             .create_query(target_funded_query);
@@ -174,7 +98,7 @@ where
                         target_ledger_first_match
                             .first_match_of(query_id)
                             .and_then(move |tx| {
-                                TA::is_contained_in_target_ledger_transaction(swap, tx)
+                                TA::is_contained_in_transaction(&target_htlc_params, tx)
                                     .map_err(|_| rfc003::Error::InsufficientFunding)
                             })
                     });
@@ -193,43 +117,21 @@ where
                 )
             })
     }
-}
 
-impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery>
-    TargetHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
-    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: IntoSecretHash,
-    ComitClient: Client,
-    SLQuery: Query
-        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-    TLQuery: Query
-        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-{
     fn target_htlc_redeemed_or_refunded(
         &mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        target_htlc_params: HtlcParams<TL, TA>,
         target_htlc_location: &TL::HtlcLocation,
-    ) -> &mut Box<RedeemedOrRefunded<TL>> {
-        let swap = swap.clone();
-
+    ) -> &mut RedeemedOrRefunded<TL> {
         let target_ledger_first_match = self.target_ledger_first_match.clone();
         let target_refunded_query =
-            TLQuery::new_target_htlc_refunded_query(&swap, target_htlc_location);
+            TLQuery::new_htlc_refunded_query(&target_htlc_params, target_htlc_location);
         let target_refunded_query_id = self
             .create_target_ledger_query
             .create_query(target_refunded_query);
 
         let target_redeemed_query =
-            TLQuery::new_target_htlc_redeemed_query(&swap, target_htlc_location);
+            TLQuery::new_htlc_redeemed_query(&target_htlc_params, target_htlc_location);
         let target_redeemed_query_id = self
             .create_target_ledger_query
             .create_query(target_redeemed_query);
@@ -259,43 +161,21 @@ where
                 )
             })
     }
-}
 
-impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery>
-    SourceHtlcRedeemedOrRefunded<SL, TL, SA, TA, S>
-    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
-    S: IntoSecretHash,
-    ComitClient: Client,
-    SLQuery: Query
-        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-    TLQuery: Query
-        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-{
     fn source_htlc_redeemed_or_refunded(
         &mut self,
-        swap: &OngoingSwap<SL, TL, SA, TA, S>,
+        source_htlc_params: HtlcParams<SL, SA>,
         source_htlc_location: &SL::HtlcLocation,
-    ) -> &mut Box<RedeemedOrRefunded<SL>> {
-        let swap = swap.clone();
-
+    ) -> &mut RedeemedOrRefunded<SL> {
         let source_ledger_first_match = self.source_ledger_first_match.clone();
         let source_refunded_query =
-            SLQuery::new_source_htlc_refunded_query(&swap, source_htlc_location);
+            SLQuery::new_htlc_refunded_query(&source_htlc_params, source_htlc_location);
         let source_refunded_query_id = self
             .create_source_ledger_query
             .create_query(source_refunded_query);
 
         let source_redeemed_query =
-            SLQuery::new_source_htlc_redeemed_query(&swap, source_htlc_location);
+            SLQuery::new_htlc_redeemed_query(&source_htlc_params, source_htlc_location);
         let source_redeemed_query_id = self
             .create_source_ledger_query
             .create_query(source_redeemed_query);
@@ -325,24 +205,4 @@ where
                 )
             })
     }
-}
-
-impl<SL, TL, SA, TA, S, ComitClient, SLQuery, TLQuery> Events<SL, TL, SA, TA, S>
-    for DefaultEvents<SL, TL, ComitClient, SLQuery, TLQuery>
-where
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset + IsContainedInSourceLedgerTransaction<SL, TL, TA, S>,
-    TA: Asset + IsContainedInTargetLedgerTransaction<SL, TL, SA, S>,
-    S: IntoSecretHash,
-    ComitClient: Client,
-    SLQuery: Query
-        + NewSourceHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewSourceHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-    TLQuery: Query
-        + NewTargetHtlcFundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRefundedQuery<SL, TL, SA, TA, S>
-        + NewTargetHtlcRedeemedQuery<SL, TL, SA, TA, S>,
-{
 }

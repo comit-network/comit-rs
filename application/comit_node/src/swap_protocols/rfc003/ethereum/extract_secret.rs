@@ -1,12 +1,18 @@
 use ethereum_support::Transaction;
-use swap_protocols::rfc003::secret::{ExtractSecret, Secret, SecretHash};
+use swap_protocols::{
+    ledger::Ethereum,
+    rfc003::{
+        secret::{Secret, SecretHash},
+        ExtractSecret,
+    },
+};
 
-impl ExtractSecret for Transaction {
-    fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret> {
-        let data = &self.input.0;
+impl ExtractSecret for Ethereum {
+    fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
+        let data = &transaction.input.0;
         info!(
             "Attempting to extract secret for {:?} from transaction {:?}",
-            secret_hash, self.hash
+            secret_hash, transaction.hash
         );
         match Secret::from_vec(&data) {
             Ok(secret) => match secret.hash() == *secret_hash {
@@ -14,7 +20,7 @@ impl ExtractSecret for Transaction {
                 false => {
                     error!(
                         "Input ({:?}) in transaction {:?} is NOT the pre-image to {:?}",
-                        data, self.hash, secret_hash
+                        data, transaction.hash, secret_hash
                     );
                     None
                 }
@@ -57,7 +63,7 @@ mod test {
         let secret = Secret::from(*b"This is our favourite passphrase");
         let transaction = setup(&secret);
 
-        assert_that!(transaction.extract_secret(&secret.hash()))
+        assert_that!(Ethereum::extract_secret(&transaction, &secret.hash()))
             .is_some()
             .is_equal_to(&secret);
     }
@@ -72,6 +78,6 @@ mod test {
              bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
         )
         .unwrap();
-        assert_that!(transaction.extract_secret(&secret_hash)).is_none();
+        assert_that!(Ethereum::extract_secret(&transaction, &secret_hash)).is_none();
     }
 }
