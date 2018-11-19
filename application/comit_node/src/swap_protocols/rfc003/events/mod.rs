@@ -96,7 +96,7 @@ where
 {
     fn new_htlc_redeemed_query(
         htlc_params: &HtlcParams<L, A>,
-        source_htlc_location: &L::HtlcLocation,
+        htlc_location: &L::HtlcLocation,
     ) -> Self;
 }
 
@@ -106,6 +106,6 @@ where
 {
     fn new_htlc_refunded_query(
         htlc_params: &HtlcParams<L, A>,
-        source_htlc_location: &L::HtlcLocation,
+        htlc_location: &L::HtlcLocation,
     ) -> Self;
 }
