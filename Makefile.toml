@@ -50,21 +50,7 @@ dependencies = [
 [tasks.ci-flow]
 workspace = false
 
-# Overridden because: we want --all-targests
-[tasks.build]
-workspace = false
-args = ["build", "--all", "--all-targets"]
-
-# Overridden because: we want --all-targests
-[tasks.build-verbose]
-workspace = false
-args = ["build", "--all", "--all-targets", "--verbose"]
-
-# Overridden because: we want --all-targests
-[tasks.test-verbose]
-workspace = false
-args = ["test", "--all", "--all-targets", "--verbose"]
-
+# Overridden because: added script
 [tasks.init]
 script = [
 '''
