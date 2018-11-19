@@ -17,6 +17,7 @@ use ledger_query_service::{
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum, Ledger},
+    metadata_store::MetadataStore,
     rfc003::{
         self,
         bob::SwapRequests,
@@ -34,13 +35,14 @@ use swaps::{
 use tokio::timer::Interval;
 
 #[derive(Debug)]
-pub struct SwapRequestsHandler<E, C> {
+pub struct SwapRequestsHandler<E, C, MetadataStore> {
     // new dependencies
     pub receiver: UnboundedReceiver<(
         SwapId,
         SwapRequests,
         oneshot::Sender<Result<rfc003::bob::SwapResponses, failure::Error>>,
     )>,
+    pub metadata_store: Arc<MetadataStore>,
 
     // legacy dependencies
     pub event_store: Arc<E>,
@@ -56,16 +58,17 @@ impl<
         E: EventStore<SwapId>,
         C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
             + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-    > SwapRequestsHandler<E, C>
+        M: MetadataStore<SwapId>,
+    > SwapRequestsHandler<E, C, M>
 {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
-        let (receiver, bitcoin_poll_interval, ethereum_poll_interval) = (
+        let (receiver, metadata_store, bitcoin_poll_interval, ethereum_poll_interval) = (
             self.receiver,
+            self.metadata_store,
             self.bitcoin_poll_interval,
             self.ethereum_poll_interval,
         );
         let key_store = Arc::clone(&self.key_store);
-        //        let metadata_store = Arc::clone(&self.metadata_store);
         //        let state_store = Arc::clone(&self.state_store);
 
         let event_store = Arc::clone(&self.event_store);
@@ -78,6 +81,15 @@ impl<
                 rfc003::bob::SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
                     request,
                 ) => {
+                    if let Err(e) = metadata_store.insert(id, request.clone()) {
+                        error!("Failed to store metadata for swap {} because {:?}", id, e);
+
+                        // Return Ok to keep the loop running
+                        return Ok(());
+                    }
+
+                    // TODO: Spawn state machine here
+
                     let network = request.source_ledger.network;
 
                     let result = process(

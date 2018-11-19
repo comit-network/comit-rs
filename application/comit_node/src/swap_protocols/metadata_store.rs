@@ -36,7 +36,7 @@ pub enum Error {
 
 pub trait MetadataStore<K>: Send + Sync + 'static {
     fn get(&self, key: &K) -> Result<Metadata, Error>;
-    fn insert(&self, key: K, metadata: Metadata) -> Result<(), Error>;
+    fn insert<M: Into<Metadata>>(&self, key: K, metadata: M) -> Result<(), Error>;
 }
 
 #[derive(Debug, Default)]
@@ -53,14 +53,14 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemory
         }
     }
 
-    fn insert(&self, key: K, value: Metadata) -> Result<(), Error> {
+    fn insert<M: Into<Metadata>>(&self, key: K, value: M) -> Result<(), Error> {
         let mut metadata = self.metadata.lock().unwrap();
 
         if metadata.contains_key(&key) {
             return Err(Error::DuplicateKey);
         }
 
-        let _ = metadata.insert(key, value);
+        let _ = metadata.insert(key, value.into());
         Ok(())
     }
 }

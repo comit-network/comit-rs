@@ -92,6 +92,7 @@ fn main() {
 
     let sender = spawn_bob_swap_request_handler_for_rfc003(
         Arc::clone(&event_store),
+        Arc::clone(&metadata_store),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
@@ -256,6 +257,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
 
 fn spawn_bob_swap_request_handler_for_rfc003(
     event_store: Arc<InMemoryEventStore<SwapId>>,
+    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
@@ -272,6 +274,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
 
     let bob_swap_request_handler = rfc003::bob::SwapRequestsHandler {
         receiver,
+        metadata_store,
         event_store,
         lqs_api_client,
         key_store,

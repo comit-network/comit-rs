@@ -10,7 +10,7 @@ use rand::thread_rng;
 use std::{marker::PhantomData, net::SocketAddr, sync::Arc};
 use swap_protocols::{
     asset::Asset,
-    metadata_store::{Metadata, MetadataStore},
+    metadata_store::MetadataStore,
     rfc003::{
         self,
         alice::SwapRequests,
@@ -73,7 +73,12 @@ impl<
                         let source_ledger_refund_identity =
                             key_store.get_transient_keypair(&id.into(), b"REFUND");
 
-                        store_metadata(id, request.clone(), metadata_store.as_ref());
+                        if let Err(e) = metadata_store.insert(id, request.clone()) {
+                            error!("Failed to store metadata for swap {} because {:?}", id, e);
+
+                            // Return Ok to keep the loop running
+                            return Ok(());
+                        }
 
                         let secret = Secret::generate(&mut thread_rng());
 
@@ -113,7 +118,9 @@ impl<
                             Arc::clone(&client_factory),
                             comit_node_addr.clone(),
                             secret,
-                        )
+                        );
+
+                        Ok(())
                     }
                 }
             })
@@ -130,15 +137,7 @@ fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateSto
 
     // TODO: spawn state machine from state here
 
-    let _ = state_store.insert(id, state);
-}
-
-fn store_metadata<M: Into<Metadata>, MS: MetadataStore<SwapId>>(
-    id: SwapId,
-    metadata: M,
-    metadata_store: &MS,
-) {
-    let _ = metadata_store.insert(id, metadata.into());
+    state_store.insert(id, state).expect("handle errors :)");
 }
 
 fn send_swap_request<
@@ -157,7 +156,7 @@ fn send_swap_request<
     client_factory: Arc<F>,
     comit_node_addr: SocketAddr,
     secret: Secret,
-) -> impl Future<Item = (), Error = ()> {
+) {
     let sent_event = alice_events::SentSwapRequest {
         source_ledger: swap_request.source_ledger.clone(),
         target_ledger: swap_request.target_ledger.clone(),
@@ -175,12 +174,14 @@ fn send_swap_request<
 
     let client = client_factory.client_for(comit_node_addr).unwrap();
 
-    let response_future = client.send_swap_request(swap_request);
+    let future = client
+        .send_swap_request(swap_request)
+        .then(move |response| {
+            on_swap_response::<SL, TL, SA, TA, E>(id, &event_store, alice_actor_sender, response);
+            Ok(())
+        });
 
-    response_future.then(move |response| {
-        on_swap_response::<SL, TL, SA, TA, E>(id, &event_store, alice_actor_sender, response);
-        Ok(())
-    })
+    tokio::spawn(future);
 }
 
 fn on_swap_response<
