@@ -1,12 +1,12 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
-use num::{bigint::BigUint, FromPrimitive, ToPrimitive};
+use num::{bigint::BigUint, FromPrimitive};
 use regex::Regex;
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
 use std::{f64, fmt, str::FromStr};
-use u256_ext::ToBigDecimal;
+use u256_ext::{ToBigDecimal, ToFloat};
 use U256;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -37,7 +37,7 @@ impl EtherQuantity {
     }
 
     pub fn ethereum(&self) -> f64 {
-        self.0.to_bigdec(18).to_f64().unwrap()
+        self.0.to_float(18)
     }
 
     pub fn wei(&self) -> U256 {
