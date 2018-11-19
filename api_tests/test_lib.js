@@ -175,8 +175,20 @@ module.exports.ledger_query_service_conf = (host, port) => {
     return new LedgerQueryServiceConf(host, port);
 };
 
+const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+const eth_funded_private_key = Buffer.from("a2312b03bb78b43ca1deed87b3d23e86a171d791e3377a743b19ff29f1605991", "hex");
+const eth_funded_address = "0x" + ethutil.privateToAddress(eth_funded_private_key).toString("hex");
+
+module.exports.fund_eth = (value) => {
+    const tx = {
+        from: parity_dev_account,
+        to: eth_funded_address,
+        value: web3.utils.numberToHex(web3.utils.toWei(value.toString(), 'ether')),
+    };
+    return web3.eth.personal.sendTransaction(tx, "");
+};
+
 {
-    const eth_funded_private_key = Buffer.from(process.env.ETH_FUNDED_PRIVATE_KEY, "hex");
     let nonce = 0;
 
     module.exports.give_eth_to = (address, value) => {

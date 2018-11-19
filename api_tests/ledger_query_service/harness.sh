@@ -70,7 +70,6 @@ debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 
 activate_segwit;
 fund_bitcoin_address;
-fund_ethereum_address;
 sleep 2;
 
 npm test "$@";

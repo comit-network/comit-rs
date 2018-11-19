@@ -89,32 +89,3 @@ function fund_bitcoin_address() {
     export BTC_FUNDED_TX=$funding_tx;
     export BTC_FUNDED_VOUT=$funding_tx_vout;
 }
-
-function fund_ethereum_address() {
-    export ETH_FUNDED_PRIVATE_KEY=a2312b03bb78b43ca1deed87b3d23e86a171d791e3377a743b19ff29f1605991;
-    export ETH_FUNDED_ADDRESS=0x10c4109152e265fdf646c6251a8b19922e7a4b71
-    export ETH_FUNDED_PUBLIC_KEY=03561a3d81579418d69fdd052c5839d4881829b75bb2813676a4ee7f99d9fb1a6b;
-    # perl -Mbigint -E 'my $val = ((shift) * 1_000_000_000_000_000_000); say $val->as_hex' 20
-    export ETH_FUNDED_AMOUNT=0x1158e460913d00000 # 20 ethereum
-
-    debug "Funding $ETH_FUNDED_ADDRESS with $ETH_FUNDED_AMOUNT ETH";
-
-    parity_dev_account=0x00a329c0648769a73afac7f9381e08fb43dbea72
-
-    debug $(
-        $curl --data-binary "{\
-          \"jsonrpc\":\"2.0\",\
-          \"method\":\"personal_sendTransaction\",\
-          \"params\":[\
-            {\
-              \"from\": \"$parity_dev_account\",\
-              \"to\": \"${ETH_FUNDED_ADDRESS}\",\
-              \"value\": \"$ETH_FUNDED_AMOUNT\"\
-            },\
-            \"\"\
-          ],\
-          \"id\":1\
-         }" \
-          -H 'Content-Type: application/json' ${ETHEREUM_NODE_ENDPOINT}
-    )
-}

@@ -31,16 +31,21 @@ const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
 describe('RFC003 Bitcoin for Ether', () => {
 
     before(() => {
-        Promise.all(
-            [
-                test_lib.give_eth_to(bob_eth_address, bob_initial_eth),
-                test_lib.give_eth_to(alice.eth_address(), alice_initial_eth)
-            ]
-        ).then(receipt => {
-            console.log(`Giving ${bob_initial_eth} Ether to Bob; success : ${receipt[0].status}`);
-            console.log(`Giving ${alice_initial_eth} Ether to Alice; success : ${receipt[1].status}`);
+        test_lib.fund_eth(20).then(() => {
+            console.log(`Gave 20 Ether to funded address`);
+            Promise.all(
+                [
+                    test_lib.give_eth_to(bob_eth_address, bob_initial_eth),
+                    test_lib.give_eth_to(alice.eth_address(), alice_initial_eth)
+                ]
+            ).then(receipt => {
+                console.log(`Giving ${bob_initial_eth} Ether to Bob; success: ${receipt[0].status}`);
+                console.log(`Giving ${alice_initial_eth} Ether to Alice; success: ${receipt[1].status}`);
+            }).catch(error => {
+                console.log(`Error on giving Ether to Alice or Bob: ${error}`);
+            });
         }).catch(error => {
-            console.log(`Error on giving Ether to Alice or Bob : ${error}`);
+            console.log(`Error on funding Ether: ${error}`);
         });
     });
 
