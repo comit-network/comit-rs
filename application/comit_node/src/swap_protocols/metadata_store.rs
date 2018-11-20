@@ -1,19 +1,19 @@
 use std::{collections::HashMap, hash::Hash, sync::Mutex};
 
 #[derive(Clone, Copy, Debug)]
-pub enum Roles {
+pub enum RoleKind {
     Alice,
     Bob,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Ledgers {
+pub enum LedgerKind {
     Bitcoin,
     Ethereum,
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Assets {
+pub enum AssetKind {
     Bitcoin,
     Ether,
     Erc20,
@@ -21,11 +21,11 @@ pub enum Assets {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Metadata {
-    pub source_ledger: Ledgers,
-    pub target_ledger: Ledgers,
-    pub source_asset: Assets,
-    pub target_asset: Assets,
-    pub role: Roles,
+    pub source_ledger: LedgerKind,
+    pub target_ledger: LedgerKind,
+    pub source_asset: AssetKind,
+    pub target_asset: AssetKind,
+    pub role: RoleKind,
 }
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ pub enum Error {
 
 pub trait MetadataStore<K>: Send + Sync + 'static {
     fn get(&self, key: &K) -> Result<Metadata, Error>;
-    fn insert(&self, key: K, metadata: Metadata) -> Result<(), Error>;
+    fn insert<M: Into<Metadata>>(&self, key: K, metadata: M) -> Result<(), Error>;
 }
 
 #[derive(Debug, Default)]
@@ -53,14 +53,14 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemory
         }
     }
 
-    fn insert(&self, key: K, value: Metadata) -> Result<(), Error> {
+    fn insert<M: Into<Metadata>>(&self, key: K, value: M) -> Result<(), Error> {
         let mut metadata = self.metadata.lock().unwrap();
 
         if metadata.contains_key(&key) {
             return Err(Error::DuplicateKey);
         }
 
-        let _ = metadata.insert(key, value);
+        let _ = metadata.insert(key, value.into());
         Ok(())
     }
 }

@@ -1,4 +1,6 @@
-use comit_client::{Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError};
+use comit_client::{
+    rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+};
 use futures::{
     sync::oneshot::{self, Sender},
     Future,
@@ -9,7 +11,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-use swap_protocols::{bam_types, rfc003};
+use swap_protocols::{self, asset::Asset};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]
@@ -18,7 +20,10 @@ pub struct FakeClient {
 }
 
 impl FakeClient {
-    pub fn resolve_request<SL: rfc003::Ledger, TL: rfc003::Ledger>(
+    pub fn resolve_request<
+        SL: swap_protocols::rfc003::Ledger,
+        TL: swap_protocols::rfc003::Ledger,
+    >(
         &self,
         response: Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
     ) {
@@ -34,10 +39,10 @@ impl FakeClient {
 
 impl Client for FakeClient {
     fn send_swap_request<
-        SL: rfc003::Ledger,
-        TL: rfc003::Ledger,
-        SA: Into<bam_types::Asset>,
-        TA: Into<bam_types::Asset>,
+        SL: swap_protocols::rfc003::Ledger,
+        TL: swap_protocols::rfc003::Ledger,
+        SA: Asset,
+        TA: Asset,
     >(
         &self,
         _request: rfc003::Request<SL, TL, SA, TA>,

@@ -1,3 +1,4 @@
+use comit_client;
 use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
@@ -7,8 +8,7 @@ use swap_protocols::{
     self,
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, messages::Request, roles::Role, AcceptResponseBody,
-        SaveState, Secret, SecretHash, SwapOutcome,
+        self, events, ledger::Ledger, roles::Role, SaveState, Secret, SecretHash, SwapOutcome,
     },
 };
 
@@ -19,10 +19,10 @@ pub struct StateMachineResponse<SLSI, TLRI, TLLD> {
     pub target_ledger_lock_duration: TLLD,
 }
 
-impl<SL: Ledger, TL: Ledger> From<AcceptResponseBody<SL, TL>>
+impl<SL: Ledger, TL: Ledger> From<comit_client::rfc003::AcceptResponseBody<SL, TL>>
     for StateMachineResponse<SL::Identity, TL::Identity, TL::LockDuration>
 {
-    fn from(accept_response: AcceptResponseBody<SL, TL>) -> Self {
+    fn from(accept_response: comit_client::rfc003::AcceptResponseBody<SL, TL>) -> Self {
         Self {
             source_ledger_success_identity: accept_response.source_ledger_success_identity,
             target_ledger_refund_identity: accept_response.target_ledger_refund_identity,
@@ -186,7 +186,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         state: &'s mut RentToOwn<'s, Start<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterStart<R>>, rfc003::Error> {
-        let request = Request {
+        let request = comit_client::rfc003::Request {
             source_asset: state.source_asset.clone(),
             target_asset: state.target_asset.clone(),
             source_ledger: state.source_ledger.clone(),

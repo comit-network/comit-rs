@@ -1,50 +1,23 @@
 use bam::{connection::Connection, json};
-use bitcoin_support::{BitcoinQuantity, Network};
-use ethereum_support::EtherQuantity;
-use event_store::EventStore;
-use futures::{Future, Stream};
-use key_store::KeyStore;
-use ledger_query_service::{BitcoinQuery, EthereumQuery, LedgerQueryServiceApiClient};
-use std::{io, net::SocketAddr, sync::Arc, time::Duration};
-use swap_protocols::{
-    bam_types::SwapResponse,
-    json_config,
-    ledger::{Bitcoin, Ethereum},
-    rfc003::{
-        self,
-        ledger_htlc_service::{BitcoinService, EthereumService},
-    },
-    SwapRequestHandler,
+use bam_api::rfc003::swap_config;
+use futures::{
+    sync::{mpsc, oneshot},
+    Future, Stream,
 };
+use std::{io, net::SocketAddr};
+use swap_protocols::rfc003;
 use swaps::common::SwapId;
 use tokio::{self, net::TcpListener};
 
-impl<E, BLQS> ComitServer<E, BLQS>
-where
-    E: EventStore<SwapId> + Send + Sync,
-    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
-        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-{
+impl ComitServer {
     pub fn new(
-        event_store: Arc<E>,
-        my_keystore: Arc<KeyStore>,
-        ethereum_service: Arc<EthereumService>,
-        bitcoin_service: Arc<BitcoinService>,
-        ledger_query_service: Arc<BLQS>,
-        bitcoin_network: Network,
-        bitcoin_poll_interval: Duration,
-        ethereum_poll_interval: Duration,
+        sender: mpsc::UnboundedSender<(
+            SwapId,
+            rfc003::bob::SwapRequestKind,
+            oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+        )>,
     ) -> Self {
-        Self {
-            event_store,
-            my_keystore,
-            ethereum_service,
-            bitcoin_service,
-            ledger_query_service,
-            bitcoin_network,
-            bitcoin_poll_interval,
-            ethereum_poll_interval,
-        }
+        Self { sender }
     }
 
     pub fn listen(self, addr: SocketAddr) -> impl Future<Item = (), Error = io::Error> {
@@ -55,19 +28,8 @@ where
             let peer_addr = connection.peer_addr();
             let codec = json::JsonFrameCodec::default();
 
-            let swap_handler = MySwapHandler::default();
+            let config = swap_config(self.sender.clone());
 
-            let config = json_config(
-                swap_handler,
-                self.my_keystore.clone(),
-                self.event_store.clone(),
-                self.ledger_query_service.clone(),
-                self.ethereum_service.clone(),
-                self.bitcoin_service.clone(),
-                self.bitcoin_network,
-                self.bitcoin_poll_interval,
-                self.ethereum_poll_interval,
-            );
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
             tokio::spawn(close_future.map_err(move |e| {
@@ -81,48 +43,11 @@ where
     }
 }
 
-#[derive(Default)]
-struct MySwapHandler {}
-
 #[derive(Debug)]
-pub struct ComitServer<
-    E: EventStore<SwapId>,
-    BLQS: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
-        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-> {
-    event_store: Arc<E>,
-    my_keystore: Arc<KeyStore>,
-    ethereum_service: Arc<EthereumService>,
-    bitcoin_service: Arc<BitcoinService>,
-    ledger_query_service: Arc<BLQS>,
-    bitcoin_network: Network,
-    bitcoin_poll_interval: Duration,
-    ethereum_poll_interval: Duration,
-}
-
-impl SwapRequestHandler<rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>
-    for MySwapHandler
-{
-    fn handle(
-        &mut self,
-        _request: rfc003::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
-    ) -> SwapResponse {
-        {
-            // TODO: Decide whether to swap
-            SwapResponse::Accept
-        }
-    }
-}
-
-impl SwapRequestHandler<rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>>
-    for MySwapHandler
-{
-    fn handle(
-        &mut self,
-        _request: rfc003::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
-    ) -> SwapResponse {
-        {
-            SwapResponse::Decline
-        }
-    }
+pub struct ComitServer {
+    sender: mpsc::UnboundedSender<(
+        SwapId,
+        rfc003::bob::SwapRequestKind,
+        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+    )>,
 }

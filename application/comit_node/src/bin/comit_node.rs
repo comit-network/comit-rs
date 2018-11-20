@@ -40,8 +40,11 @@ use comit_node::{
 
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
-use futures::sync::mpsc::{self, UnboundedSender};
-use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc};
+use futures::sync::{
+    mpsc::{self, UnboundedSender},
+    oneshot,
+};
+use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 use web3::{transports::Http, Web3};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -87,15 +90,20 @@ fn main() {
         &mut runtime,
     );
 
-    spawn_comit_server(
-        &settings,
+    let sender = spawn_bob_swap_request_handler_for_rfc003(
         Arc::clone(&event_store),
-        Arc::clone(&key_store),
+        Arc::clone(&metadata_store),
+        Arc::clone(&state_store),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
+        Arc::clone(&key_store),
+        settings.ledger_query_service.bitcoin.poll_interval_secs,
+        settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
     );
+
+    spawn_comit_server(&settings, sender, &mut runtime);
 
     // Block the current thread.
     ::std::thread::park();
@@ -190,7 +198,7 @@ fn spawn_warp_instance(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(event_store, metadata_store, state_store, sender);
@@ -212,7 +220,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
     key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
-) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequests)> {
+) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)> {
     let client_factory = Arc::new(comit_client::bam::BamClientPool::default());
     let comit_node_addr = settings.comit.remote_comit_node_url;
 
@@ -231,7 +239,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
 
     let (sender, receiver) = mpsc::unbounded();
 
-    let alice_swap_request_handler = rfc003::alice::SwapRequestsHandler {
+    let alice_swap_request_handler = rfc003::alice::SwapRequestHandler {
         receiver,
         metadata_store,
         key_store,
@@ -248,25 +256,53 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     sender
 }
 
-fn spawn_comit_server(
-    settings: &ComitNodeSettings,
+fn spawn_bob_swap_request_handler_for_rfc003(
     event_store: Arc<InMemoryEventStore<SwapId>>,
-    key_store: Arc<KeyStore>,
+    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
+    state_store: Arc<InMemoryStateStore<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
-    ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
+    lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
+    key_store: Arc<KeyStore>,
+    bitcoin_poll_interval: Duration,
+    ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,
-) {
-    let server = ComitServer::new(
+) -> UnboundedSender<(
+    SwapId,
+    rfc003::bob::SwapRequestKind,
+    oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+)> {
+    let (sender, receiver) = mpsc::unbounded();
+
+    let bob_swap_request_handler = rfc003::bob::SwapRequestHandler {
+        receiver,
+        metadata_store,
         event_store,
+        state_store,
+        lqs_api_client,
         key_store,
         ethereum_service,
         bitcoin_service,
-        ledger_query_service,
-        settings.bitcoin.network,
-        settings.ledger_query_service.bitcoin.poll_interval_secs,
-        settings.ledger_query_service.ethereum.poll_interval_secs,
-    );
+        bitcoin_poll_interval,
+        ethereum_poll_interval,
+    };
+
+    runtime.spawn(bob_swap_request_handler.start());
+
+    sender
+}
+
+fn spawn_comit_server(
+    settings: &ComitNodeSettings,
+    sender: UnboundedSender<(
+        SwapId,
+        rfc003::bob::SwapRequestKind,
+        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+    )>,
+
+    runtime: &mut tokio::runtime::Runtime,
+) {
+    let server = ComitServer::new(sender);
 
     runtime.spawn(server.listen(settings.comit.comit_listen).map_err(|e| {
         error!("ComitServer shutdown: {:?}", e);

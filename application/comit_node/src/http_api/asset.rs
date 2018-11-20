@@ -58,6 +58,7 @@ pub enum Error {
     WrongAsset,
     ParameterNotFound,
     Serde(serde_json::Error),
+    Parsing,
 }
 
 impl fmt::Display for Error {

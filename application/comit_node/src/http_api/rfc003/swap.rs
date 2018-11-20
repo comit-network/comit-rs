@@ -17,7 +17,7 @@ use swap_protocols::{
         state_store::{self, StateStore},
         Ledger, Secret,
     },
-    Assets, Ledgers, Metadata, MetadataStore, Roles,
+    AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind,
 };
 use swaps::{alice_events, common::SwapId};
 use warp::{self, Rejection, Reply};
@@ -95,7 +95,7 @@ pub struct SwapRequestBody<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
-pub enum SwapCombinations {
+pub enum SwapRequestBodyKind {
     BitcoinEthereumBitcoinQuantityEthereumQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
@@ -123,20 +123,20 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
-    swap_request: SwapCombinations,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequests)>,
+    request_body_kind: SwapRequestBodyKind,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
 ) -> Result<impl Reply, Rejection> {
     let id = SwapId::default();
 
-    let requests = match swap_request {
-        SwapCombinations::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
-            rfc003::alice::SwapRequests::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+    let request_kind = match request_body_kind {
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
+            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
                 frunk::labelled_convert_from(body),
             )
         }
     };
 
-    if let Err(e) = sender.unbounded_send((id, requests)) {
+    if let Err(e) = sender.unbounded_send((id, request_kind)) {
         error!(
             "Swap request {:?} for id {} could not dispatched.",
             e.into_inner(),
@@ -285,13 +285,13 @@ fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStor
     match metadata_store.get(&id) {
         Err(e) => error!("Could not retrieve metadata: {:?}", e),
         Ok(Metadata {
-            source_ledger: Ledgers::Bitcoin,
-            target_ledger: Ledgers::Ethereum,
-            source_asset: Assets::Bitcoin,
-            target_asset: Assets::Ether,
+            source_ledger: LedgerKind::Bitcoin,
+            target_ledger: LedgerKind::Ethereum,
+            source_asset: AssetKind::Bitcoin,
+            target_asset: AssetKind::Ether,
             role,
         }) => match role {
-            Roles::Alice => {
+            RoleKind::Alice => {
                 match state_store
                     .get::<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
                 {
@@ -299,7 +299,7 @@ fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStor
                     Ok(state) => info!("Here is the state we have retrieved: {:?}", state),
                 }
             }
-            Roles::Bob => match state_store
+            RoleKind::Bob => match state_store
                 .get::<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
             {
                 Err(e) => error!("Could not retrieve state: {:?}", e),

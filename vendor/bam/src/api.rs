@@ -42,12 +42,6 @@ where
     ) -> Result<Option<Box<Future<Item = Frame, Error = ()> + Send + 'static>>, Error>;
 }
 
-#[derive(Debug)]
-pub enum BodyError {
-    Missing,
-    Invalid,
-}
-
 pub trait IntoFrame<F> {
     fn into_frame(self, id: u32) -> F;
 }

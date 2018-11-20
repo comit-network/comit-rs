@@ -1,11 +1,11 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
-use num::{bigint::BigUint, FromPrimitive};
+use num::FromPrimitive;
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
 use std::{f64, fmt, str::FromStr};
-use u256_ext::{RemoveTrailingZeros, ToBigDecimal, ToFloat};
+use u256_ext::{FromBigUInt, FromDecimalStr, ToBigDecimal, ToDecimalStr, ToFloat};
 use U256;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -14,7 +14,8 @@ pub struct EtherQuantity(U256);
 impl EtherQuantity {
     fn from_eth_bigdec(decimal: &BigDecimal) -> EtherQuantity {
         let (wei_bigint, _) = decimal.with_scale(18).as_bigint_and_exponent();
-        Self::from_wei_bigint(&wei_bigint.to_biguint().unwrap())
+        let wei = U256::from_biguint(wei_bigint.to_biguint().unwrap());
+        EtherQuantity(wei)
     }
 
     pub fn from_eth(eth: f64) -> Self {
@@ -25,14 +26,6 @@ impl EtherQuantity {
 
     pub fn from_wei(wei: U256) -> Self {
         EtherQuantity(wei)
-    }
-
-    fn from_wei_bigint(wei: &BigUint) -> EtherQuantity {
-        let bytes = wei.to_bytes_be();
-        let mut buf = [0u8; 32];
-        let start = 32 - bytes.len();
-        buf[start..].clone_from_slice(&bytes[..]);
-        EtherQuantity(buf.into())
     }
 
     pub fn ethereum(&self) -> f64 {
@@ -46,8 +39,8 @@ impl EtherQuantity {
 
 impl fmt::Display for EtherQuantity {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let removed_trailing_zeroes = self.0.remove_trailing_zeros(18);
-        write!(f, "{} ETH", removed_trailing_zeroes)
+        let nice_decimals = self.0.to_decimal_str(18);
+        write!(f, "{} ETH", nice_decimals)
     }
 }
 
@@ -77,8 +70,8 @@ impl<'de> Deserialize<'de> for EtherQuantity {
             where
                 E: de::Error,
             {
-                let bigint = BigUint::from_str(v).map_err(E::custom)?;
-                Ok(EtherQuantity::from_wei_bigint(&bigint))
+                let wei = U256::from_decimal_str(v).map_err(E::custom)?;
+                Ok(EtherQuantity(wei))
             }
         }
 

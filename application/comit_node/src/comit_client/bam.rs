@@ -1,5 +1,8 @@
 use bam::{self, config::Config, connection::Connection, json, Status};
-use comit_client::{Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError};
+use bam_api::{self, header::ToBamHeader};
+use comit_client::{
+    rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+};
 use futures::Future;
 use serde_json;
 use std::{
@@ -7,7 +10,7 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex, RwLock},
 };
-use swap_protocols::{bam_types, rfc003};
+use swap_protocols::{self, asset::Asset, SwapProtocols};
 use tokio::{self, net::TcpStream};
 
 #[derive(Debug)]
@@ -30,10 +33,10 @@ impl BamClient {
 
 impl Client for BamClient {
     fn send_swap_request<
-        SL: rfc003::Ledger,
-        TL: rfc003::Ledger,
-        SA: Into<bam_types::Asset>,
-        TA: Into<bam_types::Asset>,
+        SL: swap_protocols::rfc003::Ledger,
+        TL: swap_protocols::rfc003::Ledger,
+        SA: Asset,
+        TA: Asset,
     >(
         &self,
         request: rfc003::Request<SL, TL, SA, TA>,
@@ -43,13 +46,36 @@ impl Client for BamClient {
                 Error = SwapResponseError,
             > + Send,
     > {
-        let (headers, body) = request.into_headers_and_body();
-        let request = json::Request::from_headers_and_body("SWAP".into(), headers, body)
-            .expect("Serialization of this should never fail");
+        let source_ledger_refund_identity = request.source_ledger_refund_identity;
+        let target_ledger_success_identity = request.target_ledger_success_identity;
+        let source_ledger_lock_duration = request.source_ledger_lock_duration;
+        let secret_hash = request.secret_hash;
+
+        let request = json::Request::new(
+            "SWAP".into(),
+            convert_args!(
+                keys = String::from,
+                values = to_json_value,
+                hashmap!(
+                    "source_ledger" => request.source_ledger.to_bam_header(),
+                    "target_ledger" => request.target_ledger.to_bam_header(),
+                    "source_asset" => request.source_asset.to_bam_header(),
+                    "target_asset" => request.target_asset.to_bam_header(),
+                    "swap_protocol" => SwapProtocols::Rfc003.to_bam_header(),
+                )
+            ),
+            serde_json::to_value(rfc003::RequestBody::<SL, TL> {
+                source_ledger_refund_identity,
+                target_ledger_success_identity,
+                source_ledger_lock_duration,
+                secret_hash,
+            })
+            .expect("should not fail to serialize"),
+        );
 
         debug!(
             "Making swap request to {}: {:?}",
-            &self.comit_node_socket_addr, request
+            &self.comit_node_socket_addr, request,
         );
         let mut bam_client = self.bam_client.lock().unwrap();
 
@@ -89,6 +115,14 @@ impl Client for BamClient {
 
         Box::new(response)
     }
+}
+
+fn to_json_value(
+    bam_header: Result<bam_api::header::Header, bam_api::header::Error>,
+) -> serde_json::Value {
+    let header = bam_header.expect("converting to bam-header must not fail");
+
+    serde_json::to_value(header).expect("converting bam-header to json must not fail")
 }
 
 #[derive(Default, Debug)]

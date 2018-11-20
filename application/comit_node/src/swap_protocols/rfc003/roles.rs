@@ -43,7 +43,7 @@ pub trait Role: Send + Clone + 'static {
 }
 
 #[derive(Clone, Debug)]
-pub struct Alice<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct Alice<SL, TL, SA, TA> {
     phantom_data: PhantomData<(SL, TL, SA, TA)>,
 }
 
@@ -80,13 +80,11 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> Role for Bob<SL, TL, SA, TA> 
 pub mod test {
     use super::*;
     use bitcoin_support::BitcoinQuantity;
+    use comit_client;
     use ethereum_support::EtherQuantity;
     use swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::{
-            events::{CommunicationEvents, ResponseFuture},
-            messages::Request,
-        },
+        rfc003::events::{CommunicationEvents, ResponseFuture},
     };
 
     pub type Alisha = Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
@@ -116,7 +114,12 @@ pub mod test {
     impl<R: Role> CommunicationEvents<R> for FakeCommunicationEvents<R> {
         fn request_responded(
             &mut self,
-            _request: &Request<R::SourceLedger, R::TargetLedger, R::SourceAsset, R::TargetAsset>,
+            _request: &comit_client::rfc003::Request<
+                R::SourceLedger,
+                R::TargetLedger,
+                R::SourceAsset,
+                R::TargetAsset,
+            >,
         ) -> &mut ResponseFuture<R> {
             self.response.as_mut().unwrap()
         }

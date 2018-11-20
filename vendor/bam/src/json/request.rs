@@ -1,6 +1,6 @@
-use api::{self, IntoFrame};
+use api::IntoFrame;
 use json;
-use serde::{de::DeserializeOwned, ser::Serialize};
+use serde::de::DeserializeOwned;
 use serde_json::{self, Value as JsonValue};
 use std::collections::HashMap;
 
@@ -21,30 +21,6 @@ impl Request {
         }
     }
 
-    pub fn from_headers_and_body<H: Serialize, B: Serialize>(
-        _type: String,
-        headers: H,
-        body: B,
-    ) -> Result<Self, serde_json::Error> {
-        let headers_json = serde_json::to_value(headers)?;
-        let mut headers_hashmap = HashMap::new();
-
-        match headers_json {
-            JsonValue::Object(map) => {
-                for (k, v) in map {
-                    headers_hashmap.insert(k, v);
-                }
-            }
-            _ => unreachable!(),
-        }
-
-        Ok(Request::new(
-            _type,
-            headers_hashmap,
-            serde_json::to_value(body)?,
-        ))
-    }
-
     pub fn get_header<H: DeserializeOwned>(
         &self,
         key: &str,
@@ -54,12 +30,12 @@ impl Request {
             .map(|header| H::deserialize(header.clone()))
     }
 
-    pub fn get_body<B: DeserializeOwned>(&self) -> Result<B, api::BodyError> {
+    pub fn get_body<B: DeserializeOwned>(&self) -> Option<Result<B, serde_json::Error>> {
         if self.body.is_null() {
-            return Err(api::BodyError::Missing);
+            return None;
         }
 
-        B::deserialize(self.body.clone()).or(Err(api::BodyError::Invalid))
+        Some(B::deserialize(self.body.clone()))
     }
 }
 
