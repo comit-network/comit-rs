@@ -299,7 +299,7 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./ledger_query_service/harness.sh ./ledger_query_service/lqs_test.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+./ledger_query_service/harness.sh ./ledger_query_service/test.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
 '''
 ]
 

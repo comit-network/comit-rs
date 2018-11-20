@@ -26,12 +26,8 @@ function sleep(ms) {
 
 describe("Test Ledger Query Service API", () => {
 
-    before(() => {
-        test_lib.fund_eth(20).then(() => {
-            console.log(`Gave 20 Ether to funded address`);
-        }).catch(error => {
-            console.log(`Error on funding Ether: ${error}`);
-        });
+    before(async function () {
+        return await test_lib.fund_eth(20);
     });
 
     describe('Bitcoin', () => {
