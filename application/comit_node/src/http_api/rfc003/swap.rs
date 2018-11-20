@@ -12,9 +12,10 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
-        actions::StateActions,
+        actions::{Action, StateActions},
         roles::{Alice, Bob},
-        state_store::{self, StateStore},
+        state_machine::SwapStates,
+        state_store::StateStore,
         Ledger,
     },
     AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind,
@@ -22,7 +23,7 @@ use swap_protocols::{
 use swaps::common::SwapId;
 use warp::{self, Rejection, Reply};
 
-pub const PATH: &str = "rfc003";
+pub const PROTOCOL_NAME: &str = "rfc003";
 
 type ActionName = String;
 
@@ -162,7 +163,7 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         Some((state, actions)) => {
             let mut response = HalResource::new(state);
             for action in actions {
-                let route = format!("{}/{}/{}/{}", http_api::PATH, PATH, id, action);
+                let route = format!("{}/{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id, action);
                 response.with_link("redeem", route);
             }
             Ok(warp::reply::json(&response))
@@ -173,85 +174,93 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     }
 }
 
-fn handle_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
+fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: &Arc<T>,
     state_store: &Arc<S>,
     id: &SwapId,
 ) -> Option<(State, Vec<ActionName>)> {
-    match metadata_store.get(&id) {
-        Err(e) => {
+    get_swap!(
+        metadata_store,
+        state_store,
+        id,
+        result,
+        success:
+        (|| {
+            let (state, metadata) = result;
+            info!("Here is the state we have retrieved: {:?}", state);
+
+            let actions: Vec<ActionName> = StateActions::actions(&state)
+                .iter()
+                .map(Action::name)
+                .collect();
+            Some((
+                State {
+                    name: SwapStates::name(&state),
+                    alpha_ledger: format!("{}", metadata.alpha_ledger),
+                    beta_ledger: format!("{}", metadata.beta_ledger),
+                    alpha_asset: format!("{}", metadata.alpha_asset),
+                    beta_asset: format!("{}", metadata.beta_asset),
+                    role: format!("{}", metadata.role),
+                },
+                actions,
+            ))
+        }),
+        failure:
+        |e| {
             debug!("Could not retrieve metadata: {:?}", e);
             None
         }
-        Ok(
-            metadata @ Metadata {
-                alpha_ledger: LedgerKind::Bitcoin,
-                beta_ledger: LedgerKind::Ethereum,
-                alpha_asset: AssetKind::Bitcoin,
-                beta_asset: AssetKind::Ether,
-                ..
-            },
-        ) => {
-            info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
-            match metadata.role {
-                RoleKind::Alice => {
-                    match state_store
-                        .get::<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
-                    {
-                        Err(e) => {
-                            error!("Could not retrieve state: {:?}", e);
-                            None
-                        }
-                        Ok(state) => {
-                            info!("Here is the state we have retrieved: {:?}", state);
+    )
+}
 
-                            let actions: Vec<ActionName> =
-                                state.actions().iter().map(|action| action.name()).collect();
-                            Some((
-                                State {
-                                    name: state.name(),
-                                    alpha_ledger: format!("{}", metadata.alpha_ledger),
-                                    beta_ledger: format!("{}", metadata.beta_ledger),
-                                    alpha_asset: format!("{}", metadata.alpha_asset),
-                                    beta_asset: format!("{}", metadata.beta_asset),
-                                    role: format!("{}", metadata.role),
-                                },
-                                actions,
-                            ))
-                        }
-                    }
-                }
-                RoleKind::Bob => {
-                    match state_store
-                        .get::<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
-                    {
-                        Err(e) => {
-                            error!("Could not retrieve state: {:?}", e);
-                            None
-                        }
-                        Ok(state) => {
-                            info!("Here is the state we have retrieved: {:?}", state);
+#[derive(Serialize, Debug)]
+pub struct SwapListItem {
+    state: String,
+    protocol: String,
+}
 
-                            let actions: Vec<ActionName> =
-                                state.actions().iter().map(|action| action.name()).collect();
-                            Some((
-                                State {
-                                    name: state.name(),
-                                    alpha_ledger: format!("{}", metadata.alpha_ledger),
-                                    beta_ledger: format!("{}", metadata.beta_ledger),
-                                    alpha_asset: format!("{}", metadata.alpha_asset),
-                                    beta_asset: format!("{}", metadata.beta_asset),
-                                    role: format!("{}", metadata.role),
-                                },
-                                actions,
-                            ))
-                        }
-                    }
-                }
-            }
-        }
-        _ => unreachable!("No other type is expected to be found in the store"),
+#[allow(clippy::needless_pass_by_value)]
+pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+) -> Result<impl Reply, Rejection> {
+    let swaps = handle_get_swaps(metadata_store, state_store);
+
+    let mut response = HalResource::new("");
+    for swap in swaps {
+        response.with_resource("ongoing_swaps", &swap);
     }
+    Ok(warp::reply::json(&response))
+}
+
+fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+) -> Vec<HalResource> {
+    metadata_store
+        .keys()
+        .iter()
+        .filter_map(|id| {
+            get_swap!(&metadata_store, &state_store, id, result, success: (|| {
+                let (state, _) = result;
+                let swap = SwapListItem{
+                    state: state.name(),
+                    protocol: PROTOCOL_NAME.into(),
+                };
+
+                let mut response = HalResource::new(swap);
+                let route = format!("{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id);
+                let hal_resource = HalResource::with_link(&mut response, format!("{}", id), route);
+
+                Some(hal_resource.clone())
+        }),
+        failure:
+        |e| {
+            debug!("Could not retrieve metadata: {:?}", e);
+            None
+        })
+        })
+        .collect()
 }
 
 #[cfg(test)]

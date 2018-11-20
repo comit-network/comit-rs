@@ -14,7 +14,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
-    let rfc003 = warp::path(http_api::rfc003::swap::PATH);
+    let rfc003 = warp::path(http_api::rfc003::swap::PROTOCOL_NAME);
 
     let metadata_store = warp::any().map(move || metadata_store.clone());
     let state_store = warp::any().map(move || state_store.clone());
@@ -26,12 +26,21 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .and_then(http_api::rfc003::swap::post_swap);
 
     let rfc003_get_swap = warp::get2()
-        .and(metadata_store)
-        .and(state_store)
+        .and(metadata_store.clone())
+        .and(state_store.clone())
         .and(warp::path::param())
         .and_then(http_api::rfc003::swap::get_swap);
 
-    path.and(rfc003_get_swap.or(rfc003.and(rfc003_post_swap)))
-        .recover(http_api::rfc003::swap::customize_error)
-        .boxed()
+    let rfc003_get_swaps = warp::get2()
+        .and(metadata_store)
+        .and(state_store)
+        .and_then(http_api::rfc003::swap::get_swaps);
+
+    path.and(
+        rfc003_get_swap
+            .or(rfc003_get_swaps)
+            .or(rfc003.and(rfc003_post_swap)),
+    )
+    .recover(http_api::rfc003::swap::customize_error)
+    .boxed()
 }

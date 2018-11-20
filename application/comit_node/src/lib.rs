@@ -51,7 +51,6 @@ extern crate secp256k1_support;
 extern crate serde;
 extern crate tiny_keccak;
 extern crate tokio;
-extern crate tokio_timer;
 extern crate url;
 extern crate uuid;
 extern crate warp;

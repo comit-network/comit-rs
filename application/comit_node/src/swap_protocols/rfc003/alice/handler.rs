@@ -52,7 +52,6 @@ impl<
         let metadata_store = Arc::clone(&self.metadata_store);
         let state_store = Arc::clone(&self.state_store);
 
-        let event_store = Arc::clone(&self.event_store);
         let client_factory = Arc::clone(&self.client_factory);
         let comit_node_addr = self.comit_node_addr.clone();
 

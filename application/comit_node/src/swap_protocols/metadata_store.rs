@@ -37,6 +37,7 @@ pub enum Error {
 pub trait MetadataStore<K>: Send + Sync + 'static {
     fn get(&self, key: &K) -> Result<Metadata, Error>;
     fn insert<M: Into<Metadata>>(&self, key: K, metadata: M) -> Result<(), Error>;
+    fn keys(&self) -> Vec<K>;
 }
 
 #[derive(Debug, Default)]
@@ -62,5 +63,10 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemory
 
         let _ = metadata.insert(key, value.into());
         Ok(())
+    }
+    fn keys(&self) -> Vec<K> {
+        let metadata = self.metadata.lock().unwrap();
+
+        metadata.keys().map(Clone::clone).collect()
     }
 }

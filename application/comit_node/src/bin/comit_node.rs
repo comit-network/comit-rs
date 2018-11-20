@@ -29,7 +29,6 @@ use comit_node::{
     swap_protocols::{
         rfc003::{
             self,
-            alice_ledger_actor::AliceLedgerActor,
             ledger_htlc_service::{BitcoinService, EthereumService},
             state_store::InMemoryStateStore,
         },
@@ -74,8 +73,6 @@ fn main() {
         Arc::clone(&event_store),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        Arc::clone(&ethereum_service),
-        Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
         Arc::clone(&key_store),
         &mut runtime,
@@ -213,27 +210,12 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    ethereum_service: Arc<EthereumService>,
-    bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
     key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
 ) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)> {
     let client_factory = Arc::new(comit_client::bam::BamClientPool::default());
     let comit_node_addr = settings.comit.remote_comit_node_url;
-
-    let alice_actor = AliceLedgerActor::new(
-        Arc::clone(&event_store),
-        ledger_query_service,
-        bitcoin_service,
-        settings.bitcoin.network,
-        ethereum_service,
-        settings.ledger_query_service.bitcoin.poll_interval_secs,
-        settings.ledger_query_service.ethereum.poll_interval_secs,
-    );
-
-    let (alice_actor_sender, alice_actor_future) = alice_actor.listen();
-    runtime.spawn(alice_actor_future);
 
     let (sender, receiver) = mpsc::unbounded();
 
