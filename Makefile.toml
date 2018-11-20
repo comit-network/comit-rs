@@ -81,7 +81,12 @@ alias = "dev-test-flow"
 
 [tasks.e2e]
 workspace = false
-alias = "e2e-tests-flow"
+dependencies = [
+    "build",
+    "pre-e2e-tests",
+    "specified-e2e-test",
+    "post-e2e-tests",
+]
 
 [tasks.lqs]
 workspace = false
@@ -204,6 +209,30 @@ workspace = false
 dependencies = [
     "btc-eth",
     "btc-erc20",
+]
+
+[tasks.specified-e2e-test]
+# Usage: `cargo make e2e <folder>` folder can be:
+# - empty (run all tests)
+# - btc_eth or btc_eth-erc20
+description = "Runs RFC003 end-to-end tests specified on command line"
+workspace = false
+env = {  }
+script_runner = "bash"
+script = [
+'''
+set +x;
+export PARAMS=$@;
+export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
+. "$NVM_SH"
+cd api_tests;
+nvm use;
+[[ -z ${PARAMS} ]] && export PARAMS=$(ls ./e2e/rfc003/);
+for DIR in ${PARAMS}; do
+    export LOG_DIR="./e2e/rfc003/${DIR}/log";
+    ./e2e/comit-harness.sh ./e2e/rfc003/${DIR} || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+done;
+'''
 ]
 
 [tasks.btc-eth]
