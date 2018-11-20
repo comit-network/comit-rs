@@ -1,12 +1,12 @@
 version: '3'
 services:
-  ethereum:
+  eth:
     image: parity/parity:v2.1.3
     command: --config dev --jsonrpc-apis=all --unsafe-expose --tracing=on --logging=info,ethcore-miner=trace,miner=trace,rpc=trace
     ports:
     - "8545:8545"
 
-  bitcoin:
+  btc:
     image: ruimarinho/bitcoin-core:0.17.0-alpine
     command:
       -regtest

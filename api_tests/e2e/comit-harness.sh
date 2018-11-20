@@ -5,28 +5,24 @@ export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 cd "$PROJECT_ROOT/api_tests";
 
-CHAINS=""
-
-while getopts "c:p:" option
-do
-    case "${option}"
-        in
-        c) CHAINS="${OPTARG} ${CHAINS}";;
-        p) TEST_PATH="${OPTARG}";;
-    esac
-done
-
-if [[ -z "${CHAINS}" ]]
-then
-    log "Need to specify blockchain containers";
-    exit 1;
-fi
+TEST_PATH="$1"
 
 if [[ -z "${TEST_PATH}" ]] || [[ ! -d "${TEST_PATH}" ]]
 then
-    log "Path to test directory needs to be passed using `-p`";
+    log "Path to test directory needs to be passed.";
     exit 1;
 fi
+
+DIR=${TEST_PATH%*/} # Removes trailing slash
+DIR=${DIR##*/} # Extract child dir
+
+ALPHA=${DIR%_*}
+ALPHA_CHAIN=${ALPHA%-*}
+
+BETA=${DIR#*_}
+BETA_CHAIN=${BETA%-*}
+
+CHAINS="${ALPHA_CHAIN} ${BETA_CHAIN}" # Extract chain name before and after underscore
 
 END(){
     set +e;
