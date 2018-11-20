@@ -2,9 +2,31 @@
 
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
+source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 cd "$PROJECT_ROOT/api_tests";
 
-source "$PROJECT_ROOT/api_tests/harness-lib.sh"
+CHAINS=""
+
+while getopts "c:p:" option
+do
+    case "${option}"
+        in
+        c) CHAINS="${OPTARG} ${CHAINS}";;
+        p) TEST_PATH="${OPTARG}";;
+    esac
+done
+
+if [[ -z "${CHAINS}" ]]
+then
+    log "Need to specify blockchain containers";
+    exit 1;
+fi
+
+if [[ -z "${TEST_PATH}" ]] || [[ ! -d "${TEST_PATH}" ]]
+then
+    log "Path to test directory needs to be passed using `-p`";
+    exit 1;
+fi
 
 END(){
     set +e;
@@ -19,7 +41,7 @@ END(){
     log "KILLING docker containers";
     (
         cd regtest;
-        docker-compose rm -sfv bitcoin ethereum;
+        docker-compose rm -sfv ${CHAINS};
     );
 }
 
@@ -40,15 +62,21 @@ function setup() {
     #### Start all services
     (
         cd ./regtest;
-        log "Starting up docker containers"
-        docker-compose up -d bitcoin ethereum
+        log "Starting up docker containers";
+        docker-compose up -d ${CHAINS};
         if test -d "$LOG_DIR"; then
-            log_file="$LOG_DIR/docker-compose.log"
-            docker-compose logs --tail=all >$log_file
+            log_file="$LOG_DIR/docker-compose.log";
+            docker-compose logs --tail=all >$log_file;
         fi
     );
 
     sleep 10;
+
+    if [[ -e "${TEST_PATH}/pre-test.js" ]]
+    then
+        log "Run pre-test";
+        npm test "${TEST_PATH}/pre-test.js";
+    fi
 
     export BOB_CONFIG_FILE=./regtest/bob/default.toml;
     BOB_COMIT_NODE_PID=$(
@@ -65,8 +93,8 @@ function setup() {
     );
 
     LQS_PID=$(
-        export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service
-        export ETHEREUM_POLLING_TIME_SEC=1
+        export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service;
+        export ETHEREUM_POLLING_TIME_SEC=1;
         export RUST_LOG=debug;
 
         start_target "ledger_query_service" "LQS";
@@ -85,4 +113,5 @@ fund_bitcoin_address;
 generate_btc_blocks_every 5;
 sleep 2;
 
-npm test "$@";
+log "Run test";
+npm test "${TEST_PATH}/test.js";

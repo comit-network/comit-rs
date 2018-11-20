@@ -237,7 +237,6 @@ module.exports.fund_eth = (value) => {
         tx.sign(eth_funded_private_key);
         const serializedTx = tx.serialize();
         nonce++;
-        let hex = '0x' + serializedTx.toString('hex');
         return web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex'));
     }
 }

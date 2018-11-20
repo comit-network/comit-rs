@@ -23,15 +23,15 @@ const toby = test_lib.wallet_conf(toby_eth_private_key, {
 
 describe('RFC003: Setup ERC20 token contract', () => {
 
-    before(async () => {
-        await test_lib.fund_eth(20).then(() => {
+    before(async function () {
+        return test_lib.fund_eth(20).then(() => {
             console.log(`Gave 20 Ether to funded address`);
-            test_lib.give_eth_to(toby.eth_address(), 10)
+            return test_lib.give_eth_to(toby.eth_address(), 10)
                 .then(receipt => {
-                    console.log(`Giving 20 Ether to Toby; success: ${receipt[0].status}`);
+                    console.log(`Giving 20 Ether to Toby; success: ${receipt.status}`);
                 }).catch(error => {
-                console.log(`Error on giving Ether to Toby: ${error}`);
-            });
+                    console.log(`Error on giving Ether to Toby: ${error}`);
+                });
         }).catch(error => {
             console.log(`Error on funding Ether: ${error}`);
         });

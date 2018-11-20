@@ -218,7 +218,7 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./e2e/rfc003/btc_eth/harness.sh ./e2e/rfc003/btc_eth/happy_path.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+./e2e/comit-harness.sh -c bitcoin -c ethereum -p ./e2e/rfc003/btc_eth || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
 '''
 ]
 
@@ -234,7 +234,7 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./e2e/rfc003/btc_erc20/harness.sh ./e2e/rfc003/btc_erc20/happy_path.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+./e2e/comit-harness.sh -c bitcoin -c ethereum -p ./e2e/rfc003/btc_erc20 || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
 '''
 ]
 
