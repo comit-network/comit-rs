@@ -38,11 +38,9 @@ pub fn swap_config(
             match SwapProtocols::from_bam_header(swap_protocol).unwrap() {
                 SwapProtocols::Rfc003 => {
                     let swap_id = SwapId::default();
-
                     let (response_sender, response_receiver) = oneshot::channel();
 
                     if let Ok(swap_request) = decode_request(&request) {
-
                         let request_kind =
                             rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
                                 swap_request,
@@ -54,9 +52,7 @@ pub fn swap_config(
                         match result {
                             Ok(Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response))) => Ok(response.into()),
                             Ok(Err(e)) => {
-
                                 error!("Error while processing swap request {}: {:?}", swap_id, e);
-
                                 Ok(Response::new(Status::SE(0)))
                             },
                             Err(_) => {
