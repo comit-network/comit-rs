@@ -19,7 +19,7 @@ END(){
     log "KILLING docker containers";
     (
         cd regtest;
-        docker-compose rm -sfv bitcoin ethereum;
+        docker-compose rm -sfv btc eth;
     );
 }
 
@@ -42,8 +42,8 @@ function setup() {
     #### Start all services
     (
         cd ./regtest;
-        log "Starting up docker containers"
-        docker-compose up -d bitcoin ethereum
+        log "Starting up docker containers";
+        docker-compose up -d btc eth;
         if test -d "$LOG_DIR"; then
             log_file="$LOG_DIR/docker-compose.log"
             # docker-compose logs --tail=all >$log_file

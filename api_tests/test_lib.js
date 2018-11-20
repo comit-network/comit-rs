@@ -129,6 +129,22 @@ class WalletConf {
         let hex = '0x' + serializedTx.toString('hex');
         return web3.eth.sendSignedTransaction(hex);
     }
+
+    async erc20_balance(contract_address) {
+        const function_identifier = "70a08231";
+
+        const address = this.eth_address().replace(/^0x/, '').padStart(64, '0');
+        const payload = '0x' + function_identifier + address;
+
+        const tx = {
+            from: this.eth_address(),
+            to: contract_address,
+            data: payload,
+        };
+
+        return web3.eth.call(tx);
+    };
+
 }
 
 class ComitConf {
@@ -246,5 +262,17 @@ module.exports.fund_eth = (value) => {
 
     module.exports.deploy_erc20_token_contract = (wallet) => {
         return wallet.deploy_eth_contract(token_contract_deploy);
-    }
+    };
 }
+
+{
+    const function_identifier = "40c10f19";
+    module.exports.mint_erc20_tokens = (owner_wallet, contract_address, to_address, amount) => {
+        to_address = to_address.replace(/^0x/, '').padStart(64, '0');
+        amount = web3.utils.numberToHex(amount).replace(/^0x/, '').padStart(64, '0');
+        const payload = '0x' + function_identifier + to_address + amount;
+
+        return owner_wallet.send_eth_transaction_to(contract_address, payload);
+    };
+}
+
