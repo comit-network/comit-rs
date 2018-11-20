@@ -74,10 +74,10 @@ pub struct Asset {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SwapRequest {
-    pub source_ledger: Ledger,
-    pub target_ledger: Ledger,
-    pub source_asset: Asset,
-    pub target_asset: Asset,
+    pub alpha_ledger: Ledger,
+    pub beta_ledger: Ledger,
+    pub alpha_asset: Asset,
+    pub beta_asset: Asset,
 }
 
 impl ApiClient for DefaultApiClient {

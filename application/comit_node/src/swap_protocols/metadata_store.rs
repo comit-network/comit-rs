@@ -21,10 +21,10 @@ pub enum AssetKind {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Metadata {
-    pub source_ledger: LedgerKind,
-    pub target_ledger: LedgerKind,
-    pub source_asset: AssetKind,
-    pub target_asset: AssetKind,
+    pub alpha_ledger: LedgerKind,
+    pub beta_ledger: LedgerKind,
+    pub alpha_asset: AssetKind,
+    pub beta_asset: AssetKind,
     pub role: RoleKind,
 }
 

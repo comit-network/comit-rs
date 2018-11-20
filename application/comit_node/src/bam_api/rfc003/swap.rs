@@ -26,10 +26,10 @@ pub fn swap_config(
     Config::default().on_request(
         "SWAP",
         &[
-            "target_ledger",
-            "source_ledger",
-            "target_asset",
-            "source_asset",
+            "beta_ledger",
+            "alpha_ledger",
+            "beta_asset",
+            "alpha_asset",
             "swap_protocol",
         ],
         move |request: Request| {
@@ -67,21 +67,21 @@ pub fn swap_config(
     )
 }
 
-impl<SL: Ledger, TL: Ledger> From<rfc003::bob::SwapResponse<SL, TL>> for Response {
-    fn from(response: rfc003::bob::SwapResponse<SL, TL>) -> Self {
+impl<AL: Ledger, BL: Ledger> From<rfc003::bob::SwapResponse<AL, BL>> for Response {
+    fn from(response: rfc003::bob::SwapResponse<AL, BL>) -> Self {
         match response {
             rfc003::bob::SwapResponse::Accept {
-                target_ledger_refund_identity,
-                source_ledger_success_identity,
-                target_ledger_lock_duration,
+                beta_ledger_refund_identity,
+                alpha_ledger_success_identity,
+                beta_ledger_lock_duration,
             } => {
                 Response::new(Status::OK(20)).with_body(comit_client::rfc003::AcceptResponseBody::<
-                    SL,
-                    TL,
+                    AL,
+                    BL,
                 > {
-                    target_ledger_refund_identity,
-                    source_ledger_success_identity,
-                    target_ledger_lock_duration,
+                    beta_ledger_refund_identity,
+                    alpha_ledger_success_identity,
+                    beta_ledger_lock_duration,
                 })
             }
             rfc003::bob::SwapResponse::Decline => Response::new(Status::RE(0)),
@@ -89,46 +89,46 @@ impl<SL: Ledger, TL: Ledger> From<rfc003::bob::SwapResponse<SL, TL>> for Respons
     }
 }
 
-fn decode_request<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>(
+fn decode_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
     request: &Request,
-) -> Result<rfc003::bob::SwapRequest<SL, TL, SA, TA>, Error> {
-    let request_body: RequestBody<SL, TL> = request
+) -> Result<rfc003::bob::SwapRequest<AL, BL, AA, BA>, Error> {
+    let request_body: RequestBody<AL, BL> = request
         .get_body()
         .ok_or(Error::Missing)?
         .map_err(|_| Error::Invalid)?;
 
     Ok(rfc003::bob::SwapRequest {
-        source_asset: SA::from_bam_header(
+        alpha_asset: AA::from_bam_header(
             request
-                .get_header("source_asset")
+                .get_header("alpha_asset")
                 .ok_or(Error::Missing)?
                 .map_err(|_| Error::Invalid)?,
         )
         .map_err(|_| Error::Invalid)?,
-        target_asset: TA::from_bam_header(
+        beta_asset: BA::from_bam_header(
             request
-                .get_header("target_asset")
+                .get_header("beta_asset")
                 .ok_or(Error::Missing)?
                 .map_err(|_| Error::Invalid)?,
         )
         .map_err(|_| Error::Invalid)?,
-        source_ledger: SL::from_bam_header(
+        alpha_ledger: AL::from_bam_header(
             request
-                .get_header("source_ledger")
+                .get_header("alpha_ledger")
                 .ok_or(Error::Missing)?
                 .map_err(|_| Error::Invalid)?,
         )
         .map_err(|_| Error::Invalid)?,
-        target_ledger: TL::from_bam_header(
+        beta_ledger: BL::from_bam_header(
             request
-                .get_header("target_ledger")
+                .get_header("beta_ledger")
                 .ok_or(Error::Missing)?
                 .map_err(|_| Error::Invalid)?,
         )
         .map_err(|_| Error::Invalid)?,
-        source_ledger_refund_identity: request_body.source_ledger_refund_identity,
-        target_ledger_success_identity: request_body.target_ledger_success_identity,
-        source_ledger_lock_duration: request_body.source_ledger_lock_duration,
+        alpha_ledger_refund_identity: request_body.alpha_ledger_refund_identity,
+        beta_ledger_success_identity: request_body.beta_ledger_success_identity,
+        alpha_ledger_lock_duration: request_body.alpha_ledger_lock_duration,
         secret_hash: request_body.secret_hash,
     })
 }

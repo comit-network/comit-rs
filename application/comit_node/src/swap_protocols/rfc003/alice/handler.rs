@@ -68,9 +68,9 @@ impl<
                 match requests {
                     SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
                         // TODO: Store this somewhere
-                        let _source_ledger_refund_identity = request.source_ledger_refund_identity;
+                        let _alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
 
-                        let source_ledger_refund_identity =
+                        let alpha_ledger_refund_identity =
                             key_store.get_transient_keypair(&id.into(), b"REFUND");
 
                         if let Err(e) = metadata_store.insert(id, request.clone()) {
@@ -83,13 +83,13 @@ impl<
                         let secret = Secret::generate(&mut thread_rng());
 
                         let start_state = Start {
-                            source_ledger_refund_identity,
-                            target_ledger_success_identity: request.target_ledger_success_identity,
-                            source_ledger: request.source_ledger,
-                            target_ledger: request.target_ledger,
-                            source_asset: request.source_asset,
-                            target_asset: request.target_asset,
-                            source_ledger_lock_duration: request.source_ledger_lock_duration,
+                            alpha_ledger_refund_identity,
+                            beta_ledger_success_identity: request.beta_ledger_success_identity,
+                            alpha_ledger: request.alpha_ledger,
+                            beta_ledger: request.beta_ledger,
+                            alpha_asset: request.alpha_asset,
+                            beta_asset: request.beta_asset,
+                            alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
                         };
 
@@ -99,18 +99,17 @@ impl<
                         send_swap_request(
                             id,
                             comit_client::rfc003::Request {
-                                source_asset: start_state.source_asset,
-                                target_asset: start_state.target_asset,
-                                source_ledger: start_state.source_ledger,
-                                target_ledger: start_state.target_ledger,
-                                source_ledger_refund_identity: start_state
-                                    .source_ledger_refund_identity
+                                alpha_asset: start_state.alpha_asset,
+                                beta_asset: start_state.beta_asset,
+                                alpha_ledger: start_state.alpha_ledger,
+                                beta_ledger: start_state.beta_ledger,
+                                alpha_ledger_refund_identity: start_state
+                                    .alpha_ledger_refund_identity
                                     .into(),
-                                target_ledger_success_identity: start_state
-                                    .target_ledger_success_identity
+                                beta_ledger_success_identity: start_state
+                                    .beta_ledger_success_identity
                                     .into(),
-                                source_ledger_lock_duration: start_state
-                                    .source_ledger_lock_duration,
+                                alpha_ledger_lock_duration: start_state.alpha_ledger_lock_duration,
                                 secret_hash: start_state.secret.hash(),
                             },
                             Arc::clone(&event_store),
@@ -128,9 +127,9 @@ impl<
     }
 }
 
-fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateStore<SwapId>>(
+fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateStore<SwapId>>(
     id: SwapId,
-    start_state: Start<Alice<SL, TL, SA, TA>>,
+    start_state: Start<Alice<AL, BL, AA, BA>>,
     state_store: &S,
 ) {
     let state = SwapStates::Start(start_state);
@@ -141,16 +140,16 @@ fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateSto
 }
 
 fn send_swap_request<
-    SL: Ledger,
-    TL: Ledger,
-    SA: Asset,
-    TA: Asset,
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
     E: EventStore<SwapId>,
 >(
     id: SwapId,
-    swap_request: comit_client::rfc003::Request<SL, TL, SA, TA>,
+    swap_request: comit_client::rfc003::Request<AL, BL, AA, BA>,
     event_store: Arc<E>,
     alice_actor_sender: UnboundedSender<SwapId>,
     client_factory: Arc<F>,
@@ -158,14 +157,14 @@ fn send_swap_request<
     secret: Secret,
 ) {
     let sent_event = alice_events::SentSwapRequest {
-        source_ledger: swap_request.source_ledger.clone(),
-        target_ledger: swap_request.target_ledger.clone(),
-        source_asset: swap_request.source_asset.clone(),
-        target_asset: swap_request.target_asset.clone(),
+        alpha_ledger: swap_request.alpha_ledger.clone(),
+        beta_ledger: swap_request.beta_ledger.clone(),
+        alpha_asset: swap_request.alpha_asset.clone(),
+        beta_asset: swap_request.beta_asset.clone(),
         secret,
-        target_ledger_success_identity: swap_request.target_ledger_success_identity.clone(),
-        source_ledger_refund_identity: swap_request.source_ledger_refund_identity.clone(),
-        source_ledger_lock_duration: swap_request.source_ledger_lock_duration.clone(),
+        beta_ledger_success_identity: swap_request.beta_ledger_success_identity.clone(),
+        alpha_ledger_refund_identity: swap_request.alpha_ledger_refund_identity.clone(),
+        alpha_ledger_lock_duration: swap_request.alpha_ledger_lock_duration.clone(),
     };
 
     // This is legacy code, unwraps are fine
@@ -177,7 +176,7 @@ fn send_swap_request<
     let future = client
         .send_swap_request(swap_request)
         .then(move |response| {
-            on_swap_response::<SL, TL, SA, TA, E>(id, &event_store, alice_actor_sender, response);
+            on_swap_response::<AL, BL, AA, BA, E>(id, &event_store, alice_actor_sender, response);
             Ok(())
         });
 
@@ -185,17 +184,17 @@ fn send_swap_request<
 }
 
 fn on_swap_response<
-    SL: rfc003::Ledger,
-    TL: rfc003::Ledger,
-    SA: Clone + Send + Sync + 'static,
-    TA: Clone + Send + Sync + 'static,
+    AL: rfc003::Ledger,
+    BL: rfc003::Ledger,
+    AA: Clone + Send + Sync + 'static,
+    BA: Clone + Send + Sync + 'static,
     E: EventStore<SwapId>,
 >(
     id: SwapId,
     event_store: &Arc<E>,
     alice_actor_sender: UnboundedSender<SwapId>,
     result: Result<
-        Result<comit_client::rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
+        Result<comit_client::rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
         SwapResponseError,
     >,
 ) {
@@ -204,10 +203,10 @@ fn on_swap_response<
             event_store
                 .add_event(
                     id,
-                    alice_events::SwapRequestAccepted::<SL, TL, SA, TA>::new(
-                        accepted.target_ledger_refund_identity,
-                        accepted.source_ledger_success_identity,
-                        accepted.target_ledger_lock_duration,
+                    alice_events::SwapRequestAccepted::<AL, BL, AA, BA>::new(
+                        accepted.beta_ledger_refund_identity,
+                        accepted.alpha_ledger_success_identity,
+                        accepted.beta_ledger_lock_duration,
                     ),
                 )
                 .expect("It should not be possible to be in the wrong state");
@@ -220,7 +219,7 @@ fn on_swap_response<
             event_store
                 .add_event(
                     id,
-                    alice_events::SwapRequestRejected::<SL, TL, SA, TA>::new(),
+                    alice_events::SwapRequestRejected::<AL, BL, AA, BA>::new(),
                 )
                 .expect("It should not be possible to be in the wrong state");
         }

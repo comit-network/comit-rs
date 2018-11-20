@@ -114,24 +114,24 @@ where
                 pipeline
                     .watch_for_btc_funding()
                     .inspect(|pipeline| {
-                        let source_funded =
-                            SourceFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
+                        let alpha_funded =
+                            AlphaFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
                                 pipeline.trade_id,
                             );
                         pipeline
                             .event_store
-                            .add_event(pipeline.trade_id, source_funded)
+                            .add_event(pipeline.trade_id, alpha_funded)
                             .expect("We cannot be in the wrong state");
                     })
                     .and_then(|pipeline| pipeline.watch_eth_deploy())
                     .map(|(pipeline, contract_address)| {
-                        let target_funded =
-                            TargetFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
+                        let beta_funded =
+                            BetaFunded::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>::new(
                                 contract_address,
                             );
                         pipeline
                             .event_store
-                            .add_event(pipeline.trade_id, target_funded)
+                            .add_event(pipeline.trade_id, beta_funded)
                             .expect("We cannot be in the wrong state");
                     })
                     .map_err(move |e| {
@@ -199,10 +199,10 @@ where
             .expect("We cannot be in the wrong state");
 
         let bitcoin_htlc_params = BitcoinHtlcFundingParams {
-            refund_pubkey_hash: sent_swap_request.source_ledger_refund_identity,
-            success_pubkey_hash: swap_request_accepted.source_ledger_success_identity,
-            time_lock: sent_swap_request.source_ledger_lock_duration,
-            amount: sent_swap_request.source_asset,
+            refund_pubkey_hash: sent_swap_request.alpha_ledger_refund_identity,
+            success_pubkey_hash: swap_request_accepted.alpha_ledger_success_identity,
+            time_lock: sent_swap_request.alpha_ledger_lock_duration,
+            amount: sent_swap_request.alpha_asset,
             secret_hash: sent_swap_request.secret.hash(),
         };
 
@@ -256,7 +256,7 @@ where
                             .expect("Could not connect to Bitcoin node")
                             .expect("Could not retrieve vout of BTC funding transaction");
 
-                        if vout.value < sent_swap_request.source_asset.satoshi() {
+                        if vout.value < sent_swap_request.alpha_asset.satoshi() {
                             return Err(err_msg("Not enough money sent to BTC HTLC, aborting swap"));
                         }
 
@@ -289,10 +289,10 @@ where
             .expect("We cannot be in the wrong state");;
 
         let ethereum_htlc_params = EtherHtlcFundingParams {
-            refund_address: swap_request_accepted.target_ledger_refund_identity,
-            success_address: sent_swap_request.target_ledger_success_identity,
-            time_lock: swap_request_accepted.target_ledger_lock_duration,
-            amount: sent_swap_request.target_asset,
+            refund_address: swap_request_accepted.beta_ledger_refund_identity,
+            success_address: sent_swap_request.beta_ledger_success_identity,
+            time_lock: swap_request_accepted.beta_ledger_lock_duration,
+            amount: sent_swap_request.beta_asset,
             secret_hash: sent_swap_request.secret.hash(),
         };
 

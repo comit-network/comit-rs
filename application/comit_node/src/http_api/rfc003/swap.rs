@@ -79,18 +79,18 @@ impl From<comit_client::ClientFactoryError> for Error {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, LabelledGeneric)]
-pub struct SwapRequestBody<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> {
+pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[serde(with = "http_api::asset::serde")]
-    source_asset: SA,
+    alpha_asset: AA,
     #[serde(with = "http_api::asset::serde")]
-    target_asset: TA,
+    beta_asset: BA,
     #[serde(with = "http_api::ledger::serde")]
-    source_ledger: SL,
+    alpha_ledger: AL,
     #[serde(with = "http_api::ledger::serde")]
-    target_ledger: TL,
-    source_ledger_refund_identity: SL::Identity,
-    target_ledger_success_identity: TL::Identity,
-    source_ledger_lock_duration: SL::LockDuration,
+    beta_ledger: BL,
+    alpha_ledger_refund_identity: AL::Identity,
+    beta_ledger_success_identity: BL::Identity,
+    alpha_ledger_lock_duration: AL::LockDuration,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -225,17 +225,17 @@ fn handle_get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStor
             >>(id);
             match accepted {
                 Ok(accepted) => {
-                    let target_funded = event_store.get_event::<alice_events::TargetFunded<
+                    let beta_funded = event_store.get_event::<alice_events::BetaFunded<
                         Bitcoin,
                         Ethereum,
                         BitcoinQuantity,
                         EtherQuantity,
                     >>(id);
 
-                    match target_funded {
-                        Ok(target_funded) => {
+                    match beta_funded {
+                        Ok(beta_funded) => {
                             Some(SwapStatus::Redeemable {
-                                contract_address: target_funded.address,
+                                contract_address: beta_funded.address,
                                 data: requested.secret,
                                 // TODO: check how much gas we should tell the customer to pay
                                 gas: 3500,
@@ -243,14 +243,14 @@ fn handle_get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStor
                         }
                         Err(_) => {
                             let htlc = bitcoin::Htlc::new(
-                                accepted.source_ledger_success_identity,
-                                requested.source_ledger_refund_identity,
+                                accepted.alpha_ledger_success_identity,
+                                requested.alpha_ledger_refund_identity,
                                 requested.secret.hash(),
-                                requested.source_ledger_lock_duration.into(),
+                                requested.alpha_ledger_lock_duration.into(),
                             );
                             Some(SwapStatus::Accepted {
                                 funding_required: htlc
-                                    .compute_address(requested.source_ledger.network),
+                                    .compute_address(requested.alpha_ledger.network),
                             })
                         }
                     }
@@ -285,10 +285,10 @@ fn handle_state_for_get_swap<T: MetadataStore<SwapId>, S: state_store::StateStor
     match metadata_store.get(&id) {
         Err(e) => error!("Could not retrieve metadata: {:?}", e),
         Ok(Metadata {
-            source_ledger: LedgerKind::Bitcoin,
-            target_ledger: LedgerKind::Ethereum,
-            source_asset: AssetKind::Bitcoin,
-            target_asset: AssetKind::Ether,
+            alpha_ledger: LedgerKind::Bitcoin,
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Ether,
             role,
         }) => match role {
             RoleKind::Alice => {
@@ -321,41 +321,41 @@ mod tests {
     #[test]
     fn can_deserialize_swap_request_body() {
         let body = r#"{
-                "source_ledger": {
+                "alpha_ledger": {
                     "name": "Bitcoin",
                     "network": "regtest"
                 },
-                "target_ledger": {
+                "beta_ledger": {
                     "name": "Ethereum"
                 },
-                "source_asset": {
+                "alpha_asset": {
                     "name": "Bitcoin",
                     "quantity": "100000000"
                 },
-                "target_asset": {
+                "beta_asset": {
                     "name": "Ether",
                     "quantity": "10000000000000000000"
                 },
-                "source_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
-                "target_ledger_success_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "source_ledger_lock_duration": 144
+                "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                "beta_ledger_success_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                "alpha_ledger_lock_duration": 144
             }"#;
 
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            source_asset: BitcoinQuantity::from_bitcoin(1.0),
-            target_asset: EtherQuantity::from_eth(10.0),
-            source_ledger: Bitcoin::regtest(),
-            target_ledger: Ethereum::default(),
-            source_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
+            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
+            beta_asset: EtherQuantity::from_eth(10.0),
+            alpha_ledger: Bitcoin::regtest(),
+            beta_ledger: Ethereum::default(),
+            alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
                 "ac2db2f2615c81b83fe9366450799b4992931575",
             )
             .unwrap(),
-            target_ledger_success_identity: ethereum_support::Address::from(
+            beta_ledger_success_identity: ethereum_support::Address::from(
                 "0x00a329c0648769a73afac7f9381e08fb43dbea72",
             ),
-            source_ledger_lock_duration: bitcoin_support::Blocks::new(144),
+            alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
         })
     }
 

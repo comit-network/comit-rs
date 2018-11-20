@@ -21,54 +21,54 @@ use swap_protocols::rfc003::{
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
-pub type StateMachineResponseFuture<SLSI, TLRI, TLLD> =
-    Future<Result<StateMachineResponse<SLSI, TLRI, TLLD>, SwapReject>>;
+pub type StateMachineResponseFuture<ALSI, BLRI, BLLD> =
+    Future<Result<StateMachineResponse<ALSI, BLRI, BLLD>, SwapReject>>;
 
 #[allow(type_alias_bounds)]
 pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
-    R::SourceSuccessHtlcIdentity,
-    R::TargetRefundHtlcIdentity,
-    <R::TargetLedger as Ledger>::LockDuration,
+    R::AlphaSuccessHtlcIdentity,
+    R::BetaRefundHtlcIdentity,
+    <R::BetaLedger as Ledger>::LockDuration,
 >;
 
 pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
 pub type Refunded<L: Ledger> = Future<L::TxId>;
 pub type Redeemed<L: Ledger> = Future<L::TxId>;
-pub type SourceRefundedOrTargetFunded<SL: Ledger, TL: Ledger> =
-    Future<Either<SL::Transaction, TL::HtlcLocation>>;
+pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
+    Future<Either<AL::Transaction, BL::HtlcLocation>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
-pub trait LedgerEvents<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>: Send {
-    fn source_htlc_funded(&mut self, htlc_params: HtlcParams<SL, SA>) -> &mut Funded<SL>;
+pub trait LedgerEvents<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>: Send {
+    fn alpha_htlc_funded(&mut self, htlc_params: HtlcParams<AL, AA>) -> &mut Funded<AL>;
 
-    fn source_htlc_refunded_target_htlc_funded(
+    fn alpha_htlc_refunded_beta_htlc_funded(
         &mut self,
-        source_htlc_params: HtlcParams<SL, SA>,
-        target_htlc_params: HtlcParams<TL, TA>,
-        source_htlc_location: &SL::HtlcLocation,
-    ) -> &mut SourceRefundedOrTargetFunded<SL, TL>;
+        alpha_htlc_params: HtlcParams<AL, AA>,
+        beta_htlc_params: HtlcParams<BL, BA>,
+        alpha_htlc_location: &AL::HtlcLocation,
+    ) -> &mut AlphaRefundedOrBetaFunded<AL, BL>;
 
-    fn source_htlc_redeemed_or_refunded(
+    fn alpha_htlc_redeemed_or_refunded(
         &mut self,
-        source_htlc_params: HtlcParams<SL, SA>,
-        htlc_location: &SL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<SL>;
+        alpha_htlc_params: HtlcParams<AL, AA>,
+        htlc_location: &AL::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<AL>;
 
-    fn target_htlc_redeemed_or_refunded(
+    fn beta_htlc_redeemed_or_refunded(
         &mut self,
-        target_htlc_params: HtlcParams<TL, TA>,
-        htlc_location: &TL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<TL>;
+        beta_htlc_params: HtlcParams<BL, BA>,
+        htlc_location: &BL::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<BL>;
 }
 
 pub trait CommunicationEvents<R: Role> {
     fn request_responded(
         &mut self,
         request: &comit_client::rfc003::Request<
-            R::SourceLedger,
-            R::TargetLedger,
-            R::SourceAsset,
-            R::TargetAsset,
+            R::AlphaLedger,
+            R::BetaLedger,
+            R::AlphaAsset,
+            R::BetaAsset,
         >,
     ) -> &mut ResponseFuture<R>;
 }

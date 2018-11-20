@@ -83,19 +83,19 @@ mod tests {
     fn store_get_and_save_state() {
         let state_store = InMemoryStateStore::default();
         let start_state = Start::<Alisha> {
-            source_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
+            alpha_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
             )
             .unwrap(),
-            target_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
+            beta_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),
-            source_ledger: Bitcoin::regtest(),
-            target_ledger: Ethereum::default(),
-            source_asset: BitcoinQuantity::from_bitcoin(1.0),
-            target_asset: EtherQuantity::from_eth(10.0),
-            source_ledger_lock_duration: Blocks::from(144),
+            alpha_ledger: Bitcoin::regtest(),
+            beta_ledger: Ethereum::default(),
+            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
+            beta_asset: EtherQuantity::from_eth(10.0),
+            alpha_ledger_lock_duration: Blocks::from(144),
             secret: Secret::from(*b"hello world, you are beautiful!!"),
         };
 

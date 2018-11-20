@@ -33,22 +33,22 @@ impl BamClient {
 
 impl Client for BamClient {
     fn send_swap_request<
-        SL: swap_protocols::rfc003::Ledger,
-        TL: swap_protocols::rfc003::Ledger,
-        SA: Asset,
-        TA: Asset,
+        AL: swap_protocols::rfc003::Ledger,
+        BL: swap_protocols::rfc003::Ledger,
+        AA: Asset,
+        BA: Asset,
     >(
         &self,
-        request: rfc003::Request<SL, TL, SA, TA>,
+        request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
         Future<
-                Item = Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
+                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,
     > {
-        let source_ledger_refund_identity = request.source_ledger_refund_identity;
-        let target_ledger_success_identity = request.target_ledger_success_identity;
-        let source_ledger_lock_duration = request.source_ledger_lock_duration;
+        let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
+        let beta_ledger_success_identity = request.beta_ledger_success_identity;
+        let alpha_ledger_lock_duration = request.alpha_ledger_lock_duration;
         let secret_hash = request.secret_hash;
 
         let request = json::Request::new(
@@ -57,17 +57,17 @@ impl Client for BamClient {
                 keys = String::from,
                 values = to_json_value,
                 hashmap!(
-                    "source_ledger" => request.source_ledger.to_bam_header(),
-                    "target_ledger" => request.target_ledger.to_bam_header(),
-                    "source_asset" => request.source_asset.to_bam_header(),
-                    "target_asset" => request.target_asset.to_bam_header(),
+                    "alpha_ledger" => request.alpha_ledger.to_bam_header(),
+                    "beta_ledger" => request.beta_ledger.to_bam_header(),
+                    "alpha_asset" => request.alpha_asset.to_bam_header(),
+                    "beta_asset" => request.beta_asset.to_bam_header(),
                     "swap_protocol" => SwapProtocols::Rfc003.to_bam_header(),
                 )
             ),
-            serde_json::to_value(rfc003::RequestBody::<SL, TL> {
-                source_ledger_refund_identity,
-                target_ledger_success_identity,
-                source_ledger_lock_duration,
+            serde_json::to_value(rfc003::RequestBody::<AL, BL> {
+                alpha_ledger_refund_identity,
+                beta_ledger_success_identity,
+                alpha_ledger_lock_duration,
                 secret_hash,
             })
             .expect("should not fail to serialize"),
