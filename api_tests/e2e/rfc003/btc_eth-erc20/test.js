@@ -33,25 +33,17 @@ describe('RFC003: Bitcoin for ERC20', () => {
     let token_contract_address;
     before(async function () {
         this.timeout(3000);
-        await test_lib.fund_eth(20).then(async () => {
-            console.log(`Gave 20 Ether to funded address`);
-            await Promise.all(
+        return await test_lib.fund_eth(20).then(async () => {
+            return await Promise.all(
                 [
                     test_lib.give_eth_to(toby.eth_address(), 10),
                     test_lib.give_eth_to(bob_eth_address, bob_initial_eth),
                 ]
-            ).then(receipt => {
-                console.log(`Giving 10 Ether to Toby; success: ${receipt[0].status}`);
-                console.log(`Giving ${bob_initial_eth} Ether to Bob; success: ${receipt[1].status}`);
+            ).then(() => {
                 return test_lib.deploy_erc20_token_contract(toby).then(receipt => {
                     token_contract_address = receipt.contractAddress;
-                    console.log(`Deploying ERC20 token contract; success: ${receipt.status}`);
                 });
-            }).catch(error => {
-                console.log(`Error on giving Ether to Toby: ${error}`);
             });
-        }).catch(error => {
-            console.log(`Error on funding Ether: ${error}`);
         });
     });
 
