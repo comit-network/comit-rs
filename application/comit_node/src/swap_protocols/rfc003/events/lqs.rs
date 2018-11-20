@@ -1,16 +1,19 @@
 use futures::{future::Either, Future};
 use ledger_query_service::{CreateQuery, FirstMatch, Query, QueryIdCache};
 use swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        self,
-        events::{
-            Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery,
-            RedeemedOrRefunded,
+    self,
+    {
+        asset::Asset,
+        rfc003::{
+            self,
+            contains_htlc::ContainsHtlc,
+            events::{
+                Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
+                NewHtlcRefundedQuery, RedeemedOrRefunded,
+            },
+            state_machine::HtlcParams,
+            Ledger,
         },
-        is_contained_in_transaction::IsContainedInTransaction,
-        state_machine::HtlcParams,
-        Ledger,
     },
 };
 
@@ -37,8 +40,9 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
 impl<L, A, Q> LedgerEvents<L, A> for LqsEvents<L, Q>
 where
     L: Ledger,
-    A: Asset + IsContainedInTransaction<L>,
+    A: Asset,
     Q: Query + NewHtlcRefundedQuery<L, A> + NewHtlcFundedQuery<L, A> + NewHtlcRedeemedQuery<L, A>,
+    <L as swap_protocols::Ledger>::Transaction: ContainsHtlc<L, A>,
 {
     fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L> {
         let ledger_first_match = self.ledger_first_match.clone();
@@ -53,7 +57,7 @@ where
                     ledger_first_match
                         .first_match_of(query_id)
                         .and_then(move |tx| {
-                            A::is_contained_in_transaction(&htlc_params, tx)
+                            tx.contains_htlc(&htlc_params)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });

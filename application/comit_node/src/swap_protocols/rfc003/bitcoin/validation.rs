@@ -2,24 +2,22 @@ use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        is_contained_in_transaction::{Error, IsContainedInTransaction},
+        contains_htlc::{ContainsHtlc, Error},
         state_machine::HtlcParams,
     },
 };
 
-impl IsContainedInTransaction<Bitcoin> for BitcoinQuantity {
-    fn is_contained_in_transaction(
+impl ContainsHtlc<Bitcoin, BitcoinQuantity> for Transaction {
+    fn contains_htlc(
+        &self,
         htlc_params: &HtlcParams<Bitcoin, BitcoinQuantity>,
-        transaction: Transaction,
     ) -> Result<OutPoint, Error<BitcoinQuantity>> {
         let address = htlc_params.compute_address();
 
-        let (vout, txout) = transaction
-            .find_output(&address)
-            .ok_or(Error::WrongTransaction)?;
+        let (vout, txout) = self.find_output(&address).ok_or(Error::WrongTransaction)?;
 
         let location = OutPoint {
-            txid: transaction.txid(),
+            txid: self.txid(),
             vout: vout as u32,
         };
 
@@ -93,9 +91,9 @@ mod tests {
         };
 
         let bitcoin_transaction: Transaction = transaction.into();
+        let copied_transaction = bitcoin_transaction.clone();
 
-        let result =
-            BitcoinQuantity::is_contained_in_transaction(&htlc_params, bitcoin_transaction.clone());
+        let result = copied_transaction.contains_htlc(&htlc_params);
 
         let txid = bitcoin_transaction.txid();
         let expected_outpoint = OutPoint { txid, vout: 0 };
@@ -113,10 +111,7 @@ mod tests {
             output: vec![],
         };
 
-        let result = BitcoinQuantity::is_contained_in_transaction(
-            &gen_htlc_params(bitcoin_amount),
-            transaction.into(),
-        );
+        let result = transaction.contains_htlc(&gen_htlc_params(bitcoin_amount));
 
         assert_that(&result).is_err_containing(ValidationError::WrongTransaction)
     }
@@ -142,7 +137,7 @@ mod tests {
             output: vec![transaction_output],
         };
 
-        let result = BitcoinQuantity::is_contained_in_transaction(&htlc_params, transaction.into());
+        let result = transaction.contains_htlc(&htlc_params);
 
         let expected_error = ValidationError::UnexpectedAsset {
             found: provided_bitcoin_amount,
