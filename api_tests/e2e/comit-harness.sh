@@ -2,9 +2,27 @@
 
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
+source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 cd "$PROJECT_ROOT/api_tests";
 
-source "$PROJECT_ROOT/api_tests/harness-lib.sh"
+TEST_PATH="$1"
+
+if [[ -z "${TEST_PATH}" ]] || [[ ! -d "${TEST_PATH}" ]]
+then
+    log "Path to test directory needs to be passed.";
+    exit 1;
+fi
+
+DIR=${TEST_PATH%*/} # Removes trailing slash
+DIR=${DIR##*/} # Extract child dir
+
+ALPHA=${DIR%_*}
+ALPHA_CHAIN=${ALPHA%-*}
+
+BETA=${DIR#*_}
+BETA_CHAIN=${BETA%-*}
+
+CHAINS="${ALPHA_CHAIN} ${BETA_CHAIN}" # Extract chain name before and after underscore
 
 END(){
     set +e;
@@ -19,7 +37,7 @@ END(){
     log "KILLING docker containers";
     (
         cd regtest;
-        docker-compose rm -sfv bitcoin ethereum;
+        docker-compose rm -sfv ${CHAINS};
     );
 }
 
@@ -40,11 +58,11 @@ function setup() {
     #### Start all services
     (
         cd ./regtest;
-        log "Starting up docker containers"
-        docker-compose up -d bitcoin ethereum
+        log "Starting up docker containers";
+        docker-compose up -d ${CHAINS};
         if test -d "$LOG_DIR"; then
-            log_file="$LOG_DIR/docker-compose.log"
-            docker-compose logs --tail=all >$log_file
+            log_file="$LOG_DIR/docker-compose.log";
+            docker-compose logs --tail=all >$log_file;
         fi
     );
 
@@ -65,8 +83,8 @@ function setup() {
     );
 
     LQS_PID=$(
-        export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service
-        export ETHEREUM_POLLING_TIME_SEC=1
+        export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service;
+        export ETHEREUM_POLLING_TIME_SEC=1;
         export RUST_LOG=debug;
 
         start_target "ledger_query_service" "LQS";
@@ -82,8 +100,8 @@ debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 activate_segwit;
 
 fund_bitcoin_address;
-fund_ethereum_address;
 generate_btc_blocks_every 5;
 sleep 2;
 
-npm test "$@";
+log "Run test";
+npm test "${TEST_PATH}/test.js";
