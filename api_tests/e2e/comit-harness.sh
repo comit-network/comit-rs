@@ -68,12 +68,6 @@ function setup() {
 
     sleep 10;
 
-    if [[ -e "${TEST_PATH}/pre-test.js" ]]
-    then
-        log "Run pre-test";
-        npm test "${TEST_PATH}/pre-test.js";
-    fi
-
     export BOB_CONFIG_FILE=./regtest/bob/default.toml;
     BOB_COMIT_NODE_PID=$(
         export RUST_BACKTRACE=1 \

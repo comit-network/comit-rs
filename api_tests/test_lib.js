@@ -90,7 +90,7 @@ class WalletConf {
 
     async send_eth_transaction_to(to, data = "0x0", value = "0x0") {
         if (!to) {
-          throw "`to` cannot be null";
+            throw "`to` cannot be null";
         }
 
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
@@ -238,5 +238,13 @@ module.exports.fund_eth = (value) => {
         const serializedTx = tx.serialize();
         nonce++;
         return web3.eth.sendSignedTransaction('0x' + serializedTx.toString('hex'));
+    }
+}
+
+{
+    const token_contract_deploy = "0x" + fs.readFileSync("../application/comit_node/tests/parity_client/erc20_token_contract.asm.hex", 'utf8').trim();
+
+    module.exports.deploy_erc20_token_contract = (wallet) => {
+        return wallet.deploy_eth_contract(token_contract_deploy);
     }
 }

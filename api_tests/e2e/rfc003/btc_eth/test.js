@@ -9,7 +9,6 @@ const assert = require('assert');
 const fs = require('fs');
 const ethutil = require('ethereumjs-util');
 
-
 const web3 = test_lib.web3();
 
 const bob_initial_eth = "11";
