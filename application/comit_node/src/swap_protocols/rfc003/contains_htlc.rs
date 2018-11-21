@@ -9,10 +9,10 @@ pub enum Error<A: Asset> {
     WrongTransaction,
 }
 
-pub trait ContainsHtlc<L, LA>: Send + Sync
+pub trait ContainsHtlc<L, A>: Send + Sync
 where
     L: Ledger,
-    LA: Asset,
+    A: Asset,
 {
-    fn contains_htlc(&self, htlc_params: &HtlcParams<L, LA>) -> Result<L::HtlcLocation, Error<LA>>;
+    fn contains_htlc(&self, htlc_params: &HtlcParams<L, A>) -> Result<L::HtlcLocation, Error<A>>;
 }

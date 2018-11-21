@@ -2,18 +2,16 @@ use futures::{future::Either, Future};
 use ledger_query_service::{CreateQuery, FirstMatch, Query, QueryIdCache};
 use swap_protocols::{
     self,
-    {
-        asset::Asset,
-        rfc003::{
-            self,
-            contains_htlc::ContainsHtlc,
-            events::{
-                Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
-                NewHtlcRefundedQuery, RedeemedOrRefunded,
-            },
-            state_machine::HtlcParams,
-            Ledger,
+    asset::Asset,
+    rfc003::{
+        self,
+        contains_htlc::ContainsHtlc,
+        events::{
+            Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery,
+            RedeemedOrRefunded,
         },
+        state_machine::HtlcParams,
+        Ledger,
     },
 };
 
