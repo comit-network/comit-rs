@@ -12,7 +12,8 @@ use swap_protocols::{
     },
 };
 
-struct AliceComitClient<C, SL: Ledger, TL: Ledger> {
+#[allow(missing_debug_implementations)]
+pub struct AliceToBob<C, SL: Ledger, TL: Ledger> {
     #[allow(clippy::type_complexity)]
     response_future:
         Option<Box<StateMachineResponseFuture<SL::Identity, TL::Identity, TL::LockDuration>>>,
@@ -20,7 +21,7 @@ struct AliceComitClient<C, SL: Ledger, TL: Ledger> {
 }
 
 impl<C: comit_client::Client, SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>
-    CommunicationEvents<Alice<SL, TL, SA, TA>> for AliceComitClient<C, SL, TL>
+    CommunicationEvents<Alice<SL, TL, SA, TA>> for AliceToBob<C, SL, TL>
 {
     fn request_responded(
         &mut self,

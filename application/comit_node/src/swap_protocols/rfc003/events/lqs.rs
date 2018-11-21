@@ -23,6 +23,17 @@ pub struct LqsEvents<L: Ledger, Q: Query> {
     htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<L>>>,
 }
 
+impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
+    pub fn new(create_ledger_query: QueryIdCache<L, Q>, ledger_first_match: FirstMatch<L>) -> Self {
+        Self {
+            create_ledger_query,
+            ledger_first_match,
+            htlc_funded_query: None,
+            htlc_redeemed_or_refunded: None,
+        }
+    }
+}
+
 impl<L, A, Q> LedgerEvents<L, A> for LqsEvents<L, Q>
 where
     L: Ledger,

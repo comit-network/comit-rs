@@ -4,7 +4,7 @@ use bitcoin_support::{
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {
     pub network: Network,
 }

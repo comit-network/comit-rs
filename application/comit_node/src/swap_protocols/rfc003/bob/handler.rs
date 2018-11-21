@@ -11,8 +11,9 @@ use futures::{
 };
 use key_store::KeyStore;
 use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionIdStream, BitcoinQuery, EthereumQuery,
-    LedgerQueryServiceApiClient,
+    fetch_transaction_stream::FetchTransactionIdStream, BitcoinQuery, CreateQuery,
+    DefaultLedgerQueryServiceApiClient, EthereumQuery, FirstMatch, LedgerQueryServiceApiClient,
+    QueryIdCache,
 };
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
@@ -21,8 +22,9 @@ use swap_protocols::{
     metadata_store::MetadataStore,
     rfc003::{
         self,
-        bob::SwapRequestKind,
+        bob::{PendingResponses, SwapRequestKind},
         ethereum::Seconds,
+        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents},
         ledger_htlc_service::{
             BitcoinHtlcRedeemParams, BitcoinService, EtherHtlcFundingParams, EtherHtlcRedeemParams,
             EthereumService, LedgerHtlcService,
@@ -40,33 +42,29 @@ use swaps::{
 use tokio::timer::Interval;
 
 #[derive(Debug)]
-pub struct SwapRequestHandler<E, C, MetadataStore, StateStore> {
+pub struct SwapRequestHandler<E, MetadataStore, StateStore> {
     // new dependencies
     pub receiver: UnboundedReceiver<(
         SwapId,
         SwapRequestKind,
-        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+        oneshot::Sender<rfc003::bob::SwapResponseKind>,
     )>,
     pub metadata_store: Arc<MetadataStore>,
     pub state_store: Arc<StateStore>,
+    pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
+    pub bitcoin_poll_interval: Duration,
+    pub ethereum_poll_interval: Duration,
+    pub pending_responses: Arc<PendingResponses<SwapId>>,
 
     // legacy dependencies
     pub event_store: Arc<E>,
-    pub lqs_api_client: Arc<C>,
     pub key_store: Arc<KeyStore>,
     pub ethereum_service: Arc<EthereumService>,
     pub bitcoin_service: Arc<BitcoinService>,
-    pub bitcoin_poll_interval: Duration,
-    pub ethereum_poll_interval: Duration,
 }
 
-impl<
-        E: EventStore<SwapId>,
-        C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
-            + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
-        M: MetadataStore<SwapId>,
-        S: StateStore<SwapId>,
-    > SwapRequestHandler<E, C, M, S>
+impl<E: EventStore<SwapId>, M: MetadataStore<SwapId>, S: StateStore<SwapId>>
+    SwapRequestHandler<E, M, S>
 {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
         let (receiver, metadata_store, bitcoin_poll_interval, ethereum_poll_interval) = (
@@ -77,6 +75,7 @@ impl<
         );
         let key_store = Arc::clone(&self.key_store);
         let state_store = Arc::clone(&self.state_store);
+        let pending_responses = Arc::clone(&self.pending_responses);
 
         let event_store = Arc::clone(&self.event_store);
         let ethereum_service = Arc::clone(&self.ethereum_service);
@@ -109,14 +108,43 @@ impl<
                             secret: request.secret_hash,
                         };
 
-                        spawn_state_machine(id, start_state, state_store.as_ref());
+                        let (sender, _receiver) = oneshot::channel();
+
+                        // TODO: Uncomment as you remove legacy code
+                        //                        let convert_and_send_response = receiver.map_err(|_| ()).and_then(
+                        //                            |response| {
+                        //                                response_sender
+                        //                                    .send(rfc003::bob::SwapResponseKind::BitcoinEthereum(response))
+                        //                                    .map_err(|_| warn!("Failed to convert swap response"))
+                        //                            },
+                        //                        );
+                        //
+                        //                        tokio::spawn(convert_and_send_response);
+
+                        spawn_state_machine(
+                            id,
+                            start_state,
+                            state_store.as_ref(),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
+                            )),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(
+                                    Arc::clone(&lqs_api_client),
+                                    ethereum_poll_interval,
+                                ),
+                            )),
+                            Box::new(BobToAlice::new(Arc::clone(&pending_responses), id, sender)),
+                        );
                     }
 
                     // Legacy code below
 
                     let network = request.alpha_ledger.network;
 
-                    let result = process(
+                    let response = process(
                         id,
                         request,
                         &key_store,
@@ -127,10 +155,11 @@ impl<
                         network,
                         bitcoin_poll_interval,
                         ethereum_poll_interval,
-                    );
+                    )
+                    .unwrap();
 
                     response_sender
-                        .send(result.map(rfc003::bob::SwapResponseKind::BitcoinEthereum))
+                        .send(rfc003::bob::SwapResponseKind::BitcoinEthereum(Ok(response)))
                         .map_err(|_| ())
                 }
             })
@@ -142,32 +171,45 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
     id: SwapId,
     start_state: Start<Bob<AL, BL, AA, BA>>,
     state_store: &S,
+    alpha_ledger_events: Box<LedgerEvents<AL, AA>>,
+    beta_ledger_events: Box<LedgerEvents<BL, BA>>,
+    communication_events: Box<CommunicationEvents<Bob<AL, BL, AA, BA>>>,
 ) {
     let state = SwapStates::Start(start_state);
 
-    // TODO: spawn state machine from state here
+    let save_state = state_store
+        .insert(id, state.clone())
+        .expect("handle errors :)");
 
-    state_store.insert(id, state).expect("handle errors :)");
+    let context = Context {
+        alpha_ledger_events,
+        beta_ledger_events,
+        state_repo: save_state,
+        communication_events,
+    };
+
+    let _future = Swap::start_in(state, context);
+
+    // TODO: spawn future
 }
 
 const EXTRA_DATA_FOR_TRANSIENT_REDEEM: [u8; 1] = [1];
 
-fn process<
-    E: EventStore<SwapId>,
-    C: LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery>
-        + LedgerQueryServiceApiClient<Ethereum, EthereumQuery>,
->(
+fn process<E: EventStore<SwapId>>(
     swap_id: SwapId,
     request: rfc003::bob::SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     key_store: &KeyStore,
     event_store: Arc<E>,
-    ledger_query_service_api_client: Arc<C>,
+    ledger_query_service_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     bitcoin_network: Network,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
-) -> Result<rfc003::bob::SwapResponse<Bitcoin, Ethereum>, failure::Error> {
+) -> Result<
+    StateMachineResponse<secp256k1_support::KeyPair, ethereum_support::Address, Seconds>,
+    failure::Error,
+> {
     let alice_refund_address: BitcoinAddress = {
         use swap_protocols::Ledger;
 
@@ -283,9 +325,9 @@ fn process<
         error!("Ledger Query Service Failure: {:#?}", e);
     }));
 
-    Ok(rfc003::bob::SwapResponse::Accept {
+    Ok(StateMachineResponse {
         beta_ledger_refund_identity: bob_refund_address,
-        alpha_ledger_success_identity: bob_success_keypair.public_key().into(),
+        alpha_ledger_success_identity: bob_success_keypair,
         beta_ledger_lock_duration: twelve_hours,
     })
 }

@@ -34,12 +34,18 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct HttpApiProblemStdError {
-    pub http_api_problem: HttpApiProblem,
+    pub inner: HttpApiProblem,
+}
+
+impl From<HttpApiProblem> for HttpApiProblemStdError {
+    fn from(problem: HttpApiProblem) -> Self {
+        Self { inner: problem }
+    }
 }
 
 impl fmt::Display for HttpApiProblemStdError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.http_api_problem.title)
+        write!(f, "{}", self.inner.title)
     }
 }
 
@@ -109,10 +115,10 @@ pub struct SwapCreated {
 pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(ref err) = rejection.find_cause::<HttpApiProblemStdError>() {
         let code = err
-            .http_api_problem
+            .inner
             .status
             .unwrap_or(HttpStatusCode::InternalServerError);
-        let json = warp::reply::json(&err.http_api_problem);
+        let json = warp::reply::json(&err.inner);
         return Ok(warp::reply::with_status(
             json,
             StatusCode::from_u16(code.to_u16()).unwrap(),
@@ -143,7 +149,7 @@ pub fn post_swap(
             id
         );
         return Err(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: HttpApiProblem::with_title_from_status(500),
+            inner: HttpApiProblem::with_title_from_status(500),
         }));
     }
 
@@ -193,7 +199,7 @@ pub fn get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<S
     match result {
         Some(swap_status) => Ok(warp::reply::json(&swap_status)),
         None => Err(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: Error::NotFound.into(),
+            inner: Error::NotFound.into(),
         })),
     }
 }

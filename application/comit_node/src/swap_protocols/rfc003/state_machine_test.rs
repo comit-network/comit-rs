@@ -88,7 +88,7 @@ macro_rules! init {
             alpha_ledger_events: Box::new($alpha_events),
             beta_ledger_events: Box::new($beta_events),
             state_repo: Arc::new(state_sender),
-            response_event: Box::new($response_event),
+            communication_events: Box::new($response_event),
         };
         let state: SwapStates<$role> = $state;
         let final_state_future = Swap::start_in(state, context);

@@ -31,7 +31,6 @@ use comit_node::{
             self,
             alice_ledger_actor::AliceLedgerActor,
             ledger_htlc_service::{BitcoinService, EthereumService},
-            pending_response_store::PendingResponseStore,
             state_store::InMemoryStateStore,
         },
         InMemoryMetadataStore,
@@ -39,6 +38,7 @@ use comit_node::{
     swaps::common::SwapId,
 };
 
+use comit_node::swap_protocols::rfc003::bob::PendingResponses;
 use ethereum_support::*;
 use event_store::InMemoryEventStore;
 use futures::sync::{
@@ -64,10 +64,10 @@ fn main() {
     let event_store = Arc::new(InMemoryEventStore::default());
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
-    let pending_response_store = Arc::new(PendingResponseStore::default());
     let ethereum_service = create_ethereum_service(&settings);
     let bitcoin_service = create_bitcoin_service(&settings, &key_store);
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
+    let pending_responses = Arc::new(PendingResponses::default());
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
@@ -76,7 +76,6 @@ fn main() {
         Arc::clone(&event_store),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        pending_response_store.clone(),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
@@ -89,6 +88,7 @@ fn main() {
         Arc::clone(&event_store),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
+        Arc::clone(&pending_responses),
         sender,
         &mut runtime,
     );
@@ -97,6 +97,7 @@ fn main() {
         Arc::clone(&event_store),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
+        Arc::clone(&pending_responses),
         Arc::clone(&ethereum_service),
         Arc::clone(&bitcoin_service),
         Arc::clone(&ledger_query_service_api_client),
@@ -201,10 +202,17 @@ fn spawn_warp_instance(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
+    pending_responses: Arc<PendingResponses<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(event_store, metadata_store, state_store, sender);
+    let routes = route_factory::create(
+        event_store,
+        metadata_store,
+        state_store,
+        pending_responses,
+        sender,
+    );
 
     let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -218,7 +226,6 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    pending_response_store: Arc<PendingResponseStore<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     ledger_query_service: Arc<DefaultLedgerQueryServiceApiClient>,
@@ -248,7 +255,6 @@ fn spawn_alice_swap_request_handler_for_rfc003(
         metadata_store,
         key_store,
         state_store,
-        pending_response_store,
         client_factory,
         event_store,
         comit_node_addr,
@@ -265,6 +271,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
     event_store: Arc<InMemoryEventStore<SwapId>>,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
+    pending_responses: Arc<PendingResponses<SwapId>>,
     ethereum_service: Arc<EthereumService>,
     bitcoin_service: Arc<BitcoinService>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
@@ -275,7 +282,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
 ) -> UnboundedSender<(
     SwapId,
     rfc003::bob::SwapRequestKind,
-    oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+    oneshot::Sender<rfc003::bob::SwapResponseKind>,
 )> {
     let (sender, receiver) = mpsc::unbounded();
 
@@ -290,6 +297,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
         bitcoin_service,
         bitcoin_poll_interval,
         ethereum_poll_interval,
+        pending_responses,
     };
 
     runtime.spawn(bob_swap_request_handler.start());
@@ -302,7 +310,7 @@ fn spawn_comit_server(
     sender: UnboundedSender<(
         SwapId,
         rfc003::bob::SwapRequestKind,
-        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+        oneshot::Sender<rfc003::bob::SwapResponseKind>,
     )>,
 
     runtime: &mut tokio::runtime::Runtime,

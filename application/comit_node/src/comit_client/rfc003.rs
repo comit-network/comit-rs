@@ -1,6 +1,6 @@
 use swap_protocols::rfc003::{Ledger, SecretHash};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Request<AL: Ledger, BL: Ledger, AA, BA> {
     pub alpha_asset: AA,
     pub beta_asset: BA,

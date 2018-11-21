@@ -6,17 +6,15 @@ use futures::{
 use std::{any::Any, collections::HashMap, hash::Hash, sync::Mutex};
 use swap_protocols::{
     asset::Asset,
-    rfc003::{events::ResponseFuture, messages::AcceptResponseBody, roles::Bob, Ledger},
+    rfc003::{events::ResponseFuture, roles::Bob, state_machine::StateMachineResponse, Ledger},
 };
 
-pub type SenderAction<SL, TL> = Sender<Result<AcceptResponseBody<SL, TL>, SwapReject>>;
-
 #[derive(Debug, Default)]
-pub struct PendingResponseStore<K: Hash + Eq> {
+pub struct PendingResponses<K: Hash + Eq> {
     pending_responses: Mutex<HashMap<K, Box<Any + Send + 'static>>>,
 }
 
-impl<K: Hash + Eq + Clone + Send + Sync + 'static> PendingResponseStore<K> {
+impl<K: Hash + Eq + Clone + Send + Sync + 'static> PendingResponses<K> {
     pub fn create<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>(
         &self,
         key: K,
@@ -30,10 +28,24 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> PendingResponseStore<K> {
         Box::new(receiver.map_err(|_| unreachable!("The sender should never be dropped")))
     }
 
-    pub fn take<SL: Ledger, TL: Ledger>(&self, key: &K) -> Option<SenderAction<SL, TL>> {
+    pub fn take<SL: Ledger, TL: Ledger>(
+        &self,
+        key: &K,
+    ) -> Option<
+        Sender<
+            Result<StateMachineResponse<SL::Identity, TL::Identity, TL::LockDuration>, SwapReject>,
+        >,
+    > {
         let mut pending_responses = self.pending_responses.lock().unwrap();
         pending_responses.remove(key).map(|sender| {
-            let sender = sender.downcast::<SenderAction<SL, TL>>().unwrap();
+            let sender = sender
+                .downcast::<Sender<
+                    Result<
+                        StateMachineResponse<SL::Identity, TL::Identity, TL::LockDuration>,
+                        SwapReject,
+                    >,
+                >>()
+                .unwrap();
             *sender
         })
     }

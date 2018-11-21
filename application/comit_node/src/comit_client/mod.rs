@@ -29,7 +29,7 @@ pub trait ClientFactory<C: Client>: Send + Sync + RefUnwindSafe + Debug {
     fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<Arc<C>, ClientFactoryError>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SwapReject {
     /// The counterparty rejected the request
     Rejected,

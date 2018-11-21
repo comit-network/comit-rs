@@ -3,10 +3,21 @@ use ledger_query_service::EthereumQuery;
 use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
-        events::{NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
+        events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
         state_machine::HtlcParams,
     },
 };
+
+impl NewHtlcFundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
+    fn new_htlc_funded_query(htlc_params: &HtlcParams<Ethereum, EtherQuantity>) -> Self {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(htlc_params.bytecode()),
+        }
+    }
+}
 
 impl NewHtlcRefundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     fn new_htlc_refunded_query(
