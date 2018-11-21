@@ -1,5 +1,5 @@
 use frunk;
-use http_api::rfc003::swap::HttpApiProblemStdError;
+use http_api::HttpApiProblemStdError;
 use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use swap_protocols::{

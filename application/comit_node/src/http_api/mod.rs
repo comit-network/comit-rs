@@ -7,6 +7,10 @@ pub mod ledger;
 #[macro_use]
 pub mod asset;
 
+mod problem;
+
+pub use self::problem::*;
+
 pub const PATH: &str = "swaps";
 
 mod ledger_impls {

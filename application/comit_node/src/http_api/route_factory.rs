@@ -50,6 +50,6 @@ pub fn create<
         .and_then(http_api::rfc003::action::post);
 
     path.and(rfc003_get_swap.or(rfc003.and(rfc003_post_action.or(rfc003_post_swap))))
-        .recover(http_api::rfc003::swap::customize_error)
+        .recover(http_api::unpack_problem)
         .boxed()
 }
