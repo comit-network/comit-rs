@@ -105,8 +105,8 @@ impl<R: Role> OngoingSwap<R> {
 
 #[allow(missing_debug_implementations)]
 pub struct Context<R: Role> {
-    pub ledger_events:
-        Box<events::LedgerEvents<R::AlphaLedger, R::BetaLedger, R::AlphaAsset, R::BetaAsset>>,
+    pub alpha_ledger_events: Box<events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
+    pub beta_ledger_events: Box<events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
     pub state_repo: Arc<SaveState<R>>,
     pub response_event: Box<events::CommunicationEvents<R> + Send>,
 }
@@ -217,8 +217,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
         let alpha_htlc_location = try_ready!(context
-            .ledger_events
-            .alpha_htlc_funded(state.swap.alpha_htlc_params())
+            .alpha_ledger_events
+            .htlc_funded(state.swap.alpha_htlc_params())
             .poll());
 
         let state = state.take();
@@ -236,19 +236,20 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         state: &'s mut RentToOwn<'s, AlphaFunded<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAlphaFunded<R>>, rfc003::Error> {
+        if let Async::Ready(_alpha_redeemed_or_refunded) = context
+            .alpha_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .poll()?
+        {
+            transition_save!(context.state_repo, Final(SwapOutcome::AlphaRefunded))
+        }
+
         match try_ready!(context
-            .ledger_events
-            .alpha_htlc_refunded_beta_htlc_funded(
-                state.swap.alpha_htlc_params(),
-                state.swap.beta_htlc_params(),
-                &state.alpha_htlc_location
-            )
+            .beta_ledger_events
+            .htlc_funded(state.swap.beta_htlc_params())
             .poll())
         {
-            Either::A(_alpha_refunded_txid) => {
-                transition_save!(context.state_repo, Final(SwapOutcome::AlphaRefunded))
-            }
-            Either::B(beta_htlc_location) => {
+            beta_htlc_location => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
@@ -267,11 +268,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterBothFunded<R>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
-            .ledger_events
-            .beta_htlc_redeemed_or_refunded(
-                state.swap.beta_htlc_params(),
-                &state.beta_htlc_location,
-            )
+            .beta_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
             .poll()?
         {
             let state = state.take();
@@ -304,11 +302,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         }
 
         match try_ready!(context
-            .ledger_events
-            .alpha_htlc_redeemed_or_refunded(
-                state.swap.alpha_htlc_params(),
-                &state.alpha_htlc_location
-            )
+            .alpha_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
             .poll())
         {
             Either::A(_alpha_redeemed_tx) => {
@@ -339,11 +334,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAlphaFundedBetaRefunded>, rfc003::Error> {
         match try_ready!(context
-            .ledger_events
-            .alpha_htlc_redeemed_or_refunded(
-                state.swap.alpha_htlc_params(),
-                &state.alpha_htlc_location
-            )
+            .alpha_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
             .poll())
         {
             Either::A(_alpha_redeemed_txid) => transition_save!(
@@ -361,11 +353,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAlphaRefundedBetaFunded>, rfc003::Error> {
         match try_ready!(context
-            .ledger_events
-            .beta_htlc_redeemed_or_refunded(
-                state.swap.beta_htlc_params(),
-                &state.beta_htlc_location
-            )
+            .beta_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
             .poll())
         {
             Either::A(_beta_redeemed_txid) => transition_save!(
@@ -383,11 +372,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAlphaRedeemedBetaFunded>, rfc003::Error> {
         match try_ready!(context
-            .ledger_events
-            .beta_htlc_redeemed_or_refunded(
-                state.swap.beta_htlc_params(),
-                &state.beta_htlc_location
-            )
+            .beta_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
             .poll())
         {
             Either::A(_beta_redeemed_txid) => {
@@ -405,11 +391,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAlphaFundedBetaRedeemed>, rfc003::Error> {
         match try_ready!(context
-            .ledger_events
-            .alpha_htlc_redeemed_or_refunded(
-                state.swap.alpha_htlc_params(),
-                &state.alpha_htlc_location
-            )
+            .alpha_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
             .poll())
         {
             Either::A(_beta_redeemed_txid) => {
