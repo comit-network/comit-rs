@@ -4,76 +4,76 @@ use swap_protocols::rfc003::{Ledger, Secret};
 use swaps::common::SwapId;
 
 #[derive(Clone, Debug)]
-pub struct SentSwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
-    pub source_ledger: SL,
-    pub target_ledger: TL,
-    pub target_asset: TA,
-    pub source_asset: SA,
+pub struct SentSwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
+    pub alpha_ledger: AL,
+    pub beta_ledger: BL,
+    pub beta_asset: BA,
+    pub alpha_asset: AA,
     pub secret: Secret,
-    pub target_ledger_success_identity: TL::Identity,
-    pub source_ledger_refund_identity: SL::Identity,
-    pub source_ledger_lock_duration: SL::LockDuration,
+    pub beta_ledger_success_identity: BL::Identity,
+    pub alpha_ledger_refund_identity: AL::Identity,
+    pub alpha_ledger_lock_duration: AL::LockDuration,
 }
 
 impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync + 'static,
-        TA: Clone + Send + Sync + 'static,
-    > Event for SentSwapRequest<SL, TL, SA, TA>
+        AL: Ledger,
+        BL: Ledger,
+        AA: Clone + Send + Sync + 'static,
+        BA: Clone + Send + Sync + 'static,
+    > Event for SentSwapRequest<AL, BL, AA, BA>
 {
     type Prev = ();
 }
 
 #[derive(Clone, Debug)]
-pub struct SwapRequestAccepted<SL: Ledger, TL: Ledger, SA, TA> {
-    pub target_ledger_refund_identity: TL::Identity,
-    pub source_ledger_success_identity: SL::Identity,
-    pub target_ledger_lock_duration: TL::LockDuration,
-    phantom: PhantomData<(SA, TA)>,
+pub struct SwapRequestAccepted<AL: Ledger, BL: Ledger, AA, BA> {
+    pub beta_ledger_refund_identity: BL::Identity,
+    pub alpha_ledger_success_identity: AL::Identity,
+    pub beta_ledger_lock_duration: BL::LockDuration,
+    phantom: PhantomData<(AA, BA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestAccepted<SL, TL, SA, TA> {
+impl<AL: Ledger, BL: Ledger, AA, BA> SwapRequestAccepted<AL, BL, AA, BA> {
     pub fn new(
-        target_ledger_refund_identity: TL::Identity,
-        source_ledger_success_identity: SL::Identity,
-        target_ledger_lock_duration: TL::LockDuration,
+        beta_ledger_refund_identity: BL::Identity,
+        alpha_ledger_success_identity: AL::Identity,
+        beta_ledger_lock_duration: BL::LockDuration,
     ) -> Self {
         SwapRequestAccepted {
-            target_ledger_refund_identity,
-            source_ledger_success_identity,
-            target_ledger_lock_duration,
+            beta_ledger_refund_identity,
+            alpha_ledger_success_identity,
+            beta_ledger_lock_duration,
             phantom: PhantomData,
         }
     }
 }
 
 impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync + 'static,
-        TA: Clone + Send + Sync + 'static,
-    > Event for SwapRequestAccepted<SL, TL, SA, TA>
+        AL: Ledger,
+        BL: Ledger,
+        AA: Clone + Send + Sync + 'static,
+        BA: Clone + Send + Sync + 'static,
+    > Event for SwapRequestAccepted<AL, BL, AA, BA>
 {
-    type Prev = SentSwapRequest<SL, TL, SA, TA>;
+    type Prev = SentSwapRequest<AL, BL, AA, BA>;
 }
 #[derive(Clone, Debug)]
-pub struct SwapRequestRejected<SL: Ledger, TL: Ledger, SA, TA> {
-    phantom: PhantomData<(SL, TL, SA, TA)>,
+pub struct SwapRequestRejected<AL: Ledger, BL: Ledger, AA, BA> {
+    phantom: PhantomData<(AL, BL, AA, BA)>,
 }
 
 impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync + 'static,
-        TA: Clone + Send + Sync + 'static,
-    > Event for SwapRequestRejected<SL, TL, SA, TA>
+        AL: Ledger,
+        BL: Ledger,
+        AA: Clone + Send + Sync + 'static,
+        BA: Clone + Send + Sync + 'static,
+    > Event for SwapRequestRejected<AL, BL, AA, BA>
 {
-    type Prev = SentSwapRequest<SL, TL, SA, TA>;
+    type Prev = SentSwapRequest<AL, BL, AA, BA>;
 }
 
 #[allow(clippy::new_without_default_derive)]
-impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
+impl<AL: Ledger, BL: Ledger, AA, BA> SwapRequestRejected<AL, BL, AA, BA> {
     pub fn new() -> Self {
         SwapRequestRejected {
             phantom: PhantomData,
@@ -82,14 +82,14 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SwapRequestRejected<SL, TL, SA, TA> {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SourceFunded<SL: Ledger, TL: Ledger, SA, TA> {
+pub struct AlphaFunded<AL: Ledger, BL: Ledger, AA, BA> {
     pub uid: SwapId,
-    phantom: PhantomData<(SL, TL, SA, TA)>,
+    phantom: PhantomData<(AL, BL, AA, BA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
-    pub fn new(uid: SwapId) -> SourceFunded<SL, TL, SA, TA> {
-        SourceFunded {
+impl<AL: Ledger, BL: Ledger, AA, BA> AlphaFunded<AL, BL, AA, BA> {
+    pub fn new(uid: SwapId) -> AlphaFunded<AL, BL, AA, BA> {
+        AlphaFunded {
             uid,
             phantom: PhantomData,
         }
@@ -97,24 +97,24 @@ impl<SL: Ledger, TL: Ledger, SA, TA> SourceFunded<SL, TL, SA, TA> {
 }
 
 impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync + 'static,
-        TA: Clone + Send + Sync + 'static,
-    > Event for SourceFunded<SL, TL, SA, TA>
+        AL: Ledger,
+        BL: Ledger,
+        AA: Clone + Send + Sync + 'static,
+        BA: Clone + Send + Sync + 'static,
+    > Event for AlphaFunded<AL, BL, AA, BA>
 {
-    type Prev = SwapRequestAccepted<SL, TL, SA, TA>;
+    type Prev = SwapRequestAccepted<AL, BL, AA, BA>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TargetFunded<SL: Ledger, TL: Ledger, SA, TA> {
-    pub address: TL::Address,
-    phantom: PhantomData<(SL, SA, TA)>,
+pub struct BetaFunded<AL: Ledger, BL: Ledger, AA, BA> {
+    pub address: BL::Address,
+    phantom: PhantomData<(AL, AA, BA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> TargetFunded<SL, TL, SA, TA> {
-    pub fn new(address: TL::Address) -> TargetFunded<SL, TL, SA, TA> {
-        TargetFunded {
+impl<AL: Ledger, BL: Ledger, AA, BA> BetaFunded<AL, BL, AA, BA> {
+    pub fn new(address: BL::Address) -> BetaFunded<AL, BL, AA, BA> {
+        BetaFunded {
             address,
             phantom: PhantomData,
         }
@@ -122,34 +122,34 @@ impl<SL: Ledger, TL: Ledger, SA, TA> TargetFunded<SL, TL, SA, TA> {
 }
 
 impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync + 'static,
-        TA: Clone + Send + Sync + 'static,
-    > Event for TargetFunded<SL, TL, SA, TA>
+        AL: Ledger,
+        BL: Ledger,
+        AA: Clone + Send + Sync + 'static,
+        BA: Clone + Send + Sync + 'static,
+    > Event for BetaFunded<AL, BL, AA, BA>
 {
-    type Prev = SourceFunded<SL, TL, SA, TA>;
+    type Prev = AlphaFunded<AL, BL, AA, BA>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct TargetRedeemed<SL: Ledger, TL: Ledger, SA, TA> {
-    phantom: PhantomData<(SL, TL, SA, TA)>,
+pub struct BetaRedeemed<AL: Ledger, BL: Ledger, AA, BA> {
+    phantom: PhantomData<(AL, BL, AA, BA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA, TA> TargetRedeemed<SL, TL, SA, TA> {
-    pub fn new() -> TargetRedeemed<SL, TL, SA, TA> {
-        TargetRedeemed {
+impl<AL: Ledger, BL: Ledger, AA, BA> BetaRedeemed<AL, BL, AA, BA> {
+    pub fn new() -> BetaRedeemed<AL, BL, AA, BA> {
+        BetaRedeemed {
             phantom: PhantomData,
         }
     }
 }
 
 impl<
-        SL: Ledger,
-        TL: Ledger,
-        SA: Clone + Send + Sync + 'static,
-        TA: Clone + Send + Sync + 'static,
-    > Event for TargetRedeemed<SL, TL, SA, TA>
+        AL: Ledger,
+        BL: Ledger,
+        AA: Clone + Send + Sync + 'static,
+        BA: Clone + Send + Sync + 'static,
+    > Event for BetaRedeemed<AL, BL, AA, BA>
 {
-    type Prev = TargetFunded<SL, TL, SA, TA>;
+    type Prev = BetaFunded<AL, BL, AA, BA>;
 }

@@ -7,24 +7,24 @@ use swap_protocols::{
 };
 
 #[derive(Clone, Debug, PartialEq, LabelledGeneric)]
-pub struct SwapRequest<SL: Ledger, TL: Ledger, SA, TA> {
-    pub source_asset: SA,
-    pub target_asset: TA,
-    pub source_ledger: SL,
-    pub target_ledger: TL,
-    pub source_ledger_refund_identity: SL::Identity,
-    pub target_ledger_success_identity: TL::Identity,
-    pub source_ledger_lock_duration: SL::LockDuration,
+pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
+    pub alpha_asset: AA,
+    pub beta_asset: BA,
+    pub alpha_ledger: AL,
+    pub beta_ledger: BL,
+    pub alpha_ledger_refund_identity: AL::Identity,
+    pub beta_ledger_success_identity: BL::Identity,
+    pub alpha_ledger_lock_duration: AL::LockDuration,
     pub secret_hash: SecretHash,
 }
 
 impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {
     fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>) -> Self {
         Self {
-            source_ledger: LedgerKind::Bitcoin,
-            target_ledger: LedgerKind::Ethereum,
-            source_asset: AssetKind::Bitcoin,
-            target_asset: AssetKind::Ether,
+            alpha_ledger: LedgerKind::Bitcoin,
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Ether,
             role: RoleKind::Bob,
         }
     }

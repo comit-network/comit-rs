@@ -102,23 +102,23 @@ fn main() {
                 },
         } => {
             let request = SwapRequest {
-                source_ledger: Ledger {
+                alpha_ledger: Ledger {
                     value: "Bitcoin".to_string(),
                     identity: format!("{:x}", bitcoin_support::PubkeyHash::from(btc_addr)),
                     parameters: HashMap::new(),
                 },
-                target_ledger: Ledger {
+                beta_ledger: Ledger {
                     value: "Ethereum".to_string(),
                     identity: format!("0x{:x}", eth_addr),
                     parameters: HashMap::new(),
                 },
-                source_asset: Asset {
+                alpha_asset: Asset {
                     value: "Bitcoin".to_string(),
                     parameters: convert_args!(hashmap!(
                         "quantity" =>  format!("{}", btc_quantity.satoshi())
                     )),
                 },
-                target_asset: Asset {
+                beta_asset: Asset {
                     value: "Ether".to_string(),
                     parameters: convert_args!(hashmap!(
                         "quantity" => format!("{}", eth_quantity.wei())

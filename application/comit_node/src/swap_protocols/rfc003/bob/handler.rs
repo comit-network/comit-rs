@@ -99,13 +99,13 @@ impl<
                         let request = request.clone();
 
                         let start_state = Start {
-                            source_ledger_refund_identity: request.source_ledger_refund_identity,
-                            target_ledger_success_identity: request.target_ledger_success_identity,
-                            source_ledger: request.source_ledger,
-                            target_ledger: request.target_ledger,
-                            source_asset: request.source_asset,
-                            target_asset: request.target_asset,
-                            source_ledger_lock_duration: request.source_ledger_lock_duration,
+                            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+                            beta_ledger_success_identity: request.beta_ledger_success_identity,
+                            alpha_ledger: request.alpha_ledger,
+                            beta_ledger: request.beta_ledger,
+                            alpha_asset: request.alpha_asset,
+                            beta_asset: request.beta_asset,
+                            alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret: request.secret_hash,
                         };
 
@@ -114,7 +114,7 @@ impl<
 
                     // Legacy code below
 
-                    let network = request.source_ledger.network;
+                    let network = request.alpha_ledger.network;
 
                     let result = process(
                         id,
@@ -138,9 +138,9 @@ impl<
     }
 }
 
-fn spawn_state_machine<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset, S: StateStore<SwapId>>(
+fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateStore<SwapId>>(
     id: SwapId,
-    start_state: Start<Bob<SL, TL, SA, TA>>,
+    start_state: Start<Bob<AL, BL, AA, BA>>,
     state_store: &S,
 ) {
     let state = SwapStates::Start(start_state);
@@ -172,15 +172,15 @@ fn process<
         use swap_protocols::Ledger;
 
         request
-            .source_ledger
-            .address_for_identity(request.source_ledger_refund_identity)
+            .alpha_ledger
+            .address_for_identity(request.alpha_ledger_refund_identity)
     };
 
     let bob_success_keypair =
         key_store.get_transient_keypair(&swap_id.into(), &EXTRA_DATA_FOR_TRANSIENT_REDEEM);
     let bob_success_address: BitcoinAddress = bob_success_keypair
         .public_key()
-        .into_p2wpkh_address(request.source_ledger.network);
+        .into_p2wpkh_address(request.alpha_ledger.network);
     debug!(
         "Generated transient success address for Bob is {}",
         bob_success_address
@@ -199,15 +199,15 @@ fn process<
     let order_taken = OrderTaken::<Ethereum, Bitcoin> {
         uid: swap_id,
         contract_secret_lock: request.secret_hash.clone(),
-        alice_contract_time_lock: request.source_ledger_lock_duration,
+        alice_contract_time_lock: request.alpha_ledger_lock_duration,
         bob_contract_time_lock: twelve_hours,
         alice_refund_address: alice_refund_address.clone(),
-        alice_success_address: request.target_ledger_success_identity,
+        alice_success_address: request.beta_ledger_success_identity,
         bob_refund_address,
         bob_success_address: bob_success_address.clone(),
         bob_success_keypair,
-        buy_amount: request.target_asset,
-        sell_amount: request.source_asset,
+        buy_amount: request.beta_asset,
+        sell_amount: request.alpha_asset,
     };
 
     event_store
@@ -284,9 +284,9 @@ fn process<
     }));
 
     Ok(rfc003::bob::SwapResponse::Accept {
-        target_ledger_refund_identity: bob_refund_address,
-        source_ledger_success_identity: bob_success_keypair.public_key().into(),
-        target_ledger_lock_duration: twelve_hours,
+        beta_ledger_refund_identity: bob_refund_address,
+        alpha_ledger_success_identity: bob_success_keypair.public_key().into(),
+        beta_ledger_lock_duration: twelve_hours,
     })
 }
 

@@ -7,72 +7,72 @@ use swap_protocols::{
 };
 
 pub trait Role: Send + Clone + 'static {
-    type SourceLedger: Ledger;
-    type TargetLedger: Ledger;
-    type SourceAsset: Asset;
-    type TargetAsset: Asset;
-    type SourceSuccessHtlcIdentity: Send
+    type AlphaLedger: Ledger;
+    type BetaLedger: Ledger;
+    type AlphaAsset: Asset;
+    type BetaAsset: Asset;
+    type AlphaSuccessHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
-        + Into<<Self::SourceLedger as swap_protocols::Ledger>::Identity>;
+        + Into<<Self::AlphaLedger as swap_protocols::Ledger>::Identity>;
 
-    type SourceRefundHtlcIdentity: Send
+    type AlphaRefundHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
-        + Into<<Self::SourceLedger as swap_protocols::Ledger>::Identity>;
+        + Into<<Self::AlphaLedger as swap_protocols::Ledger>::Identity>;
 
-    type TargetSuccessHtlcIdentity: Send
+    type BetaSuccessHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
-        + Into<<Self::TargetLedger as swap_protocols::Ledger>::Identity>;
+        + Into<<Self::BetaLedger as swap_protocols::Ledger>::Identity>;
 
-    type TargetRefundHtlcIdentity: Send
+    type BetaRefundHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
-        + Into<<Self::TargetLedger as swap_protocols::Ledger>::Identity>;
+        + Into<<Self::BetaLedger as swap_protocols::Ledger>::Identity>;
 
     type Secret: Send + Sync + Clone + Into<SecretHash> + Debug + PartialEq;
 }
 
 #[derive(Clone, Debug)]
-pub struct Alice<SL, TL, SA, TA> {
-    phantom_data: PhantomData<(SL, TL, SA, TA)>,
+pub struct Alice<AL, BL, AA, BA> {
+    phantom_data: PhantomData<(AL, BL, AA, BA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> Role for Alice<SL, TL, SA, TA> {
-    type SourceLedger = SL;
-    type TargetLedger = TL;
-    type SourceAsset = SA;
-    type TargetAsset = TA;
-    type SourceSuccessHtlcIdentity = SL::Identity;
-    type SourceRefundHtlcIdentity = SL::HtlcIdentity;
-    type TargetSuccessHtlcIdentity = TL::HtlcIdentity;
-    type TargetRefundHtlcIdentity = TL::Identity;
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Alice<AL, BL, AA, BA> {
+    type AlphaLedger = AL;
+    type BetaLedger = BL;
+    type AlphaAsset = AA;
+    type BetaAsset = BA;
+    type AlphaSuccessHtlcIdentity = AL::Identity;
+    type AlphaRefundHtlcIdentity = AL::HtlcIdentity;
+    type BetaSuccessHtlcIdentity = BL::HtlcIdentity;
+    type BetaRefundHtlcIdentity = BL::Identity;
     type Secret = Secret;
 }
 
 #[derive(Debug, Clone)]
-pub struct Bob<SL, TL, SA, TA> {
-    phantom_data: PhantomData<(SL, TL, SA, TA)>,
+pub struct Bob<AL, BL, AA, BA> {
+    phantom_data: PhantomData<(AL, BL, AA, BA)>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> Role for Bob<SL, TL, SA, TA> {
-    type SourceLedger = SL;
-    type TargetLedger = TL;
-    type SourceAsset = SA;
-    type TargetAsset = TA;
-    type SourceSuccessHtlcIdentity = SL::HtlcIdentity;
-    type SourceRefundHtlcIdentity = SL::Identity;
-    type TargetSuccessHtlcIdentity = TL::Identity;
-    type TargetRefundHtlcIdentity = TL::HtlcIdentity;
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Bob<AL, BL, AA, BA> {
+    type AlphaLedger = AL;
+    type BetaLedger = BL;
+    type AlphaAsset = AA;
+    type BetaAsset = BA;
+    type AlphaSuccessHtlcIdentity = AL::HtlcIdentity;
+    type AlphaRefundHtlcIdentity = AL::Identity;
+    type BetaSuccessHtlcIdentity = BL::Identity;
+    type BetaRefundHtlcIdentity = BL::HtlcIdentity;
     type Secret = SecretHash;
 }
 
@@ -115,10 +115,10 @@ pub mod test {
         fn request_responded(
             &mut self,
             _request: &comit_client::rfc003::Request<
-                R::SourceLedger,
-                R::TargetLedger,
-                R::SourceAsset,
-                R::TargetAsset,
+                R::AlphaLedger,
+                R::BetaLedger,
+                R::AlphaAsset,
+                R::BetaAsset,
             >,
         ) -> &mut ResponseFuture<R> {
             self.response.as_mut().unwrap()

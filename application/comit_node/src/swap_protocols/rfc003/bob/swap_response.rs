@@ -4,11 +4,11 @@ use swap_protocols::{
 };
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapResponse<SL: Ledger, TL: Ledger> {
+pub enum SwapResponse<AL: Ledger, BL: Ledger> {
     Accept {
-        target_ledger_refund_identity: TL::Identity,
-        source_ledger_success_identity: SL::Identity,
-        target_ledger_lock_duration: TL::LockDuration,
+        beta_ledger_refund_identity: BL::Identity,
+        alpha_ledger_success_identity: AL::Identity,
+        beta_ledger_lock_duration: BL::LockDuration,
     },
     Decline,
 }

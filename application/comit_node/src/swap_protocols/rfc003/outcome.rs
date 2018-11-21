@@ -1,9 +1,9 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome {
     Rejected,
-    SourceRefunded,
+    AlphaRefunded,
     BothRefunded,
     BothRedeemed,
-    SourceRedeemedTargetRefunded,
-    SourceRefundedTargetRedeemed,
+    AlphaRedeemedBetaRefunded,
+    AlphaRefundedBetaRedeemed,
 }

@@ -24,7 +24,7 @@ const alice = test_lib.comit_conf("alice", {
 });
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const target_asset = new BigNumber(web3.utils.toWei("10", 'ether'));
+const beta_asset = new BigNumber(web3.utils.toWei("10", 'ether'));
 const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
 
 describe('RFC003 Bitcoin for Ether', () => {
@@ -47,24 +47,24 @@ describe('RFC003 Bitcoin for Ether', () => {
         return chai.request(alice.comit_node_url())
             .post('/swaps/rfc003')
             .send({
-                "source_ledger": {
+                "alpha_ledger": {
                     "name": "Bitcoin",
                     "network": "regtest"
                 },
-                "target_ledger": {
+                "beta_ledger": {
                     "name": "Ethereum"
                 },
-                "source_asset": {
+                "alpha_asset": {
                     "name": "Bitcoin",
                     "quantity": "100000000"
                 },
-                "target_asset": {
+                "beta_asset": {
                     "name": "Ether",
-                    "quantity": target_asset.toString(),
+                    "quantity": beta_asset.toString(),
                 },
-                "source_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
-                "target_ledger_success_identity": alice_final_address,
-                "source_ledger_lock_duration": 144
+                "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                "beta_ledger_success_identity": alice_final_address,
+                "alpha_ledger_lock_duration": 144
             }).then((res) => {
                 res.should.have.status(201);
                 swap_location = res.headers.location;
@@ -108,6 +108,6 @@ describe('RFC003 Bitcoin for Ether', () => {
         await test_lib.sleep(2000);
         let new_balance = new BigNumber(await web3.eth.getBalance(alice_final_address));
         let diff = new_balance.minus(old_balance);
-        diff.toString().should.equal(target_asset.toString());
+        diff.toString().should.equal(beta_asset.toString());
     });
 });
