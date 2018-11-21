@@ -5,7 +5,7 @@ export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 
 TEST_PATH="$1";
-export TEST_PATH=$(cd ${TEST_PATH} && pwd) && cd -; # Makes path absolute
+export TEST_PATH=$(cd ${TEST_PATH} && pwd); # Convert to absolute path
 
 if [[ -z "${TEST_PATH}" ]] || [[ ! -d "${TEST_PATH}" ]]
 then
