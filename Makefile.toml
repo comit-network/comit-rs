@@ -84,7 +84,7 @@ workspace = false
 dependencies = [
     "build",
     "pre-e2e-tests",
-    "specified-e2e-test",
+    "e2e-tests",
     "post-e2e-tests",
 ]
 
@@ -204,20 +204,6 @@ npm install;
 ]
 
 [tasks.e2e-tests]
-description = "Runs end-to-end tests."
-workspace = false
-private = true
-script_runner = "bash"
-script = [
-'''
-for DIR in $(ls ./api_tests/e2e/rfc003/); do
-    export LOG_DIR="./e2e/rfc003/${DIR}/log";
-    ./api_tests/e2e/comit-harness.sh ./api_tests/e2e/rfc003/${DIR} || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
-done;
-'''
-]
-
-[tasks.specified-e2e-test]
 # Usage: `cargo make e2e <folder>` folder can be:
 # - empty (run all tests)
 # - btc_eth or btc_eth-erc20
