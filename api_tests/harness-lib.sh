@@ -46,7 +46,7 @@ function generate_btc_blocks_every() {
 function activate_segwit() {
     debug "Generating enough blocks to activate segwit";
     count=0;
-    tries=3
+    tries=5
     while [ "$((count+=1))" -le "$tries" ] && ! generate_blocks 432; do
         sleep 5;
         if [ "$count" = "$tries" ]; then

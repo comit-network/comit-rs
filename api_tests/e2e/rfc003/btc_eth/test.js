@@ -30,15 +30,10 @@ const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
 describe('RFC003 Bitcoin for Ether', () => {
 
     before(async function () {
-        this.timeout(3000);
-        return await test_lib.fund_eth(20).then(async () => {
-            return await Promise.all(
-                [
-                    test_lib.give_eth_to(bob_eth_address, bob_initial_eth),
-                    test_lib.give_eth_to(alice.wallet.eth_address(), alice_initial_eth)
-                ]
-            );
-        });
+        this.timeout(5000);
+        await test_lib.fund_eth(20);
+        await test_lib.give_eth_to(bob_eth_address, bob_initial_eth);
+        await test_lib.give_eth_to(alice.wallet.eth_address(), alice_initial_eth);
     });
 
     let alice_swap_id;
