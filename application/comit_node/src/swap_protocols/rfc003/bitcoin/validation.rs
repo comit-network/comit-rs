@@ -2,13 +2,13 @@ use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        contains_htlc::{ContainsHtlc, Error},
+        find_htlc_location::{Error, FindHtlcLocation},
         state_machine::HtlcParams,
     },
 };
 
-impl ContainsHtlc<Bitcoin, BitcoinQuantity> for Transaction {
-    fn contains_htlc(
+impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
+    fn find_htlc_location(
         &self,
         htlc_params: &HtlcParams<Bitcoin, BitcoinQuantity>,
     ) -> Result<OutPoint, Error<BitcoinQuantity>> {
@@ -92,7 +92,7 @@ mod tests {
 
         let bitcoin_transaction: Transaction = transaction.into();
 
-        let result = bitcoin_transaction.clone().contains_htlc(&htlc_params);
+        let result = bitcoin_transaction.clone().find_htlc_location(&htlc_params);
 
         let txid = bitcoin_transaction.txid();
         let expected_outpoint = OutPoint { txid, vout: 0 };
@@ -110,7 +110,7 @@ mod tests {
             output: vec![],
         };
 
-        let result = transaction.contains_htlc(&gen_htlc_params(bitcoin_amount));
+        let result = transaction.find_htlc_location(&gen_htlc_params(bitcoin_amount));
 
         assert_that(&result).is_err_containing(ValidationError::WrongTransaction)
     }
@@ -136,7 +136,7 @@ mod tests {
             output: vec![transaction_output],
         };
 
-        let result = transaction.contains_htlc(&htlc_params);
+        let result = transaction.find_htlc_location(&htlc_params);
 
         let expected_error = ValidationError::UnexpectedAsset {
             found: provided_bitcoin_amount,

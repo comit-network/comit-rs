@@ -5,11 +5,11 @@ use swap_protocols::{
     asset::Asset,
     rfc003::{
         self,
-        contains_htlc::ContainsHtlc,
         events::{
             Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery,
             RedeemedOrRefunded,
         },
+        find_htlc_location::FindHtlcLocation,
         state_machine::HtlcParams,
         Ledger,
     },
@@ -40,7 +40,7 @@ where
     L: Ledger,
     A: Asset,
     Q: Query + NewHtlcRefundedQuery<L, A> + NewHtlcFundedQuery<L, A> + NewHtlcRedeemedQuery<L, A>,
-    <L as swap_protocols::Ledger>::Transaction: ContainsHtlc<L, A>,
+    <L as swap_protocols::Ledger>::Transaction: FindHtlcLocation<L, A>,
 {
     fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L> {
         let ledger_first_match = self.ledger_first_match.clone();
@@ -55,7 +55,7 @@ where
                     ledger_first_match
                         .first_match_of(query_id)
                         .and_then(move |tx| {
-                            tx.contains_htlc(&htlc_params)
+                            tx.find_htlc_location(&htlc_params)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });

@@ -2,14 +2,14 @@ use ethereum_support::{self, CalculateContractAddress, EtherQuantity, Transactio
 use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
-        contains_htlc::{ContainsHtlc, Error},
         ethereum::{EtherHtlc, Htlc},
+        find_htlc_location::{Error, FindHtlcLocation},
         state_machine::HtlcParams,
     },
 };
 
-impl ContainsHtlc<Ethereum, EtherQuantity> for Transaction {
-    fn contains_htlc(
+impl FindHtlcLocation<Ethereum, EtherQuantity> for Transaction {
+    fn find_htlc_location(
         &self,
         htlc_params: &HtlcParams<Ethereum, EtherQuantity>,
     ) -> Result<ethereum_support::Address, Error<EtherQuantity>> {
