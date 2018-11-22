@@ -1,9 +1,10 @@
-use ethereum_support::{web3::types::Address, EtherQuantity};
+use ethereum_support::{web3::types::Address, Bytes, EtherQuantity};
 use ledger_query_service::EthereumQuery;
 use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
         events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
+        secret,
         state_machine::HtlcParams,
     },
 };
@@ -15,6 +16,7 @@ impl NewHtlcFundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
             to_address: None,
             is_contract_creation: Some(true),
             transaction_data: Some(htlc_params.bytecode()),
+            transaction_data_length: None,
         }
     }
 }
@@ -28,7 +30,8 @@ impl NewHtlcRefundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
             from_address: None,
             to_address: Some(htlc_location.clone()),
             is_contract_creation: Some(false),
-            transaction_data: None,
+            transaction_data: Some(Bytes::from(vec![])),
+            transaction_data_length: None,
         }
     }
 }
@@ -43,6 +46,7 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
             to_address: Some(htlc_location.clone()),
             is_contract_creation: Some(false),
             transaction_data: None,
+            transaction_data_length: Some(secret::SECRET_LENGTH),
         }
     }
 }

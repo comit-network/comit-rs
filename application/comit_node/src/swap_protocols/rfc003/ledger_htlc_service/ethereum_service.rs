@@ -185,6 +185,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
                 to_address: Some(eth_htlc_address),
                 is_contract_creation: None,
                 transaction_data: None,
+                transaction_data_length: None,
             }),
             _ => Err(ledger_htlc_service::Error::Internal),
         }
@@ -205,6 +206,7 @@ impl LedgerHtlcService<Ethereum, EtherHtlcFundingParams, EtherHtlcRedeemParams, 
             to_address: None,
             is_contract_creation: Some(true),
             transaction_data: Some(data),
+            transaction_data_length: None,
         }
     }
 
