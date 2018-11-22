@@ -33,7 +33,8 @@ pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
     <R::BetaLedger as Ledger>::LockDuration,
 >;
 
-pub type Funded<L: Ledger> = Future<L::HtlcLocation>;
+pub type Deployed<L: Ledger> = Future<L::HtlcLocation>;
+pub type Funded<L: Ledger> = Future<Option<L::Transaction>>;
 pub type Refunded<L: Ledger> = Future<L::TxId>;
 pub type Redeemed<L: Ledger> = Future<L::TxId>;
 pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
@@ -41,7 +42,13 @@ pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
 pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
-    fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L>;
+    fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Deployed<L>;
+
+    fn htlc_funded(
+        &mut self,
+        htlc_params: HtlcParams<L, A>,
+        htlc_location: &L::HtlcLocation,
+    ) -> &mut Funded<L>;
 
     fn htlc_redeemed_or_refunded(
         &mut self,
@@ -60,6 +67,13 @@ pub trait CommunicationEvents<R: Role>: Send {
             R::BetaAsset,
         >,
     ) -> &mut ResponseFuture<R>;
+}
+
+pub trait NewHtlcDeployedQuery<L: Ledger, A: Asset>: Send + Sync
+where
+    Self: Query,
+{
+    fn new_htlc_deployed_query(htlc_params: &HtlcParams<L, A>) -> Self;
 }
 
 pub trait NewHtlcFundedQuery<L: Ledger, A: Asset>: Send + Sync

@@ -28,7 +28,9 @@ impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Ether
                 address: swap.alpha_htlc_params().compute_address(),
                 value: swap.alpha_asset,
             })],
+            SS::AlphaDeployed { .. } => vec![],
             SS::AlphaFunded { .. } => vec![],
+            SS::AlphaFundedBetaDeployed { .. } => vec![],
             SS::BothFunded(BothFunded {
                 ref alpha_htlc_location,
                 ref beta_htlc_location,

@@ -26,6 +26,7 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
         match *self {
             SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
             SS::Accepted { .. } => vec![],
+            SS::AlphaDeployed { .. } => vec![],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
                 let htlc: EtherHtlc = swap.beta_htlc_params().into();
                 vec![Action::Fund(EtherDeploy {
@@ -35,6 +36,7 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
                     gas_cost: 42.into(),  //TODO come up with correct gas cost
                 })]
             }
+            SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { .. }) => vec![],
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ..

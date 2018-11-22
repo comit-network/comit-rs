@@ -126,13 +126,26 @@ pub enum Swap<R: Role> {
         secret: R::Secret,
     },
 
-    #[state_machine_future(transitions(AlphaFunded))]
+    #[state_machine_future(transitions(AlphaDeployed))]
     Accepted { swap: OngoingSwap<R> },
 
-    #[state_machine_future(transitions(BothFunded, Final))]
+    #[state_machine_future(transitions(AlphaFunded, Final))]
+    AlphaDeployed {
+        swap: OngoingSwap<R>,
+        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+    },
+
+    #[state_machine_future(transitions(AlphaFundedBetaDeployed, Final))]
     AlphaFunded {
         swap: OngoingSwap<R>,
         alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+    },
+
+    #[state_machine_future(transitions(BothFunded, Final))]
+    AlphaFundedBetaDeployed {
+        swap: OngoingSwap<R>,
+        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(
@@ -143,8 +156,8 @@ pub enum Swap<R: Role> {
     ))]
     BothFunded {
         swap: OngoingSwap<R>,
-        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
         alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
     },
 
     #[state_machine_future(transitions(Final))]
@@ -220,16 +233,32 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
         let alpha_htlc_location = try_ready!(context
             .alpha_ledger_events
-            .htlc_funded(state.swap.alpha_htlc_params())
+            .htlc_deployed(state.swap.alpha_htlc_params())
             .poll());
-
         let state = state.take();
+        transition_save!(
+            context.state_repo,
+            AlphaDeployed {
+                swap: state.swap,
+                alpha_htlc_location,
+            }
+        )
+    }
 
+    fn poll_alpha_deployed<'s, 'c>(
+        state: &'s mut RentToOwn<'s, AlphaDeployed<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
+    ) -> Result<Async<AfterAlphaDeployed<R>>, rfc003::Error> {
+        let _alpha_funding_transaction = try_ready!(context
+            .alpha_ledger_events
+            .htlc_funded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .poll());
+        let state = state.take();
         transition_save!(
             context.state_repo,
             AlphaFunded {
                 swap: state.swap,
-                alpha_htlc_location,
+                alpha_htlc_location: state.alpha_htlc_location,
             }
         )
     }
@@ -246,23 +275,46 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             transition_save!(context.state_repo, Final(SwapOutcome::AlphaRefunded))
         }
 
-        match try_ready!(context
+        let beta_htlc_location = try_ready!(context
             .beta_ledger_events
-            .htlc_funded(state.swap.beta_htlc_params())
-            .poll())
-        {
-            beta_htlc_location => {
-                let state = state.take();
-                transition_save!(
-                    context.state_repo,
-                    BothFunded {
-                        swap: state.swap,
-                        alpha_htlc_location: state.alpha_htlc_location,
-                        beta_htlc_location,
-                    }
-                )
+            .htlc_deployed(state.swap.beta_htlc_params())
+            .poll());
+        let state = state.take();
+        transition_save!(
+            context.state_repo,
+            AlphaFundedBetaDeployed {
+                swap: state.swap,
+                alpha_htlc_location: state.alpha_htlc_location,
+                beta_htlc_location,
             }
+        )
+    }
+
+    fn poll_alpha_funded_beta_deployed<'s, 'c>(
+        state: &'s mut RentToOwn<'s, AlphaFundedBetaDeployed<R>>,
+        context: &'c mut RentToOwn<'c, Context<R>>,
+    ) -> Result<Async<AfterAlphaFundedBetaDeployed<R>>, rfc003::Error> {
+        if let Async::Ready(_alpha_redeemed_or_refunded) = context
+            .alpha_ledger_events
+            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .poll()?
+        {
+            transition_save!(context.state_repo, Final(SwapOutcome::AlphaRefunded))
         }
+
+        let _ = try_ready!(context
+            .beta_ledger_events
+            .htlc_funded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
+            .poll());
+        let state = state.take();
+        transition_save!(
+            context.state_repo,
+            BothFunded {
+                swap: state.swap,
+                alpha_htlc_location: state.alpha_htlc_location,
+                beta_htlc_location: state.beta_htlc_location,
+            }
+        )
     }
 
     fn poll_both_funded<'s, 'c>(
@@ -414,7 +466,9 @@ impl<R: Role> SwapStates<R> {
         match *self {
             SS::Start { .. } => String::from("Start"),
             SS::Accepted { .. } => String::from("Accepted"),
+            SS::AlphaDeployed { .. } => String::from("AlphaDeployed"),
             SS::AlphaFunded { .. } => String::from("AlphaFunded"),
+            SS::AlphaFundedBetaDeployed { .. } => String::from("AlphaFundedBetaDeployed"),
             SS::BothFunded { .. } => String::from("BothFunded"),
             SS::AlphaFundedBetaRefunded { .. } => String::from("AlphaFundedBetaRefunded"),
             SS::AlphaRefundedBetaFunded { .. } => String::from("AlphaRefundedBetaFunded"),
