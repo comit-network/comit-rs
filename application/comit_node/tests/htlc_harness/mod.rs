@@ -87,7 +87,7 @@ pub fn harness<D: Docker>(
                 token_contract_address: token_contract,
             };
             let deployment_result = ethereum_service
-                .deploy_htlc(htlc_params)
+                .deploy_erc20_htlc(htlc_params)
                 .map(|tx_id| client.get_contract_address(tx_id.clone()));
 
             (Some(token_contract), deployment_result)
@@ -101,7 +101,7 @@ pub fn harness<D: Docker>(
                 secret_hash: Secret::from(params.htlc_secret).hash(),
             };
             let deployment_result = ethereum_service
-                .deploy_htlc(htlc_params)
+                .deploy_ether_htlc(htlc_params)
                 .map(|tx_id| client.get_contract_address(tx_id.clone()));
 
             //no funding needed, deployment of the HTLC can also fund it directly

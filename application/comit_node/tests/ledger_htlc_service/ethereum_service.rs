@@ -111,10 +111,8 @@ pub struct Erc20HtlcFundingParams {
 #[derive(Clone, Debug)]
 pub struct Erc20HtlcRedeemParams {}
 
-impl LedgerHtlcService<Ethereum, EtherQuantity, EtherHtlcFundingParams, EtherHtlcRedeemParams>
-    for EthereumService
-{
-    fn deploy_htlc(
+impl EthereumService {
+    pub fn deploy_ether_htlc(
         &self,
         htlc_funding_params: EtherHtlcFundingParams,
     ) -> Result<H256, ledger_htlc_service::Error> {
@@ -145,15 +143,7 @@ impl LedgerHtlcService<Ethereum, EtherQuantity, EtherHtlcFundingParams, EtherHtl
         Ok(tx_id)
     }
 
-    fn fund_htlc(
-        &self,
-        target: Address,
-        asset: EtherQuantity,
-    ) -> Result<H256, ledger_htlc_service::Error> {
-        unimplemented!()
-    }
-
-    fn redeem_htlc(
+    pub fn redeem_ether_htlc(
         &self,
         _trade_id: SwapId,
         htlc_redeem_params: EtherHtlcRedeemParams,
@@ -180,7 +170,7 @@ impl LedgerHtlcService<Ethereum, EtherQuantity, EtherHtlcFundingParams, EtherHtl
         Ok(tx_id)
     }
 
-    fn check_and_extract_secret(
+    pub fn check_and_extract_ether_secret(
         &self,
         create_htlc_tx_id: H256,
         redeem_htlc_tx_id: H256,
@@ -231,12 +221,7 @@ impl LedgerHtlcService<Ethereum, EtherQuantity, EtherHtlcFundingParams, EtherHtl
             }
         }
     }
-}
-
-impl LedgerHtlcService<Ethereum, Erc20Quantity, Erc20HtlcFundingParams, Erc20HtlcRedeemParams>
-    for EthereumService
-{
-    fn deploy_htlc(
+    pub fn deploy_erc20_htlc(
         &self,
         htlc_funding_params: Erc20HtlcFundingParams,
     ) -> Result<H256, ledger_htlc_service::Error> {
@@ -301,7 +286,7 @@ impl LedgerHtlcService<Ethereum, Erc20Quantity, Erc20HtlcFundingParams, Erc20Htl
         Ok(tx_id)
     }
 
-    fn fund_htlc(
+    pub fn fund_erc20_htlc(
         &self,
         target: Address,
         asset: Erc20Quantity,
@@ -309,12 +294,12 @@ impl LedgerHtlcService<Ethereum, Erc20Quantity, Erc20HtlcFundingParams, Erc20Htl
         let target_address = format!("{:x}", target);
         let token_amount = format!("{:0>64}", format!("{:x}", asset.amount()));
 
-        let data = format!("{}{}{}", "0xa9059cbb", target_address, token_amount);
+        let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
         let hex_data = hex::decode(data).unwrap();
 
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_invocation(
-                hex_data.clone(), //todo put in data
+                hex_data.clone(),
                 asset.address(),
                 10000,
                 gas_price,
@@ -331,24 +316,6 @@ impl LedgerHtlcService<Ethereum, Erc20Quantity, Erc20HtlcFundingParams, Erc20Htl
         Ok(tx_id)
     }
 
-    fn redeem_htlc(
-        &self,
-        _trade_id: SwapId,
-        _htlc_redeem_params: Erc20HtlcRedeemParams,
-    ) -> Result<H256, ledger_htlc_service::Error> {
-        unimplemented!()
-    }
-
-    fn check_and_extract_secret(
-        &self,
-        _create_htlc_tx_id: H256,
-        _redeem_htlc_tx_id: H256,
-    ) -> Result<Secret, ledger_htlc_service::Error> {
-        unimplemented!()
-    }
-}
-
-impl EthereumService {
     pub fn new<N: Into<U256>>(
         wallet: Arc<Wallet>,
         gas_price_service: Arc<GasPriceService>,
@@ -562,7 +529,7 @@ mod tests {
         };
 
         // Act
-        let result = service.deploy_htlc(params.clone());
+        let result = service.deploy_erc20_htlc(params.clone());
 
         // Assert
         let sent_bytes = ethereum_api.sent_bytes.lock().unwrap();
