@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-const SHA256_DIGEST_LENGTH: usize = 32;
+pub const SECRET_LENGTH: usize = 32;
 
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SecretHash(pub Vec<u8>);
@@ -82,10 +82,10 @@ impl FromStr for SecretHash {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub struct Secret([u8; SHA256_DIGEST_LENGTH]);
+pub struct Secret([u8; SECRET_LENGTH]);
 
-impl From<[u8; SHA256_DIGEST_LENGTH]> for Secret {
-    fn from(secret: [u8; SHA256_DIGEST_LENGTH]) -> Self {
+impl From<[u8; SECRET_LENGTH]> for Secret {
+    fn from(secret: [u8; SECRET_LENGTH]) -> Self {
         Secret(secret)
     }
 }
@@ -98,21 +98,21 @@ impl From<Secret> for SecretHash {
 
 impl Secret {
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
-        let random_bytes = rng.gen_random_bytes(SHA256_DIGEST_LENGTH);
-        let mut secret = [0; SHA256_DIGEST_LENGTH];
+        let random_bytes = rng.gen_random_bytes(SECRET_LENGTH);
+        let mut secret = [0; SECRET_LENGTH];
         secret.copy_from_slice(&random_bytes[..]);
         Secret::from(secret)
     }
 
     pub fn from_vec(vec: &[u8]) -> Result<Secret, SecretFromErr> {
-        if vec.len() != SHA256_DIGEST_LENGTH {
+        if vec.len() != SECRET_LENGTH {
             return Err(SecretFromErr::InvalidLength {
-                expected: SHA256_DIGEST_LENGTH,
+                expected: SECRET_LENGTH,
                 got: vec.len(),
             });
         }
-        let mut data = [0; SHA256_DIGEST_LENGTH];
-        let vec = &vec[..SHA256_DIGEST_LENGTH];
+        let mut data = [0; SECRET_LENGTH];
+        let vec = &vec[..SECRET_LENGTH];
         data.copy_from_slice(vec);
         Ok(Secret(data))
     }
@@ -121,12 +121,12 @@ impl Secret {
         let mut sha = Sha256::new();
         sha.input(&self.0);
 
-        let mut result: [u8; SHA256_DIGEST_LENGTH] = [0; SHA256_DIGEST_LENGTH];
+        let mut result: [u8; SECRET_LENGTH] = [0; SECRET_LENGTH];
         sha.result(&mut result);
         SecretHash(result.to_vec())
     }
 
-    pub fn raw_secret(&self) -> &[u8; SHA256_DIGEST_LENGTH] {
+    pub fn raw_secret(&self) -> &[u8; SECRET_LENGTH] {
         &self.0
     }
 }

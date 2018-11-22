@@ -10,6 +10,7 @@ pub enum EthereumQuery {
         to_address: Option<Address>,
         is_contract_creation: Option<bool>,
         transaction_data: Option<Bytes>,
+        transaction_data_length: Option<usize>,
     },
     Block {
         min_timestamp_secs: Option<u32>,
@@ -34,11 +35,12 @@ mod tests {
             to_address,
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(
             query,
-            r#"{"from_address":null,"to_address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","is_contract_creation":null,"transaction_data":null}"#
+            r#"{"from_address":null,"to_address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","is_contract_creation":null,"transaction_data":null,"transaction_data_length":null}"#
         )
     }
 
@@ -50,11 +52,12 @@ mod tests {
             to_address,
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(
             query,
-            r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null}"#
+            r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null,"transaction_data_length":null}"#
         )
     }
 
@@ -74,8 +77,9 @@ mod tests {
             to_address: None,
             is_contract_creation: None,
             transaction_data: Some(Bytes::from(b"hello world!".to_vec())),
+            transaction_data_length: Some(12),
         };
         let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":"0x68656c6c6f20776f726c6421"}"#)
+        assert_eq!(query, r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":"0x68656c6c6f20776f726c6421","transaction_data_length":12}"#)
     }
 }

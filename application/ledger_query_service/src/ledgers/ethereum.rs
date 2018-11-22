@@ -12,6 +12,7 @@ pub struct EthereumTransactionQuery {
     to_address: Option<Address>,
     is_contract_creation: Option<bool>,
     transaction_data: Option<Bytes>,
+    transaction_data_length: Option<usize>,
 }
 
 impl QueryType for EthereumTransactionQuery {
@@ -43,12 +44,14 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
                 to_address: None,
                 is_contract_creation: None,
                 transaction_data: None,
+                transaction_data_length: None,
             } => QueryMatchResult::no(),
             Self {
                 from_address,
                 to_address,
                 is_contract_creation,
                 transaction_data,
+                transaction_data_length,
             } => {
                 let mut result = true;
 
@@ -67,6 +70,10 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
 
                 if let Some(ref transaction_data) = transaction_data {
                     result = result && (transaction.input == *transaction_data);
+                }
+
+                if let Some(ref transaction_data_length) = transaction_data_length {
+                    result = result && (transaction.input.0.len() == *transaction_data_length);
                 }
 
                 if result {
@@ -165,6 +172,7 @@ mod tests {
             to_address: None,
             is_contract_creation: Some(true),
             transaction_data: None,
+            transaction_data_length: None,
         };
 
         let transaction = Transaction {
@@ -192,6 +200,7 @@ mod tests {
             to_address: None,
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
 
         let transaction = Transaction {
@@ -220,6 +229,7 @@ mod tests {
             to_address: Some(to_address),
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
 
         let transaction = Transaction {
@@ -249,6 +259,7 @@ mod tests {
             to_address: Some(to_address),
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
 
         let transaction = Transaction {
@@ -277,6 +288,7 @@ mod tests {
             to_address: Some(to_address),
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
 
         let transaction = Transaction {
@@ -298,11 +310,20 @@ mod tests {
 
     #[test]
     fn given_query_transaction_data_transaction_matches() {
-        let query = EthereumTransactionQuery {
+        let query_data = EthereumTransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
             transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
+            transaction_data_length: None,
+        };
+
+        let query_data_length = EthereumTransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: None,
+            transaction_data: None,
+            transaction_data_length: Some(5),
         };
 
         let transaction = Transaction {
@@ -319,7 +340,47 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert_that(&query.matches(&transaction))
+        assert_that(&query_data.matches(&transaction))
+            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&query_data_length.matches(&transaction))
+            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+    }
+
+    #[test]
+    fn given_query_transaction_data_is_empty_transaction_matches() {
+        let query_data = EthereumTransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: None,
+            transaction_data: Some(Bytes::from(vec![])),
+            transaction_data_length: None,
+        };
+
+        let query_data_length = EthereumTransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: None,
+            transaction_data: None,
+            transaction_data_length: Some(0),
+        };
+
+        let transaction = Transaction {
+            hash: H256::from(123),
+            nonce: U256::from(1),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
+            to: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
+            value: U256::from(0),
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: Bytes::from(vec![]),
+        };
+
+        assert_that(&query_data.matches(&transaction))
+            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&query_data_length.matches(&transaction))
             .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
     }
 
@@ -330,6 +391,7 @@ mod tests {
             to_address: None,
             is_contract_creation: None,
             transaction_data: None,
+            transaction_data_length: None,
         };
 
         let transaction = Transaction {
