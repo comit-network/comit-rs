@@ -22,7 +22,6 @@ extern crate state_machine_future;
 extern crate maplit;
 #[macro_use]
 extern crate frunk;
-#[macro_use]
 extern crate serde_json;
 
 #[cfg(test)]
@@ -37,7 +36,6 @@ extern crate chrono;
 extern crate config;
 extern crate crypto;
 extern crate ethereum_support;
-extern crate event_store;
 extern crate fern;
 extern crate frunk_core;
 extern crate hex;

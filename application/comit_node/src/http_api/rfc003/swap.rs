@@ -3,10 +3,10 @@ use ethereum_support::EtherQuantity;
 use frunk;
 use futures::sync::mpsc::UnboundedSender;
 use http_api::{self, problem::HttpApiProblemStdError};
-use http_api_problem::{HttpApiProblem, HttpStatusCode};
-use hyper::{header, StatusCode};
+use http_api_problem::HttpApiProblem;
+use hyper::header;
 use rustic_hal::HalResource;
-use std::{error::Error as StdError, fmt, sync::Arc};
+use std::sync::Arc;
 
 use swap_protocols::{
     asset::Asset,
@@ -72,6 +72,10 @@ pub struct SwapCreated {
     pub id: SwapId,
 }
 
+fn swap_path(id: SwapId) -> String {
+    format!("/{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id)
+}
+
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
     request_body_kind: SwapRequestBodyKind,
@@ -100,11 +104,7 @@ pub fn post_swap(
 
     let swap_created = SwapCreated { id };
     let body = warp::reply::json(&swap_created);
-    let response = warp::reply::with_header(
-        body,
-        header::LOCATION,
-        format!("/swaps/{}", swap_created.id),
-    );
+    let response = warp::reply::with_header(body, header::LOCATION, swap_path(id));
     let response = warp::reply::with_status(response, warp::http::StatusCode::CREATED);
 
     Ok(response)
@@ -132,8 +132,8 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         Some((state, actions)) => {
             let mut response = HalResource::new(state);
             for action in actions {
-                let route = format!("{}/{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id, action);
-                response.with_link("redeem", route);
+                let route = format!("{}/{}", swap_path(id), action);
+                response.with_link(action, route);
             }
             Ok(warp::reply::json(&response))
         }
@@ -197,7 +197,7 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 
     let mut response = HalResource::new("");
     for swap in swaps {
-        response.with_resource("ongoing_swaps", &swap);
+        response.with_resources("swaps", &swap);
     }
     Ok(warp::reply::json(&response))
 }
@@ -217,11 +217,9 @@ fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                     protocol: PROTOCOL_NAME.into(),
                 };
 
-                let mut response = HalResource::new(swap);
-                let route = format!("{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id);
-                let hal_resource = HalResource::with_link(&mut response, format!("{}", id), route);
-
-                Some(hal_resource.clone())
+                let mut hal_resource = HalResource::new(swap);
+                hal_resource.with_link("self", swap_path(*id));
+                Some(hal_resource)
         }),
         failure:
         |e| {

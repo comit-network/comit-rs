@@ -20,6 +20,15 @@ pub struct AliceToBob<C, SL: Ledger, TL: Ledger> {
     client: Arc<C>,
 }
 
+impl<C, SL: Ledger, TL: Ledger> AliceToBob<C, SL, TL> {
+    pub fn new(client: Arc<C>) -> Self {
+        AliceToBob {
+            client,
+            response_future: None,
+        }
+    }
+}
+
 impl<C: comit_client::Client, SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>
     CommunicationEvents<Alice<SL, TL, SA, TA>> for AliceToBob<C, SL, TL>
 {

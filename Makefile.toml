@@ -81,12 +81,11 @@ alias = "dev-test-flow"
 
 [tasks.e2e]
 workspace = false
-dependencies = [
-    "build",
-    "pre-e2e-tests",
-    "e2e-tests",
-    "post-e2e-tests",
-]
+alias = "e2e-tests-flow"
+
+[tasks.dry]
+workspace = false
+alias = "dry-tests-flow"
 
 [tasks.lqs]
 workspace = false
@@ -173,6 +172,33 @@ workspace = false
 private = true
 command = "sccache"
 args = ["--stop-server"]
+
+
+################
+# Dry api Test flow #
+[tasks.dry-tests-flow]
+description = "Defines the E2E-tests flow."
+workspace = false
+dependencies = [
+    "build",
+    "pre-dry-tests",
+    "dry-tests"
+]
+
+[tasks.dry-tests]
+description = "Runs tests that don't require any external services"
+workspace = false
+private = true
+script_runner = "bash"
+script = [
+'''
+cd api_tests;
+./dry/harness.sh ./dry/rfc003.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+'''
+]
+
+[tasks.pre-dry-tests]
+alias = "pre-e2e-tests"
 
 ################
 # E2E Test flow #
