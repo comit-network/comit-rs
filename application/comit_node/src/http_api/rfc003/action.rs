@@ -53,7 +53,7 @@ pub fn post<T: MetadataStore<SwapId>>(
             role,
         }) => match role {
             RoleKind::Alice => Err(HttpApiProblem::with_title_and_type_from_status(400)
-                .set_detail("Only Bob can accept or decline a swap")),
+                .set_detail(format!("Swap {} was initiated by this comit_node, only the counter-part can accept or decline", id))),
             RoleKind::Bob => {
                 update_state::<Bitcoin, Ethereum>(pending_responses.as_ref(), &id, action, body)
                     .map_err(From::from)
