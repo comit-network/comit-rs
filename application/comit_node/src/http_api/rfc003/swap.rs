@@ -156,9 +156,7 @@ pub fn get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<S
     let metadata = metadata_store.get(&id);
     info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
 
-    let result = handle_get_swap(id, &event_store, &metadata_store, &state_store);
-
-    match result {
+    match handle_get_swap(id, &event_store, &metadata_store, &state_store) {
         Some(swap_status) => Ok(warp::reply::json(&swap_status)),
         None => Err(warp::reject::custom(HttpApiProblemStdError::new(
             Error::NotFound,
