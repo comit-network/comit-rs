@@ -52,8 +52,7 @@ pub fn post<T: MetadataStore<SwapId>>(
             beta_asset: AssetKind::Ether,
             role,
         }) => match role {
-            RoleKind::Alice => Err(HttpApiProblem::new("incorrect-state-for-action")
-                .set_status(400)
+            RoleKind::Alice => Err(HttpApiProblem::with_title_and_type_from_status(400)
                 .set_detail("Only Bob can accept or decline a swap")),
             RoleKind::Bob => {
                 update_state::<Bitcoin, Ethereum>(pending_responses.as_ref(), &id, action, body)
