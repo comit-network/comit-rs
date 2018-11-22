@@ -11,8 +11,20 @@ use tokio::timer::Interval;
 
 #[derive(Debug, Clone)]
 pub struct FirstMatch<L: Ledger> {
-    pub fetch_results: Arc<FetchFullQueryResults<L>>,
-    pub poll_interval: Duration,
+    fetch_results: Arc<FetchFullQueryResults<L>>,
+    poll_interval: Duration,
+}
+
+impl<L: Ledger> FirstMatch<L> {
+    pub fn new<F: FetchFullQueryResults<L>>(
+        fetch_full_query_results: Arc<F>,
+        poll_interval: Duration,
+    ) -> Self {
+        Self {
+            fetch_results: fetch_full_query_results as Arc<FetchFullQueryResults<L>>,
+            poll_interval,
+        }
+    }
 }
 
 impl<L: Ledger> FirstMatch<L> {

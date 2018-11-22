@@ -1,19 +1,13 @@
-use swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
-    rfc003::Ledger,
-};
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum SwapResponse<AL: Ledger, BL: Ledger> {
-    Accept {
-        beta_ledger_refund_identity: BL::Identity,
-        alpha_ledger_success_identity: AL::Identity,
-        beta_ledger_lock_duration: BL::LockDuration,
-    },
-    Decline,
-}
+use comit_client::SwapReject;
+use ethereum_support;
+use swap_protocols::rfc003::{ethereum::Seconds, state_machine::StateMachineResponse};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapResponseKind {
-    BitcoinEthereum(SwapResponse<Bitcoin, Ethereum>),
+    BitcoinEthereum(
+        Result<
+            StateMachineResponse<secp256k1_support::KeyPair, ethereum_support::Address, Seconds>,
+            SwapReject,
+        >,
+    ),
 }

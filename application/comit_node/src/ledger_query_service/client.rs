@@ -174,6 +174,15 @@ impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
+impl FetchFullQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
+    fn fetch_full_query_results(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::Transaction>, Error = Error> + Send> {
+        self.fetch_full_results(query)
+    }
+}
+
 impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
     fn delete(&self, query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
         self._delete(&query)

@@ -3,9 +3,9 @@
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
-cd "$PROJECT_ROOT/api_tests";
 
-TEST_PATH="$1"
+TEST_PATH="$1";
+export TEST_PATH=$(cd ${TEST_PATH} && pwd); # Convert to absolute path
 
 if [[ -z "${TEST_PATH}" ]] || [[ ! -d "${TEST_PATH}" ]]
 then
@@ -23,6 +23,8 @@ BETA=${DIR#*_}
 BETA_CHAIN=${BETA%-*}
 
 CHAINS="${ALPHA_CHAIN} ${BETA_CHAIN}" # Extract chain name before and after underscore
+
+cd "$PROJECT_ROOT/api_tests";
 
 END(){
     set +e;
@@ -104,4 +106,8 @@ generate_btc_blocks_every 5;
 sleep 2;
 
 log "Run test";
+set +x;
+export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
+. "$NVM_SH"
+nvm use;
 npm test "${TEST_PATH}/test.js";

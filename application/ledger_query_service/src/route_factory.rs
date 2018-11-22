@@ -106,14 +106,14 @@ impl RouteFactory {
             .and(query_repository.clone())
             .and(query_result_repository.clone())
             .and(client.clone())
-            .and(warp::path::param())
+            .and(warp::path::param::<u32>())
             .and(warp::query::<QueryParams>())
             .and_then(routes::retrieve_query);
 
         let delete = warp::delete2()
             .and(query_repository)
             .and(query_result_repository)
-            .and(warp::path::param())
+            .and(warp::path::param::<u32>())
             .and_then(routes::delete_query);
 
         endpoint

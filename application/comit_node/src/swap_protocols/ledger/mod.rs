@@ -7,6 +7,7 @@ mod ethereum;
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
 use bam_api::header::{FromBamHeader, ToBamHeader};
 use http_api::ledger::{FromHttpLedger, ToHttpLedger};
+use std::hash::Hash;
 
 pub trait Ledger:
     Clone
@@ -16,6 +17,8 @@ pub trait Ledger:
     + 'static
     + Default
     + PartialEq
+    + Eq
+    + Hash
     + FromHttpLedger
     + ToHttpLedger
     + FromBamHeader
@@ -30,6 +33,8 @@ pub trait Ledger:
         + Send
         + Sync
         + PartialEq
+        + Eq
+        + Hash
         + 'static
         + From<Self::Address>
         + Serialize

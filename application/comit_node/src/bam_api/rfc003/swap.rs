@@ -4,14 +4,15 @@ use bam::{
     Status,
 };
 use bam_api::header::FromBamHeader;
-use comit_client::{self, rfc003::RequestBody};
+use comit_client::{self, rfc003::RequestBody, SwapReject};
 use futures::{
     future::Future,
     sync::{mpsc, oneshot},
 };
 use swap_protocols::{
     asset::Asset,
-    rfc003::{self, Ledger},
+    ledger::{Bitcoin, Ethereum},
+    rfc003::{self, state_machine::StateMachineResponse, Ledger},
     SwapProtocols,
 };
 use swaps::common::SwapId;
@@ -20,7 +21,7 @@ pub fn swap_config(
     sender: mpsc::UnboundedSender<(
         SwapId,
         rfc003::bob::SwapRequestKind,
-        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+        oneshot::Sender<rfc003::bob::SwapResponseKind>,
     )>,
 ) -> Config<Request, Response> {
     Config::default().on_request(
@@ -50,11 +51,7 @@ pub fn swap_config(
 
                     Box::new(response_receiver.then(move |result| {
                         match result {
-                            Ok(Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response))) => Ok(response.into()),
-                            Ok(Err(e)) => {
-                                error!("Error while processing swap request {}: {:?}", swap_id, e);
-                                Ok(Response::new(Status::SE(0)))
-                            },
+                            Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
                             Err(_) => {
                                 warn!("Failed to receive from oneshot channel for swap {}", swap_id);
                                 Ok(Response::new(Status::SE(0)))
@@ -67,25 +64,24 @@ pub fn swap_config(
     )
 }
 
-impl<AL: Ledger, BL: Ledger> From<rfc003::bob::SwapResponse<AL, BL>> for Response {
-    fn from(response: rfc003::bob::SwapResponse<AL, BL>) -> Self {
-        match response {
-            rfc003::bob::SwapResponse::Accept {
-                beta_ledger_refund_identity,
-                alpha_ledger_success_identity,
-                beta_ledger_lock_duration,
-            } => {
-                Response::new(Status::OK(20)).with_body(comit_client::rfc003::AcceptResponseBody::<
-                    AL,
-                    BL,
-                > {
-                    beta_ledger_refund_identity,
-                    alpha_ledger_success_identity,
-                    beta_ledger_lock_duration,
-                })
-            }
-            rfc003::bob::SwapResponse::Decline => Response::new(Status::RE(0)),
+fn to_bam_response<AL: Ledger, BL: Ledger>(
+    result: Result<
+        StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,
+        SwapReject,
+    >,
+) -> Response {
+    match result {
+        Ok(response) => {
+            Response::new(Status::OK(20)).with_body(comit_client::rfc003::AcceptResponseBody::<
+                AL,
+                BL,
+            > {
+                beta_ledger_refund_identity: response.beta_ledger_refund_identity.into(),
+                alpha_ledger_success_identity: response.alpha_ledger_success_identity.into(),
+                beta_ledger_lock_duration: response.beta_ledger_lock_duration,
+            })
         }
+        Err(_) => Response::new(Status::RE(0)),
     }
 }
 

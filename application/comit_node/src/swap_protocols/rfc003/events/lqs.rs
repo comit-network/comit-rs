@@ -5,8 +5,8 @@ use swap_protocols::{
     rfc003::{
         self,
         events::{
-            AlphaRefundedOrBetaFunded, Funded, LedgerEvents, NewHtlcFundedQuery,
-            NewHtlcRedeemedQuery, NewHtlcRefundedQuery, RedeemedOrRefunded,
+            Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery,
+            RedeemedOrRefunded,
         },
         is_contained_in_transaction::IsContainedInTransaction,
         state_machine::HtlcParams,
@@ -15,49 +15,45 @@ use swap_protocols::{
 };
 
 #[allow(missing_debug_implementations)]
-pub struct LqsEvents<AL: Ledger, BL: Ledger, ALQuery: Query, BLQuery: Query> {
-    create_alpha_ledger_query: QueryIdCache<AL, ALQuery>,
-    alpha_ledger_first_match: FirstMatch<AL>,
+pub struct LqsEvents<L: Ledger, Q: Query> {
+    create_ledger_query: QueryIdCache<L, Q>,
+    ledger_first_match: FirstMatch<L>,
 
-    create_beta_ledger_query: QueryIdCache<BL, BLQuery>,
-    beta_ledger_first_match: FirstMatch<BL>,
-
-    alpha_htlc_funded_query: Option<Box<Funded<AL>>>,
-    alpha_htlc_refunded_beta_htlc_funded_query: Option<Box<AlphaRefundedOrBetaFunded<AL, BL>>>,
-    alpha_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<AL>>>,
-    beta_htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<BL>>>,
+    htlc_funded_query: Option<Box<Funded<L>>>,
+    htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<L>>>,
 }
 
-impl<AL, BL, AA, BA, ALQuery, BLQuery> LedgerEvents<AL, BL, AA, BA>
-    for LqsEvents<AL, BL, ALQuery, BLQuery>
+impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
+    pub fn new(create_ledger_query: QueryIdCache<L, Q>, ledger_first_match: FirstMatch<L>) -> Self {
+        Self {
+            create_ledger_query,
+            ledger_first_match,
+            htlc_funded_query: None,
+            htlc_redeemed_or_refunded: None,
+        }
+    }
+}
+
+impl<L, A, Q> LedgerEvents<L, A> for LqsEvents<L, Q>
 where
-    AL: Ledger,
-    BL: Ledger,
-    AA: Asset + IsContainedInTransaction<AL>,
-    BA: Asset + IsContainedInTransaction<BL>,
-    ALQuery: Query
-        + NewHtlcRefundedQuery<AL, AA>
-        + NewHtlcFundedQuery<AL, AA>
-        + NewHtlcRedeemedQuery<AL, AA>,
-    BLQuery: Query
-        + NewHtlcRefundedQuery<BL, BA>
-        + NewHtlcFundedQuery<BL, BA>
-        + NewHtlcRedeemedQuery<BL, BA>,
+    L: Ledger,
+    A: Asset + IsContainedInTransaction<L>,
+    Q: Query + NewHtlcRefundedQuery<L, A> + NewHtlcFundedQuery<L, A> + NewHtlcRedeemedQuery<L, A>,
 {
-    fn alpha_htlc_funded(&mut self, htlc_params: HtlcParams<AL, AA>) -> &mut Funded<AL> {
-        let alpha_ledger_first_match = self.alpha_ledger_first_match.clone();
+    fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L> {
+        let ledger_first_match = self.ledger_first_match.clone();
 
-        let query = ALQuery::new_htlc_funded_query(&htlc_params);
-        let query_id = self.create_alpha_ledger_query.create_query(query);
+        let query = Q::new_htlc_funded_query(&htlc_params);
+        let query_id = self.create_ledger_query.create_query(query);
 
-        self.alpha_htlc_funded_query.get_or_insert_with(move || {
+        self.htlc_funded_query.get_or_insert_with(move || {
             let funded_future = query_id
                 .map_err(|_| rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| {
-                    alpha_ledger_first_match
+                    ledger_first_match
                         .first_match_of(query_id)
                         .and_then(move |tx| {
-                            AA::is_contained_in_transaction(&htlc_params, tx)
+                            A::is_contained_in_transaction(&htlc_params, tx)
                                 .map_err(|_| rfc003::Error::InsufficientFunding)
                         })
                 });
@@ -66,142 +62,40 @@ where
         })
     }
 
-    fn alpha_htlc_refunded_beta_htlc_funded(
+    fn htlc_redeemed_or_refunded(
         &mut self,
-        alpha_htlc_params: HtlcParams<AL, AA>,
-        beta_htlc_params: HtlcParams<BL, BA>,
-        alpha_htlc_location: &AL::HtlcLocation,
-    ) -> &mut AlphaRefundedOrBetaFunded<AL, BL> {
-        let alpha_ledger_first_match = self.alpha_ledger_first_match.clone();
-        let alpha_refunded_query =
-            ALQuery::new_htlc_refunded_query(&alpha_htlc_params, alpha_htlc_location);
-        let alpha_refunded_query_id = self
-            .create_alpha_ledger_query
-            .create_query(alpha_refunded_query);
+        htlc_params: HtlcParams<L, A>,
+        htlc_location: &L::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<L> {
+        let ledger_first_match = self.ledger_first_match.clone();
+        let refunded_query = Q::new_htlc_refunded_query(&htlc_params, htlc_location);
+        let refunded_query_id = self.create_ledger_query.create_query(refunded_query);
 
-        let beta_ledger_first_match = self.beta_ledger_first_match.clone();
-        let beta_funded_query = BLQuery::new_htlc_funded_query(&beta_htlc_params);
-        let beta_funded_query_id = self
-            .create_beta_ledger_query
-            .create_query(beta_funded_query);
+        let redeemed_query = Q::new_htlc_redeemed_query(&htlc_params, htlc_location);
+        let redeemed_query_id = self.create_ledger_query.create_query(redeemed_query);
 
-        self.alpha_htlc_refunded_beta_htlc_funded_query
-            .get_or_insert_with(move || {
-                let alpha_refunded_future = alpha_refunded_query_id
-                    .map_err(|_| rfc003::Error::LedgerQueryService)
-                    .and_then(move |query_id| alpha_ledger_first_match.first_match_of(query_id));
+        self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
+            let inner_first_match = ledger_first_match.clone();
+            let refunded_future = refunded_query_id
+                .map_err(|_| rfc003::Error::LedgerQueryService)
+                .and_then(move |query_id| inner_first_match.first_match_of(query_id));
+            let inner_first_match = ledger_first_match.clone();
+            let redeemed_future = redeemed_query_id
+                .map_err(|_| rfc003::Error::LedgerQueryService)
+                .and_then(move |query_id| inner_first_match.first_match_of(query_id));
 
-                let beta_funded_future = beta_funded_query_id
-                    .map_err(|_| rfc003::Error::LedgerQueryService)
-                    .and_then(move |query_id| {
-                        beta_ledger_first_match
-                            .first_match_of(query_id)
-                            .and_then(move |tx| {
-                                BA::is_contained_in_transaction(&beta_htlc_params, tx)
-                                    .map_err(|_| rfc003::Error::InsufficientFunding)
-                            })
-                    });
-
-                Box::new(
-                    alpha_refunded_future
-                        .select2(beta_funded_future)
-                        .map(|either| match either {
-                            Either::A((item, _stream)) => Either::A(item),
-                            Either::B((item, _stream)) => Either::B(item),
-                        })
-                        .map_err(|either| match either {
-                            Either::A((error, _stream)) => error,
-                            Either::B((error, _stream)) => error,
-                        }),
-                )
-            })
-    }
-
-    fn beta_htlc_redeemed_or_refunded(
-        &mut self,
-        beta_htlc_params: HtlcParams<BL, BA>,
-        beta_htlc_location: &BL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<BL> {
-        let beta_ledger_first_match = self.beta_ledger_first_match.clone();
-        let beta_refunded_query =
-            BLQuery::new_htlc_refunded_query(&beta_htlc_params, beta_htlc_location);
-        let beta_refunded_query_id = self
-            .create_beta_ledger_query
-            .create_query(beta_refunded_query);
-
-        let beta_redeemed_query =
-            BLQuery::new_htlc_redeemed_query(&beta_htlc_params, beta_htlc_location);
-        let beta_redeemed_query_id = self
-            .create_beta_ledger_query
-            .create_query(beta_redeemed_query);
-
-        self.beta_htlc_redeemed_or_refunded
-            .get_or_insert_with(move || {
-                let inner_first_match = beta_ledger_first_match.clone();
-                let beta_refunded_future = beta_refunded_query_id
-                    .map_err(|_| rfc003::Error::LedgerQueryService)
-                    .and_then(move |query_id| inner_first_match.first_match_of(query_id));
-                let inner_first_match = beta_ledger_first_match.clone();
-                let beta_redeemed_future = beta_redeemed_query_id
-                    .map_err(|_| rfc003::Error::LedgerQueryService)
-                    .and_then(move |query_id| inner_first_match.first_match_of(query_id));
-
-                Box::new(
-                    beta_refunded_future
-                        .select2(beta_redeemed_future)
-                        .map(|either| match either {
-                            Either::A((item, _stream)) => Either::A(item),
-                            Either::B((item, _stream)) => Either::B(item),
-                        })
-                        .map_err(|either| match either {
-                            Either::A((error, _stream)) => error,
-                            Either::B((error, _stream)) => error,
-                        }),
-                )
-            })
-    }
-
-    fn alpha_htlc_redeemed_or_refunded(
-        &mut self,
-        alpha_htlc_params: HtlcParams<AL, AA>,
-        alpha_htlc_location: &AL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<AL> {
-        let alpha_ledger_first_match = self.alpha_ledger_first_match.clone();
-        let alpha_refunded_query =
-            ALQuery::new_htlc_refunded_query(&alpha_htlc_params, alpha_htlc_location);
-        let alpha_refunded_query_id = self
-            .create_alpha_ledger_query
-            .create_query(alpha_refunded_query);
-
-        let alpha_redeemed_query =
-            ALQuery::new_htlc_redeemed_query(&alpha_htlc_params, alpha_htlc_location);
-        let alpha_redeemed_query_id = self
-            .create_alpha_ledger_query
-            .create_query(alpha_redeemed_query);
-
-        self.alpha_htlc_redeemed_or_refunded
-            .get_or_insert_with(move || {
-                let inner_first_match = alpha_ledger_first_match.clone();
-                let alpha_refunded_future = alpha_refunded_query_id
-                    .map_err(|_| rfc003::Error::LedgerQueryService)
-                    .and_then(move |query_id| inner_first_match.first_match_of(query_id));
-                let inner_first_match = alpha_ledger_first_match.clone();
-                let alpha_redeemed_future = alpha_redeemed_query_id
-                    .map_err(|_| rfc003::Error::LedgerQueryService)
-                    .and_then(move |query_id| inner_first_match.first_match_of(query_id));
-
-                Box::new(
-                    alpha_refunded_future
-                        .select2(alpha_redeemed_future)
-                        .map(|either| match either {
-                            Either::A((item, _stream)) => Either::A(item),
-                            Either::B((item, _stream)) => Either::B(item),
-                        })
-                        .map_err(|either| match either {
-                            Either::A((error, _stream)) => error,
-                            Either::B((error, _stream)) => error,
-                        }),
-                )
-            })
+            Box::new(
+                refunded_future
+                    .select2(redeemed_future)
+                    .map(|either| match either {
+                        Either::A((item, _stream)) => Either::A(item),
+                        Either::B((item, _stream)) => Either::B(item),
+                    })
+                    .map_err(|either| match either {
+                        Either::A((error, _stream)) => error,
+                        Either::B((error, _stream)) => error,
+                    }),
+            )
+        })
     }
 }

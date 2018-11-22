@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Serialize};
-use std::fmt::Debug;
+use std::{fmt::Debug, hash::Hash};
 use swap_protocols::{
     self,
     rfc003::secret::{Secret, SecretHash},
@@ -7,6 +7,8 @@ use swap_protocols::{
 
 pub trait Ledger: swap_protocols::Ledger + ExtractSecret {
     type LockDuration: PartialEq
+        + Eq
+        + Hash
         + Debug
         + Clone
         + Send

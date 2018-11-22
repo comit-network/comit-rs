@@ -32,7 +32,7 @@ describe('RFC003: Bitcoin for ERC20', () => {
 
     let token_contract_address;
     before(async function () {
-        this.timeout(3000);
+        this.timeout(4000);
         return await test_lib.fund_eth(20).then(async () => {
             return await Promise.all(
                 [

@@ -2,22 +2,24 @@
 // see: https://github.com/rust-lang/rust/issues/21903
 #![allow(type_alias_bounds)]
 
-use comit_client;
+use comit_client::{self, SwapReject};
 use ledger_query_service::Query;
 use swap_protocols::{
     asset::Asset,
-    rfc003::{self, ledger::Ledger},
+    rfc003::{
+        self,
+        ledger::Ledger,
+        roles::Role,
+        state_machine::{HtlcParams, StateMachineResponse},
+    },
 };
 use tokio::{self, prelude::future::Either};
 
-pub use self::lqs::LqsEvents;
+mod alice;
+mod bob;
 mod lqs;
-mod response;
-use comit_client::SwapReject;
-use swap_protocols::rfc003::{
-    roles::Role,
-    state_machine::{HtlcParams, StateMachineResponse},
-};
+
+pub use self::{alice::AliceToBob, bob::BobToAlice, lqs::LqsEvents};
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
@@ -38,30 +40,17 @@ pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
     Future<Either<AL::Transaction, BL::HtlcLocation>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
-pub trait LedgerEvents<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>: Send {
-    fn alpha_htlc_funded(&mut self, htlc_params: HtlcParams<AL, AA>) -> &mut Funded<AL>;
+pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
+    fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L>;
 
-    fn alpha_htlc_refunded_beta_htlc_funded(
+    fn htlc_redeemed_or_refunded(
         &mut self,
-        alpha_htlc_params: HtlcParams<AL, AA>,
-        beta_htlc_params: HtlcParams<BL, BA>,
-        alpha_htlc_location: &AL::HtlcLocation,
-    ) -> &mut AlphaRefundedOrBetaFunded<AL, BL>;
-
-    fn alpha_htlc_redeemed_or_refunded(
-        &mut self,
-        alpha_htlc_params: HtlcParams<AL, AA>,
-        htlc_location: &AL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<AL>;
-
-    fn beta_htlc_redeemed_or_refunded(
-        &mut self,
-        beta_htlc_params: HtlcParams<BL, BA>,
-        htlc_location: &BL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<BL>;
+        htlc_params: HtlcParams<L, A>,
+        htlc_location: &L::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<L>;
 }
 
-pub trait CommunicationEvents<R: Role> {
+pub trait CommunicationEvents<R: Role>: Send {
     fn request_responded(
         &mut self,
         request: &comit_client::rfc003::Request<

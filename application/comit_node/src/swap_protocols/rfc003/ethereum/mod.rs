@@ -26,7 +26,7 @@ pub trait Htlc {
     fn compile_to_hex(&self) -> ByteCode;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Seconds(pub u64);
 
 impl From<Duration> for Seconds {
@@ -55,5 +55,11 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
             htlc_params.success_identity,
             htlc_params.secret_hash,
         )
+    }
+}
+
+impl HtlcParams<Ethereum, EtherQuantity> {
+    pub fn bytecode(&self) -> Bytes {
+        EtherHtlc::from(self.clone()).compile_to_hex().into()
     }
 }

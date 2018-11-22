@@ -6,9 +6,11 @@ use std::{
 };
 use swap_protocols::rfc003::{roles::Role, state_machine::SwapStates, SaveState};
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 pub enum Error {
+    #[fail(display = "State not found")]
     NotFound,
+    #[fail(display = "State already exists for given key")]
     DuplicateKey,
 }
 

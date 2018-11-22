@@ -14,10 +14,10 @@ pub struct QueryIdCache<L: Ledger, Q: Query> {
 }
 
 impl<L: Ledger, Q: Query> QueryIdCache<L, Q> {
-    pub fn wrap(inner: Arc<CreateQuery<L, Q>>) -> Self {
+    pub fn wrap<C: CreateQuery<L, Q>>(inner: Arc<C>) -> Self {
         Self {
             query_ids: Mutex::new(HashMap::new()),
-            inner,
+            inner: inner as Arc<CreateQuery<L, Q>>,
         }
     }
 }
