@@ -38,27 +38,14 @@ pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
     Future<Either<AL::Transaction, BL::HtlcLocation>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
 
-pub trait LedgerEvents<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>: Send {
-    fn alpha_htlc_funded(&mut self, htlc_params: HtlcParams<AL, AA>) -> &mut Funded<AL>;
+pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
+    fn htlc_funded(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Funded<L>;
 
-    fn alpha_htlc_refunded_beta_htlc_funded(
+    fn htlc_redeemed_or_refunded(
         &mut self,
-        alpha_htlc_params: HtlcParams<AL, AA>,
-        beta_htlc_params: HtlcParams<BL, BA>,
-        alpha_htlc_location: &AL::HtlcLocation,
-    ) -> &mut AlphaRefundedOrBetaFunded<AL, BL>;
-
-    fn alpha_htlc_redeemed_or_refunded(
-        &mut self,
-        alpha_htlc_params: HtlcParams<AL, AA>,
-        htlc_location: &AL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<AL>;
-
-    fn beta_htlc_redeemed_or_refunded(
-        &mut self,
-        beta_htlc_params: HtlcParams<BL, BA>,
-        htlc_location: &BL::HtlcLocation,
-    ) -> &mut RedeemedOrRefunded<BL>;
+        htlc_params: HtlcParams<L, A>,
+        htlc_location: &L::HtlcLocation,
+    ) -> &mut RedeemedOrRefunded<L>;
 }
 
 pub trait CommunicationEvents<R: Role> {
