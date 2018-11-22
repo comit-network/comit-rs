@@ -14,7 +14,7 @@ impl ComitServer {
         sender: mpsc::UnboundedSender<(
             SwapId,
             rfc003::bob::SwapRequestKind,
-            oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+            oneshot::Sender<rfc003::bob::SwapResponseKind>,
         )>,
     ) -> Self {
         Self { sender }
@@ -48,6 +48,6 @@ pub struct ComitServer {
     sender: mpsc::UnboundedSender<(
         SwapId,
         rfc003::bob::SwapRequestKind,
-        oneshot::Sender<Result<rfc003::bob::SwapResponseKind, failure::Error>>,
+        oneshot::Sender<rfc003::bob::SwapResponseKind>,
     )>,
 }

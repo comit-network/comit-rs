@@ -4,10 +4,10 @@ use ethereum_support::{self, EtherQuantity};
 use event_store::{self, EventStore};
 use frunk;
 use futures::sync::mpsc::UnboundedSender;
-use http_api;
-use http_api_problem::{HttpApiProblem, HttpStatusCode};
-use hyper::{header, StatusCode};
-use std::{error::Error as StdError, fmt, sync::Arc};
+use http_api::{self, problem::HttpApiProblemStdError};
+use http_api_problem::HttpApiProblem;
+use hyper::header;
+use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ethereum},
@@ -30,23 +30,6 @@ pub enum Error {
     ClientFactory(comit_client::ClientFactoryError),
     Unsupported,
     NotFound,
-}
-
-#[derive(Debug)]
-pub struct HttpApiProblemStdError {
-    pub http_api_problem: HttpApiProblem,
-}
-
-impl fmt::Display for HttpApiProblemStdError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.http_api_problem.title)
-    }
-}
-
-impl StdError for HttpApiProblemStdError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        None
-    }
 }
 
 impl From<Error> for HttpApiProblem {
@@ -106,21 +89,6 @@ pub struct SwapCreated {
     pub id: SwapId,
 }
 
-pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(ref err) = rejection.find_cause::<HttpApiProblemStdError>() {
-        let code = err
-            .http_api_problem
-            .status
-            .unwrap_or(HttpStatusCode::InternalServerError);
-        let json = warp::reply::json(&err.http_api_problem);
-        return Ok(warp::reply::with_status(
-            json,
-            StatusCode::from_u16(code.to_u16()).unwrap(),
-        ));
-    }
-    Err(rejection)
-}
-
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
     request_body_kind: SwapRequestBodyKind,
@@ -142,9 +110,9 @@ pub fn post_swap(
             e.into_inner(),
             id
         );
-        return Err(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: HttpApiProblem::with_title_from_status(500),
-        }));
+        return Err(warp::reject::custom(HttpApiProblemStdError::from(
+            HttpApiProblem::with_title_from_status(500),
+        )));
     }
 
     let swap_created = SwapCreated { id };
@@ -188,13 +156,11 @@ pub fn get_swap<E: EventStore<SwapId>, T: MetadataStore<SwapId>, S: StateStore<S
     let metadata = metadata_store.get(&id);
     info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
 
-    let result = handle_get_swap(id, &event_store, &metadata_store, &state_store);
-
-    match result {
+    match handle_get_swap(id, &event_store, &metadata_store, &state_store) {
         Some(swap_status) => Ok(warp::reply::json(&swap_status)),
-        None => Err(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: Error::NotFound.into(),
-        })),
+        None => Err(warp::reject::custom(HttpApiProblemStdError::new(
+            Error::NotFound,
+        ))),
     }
 }
 

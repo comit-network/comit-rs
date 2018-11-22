@@ -2,7 +2,7 @@ use bam_api::header::{FromBamHeader, ToBamHeader};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
 use http_api::asset::{FromHttpAsset, ToHttpAsset};
-use std::fmt::Debug;
+use std::{fmt::Debug, hash::Hash};
 
 pub trait Asset:
     Clone
@@ -11,6 +11,8 @@ pub trait Asset:
     + Sync
     + 'static
     + PartialEq
+    + Eq
+    + Hash
     + FromHttpAsset
     + ToHttpAsset
     + FromBamHeader

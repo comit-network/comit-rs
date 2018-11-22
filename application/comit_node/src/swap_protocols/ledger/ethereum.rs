@@ -2,7 +2,7 @@ use ethereum_support::{Address, EtherQuantity, Transaction, H256};
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
 
-#[derive(Clone, Debug, PartialEq, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct Ethereum {}
 
 impl Ledger for Ethereum {

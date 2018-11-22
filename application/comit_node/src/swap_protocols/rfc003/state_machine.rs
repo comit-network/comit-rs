@@ -2,17 +2,16 @@ use comit_client;
 use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::sync::Arc;
-use swap_protocols::rfc003::ExtractSecret;
-
 use swap_protocols::{
     self,
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, roles::Role, SaveState, Secret, SecretHash, SwapOutcome,
+        self, events, ledger::Ledger, roles::Role, ExtractSecret, SaveState, Secret, SecretHash,
+        SwapOutcome,
     },
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
 pub struct StateMachineResponse<ALSI, BLRI, BLLD> {
     pub alpha_ledger_success_identity: ALSI,
     pub beta_ledger_refund_identity: BLRI,
@@ -108,7 +107,7 @@ pub struct Context<R: Role> {
     pub alpha_ledger_events: Box<events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
     pub beta_ledger_events: Box<events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
     pub state_repo: Arc<SaveState<R>>,
-    pub response_event: Box<events::CommunicationEvents<R> + Send>,
+    pub communication_events: Box<events::CommunicationEvents<R>>,
 }
 
 #[derive(StateMachineFuture)]
@@ -197,7 +196,10 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             secret_hash: state.secret.clone().into(),
         };
 
-        let response = try_ready!(context.response_event.request_responded(&request).poll());
+        let response = try_ready!(context
+            .communication_events
+            .request_responded(&request)
+            .poll());
 
         let state = state.take();
 
