@@ -8,7 +8,7 @@ pub mod bitcoin;
 pub mod bob;
 pub mod ethereum;
 pub mod events;
-pub mod is_contained_in_transaction;
+pub mod find_htlc_location;
 pub mod ledger_htlc_service;
 pub mod roles;
 pub mod state_machine;
