@@ -91,9 +91,8 @@ mod tests {
         };
 
         let bitcoin_transaction: Transaction = transaction.into();
-        let copied_transaction = bitcoin_transaction.clone();
 
-        let result = copied_transaction.contains_htlc(&htlc_params);
+        let result = bitcoin_transaction.clone().contains_htlc(&htlc_params);
 
         let txid = bitcoin_transaction.txid();
         let expected_outpoint = OutPoint { txid, vout: 0 };
