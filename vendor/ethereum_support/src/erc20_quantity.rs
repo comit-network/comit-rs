@@ -1,40 +1,26 @@
-use std::fmt;
-use u256_ext::ToDecimalStr;
 use web3::types::Address;
 use U256;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity {
-    token: Erc20Token,
-    amount: U256,
+    token_contract: Address,
+    quantity: U256,
 }
 
 impl Erc20Quantity {
-    pub fn new(symbol: String, decimals: u16, address: Address, wei: U256) -> Self {
+    pub fn new(token_contract: Address, quantity: U256) -> Self {
         Erc20Quantity {
-            token: Erc20Token {
-                symbol,
-                decimals,
-                address,
-            },
-            amount: wei,
+            token_contract,
+            quantity,
         }
     }
 
-    pub fn symbol(&self) -> &str {
-        &self.token.symbol
+    pub fn token_contract(&self) -> Address {
+        self.token_contract.clone()
     }
 
-    pub fn address(&self) -> Address {
-        self.token.address.clone()
-    }
-
-    pub fn decimals(&self) -> u16 {
-        self.token.decimals
-    }
-
-    pub fn amount(&self) -> U256 {
-        self.amount
+    pub fn quantity(&self) -> U256 {
+        self.quantity
     }
 }
 
@@ -43,11 +29,4 @@ pub struct Erc20Token {
     pub symbol: String,
     pub decimals: u16,
     pub address: Address,
-}
-
-impl fmt::Display for Erc20Quantity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let nice_decimal = self.amount.to_decimal_str(self.token.decimals.into());
-        write!(f, "{} {}", nice_decimal, self.token.symbol)
-    }
 }

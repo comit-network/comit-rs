@@ -49,9 +49,9 @@ where
 }
 
 impl ToBigDecimal for U256 {
-    fn to_bigdec(&self, decimals: i64) -> BigDecimal {
+    fn to_bigdec(&self, scale: i64) -> BigDecimal {
         let big_int = self.to_bigint();
-        BigDecimal::new(big_int, decimals)
+        BigDecimal::new(big_int, scale)
     }
 }
 
@@ -62,11 +62,11 @@ impl ToFloat for U256 {
 }
 
 impl ToDecimalStr for U256 {
-    fn to_decimal_str(&self, decimals: i64) -> String {
+    fn to_decimal_str(&self, scale: i64) -> String {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
         // thing in all cases.
-        let fmt_dec = format!("{}", self.to_bigdec(decimals));
+        let fmt_dec = format!("{}", self.to_bigdec(scale));
         TRAILING_ZEROS.replace(fmt_dec.as_str(), "").to_string()
     }
 }

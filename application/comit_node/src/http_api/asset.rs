@@ -1,12 +1,12 @@
 use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use serde_json;
-use std::{collections::HashMap, fmt};
+use std::{collections::BTreeMap, fmt};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HttpAsset {
     name: String,
     #[serde(default, flatten)]
-    parameters: HashMap<String, serde_json::Value>,
+    parameters: BTreeMap<String, serde_json::Value>,
 }
 
 impl HttpAsset {
@@ -30,7 +30,7 @@ impl HttpAsset {
     pub fn with_asset(name: &'static str) -> HttpAsset {
         HttpAsset {
             name: String::from(name),
-            parameters: HashMap::new(),
+            parameters: BTreeMap::new(),
         }
     }
 
@@ -72,7 +72,7 @@ macro_rules! impl_from_http_quantity_asset {
         impl FromHttpAsset for $asset_type {
             #[allow(unused_mut)]
             fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
-                let _ = asset.is_asset(stringify!($name))?;
+                asset.is_asset(stringify!($name))?;
 
                 asset.parameter("quantity")
             }

@@ -29,7 +29,7 @@ use warp::{self, Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize, LabelledGeneric)]
+#[derive(Clone, Debug, Deserialize, PartialEq, LabelledGeneric)]
 pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[serde(with = "http_api::asset::serde")]
     alpha_asset: AA,
@@ -44,7 +44,7 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     alpha_ledger_lock_duration: AL::LockDuration,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SwapRequestBodyKind {
     BitcoinEthereumBitcoinQuantityEthereumQuantity(
