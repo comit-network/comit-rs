@@ -65,7 +65,10 @@ pub fn post<T: MetadataStore<SwapId>>(
             Err(HttpApiProblem::new("swap-not-found").set_status(404))
         }
         _ => {
-            warn!("Swap with id {} was found but the meta-data is unknown", id);
+            warn!(
+                "Swap with id {} was found but the meta-data does not match supported types",
+                id
+            );
             Err(HttpApiProblem::new("swap-not-found").set_status(404))
         }
     };
