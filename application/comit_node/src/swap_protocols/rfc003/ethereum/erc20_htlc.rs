@@ -23,14 +23,6 @@ impl Erc20Htlc {
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
-
-    const DEPLOY_HEADER_TEMPLATE: &'static str =
-        include_str!("./contract_templates/out/erc20_deploy_header.asm.hex");
-    const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
-    const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
-    const TRANSFER_TO_ADDRESS_PLACEHOLDER: &'static str =
-        "3000000000000000000000000000000000000003";
-
     const AMOUNT_PLACEHOLDER: &'static str =
         "5000000000000000000000000000000000000000000000000000000000000005";
     const TOKEN_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
@@ -55,7 +47,7 @@ impl Erc20Htlc {
             amount,
         };
 
-        debug!("Created new HTLC for ethereum: {:#?}", htlc);
+        debug!("Created new ERC20 HTLC for ethereum: {:#?}", htlc);
 
         htlc
     }
@@ -72,7 +64,6 @@ impl Htlc for Erc20Htlc {
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
 
-        let htlc_contract_address = format!("{:x}", self.htlc_contract_address);
         let token_contract_address = format!("{:x}", self.token_contract_address);
         let amount = format!("{:0>64}", format!("{:x}", self.amount));
 
@@ -88,38 +79,8 @@ impl Htlc for Erc20Htlc {
                 &token_contract_address,
             );
 
-        let code_length = contract_code.len() / 2; // In hex, each byte is two chars
-
-        let code_length_as_hex = format!("{:0>4x}", code_length);
-
-        let header_length = Self::DEPLOY_HEADER_TEMPLATE.len() / 2;
-        let header_length_as_hex = format!("{:0>4x}", header_length);
-
-        let deploy_header = Self::DEPLOY_HEADER_TEMPLATE
-            .to_string()
-            .replace(
-                Self::CONTRACT_START_POSITION_PLACEHOLDER,
-                &header_length_as_hex,
-            )
-            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex)
-            .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
-            .replace(
-                Self::TRANSFER_TO_ADDRESS_PLACEHOLDER,
-                &htlc_contract_address,
-            )
-            .replace(
-                Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
-                &token_contract_address,
-            )
-            .replace(Self::AMOUNT_PLACEHOLDER, &amount);
-
         debug!("Final contract code: {}", &contract_code);
-        debug!("Deploy header: {}", &deploy_header);
 
-        let deployable_contract = deploy_header + &contract_code;
-
-        debug!("Deployable contract: {}", &deployable_contract);
-
-        ByteCode(deployable_contract)
+        ByteCode(contract_code)
     }
 }

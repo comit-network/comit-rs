@@ -1,14 +1,7 @@
 use comit_node::{
     ethereum_wallet::fake::StaticFakeWallet,
     gas_price_service::StaticGasPriceService,
-    swap_protocols::rfc003::{
-        ethereum::Seconds,
-        ledger_htlc_service::{
-            self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService,
-            LedgerHtlcService,
-        },
-        Secret,
-    },
+    swap_protocols::rfc003::{ethereum::Seconds, Secret},
 };
 use ethereum_support::{
     web3::{
@@ -16,6 +9,9 @@ use ethereum_support::{
         types::{Address, U256},
     },
     EtherQuantity, ToEthereumAddress,
+};
+use ledger_htlc_service::{
+    self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService, LedgerHtlcService,
 };
 use parity_client::ParityClient;
 use pretty_env_logger;
@@ -52,6 +48,7 @@ pub fn harness<D: Docker>(
     ParityClient,
     EventLoopHandle,
     Container<D, ParityEthereum>,
+    EthereumService,
 ) {
     let _ = pretty_env_logger::try_init();
 
@@ -90,7 +87,7 @@ pub fn harness<D: Docker>(
                 token_contract_address: token_contract,
             };
             let deployment_result = ethereum_service
-                .fund_htlc(htlc_params)
+                .deploy_htlc(htlc_params)
                 .map(|tx_id| client.get_contract_address(tx_id.clone()));
 
             (Some(token_contract), deployment_result)
@@ -104,8 +101,10 @@ pub fn harness<D: Docker>(
                 secret_hash: Secret::from(params.htlc_secret).hash(),
             };
             let deployment_result = ethereum_service
-                .fund_htlc(htlc_params)
+                .deploy_htlc(htlc_params)
                 .map(|tx_id| client.get_contract_address(tx_id.clone()));
+
+            //no funding needed, deployment of the HTLC can also fund it directly
 
             (None, deployment_result)
         }
@@ -119,6 +118,7 @@ pub fn harness<D: Docker>(
         client,
         event_loop,
         container,
+        ethereum_service,
     )
 }
 
