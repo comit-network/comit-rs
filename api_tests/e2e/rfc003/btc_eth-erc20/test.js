@@ -32,19 +32,14 @@ describe('RFC003: Bitcoin for ERC20', () => {
 
     let token_contract_address;
     before(async function () {
-        this.timeout(4000);
-        return await test_lib.fund_eth(20).then(async () => {
-            return await Promise.all(
-                [
-                    test_lib.give_eth_to(toby.eth_address(), 10),
-                    test_lib.give_eth_to(bob_eth_address, bob_initial_eth),
-                ]
-            ).then(() => {
-                return test_lib.deploy_erc20_token_contract(toby).then(receipt => {
-                    token_contract_address = receipt.contractAddress;
-                });
+        this.timeout(5000);
+        await test_lib.fund_eth(20);
+        await test_lib.give_eth_to(toby.eth_address(), 10);
+        await test_lib.give_eth_to(bob_eth_address, bob_initial_eth);
+        await test_lib.deploy_erc20_token_contract(toby)
+            .then(receipt => {
+                token_contract_address = receipt.contractAddress;
             });
-        });
     });
 
     it("The token contract address is as predicted", async function () {
@@ -60,4 +55,5 @@ describe('RFC003: Bitcoin for ERC20', () => {
             });
         });
     });
-});
+})
+;
