@@ -37,7 +37,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> BobToAlice<SL, TL, SA, TA> {
                     .and_then(|response| {
                         response_sender
                             .send(response.clone())
-                            .expect("should never fail");
+                            .expect("receiver should never go out of scope");
 
                         Ok(response)
                     });
