@@ -57,10 +57,11 @@ mod asset_impls {
 #[cfg(test)]
 mod tests {
 
-    use bitcoin_support::BitcoinQuantity;
+    use bitcoin_support::{BitcoinQuantity, Network};
     use ethereum_support::{Address, Erc20Quantity, EtherQuantity, U256};
-    use http_api::asset::ToHttpAsset;
+    use http_api::{asset::ToHttpAsset, ledger::ToHttpLedger};
     use serde_json;
+    use swap_protocols::ledger::{Bitcoin, Ethereum};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -88,6 +89,26 @@ mod tests {
             r#"{"name":"Ether","quantity":"1000000000000000000"}"#
         );
         assert_eq!(&pay_serialized, r#"{"name":"ERC20","quantity":"100000000000","token_contract":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"}"#);
+    }
+
+    #[test]
+    fn http_ledger_serializes_correctly_to_json() {
+        let bitcoin = Bitcoin {
+            network: Network::Regtest,
+        };
+        let ether = Ethereum {};
+
+        let bitcoin = bitcoin.to_http_ledger().unwrap();
+        let ether = ether.to_http_ledger().unwrap();
+
+        let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();
+        let ether_serialized = serde_json::to_string(&ether).unwrap();
+
+        assert_eq!(
+            &bitcoin_serialized,
+            r#"{"name":"Bitcoin","network":"regtest"}"#
+        );
+        assert_eq!(&ether_serialized, r#"{"name":"Ethereum"}"#);
     }
 
 }
