@@ -45,7 +45,6 @@ fn main() {
         KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),
     );
-
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
