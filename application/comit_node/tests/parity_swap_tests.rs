@@ -208,6 +208,7 @@ fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
     // check htlc funding
     assert_eq!(client.token_balance_of(token, htlc), U256::from(400));
     assert_eq!(client.token_balance_of(token, alice), U256::from(600));
+    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
 
     // Send correct secret to contract
     client.send_data(htlc, Some(Bytes(SECRET.to_vec())));

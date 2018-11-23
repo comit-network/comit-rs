@@ -236,22 +236,6 @@ impl EthereumService {
 
             let htlc_address = address.calculate_contract_address(&next_nonce);
 
-            let approval_transaction = UnsignedTransaction::new_erc20_approval(
-                htlc_funding_params.token_contract_address,
-                htlc_address,
-                htlc_funding_params.amount,
-                gas_price,
-                *nonce,
-            );
-
-            let signed_approval_transaction = self.wallet.sign(&approval_transaction);
-
-            let _tx_id = self
-                .web3
-                .send_raw_transaction(signed_approval_transaction.into())?;
-
-            EthereumService::increment_nonce(nonce);
-
             let htlc = Erc20Htlc::new(
                 htlc_funding_params.time_lock,
                 htlc_funding_params.refund_address,
