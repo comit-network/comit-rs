@@ -28,6 +28,11 @@ impl Erc20Htlc {
     const TOKEN_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
         "6000000000000000000000000000000000000006";
 
+    const DEPLOY_HEADER_TEMPLATE: &'static str =
+        include_str!("./contract_templates/out/erc20_deploy_header.asm.hex");
+    const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
+    const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
+
     pub fn new(
         refund_timeout: Seconds,
         refund_address: Address,
@@ -81,6 +86,58 @@ impl Htlc for Erc20Htlc {
 
         debug!("Final contract code: {}", &contract_code);
 
-        ByteCode(contract_code)
+        let code_length = contract_code.len() / 2; // In hex, each byte is two chars
+
+        let code_length_as_hex = format!("{:0>4x}", code_length);
+
+        let header_length = Self::DEPLOY_HEADER_TEMPLATE.len() / 2;
+        let header_length_as_hex = format!("{:0>4x}", header_length);
+
+        let deploy_header = Self::DEPLOY_HEADER_TEMPLATE
+            .to_string()
+            .replace(
+                Self::CONTRACT_START_POSITION_PLACEHOLDER,
+                &header_length_as_hex,
+            )
+            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
+
+        debug!("Final contract code: {}", &contract_code);
+        debug!("Deploy header: {}", &deploy_header);
+
+        let deployable_contract = deploy_header + &contract_code;
+
+        debug!("Deployable contract: {}", &deployable_contract);
+
+        ByteCode(deployable_contract)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethereum_support::{Address, U256};
+    use std::str::FromStr;
+
+    #[test]
+    fn compiled_contract_is_same_length_as_template() {
+        let htlc = Erc20Htlc::new(
+            Seconds(100),
+            Address::new(),
+            Address::new(),
+            SecretHash::from_str(
+                "1000000000000000000000000000000000000000000000000000000000000001",
+            )
+            .unwrap(),
+            Address::new(),
+            Address::new(),
+            U256::from(100),
+        );
+        let htlc_hex = htlc.compile_to_hex();
+        assert_eq!(
+            htlc_hex.0.len(),
+            Erc20Htlc::CONTRACT_CODE_TEMPLATE.len() + Erc20Htlc::DEPLOY_HEADER_TEMPLATE.len(),
+            "HTLC is the same length as template plus deploy code"
+        );
+    }
+
 }
