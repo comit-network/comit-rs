@@ -19,7 +19,7 @@ const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 describe("RFC003 HTTP API", () => {
 
     let swap_url;
-    it("Returns 404 when you try and GET a non-existent swap", async () => {
+    it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
         await chai.request(alice.comit_node_url())
             .get('/swaps/rfc003/deadbee-dead-beef-dead-deadbeefdead')
             .then((res) => {
@@ -37,7 +37,7 @@ describe("RFC003 HTTP API", () => {
     //         });
     // });
 
-    it("Alice should be able to make first swap request via HTTP api", async () => {
+    it("[Alice] Should be able to make first swap request via HTTP api", async () => {
         await chai.request(alice.comit_node_url())
             .post('/swaps/rfc003')
             .send({
@@ -68,15 +68,18 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
-    it("After making a request Alice should be able to get it", async () => {
+    it("[Alice] Is able to GET the swap after POSTing it", async () => {
         await chai.request(alice.comit_node_url())
             .get(swap_url).then((res) => {
-                res.body.role.should.equal('Alice');
+                let body = res.body;
+                body.swap.should.be.a("object");
+                body.role.should.equal('Alice');
+                body.state.should.equal("Start");
                 res.should.have.status(200);
             });
     });
 
-    it("Shows both swaps in GET /swaps", async () => {
+    it("[Alice] Shows the swap in GET /swaps", async () => {
         await chai.request(alice.comit_node_url())
             .get('/swaps').then((res) => {
                 res.should.have.status(200);
@@ -90,13 +93,26 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
-    it("Shows both swaps as Start on Bob's side", async () => {
-        await chai.request(bob.comit_node_url())
-            .get('/swaps').then((res) => {
-                let embedded = res.body._embedded;
-                let swap = embedded.swaps[0];
-                swap.protocol.should.equal('rfc003');
-                swap.state.should.equal('Start');
-            });
+    let swap_link_href;
+    it("[Bob] Shows the Swap as Start in /swaps", async () => {
+
+        {
+            let res = await chai.request(bob.comit_node_url())
+                .get('/swaps');
+
+            let embedded = res.body._embedded;
+            let swap_embedded = embedded.swaps[0];
+            swap_embedded.protocol.should.equal('rfc003');
+            swap_embedded.state.should.equal('Start');
+            let swap_link = swap_embedded._links;
+            swap_link.should.be.a('object');
+            swap_link_href = swap_link.self.href;
+            swap_link_href.should.be.a('string');
+        }
+    });
+
+    it("[Bob] Has the accept when GETing the swap", async () => {
+        swap = await chai.request(bob.comit_node_url()).get(swap_link_href).body;
+        //TODO: Check bob has the accept action
     });
 });

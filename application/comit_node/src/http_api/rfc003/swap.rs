@@ -111,13 +111,18 @@ pub fn post_swap(
 }
 
 #[derive(Debug, Serialize)]
-pub struct State {
-    name: String,
+pub struct SwapDescription {
     alpha_ledger: String,
     beta_ledger: String,
     alpha_asset: String,
     beta_asset: String,
-    role: String,
+}
+
+#[derive(Debug, Serialize)]
+struct GetSwapResource {
+    pub swap: SwapDescription,
+    pub role: String,
+    pub state: String,
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -129,8 +134,8 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     let result = handle_get_swap(&metadata_store, &state_store, &id);
 
     match result {
-        Some((state, actions)) => {
-            let mut response = HalResource::new(state);
+        Some((swap_resource, actions)) => {
+            let mut response = HalResource::new(swap_resource);
             for action in actions {
                 let route = format!("{}/{}", swap_path(id), action);
                 response.with_link(action, route);
@@ -147,7 +152,7 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: &Arc<T>,
     state_store: &Arc<S>,
     id: &SwapId,
-) -> Option<(State, Vec<ActionName>)> {
+) -> Option<(GetSwapResource, Vec<ActionName>)> {
     get_swap!(
         metadata_store,
         state_store,
@@ -163,12 +168,14 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                 .map(Action::name)
                 .collect();
             Some((
-                State {
-                    name: SwapStates::name(&state),
-                    alpha_ledger: format!("{}", metadata.alpha_ledger),
-                    beta_ledger: format!("{}", metadata.beta_ledger),
-                    alpha_asset: format!("{}", metadata.alpha_asset),
-                    beta_asset: format!("{}", metadata.beta_asset),
+                GetSwapResource{
+                    state: SwapStates::name(&state),
+                    swap: SwapDescription{
+                        alpha_ledger: format!("{}", metadata.alpha_ledger),
+                        beta_ledger: format!("{}", metadata.beta_ledger),
+                        alpha_asset: format!("{}", metadata.alpha_asset),
+                        beta_asset: format!("{}", metadata.beta_asset),
+                    },
                     role: format!("{}", metadata.role),
                 },
                 actions,
