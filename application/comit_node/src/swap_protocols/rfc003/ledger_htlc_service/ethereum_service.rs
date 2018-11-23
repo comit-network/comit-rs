@@ -467,7 +467,6 @@ mod tests {
         }
     }
 
-    #[test]
     fn given_a_transaction_when_deployment_fails_nonce_is_not_updated() {
         let wallet = StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
@@ -504,7 +503,6 @@ mod tests {
         assert_eq!(*nonce, U256::from(0))
     }
 
-    #[test]
     fn given_a_transaction_when_deployment_succeeds_nonce_should_be_updated() {
         let wallet = StaticFakeWallet::account0();
         let gas_price_service = gas_price_service::StaticGasPriceService::default();
@@ -540,7 +538,6 @@ mod tests {
         assert_eq!(*nonce, U256::from(1))
     }
 
-    #[test]
     fn given_erc20htlcparams_when_deploy_htlc_is_called_sends_two_transactions() {
         // First, initialize the wallet with a known secret key. This way, we know the address of this account. It is: 0x94e4782ae2db9bce7ac1920869f420026ca58f33
         let keypair = KeyPair::from_secret_key_slice(
