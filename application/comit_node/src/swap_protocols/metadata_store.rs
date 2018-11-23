@@ -30,16 +30,14 @@ pub struct Metadata {
 
 #[derive(Debug, Fail)]
 pub enum Error {
-    #[fail(display = "Metadata not found")]
-    NotFound,
     #[fail(display = "Metadata already exists")]
     DuplicateKey,
 }
 
 pub trait MetadataStore<K>: Send + Sync + 'static {
-    fn get(&self, key: &K) -> Result<Metadata, Error>;
+    fn get(&self, key: &K) -> Result<Option<Metadata>, Error>;
     fn insert<M: Into<Metadata>>(&self, key: K, metadata: M) -> Result<(), Error>;
-    fn keys(&self) -> Vec<K>;
+    fn all(&self) -> Result<Vec<(K, Metadata)>, Error>;
 }
 
 #[derive(Debug, Default)]
@@ -48,12 +46,9 @@ pub struct InMemoryMetadataStore<K: Hash + Eq> {
 }
 
 impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemoryMetadataStore<K> {
-    fn get(&self, key: &K) -> Result<Metadata, Error> {
+    fn get(&self, key: &K) -> Result<Option<Metadata>, Error> {
         let metadata = self.metadata.lock().unwrap();
-        match metadata.get(&key) {
-            Some(metadata) => Ok(*metadata),
-            None => Err(Error::NotFound),
-        }
+        Ok(metadata.get(&key).map(Clone::clone))
     }
 
     fn insert<M: Into<Metadata>>(&self, key: K, value: M) -> Result<(), Error> {
@@ -66,9 +61,12 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemory
         let _ = metadata.insert(key, value.into());
         Ok(())
     }
-    fn keys(&self) -> Vec<K> {
+    fn all(&self) -> Result<Vec<(K, Metadata)>, Error> {
         let metadata = self.metadata.lock().unwrap();
 
-        metadata.keys().map(Clone::clone).collect()
+        Ok(metadata
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect())
     }
 }

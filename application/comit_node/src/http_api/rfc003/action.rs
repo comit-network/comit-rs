@@ -1,5 +1,5 @@
 use frunk;
-use http_api::HttpApiProblemStdError;
+use http_api::{problem, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use swap_protocols::{
@@ -42,10 +42,22 @@ pub fn post<T: MetadataStore<SwapId>>(
     action: Action,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    use swap_protocols::{AssetKind, LedgerKind, Metadata, RoleKind};
+    handle_post(metadata_store, pending_responses, id, action, body)
+        .map(|_| warp::reply())
+        .map_err(HttpApiProblemStdError::from)
+        .map_err(warp::reject::custom)
+}
 
-    let result = match metadata_store.get(&id) {
-        Ok(Metadata {
+pub fn handle_post<T: MetadataStore<SwapId>>(
+    metadata_store: Arc<T>,
+    pending_responses: Arc<PendingResponses<SwapId>>,
+    id: SwapId,
+    action: Action,
+    body: serde_json::Value,
+) -> Result<(), HttpApiProblem> {
+    use swap_protocols::{AssetKind, LedgerKind, Metadata, RoleKind};
+    match metadata_store.get(&id)? {
+        Some(Metadata {
             alpha_ledger: LedgerKind::Bitcoin,
             beta_ledger: LedgerKind::Ethereum,
             alpha_asset: AssetKind::Bitcoin,
@@ -55,30 +67,18 @@ pub fn post<T: MetadataStore<SwapId>>(
             RoleKind::Alice => Err(HttpApiProblem::with_title_and_type_from_status(400)
                 .set_detail(format!("Swap {} was initiated by this comit_node, only the counter-part can accept or decline", id))),
             RoleKind::Bob => {
-                update_state::<Bitcoin, Ethereum>(pending_responses.as_ref(), &id, action, body)
-                    .map_err(From::from)
+                forward_response::<Bitcoin, Ethereum>(pending_responses.as_ref(), &id, action, body)
             }
         },
-        Err(e) => {
-            error!("Failed to retrieve meta data for swap {}: {:?}", id, e);
+        Some(_) => Err(problem::unsupported()),
+        None => {
+            debug!("Metadata for {} not found", id);
             Err(HttpApiProblem::new("swap-not-found").set_status(404))
         }
-        _ => {
-            warn!(
-                "Swap with id {} was found but the meta-data does not match supported types",
-                id
-            );
-            Err(HttpApiProblem::new("swap-not-found").set_status(404))
-        }
-    };
-
-    result
-        .map(|_| warp::reply())
-        .map_err(HttpApiProblemStdError::from)
-        .map_err(warp::reject::custom)
+    }
 }
 
-fn update_state<AL: Ledger, BL: Ledger>(
+fn forward_response<AL: Ledger, BL: Ledger>(
     pending_responses: &PendingResponses<SwapId>,
     id: &SwapId,
     action: Action,

@@ -2,7 +2,10 @@ use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use frunk;
 use futures::sync::mpsc::UnboundedSender;
-use http_api::{self, problem::HttpApiProblemStdError};
+use http_api::{
+    self,
+    problem::{self, HttpApiProblemStdError},
+};
 use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
@@ -25,24 +28,6 @@ use swaps::common::SwapId;
 use warp::{self, Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";
-
-type ActionName = String;
-
-#[derive(Debug)]
-pub enum Error {
-    Unsupported,
-    NotFound,
-}
-
-impl From<Error> for HttpApiProblem {
-    fn from(e: Error) -> Self {
-        use self::Error::*;
-        match e {
-            Unsupported => HttpApiProblem::new("swap-not-supported").set_status(400),
-            NotFound => HttpApiProblem::new("swap-not-found").set_status(404),
-        }
-    }
-}
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, LabelledGeneric)]
 pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
@@ -134,7 +119,7 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     let result = handle_get_swap(&metadata_store, &state_store, &id);
 
     match result {
-        Some((swap_resource, actions)) => {
+        Ok((swap_resource, actions)) => {
             let mut response = HalResource::new(swap_resource);
             for action in actions {
                 let route = format!("{}/{}", swap_path(id), action);
@@ -142,35 +127,35 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             }
             Ok(warp::reply::json(&response))
         }
-        None => Err(warp::reject::custom(HttpApiProblemStdError::new(
-            Error::NotFound,
-        ))),
+        Err(e) => Err(warp::reject::custom(HttpApiProblemStdError::new(e))),
     }
 }
+
+type ActionName = String;
 
 fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: &Arc<T>,
     state_store: &Arc<S>,
     id: &SwapId,
-) -> Option<(GetSwapResource, Vec<ActionName>)> {
+) -> Result<(GetSwapResource, Vec<ActionName>), HttpApiProblem> {
+    let metadata = metadata_store.get(id)?.ok_or_else(problem::not_found)?;
     get_swap!(
-        metadata_store,
+        &metadata,
         state_store,
         id,
-        result,
-        success:
+        state,
         (|| {
-            let (state, metadata) = result;
-            info!("Here is the state we have retrieved: {:?}", state);
+            let state = state.ok_or_else(problem::not_found)?;
+            trace!("Retrieved state for {}: {:?}", id, state);
 
             let actions: Vec<ActionName> = StateActions::actions(&state)
                 .iter()
                 .map(Action::name)
                 .collect();
-            Some((
-                GetSwapResource{
+            (Ok((
+                GetSwapResource {
                     state: SwapStates::name(&state),
-                    swap: SwapDescription{
+                    swap: SwapDescription {
                         alpha_ledger: format!("{}", metadata.alpha_ledger),
                         beta_ledger: format!("{}", metadata.beta_ledger),
                         alpha_asset: format!("{}", metadata.alpha_asset),
@@ -179,18 +164,13 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                     role: format!("{}", metadata.role),
                 },
                 actions,
-            ))
-        }),
-        failure:
-        |e| {
-            debug!("Could not retrieve metadata: {:?}", e);
-            None
-        }
+            )))
+        })
     )
 }
 
 #[derive(Serialize, Debug)]
-pub struct SwapListItem {
+pub struct EmbeddedSwapResource {
     state: String,
     protocol: String,
 }
@@ -200,41 +180,47 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
 ) -> Result<impl Reply, Rejection> {
-    let swaps = handle_get_swaps(metadata_store, state_store);
-
-    let mut response = HalResource::new("");
-    for swap in swaps {
-        response.with_resources("swaps", &swap);
+    match handle_get_swaps(metadata_store, state_store) {
+        Ok(swaps) => {
+            let mut response = HalResource::new("");
+            response.with_resources("swaps", swaps);
+            Ok(warp::reply::json(&response))
+        }
+        Err(e) => Err(warp::reject::custom(HttpApiProblemStdError::new(e))),
     }
-    Ok(warp::reply::json(&response))
 }
 
 fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-) -> Vec<HalResource> {
-    metadata_store
-        .keys()
-        .iter()
-        .filter_map(|id| {
-            get_swap!(&metadata_store, &state_store, id, result, success: (|| {
-                let (state, _) = result;
-                let swap = SwapListItem{
-                    state: state.name(),
-                    protocol: PROTOCOL_NAME.into(),
-                };
+) -> Result<Vec<HalResource>, HttpApiProblem> {
+    let mut resources = vec![];
+    for (id, metadata) in metadata_store.all()?.into_iter() {
+        get_swap!(
+            &metadata,
+            &state_store,
+            &id,
+            state,
+            (|| -> Result<(), HttpApiProblem> {
+                match state {
+                    Some(state) => {
+                        let swap = EmbeddedSwapResource {
+                            state: state.name(),
+                            protocol: PROTOCOL_NAME.into(),
+                        };
 
-                let mut hal_resource = HalResource::new(swap);
-                hal_resource.with_link("self", swap_path(*id));
-                Some(hal_resource)
-        }),
-        failure:
-        |e| {
-            debug!("Could not retrieve metadata: {:?}", e);
-            None
-        })
-        })
-        .collect()
+                        let mut hal_resource = HalResource::new(swap);
+                        hal_resource.with_link("self", swap_path(id));
+                        resources.push(hal_resource);
+                    }
+                    None => error!("Couldn't find state for {} despite having the metadata", id),
+                };
+                Ok(())
+            })
+        )?;
+    }
+
+    Ok(resources)
 }
 
 #[cfg(test)]

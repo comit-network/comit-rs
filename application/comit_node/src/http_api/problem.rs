@@ -1,6 +1,7 @@
 use http::StatusCode;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use std::{error::Error, fmt};
+use swap_protocols::{metadata_store, rfc003::state_store};
 use warp::{Rejection, Reply};
 
 #[derive(Debug)]
@@ -31,6 +32,26 @@ impl fmt::Display for HttpApiProblemStdError {
 impl Error for HttpApiProblemStdError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         None
+    }
+}
+
+pub fn not_found() -> HttpApiProblem {
+    HttpApiProblem::new("swap-not-found").set_status(404)
+}
+
+pub fn unsupported() -> HttpApiProblem {
+    HttpApiProblem::new("swap-not-supported").set_status(400)
+}
+
+impl From<state_store::Error> for HttpApiProblem {
+    fn from(_e: state_store::Error) -> Self {
+        HttpApiProblem::with_title_and_type_from_status(500).set_detail("Storage layer failure")
+    }
+}
+
+impl From<metadata_store::Error> for HttpApiProblem {
+    fn from(_e: metadata_store::Error) -> Self {
+        HttpApiProblem::with_title_and_type_from_status(500).set_detail("Storage layer failure")
     }
 }
 
