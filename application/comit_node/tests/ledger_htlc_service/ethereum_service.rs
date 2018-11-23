@@ -291,7 +291,7 @@ impl EthereumService {
         target: Address,
         asset: Erc20Quantity,
     ) -> Result<H256, ledger_htlc_service::Error> {
-        let target_address = format!("{:x}", target);
+        let target_address = format!("{:0>64}", format!("{:x}", target));
         let token_amount = format!("{:0>64}", format!("{:x}", asset.amount()));
 
         let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
@@ -301,17 +301,19 @@ impl EthereumService {
             UnsignedTransaction::new_contract_invocation(
                 hex_data.clone(),
                 asset.address(),
-                10000,
+                100000,
                 gas_price,
                 0,
                 nonce,
             )
         })?;
 
-        //        info!(
-        //            "Contract {:?} was successfully redeemed in transaction {:?}",
-        //            contract_address, tx_id
-        //        );
+        println!("tx receipt: {:?}", tx_id);
+
+        info!(
+            "Account {:?} was successfully funded in transaction {:?}",
+            target, tx_id
+        );
 
         Ok(tx_id)
     }
