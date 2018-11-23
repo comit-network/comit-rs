@@ -7,7 +7,7 @@ TEST_PATH="$1"
 
 if [[ -z "${TEST_PATH}" ]]
 then
-    log "Path to test directory needs to be passed.";
+    log "Path to test needs to passed";
     exit 1;
 fi
 
@@ -21,11 +21,6 @@ END(){
             wait "$pid" 2>/dev/null;
         fi
     done
-    log "KILLING docker containers";
-    (
-        cd regtest;
-        docker-compose rm -sfv ${CHAINS};
-    );
 }
 
 trap 'END' EXIT;

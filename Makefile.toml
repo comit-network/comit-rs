@@ -174,7 +174,7 @@ command = "sccache"
 args = ["--stop-server"]
 
 
-################
+#####################
 # Dry api Test flow #
 [tasks.dry-tests-flow]
 description = "Defines the E2E-tests flow."
@@ -200,7 +200,7 @@ cd api_tests;
 [tasks.pre-dry-tests]
 alias = "pre-e2e-tests"
 
-################
+#################
 # E2E Test flow #
 [tasks.e2e-tests-flow]
 description = "Defines the E2E-tests flow."
