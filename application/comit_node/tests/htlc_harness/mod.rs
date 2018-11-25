@@ -1,7 +1,7 @@
 use comit_node::{
     ethereum_wallet::fake::StaticFakeWallet,
     gas_price_service::StaticGasPriceService,
-    swap_protocols::rfc003::{ethereum::Seconds, Secret},
+    swap_protocols::rfc003::{ethereum::Seconds, Secret, SecretHash},
 };
 use ethereum_support::{
     web3::{
@@ -10,10 +10,7 @@ use ethereum_support::{
     },
     EtherQuantity, ToEthereumAddress,
 };
-use ledger_htlc_service::{
-    self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService, LedgerHtlcService,
-};
-use parity_client::ParityClient;
+use parity_client::{Erc20HtlcFundingParams, EtherHtlcFundingParams, ParityClient};
 use pretty_env_logger;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::Duration};
@@ -43,12 +40,11 @@ pub fn harness<D: Docker>(
 ) -> (
     Address,
     Address,
-    Result<Address, ledger_htlc_service::Error>,
+    Address,
     Option<Address>,
     ParityClient,
     EventLoopHandle,
     Container<D, ParityEthereum>,
-    EthereumService,
 ) {
     let _ = pretty_env_logger::try_init();
 
@@ -57,26 +53,26 @@ pub fn harness<D: Docker>(
     let (_, bob) = new_account("f8218ebf6e2626bd1415c18321496e0c5725f0e1d774c7c2eab69f7650ad6e82");
 
     let container = docker.run(ParityEthereum::default());
+
     let (event_loop, web3) = tc_web3_client::new(&container);
+    let web3 = Arc::new(web3);
 
-    let client = ParityClient::new(web3);
-    client.give_eth_to(alice, params.alice_initial_ether);
-
-    let ethereum_service = EthereumService::new(
+    let alice_client = ParityClient::new(
         Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
-        Arc::new(StaticGasPriceService::default()),
-        Arc::new(tc_web3_client::new(&container)),
+        web3,
         0,
     );
+
+    alice_client.give_eth_to(alice, params.alice_initial_ether);
 
     let (token_contract, htlc) = match params.htlc_type {
         HtlcType::Erc20 {
             alice_initial_tokens,
             htlc_token_value,
         } => {
-            let token_contract = client.deploy_erc20_token_contract();
+            let token_contract = alice_client.deploy_erc20_token_contract();
 
-            client.mint_tokens(token_contract, alice_initial_tokens, alice);
+            alice_client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
             let htlc_params = Erc20HtlcFundingParams {
                 refund_address: alice,
@@ -86,11 +82,12 @@ pub fn harness<D: Docker>(
                 secret_hash: Secret::from(params.htlc_secret).hash(),
                 token_contract_address: token_contract,
             };
-            let deployment_result = ethereum_service
-                .deploy_erc20_htlc(htlc_params)
-                .map(|tx_id| client.get_contract_address(tx_id.clone()));
+            let tx_id = alice_client.deploy_erc20_htlc(htlc_params);
 
-            (Some(token_contract), deployment_result)
+            (
+                Some(token_contract),
+                alice_client.get_contract_address(tx_id),
+            )
         }
         HtlcType::Eth { htlc_eth_value } => {
             let htlc_params = EtherHtlcFundingParams {
@@ -100,13 +97,10 @@ pub fn harness<D: Docker>(
                 amount: htlc_eth_value,
                 secret_hash: Secret::from(params.htlc_secret).hash(),
             };
-            let deployment_result = ethereum_service
-                .deploy_ether_htlc(htlc_params)
-                .map(|tx_id| client.get_contract_address(tx_id.clone()));
+            let tx_id = alice_client.deploy_ether_htlc(htlc_params);
 
             //no funding needed, deployment of the HTLC can also fund it directly
-
-            (None, deployment_result)
+            (None, alice_client.get_contract_address(tx_id))
         }
     };
 
@@ -115,10 +109,9 @@ pub fn harness<D: Docker>(
         bob,
         htlc,
         token_contract,
-        client,
+        alice_client,
         event_loop,
         container,
-        ethereum_service,
     )
 }
 

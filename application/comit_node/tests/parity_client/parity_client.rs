@@ -1,11 +1,47 @@
+use comit_node::{
+    ethereum_wallet::{UnsignedTransaction, Wallet},
+    swap_protocols::{
+        ledger::Ethereum,
+        rfc003::{
+            ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
+            SecretHash,
+        },
+    },
+};
 use ethereum_support::{
     web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionRequest, H256, U256,
+    Address, Bytes, CalculateContractAddress, CallRequest, Erc20Quantity, EtherQuantity, Future,
+    TransactionRequest, H256, U256,
 };
 use hex;
+use ledger_htlc_service;
+use std::{
+    ops::DerefMut,
+    sync::{Arc, Mutex},
+};
 
 pub struct ParityClient {
-    client: Web3<Http>,
+    client: Arc<Web3<Http>>,
+    wallet: Arc<Wallet>,
+    nonce: Mutex<U256>,
+}
+#[derive(Clone, Debug)]
+pub struct Erc20HtlcFundingParams {
+    pub refund_address: Address,
+    pub success_address: Address,
+    pub time_lock: Seconds,
+    pub amount: U256,
+    pub secret_hash: SecretHash,
+    pub token_contract_address: Address,
+}
+
+#[derive(Clone, Debug)]
+pub struct EtherHtlcFundingParams {
+    pub refund_address: Address,
+    pub success_address: Address,
+    pub time_lock: Seconds,
+    pub amount: EtherQuantity,
+    pub secret_hash: SecretHash,
 }
 
 lazy_static! {
@@ -18,8 +54,16 @@ const ERC20_TOKEN_CONTRACT_CODE: &'static str = include_str!("erc20_token_contra
 const PARITY_DEV_PASSWORD: &str = "";
 
 impl ParityClient {
-    pub fn new(client: Web3<Http>) -> Self {
-        ParityClient { client }
+    pub fn new<N: Into<U256>>(
+        wallet: Arc<Wallet>,
+        client: Arc<Web3<Http>>,
+        current_nonce: N,
+    ) -> Self {
+        ParityClient {
+            wallet,
+            nonce: Mutex::new(current_nonce.into()),
+            client,
+        }
     }
 
     pub fn give_eth_to(&self, to: Address, amount: EtherQuantity) {
@@ -161,5 +205,185 @@ impl ParityClient {
             .unwrap();
 
         receipt.gas_used
+    }
+
+    pub fn deploy_erc20_htlc(&self, htlc_funding_params: Erc20HtlcFundingParams) -> H256 {
+        let gas_price = 0;
+
+        let tx_id = {
+            let mut lock = self.nonce.lock().unwrap();
+
+            let nonce = lock.deref_mut();
+            let address: ethereum_support::Address = self.wallet.address();
+            let next_nonce = *nonce + U256::from(1);
+
+            let htlc_address = address.calculate_contract_address(&next_nonce);
+
+            let htlc = Erc20Htlc::new(
+                htlc_funding_params.time_lock,
+                htlc_funding_params.refund_address,
+                htlc_funding_params.success_address,
+                htlc_funding_params.secret_hash,
+                htlc_address,
+                htlc_funding_params.token_contract_address,
+                htlc_funding_params.amount,
+            );
+
+            let htlc_code = htlc.compile_to_hex();
+
+            let deployment_transaction = UnsignedTransaction::new_contract_deployment(
+                htlc_code,
+                gas_price,
+                0,
+                *nonce,
+                Some(100_000),
+            );
+
+            let signed_deployment_transaction = self.wallet.sign(&deployment_transaction);
+
+            let tx_id = self
+                .client
+                .eth()
+                .send_raw_transaction(signed_deployment_transaction.into())
+                .wait()
+                .unwrap();
+
+            self.increment_nonce(nonce);
+
+            tx_id
+        };
+
+        tx_id
+    }
+
+    pub fn deploy_ether_htlc(&self, htlc_funding_params: EtherHtlcFundingParams) -> H256 {
+        let contract = EtherHtlc::new(
+            htlc_funding_params.time_lock,
+            htlc_funding_params.refund_address,
+            htlc_funding_params.success_address,
+            htlc_funding_params.secret_hash,
+        );
+
+        let funding = htlc_funding_params.amount.wei();
+
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            UnsignedTransaction::new_contract_deployment(
+                contract.compile_to_hex(),
+                gas_price,
+                funding,
+                nonce,
+                None,
+            )
+        });
+
+        info!(
+            "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
+            contract, tx_id, funding
+        );
+
+        tx_id
+    }
+
+    pub fn fund_erc20_htlc2(&self, target: Address, asset: Erc20Quantity) -> H256 {
+        let gas_price = 0;
+
+        let tx_id = {
+            let mut lock = self.nonce.lock().unwrap();
+
+            let nonce = lock.deref_mut();
+
+            let target_address = format!("{:0>64}", format!("{:x}", target));
+            let token_amount = format!("{:0>64}", format!("{:x}", asset.amount()));
+
+            let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
+            let hex_data = hex::decode(data).unwrap();
+
+            let contract_invocation = UnsignedTransaction::new_contract_invocation(
+                hex_data.clone(),
+                asset.address(),
+                100000,
+                gas_price,
+                0,
+                *nonce,
+            );
+
+            let signed_contract_invocation = self.wallet.sign(&contract_invocation);
+
+            let tx_id = self
+                .client
+                .eth()
+                .send_raw_transaction(signed_contract_invocation.into())
+                .wait()
+                .unwrap();
+
+            self.increment_nonce(nonce);
+
+            tx_id
+        };
+
+        tx_id
+    }
+
+    pub fn fund_erc20_htlc(&self, target: Address, asset: Erc20Quantity) -> H256 {
+        let target_address = format!("{:0>64}", format!("{:x}", target));
+        let token_amount = format!("{:0>64}", format!("{:x}", asset.amount()));
+
+        let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
+        let hex_data = hex::decode(data).unwrap();
+
+        let tx_id = self.sign_and_send(|nonce, gas_price| {
+            UnsignedTransaction::new_contract_invocation(
+                hex_data.clone(),
+                asset.address(),
+                100000,
+                gas_price,
+                0,
+                nonce,
+            )
+        });
+
+        println!("tx receipt: {:?}", tx_id);
+
+        info!(
+            "Account {:?} was successfully funded in transaction {:?}",
+            target, tx_id
+        );
+
+        tx_id
+    }
+
+    fn sign_and_send<T: Fn(U256, U256) -> UnsignedTransaction>(&self, transaction_fn: T) -> H256 {
+        let gas_price = U256::from(100);
+
+        let tx_id = {
+            let mut lock = self.nonce.lock().unwrap();
+
+            let nonce = lock.deref_mut();
+
+            let transaction = transaction_fn(*nonce, gas_price);
+
+            let signed_transaction = self.wallet.sign(&transaction);
+
+            let tx_id = self
+                .client
+                .eth()
+                .send_raw_transaction(signed_transaction.into())
+                .wait()
+                .unwrap();
+
+            // If we get this far, everything worked.
+            // Update the nonce and release the lock.
+            self.increment_nonce(nonce);
+
+            tx_id
+        };
+
+        tx_id
+    }
+
+    fn increment_nonce(&self, nonce: &mut U256) {
+        let next_nonce = *nonce + U256::from(1);
+        debug!("Nonce was incremented from {} to {}", nonce, next_nonce);
+        *nonce = next_nonce;
     }
 }

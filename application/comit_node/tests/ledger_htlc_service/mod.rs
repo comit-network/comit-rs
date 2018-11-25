@@ -1,4 +1,4 @@
-pub use self::{bitcoin_service::*, ethereum_service::*};
+pub use self::bitcoin_service::*;
 use comit_node::{
     swap_protocols::{
         asset::Asset,
@@ -8,7 +8,6 @@ use comit_node::{
 };
 
 mod bitcoin_service;
-mod ethereum_service;
 
 #[derive(Debug)]
 pub enum Error {
