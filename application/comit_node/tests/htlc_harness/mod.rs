@@ -1,7 +1,6 @@
 use comit_node::{
     ethereum_wallet::fake::StaticFakeWallet,
-    gas_price_service::StaticGasPriceService,
-    swap_protocols::rfc003::{ethereum::Seconds, Secret, SecretHash},
+    swap_protocols::rfc003::{ethereum::Seconds, Secret},
 };
 use ethereum_support::{
     web3::{

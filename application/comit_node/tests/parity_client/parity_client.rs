@@ -1,11 +1,8 @@
 use comit_node::{
     ethereum_wallet::{UnsignedTransaction, Wallet},
-    swap_protocols::{
-        ledger::Ethereum,
-        rfc003::{
-            ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
-            SecretHash,
-        },
+    swap_protocols::rfc003::{
+        ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
+        SecretHash,
     },
 };
 use ethereum_support::{
@@ -14,7 +11,6 @@ use ethereum_support::{
     TransactionRequest, H256, U256,
 };
 use hex;
-use ledger_htlc_service;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex},
@@ -280,46 +276,6 @@ impl ParityClient {
             "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
             contract, tx_id, funding
         );
-
-        tx_id
-    }
-
-    pub fn fund_erc20_htlc2(&self, target: Address, asset: Erc20Quantity) -> H256 {
-        let gas_price = 0;
-
-        let tx_id = {
-            let mut lock = self.nonce.lock().unwrap();
-
-            let nonce = lock.deref_mut();
-
-            let target_address = format!("{:0>64}", format!("{:x}", target));
-            let token_amount = format!("{:0>64}", format!("{:x}", asset.amount()));
-
-            let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
-            let hex_data = hex::decode(data).unwrap();
-
-            let contract_invocation = UnsignedTransaction::new_contract_invocation(
-                hex_data.clone(),
-                asset.address(),
-                100000,
-                gas_price,
-                0,
-                *nonce,
-            );
-
-            let signed_contract_invocation = self.wallet.sign(&contract_invocation);
-
-            let tx_id = self
-                .client
-                .eth()
-                .send_raw_transaction(signed_contract_invocation.into())
-                .wait()
-                .unwrap();
-
-            self.increment_nonce(nonce);
-
-            tx_id
-        };
 
         tx_id
     }
