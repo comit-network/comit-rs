@@ -7,7 +7,7 @@ TEST_PATH="$1"
 
 if [[ -z "${TEST_PATH}" ]]
 then
-    log "Path to test needs to passed";
+    log "Path to test needs to be passed";
     exit 1;
 fi
 
