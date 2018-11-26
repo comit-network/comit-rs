@@ -8,8 +8,6 @@ use swap_protocols::rfc003::{roles::Role, state_machine::SwapStates, SaveState};
 
 #[derive(Debug, Fail)]
 pub enum Error {
-    #[fail(display = "State not found")]
-    NotFound,
     #[fail(display = "State already exists for given key")]
     DuplicateKey,
 }
@@ -17,10 +15,10 @@ pub enum Error {
 pub trait StateStore<K>: Send + Sync + 'static {
     fn insert<R: Role>(&self, key: K, state: SwapStates<R>) -> Result<Arc<SaveState<R>>, Error>;
 
-    fn get<R: Role>(&self, key: &K) -> Result<SwapStates<R>, Error>;
+    fn get<R: Role>(&self, key: &K) -> Result<Option<SwapStates<R>>, Error>;
 
     #[allow(clippy::type_complexity)]
-    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Arc<SaveState<R>>, Error>;
+    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<SaveState<R>>>, Error>;
 }
 
 #[derive(Default, Debug)]
@@ -44,27 +42,21 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         Ok(state)
     }
 
-    fn get<R: Role>(&self, key: &K) -> Result<SwapStates<R>, Error> {
+    fn get<R: Role>(&self, key: &K) -> Result<Option<SwapStates<R>>, Error> {
         let states = self.states.lock().unwrap();
-        states
-            .get(key)
-            .map(|state| {
-                let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
-                let state = state.read().unwrap();
-                state.clone()
-            })
-            .ok_or(Error::NotFound)
+        Ok(states.get(key).map(|state| {
+            let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
+            let state = state.read().unwrap();
+            state.clone()
+        }))
     }
 
-    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Arc<SaveState<R>>, Error> {
+    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<SaveState<R>>>, Error> {
         let states = self.states.lock().unwrap();
-        states
-            .get(key)
-            .map(|state| -> Arc<SaveState<R>> {
-                let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
-                state.clone()
-            })
-            .ok_or(Error::NotFound)
+        Ok(states.get(key).map(|state| -> Arc<SaveState<R>> {
+            let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
+            state.clone()
+        }))
     }
 }
 
@@ -107,10 +99,10 @@ mod tests {
         let res = state_store.insert(id, state.clone());
         assert!(res.is_ok());
 
-        let res = state_store.get(&id);
-        assert_that(&res).is_ok_containing(state);
+        let res = state_store.get(&id).unwrap();
+        assert_that(&res).contains_value(state);
 
-        let save_state = state_store.save_state_for_key(&id).unwrap();
+        let save_state = state_store.save_state_for_key(&id).unwrap().unwrap();
 
         let second_state = SwapStates::from(Start {
             secret: Secret::from(*b"!!lufituaeb era uoy ,dlrow olleh"),
@@ -119,7 +111,7 @@ mod tests {
 
         save_state.save(second_state.clone());
 
-        let res = state_store.get(&id);
-        assert_that(&res).is_ok().is_equal_to(second_state)
+        let res = state_store.get(&id).unwrap();
+        assert_that(&res).contains_value(second_state)
     }
 }

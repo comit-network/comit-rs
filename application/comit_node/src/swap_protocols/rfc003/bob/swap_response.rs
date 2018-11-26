@@ -11,3 +11,21 @@ pub enum SwapResponseKind {
         >,
     ),
 }
+
+impl
+    From<
+        Result<
+            StateMachineResponse<secp256k1_support::KeyPair, ethereum_support::Address, Seconds>,
+            SwapReject,
+        >,
+    > for SwapResponseKind
+{
+    fn from(
+        result: Result<
+            StateMachineResponse<secp256k1_support::KeyPair, ethereum_support::Address, Seconds>,
+            SwapReject,
+        >,
+    ) -> Self {
+        SwapResponseKind::BitcoinEthereum(result)
+    }
+}

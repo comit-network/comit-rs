@@ -1,32 +1,27 @@
-use comit_client::{self, SwapReject, SwapResponseError};
-use event_store::EventStore;
-use futures::{
-    stream::Stream,
-    sync::mpsc::{UnboundedReceiver, UnboundedSender},
-    Future,
-};
+use comit_client;
+use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
 use key_store::KeyStore;
+use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
 use rand::thread_rng;
-use std::{marker::PhantomData, net::SocketAddr, sync::Arc};
+use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     asset::Asset,
     metadata_store::MetadataStore,
     rfc003::{
-        self,
         alice::SwapRequestKind,
+        events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents},
         roles::Alice,
-        state_machine::{Start, SwapStates},
+        state_machine::{Context, Start, Swap, SwapStates},
         state_store::StateStore,
         Ledger, Secret,
     },
 };
-use swaps::{alice_events, common::SwapId};
+use swaps::common::SwapId;
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<
     C: comit_client::Client,
     F: comit_client::ClientFactory<C> + 'static,
-    EventStore,
     MetadataStore,
     StateStore,
 > {
@@ -35,31 +30,32 @@ pub struct SwapRequestHandler<
     pub metadata_store: Arc<MetadataStore>,
     pub key_store: Arc<KeyStore>,
     pub state_store: Arc<StateStore>,
-
+    pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     // legacy code dependencies
     pub client_factory: Arc<F>,
-    pub event_store: Arc<EventStore>,
     pub comit_node_addr: SocketAddr,
-    pub alice_actor_sender: UnboundedSender<SwapId>,
     pub phantom_data: PhantomData<C>,
+    pub bitcoin_poll_interval: Duration,
+    pub ethereum_poll_interval: Duration,
 }
 
 impl<
         C: comit_client::Client,
         F: comit_client::ClientFactory<C> + 'static,
-        E: EventStore<SwapId>,
         M: MetadataStore<SwapId>,
         S: StateStore<SwapId>,
-    > SwapRequestHandler<C, F, E, M, S>
+    > SwapRequestHandler<C, F, M, S>
 {
     pub fn start(self) -> impl Future<Item = (), Error = ()> {
-        let receiver = self.receiver;
+        let (receiver, metadata_store, bitcoin_poll_interval, ethereum_poll_interval) = (
+            self.receiver,
+            self.metadata_store,
+            self.bitcoin_poll_interval,
+            self.ethereum_poll_interval,
+        );
         let key_store = Arc::clone(&self.key_store);
-        let metadata_store = Arc::clone(&self.metadata_store);
         let state_store = Arc::clone(&self.state_store);
-
-        let event_store = Arc::clone(&self.event_store);
-        let alice_actor_sender = self.alice_actor_sender.clone();
+        let lqs_api_client = Arc::clone(&self.lqs_api_client);
         let client_factory = Arc::clone(&self.client_factory);
         let comit_node_addr = self.comit_node_addr.clone();
 
@@ -93,32 +89,31 @@ impl<
                             secret,
                         };
 
-                        spawn_state_machine(id, start_state.clone(), state_store.as_ref());
+                        let comit_client = match client_factory.client_for(comit_node_addr) {
+                            Ok(client) => client,
+                            Err(e) => {
+                                debug!("Couldn't get client for {}: {:?}", comit_node_addr, e);
+                                return Ok(());
+                            }
+                        };
 
-                        // This is legacy code
-                        send_swap_request(
+                        spawn_state_machine(
                             id,
-                            comit_client::rfc003::Request {
-                                alpha_asset: start_state.alpha_asset,
-                                beta_asset: start_state.beta_asset,
-                                alpha_ledger: start_state.alpha_ledger,
-                                beta_ledger: start_state.beta_ledger,
-                                alpha_ledger_refund_identity: start_state
-                                    .alpha_ledger_refund_identity
-                                    .into(),
-                                beta_ledger_success_identity: start_state
-                                    .beta_ledger_success_identity
-                                    .into(),
-                                alpha_ledger_lock_duration: start_state.alpha_ledger_lock_duration,
-                                secret_hash: start_state.secret.hash(),
-                            },
-                            Arc::clone(&event_store),
-                            alice_actor_sender.clone(),
-                            Arc::clone(&client_factory),
-                            comit_node_addr.clone(),
-                            secret,
+                            start_state,
+                            state_store.as_ref(),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
+                            )),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(
+                                    Arc::clone(&lqs_api_client),
+                                    ethereum_poll_interval,
+                                ),
+                            )),
+                            Box::new(AliceToBob::new(Arc::clone(&comit_client))),
                         );
-
                         Ok(())
                     }
                 }
@@ -131,97 +126,27 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
     id: SwapId,
     start_state: Start<Alice<AL, BL, AA, BA>>,
     state_store: &S,
+    alpha_ledger_events: Box<LedgerEvents<AL, AA>>,
+    beta_ledger_events: Box<LedgerEvents<BL, BA>>,
+    communication_events: Box<CommunicationEvents<Alice<AL, BL, AA, BA>>>,
 ) {
     let state = SwapStates::Start(start_state);
+    let state_repo = state_store.insert(id, state.clone()).expect("");
 
-    // TODO: spawn state machine from state here
-
-    state_store.insert(id, state).expect("handle errors :)");
-}
-
-fn send_swap_request<
-    AL: Ledger,
-    BL: Ledger,
-    AA: Asset,
-    BA: Asset,
-    C: comit_client::Client,
-    F: comit_client::ClientFactory<C> + 'static,
-    E: EventStore<SwapId>,
->(
-    id: SwapId,
-    swap_request: comit_client::rfc003::Request<AL, BL, AA, BA>,
-    event_store: Arc<E>,
-    alice_actor_sender: UnboundedSender<SwapId>,
-    client_factory: Arc<F>,
-    comit_node_addr: SocketAddr,
-    secret: Secret,
-) {
-    let sent_event = alice_events::SentSwapRequest {
-        alpha_ledger: swap_request.alpha_ledger.clone(),
-        beta_ledger: swap_request.beta_ledger.clone(),
-        alpha_asset: swap_request.alpha_asset.clone(),
-        beta_asset: swap_request.beta_asset.clone(),
-        secret,
-        beta_ledger_success_identity: swap_request.beta_ledger_success_identity.clone(),
-        alpha_ledger_refund_identity: swap_request.alpha_ledger_refund_identity.clone(),
-        alpha_ledger_lock_duration: swap_request.alpha_ledger_lock_duration.clone(),
+    let context = Context {
+        alpha_ledger_events,
+        beta_ledger_events,
+        communication_events,
+        state_repo,
     };
 
-    // This is legacy code, unwraps are fine
-
-    event_store.add_event(id, sent_event).unwrap();
-
-    let client = client_factory.client_for(comit_node_addr).unwrap();
-
-    let future = client
-        .send_swap_request(swap_request)
-        .then(move |response| {
-            on_swap_response::<AL, BL, AA, BA, E>(id, &event_store, alice_actor_sender, response);
-            Ok(())
-        });
-
-    tokio::spawn(future);
-}
-
-fn on_swap_response<
-    AL: rfc003::Ledger,
-    BL: rfc003::Ledger,
-    AA: Clone + Send + Sync + 'static,
-    BA: Clone + Send + Sync + 'static,
-    E: EventStore<SwapId>,
->(
-    id: SwapId,
-    event_store: &Arc<E>,
-    alice_actor_sender: UnboundedSender<SwapId>,
-    result: Result<
-        Result<comit_client::rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
-        SwapResponseError,
-    >,
-) {
-    match result {
-        Ok(Ok(accepted)) => {
-            event_store
-                .add_event(
-                    id,
-                    alice_events::SwapRequestAccepted::<AL, BL, AA, BA>::new(
-                        accepted.beta_ledger_refund_identity,
-                        accepted.alpha_ledger_success_identity,
-                        accepted.beta_ledger_lock_duration,
-                    ),
-                )
-                .expect("It should not be possible to be in the wrong state");
-
-            alice_actor_sender
-                .unbounded_send(id)
-                .expect("Receiver should always be in scope");
-        }
-        _ => {
-            event_store
-                .add_event(
-                    id,
-                    alice_events::SwapRequestRejected::<AL, BL, AA, BA>::new(),
-                )
-                .expect("It should not be possible to be in the wrong state");
-        }
-    }
+    tokio::spawn(
+        Swap::start_in(state, context)
+            .map(move |outcome| {
+                info!("Swap {} finished with {:?}", id, outcome);
+            })
+            .map_err(move |e| {
+                error!("Swap {} failed with {:?}", id, e);
+            }),
+    );
 }

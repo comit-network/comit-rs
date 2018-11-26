@@ -13,6 +13,19 @@ pub enum Action<Accept, Decline, Fund, Redeem, Refund> {
     Refund(Refund),
 }
 
+impl<Accept, Decline, Fund, Redeem, Refund> Action<Accept, Decline, Fund, Redeem, Refund> {
+    pub fn name(&self) -> String {
+        use self::Action::*;
+        match *self {
+            Accept(_) => String::from("accept"),
+            Decline(_) => String::from("decline"),
+            Fund(_) => String::from("fund"),
+            Redeem(_) => String::from("redeem"),
+            Refund(_) => String::from("refund"),
+        }
+    }
+}
+
 pub trait StateActions {
     type Accept;
     type Decline;

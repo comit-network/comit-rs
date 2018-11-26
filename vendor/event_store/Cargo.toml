@@ -1,7 +1,0 @@
-[package]
-name = "event_store"
-version = "0.1.0"
-authors = [ "CoBloX developers <team@coblox.tech>" ]
-
-[dependencies]
-failure = "0.1"

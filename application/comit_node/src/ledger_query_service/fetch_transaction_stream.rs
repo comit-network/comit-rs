@@ -115,7 +115,8 @@ mod tests {
     use std::time::{Duration, Instant};
     use swap_protocols::ledger::Bitcoin;
     use tokio::{prelude::future::Either, runtime::Runtime};
-    use tokio_timer::Delay;
+    extern crate tokio_timer;
+    use self::tokio_timer::Delay;
 
     #[test]
     fn should_emit_transactions_as_they_appear_without_waiting_for_the_next_tick() {

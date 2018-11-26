@@ -4,6 +4,7 @@ use std::sync::Arc;
 use swap_protocols::{
     asset::Asset,
     rfc003::{
+        self,
         bob::PendingResponses,
         events::{CommunicationEvents, ResponseFuture},
         ledger::Ledger,
@@ -19,16 +20,15 @@ pub struct BobToAlice<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> {
     response_future: Box<ResponseFuture<Bob<SL, TL, SA, TA>>>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> BobToAlice<SL, TL, SA, TA> {
+impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> BobToAlice<SL, TL, SA, TA>
+where
+    Result<StateMachineResponse<SL::HtlcIdentity, TL::HtlcIdentity, TL::LockDuration>, SwapReject>:
+        Into<rfc003::bob::SwapResponseKind>,
+{
     pub fn new(
         pending_responses: Arc<PendingResponses<SwapId>>,
         current_swap: SwapId,
-        response_sender: oneshot::Sender<
-            Result<
-                StateMachineResponse<SL::HtlcIdentity, TL::HtlcIdentity, TL::LockDuration>,
-                SwapReject,
-            >,
-        >,
+        response_sender: oneshot::Sender<rfc003::bob::SwapResponseKind>,
     ) -> Self {
         Self {
             response_future: {
@@ -36,7 +36,7 @@ impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> BobToAlice<SL, TL, SA, TA> {
                     .create::<SL, TL, SA, TA>(current_swap)
                     .and_then(|response| {
                         response_sender
-                            .send(response.clone())
+                            .send(response.clone().into())
                             .expect("receiver should never go out of scope");
 
                         Ok(response)

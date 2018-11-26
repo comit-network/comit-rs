@@ -158,7 +158,6 @@ pub mod serde {
         D: Deserializer<'de>,
     {
         use serde::{de::Error, Deserialize};
-
         let ledger = HttpLedger::deserialize(deserializer)?;
 
         T::from_http_ledger(ledger).map_err(D::Error::custom)

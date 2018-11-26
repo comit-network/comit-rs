@@ -132,7 +132,6 @@ pub mod serde {
         D: Deserializer<'de>,
     {
         use serde::{de::Error, Deserialize};
-
         let asset = HttpAsset::deserialize(deserializer)?;
 
         T::from_http_asset(asset).map_err(D::Error::custom)
