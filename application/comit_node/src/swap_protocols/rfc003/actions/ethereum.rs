@@ -11,14 +11,44 @@ pub struct EtherDeploy {
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct EtherRefund {
-    pub contract_address: Address,
+    pub to_address: Address,
     pub gas_limit: U256,
     pub gas_cost: U256,
 }
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct EtherRedeem {
-    pub contract_address: Address,
+    pub to_address: Address,
+    pub data: Secret,
+    pub gas_limit: U256,
+    pub gas_cost: U256,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Erc20Deploy {
+    pub data: Bytes,
+    pub gas_limit: U256,
+    pub gas_cost: U256,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Erc20Fund {
+    pub to_address: Address,
+    pub data: Bytes,
+    pub gas_limit: U256,
+    pub gas_cost: U256,
+}
+
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Erc20Refund {
+    pub to_address: Address,
+    pub gas_limit: U256,
+    pub gas_cost: U256,
+}
+
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Erc20Redeem {
+    pub to_address: Address,
     pub data: Secret,
     pub gas_limit: U256,
     pub gas_cost: U256,

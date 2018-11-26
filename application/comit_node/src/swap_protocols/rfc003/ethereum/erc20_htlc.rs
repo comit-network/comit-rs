@@ -68,6 +68,10 @@ impl Erc20Htlc {
         data.extend_from_slice(&amount);
         Bytes::from(data)
     }
+
+    pub fn token_contract_address(&self) -> Address {
+        self.token_contract_address
+    }
 }
 
 impl Htlc for Erc20Htlc {

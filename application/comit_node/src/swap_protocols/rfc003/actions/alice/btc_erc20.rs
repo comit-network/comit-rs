@@ -1,11 +1,11 @@
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EtherQuantity;
+use ethereum_support::Erc20Quantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::{
             bitcoin::{BitcoinFund, BitcoinRefund},
-            ethereum::EtherRedeem,
+            ethereum::Erc20Redeem,
             Action, StateActions,
         },
         roles::Alice,
@@ -13,15 +13,15 @@ use swap_protocols::{
     },
 };
 
-impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
+impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     type Accept = ();
     type Decline = ();
     type Deploy = ();
     type Fund = BitcoinFund;
-    type Redeem = EtherRedeem;
+    type Redeem = Erc20Redeem;
     type Refund = BitcoinRefund;
 
-    fn actions(&self) -> Vec<Action<(), (), (), BitcoinFund, EtherRedeem, BitcoinRefund>> {
+    fn actions(&self) -> Vec<Action<(), (), (), BitcoinFund, Erc20Redeem, BitcoinRefund>> {
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![],
@@ -38,7 +38,7 @@ impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Ether
                 ref swap,
                 ..
             }) => vec![
-                Action::Redeem(EtherRedeem {
+                Action::Redeem(Erc20Redeem {
                     to_address: *beta_htlc_location,
                     data: swap.secret,
                     gas_limit: 42.into(), //TODO come up with correct gas limit
@@ -75,7 +75,7 @@ impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Ether
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Redeem(EtherRedeem {
+            }) => vec![Action::Redeem(Erc20Redeem {
                 to_address: *beta_htlc_location,
                 data: swap.secret,
                 gas_limit: 42.into(), //TODO come up with correct gas limit
