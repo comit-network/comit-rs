@@ -1,48 +1,50 @@
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EtherQuantity;
+use ethereum_support::Erc20Quantity;
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::{
             bitcoin::BitcoinRedeem,
-            ethereum::{EtherDeploy, EtherRefund},
+            ethereum::{Erc20Deploy, Erc20Fund, Erc20Refund},
             Accept, Action, Decline, StateActions,
         },
-        ethereum::{EtherHtlc, Htlc},
+        ethereum::{Erc20Htlc, Htlc},
         roles::Bob,
         state_machine::*,
     },
 };
 
-impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
+impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     type Accept = Accept;
     type Decline = Decline;
-    type Deploy = EtherDeploy;
-    type Fund = ();
+    type Deploy = Erc20Deploy;
+    type Fund = Erc20Fund;
     type Redeem = BitcoinRedeem;
-    type Refund = EtherRefund;
+    type Refund = Erc20Refund;
 
-    fn actions(&self) -> Vec<Action<Accept, Decline, EtherDeploy, (), BitcoinRedeem, EtherRefund>> {
+    fn actions(
+        &self,
+    ) -> Vec<Action<Accept, Decline, Erc20Deploy, Erc20Fund, BitcoinRedeem, Erc20Refund>> {
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
             SS::Accepted { .. } => vec![],
             SS::AlphaDeployed { .. } => vec![],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
-                let htlc: EtherHtlc = swap.beta_htlc_params().into();
-                vec![Action::Fund(EtherDeploy {
+                let htlc: Erc20Htlc = swap.beta_htlc_params().into();
+                vec![Action::Fund(Erc20Deploy {
                     data: htlc.compile_to_hex().into(),
                     value: swap.beta_asset,
                     gas_limit: 42.into(), //TODO come up with correct gas limit
                     gas_cost: 42.into(),  //TODO come up with correct gas cost
                 })]
             }
-            SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { .. }) => vec![],
+            SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { .. }) => vec![], // TODO: Return Beta Funding action
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(EtherRefund {
-                to_address: *beta_htlc_location,
+            }) => vec![Action::Refund(Erc20Refund {
+                contract_address: *beta_htlc_location,
                 gas_limit: 42.into(), //TODO come up with correct gas_limit
                 gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
@@ -50,16 +52,16 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
             SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(EtherRefund {
-                to_address: *beta_htlc_location,
+            }) => vec![Action::Refund(Erc20Refund {
+                contract_address: *beta_htlc_location,
                 gas_limit: 42.into(), //TODO come up with correct gas_limit
                 gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(EtherRefund {
-                to_address: *beta_htlc_location,
+            }) => vec![Action::Refund(Erc20Refund {
+                contract_address: *beta_htlc_location,
                 gas_limit: 42.into(), //TODO come up with correct gas_limit
                 gas_cost: 42.into(),  //TODO come up with correct gas cost
             })],
@@ -102,7 +104,7 @@ mod tests {
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
-            beta_asset: EtherQuantity::from_eth(10.0),
+            beta_asset: Erc20Quantity::from_eth(10.0),
             alpha_ledger_lock_duration: bitcoin_support::Blocks::from(144),
             secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
         });

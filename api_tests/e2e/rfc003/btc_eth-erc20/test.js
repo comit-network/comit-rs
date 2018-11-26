@@ -100,4 +100,11 @@ describe('RFC003: Bitcoin for ERC20', () => {
             });
     });
 
+    it("[Alice] Shows the Swap as Start at /swaps/rfc003/:id.", async () => {
+        let res = await chai.request(alice.comit_node_url())
+            .get(swap_location);
+
+        console.log(res);
+    });
+
 });
