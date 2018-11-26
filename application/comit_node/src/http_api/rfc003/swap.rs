@@ -4,6 +4,8 @@ use frunk;
 use futures::sync::mpsc::UnboundedSender;
 use http_api::{
     self,
+    asset::{HttpAsset, ToHttpAsset},
+    ledger::{HttpLedger, ToHttpLedger},
     problem::{self, HttpApiProblemStdError},
 };
 use http_api_problem::HttpApiProblem;
@@ -96,10 +98,10 @@ pub fn post_swap(
 
 #[derive(Debug, Serialize)]
 pub struct SwapDescription {
-    alpha_ledger: String,
-    beta_ledger: String,
-    alpha_asset: String,
-    beta_asset: String,
+    alpha_ledger: HttpLedger,
+    beta_ledger: HttpLedger,
+    alpha_asset: HttpAsset,
+    beta_asset: HttpAsset,
 }
 
 #[derive(Debug, Serialize)]
@@ -115,7 +117,8 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     state_store: Arc<S>,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    let result = handle_get_swap(&metadata_store, &state_store, &id);
+    let result: Result<(GetSwapResource, Vec<ActionName>), HttpApiProblem> =
+        handle_get_swap(&metadata_store, &state_store, &id);
 
     match result {
         Ok((swap_resource, actions)) => {
@@ -147,15 +150,16 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             let state = state.ok_or_else(problem::not_found)?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
+            let swap_details = state.swap_details().ok_or_else(problem::not_found)?;
             let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
             (Ok((
                 GetSwapResource {
                     state: state.name(),
                     swap: SwapDescription {
-                        alpha_ledger: format!("{}", metadata.alpha_ledger),
-                        beta_ledger: format!("{}", metadata.beta_ledger),
-                        alpha_asset: format!("{}", metadata.alpha_asset),
-                        beta_asset: format!("{}", metadata.beta_asset),
+                        alpha_ledger: swap_details.alpha_ledger.to_http_ledger().unwrap(),
+                        beta_ledger: swap_details.beta_ledger.to_http_ledger().unwrap(),
+                        alpha_asset: swap_details.alpha_asset.to_http_asset().unwrap(),
+                        beta_asset: swap_details.beta_asset.to_http_asset().unwrap(),
                     },
                     role: format!("{}", metadata.role),
                 },

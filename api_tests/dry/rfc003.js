@@ -4,7 +4,17 @@ const should = chai.should();
 chai.use(require('chai-http'));
 const web3 = test_lib.web3();
 const BigNumber = require('bignumber.js');
-const beta_asset = new BigNumber(web3.utils.toWei("10", 'ether'));
+
+const alpha_ledger_name = "Bitcoin";
+const alpha_ledger_network = "regtest";
+
+const beta_ledger_name = "Ethereum";
+
+const alpha_asset_name = "Bitcoin";
+const alpha_asset_quantity = "100000000";
+
+const beta_asset_name = "Ether"
+const beta_asset_quantity = new BigNumber(web3.utils.toWei("10", 'ether')).toString();
 
 const alice = test_lib.comit_conf("alice", {
     txid: process.env.BTC_FUNDED_TX,
@@ -40,19 +50,19 @@ describe("RFC003 HTTP API", () => {
             .post('/swaps/rfc003')
             .send({
                 "alpha_ledger": {
-                    "name": "Bitcoin",
-                    "network": "regtest"
+                    "name": alpha_ledger_name,
+                    "network": alpha_ledger_network
                 },
                 "beta_ledger": {
-                    "name": "Ethereum"
+                    "name": beta_ledger_name
                 },
                 "alpha_asset": {
-                    "name": "Bitcoin",
-                    "quantity": "100000000"
+                    "name": alpha_asset_name,
+                    "quantity": alpha_asset_quantity
                 },
                 "beta_asset": {
-                    "name": "Ether",
-                    "quantity": beta_asset.toString(),
+                    "name": beta_asset_name,
+                    "quantity": beta_asset_quantity
                 },
                 "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
                 "beta_ledger_success_identity": alice_final_address,
@@ -69,11 +79,19 @@ describe("RFC003 HTTP API", () => {
     it("[Alice] Is able to GET the swap after POSTing it", async () => {
         await chai.request(alice.comit_node_url())
             .get(swap_url).then((res) => {
-                let body = res.body;
-                body.swap.should.be.a("object");
-                body.role.should.equal('Alice');
-                body.state.should.equal("Start");
                 res.should.have.status(200);
+
+                let body = res.body;
+                body.role.should.equal('Alice');
+                body.state.should.equal('Start');
+                body.swap.should.be.a('object');
+                body.swap.alpha_ledger.name.should.equal(alpha_ledger_name);
+                body.swap.alpha_ledger.network.should.equal(alpha_ledger_network);
+                body.swap.beta_ledger.name.should.equal(beta_ledger_name);
+                body.swap.alpha_asset.name.should.equal(alpha_asset_name);
+                body.swap.alpha_asset.quantity.should.equal(alpha_asset_quantity);
+                body.swap.beta_asset.name.should.equal(beta_asset_name);
+                body.swap.beta_asset.quantity.should.equal(beta_asset_quantity);
             });
     });
 
