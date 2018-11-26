@@ -35,8 +35,12 @@ impl Error for HttpApiProblemStdError {
     }
 }
 
-pub fn not_found() -> HttpApiProblem {
+pub fn swap_not_found() -> HttpApiProblem {
     HttpApiProblem::new("swap-not-found").set_status(404)
+}
+
+pub fn action_not_found() -> HttpApiProblem {
+    HttpApiProblem::new("action-not-found").set_status(404)
 }
 
 pub fn unsupported() -> HttpApiProblem {

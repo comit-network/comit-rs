@@ -3,7 +3,7 @@ use bitcoin_witness::{PrimedInput, PrimedTransaction};
 use secp256k1_support::KeyPair;
 use swap_protocols::rfc003::{bitcoin::Htlc, Secret};
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize)]
 pub struct BitcoinFund {
     pub address: Address,
     pub value: BitcoinQuantity,
