@@ -3,7 +3,7 @@ use hex;
 use swap_protocols::rfc003::state_machine::HtlcParams;
 
 pub use self::{erc20_htlc::*, ether_htlc::*, queries::*};
-use ethereum_support::{web3::types::Address, EtherQuantity};
+use ethereum_support::{web3::types::Address, Erc20Quantity, EtherQuantity};
 use std::time::Duration;
 use swap_protocols::{ledger::Ethereum, rfc003::Ledger};
 
@@ -61,5 +61,20 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
 impl HtlcParams<Ethereum, EtherQuantity> {
     pub fn bytecode(&self) -> Bytes {
         EtherHtlc::from(self.clone()).compile_to_hex().into()
+    }
+}
+
+impl From<HtlcParams<Ethereum, Erc20Quantity>> for Erc20Htlc {
+    fn from(htlc_params: HtlcParams<Ethereum, Erc20Quantity>) -> Self {
+        unimplemented!()
+    }
+}
+
+impl HtlcParams<Ethereum, Erc20Quantity> {
+    pub fn bytecode(&self) -> Bytes {
+        Erc20Htlc::from(self.clone()).compile_to_hex().into()
+    }
+    pub fn transfer_call(&self) -> Bytes {
+        Erc20Htlc::from(self.clone()).transfer_call().into()
     }
 }

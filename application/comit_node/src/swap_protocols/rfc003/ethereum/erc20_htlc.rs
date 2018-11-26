@@ -1,4 +1,4 @@
-use ethereum_support::{Address, U256};
+use ethereum_support::{web3::types::Bytes, Address, U256};
 use swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc, Seconds},
     SecretHash,
@@ -58,6 +58,10 @@ impl Erc20Htlc {
         debug!("Created new HTLC for ethereum: {:#?}", htlc);
 
         htlc
+    }
+
+    pub fn transfer_call(&self) -> Bytes {
+        unimplemented!()
     }
 }
 

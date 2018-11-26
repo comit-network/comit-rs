@@ -6,5 +6,6 @@ pub enum Error {
     LedgerQueryService,
     TimerError,
     InsufficientFunding,
+    HtlcDeployment,
     Internal(String),
 }

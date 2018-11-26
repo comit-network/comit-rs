@@ -23,14 +23,23 @@ use swap_protocols::rfc003::Ledger;
 
 #[derive(Default)]
 struct FakeLedgerEvents<L: Ledger> {
+    pub htlc_deployed: Option<Box<events::Deployed<L>>>,
     pub htlc_funded: Option<Box<events::Funded<L>>>,
     pub htlc_redeemed_or_refunded: Option<Box<events::RedeemedOrRefunded<L>>>,
 }
 
 impl LedgerEvents<Bitcoin, BitcoinQuantity> for FakeLedgerEvents<Bitcoin> {
+    fn htlc_deployed(
+        &mut self,
+        htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+    ) -> &mut events::Deployed<Bitcoin> {
+        self.htlc_deployed.as_mut().unwrap()
+    }
+
     fn htlc_funded(
         &mut self,
         _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        _htlc_location: &bitcoin_support::OutPoint,
     ) -> &mut events::Funded<Bitcoin> {
         self.htlc_funded.as_mut().unwrap()
     }
@@ -45,11 +54,19 @@ impl LedgerEvents<Bitcoin, BitcoinQuantity> for FakeLedgerEvents<Bitcoin> {
 }
 
 impl LedgerEvents<Ethereum, EtherQuantity> for FakeLedgerEvents<Ethereum> {
+    fn htlc_deployed(
+        &mut self,
+        htlc_params: HtlcParams<Ethereum, EtherQuantity>,
+    ) -> &mut events::Deployed<Ethereum> {
+        self.htlc_deployed.as_mut().unwrap()
+    }
+
     fn htlc_funded(
         &mut self,
         _htlc_params: HtlcParams<Ethereum, EtherQuantity>,
+        _htlc_location: &ethereum_support::Address,
     ) -> &mut events::Funded<Ethereum> {
-        self.htlc_funded.as_mut().unwrap()
+        unimplemented!()
     }
 
     fn htlc_redeemed_or_refunded(
@@ -169,10 +186,11 @@ fn alpha_refunded() {
         },
         start.clone().into(),
         FakeLedgerEvents::<Bitcoin> {
-            htlc_funded: Some(Box::new(future::ok(OutPoint {
+            htlc_deployed: Some(Box::new(future::ok(OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0,
             }))),
+            htlc_funded: Some(Box::new(future::ok(None))),
             htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(
                 bitcoin_support::Transaction {
                     version: 1,
@@ -193,6 +211,13 @@ fn alpha_refunded() {
         states,
         Accepted {
             swap: OngoingSwap::new(start.clone(), bob_response.clone().into()),
+        },
+        AlphaDeployed {
+            swap: OngoingSwap::new(start.clone(), bob_response.clone().into()),
+            alpha_htlc_location: OutPoint {
+                txid: Sha256dHash::from_data(b"funding"),
+                vout: 0
+            }
         },
         AlphaFunded {
             swap: OngoingSwap::new(start.clone(), bob_response.clone().into()),
@@ -243,10 +268,11 @@ fn bob_transition_alpha_refunded() {
         },
         start.clone().into(),
         FakeLedgerEvents::<Bitcoin> {
-            htlc_funded: Some(Box::new(future::ok(OutPoint {
+            htlc_deployed: Some(Box::new(future::ok(OutPoint {
                 txid: Sha256dHash::from_data(b"funding"),
                 vout: 0,
             }))),
+            htlc_funded: Some(Box::new(future::ok(None))),
             htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(
                 bitcoin_support::Transaction {
                     version: 1,
@@ -267,6 +293,13 @@ fn bob_transition_alpha_refunded() {
         states,
         Accepted {
             swap: OngoingSwap::new(start.clone(), response.clone().into())
+        },
+        AlphaDeployed {
+            swap: OngoingSwap::new(start.clone(), response.clone().into()),
+            alpha_htlc_location: OutPoint {
+                txid: Sha256dHash::from_data(b"funding"),
+                vout: 0
+            }
         },
         AlphaFunded {
             swap: OngoingSwap::new(start.clone(), response.clone().into()),

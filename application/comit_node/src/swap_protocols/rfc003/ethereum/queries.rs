@@ -50,3 +50,53 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
         }
     }
 }
+
+pub mod erc20 {
+    use super::*;
+    use ethereum_support::Erc20Quantity;
+
+    pub fn new_htlc_deployed_query(
+        htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
+    ) -> EthereumQuery {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(htlc_params.bytecode()),
+            transaction_data_length: None,
+        }
+    }
+
+    pub fn new_htlc_funded_query(
+        htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_location: &Address,
+    ) -> EthereumQuery {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: Some(htlc_location.clone()),
+            is_contract_creation: None,
+            transaction_data: Some(htlc_params.transfer_call()),
+            transaction_data_length: None,
+        }
+    }
+
+    pub fn new_htlc_refunded_query(htlc_location: &Address) -> EthereumQuery {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: Some(htlc_location.clone()),
+            is_contract_creation: Some(false),
+            transaction_data: Some(Bytes::from(vec![])),
+            transaction_data_length: None,
+        }
+    }
+
+    pub fn new_htlc_redeemed_query(htlc_location: &Address) -> EthereumQuery {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: Some(htlc_location.clone()),
+            is_contract_creation: Some(false),
+            transaction_data: None,
+            transaction_data_length: Some(secret::SECRET_LENGTH),
+        }
+    }
+}
