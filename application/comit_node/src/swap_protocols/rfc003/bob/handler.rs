@@ -12,7 +12,7 @@ use swap_protocols::{
     rfc003::{
         self,
         bob::{PendingResponses, SwapRequestKind},
-        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents},
+        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
         roles::Bob,
         state_machine::*,
         state_store::StateStore,
@@ -136,7 +136,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
                                 QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
                                 FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
                             )),
-                            Box::new(LqsEvents::new(
+                            Box::new(LqsEventsForErc20::new(
                                 QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
                                 FirstMatch::new(
                                     Arc::clone(&lqs_api_client),
