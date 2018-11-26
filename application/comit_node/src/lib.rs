@@ -58,7 +58,6 @@ extern crate warp;
 pub mod bam_api;
 pub mod comit_client;
 pub mod comit_server;
-pub mod gas_price_service;
 pub mod http_api;
 pub mod item_cache;
 pub mod key_store;
