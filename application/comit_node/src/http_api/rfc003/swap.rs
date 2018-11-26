@@ -18,7 +18,6 @@ use swap_protocols::{
         self,
         actions::{Action, StateActions},
         roles::{Alice, Bob},
-        state_machine::SwapStates,
         state_store::StateStore,
         Ledger,
     },
@@ -148,13 +147,10 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             let state = state.ok_or_else(problem::not_found)?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            let actions: Vec<ActionName> = StateActions::actions(&state)
-                .iter()
-                .map(Action::name)
-                .collect();
+            let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
             (Ok((
                 GetSwapResource {
-                    state: SwapStates::name(&state),
+                    state: state.name(),
                     swap: SwapDescription {
                         alpha_ledger: format!("{}", metadata.alpha_ledger),
                         beta_ledger: format!("{}", metadata.beta_ledger),
