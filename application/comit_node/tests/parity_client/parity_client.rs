@@ -280,7 +280,7 @@ impl ParityClient {
 
     pub fn fund_erc20_htlc(&self, target: Address, asset: Erc20Quantity) -> H256 {
         let target_address = format!("{:0>64}", format!("{:x}", target));
-        let token_amount = format!("{:0>64}", format!("{:x}", asset.amount()));
+        let token_amount = format!("{:0>64}", format!("{:x}", asset.quantity()));
 
         let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
         let hex_data = hex::decode(data).unwrap();
@@ -288,7 +288,7 @@ impl ParityClient {
         let tx_id = self.sign_and_send(|nonce, gas_price| {
             UnsignedTransaction::new_contract_invocation(
                 hex_data.clone(),
-                asset.address(),
+                asset.token_contract(),
                 100000,
                 gas_price,
                 0,

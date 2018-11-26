@@ -478,4 +478,32 @@ impl<R: Role> SwapStates<R> {
             SS::Final(_) => String::from("Final"),
         }
     }
+
+    pub fn swap_details(&self) -> Option<Start<R>> {
+        use self::SwapStates as SS;
+        match *self {
+            SS::Start(ref start) => Some(start.clone()),
+            SS::Accepted(Accepted { ref swap, .. })
+            | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
+            | SS::AlphaFunded(AlphaFunded { ref swap, .. })
+            | SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { ref swap, .. })
+            | SS::BothFunded(BothFunded { ref swap, .. })
+            | SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded { ref swap, .. })
+            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
+            | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed { ref swap, .. })
+            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. }) => {
+                Some(Start {
+                    alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
+                    beta_ledger_success_identity: swap.beta_ledger_success_identity.clone(),
+                    alpha_ledger: swap.alpha_ledger.clone(),
+                    beta_ledger: swap.beta_ledger.clone(),
+                    alpha_asset: swap.alpha_asset.clone(),
+                    beta_asset: swap.beta_asset.clone(),
+                    alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
+                    secret: swap.secret.clone(),
+                })
+            }
+            SS::Error(_) | SS::Final(_) => None,
+        }
+    }
 }
