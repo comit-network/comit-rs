@@ -36,7 +36,7 @@ const bob_eth_private_key = Buffer.from(bob_config.ethereum.private_key, "hex");
 const bob_eth_address = "0x" + ethutil.privateToAddress(bob_eth_private_key).toString("hex");
 const bob = test_lib.wallet_conf(bob_eth_private_key, null);
 
-const beta_asset_amount = new BigNumber(web3.utils.toWei("5000", 'ether'));
+const beta_asset_amount = web3.utils.toWei("5000", 'ether');
 
 describe('RFC003: Bitcoin for ERC20', () => {
 
@@ -86,7 +86,7 @@ describe('RFC003: Bitcoin for ERC20', () => {
                 },
                 "beta_asset": {
                     "name": "ERC20",
-                    "quantity": beta_asset_amount.toString(),
+                    "quantity": beta_asset_amount,
                     "token_contract" : token_contract_address,
                 },
                 "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
