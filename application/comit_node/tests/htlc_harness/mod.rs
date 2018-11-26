@@ -9,7 +9,7 @@ use ethereum_support::{
     },
     EtherQuantity, ToEthereumAddress,
 };
-use parity_client::{Erc20HtlcFundingParams, EtherHtlcFundingParams, ParityClient};
+use parity_client::{Erc20HtlcDeployParams, EtherHtlcFundingParams, ParityClient};
 use pretty_env_logger;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::Duration};
@@ -73,7 +73,7 @@ pub fn harness<D: Docker>(
 
             alice_client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
-            let htlc_params = Erc20HtlcFundingParams {
+            let htlc_params = Erc20HtlcDeployParams {
                 refund_address: alice,
                 success_address: bob,
                 time_lock: Seconds::from(params.htlc_timeout),

@@ -22,7 +22,7 @@ pub struct ParityClient {
     nonce: Mutex<U256>,
 }
 #[derive(Clone, Debug)]
-pub struct Erc20HtlcFundingParams {
+pub struct Erc20HtlcDeployParams {
     pub refund_address: Address,
     pub success_address: Address,
     pub time_lock: Seconds,
@@ -203,7 +203,7 @@ impl ParityClient {
         receipt.gas_used
     }
 
-    pub fn deploy_erc20_htlc(&self, htlc_funding_params: Erc20HtlcFundingParams) -> H256 {
+    pub fn deploy_erc20_htlc(&self, htlc_deploy_params: Erc20HtlcDeployParams) -> H256 {
         let gas_price = 0;
 
         let tx_id = {
@@ -216,13 +216,13 @@ impl ParityClient {
             let htlc_address = address.calculate_contract_address(&next_nonce);
 
             let htlc = Erc20Htlc::new(
-                htlc_funding_params.time_lock,
-                htlc_funding_params.refund_address,
-                htlc_funding_params.success_address,
-                htlc_funding_params.secret_hash,
+                htlc_deploy_params.time_lock,
+                htlc_deploy_params.refund_address,
+                htlc_deploy_params.success_address,
+                htlc_deploy_params.secret_hash,
                 htlc_address,
-                htlc_funding_params.token_contract_address,
-                htlc_funding_params.amount,
+                htlc_deploy_params.token_contract_address,
+                htlc_deploy_params.amount,
             );
 
             let htlc_code = htlc.compile_to_hex();
