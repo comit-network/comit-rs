@@ -125,7 +125,27 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Bob] Has the accept when GETing the swap", async () => {
-        swap = await chai.request(bob.comit_node_url()).get(swap_link_href).body;
-        //TODO: Check bob has the accept action
+        await chai.request(bob.comit_node_url())
+            .get(swap_link_href).then((res) => {
+                res.should.have.status(200);
+                
+                let body = res.body;
+                body.state.should.equal('Start');
+                body.swap.should.be.a('object');
+                body.swap.alpha_ledger.name.should.equal(alpha_ledger_name);
+                body.swap.alpha_ledger.network.should.equal(alpha_ledger_network);
+                body.swap.beta_ledger.name.should.equal(beta_ledger_name);
+                body.swap.alpha_asset.name.should.equal(alpha_asset_name);
+                body.swap.alpha_asset.quantity.should.equal(alpha_asset_quantity);
+                body.swap.beta_asset.name.should.equal(beta_asset_name);
+                body.swap.beta_asset.quantity.should.equal(beta_asset_quantity);
+
+                let action_links = body._links;
+                action_links.should.be.a('object');
+                action_links.accept.should.be.a('object');
+                action_links.accept.href.should.equal(swap_link_href + '/accept')
+                action_links.decline.should.be.a('object');
+                action_links.decline.href.should.equal(swap_link_href + '/decline')
+            });
     });
 });
