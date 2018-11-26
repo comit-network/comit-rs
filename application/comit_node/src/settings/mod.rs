@@ -15,8 +15,8 @@ use url;
 
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
-    pub ethereum: Ethereum,
-    pub bitcoin: Bitcoin,
+    pub ethereum: EthereumSettings,
+    pub bitcoin: BitcoinSettings,
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
@@ -24,7 +24,7 @@ pub struct ComitNodeSettings {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Ethereum {
+pub struct EthereumSettings {
     pub network_id: u8,
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
@@ -35,7 +35,7 @@ pub struct Ethereum {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct Bitcoin {
+pub struct BitcoinSettings {
     pub network: bitcoin_support::Network,
     pub satoshi_per_byte: f64,
     #[serde(with = "serde::url")]

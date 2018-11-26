@@ -11,6 +11,8 @@ extern crate serde_derive;
 #[macro_use]
 extern crate failure;
 #[macro_use]
+extern crate lazy_static;
+#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate bam;
@@ -44,12 +46,10 @@ extern crate http_api_problem;
 extern crate hyper;
 extern crate rand;
 extern crate reqwest;
-extern crate rlp;
 extern crate rustc_hex;
 extern crate rustic_hal;
 extern crate secp256k1_support;
 extern crate serde;
-extern crate tiny_keccak;
 extern crate tokio;
 extern crate url;
 extern crate uuid;

@@ -115,7 +115,7 @@ where
     fn htlc_funded(
         &mut self,
         _htlc_params: HtlcParams<L, A>,
-        htlc_location: &L::HtlcLocation,
+        _htlc_location: &L::HtlcLocation,
     ) -> &mut Funded<L> {
         self.htlc_funded.get_or_insert(Box::new(future::ok(None)))
     }
