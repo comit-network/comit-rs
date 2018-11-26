@@ -65,7 +65,7 @@ fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
 }
 
 #[test]
-fn given_deployed_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred() {
+fn given_funded_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred() {
     let docker = Cli::default();
     let (alice, bob, htlc, token_contract, client, _handle, _container) = harness(
         &docker,
