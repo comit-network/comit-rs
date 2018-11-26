@@ -4,13 +4,16 @@ use swap_protocols::rfc003::{
     SecretHash,
 };
 
+lazy_static! {
+    pub static ref TRANSFER_FUN: Vec<u8> = hex::decode("a9059cbb").unwrap();
+}
+
 #[derive(Debug)]
 pub struct Erc20Htlc {
     refund_timeout: Seconds,
     refund_address: Address,
     success_address: Address,
     secret_hash: SecretHash,
-    htlc_contract_address: Address,
     token_contract_address: Address,
     amount: U256,
 }
@@ -38,7 +41,6 @@ impl Erc20Htlc {
         refund_address: Address,
         success_address: Address,
         secret_hash: SecretHash,
-        htlc_contract_address: Address,
         token_contract_address: Address,
         amount: U256,
     ) -> Self {
@@ -47,7 +49,6 @@ impl Erc20Htlc {
             refund_address,
             success_address,
             secret_hash,
-            htlc_contract_address,
             token_contract_address,
             amount,
         };
@@ -57,8 +58,15 @@ impl Erc20Htlc {
         htlc
     }
 
-    pub fn transfer_call(&self) -> Bytes {
-        unimplemented!()
+    pub fn transfer_call(&self, htlc_contract_address: Address) -> Bytes {
+        let to_address: [u8; 20] = htlc_contract_address.into();
+        let amount: [u8; 32] = self.amount.clone().into();
+
+        let mut data: Vec<u8> = vec![];
+        data.extend_from_slice(&TRANSFER_FUN);
+        data.extend_from_slice(&to_address);
+        data.extend_from_slice(&amount);
+        Bytes::from(data)
     }
 }
 
@@ -128,7 +136,6 @@ mod tests {
                 "1000000000000000000000000000000000000000000000000000000000000001",
             )
             .unwrap(),
-            Address::new(),
             Address::new(),
             U256::from(100),
         );

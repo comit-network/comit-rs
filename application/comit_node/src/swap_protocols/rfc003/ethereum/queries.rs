@@ -75,7 +75,7 @@ pub mod erc20 {
             from_address: None,
             to_address: Some(htlc_location.clone()),
             is_contract_creation: None,
-            transaction_data: Some(htlc_params.transfer_call()),
+            transaction_data: Some(htlc_params.transfer_call(htlc_location.clone())),
             transaction_data_length: None,
         }
     }

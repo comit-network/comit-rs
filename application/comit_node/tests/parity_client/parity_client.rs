@@ -211,14 +211,11 @@ impl ParityClient {
             let address: ethereum_support::Address = self.wallet.address();
             let next_nonce = *nonce + U256::from(1);
 
-            let htlc_address = address.calculate_contract_address(&next_nonce);
-
             let htlc = Erc20Htlc::new(
                 htlc_deploy_params.time_lock,
                 htlc_deploy_params.refund_address,
                 htlc_deploy_params.success_address,
                 htlc_deploy_params.secret_hash,
-                htlc_address,
                 htlc_deploy_params.token_contract_address,
                 htlc_deploy_params.amount,
             );
