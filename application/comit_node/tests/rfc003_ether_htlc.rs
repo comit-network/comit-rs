@@ -18,7 +18,7 @@ mod ethereum_wallet;
 mod htlc_harness;
 mod parity_client;
 
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity, U256};
+use ethereum_support::{Bytes, EtherQuantity, U256};
 use htlc_harness::*;
 use std::time::Duration;
 use testcontainers::clients::Cli;
