@@ -29,6 +29,18 @@ impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Me
     }
 }
 
+impl From<SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> for Metadata {
+    fn from(_: SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>) -> Self {
+        Self {
+            alpha_ledger: LedgerKind::Ethereum,
+            beta_ledger: LedgerKind::Bitcoin,
+            alpha_asset: AssetKind::Ether,
+            beta_asset: AssetKind::Bitcoin,
+            role: RoleKind::Alice,
+        }
+    }
+}
+
 impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> for Metadata {
     fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>) -> Self {
         Self {
@@ -57,6 +69,9 @@ impl From<SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> for Me
 pub enum SwapRequestKind {
     BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+    ),
+    EthereumBitcoinEtherQuantityBitcoinQuantity(
+        SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
     ),
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,

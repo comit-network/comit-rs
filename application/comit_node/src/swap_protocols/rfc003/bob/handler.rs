@@ -101,6 +101,61 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                     Ok(())
                 }
+                rfc003::bob::SwapRequestKind::EthereumBitcoinEtherQuantityBitcoinQuantity(
+                    request,
+                ) => unimplemented!(),
+                rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
+                    request,
+                ) => {
+                    if let Err(e) = metadata_store.insert(id, request.clone()) {
+                        error!("Failed to store metadata for swap {} because {:?}", id, e);
+
+                        // Return Ok to keep the loop running
+                        return Ok(());
+                    }
+
+                    {
+                        let request = request.clone();
+
+                        let start_state = Start {
+                            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+                            beta_ledger_success_identity: request.beta_ledger_success_identity,
+                            alpha_ledger: request.alpha_ledger,
+                            beta_ledger: request.beta_ledger,
+                            alpha_asset: request.alpha_asset,
+                            beta_asset: request.beta_asset,
+                            alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
+                            secret: request.secret_hash,
+                        };
+
+                        spawn_state_machine(
+                            id,
+                            start_state,
+                            state_store.as_ref(),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
+                            )),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(
+                                    Arc::clone(&lqs_api_client),
+                                    ethereum_poll_interval,
+                                ),
+                            )),
+                            Box::new(BobToAlice::new(
+                                Arc::clone(&pending_responses),
+                                id,
+                                response_sender,
+                            )),
+                        );
+                    }
+
+                    Ok(())
+                }
+                rfc003::bob::SwapRequestKind::EthereumBitcoinErc20QuantityBitcoinQuantity(
+                    request,
+                ) => unimplemented!(),
             })
             .map_err(|_| ())
     }

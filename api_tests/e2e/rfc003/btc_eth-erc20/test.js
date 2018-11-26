@@ -85,8 +85,9 @@ describe('RFC003: Bitcoin for ERC20', () => {
                     "quantity": "100000000"
                 },
                 "beta_asset": {
-                    "name": "PAY",
-                    "quantity": beta_asset.toString(),
+                    "name": "ERC20",
+                    "quantity": beta_asset_amount.toString(),
+                    "token_contract" : token_contract_address,
                 },
                 "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
                 "beta_ledger_success_identity": alice_final_address,
