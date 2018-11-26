@@ -1,5 +1,5 @@
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EtherQuantity;
+use ethereum_support::{Erc20Quantity, EtherQuantity};
 use frunk;
 use futures::sync::mpsc::UnboundedSender;
 use http_api::{
@@ -48,8 +48,14 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinQuantityEthereumQuantity(
+    BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+    ),
+    BitcoinEthereumBitcoinQuantityErc20Quantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    ),
+    EthereumBitcoinErc20QuantityBitcoinQuantity(
+        SwapRequestBody<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
     ),
 }
 
@@ -70,8 +76,18 @@ pub fn post_swap(
     let id = SwapId::default();
 
     let request_kind = match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
-            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
+            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
+                frunk::labelled_convert_from(body),
+            )
+        }
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
+            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
+                frunk::labelled_convert_from(body),
+            )
+        }
+        SwapRequestBodyKind::EthereumBitcoinErc20QuantityBitcoinQuantity(body) => {
+            rfc003::alice::SwapRequestKind::EthereumBitcoinErc20QuantityBitcoinQuantity(
                 frunk::labelled_convert_from(body),
             )
         }

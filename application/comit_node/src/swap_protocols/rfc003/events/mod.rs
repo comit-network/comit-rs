@@ -19,7 +19,11 @@ mod alice;
 mod bob;
 mod lqs;
 
-pub use self::{alice::AliceToBob, bob::BobToAlice, lqs::LqsEvents};
+pub use self::{
+    alice::AliceToBob,
+    bob::BobToAlice,
+    lqs::{LqsEvents, LqsEventsForErc20},
+};
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 

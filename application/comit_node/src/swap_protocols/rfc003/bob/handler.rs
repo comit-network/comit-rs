@@ -52,7 +52,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
         receiver
             .for_each(move |(id, requests, response_sender)| match requests {
-                rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+                rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
                     request,
                 ) => {
                     if let Err(e) = metadata_store.insert(id, request.clone()) {

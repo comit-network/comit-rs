@@ -43,7 +43,7 @@ pub fn swap_config(
 
                     if let Ok(swap_request) = decode_request(&request) {
                         let request_kind =
-                            rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+                            rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
                                 swap_request,
                             );
                         sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
