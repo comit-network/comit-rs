@@ -1,15 +1,13 @@
-use comit_node::{
-    ethereum_wallet::{UnsignedTransaction, Wallet},
-    swap_protocols::rfc003::{
-        ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
-        SecretHash,
-    },
+use comit_node::swap_protocols::rfc003::{
+    ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
+    SecretHash,
 };
 use ethereum_support::{
     web3::{transports::Http, Web3},
     Address, Bytes, CalculateContractAddress, CallRequest, Erc20Quantity, EtherQuantity, Future,
     TransactionRequest, H256, U256,
 };
+use ethereum_wallet::{UnsignedTransaction, Wallet};
 use hex;
 use std::{
     ops::DerefMut,

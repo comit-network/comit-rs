@@ -59,7 +59,6 @@ pub mod bam_api;
 pub mod bitcoin_fee_service;
 pub mod comit_client;
 pub mod comit_server;
-pub mod ethereum_wallet;
 pub mod gas_price_service;
 pub mod http_api;
 pub mod item_cache;

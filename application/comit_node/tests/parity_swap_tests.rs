@@ -11,7 +11,10 @@ extern crate tc_web3_client;
 extern crate testcontainers;
 #[macro_use]
 extern crate lazy_static;
+extern crate rlp;
+extern crate tiny_keccak;
 
+mod ethereum_wallet;
 mod htlc_harness;
 mod parity_client;
 

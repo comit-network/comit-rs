@@ -1,5 +1,5 @@
-mod transaction;
-mod wallet;
+pub mod transaction;
+pub mod wallet;
 
 pub use self::{
     transaction::*,

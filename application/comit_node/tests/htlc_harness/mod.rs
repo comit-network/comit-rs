@@ -1,7 +1,4 @@
-use comit_node::{
-    ethereum_wallet::fake::StaticFakeWallet,
-    swap_protocols::rfc003::{ethereum::Seconds, Secret},
-};
+use comit_node::swap_protocols::rfc003::{ethereum::Seconds, Secret};
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -9,6 +6,7 @@ use ethereum_support::{
     },
     EtherQuantity, ToEthereumAddress,
 };
+use ethereum_wallet::fake::StaticFakeWallet;
 use parity_client::{Erc20HtlcDeployParams, EtherHtlcFundingParams, ParityClient};
 use pretty_env_logger;
 use secp256k1_support::KeyPair;

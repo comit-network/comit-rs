@@ -3,12 +3,16 @@ extern crate ethereum_support;
 extern crate hex;
 extern crate pretty_env_logger;
 extern crate rand;
+extern crate rlp;
 extern crate secp256k1_support;
 extern crate tc_web3_client;
 extern crate testcontainers;
+extern crate tiny_keccak;
 
-use comit_node::ethereum_wallet::{InMemoryWallet, UnsignedTransaction, Wallet};
+mod ethereum_wallet;
+
 use ethereum_support::*;
+use ethereum_wallet::*;
 use secp256k1_support::KeyPair;
 use testcontainers::{clients::Cli, images::parity_parity::ParityEthereum, Docker};
 
@@ -71,7 +75,7 @@ fn given_manually_signed_transaction_when_sent_then_it_spends_from_correct_addre
 
     let value = U256::from(100_000);
 
-    let tx = UnsignedTransaction::new_payment(
+    let tx: UnsignedTransaction = ethereum_wallet::UnsignedTransaction::new_payment(
         "73782035b894ed39985fbf4062e695b8e524ca4e",
         1,
         value,
