@@ -1,4 +1,4 @@
-use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{web3::types::Address, Bytes, EtherQuantity};
 use ledger_query_service::EthereumQuery;
 use swap_protocols::{
     ledger::Ethereum,
@@ -20,17 +20,6 @@ impl NewHtlcFundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
         }
     }
 }
-impl NewHtlcFundedQuery<Ethereum, Erc20Quantity> for EthereumQuery {
-    fn new_htlc_funded_query(htlc_params: &HtlcParams<Ethereum, Erc20Quantity>) -> Self {
-        EthereumQuery::Transaction {
-            from_address: None,
-            to_address: Some(htlc_params.asset.token_contract()),
-            is_contract_creation: None,
-            transaction_data: Some(htlc_params.transfer_call(htlc_params.asset.token_contract())),
-            transaction_data_length: None,
-        }
-    }
-}
 
 impl NewHtlcRefundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     fn new_htlc_refunded_query(
@@ -47,15 +36,6 @@ impl NewHtlcRefundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     }
 }
 
-impl NewHtlcRefundedQuery<Ethereum, Erc20Quantity> for EthereumQuery {
-    fn new_htlc_refunded_query(
-        _htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
-        _htlc_location: &Address,
-    ) -> Self {
-        unimplemented!()
-    }
-}
-
 impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     fn new_htlc_redeemed_query(
         _htlc_params: &HtlcParams<Ethereum, EtherQuantity>,
@@ -68,15 +48,6 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
             transaction_data: None,
             transaction_data_length: Some(secret::SECRET_LENGTH),
         }
-    }
-}
-
-impl NewHtlcRedeemedQuery<Ethereum, Erc20Quantity> for EthereumQuery {
-    fn new_htlc_redeemed_query(
-        _htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
-        _htlc_location: &Address,
-    ) -> Self {
-        unimplemented!()
     }
 }
 
