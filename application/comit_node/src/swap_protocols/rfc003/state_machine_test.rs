@@ -31,7 +31,7 @@ struct FakeLedgerEvents<L: Ledger> {
 impl LedgerEvents<Bitcoin, BitcoinQuantity> for FakeLedgerEvents<Bitcoin> {
     fn htlc_deployed(
         &mut self,
-        htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
     ) -> &mut events::Deployed<Bitcoin> {
         self.htlc_deployed.as_mut().unwrap()
     }
@@ -56,7 +56,7 @@ impl LedgerEvents<Bitcoin, BitcoinQuantity> for FakeLedgerEvents<Bitcoin> {
 impl LedgerEvents<Ethereum, EtherQuantity> for FakeLedgerEvents<Ethereum> {
     fn htlc_deployed(
         &mut self,
-        htlc_params: HtlcParams<Ethereum, EtherQuantity>,
+        _htlc_params: HtlcParams<Ethereum, EtherQuantity>,
     ) -> &mut events::Deployed<Ethereum> {
         self.htlc_deployed.as_mut().unwrap()
     }

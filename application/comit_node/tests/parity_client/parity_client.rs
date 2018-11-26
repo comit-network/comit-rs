@@ -4,8 +4,8 @@ use comit_node::swap_protocols::rfc003::{
 };
 use ethereum_support::{
     web3::{transports::Http, Web3},
-    Address, Bytes, CalculateContractAddress, CallRequest, Erc20Quantity, EtherQuantity, Future,
-    TransactionRequest, H256, U256,
+    Address, Bytes, CallRequest, Erc20Quantity, EtherQuantity, Future, TransactionRequest, H256,
+    U256,
 };
 use ethereum_wallet::{UnsignedTransaction, Wallet};
 use hex;
@@ -208,8 +208,6 @@ impl ParityClient {
             let mut lock = self.nonce.lock().unwrap();
 
             let nonce = lock.deref_mut();
-            let address: ethereum_support::Address = self.wallet.address();
-            let next_nonce = *nonce + U256::from(1);
 
             let htlc = Erc20Htlc::new(
                 htlc_deploy_params.time_lock,
