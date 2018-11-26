@@ -96,19 +96,19 @@ mod tests {
         let bitcoin = Bitcoin {
             network: Network::Regtest,
         };
-        let ether = Ethereum {};
+        let ethereum = Ethereum {};
 
         let bitcoin = bitcoin.to_http_ledger().unwrap();
-        let ether = ether.to_http_ledger().unwrap();
+        let ethereum = ethereum.to_http_ledger().unwrap();
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();
-        let ether_serialized = serde_json::to_string(&ether).unwrap();
+        let ethereum_serialized = serde_json::to_string(&ethereum).unwrap();
 
         assert_eq!(
             &bitcoin_serialized,
             r#"{"name":"Bitcoin","network":"regtest"}"#
         );
-        assert_eq!(&ether_serialized, r#"{"name":"Ethereum"}"#);
+        assert_eq!(&ethereum_serialized, r#"{"name":"Ethereum"}"#);
     }
 
 }
