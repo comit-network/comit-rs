@@ -6,7 +6,7 @@ use ethereum_support::{
     },
     EtherQuantity, ToEthereumAddress,
 };
-use ethereum_wallet::fake::StaticFakeWallet;
+use ethereum_wallet::InMemoryWallet;
 use parity_client::{Erc20HtlcDeployParams, EtherHtlcFundingParams, ParityClient};
 use pretty_env_logger;
 use secp256k1_support::KeyPair;
@@ -55,7 +55,7 @@ pub fn harness<D: Docker>(
     let web3 = Arc::new(web3);
 
     let alice_client = ParityClient::new(
-        Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
+        Arc::new(InMemoryWallet::new(alice_keypair.clone(), 1)),
         web3,
         0,
     );
