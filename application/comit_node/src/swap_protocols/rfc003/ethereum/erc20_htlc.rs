@@ -5,7 +5,7 @@ use swap_protocols::rfc003::{
 };
 
 lazy_static! {
-    pub static ref TRANSFER_FUN: Vec<u8> = hex::decode("a9059cbb").unwrap();
+    pub static ref TRANSFER_FN: Vec<u8> = hex::decode("a9059cbb").unwrap();
 }
 
 #[derive(Debug)]
@@ -63,7 +63,7 @@ impl Erc20Htlc {
         let amount: [u8; 32] = self.amount.clone().into();
 
         let mut data: Vec<u8> = vec![];
-        data.extend_from_slice(&TRANSFER_FUN);
+        data.extend_from_slice(&TRANSFER_FN);
         data.extend_from_slice(&to_address);
         data.extend_from_slice(&amount);
         Bytes::from(data)
