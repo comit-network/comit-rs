@@ -1,5 +1,6 @@
 use futures::sync::mpsc::UnboundedSender;
 use http_api;
+use key_store::KeyStore;
 use std::sync::Arc;
 use swap_protocols::{
     rfc003::{self, bob::PendingResponses, state_store},
@@ -13,11 +14,12 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     state_store: Arc<S>,
     pending_responses: Arc<PendingResponses<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    key_store: Arc<KeyStore>,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(http_api::rfc003::swap::PROTOCOL_NAME));
-
     let metadata_store = warp::any().map(move || metadata_store.clone());
+    let key_store = warp::any().map(move || key_store.clone());
     let state_store = warp::any().map(move || state_store.clone());
     let sender = warp::any().map(move || sender.clone());
     let pending_responses = warp::any().map(move || Arc::clone(&pending_responses));
@@ -47,6 +49,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let rfc003_post_action = rfc003
         .and(metadata_store)
         .and(pending_responses)
+        .and(key_store)
         .and(warp::path::param::<SwapId>())
         .and(warp::path::param::<http_api::rfc003::action::Action>())
         .and(warp::post2())
@@ -58,6 +61,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .or(rfc003_post_swap)
         .or(rfc003_post_action)
         .or(get_swaps)
+        .with(warp::log("http"))
         .recover(http_api::unpack_problem)
         .boxed()
 }

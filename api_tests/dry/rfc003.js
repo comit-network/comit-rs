@@ -16,12 +16,7 @@ const alpha_asset_quantity = "100000000";
 const beta_asset_name = "Ether"
 const beta_asset_quantity = new BigNumber(web3.utils.toWei("10", 'ether')).toString();
 
-const alice = test_lib.comit_conf("alice", {
-    txid: process.env.BTC_FUNDED_TX,
-    value: parseInt(process.env.BTC_FUNDED_AMOUNT + '00000000'),
-    private_key: process.env.BTC_FUNDED_PRIVATE_KEY,
-    vout: parseInt(process.env.BTC_FUNDED_VOUT)
-});
+const alice = test_lib.comit_conf("alice", {});
 const bob = test_lib.comit_conf("bob", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";

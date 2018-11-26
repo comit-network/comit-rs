@@ -30,18 +30,32 @@ module.exports.web3 = () => {
     return web3 = web3 || new Web3(new Web3.providers.HttpProvider(process.env.ETHEREUM_NODE_ENDPOINT));
 };
 
-class WalletConf {
-    constructor(eth_private_key, bitcoin_utxo) {
-        this.eth_private_key_hex = eth_private_key;
-        this.bitcoin_utxo = bitcoin_utxo;
-    }
+let test_rng_counter = 0;
 
-    eth_private_key() {
-        return Buffer.from(this.eth_private_key_hex, "hex");
+function test_rng() {
+    test_rng_counter++;
+    return Buffer.from(("" + test_rng_counter).padStart(32,'0'));
+}
+
+class WalletConf {
+    constructor() {
+        //TODO: Generate this properly
+        this.eth_private_key = Buffer.from("3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59", "hex");
+        this.btc_keypair = bitcoin.ECPair.makeRandom({ rng: test_rng });
+        this.bitcoin_utxos = [];
     }
 
     eth_address() {
-        return "0x" + ethutil.privateToAddress(this.eth_private_key()).toString("hex");
+        return "0x" + ethutil.privateToAddress(this.eth_private_key).toString('hex');
+    }
+
+    btc_address() {
+        return  bitcoin.payments.p2pkh({ pubkey: this.btc_keypair.publicKey });
+    }
+
+    async fund_btc(btc_value) {
+        let tx = await module.exports.bitcoin_rpc_client().sendToAddress(this.btc_address(), btc_value);
+        console.log(tx);
     }
 
     async send_btc_to_p2wsh_address(to, value) {
@@ -152,7 +166,7 @@ class ComitConf {
         this.name = name;
         this.host = process.env[this.name.toUpperCase() + "_COMIT_NODE_HOST"];
         this.config = Toml.parse(fs.readFileSync(process.env[name.toUpperCase() + "_CONFIG_FILE"], 'utf8'));
-        this.wallet = new WalletConf(this.config.ethereum.private_key, bitcoin_utxo);
+        this.wallet = new WalletConf();
     }
 
     comit_node_url() {
