@@ -1,15 +1,4 @@
-use comit_node::{
-    ethereum_wallet::fake::StaticFakeWallet,
-    gas_price_service::StaticGasPriceService,
-    swap_protocols::rfc003::{
-        ethereum::Seconds,
-        ledger_htlc_service::{
-            self, Erc20HtlcFundingParams, EtherHtlcFundingParams, EthereumService,
-            LedgerHtlcService,
-        },
-        Secret,
-    },
-};
+use comit_node::swap_protocols::rfc003::{ethereum::Seconds, Secret};
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -17,7 +6,8 @@ use ethereum_support::{
     },
     EtherQuantity, ToEthereumAddress,
 };
-use parity_client::ParityClient;
+use ethereum_wallet::InMemoryWallet;
+use parity_client::{Erc20HtlcDeployParams, EtherHtlcFundingParams, ParityClient};
 use pretty_env_logger;
 use secp256k1_support::KeyPair;
 use std::{sync::Arc, time::Duration};
@@ -47,7 +37,7 @@ pub fn harness<D: Docker>(
 ) -> (
     Address,
     Address,
-    Result<Address, ledger_htlc_service::Error>,
+    Address,
     Option<Address>,
     ParityClient,
     EventLoopHandle,
@@ -60,28 +50,28 @@ pub fn harness<D: Docker>(
     let (_, bob) = new_account("f8218ebf6e2626bd1415c18321496e0c5725f0e1d774c7c2eab69f7650ad6e82");
 
     let container = docker.run(ParityEthereum::default());
+
     let (event_loop, web3) = tc_web3_client::new(&container);
+    let web3 = Arc::new(web3);
 
-    let client = ParityClient::new(web3);
-    client.give_eth_to(alice, params.alice_initial_ether);
-
-    let ethereum_service = EthereumService::new(
-        Arc::new(StaticFakeWallet::from_key_pair(alice_keypair.clone())),
-        Arc::new(StaticGasPriceService::default()),
-        Arc::new(tc_web3_client::new(&container)),
+    let alice_client = ParityClient::new(
+        Arc::new(InMemoryWallet::new(alice_keypair.clone(), 1)),
+        web3,
         0,
     );
+
+    alice_client.give_eth_to(alice, params.alice_initial_ether);
 
     let (token_contract, htlc) = match params.htlc_type {
         HtlcType::Erc20 {
             alice_initial_tokens,
             htlc_token_value,
         } => {
-            let token_contract = client.deploy_erc20_token_contract();
+            let token_contract = alice_client.deploy_erc20_token_contract();
 
-            client.mint_tokens(token_contract, alice_initial_tokens, alice);
+            alice_client.mint_tokens(token_contract, alice_initial_tokens, alice);
 
-            let htlc_params = Erc20HtlcFundingParams {
+            let htlc_params = Erc20HtlcDeployParams {
                 refund_address: alice,
                 success_address: bob,
                 time_lock: Seconds::from(params.htlc_timeout),
@@ -89,11 +79,12 @@ pub fn harness<D: Docker>(
                 secret_hash: Secret::from(params.htlc_secret).hash(),
                 token_contract_address: token_contract,
             };
-            let deployment_result = ethereum_service
-                .fund_htlc(htlc_params)
-                .map(|tx_id| client.get_contract_address(tx_id.clone()));
+            let tx_id = alice_client.deploy_erc20_htlc(htlc_params);
 
-            (Some(token_contract), deployment_result)
+            (
+                Some(token_contract),
+                alice_client.get_contract_address(tx_id),
+            )
         }
         HtlcType::Eth { htlc_eth_value } => {
             let htlc_params = EtherHtlcFundingParams {
@@ -103,11 +94,10 @@ pub fn harness<D: Docker>(
                 amount: htlc_eth_value,
                 secret_hash: Secret::from(params.htlc_secret).hash(),
             };
-            let deployment_result = ethereum_service
-                .fund_htlc(htlc_params)
-                .map(|tx_id| client.get_contract_address(tx_id.clone()));
+            let tx_id = alice_client.deploy_ether_htlc(htlc_params);
 
-            (None, deployment_result)
+            //no funding needed, deployment of the HTLC can also fund it directly
+            (None, alice_client.get_contract_address(tx_id))
         }
     };
 
@@ -116,7 +106,7 @@ pub fn harness<D: Docker>(
         bob,
         htlc,
         token_contract,
-        client,
+        alice_client,
         event_loop,
         container,
     )

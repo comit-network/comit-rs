@@ -23,18 +23,15 @@ impl Erc20Htlc {
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
+    const AMOUNT_PLACEHOLDER: &'static str =
+        "5000000000000000000000000000000000000000000000000000000000000005";
+    const TOKEN_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
+        "6000000000000000000000000000000000000006";
 
     const DEPLOY_HEADER_TEMPLATE: &'static str =
         include_str!("./contract_templates/out/erc20_deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
-    const TRANSFER_TO_ADDRESS_PLACEHOLDER: &'static str =
-        "3000000000000000000000000000000000000003";
-
-    const AMOUNT_PLACEHOLDER: &'static str =
-        "5000000000000000000000000000000000000000000000000000000000000005";
-    const TOKEN_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
-        "6000000000000000000000000000000000000006";
 
     pub fn new(
         refund_timeout: Seconds,
@@ -55,7 +52,7 @@ impl Erc20Htlc {
             amount,
         };
 
-        debug!("Created new HTLC for ethereum: {:#?}", htlc);
+        debug!("Created new ERC20 HTLC for ethereum: {:#?}", htlc);
 
         htlc
     }
@@ -72,7 +69,6 @@ impl Htlc for Erc20Htlc {
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
 
-        let htlc_contract_address = format!("{:x}", self.htlc_contract_address);
         let token_contract_address = format!("{:x}", self.token_contract_address);
         let amount = format!("{:0>64}", format!("{:x}", self.amount));
 
@@ -88,6 +84,8 @@ impl Htlc for Erc20Htlc {
                 &token_contract_address,
             );
 
+        debug!("Final contract code: {}", &contract_code);
+
         let code_length = contract_code.len() / 2; // In hex, each byte is two chars
 
         let code_length_as_hex = format!("{:0>4x}", code_length);
@@ -101,17 +99,7 @@ impl Htlc for Erc20Htlc {
                 Self::CONTRACT_START_POSITION_PLACEHOLDER,
                 &header_length_as_hex,
             )
-            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex)
-            .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
-            .replace(
-                Self::TRANSFER_TO_ADDRESS_PLACEHOLDER,
-                &htlc_contract_address,
-            )
-            .replace(
-                Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
-                &token_contract_address,
-            )
-            .replace(Self::AMOUNT_PLACEHOLDER, &amount);
+            .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
         debug!("Final contract code: {}", &contract_code);
         debug!("Deploy header: {}", &deploy_header);
@@ -122,4 +110,34 @@ impl Htlc for Erc20Htlc {
 
         ByteCode(deployable_contract)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethereum_support::{Address, U256};
+    use std::str::FromStr;
+
+    #[test]
+    fn compiled_contract_is_same_length_as_template() {
+        let htlc = Erc20Htlc::new(
+            Seconds(100),
+            Address::new(),
+            Address::new(),
+            SecretHash::from_str(
+                "1000000000000000000000000000000000000000000000000000000000000001",
+            )
+            .unwrap(),
+            Address::new(),
+            Address::new(),
+            U256::from(100),
+        );
+        let htlc_hex = htlc.compile_to_hex();
+        assert_eq!(
+            htlc_hex.0.len(),
+            Erc20Htlc::CONTRACT_CODE_TEMPLATE.len() + Erc20Htlc::DEPLOY_HEADER_TEMPLATE.len(),
+            "HTLC is the same length as template plus deploy code"
+        );
+    }
+
 }

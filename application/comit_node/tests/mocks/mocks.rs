@@ -31,26 +31,3 @@ impl BitcoinRpcApi for BitcoinRpcClientMock {
         Ok(Ok(self.transaction_id.clone()))
     }
 }
-
-#[allow(dead_code)]
-pub struct StaticEthereumApi;
-
-impl BlockingEthereumApi for StaticEthereumApi {
-    fn send_raw_transaction(&self, _rlp: Bytes) -> Result<H256, web3::Error> {
-        Ok(H256::new())
-    }
-
-    fn transaction(
-        &self,
-        _transaction_id: EthereumTxId,
-    ) -> Result<Option<EthereumTransaction>, web3::Error> {
-        unimplemented!()
-    }
-
-    fn transaction_receipt(
-        &self,
-        _transaction_id: H256,
-    ) -> Result<Option<TransactionReceipt>, web3::Error> {
-        unimplemented!()
-    }
-}
