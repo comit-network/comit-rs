@@ -1,4 +1,3 @@
-use bitcoin_fee_service;
 use bitcoin_rpc_client;
 use bitcoin_support;
 use reqwest;
@@ -7,7 +6,6 @@ use rustc_hex;
 #[derive(Debug)] //TODO merge these errors into error
 pub enum Error {
     TradingService(String), //TODO this should not exist anymore
-    FeeService(bitcoin_fee_service::Error),
     BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),
     Unlocking(String),
@@ -24,13 +22,6 @@ impl From<rustc_hex::FromHexError> for Error {
     fn from(e: rustc_hex::FromHexError) -> Self {
         error!("Invalid ethereum address format: {}", e);
         Error::TradingService(String::from("Invalid ethereum address format"))
-    }
-}
-
-impl From<bitcoin_fee_service::Error> for Error {
-    fn from(e: bitcoin_fee_service::Error) -> Self {
-        error!("{:?}", e);
-        Error::FeeService(e)
     }
 }
 

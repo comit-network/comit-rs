@@ -56,7 +56,6 @@ extern crate uuid;
 extern crate warp;
 
 pub mod bam_api;
-pub mod bitcoin_fee_service;
 pub mod comit_client;
 pub mod comit_server;
 pub mod gas_price_service;
