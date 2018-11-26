@@ -484,7 +484,9 @@ impl<R: Role> SwapStates<R> {
         match *self {
             SS::Start(ref start) => Some(start.clone()),
             SS::Accepted(Accepted { ref swap, .. })
+            | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
             | SS::AlphaFunded(AlphaFunded { ref swap, .. })
+            | SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { ref swap, .. })
             | SS::BothFunded(BothFunded { ref swap, .. })
             | SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded { ref swap, .. })
             | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
