@@ -70,9 +70,6 @@ pub enum SwapRequestKind {
     BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
-    EthereumBitcoinEtherQuantityBitcoinQuantity(
-        SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
-    ),
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
     ),

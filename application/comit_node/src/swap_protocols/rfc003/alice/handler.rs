@@ -115,9 +115,6 @@ impl<
                         );
                         Ok(())
                     }
-                    SwapRequestKind::EthereumBitcoinEtherQuantityBitcoinQuantity(request) => {
-                        unimplemented!()
-                    }
                     SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(request) => {
                         // TODO: Store this somewhere
                         let _alpha_ledger_final_refund_identity =

@@ -51,9 +51,6 @@ pub enum SwapRequestBodyKind {
     BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
-    EthereumBitcoinEtherQuantityBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
-    ),
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
     ),
@@ -81,11 +78,6 @@ pub fn post_swap(
     let request_kind = match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
-                frunk::labelled_convert_from(body),
-            )
-        }
-        SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinQuantity(body) => {
-            rfc003::alice::SwapRequestKind::EthereumBitcoinEtherQuantityBitcoinQuantity(
                 frunk::labelled_convert_from(body),
             )
         }

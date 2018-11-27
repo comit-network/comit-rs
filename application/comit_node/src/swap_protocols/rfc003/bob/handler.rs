@@ -101,9 +101,6 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                     Ok(())
                 }
-                rfc003::bob::SwapRequestKind::EthereumBitcoinEtherQuantityBitcoinQuantity(
-                    request,
-                ) => unimplemented!(),
                 rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
                     request,
                 ) => {
