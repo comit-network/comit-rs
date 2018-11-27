@@ -19,28 +19,16 @@ mod htlc_harness;
 mod parity_client;
 
 use ethereum_support::{Bytes, EtherQuantity, U256};
-use htlc_harness::*;
-use std::time::Duration;
+use htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
 use testcontainers::clients::Cli;
 
-const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
-const HTLC_TIMEOUT: Duration = Duration::from_secs(5);
 const HTLC_GAS_COST: u64 = 8879000;
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let docker = Cli::default();
-    let (alice, bob, htlc, _, client, _handle, _container) = harness(
-        &docker,
-        TestHarnessParams {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_type: HtlcType::Eth {
-                htlc_eth_value: EtherQuantity::from_eth(0.4),
-            },
-            htlc_timeout: HTLC_TIMEOUT,
-            htlc_secret: SECRET.clone(),
-        },
-    );
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::default());
 
     assert_eq!(
         client.eth_balance_of(bob),
@@ -76,17 +64,8 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 #[test]
 fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let docker = Cli::default();
-    let (alice, bob, htlc, _, client, _handle, _container) = harness(
-        &docker,
-        TestHarnessParams {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_type: HtlcType::Eth {
-                htlc_eth_value: EtherQuantity::from_eth(0.4),
-            },
-            htlc_timeout: HTLC_TIMEOUT,
-            htlc_secret: SECRET.clone(),
-        },
-    );
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::default());
 
     assert_eq!(
         client.eth_balance_of(bob),
@@ -123,17 +102,8 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 #[test]
 fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
     let docker = Cli::default();
-    let (alice, bob, htlc, _, client, _handle, _container) = harness(
-        &docker,
-        TestHarnessParams {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_type: HtlcType::Eth {
-                htlc_eth_value: EtherQuantity::from_eth(0.4),
-            },
-            htlc_timeout: HTLC_TIMEOUT,
-            htlc_secret: SECRET.clone(),
-        },
-    );
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::default());
 
     assert_eq!(
         client.eth_balance_of(bob),

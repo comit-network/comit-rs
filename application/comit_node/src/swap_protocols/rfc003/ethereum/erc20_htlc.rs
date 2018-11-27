@@ -4,11 +4,7 @@ use swap_protocols::rfc003::{
     SecretHash,
 };
 
-lazy_static! {
-    pub static ref TRANSFER_FN: Vec<u8> = hex::decode("a9059cbb").unwrap();
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Erc20Htlc {
     refund_timeout: Seconds,
     refund_address: Address,
@@ -59,14 +55,13 @@ impl Erc20Htlc {
     }
 
     pub fn transfer_call(&self, htlc_contract_address: Address) -> Bytes {
-        let to_address: [u8; 20] = htlc_contract_address.into();
-        let amount: [u8; 32] = self.amount.clone().into();
+        let target_address = format!("{:0>64}", format!("{:x}", htlc_contract_address));
+        let token_amount = format!("{:0>64}", format!("{:x}", self.amount));
 
-        let mut data: Vec<u8> = vec![];
-        data.extend_from_slice(&TRANSFER_FN);
-        data.extend_from_slice(&to_address);
-        data.extend_from_slice(&amount);
-        Bytes::from(data)
+        let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
+        let hex_data = hex::decode(data).unwrap();
+
+        Bytes::from(hex_data)
     }
 }
 
