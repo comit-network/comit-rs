@@ -3,7 +3,6 @@ mod serde;
 use bitcoin_support;
 use config::{Config, ConfigError, File};
 use ethereum_support;
-use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{
     ffi::OsStr,
