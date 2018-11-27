@@ -4,11 +4,7 @@ use swap_protocols::rfc003::{
     SecretHash,
 };
 
-lazy_static! {
-    pub static ref TRANSFER_FN: Vec<u8> = hex::decode("a9059cbb").unwrap();
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Erc20Htlc {
     refund_timeout: Seconds,
     refund_address: Address,
@@ -58,15 +54,18 @@ impl Erc20Htlc {
         htlc
     }
 
-    pub fn transfer_call(&self, htlc_contract_address: Address) -> Bytes {
-        let to_address: [u8; 20] = htlc_contract_address.into();
-        let amount: [u8; 32] = self.amount.clone().into();
+    /// Constructs the payload for funding an `Erc20` HTLC located at the given address.
+    pub fn funding_tx_payload(&self, htlc_contract_address: Address) -> Bytes {
+        let transfer_fn_abi = base16!("A9059CBB");
+        let htlc_contract_address = <[u8; 20]>::from(htlc_contract_address);
+        let amount = <[u8; 32]>::from(self.amount.clone());
 
-        let mut data: Vec<u8> = vec![];
-        data.extend_from_slice(&TRANSFER_FN);
-        data.extend_from_slice(&to_address);
-        data.extend_from_slice(&amount);
-        Bytes::from(data)
+        let mut data = [0u8; 4 + 32 + 32];
+        data[..4].copy_from_slice(transfer_fn_abi);
+        data[16..36].copy_from_slice(&htlc_contract_address);
+        data[36..68].copy_from_slice(&amount);
+
+        Bytes::from(data.to_vec())
     }
 }
 
@@ -147,4 +146,25 @@ mod tests {
         );
     }
 
+    #[test]
+    fn computes_funding_tx_payload_correctly() {
+        let htlc = Erc20Htlc::new(
+            Seconds(100),
+            Address::new(),
+            Address::new(),
+            SecretHash::from_str(
+                "1000000000000000000000000000000000000000000000000000000000000001",
+            )
+            .unwrap(),
+            Address::new(),
+            U256::from(100),
+        );
+
+        let htlc_hex = htlc.funding_tx_payload(Address::from(*base16!(
+            "B97048628DB6B661D4C2AA833E95DBE1A905B280"
+        )));
+        let expected_bytes = base16!("A9059CBB000000000000000000000000B97048628DB6B661D4C2AA833E95DBE1A905B2800000000000000000000000000000000000000000000000000000000000000064");
+
+        assert_eq!(htlc_hex, Bytes(expected_bytes.to_vec()));
+    }
 }

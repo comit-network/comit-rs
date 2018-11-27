@@ -1,11 +1,10 @@
 use comit_node::swap_protocols::rfc003::{
-    ethereum::{Erc20Htlc, EtherHtlc, Htlc, Seconds},
+    ethereum::{Htlc, Seconds},
     SecretHash,
 };
 use ethereum_support::{
     web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, Erc20Quantity, EtherQuantity, Future, TransactionRequest, H256,
-    U256,
+    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionRequest, H256, U256,
 };
 use ethereum_wallet::{UnsignedTransaction, Wallet};
 use hex;
@@ -18,15 +17,6 @@ pub struct ParityClient {
     client: Arc<Web3<Http>>,
     wallet: Arc<Wallet>,
     nonce: Mutex<U256>,
-}
-#[derive(Clone, Debug)]
-pub struct Erc20HtlcDeployParams {
-    pub refund_address: Address,
-    pub success_address: Address,
-    pub time_lock: Seconds,
-    pub amount: U256,
-    pub secret_hash: SecretHash,
-    pub token_contract_address: Address,
 }
 
 #[derive(Clone, Debug)]
@@ -198,110 +188,26 @@ impl ParityClient {
             .unwrap()
             .unwrap();
 
+        debug!("Transaction Receipt: {:?}", receipt);
+
         receipt.gas_used
     }
 
-    pub fn deploy_erc20_htlc(&self, htlc_deploy_params: Erc20HtlcDeployParams) -> H256 {
-        let gas_price = 0;
-
-        let tx_id = {
-            let mut lock = self.nonce.lock().unwrap();
-
-            let nonce = lock.deref_mut();
-
-            let htlc = Erc20Htlc::new(
-                htlc_deploy_params.time_lock,
-                htlc_deploy_params.refund_address,
-                htlc_deploy_params.success_address,
-                htlc_deploy_params.secret_hash,
-                htlc_deploy_params.token_contract_address,
-                htlc_deploy_params.amount,
-            );
-
-            let htlc_code = htlc.compile_to_hex();
-
-            let deployment_transaction = UnsignedTransaction::new_contract_deployment(
-                htlc_code,
-                gas_price,
-                0,
-                *nonce,
-                Some(100_000),
-            );
-
-            let signed_deployment_transaction = self.wallet.sign(&deployment_transaction);
-
-            let tx_id = self
-                .client
-                .eth()
-                .send_raw_transaction(signed_deployment_transaction.into())
-                .wait()
-                .unwrap();
-
-            self.increment_nonce(nonce);
-
-            tx_id
-        };
-
-        tx_id
+    pub fn deploy_htlc(&self, htlc: impl Htlc, value: U256) -> H256 {
+        self.sign_and_send(|nonce, gas_price| UnsignedTransaction {
+            nonce,
+            gas_price,
+            gas_limit: U256::from(500_000),
+            to: None,
+            value,
+            data: Some(htlc.compile_to_hex().into()),
+        })
     }
 
-    pub fn deploy_ether_htlc(&self, htlc_funding_params: EtherHtlcFundingParams) -> H256 {
-        let contract = EtherHtlc::new(
-            htlc_funding_params.time_lock,
-            htlc_funding_params.refund_address,
-            htlc_funding_params.success_address,
-            htlc_funding_params.secret_hash,
-        );
-
-        let funding = htlc_funding_params.amount.wei();
-
-        let tx_id = self.sign_and_send(|nonce, gas_price| {
-            UnsignedTransaction::new_contract_deployment(
-                contract.compile_to_hex(),
-                gas_price,
-                funding,
-                nonce,
-                None,
-            )
-        });
-
-        info!(
-            "Contract {:?} was successfully deployed in transaction {:?} with initial funding of {}",
-            contract, tx_id, funding
-        );
-
-        tx_id
-    }
-
-    pub fn fund_erc20_htlc(&self, target: Address, asset: Erc20Quantity) -> H256 {
-        let target_address = format!("{:0>64}", format!("{:x}", target));
-        let token_amount = format!("{:0>64}", format!("{:x}", asset.quantity()));
-
-        let data = format!("{}{}{}", "a9059cbb", target_address, token_amount);
-        let hex_data = hex::decode(data).unwrap();
-
-        let tx_id = self.sign_and_send(|nonce, gas_price| {
-            UnsignedTransaction::new_contract_invocation(
-                hex_data.clone(),
-                asset.token_contract(),
-                100000,
-                gas_price,
-                0,
-                nonce,
-            )
-        });
-
-        println!("tx receipt: {:?}", tx_id);
-
-        info!(
-            "Account {:?} was successfully funded in transaction {:?}",
-            target, tx_id
-        );
-
-        tx_id
-    }
-
-    fn sign_and_send<T: Fn(U256, U256) -> UnsignedTransaction>(&self, transaction_fn: T) -> H256 {
+    pub fn sign_and_send<T: Fn(U256, U256) -> UnsignedTransaction>(
+        &self,
+        transaction_fn: T,
+    ) -> H256 {
         let gas_price = U256::from(100);
 
         let tx_id = {

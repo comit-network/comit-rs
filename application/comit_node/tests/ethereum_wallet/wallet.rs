@@ -18,10 +18,6 @@ impl InMemoryWallet {
         InMemoryWallet { keypair, chain_id }
     }
 
-    pub fn address(&self) -> Address {
-        self.keypair.public_key().to_ethereum_address()
-    }
-
     // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md#specification
     fn chain_replay_protection_offset(&self) -> u8 {
         35 + self.chain_id * 2

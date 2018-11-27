@@ -6,6 +6,7 @@ version = "0.1.0"
 regex = "1"
 
 [dependencies]
+binary_macros = "0.6"
 bitcoin_rpc_client = "0.4"
 chrono = "0.4"
 config = "0.9"
