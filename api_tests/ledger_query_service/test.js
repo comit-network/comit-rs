@@ -12,12 +12,9 @@ const Web3 = require('web3');
 const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
 const lqs = test_lib.ledger_query_service_conf("localhost", 8080);
 const web3 = test_lib.web3();
-const wallet = test_lib.wallet_conf("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", {
-    txid: process.env.BTC_FUNDED_TX,
-    value: parseInt(process.env.BTC_FUNDED_AMOUNT + '00000000'),
-    private_key: process.env.BTC_FUNDED_PRIVATE_KEY,
-    vout: parseInt(process.env.BTC_FUNDED_VOUT)
-});
+const wallet = test_lib.wallet_conf();
+
+
 
 
 function sleep(ms) {
@@ -27,7 +24,8 @@ function sleep(ms) {
 describe("Test Ledger Query Service API", () => {
 
     before(async function () {
-        return await test_lib.fund_eth(20);
+        await wallet.fund_btc(5);
+        await test_lib.fund_eth(20);
     });
 
     describe('Bitcoin', () => {
@@ -70,7 +68,7 @@ describe("Test Ledger Query Service API", () => {
 
             it("LQS should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function () {
                 this.slow(1000);
-                return wallet.send_btc_to_p2wpkh_address(to_address, 100000000).then(() => {
+                return wallet.send_btc_to_address(to_address, 100000000).then(() => {
                     return bitcoin_rpc_client.generate(1).then(() => {
                         return lqs.poll_until_matches(chai, location).then((body) => {
                             body.query.to_address.should.equal(to_address);

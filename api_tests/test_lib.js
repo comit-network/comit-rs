@@ -24,6 +24,22 @@ module.exports.bitcoin_rpc_client = () => {
     });
 };
 
+
+//FIXME: Remove this whenever this change:
+// https://github.com/bitcoinjs/bitcoinjs-lib/commit/44a98c0fa6487eaf81500427366787a953ff890d#diff-9e60abeb4e2333a5d2f02de53b4edfac
+// Hits npm!
+const regtest = {
+    messagePrefix: '\x18Bitcoin Signed Message:\n',
+    bech32: 'bcrt',
+    bip32: {
+        public: 0x043587cf,
+        private: 0x04358394
+    },
+    pubKeyHash: 0x6f,
+    scriptHash: 0xc4,
+    wif: 0xef
+}
+
 let web3;
 
 module.exports.web3 = () => {
@@ -40,71 +56,57 @@ function test_rng() {
 class WalletConf {
     constructor() {
         //TODO: Generate this properly
-        this.eth_private_key = Buffer.from("3f92cbc79aa7e29c7c5f3525749fd7d90aa21938de096f1b78710befe6d8ef59", "hex");
+        this.eth_keypair = bitcoin.ECPair.makeRandom({rng: test_rng});
         this.btc_keypair = bitcoin.ECPair.makeRandom({ rng: test_rng });
         this.bitcoin_utxos = [];
     }
 
     eth_address() {
-        return "0x" + ethutil.privateToAddress(this.eth_private_key).toString('hex');
+        return "0x" + ethutil.privateToAddress(this.eth_keypair.privateKey).toString('hex');
     }
 
     btc_address() {
-        return  bitcoin.payments.p2pkh({ pubkey: this.btc_keypair.publicKey });
+        return  bitcoin.payments.p2wpkh({ pubkey: this.btc_keypair.publicKey, network: regtest });
     }
 
     async fund_btc(btc_value) {
-        let tx = await module.exports.bitcoin_rpc_client().sendToAddress(this.btc_address(), btc_value);
-        console.log(tx);
+        let txid = await module.exports.bitcoin_rpc_client().sendToAddress(this.btc_address().address, btc_value);
+        let raw_transaction = await module.exports.bitcoin_rpc_client().getRawTransaction(txid);
+        let transaction = bitcoin.Transaction.fromHex(raw_transaction);
+        for (let [i, out] of transaction.outs.entries()) {
+            if (out.script.equals(this.btc_address().output)) {
+                out.txid = txid;
+                out.vout = i;
+                this.bitcoin_utxos.push(out);
+            }
+        }
     }
 
-    async send_btc_to_p2wsh_address(to, value) {
+    async send_btc_to_address(to, value) {
         const txb = new bitcoin.TransactionBuilder();
-        const utxo = this.bitcoin_utxo;
+        const utxo = this.bitcoin_utxos.shift();
         const to_address = bitcoin.address.fromBech32(to);
         const input_amount = utxo.value;
-        const private_key = bitcoin.ECPair.fromWIF(utxo.private_key);
+        const key_pair = this.btc_keypair;
         const fee = 2500;
         const change = input_amount - value - fee;
         txb.addInput(
             utxo.txid,
             utxo.vout,
             null,
-            bitcoin.payments.p2wpkh({pubkey: private_key.publicKey}).output
+            this.btc_address().output,
         );
-        //TODO: Generate a new address and send it to there
-        txb.addOutput('1cMh228HTCiwS8ZsaakH8A8wze1JR5ZsP', change);
-        txb.addOutput(bitcoin.payments.p2wsh({hash: to_address.data}).output, value);
-        txb.sign(0, private_key, null, null, input_amount);
-
-        return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
-    }
-
-    async send_btc_to_p2wpkh_address(to, value) {
-        const txb = new bitcoin.TransactionBuilder();
-        const utxo = this.bitcoin_utxo;
-        const to_address = bitcoin.address.fromBech32(to);
-        const input_amount = utxo.value;
-        const private_key = bitcoin.ECPair.fromWIF(utxo.private_key);
-        const fee = 2500;
-        const change = input_amount - value - fee;
-        txb.addInput(
-            utxo.txid,
-            utxo.vout,
-            null,
-            bitcoin.payments.p2wpkh({pubkey: private_key.publicKey}).output
-        );
-        //TODO: Generate a new address and send it to there
-        txb.addOutput('1cMh228HTCiwS8ZsaakH8A8wze1JR5ZsP', change);
-        txb.addOutput(bitcoin.payments.p2wpkh({hash: to_address.data}).output, value);
-        txb.sign(0, private_key, null, null, input_amount);
+        //TODO: Add it back to UTXOs after transaction is successful
+        txb.addOutput(this.btc_address().output, change);
+        txb.addOutput(bitcoin.address.toOutputScript(to, regtest), value);
+        txb.sign(0, key_pair, null, null, input_amount);
 
         return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
     async send_eth_transaction_to(to, data = "0x0", value = "0x0") {
         if (!to) {
-            throw "`to` cannot be null";
+            throw new Error("`to` cannot be null");
         }
 
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
@@ -119,7 +121,7 @@ class WalletConf {
             chainId: 1
         });
 
-        tx.sign(this.eth_private_key());
+        tx.sign(this.eth_keypair.privateKey);
         const serializedTx = tx.serialize();
         let hex = '0x' + serializedTx.toString('hex');
         return web3.eth.sendSignedTransaction(hex);
@@ -138,7 +140,7 @@ class WalletConf {
             chainId: 1
         });
 
-        tx.sign(this.eth_private_key());
+        tx.sign(this.eth_keypair.privateKey);
         const serializedTx = tx.serialize();
         let hex = '0x' + serializedTx.toString('hex');
         return web3.eth.sendSignedTransaction(hex);
@@ -289,4 +291,3 @@ module.exports.fund_eth = (value) => {
         return owner_wallet.send_eth_transaction_to(contract_address, payload);
     };
 }
-

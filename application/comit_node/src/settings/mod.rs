@@ -29,9 +29,6 @@ pub struct Ethereum {
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub gas_price: u64,
-    #[serde(with = "serde::keypair")]
-    // TODO: Replace with mnemonics and derive keys. See #185
-    pub private_key: KeyPair,
 }
 
 #[derive(Debug, Deserialize)]

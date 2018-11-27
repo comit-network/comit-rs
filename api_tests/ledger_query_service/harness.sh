@@ -51,7 +51,7 @@ function setup() {
     );
 
     sleep 6;
-    
+
     LQS_PID=$(
         export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service
         export ETHEREUM_POLLING_TIME_SEC=1
@@ -69,7 +69,6 @@ debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
 debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 
 activate_segwit;
-fund_bitcoin_address;
 sleep 2;
 
 npm test "$@";

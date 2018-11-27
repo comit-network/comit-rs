@@ -11,22 +11,11 @@ const ethutil = require('ethereumjs-util');
 
 const web3 = test_lib.web3();
 
-const toby_eth_private_key = Buffer.from("fed52717ddb17a45e718a0903024224ab69a2456157aaa16e606e65b9943c899", "hex");
-
-const toby = test_lib.wallet_conf(toby_eth_private_key, {
-    txid: process.env.BTC_FUNDED_TX,
-    value: parseInt(process.env.BTC_FUNDED_AMOUNT + '00000000'),
-    private_key: process.env.BTC_FUNDED_PRIVATE_KEY,
-    vout: parseInt(process.env.BTC_FUNDED_VOUT)
-});
-
+const toby = test_lib.wallet_conf();
 const bob_initial_eth = 5;
 const bob_initial_erc20 = 10000;
 const bob_config = Toml.parse(fs.readFileSync(process.env.BOB_CONFIG_FILE, 'utf8'));
-const bob_eth_private_key = Buffer.from(bob_config.ethereum.private_key, "hex");
-const bob_eth_address = "0x" + ethutil.privateToAddress(bob_eth_private_key).toString("hex");
-
-const bob = test_lib.wallet_conf(bob_eth_private_key, null);
+const bob = test_lib.wallet_conf();
 
 describe('RFC003: Bitcoin for ERC20', () => {
 
@@ -35,19 +24,13 @@ describe('RFC003: Bitcoin for ERC20', () => {
         this.timeout(5000);
         await test_lib.fund_eth(20);
         await test_lib.give_eth_to(toby.eth_address(), 10);
-        await test_lib.give_eth_to(bob_eth_address, bob_initial_eth);
-        await test_lib.deploy_erc20_token_contract(toby)
-            .then(receipt => {
-                token_contract_address = receipt.contractAddress;
-            });
-    });
-
-    it("The token contract address is as predicted", async function () {
-        return token_contract_address.should.equal("0x0c4526600167e15124350e6921A889D7D5778Aa2");
+        await test_lib.give_eth_to(bob.eth_address(), bob_initial_eth);
+        let receipt = await test_lib.deploy_erc20_token_contract(toby);
+        token_contract_address = receipt.contractAddress;
     });
 
     it(bob_initial_erc20 + " tokens were minted to Bob", async function () {
-        return test_lib.mint_erc20_tokens(toby, token_contract_address, bob_eth_address, bob_initial_erc20).then(receipt => {
+        return test_lib.mint_erc20_tokens(toby, token_contract_address, bob.eth_address(), bob_initial_erc20).then(receipt => {
             receipt.status.should.equal(true);
             return bob.erc20_balance(token_contract_address).then(result => {
                 result = web3.utils.toBN(result).toString();
