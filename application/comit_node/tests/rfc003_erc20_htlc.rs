@@ -40,7 +40,7 @@ fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
         gas_limit: U256::from(100_000),
         to: Some(token),
         value: U256::from(0),
-        data: Some(htlc.transfer_call(htlc_address)),
+        data: Some(htlc.funding_tx_payload(htlc_address)),
     });
 
     // check htlc funding
@@ -72,7 +72,7 @@ fn given_funded_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred
         gas_limit: U256::from(100_000),
         to: Some(token),
         value: U256::from(0),
-        data: Some(htlc.transfer_call(htlc_address)),
+        data: Some(htlc.funding_tx_payload(htlc_address)),
     });
 
     assert_eq!(
@@ -103,7 +103,7 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
         gas_limit: U256::from(100_000),
         to: Some(token),
         value: U256::from(0),
-        data: Some(htlc.transfer_call(htlc_address)),
+        data: Some(htlc.funding_tx_payload(htlc_address)),
     });
 
     assert_eq!(
@@ -136,7 +136,7 @@ fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_
         gas_limit: U256::from(100_000),
         to: Some(token),
         value: U256::from(0),
-        data: Some(htlc.transfer_call(htlc_address)),
+        data: Some(htlc.funding_tx_payload(htlc_address)),
     });
 
     assert_eq!(
@@ -175,7 +175,7 @@ fn given_not_enough_tokens_when_redeemed_token_balances_dont_change() {
         gas_limit: U256::from(100_000),
         to: Some(token),
         value: U256::from(0),
-        data: Some(htlc.transfer_call(htlc_address)),
+        data: Some(htlc.funding_tx_payload(htlc_address)),
     });
 
     assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));

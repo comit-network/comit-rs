@@ -54,7 +54,8 @@ impl Erc20Htlc {
         htlc
     }
 
-    pub fn transfer_call(&self, htlc_contract_address: Address) -> Bytes {
+    /// Constructs the payload for funding an `Erc20` HTLC located at the given address.
+    pub fn funding_tx_payload(&self, htlc_contract_address: Address) -> Bytes {
         let target_address = format!("{:0>64}", format!("{:x}", htlc_contract_address));
         let token_amount = format!("{:0>64}", format!("{:x}", self.amount));
 
