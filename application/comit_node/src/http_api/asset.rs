@@ -2,7 +2,7 @@ use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use serde_json;
 use std::{collections::BTreeMap, fmt};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HttpAsset {
     name: String,
     #[serde(default, flatten)]
