@@ -34,6 +34,7 @@ describe("RFC003 Bitcoin for Ether", () => {
             alice.wallet.eth_address(),
             alice_initial_eth
         );
+        await alice.wallet.fund_btc(10);
     });
 
     let swap_location;
@@ -71,7 +72,7 @@ describe("RFC003 Bitcoin for Ether", () => {
             });
     });
 
-    let swap_link_href;
+    let bob_swap_href;
 
     it("[Bob] Shows the Swap as Start in /swaps", async () => {
         let res = await chai.request(bob.comit_node_url()).get("/swaps");
@@ -82,12 +83,12 @@ describe("RFC003 Bitcoin for Ether", () => {
         swap_embedded.state.should.equal("Start");
         let swap_link = swap_embedded._links;
         swap_link.should.be.a("object");
-        swap_link_href = swap_link.self.href;
-        swap_link_href.should.be.a("string");
+        bob_swap_href = swap_link.self.href;
+        bob_swap_href.should.be.a("string");
     });
 
     it("[Bob] Can execute the accept action", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(swap_link_href);
+        let res = await chai.request(bob.comit_node_url()).get(bob_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Start");
         res.body._links.accept.href.should.be.a("string");
@@ -109,7 +110,7 @@ describe("RFC003 Bitcoin for Ether", () => {
     });
 
     it("[Bob] Should be in the Accepted State after accepting", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(swap_link_href);
+        let res = await chai.request(bob.comit_node_url()).get(bob_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Accepted");
     });
@@ -127,12 +128,47 @@ describe("RFC003 Bitcoin for Ether", () => {
         alice_funding_href = links.fund.href;
     });
 
-    it("[Alice] Can get the funding instructions from the ‘fund’ link", async () => {
+    let alice_funding_action;
+
+    it("[Alice] Can get the funding action from the ‘fund’ link", async () => {
         let res = await chai
             .request(alice.comit_node_url())
             .get(alice_funding_href);
         res.should.have.status(200);
+        alice_funding_action = res.body;
     });
+
+    it("[Alice] Can execute the funding action", async () => {
+        alice_funding_action.should.include.all.keys("address", "value");
+        await alice.wallet.send_btc_to_address(
+            alice_funding_action.address,
+            parseInt(alice_funding_action.value)
+        );
+    });
+
+    it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
+        this.timeout(10000);
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "AlphaFunded"
+        );
+    });
+
+    let bob_funding_href;
+
+    it("[Bob] Should be in AlphaFunded state after Alice executes the funding action", async function() {
+        this.timeout(10000);
+        let swap = await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            "AlphaFunded"
+        );
+        swap.should.have.property("_links");
+        swap._links.should.have.property("fund");
+        bob_funding_href = swap._links.fund.href;
+    });
+
 
     // let alice_funding_required;
 
