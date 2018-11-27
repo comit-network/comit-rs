@@ -185,9 +185,10 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                                 _ => None,
                             });
 
-                    action
-                        .map(|action| warp::reply::json(&action))
-                        .ok_or_else(problem::action_not_found)
+                    action.map(|action| warp::reply::json(&action)).ok_or(
+                        HttpApiProblem::with_title_and_type_from_status(400)
+                            .set_detail("Requested action is not supported for this swap"),
+                    )
                 }
                 GetAction::Redeem => unimplemented!(),
                 GetAction::Refund => unimplemented!(),
