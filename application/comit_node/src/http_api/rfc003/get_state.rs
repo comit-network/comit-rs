@@ -13,7 +13,7 @@ macro_rules! get_swap {
                 beta_asset: AssetKind::Ether,
                 ..
             } => {
-                info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
+                trace!("Fetched metadata of swap with id {}: {:?}", id, metadata);
                 match metadata.role {
                     RoleKind::Alice => {
                         let state =

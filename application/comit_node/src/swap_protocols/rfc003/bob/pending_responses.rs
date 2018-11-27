@@ -10,8 +10,8 @@ use swap_protocols::{
 };
 
 #[allow(type_alias_bounds)]
-type PendingResponseSender<SL: Ledger, TL: Ledger> =
-    Sender<Result<StateMachineResponse<SL::Identity, TL::Identity, TL::LockDuration>, SwapReject>>;
+type PendingResponse<SL: Ledger, TL: Ledger> =
+    Result<StateMachineResponse<SL::HtlcIdentity, TL::HtlcIdentity, TL::LockDuration>, SwapReject>;
 
 #[derive(Debug, Default)]
 pub struct PendingResponses<K: Hash + Eq> {
@@ -23,7 +23,7 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> PendingResponses<K> {
         &self,
         key: K,
     ) -> Box<ResponseFuture<Bob<SL, TL, SA, TA>>> {
-        let (sender, receiver) = oneshot::channel();
+        let (sender, receiver) = oneshot::channel::<PendingResponse<SL, TL>>();
 
         let mut pending_responses = match self.pending_responses.lock() {
             Ok(guard) => guard,
@@ -35,14 +35,14 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> PendingResponses<K> {
         Box::new(receiver.map_err(|_| unreachable!("The sender should never be dropped")))
     }
 
-    pub fn take<SL: Ledger, TL: Ledger>(&self, key: &K) -> Option<PendingResponseSender<SL, TL>> {
+    pub fn take<SL: Ledger, TL: Ledger>(&self, key: &K) -> Option<Sender<PendingResponse<SL, TL>>> {
         let mut pending_responses = match self.pending_responses.lock() {
             Ok(guard) => guard,
             Err(e) => e.into_inner(),
         };
 
         pending_responses.remove(key).and_then(|sender| {
-            match sender.downcast::<PendingResponseSender<SL, TL>>() {
+            match sender.downcast::<Sender<PendingResponse<SL, TL>>>() {
                 Ok(sender) => Some(*sender),
                 Err(e) => {
                     error!("Failed to downcast sender to expected type: {:?}", e);

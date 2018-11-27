@@ -71,6 +71,7 @@ function setup() {
     sleep 10;
 
     export BOB_CONFIG_FILE=./regtest/bob/default.toml;
+    export BOB_COMIT_NODE_HOST=127.0.0.1;
     BOB_COMIT_NODE_PID=$(
         export RUST_BACKTRACE=1 \
                COMIT_NODE_CONFIG_PATH=./regtest/bob;
@@ -101,7 +102,6 @@ debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
 debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 activate_segwit;
 
-fund_bitcoin_address;
 generate_btc_blocks_every 5;
 sleep 2;
 

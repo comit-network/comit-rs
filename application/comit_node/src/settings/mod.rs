@@ -3,7 +3,6 @@ mod serde;
 use bitcoin_support;
 use config::{Config, ConfigError, File};
 use ethereum_support;
-use secp256k1_support::KeyPair;
 use serde::Deserialize;
 use std::{
     ffi::OsStr,
@@ -29,9 +28,6 @@ pub struct EthereumSettings {
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub gas_price: u64,
-    #[serde(with = "serde::keypair")]
-    // TODO: Replace with mnemonics and derive keys. See #185
-    pub private_key: KeyPair,
 }
 
 #[derive(Debug, Deserialize)]

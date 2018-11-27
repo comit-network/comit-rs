@@ -40,7 +40,6 @@ fn main() {
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
-    //TODO: Integrate all Ethereum keys in this keystore. See #185/#291
     let key_store = Arc::new(
         KeyStore::new(settings.bitcoin.extended_private_key)
             .expect("Could not HD derive keys from the private key"),
@@ -70,6 +69,7 @@ fn main() {
         Arc::clone(&state_store),
         Arc::clone(&pending_responses),
         sender,
+        Arc::clone(&key_store),
         &mut runtime,
     );
 
@@ -115,9 +115,16 @@ fn spawn_warp_instance(
     state_store: Arc<InMemoryStateStore<SwapId>>,
     pending_responses: Arc<PendingResponses<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(metadata_store, state_store, pending_responses, sender);
+    let routes = route_factory::create(
+        metadata_store,
+        state_store,
+        pending_responses,
+        sender,
+        key_store,
+    );
 
     let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
