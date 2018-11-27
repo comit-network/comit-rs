@@ -1,7 +1,7 @@
 use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity};
 use swap_protocols::rfc003::Secret;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct EtherDeploy {
     pub data: Bytes,
     pub value: EtherQuantity,

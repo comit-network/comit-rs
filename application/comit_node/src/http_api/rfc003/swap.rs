@@ -140,17 +140,21 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     state_store: &Arc<S>,
     id: &SwapId,
 ) -> Result<(GetSwapResource, Vec<ActionName>), HttpApiProblem> {
-    let metadata = metadata_store.get(id)?.ok_or_else(problem::not_found)?;
+    let metadata = metadata_store
+        .get(id)?
+        .ok_or_else(problem::swap_not_found)?;
     get_swap!(
         &metadata,
         state_store,
         id,
         state,
         (|| {
-            let state = state.ok_or_else(problem::not_found)?;
+            let state = state.ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            let swap_details = state.swap_details().ok_or_else(problem::not_found)?;
+            let swap_details = state
+                .swap_details()
+                .ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
             let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
             (Ok((
                 GetSwapResource {

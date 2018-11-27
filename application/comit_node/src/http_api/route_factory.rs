@@ -51,7 +51,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .and(pending_responses)
         .and(key_store)
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::rfc003::action::Action>())
+        .and(warp::path::param::<http_api::rfc003::action::PostAction>())
         .and(warp::post2())
         .and(warp::path::end())
         .and(warp::body::json())

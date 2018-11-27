@@ -66,7 +66,14 @@ impl HtlcParams<Ethereum, EtherQuantity> {
 
 impl From<HtlcParams<Ethereum, Erc20Quantity>> for Erc20Htlc {
     fn from(htlc_params: HtlcParams<Ethereum, Erc20Quantity>) -> Self {
-        unimplemented!()
+        Erc20Htlc::new(
+            htlc_params.lock_duration,
+            htlc_params.refund_identity,
+            htlc_params.success_identity,
+            htlc_params.secret_hash,
+            htlc_params.asset.token_contract(),
+            htlc_params.asset.quantity(),
+        )
     }
 }
 
@@ -74,7 +81,9 @@ impl HtlcParams<Ethereum, Erc20Quantity> {
     pub fn bytecode(&self) -> Bytes {
         Erc20Htlc::from(self.clone()).compile_to_hex().into()
     }
-    pub fn transfer_call(&self) -> Bytes {
-        Erc20Htlc::from(self.clone()).transfer_call().into()
+    pub fn transfer_call(&self, htlc_location: Address) -> Bytes {
+        Erc20Htlc::from(self.clone())
+            .transfer_call(htlc_location)
+            .into()
     }
 }
