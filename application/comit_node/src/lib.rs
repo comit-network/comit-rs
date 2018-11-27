@@ -24,7 +24,8 @@ extern crate state_machine_future;
 extern crate maplit;
 #[macro_use]
 extern crate frunk;
-extern crate serde_json;
+#[macro_use]
+extern crate binary_macros;
 
 #[cfg(test)]
 extern crate pretty_env_logger;
@@ -50,6 +51,7 @@ extern crate rustc_hex;
 extern crate rustic_hal;
 extern crate secp256k1_support;
 extern crate serde;
+extern crate serde_json;
 extern crate tokio;
 extern crate url;
 extern crate uuid;

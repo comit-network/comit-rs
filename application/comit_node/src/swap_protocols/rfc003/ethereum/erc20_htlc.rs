@@ -54,15 +54,14 @@ impl Erc20Htlc {
         htlc
     }
 
-    const TRANSFER_FN_ABI: &'static [u8; 4] = b"\xA9\x05\x9C\xBB";
-
     /// Constructs the payload for funding an `Erc20` HTLC located at the given address.
     pub fn funding_tx_payload(&self, htlc_contract_address: Address) -> Bytes {
-        let htlc_contract_address: [u8; 20] = htlc_contract_address.into();
-        let amount: [u8; 32] = self.amount.clone().into();
+        let transfer_fn_abi = base16!("A9059CBB");
+        let htlc_contract_address = <[u8; 20]>::from(htlc_contract_address);
+        let amount = <[u8; 32]>::from(self.amount.clone());
 
         let mut data = [0u8; 4 + 32 + 32];
-        data[..4].copy_from_slice(Self::TRANSFER_FN_ABI);
+        data[..4].copy_from_slice(transfer_fn_abi);
         data[16..36].copy_from_slice(&htlc_contract_address);
         data[36..68].copy_from_slice(&amount);
 
@@ -161,12 +160,10 @@ mod tests {
             U256::from(100),
         );
 
-        let htlc_hex = htlc.funding_tx_payload(Address::new());
-        let expected_bytes: [u8; 4 + 32 + 32] = [
-            169, 5, 156, 187, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100,
-        ];
+        let htlc_hex = htlc.funding_tx_payload(Address::from(*base16!(
+            "B97048628DB6B661D4C2AA833E95DBE1A905B280"
+        )));
+        let expected_bytes = base16!("A9059CBB000000000000000000000000B97048628DB6B661D4C2AA833E95DBE1A905B2800000000000000000000000000000000000000000000000000000000000000064");
 
         assert_eq!(htlc_hex, Bytes(expected_bytes.to_vec()));
     }
