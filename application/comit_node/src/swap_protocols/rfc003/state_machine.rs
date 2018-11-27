@@ -504,8 +504,8 @@ impl<R: Role> SwapStates<R> {
 
 #[derive(Debug)]
 pub struct SwapDetails<R: Role> {
-    pub state_name: String,                   // TODO: Better way
-    pub alpha_ledger: Option<R::AlphaLedger>, // TODO: Add Ledgers/Asset to SwapOutcome
+    pub state_name: String, // TODO: fix with #462 (ie, probably not a String)
+    pub alpha_ledger: Option<R::AlphaLedger>,
     pub beta_ledger: Option<R::BetaLedger>,
     pub alpha_asset: Option<R::AlphaAsset>,
     pub beta_asset: Option<R::BetaAsset>,
@@ -542,7 +542,7 @@ impl<R: Role> From<Start<R>> for SwapDetails<R> {
 impl<R: Role> From<OngoingSwap<R>> for SwapDetails<R> {
     fn from(swap: OngoingSwap<R>) -> Self {
         SwapDetails {
-            state_name: "Ongoing".to_string(), // TODO: Actual state name would be nice
+            state_name: "Ongoing".to_string(), // TODO: fix with #462
             alpha_ledger: Some(swap.alpha_ledger),
             beta_ledger: Some(swap.beta_ledger),
             alpha_asset: Some(swap.alpha_asset),
@@ -554,7 +554,7 @@ impl<R: Role> From<OngoingSwap<R>> for SwapDetails<R> {
             alpha_ledger_lock_duration: Some(swap.alpha_ledger_lock_duration),
             beta_ledger_lock_duration: Some(swap.beta_ledger_lock_duration),
             secret: Some(swap.secret),
-            revealed_secret: None, // TODO: Extract secret from appropriate states
+            revealed_secret: None, // TODO: fix with #462
         }
     }
 }
