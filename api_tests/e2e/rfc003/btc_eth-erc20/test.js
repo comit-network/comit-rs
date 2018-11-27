@@ -21,12 +21,7 @@ const toby = test_lib.wallet_conf(toby_eth_private_key, {
 });
 
 const alice_initial_eth = "0.1";
-const alice = test_lib.comit_conf("alice", {
-    txid: process.env.BTC_FUNDED_TX,
-    value: parseInt(process.env.BTC_FUNDED_AMOUNT + '00000000'),
-    private_key: process.env.BTC_FUNDED_PRIVATE_KEY,
-    vout: parseInt(process.env.BTC_FUNDED_VOUT)
-});
+const alice = test_lib.comit_conf("alice");
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
 const bob_initial_eth = 5;
@@ -103,8 +98,8 @@ describe('RFC003: Bitcoin for ERC20', () => {
     it("[Alice] Shows the Swap as Start at /swaps/rfc003/:id.", async () => {
         let res = await chai.request(alice.comit_node_url())
             .get(swap_location);
-
-        console.log(res);
+        res.body.role.should.equal('Alice');
+        res.body.state.should.equal('Final');
     });
 
 });

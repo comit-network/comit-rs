@@ -479,10 +479,10 @@ impl<R: Role> SwapStates<R> {
         }
     }
 
-    pub fn swap_details(&self) -> Option<Start<R>> {
+    pub fn swap_details(&self) -> Option<SwapDetails<R>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start(ref start) => Some(start.clone()),
+            SS::Start(ref start) => Some(SwapDetails::<R>::from(start.clone())),
             SS::Accepted(Accepted { ref swap, .. })
             | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
             | SS::AlphaFunded(AlphaFunded { ref swap, .. })
@@ -492,18 +492,89 @@ impl<R: Role> SwapStates<R> {
             | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
             | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed { ref swap, .. })
             | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. }) => {
-                Some(Start {
-                    alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
-                    beta_ledger_success_identity: swap.beta_ledger_success_identity.clone(),
-                    alpha_ledger: swap.alpha_ledger.clone(),
-                    beta_ledger: swap.beta_ledger.clone(),
-                    alpha_asset: swap.alpha_asset.clone(),
-                    beta_asset: swap.beta_asset.clone(),
-                    alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
-                    secret: swap.secret.clone(),
-                })
+                Some(SwapDetails::<R>::from(swap.clone()))
             }
-            SS::Error(_) | SS::Final(_) => None,
+            SS::Final(Final(ref swap_outcome)) => {
+                Some(SwapDetails::<R>::from(swap_outcome.clone()))
+            }
+            SS::Error(_) => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct SwapDetails<R: Role> {
+    pub state_name: String,                   // TODO: Better way
+    pub alpha_ledger: Option<R::AlphaLedger>, // TODO: Add Ledgers/Asset to SwapOutcome
+    pub beta_ledger: Option<R::BetaLedger>,
+    pub alpha_asset: Option<R::AlphaAsset>,
+    pub beta_asset: Option<R::BetaAsset>,
+    pub alpha_ledger_success_identity: Option<R::AlphaSuccessHtlcIdentity>,
+    pub alpha_ledger_refund_identity: Option<R::AlphaRefundHtlcIdentity>,
+    pub beta_ledger_success_identity: Option<R::BetaSuccessHtlcIdentity>,
+    pub beta_ledger_refund_identity: Option<R::BetaRefundHtlcIdentity>,
+    pub alpha_ledger_lock_duration: Option<<R::AlphaLedger as Ledger>::LockDuration>,
+    pub beta_ledger_lock_duration: Option<<R::BetaLedger as Ledger>::LockDuration>,
+    pub secret: Option<R::Secret>,
+    pub revealed_secret: Option<Secret>,
+}
+
+impl<R: Role> From<Start<R>> for SwapDetails<R> {
+    fn from(start: Start<R>) -> Self {
+        SwapDetails {
+            state_name: "Start".to_string(),
+            alpha_ledger: Some(start.alpha_ledger),
+            beta_ledger: Some(start.beta_ledger),
+            alpha_asset: Some(start.alpha_asset),
+            beta_asset: Some(start.beta_asset),
+            alpha_ledger_success_identity: None,
+            alpha_ledger_refund_identity: Some(start.alpha_ledger_refund_identity),
+            beta_ledger_success_identity: None,
+            beta_ledger_refund_identity: None,
+            alpha_ledger_lock_duration: Some(start.alpha_ledger_lock_duration),
+            beta_ledger_lock_duration: None,
+            secret: Some(start.secret),
+            revealed_secret: None,
+        }
+    }
+}
+
+impl<R: Role> From<OngoingSwap<R>> for SwapDetails<R> {
+    fn from(swap: OngoingSwap<R>) -> Self {
+        SwapDetails {
+            state_name: "Ongoing".to_string(), // TODO: Actual state name would be nice
+            alpha_ledger: Some(swap.alpha_ledger),
+            beta_ledger: Some(swap.beta_ledger),
+            alpha_asset: Some(swap.alpha_asset),
+            beta_asset: Some(swap.beta_asset),
+            alpha_ledger_success_identity: Some(swap.alpha_ledger_success_identity),
+            alpha_ledger_refund_identity: Some(swap.alpha_ledger_refund_identity),
+            beta_ledger_success_identity: Some(swap.beta_ledger_success_identity),
+            beta_ledger_refund_identity: Some(swap.beta_ledger_refund_identity),
+            alpha_ledger_lock_duration: Some(swap.alpha_ledger_lock_duration),
+            beta_ledger_lock_duration: Some(swap.beta_ledger_lock_duration),
+            secret: Some(swap.secret),
+            revealed_secret: None, // TODO: Extract secret from appropriate states
+        }
+    }
+}
+
+impl<R: Role> From<SwapOutcome> for SwapDetails<R> {
+    fn from(swap_outcome: SwapOutcome) -> Self {
+        SwapDetails {
+            state_name: format!("{:?}", swap_outcome),
+            alpha_ledger: None,
+            beta_ledger: None,
+            alpha_asset: None,
+            beta_asset: None,
+            alpha_ledger_success_identity: None,
+            alpha_ledger_refund_identity: None,
+            beta_ledger_success_identity: None,
+            beta_ledger_refund_identity: None,
+            alpha_ledger_lock_duration: None,
+            beta_ledger_lock_duration: None,
+            secret: None,
+            revealed_secret: None,
         }
     }
 }

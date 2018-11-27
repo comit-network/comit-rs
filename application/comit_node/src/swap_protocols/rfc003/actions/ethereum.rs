@@ -31,7 +31,7 @@ pub struct Erc20Deploy {
     pub gas_cost: U256,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Erc20Fund {
     pub to_address: Address,
     pub data: Bytes,

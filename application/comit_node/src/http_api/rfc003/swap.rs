@@ -130,7 +130,7 @@ pub struct SwapDescription {
 
 #[derive(Debug, Serialize)]
 struct GetSwapResource {
-    pub swap: SwapDescription,
+    pub swap: Option<SwapDescription>,
     pub role: String,
     pub state: String,
 }
@@ -173,22 +173,39 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         id,
         state,
         (|| {
-            let state = state.ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
+            let state = state.ok_or_else(|| {
+                error!("Could not retrieve state for {}", id);
+                HttpApiProblem::with_title_and_type_from_status(500)
+            })?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            let swap_details = state
-                .swap_details()
-                .ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
+            let swap_details = state.swap_details().ok_or_else(|| {
+                error!("Could not retrieve swap details out of state for {}", id);
+                HttpApiProblem::with_title_and_type_from_status(500)
+            })?;
             let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
+
+            let swap_description = match (
+                swap_details.alpha_ledger,
+                swap_details.beta_ledger,
+                swap_details.alpha_asset,
+                swap_details.beta_asset,
+            ) {
+                (Some(alpha_ledger), Some(beta_ledger), Some(alpha_asset), Some(beta_asset)) => {
+                    Some(SwapDescription {
+                        alpha_ledger: alpha_ledger.to_http_ledger().unwrap(),
+                        beta_ledger: beta_ledger.to_http_ledger().unwrap(),
+                        alpha_asset: alpha_asset.to_http_asset().unwrap(),
+                        beta_asset: beta_asset.to_http_asset().unwrap(),
+                    })
+                }
+                _ => None,
+            };
+
             (Ok((
                 GetSwapResource {
                     state: state.name(),
-                    swap: SwapDescription {
-                        alpha_ledger: swap_details.alpha_ledger.to_http_ledger().unwrap(),
-                        beta_ledger: swap_details.beta_ledger.to_http_ledger().unwrap(),
-                        alpha_asset: swap_details.alpha_asset.to_http_asset().unwrap(),
-                        beta_asset: swap_details.beta_asset.to_http_asset().unwrap(),
-                    },
+                    swap: swap_description,
                     role: format!("{}", metadata.role),
                 },
                 actions,
