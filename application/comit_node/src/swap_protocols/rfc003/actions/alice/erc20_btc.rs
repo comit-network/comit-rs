@@ -24,33 +24,24 @@ impl StateActions for SwapStates<Alice<Ethereum, Bitcoin, Erc20Quantity, Bitcoin
     fn actions(&self) -> Vec<Action<(), (), Erc20Deploy, Erc20Fund, BitcoinRedeem, Erc20Refund>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start { .. } => vec![],
-            SS::Accepted(Accepted { ref swap, .. }) => vec![Action::Deploy(Erc20Deploy {
-                data: swap.alpha_htlc_params().bytecode(),
-                gas_limit: 42.into(), //TODO come up with correct gas limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            SS::Accepted(Accepted { ref swap, .. }) => vec![Action::Deploy(Erc20Deploy::new(
+                swap.alpha_htlc_params().bytecode(),
+            ))],
             SS::AlphaDeployed { .. } => vec![], // TODO: Add Fund Action
-            SS::AlphaFunded { .. } => vec![],
-            SS::AlphaFundedBetaDeployed { .. } => vec![],
             SS::BothFunded(BothFunded {
                 ref alpha_htlc_location,
                 ref beta_htlc_location,
                 ref swap,
                 ..
             }) => vec![
-                Action::Redeem(BitcoinRedeem {
-                    outpoint: *beta_htlc_location,
-                    htlc: swap.beta_htlc_params().into(),
-                    value: swap.beta_asset,
-                    transient_keypair: swap.beta_ledger_success_identity,
-                    secret: swap.secret,
-                }),
-                Action::Refund(Erc20Refund {
-                    to_address: *alpha_htlc_location,
-                    gas_limit: 42.into(), //TODO come up with correct gas limit
-                    gas_cost: 42.into(),  //TODO come up with correct gas cost
-                }),
+                Action::Redeem(BitcoinRedeem::new(
+                    *beta_htlc_location,
+                    swap.beta_htlc_params().into(),
+                    swap.beta_asset,
+                    swap.beta_ledger_success_identity,
+                    swap.secret,
+                )),
+                Action::Refund(Erc20Refund::new(*alpha_htlc_location)),
             ],
             SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded {
                 ref alpha_htlc_location,
@@ -59,11 +50,7 @@ impl StateActions for SwapStates<Alice<Ethereum, Bitcoin, Erc20Quantity, Bitcoin
             | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref alpha_htlc_location,
                 ..
-            }) => vec![Action::Refund(Erc20Refund {
-                to_address: *alpha_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(Erc20Refund::new(*alpha_htlc_location))],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
@@ -73,15 +60,14 @@ impl StateActions for SwapStates<Alice<Ethereum, Bitcoin, Erc20Quantity, Bitcoin
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Redeem(BitcoinRedeem {
-                outpoint: *beta_htlc_location,
-                htlc: swap.beta_htlc_params().into(),
-                value: swap.beta_asset,
-                transient_keypair: swap.beta_ledger_success_identity,
-                secret: swap.secret,
-            })],
-            SS::Error(_) => vec![],
-            SS::Final(_) => vec![],
+            }) => vec![Action::Redeem(BitcoinRedeem::new(
+                *beta_htlc_location,
+                swap.beta_htlc_params().into(),
+                swap.beta_asset,
+                swap.beta_ledger_success_identity,
+                swap.secret,
+            ))],
+            _ => vec![],
         }
     }
 }

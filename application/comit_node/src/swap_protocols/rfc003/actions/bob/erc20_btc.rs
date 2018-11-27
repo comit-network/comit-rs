@@ -25,56 +25,50 @@ impl StateActions for SwapStates<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQu
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
-            SS::Accepted { .. } => vec![],
-            SS::AlphaDeployed { .. } => vec![],
-            SS::AlphaFunded(AlphaFunded { ref swap, .. }) => vec![Action::Fund(BitcoinFund {
-                address: swap.beta_htlc_params().compute_address(),
-                value: swap.beta_asset,
-            })],
+            SS::AlphaFunded(AlphaFunded { ref swap, .. }) => vec![Action::Fund(BitcoinFund::new(
+                swap.beta_htlc_params().compute_address(),
+                swap.beta_asset,
+            ))],
             SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { .. }) => vec![], // TODO: Return Beta Funding action
             SS::BothFunded(BothFunded {
                 ref swap,
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(BitcoinRefund {
-                outpoint: *beta_htlc_location,
-                htlc: swap.beta_htlc_params().into(),
-                value: swap.beta_asset,
-                transient_keypair: swap.beta_ledger_refund_identity,
-            })],
-            SS::AlphaFundedBetaRefunded { .. } => vec![],
+            }) => vec![Action::Refund(BitcoinRefund::new(
+                *beta_htlc_location,
+                swap.beta_htlc_params().into(),
+                swap.beta_asset,
+                swap.beta_ledger_refund_identity,
+            ))],
             SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref swap,
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(BitcoinRefund {
-                outpoint: *beta_htlc_location,
-                htlc: swap.beta_htlc_params().into(),
-                value: swap.beta_asset,
-                transient_keypair: swap.beta_ledger_refund_identity,
-            })],
+            }) => vec![Action::Refund(BitcoinRefund::new(
+                *beta_htlc_location,
+                swap.beta_htlc_params().into(),
+                swap.beta_asset,
+                swap.beta_ledger_refund_identity,
+            ))],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref swap,
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(BitcoinRefund {
-                outpoint: *beta_htlc_location,
-                htlc: swap.beta_htlc_params().into(),
-                value: swap.beta_asset,
-                transient_keypair: swap.beta_ledger_refund_identity,
-            })],
+            }) => vec![Action::Refund(BitcoinRefund::new(
+                *beta_htlc_location,
+                swap.beta_htlc_params().into(),
+                swap.beta_asset,
+                swap.beta_ledger_refund_identity,
+            ))],
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref alpha_htlc_location,
                 ref secret,
                 ..
-            }) => vec![Action::Redeem(Erc20Redeem {
-                to_address: *alpha_htlc_location,
-                data: *secret,
-                gas_limit: 42.into(), //TODO come up with correct gas limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
-            SS::Error(_) => vec![],
-            SS::Final(_) => vec![],
+            }) => vec![Action::Redeem(Erc20Redeem::new(
+                *alpha_htlc_location,
+                *secret,
+            ))],
+            _ => vec![],
         }
     }
 }

@@ -28,15 +28,11 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
-            SS::Accepted { .. } => vec![],
-            SS::AlphaDeployed { .. } => vec![],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
                 let htlc: Erc20Htlc = swap.beta_htlc_params().into();
-                vec![Action::Deploy(Erc20Deploy {
-                    data: htlc.compile_to_hex().into(),
-                    gas_limit: 42.into(), //TODO come up with correct gas limit
-                    gas_cost: 42.into(),  //TODO come up with correct gas cost
-                })]
+                vec![Action::Deploy(Erc20Deploy::new(
+                    htlc.compile_to_hex().into(),
+                ))]
             }
             SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed {
                 ref swap,
@@ -44,52 +40,37 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
                 ..
             }) => {
                 let htlc: Erc20Htlc = swap.beta_htlc_params().into();
-                vec![Action::Fund(Erc20Fund {
-                    to_address: htlc.token_contract_address(),
-                    data: htlc.transfer_call(*beta_htlc_location),
-                    gas_limit: 42.into(), //TODO come up with correct gas limit
-                    gas_cost: 42.into(),  //TODO come up with correct gas cost
-                })]
+                vec![Action::Fund(Erc20Fund::new(
+                    htlc.token_contract_address(),
+                    htlc.transfer_call(*beta_htlc_location),
+                ))]
             }
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(Erc20Refund {
-                to_address: *beta_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas_limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(Erc20Refund::new(*beta_htlc_location))],
             SS::AlphaFundedBetaRefunded { .. } => vec![],
             SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(Erc20Refund {
-                to_address: *beta_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas_limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(Erc20Refund::new(*beta_htlc_location))],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(Erc20Refund {
-                to_address: *beta_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas_limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(Erc20Refund::new(*beta_htlc_location))],
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref swap,
                 ref alpha_htlc_location,
                 ref secret,
                 ..
-            }) => vec![Action::Redeem(BitcoinRedeem {
-                outpoint: *alpha_htlc_location,
-                htlc: swap.alpha_htlc_params().into(),
-                value: swap.alpha_asset,
-                transient_keypair: swap.alpha_ledger_success_identity,
-                secret: *secret,
-            })],
-            SS::Error(_) => vec![],
-            SS::Final(_) => vec![],
+            }) => vec![Action::Redeem(BitcoinRedeem::new(
+                *alpha_htlc_location,
+                swap.alpha_htlc_params().into(),
+                swap.alpha_asset,
+                swap.alpha_ledger_success_identity,
+                *secret,
+            ))],
+            _ => vec![],
         }
     }
 }

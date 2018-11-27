@@ -9,6 +9,12 @@ pub struct BitcoinFund {
     pub value: BitcoinQuantity,
 }
 
+impl BitcoinFund {
+    pub fn new(address: Address, value: BitcoinQuantity) -> BitcoinFund {
+        BitcoinFund { address, value }
+    }
+}
+
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct BitcoinRefund {
     pub outpoint: OutPoint,
@@ -17,16 +23,21 @@ pub struct BitcoinRefund {
     pub transient_keypair: KeyPair,
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
-pub struct BitcoinRedeem {
-    pub outpoint: OutPoint,
-    pub htlc: Htlc,
-    pub value: BitcoinQuantity,
-    pub transient_keypair: KeyPair,
-    pub secret: Secret,
-}
-
 impl BitcoinRefund {
+    pub fn new(
+        outpoint: OutPoint,
+        htlc: Htlc,
+        value: BitcoinQuantity,
+        transient_keypair: KeyPair,
+    ) -> BitcoinRefund {
+        BitcoinRefund {
+            outpoint,
+            htlc,
+            value,
+            transient_keypair,
+        }
+    }
+
     pub fn to_transaction(&self, to_address: Address) -> PrimedTransaction {
         PrimedTransaction {
             inputs: vec![PrimedInput::new(
@@ -40,7 +51,32 @@ impl BitcoinRefund {
     }
 }
 
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq)]
+pub struct BitcoinRedeem {
+    pub outpoint: OutPoint,
+    pub htlc: Htlc,
+    pub value: BitcoinQuantity,
+    pub transient_keypair: KeyPair,
+    pub secret: Secret,
+}
+
 impl BitcoinRedeem {
+    pub fn new(
+        outpoint: OutPoint,
+        htlc: Htlc,
+        value: BitcoinQuantity,
+        transient_keypair: KeyPair,
+        secret: Secret,
+    ) -> BitcoinRedeem {
+        BitcoinRedeem {
+            outpoint,
+            htlc,
+            value,
+            transient_keypair,
+            secret,
+        }
+    }
+
     pub fn to_transaction(&self, to_address: Address) -> PrimedTransaction {
         PrimedTransaction {
             inputs: vec![PrimedInput::new(

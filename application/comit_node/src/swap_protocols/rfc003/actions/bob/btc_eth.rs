@@ -26,57 +26,39 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
         use self::SwapStates as SS;
         match *self {
             SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
-            SS::Accepted { .. } => vec![],
-            SS::AlphaDeployed { .. } => vec![],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
                 let htlc: EtherHtlc = swap.beta_htlc_params().into();
-                vec![Action::Deploy(EtherDeploy {
-                    data: htlc.compile_to_hex().into(),
-                    value: swap.beta_asset,
-                    gas_limit: 42.into(), //TODO come up with correct gas limit
-                    gas_cost: 42.into(),  //TODO come up with correct gas cost
-                })]
+                vec![Action::Deploy(EtherDeploy::new(
+                    htlc.compile_to_hex().into(),
+                    swap.beta_asset,
+                ))]
             }
-            SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { .. }) => vec![],
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(EtherRefund {
-                to_address: *beta_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas_limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(EtherRefund::new(*beta_htlc_location))],
             SS::AlphaFundedBetaRefunded { .. } => vec![],
             SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(EtherRefund {
-                to_address: *beta_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas_limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(EtherRefund::new(*beta_htlc_location))],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Refund(EtherRefund {
-                to_address: *beta_htlc_location,
-                gas_limit: 42.into(), //TODO come up with correct gas_limit
-                gas_cost: 42.into(),  //TODO come up with correct gas cost
-            })],
+            }) => vec![Action::Refund(EtherRefund::new(*beta_htlc_location))],
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref swap,
                 ref alpha_htlc_location,
                 ref secret,
                 ..
-            }) => vec![Action::Redeem(BitcoinRedeem {
-                outpoint: *alpha_htlc_location,
-                htlc: swap.alpha_htlc_params().into(),
-                value: swap.alpha_asset,
-                transient_keypair: swap.alpha_ledger_success_identity,
-                secret: *secret,
-            })],
-            SS::Error(_) => vec![],
-            SS::Final(_) => vec![],
+            }) => vec![Action::Redeem(BitcoinRedeem::new(
+                *alpha_htlc_location,
+                swap.alpha_htlc_params().into(),
+                swap.alpha_asset,
+                swap.alpha_ledger_success_identity,
+                *secret,
+            ))],
+            _ => vec![],
         }
     }
 }
