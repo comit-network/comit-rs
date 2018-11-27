@@ -76,15 +76,11 @@ impl<T: Clone + Debug + Send + 'static, E: Clone + Debug + Send + 'static> ItemC
 
                 let composed = future
                     .and_then(|item| {
-                        item_sender
-                            .send(item.clone())
-                            .expect("receiver should not deallocate");
+                        let _ = item_sender.send(item.clone());
                         Ok(item)
                     })
                     .map_err(|e| {
-                        error_sender
-                            .send(e.clone())
-                            .expect("receiver should not deallocate");
+                        let _ = error_sender.send(e.clone());
                         e
                     });
 
