@@ -78,6 +78,45 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
+    it("[Alice] Returns 400 swap-not-supported for an unsupported combination of parameters", async () => {
+        await chai.request(alice.comit_node_url())
+            .post('/swaps/rfc003')
+            .send({
+                "alpha_ledger": {
+                    "name": "Thomas' wallet",
+                },
+                "beta_ledger": {
+                    "name": "Higher-Dimension" // This is the coffee place downstairs
+                },
+                "alpha_asset": {
+                    "name": "AUD",
+                    "quantity": "3.5"
+                },
+                "beta_asset": {
+                    "name": "Espresso",
+                    "double-shot": true
+                },
+                "alpha_ledger_refund_identity": "",
+                "beta_ledger_success_identity": "",
+                "alpha_ledger_lock_duration": 0
+            }).then((res) => {
+                res.should.have.status(400);
+                res.body.title.should.equal("swap-not-supported");
+            });
+    });
+
+    it("[Alice] Returns 400 bad request for malformed requests", async () => {
+        await chai.request(alice.comit_node_url())
+            .post('/swaps/rfc003')
+            .send({
+                "garbage": true
+            }).then((res) => {
+                res.should.have.status(400);
+                console.error(res.body);
+                res.body.title.should.equal("Bad request");
+            });
+    });
+
     it("[Alice] Is able to GET the swap after POSTing it", async () => {
         await chai
             .request(alice.comit_node_url())

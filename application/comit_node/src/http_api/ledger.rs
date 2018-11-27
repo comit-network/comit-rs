@@ -2,7 +2,7 @@ use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use serde_json;
 use std::{collections::HashMap, fmt};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct HttpLedger {
     name: String,
     #[serde(default, flatten)]
