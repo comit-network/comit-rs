@@ -77,7 +77,7 @@ describe('RFC003: Bitcoin for ERC20', () => {
                     "quantity": beta_asset_amount,
                     "token_contract" : token_contract_address,
                 },
-                "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                "alpha_ledger_refund_identity": null,
                 "beta_ledger_success_identity": alice_final_address,
                 "alpha_ledger_lock_duration": 144
             }).then((res) => {
