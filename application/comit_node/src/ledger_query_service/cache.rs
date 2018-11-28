@@ -31,7 +31,7 @@ impl<L: Ledger, Q: Query> CreateQuery<L, Q> for QueryIdCache<L, Q> {
 
         let query_id = match query_ids.remove(&query) {
             Some(query_id) => {
-                debug!("Returning previously stored {:?} for {:?}", query_id, query);
+                trace!("Returning previously stored {:?} for {:?}", query_id, query);
                 query_id
             }
             None => ItemCache::from_future(self.inner.create_query(query.clone())),

@@ -27,11 +27,11 @@ pub fn compare_assets<A: Asset + PartialOrd, L: Debug>(
     given: A,
     expected: A,
 ) -> Result<L, Error<A>> {
-    debug!("Value of HTLC at {:?} is {}", location, given);
+    info!("Value of HTLC at {:?} is {}", location, given);
 
     let has_enough_money = given >= expected;
 
-    trace!("{} >= {} -> {}", given, expected, has_enough_money);
+    debug!("{} >= {} -> {}", given, expected, has_enough_money);
 
     if given < expected {
         return Err(Error::UnexpectedAsset {
