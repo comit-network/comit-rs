@@ -1,5 +1,6 @@
 pub use self::{bitcoin::*, cache::*, client::*, ethereum::*, first_match::*};
 use reqwest::Url;
+use serde::Serialize;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 use swap_protocols::ledger::Ledger;
 use tokio::prelude::Future;
@@ -33,15 +34,15 @@ impl<L: Ledger> QueryId<L> {
     }
 }
 
-#[derive(Fail, Debug, Clone)]
+#[derive(Fail, Debug, PartialEq, Clone)]
 pub enum Error {
     #[fail(display = "The request failed to send.")]
-    FailedRequest,
+    FailedRequest(String),
     #[fail(display = "The response was somehow malformed.")]
-    MalformedResponse,
+    MalformedResponse(String),
 }
 
-pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + 'static {}
+pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + 'static {}
 
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q: Query>:
     'static + Send + Sync + CreateQuery<L, Q> + FetchQueryResults<L>

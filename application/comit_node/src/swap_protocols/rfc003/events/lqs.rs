@@ -52,7 +52,7 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
 
         self.htlc_deployed_and_funded.get_or_insert_with(move || {
             let funded_future = query_id
-                .map_err(|_| rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| {
                     ledger_first_match
                         .first_match_of(query_id)
@@ -78,11 +78,11 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
         self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
             let inner_first_match = ledger_first_match.clone();
             let refunded_future = refunded_query_id
-                .map_err(|_| rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| inner_first_match.first_match_of(query_id));
             let inner_first_match = ledger_first_match.clone();
             let redeemed_future = redeemed_query_id
-                .map_err(|_| rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| inner_first_match.first_match_of(query_id));
 
             Box::new(
@@ -174,7 +174,7 @@ impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
         let ledger_first_match = self.lqs_events.ledger_first_match.clone();
         self.lqs_events.htlc_funded.get_or_insert_with(move || {
             let funded_future = query_id
-                .map_err(|_| rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| {
                     ledger_first_match
                         .first_match_of(query_id)

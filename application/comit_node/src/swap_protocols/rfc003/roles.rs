@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::{ledger::Ledger, Secret, SecretHash},
 };
 
-pub trait Role: Send + Clone + 'static {
+pub trait Role: Send + Clone + Debug + 'static {
     type AlphaLedger: Ledger;
     type BetaLedger: Ledger;
     type AlphaAsset: Asset;
