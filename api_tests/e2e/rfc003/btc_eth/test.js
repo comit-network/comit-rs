@@ -94,9 +94,7 @@ describe("RFC003 Bitcoin for Ether", () => {
         let accept_href = res.body._links.accept.href;
         let bob_response = {
             beta_ledger_refund_identity: bob.wallet.eth_address(),
-            alpha_ledger_success_identity: bob.wallet
-                .btc_address()
-                .hash.toString("hex"),
+            alpha_ledger_success_identity: null,
             beta_ledger_lock_duration: 43200
         };
 
