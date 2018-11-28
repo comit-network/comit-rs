@@ -139,7 +139,7 @@ fn create_ethereum_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
-        None,
+        Some(Arc::clone(&client)),
         ledger_name,
     );
 

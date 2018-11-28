@@ -1,5 +1,4 @@
 use bitcoin_rpc_client;
-use bitcoin_support;
 use block_processor::Query;
 use query_repository::QueryRepository;
 use query_result_repository::{QueryResult, QueryResultRepository};
@@ -8,12 +7,14 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use url::Url;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
+use web3;
 
 #[derive(Debug)]
 pub enum Error {
-    TransactionIdConversion(bitcoin_support::hash::HexError),
+    InvalidHex,
     BitcoinRpcConnection(bitcoin_rpc_client::ClientError),
     BitcoinRpcResponse(bitcoin_rpc_client::RpcError),
+    Web3(web3::Error),
 }
 
 #[derive(DebugStub)]

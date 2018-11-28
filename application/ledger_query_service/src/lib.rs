@@ -15,6 +15,8 @@ extern crate bitcoin_support;
 extern crate byteorder;
 extern crate config;
 extern crate ethereum_support;
+extern crate futures;
+extern crate hex;
 extern crate http_api_problem;
 extern crate hyper;
 extern crate serde;

@@ -18,7 +18,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
         let htlc = EtherHtlc::from(self.beta_htlc_params());
         ethereum::ContractDeploy {
             data: htlc.compile_to_hex().into(),
-            value: EtherQuantity::zero(),
+            value: self.beta_asset,
             gas_limit: 420_000.into(), //TODO: Calculate properly
         }
     }

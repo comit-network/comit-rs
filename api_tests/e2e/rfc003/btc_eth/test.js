@@ -178,7 +178,7 @@ describe("RFC003 Bitcoin for Ether", () => {
 
     it("[Bob] Can execute the funding action", async () => {
         bob_funding_action.should.include.all.keys("data", "gas_limit", "value");
-        await bob.wallet.deploy_eth_contract(bob_funding_action.data);
+        await bob.wallet.deploy_eth_contract(bob_funding_action.data, new ethutil.BN(bob_funding_action.value, 10));
     });
 
     it("[Alice] Should be in BothFunded state after Bob executes the funding action", async function() {

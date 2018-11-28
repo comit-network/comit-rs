@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use swap_protocols::{
     asset::Asset,
     rfc003::{state_machine::HtlcParams, Ledger},
@@ -18,4 +19,26 @@ where
         &self,
         htlc_params: &HtlcParams<L, A>,
     ) -> Result<L::HtlcLocation, Error<A>>;
+}
+
+// Not all assets are PartialOrd, that is why the bound is explicitly listed here
+pub fn compare_assets<A: Asset + PartialOrd, L: Debug>(
+    location: L,
+    given: A,
+    expected: A,
+) -> Result<L, Error<A>> {
+    debug!("Value of HTLC at {:?} is {}", location, given);
+
+    let has_enough_money = given >= expected;
+
+    trace!("{} >= {} -> {}", given, expected, has_enough_money);
+
+    if given < expected {
+        return Err(Error::UnexpectedAsset {
+            found: given,
+            expected,
+        });
+    }
+
+    Ok(location)
 }
