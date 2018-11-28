@@ -64,8 +64,7 @@ describe("RFC003 HTTP API", () => {
                     name: beta_asset_name,
                     quantity: beta_asset_quantity
                 },
-                alpha_ledger_refund_identity:
-                    "ac2db2f2615c81b83fe9366450799b4992931575",
+                alpha_ledger_refund_identity: null,
                 beta_ledger_success_identity: alice_final_address,
                 alpha_ledger_lock_duration: 144
             })
@@ -112,8 +111,7 @@ describe("RFC003 HTTP API", () => {
                 "garbage": true
             }).then((res) => {
                 res.should.have.status(400);
-                console.error(res.body);
-                res.body.title.should.equal("Bad request");
+                res.body.title.should.equal("Bad Request");
             });
     });
 
