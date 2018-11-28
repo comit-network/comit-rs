@@ -8,8 +8,8 @@ use url;
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub http_api: HttpApi,
-    pub bitcoin: Option<Bitcoin>,
-    pub ethereum: Option<Ethereum>,
+    pub bitcoin: Bitcoin,
+    pub ethereum: Ethereum,
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -1,19 +1,17 @@
 use block_processor::BlockProcessor;
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 use web3::{
     self,
     api::BaseFilter,
     futures::{Future, Stream},
-    transports::{EventLoopHandle, Http},
+    transports::Http,
     types::{Block, BlockId, Transaction as EthereumTransaction, H256},
     Web3,
 };
 
 #[derive(DebugStub)]
 pub struct EthereumWeb3BlockPoller<P> {
-    #[debug_stub = "EventLoop"]
-    _event_loop: EventLoopHandle,
-    client: Web3<Http>,
+    client: Arc<Web3<Http>>,
     filter: BaseFilter<Http, H256>,
     polling_interval: Duration,
     #[debug_stub = "Processor"]
@@ -22,18 +20,14 @@ pub struct EthereumWeb3BlockPoller<P> {
 
 impl<P: BlockProcessor<Block<EthereumTransaction>>> EthereumWeb3BlockPoller<P> {
     pub fn new(
-        endpoint: &str,
+        client: Arc<Web3<Http>>,
         polling_wait_time: Duration,
         processor: P,
     ) -> Result<Self, web3::Error> {
-        let (event_loop, transport) = Http::new(&endpoint)?;
-        let client = Web3::new(transport);
-
         let filter = client.eth_filter();
         let filter = filter.create_blocks_filter().wait()?;
 
         Ok(EthereumWeb3BlockPoller {
-            _event_loop: event_loop,
             client,
             filter,
             polling_interval: polling_wait_time,

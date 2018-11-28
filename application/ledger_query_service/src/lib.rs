@@ -5,18 +5,19 @@
 extern crate debug_stub_derive;
 #[macro_use]
 extern crate serde_derive;
-extern crate bitcoin_support;
-extern crate ethereum_support;
-extern crate serde;
-#[cfg(test)]
-extern crate spectral;
 #[macro_use]
 extern crate log;
+#[cfg(test)]
+extern crate spectral;
+
 extern crate bitcoin_rpc_client;
+extern crate bitcoin_support;
 extern crate byteorder;
 extern crate config;
+extern crate ethereum_support;
 extern crate http_api_problem;
 extern crate hyper;
+extern crate serde;
 extern crate url;
 extern crate warp;
 extern crate zmq_rs as zmq;
