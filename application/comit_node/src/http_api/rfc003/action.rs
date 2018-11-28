@@ -41,8 +41,8 @@ impl FromStr for PostAction {
 
 #[derive(Debug, Deserialize, LabelledGeneric)]
 struct AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
-    alpha_ledger_success_identity: AL::Identity,
-    beta_ledger_refund_identity: BL::Identity,
+    alpha_ledger_success_identity: AL::HttpIdentity,
+    beta_ledger_refund_identity: BL::HttpIdentity,
     beta_ledger_lock_duration: BL::LockDuration,
 }
 
@@ -100,7 +100,6 @@ pub fn handle_post<T: MetadataStore<SwapId>>(
                                 .set_detail("Failed to deserialize given body.")
                         })
                         .and_then(|accept_body| {
-                            //TODO: Store the user's alpha_ledger_success_identity
                             let keypair = key_store.get_transient_keypair(&id.into(), b"SUCCESS");
                             forward_response::<Bitcoin, Ethereum>(pending_responses.as_ref(), &id, Ok(StateMachineResponse{
                                 alpha_ledger_success_identity: keypair,
