@@ -168,9 +168,6 @@ impl<
                         );
                         Ok(())
                     }
-                    SwapRequestKind::EthereumBitcoinErc20QuantityBitcoinQuantity(request) => {
-                        unimplemented!()
-                    }
                 }
             })
             .map_err(|_| ())

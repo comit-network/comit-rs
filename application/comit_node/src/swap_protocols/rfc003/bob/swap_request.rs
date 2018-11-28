@@ -30,18 +30,6 @@ impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Me
     }
 }
 
-impl From<SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> for Metadata {
-    fn from(_: SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>) -> Self {
-        Self {
-            alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin,
-            alpha_asset: AssetKind::Ether,
-            beta_asset: AssetKind::Bitcoin,
-            role: RoleKind::Bob,
-        }
-    }
-}
-
 impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> for Metadata {
     fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>) -> Self {
         Self {
@@ -54,18 +42,6 @@ impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> for Me
     }
 }
 
-impl From<SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> for Metadata {
-    fn from(_: SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>) -> Self {
-        Self {
-            alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin,
-            alpha_asset: AssetKind::Erc20,
-            beta_asset: AssetKind::Bitcoin,
-            role: RoleKind::Bob,
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapRequestKind {
     BitcoinEthereumBitcoinQuantityEtherQuantity(
@@ -73,8 +49,5 @@ pub enum SwapRequestKind {
     ),
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
-    ),
-    EthereumBitcoinErc20QuantityBitcoinQuantity(
-        SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
     ),
 }

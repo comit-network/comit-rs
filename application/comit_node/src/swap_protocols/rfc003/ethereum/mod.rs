@@ -2,11 +2,12 @@ use ethereum_support::Bytes;
 use hex;
 use swap_protocols::rfc003::state_machine::HtlcParams;
 
-pub use self::{erc20_htlc::*, ether_htlc::*, queries::*};
+pub use self::{actions::*, erc20_htlc::*, ether_htlc::*, queries::*};
 use ethereum_support::{web3::types::Address, Erc20Quantity, EtherQuantity};
 use std::time::Duration;
 use swap_protocols::{ledger::Ethereum, rfc003::Ledger};
 
+mod actions;
 mod erc20_htlc;
 mod ether_htlc;
 mod extract_secret;

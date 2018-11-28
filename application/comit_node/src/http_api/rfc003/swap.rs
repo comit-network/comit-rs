@@ -39,9 +39,6 @@ pub enum SwapRequestBodyKind {
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
     ),
-    EthereumBitcoinErc20QuantityBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
-    ),
     // It is important that these two come last because untagged enums are tried in order
     UnsupportedCombination(UnsupportedSwapRequestBody),
     MalformedRequest(serde_json::Value),
@@ -71,7 +68,6 @@ pub struct UnsupportedSwapRequestBody {
     alpha_ledger_refund_identity: String,
     beta_ledger_success_identity: String,
     alpha_ledger_lock_duration: i64,
-
 }
 
 #[derive(Serialize, Debug)]
@@ -112,11 +108,6 @@ fn handle_post_swap(
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
-                frunk::labelled_convert_from(body),
-            )
-        }
-        SwapRequestBodyKind::EthereumBitcoinErc20QuantityBitcoinQuantity(body) => {
-            rfc003::alice::SwapRequestKind::EthereumBitcoinErc20QuantityBitcoinQuantity(
                 frunk::labelled_convert_from(body),
             )
         }

@@ -1,9 +1,6 @@
 pub mod alice;
 pub mod bob;
 
-mod bitcoin;
-mod ethereum;
-
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Accept(Accept),

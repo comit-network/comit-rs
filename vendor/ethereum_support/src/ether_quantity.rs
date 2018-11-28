@@ -35,6 +35,9 @@ impl EtherQuantity {
     pub fn wei(&self) -> U256 {
         self.0
     }
+    pub fn zero() -> Self {
+        Self::from_wei(U256::zero())
+    }
 }
 
 impl fmt::Display for EtherQuantity {

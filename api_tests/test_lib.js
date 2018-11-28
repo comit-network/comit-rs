@@ -58,6 +58,15 @@ function test_rng() {
     return Buffer.from(("" + test_rng_counter).padStart(32, "0"));
 }
 
+const token_contract_deploy =
+      "0x" +
+      fs
+      .readFileSync(
+          "../application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
+          "utf8"
+      )
+      .trim();
+
 class WalletConf {
     constructor() {
         this.eth_keypair = bitcoin.ECPair.makeRandom({ rng: test_rng });
@@ -98,6 +107,19 @@ class WalletConf {
         }
     }
 
+    async fund_eth(eth_amount) {
+        const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+        const parity_dev_password = "";
+        const tx = {
+            from: parity_dev_account,
+            to: this.eth_address(),
+            value: web3.utils.numberToHex(
+                web3.utils.toWei(eth_amount.toString(), "ether")
+            )
+        };
+        return web3.eth.personal.sendTransaction(tx, parity_dev_password);
+    }
+
     async send_btc_to_address(to, value) {
         const txb = new bitcoin.TransactionBuilder();
         const utxo = this.bitcoin_utxos.shift();
@@ -136,6 +158,10 @@ class WalletConf {
         const serializedTx = tx.serialize();
         let hex = "0x" + serializedTx.toString("hex");
         return web3.eth.sendSignedTransaction(hex);
+    }
+
+    async deploy_erc20_token_contract() {
+        return this.deploy_eth_contract(token_contract_deploy);
     }
 
     async deploy_eth_contract(data = "0x0") {
@@ -265,25 +291,6 @@ module.exports.ledger_query_service_conf = (host, port) => {
     return new LedgerQueryServiceConf(host, port);
 };
 
-const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const eth_funded_private_key = Buffer.from(
-    "a2312b03bb78b43ca1deed87b3d23e86a171d791e3377a743b19ff29f1605991",
-    "hex"
-);
-const eth_funded_address =
-    "0x" + ethutil.privateToAddress(eth_funded_private_key).toString("hex");
-
-module.exports.fund_eth = value => {
-    const tx = {
-        from: parity_dev_account,
-        to: eth_funded_address,
-        value: web3.utils.numberToHex(
-            web3.utils.toWei(value.toString(), "ether")
-        )
-    };
-    return web3.eth.personal.sendTransaction(tx, "");
-};
-
 {
     let nonce = 0;
 
@@ -307,20 +314,6 @@ module.exports.fund_eth = value => {
     };
 }
 
-{
-    const token_contract_deploy =
-        "0x" +
-        fs
-            .readFileSync(
-                "../application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
-                "utf8"
-            )
-            .trim();
-
-    module.exports.deploy_erc20_token_contract = wallet => {
-        return wallet.deploy_eth_contract(token_contract_deploy);
-    };
-}
 
 {
     const function_identifier = "40c10f19";

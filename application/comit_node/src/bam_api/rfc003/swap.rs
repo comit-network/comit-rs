@@ -47,17 +47,36 @@ pub fn swap_config(
                                 swap_request,
                             );
                         sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
-                    }
 
-                    Box::new(response_receiver.then(move |result| {
-                        match result {
-                            Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
-                            Err(_) => {
-                                warn!("Failed to receive from oneshot channel for swap {}", swap_id);
-                                Ok(Response::new(Status::SE(0)))
+                        Box::new(response_receiver.then(move |result| {
+                            match result {
+                                Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
+                                Err(_) => {
+                                    warn!("Failed to receive from oneshot channel for swap {}", swap_id);
+                                    Ok(Response::new(Status::SE(0)))
+                                }
                             }
-                        }
-                    }))
+                        }))
+                    } else if let Ok(swap_request) = decode_request(&request) {
+                        let request_kind =
+                            rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
+                                swap_request,
+                            );
+                        sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
+
+                        Box::new(response_receiver.then(move |result| {
+                            match result {
+                                Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
+                                Err(_) => {
+                                    warn!("Failed to receive from oneshot channel for swap {}", swap_id);
+                                    Ok(Response::new(Status::SE(0)))
+                                }
+                            }
+                        }))
+                    }
+                    else {
+                        unimplemented!()
+                    }
                 }
             }
         },
