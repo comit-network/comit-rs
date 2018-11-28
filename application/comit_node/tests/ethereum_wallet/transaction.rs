@@ -3,11 +3,6 @@ use rlp::{Encodable, RlpStream};
 use std::fmt;
 use tiny_keccak::keccak256;
 
-const CONTRACT_CREATION_FEE: usize = 32_000;
-const BASE_TX_FEE: usize = 21_000;
-const GAS_COST_PER_BYTE: usize = 200;
-const GAS_BUFFER: usize = 10_000;
-
 #[derive(Debug)]
 pub struct UnsignedTransaction {
     pub nonce: U256,

@@ -13,6 +13,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+#[allow(missing_debug_implementations)]
 pub struct ParityClient {
     client: Arc<Web3<Http>>,
     wallet: Arc<Wallet>,

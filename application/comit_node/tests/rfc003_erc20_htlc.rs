@@ -14,9 +14,9 @@ extern crate lazy_static;
 extern crate rlp;
 extern crate tiny_keccak;
 
-mod ethereum_wallet;
-mod htlc_harness;
-mod parity_client;
+pub mod ethereum_wallet;
+pub mod htlc_harness;
+pub mod parity_client;
 
 use ethereum_support::{Bytes, U256};
 use ethereum_wallet::transaction::UnsignedTransaction;
