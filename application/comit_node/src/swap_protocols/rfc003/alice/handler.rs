@@ -63,8 +63,8 @@ impl<
             .for_each(move |(id, requests)| {
                 match requests {
                     SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
-                        // TODO: Store this somewhere
-                        let _alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
+                        // Generated with KeyPair for Bitcoin
+                        let _ = request.alpha_ledger_refund_identity;
 
                         let alpha_ledger_refund_identity =
                             key_store.get_transient_keypair(&id.into(), b"REFUND");

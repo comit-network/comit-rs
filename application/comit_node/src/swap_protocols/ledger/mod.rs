@@ -47,6 +47,7 @@ pub trait Ledger:
         + Sync
         + PartialEq
         + 'static;
+    type HttpIdentity: DeserializeOwned;
 
     fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }

@@ -59,8 +59,7 @@ describe("RFC003 Bitcoin for Ether", () => {
                     name: "Ether",
                     quantity: beta_asset.toString()
                 },
-                alpha_ledger_refund_identity:
-                    "ac2db2f2615c81b83Fe9366450799b4992931575",
+                alpha_ledger_refund_identity: null,
                 beta_ledger_success_identity: alice_final_address,
                 alpha_ledger_lock_duration: 144
             })
