@@ -1,7 +1,7 @@
 use bitcoin_support::{serialize::serialize_hex, BitcoinQuantity};
 use comit_client::SwapReject;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
-use http_api::{problem, HttpApiProblemStdError};
+use http_api::{problem, route_factory::GetActionQueryParams, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
 use key_store::KeyStore;
 use std::{str::FromStr, sync::Arc};

@@ -14,3 +14,9 @@ pub struct SendTransaction {
     pub gas_limit: U256,
     pub value: EtherQuantity,
 }
+
+impl SendTransaction {
+    pub fn serialize(&self, to: String) -> Result<String, ()> {
+        unimplemented!()
+    }
+}
