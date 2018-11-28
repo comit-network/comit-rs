@@ -192,7 +192,7 @@ class ComitConf {
         return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_comit_node_until(chai, location, status) {
+    poll_comit_node_until(chai, location, state) {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)
@@ -201,18 +201,18 @@ class ComitConf {
                         return rej(err);
                     }
                     res.should.have.status(200);
-                    if (res.body.status === status) {
+                    if (res.body.state === state) {
                         final_res(res.body);
                     } else {
                         setTimeout(() => {
                             this.poll_comit_node_until(
                                 chai,
                                 location,
-                                status
+                                state
                             ).then(result => {
                                 final_res(result);
                             });
-                        }, 3000);
+                        }, 500);
                     }
                 });
         });

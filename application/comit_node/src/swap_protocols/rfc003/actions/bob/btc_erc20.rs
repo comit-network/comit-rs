@@ -42,7 +42,7 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
                 let htlc: Erc20Htlc = swap.beta_htlc_params().into();
                 vec![Action::Fund(Erc20Fund::new(
                     htlc.token_contract_address(),
-                    htlc.transfer_call(*beta_htlc_location),
+                    htlc.funding_tx_payload(*beta_htlc_location),
                 ))]
             }
             SS::BothFunded(BothFunded {

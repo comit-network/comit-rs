@@ -187,6 +187,7 @@ dependencies = [
 
 [tasks.dry-tests]
 description = "Runs tests that don't require any external services"
+env = { "LOG_DIR" = "./dry/log" }
 workspace = false
 private = true
 script_runner = "bash"

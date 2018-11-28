@@ -1,6 +1,19 @@
 use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity};
 use swap_protocols::rfc003::Secret;
 
+pub struct EthereumContractDeploy {
+    pub data: Bytes,
+    pub value: EtherQuantity,
+    pub gas_limit: U256,
+}
+
+pub struct EthereumSendTransaction {
+    pub to: Address,
+    pub data: Bytes,
+    pub gas_limit: U256,
+    pub value: EtherQuantity,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct EtherDeploy {
     pub data: Bytes,

@@ -30,6 +30,23 @@ use warp::{self, Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";
 
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum SwapRequestBodyKind {
+    BitcoinEthereumBitcoinQuantityEtherQuantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+    ),
+    BitcoinEthereumBitcoinQuantityErc20Quantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    ),
+    EthereumBitcoinErc20QuantityBitcoinQuantity(
+        SwapRequestBody<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
+    ),
+    // It is important that these two come last because untagged enums are tried in order
+    UnsupportedCombination(UnsupportedSwapRequestBody),
+    MalformedRequest(serde_json::Value),
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, LabelledGeneric)]
 pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[serde(with = "http_api::asset::serde")]
@@ -46,17 +63,15 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinQuantityEtherQuantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
-    ),
-    BitcoinEthereumBitcoinQuantityErc20Quantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
-    ),
-    EthereumBitcoinErc20QuantityBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
-    ),
+pub struct UnsupportedSwapRequestBody {
+    alpha_asset: HttpAsset,
+    beta_asset: HttpAsset,
+    alpha_ledger: HttpLedger,
+    beta_ledger: HttpLedger,
+    alpha_ledger_refund_identity: String,
+    beta_ledger_success_identity: String,
+    alpha_ledger_lock_duration: i64,
+
 }
 
 #[derive(Serialize, Debug)]
@@ -73,6 +88,20 @@ pub fn post_swap(
     request_body_kind: SwapRequestBodyKind,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
 ) -> Result<impl Reply, Rejection> {
+    handle_post_swap(request_body_kind, sender)
+        .map(|swap_created| {
+            let body = warp::reply::json(&swap_created);
+            let response =
+                warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
+            warp::reply::with_status(response, warp::http::StatusCode::CREATED)
+        })
+        .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
+}
+
+fn handle_post_swap(
+    request_body_kind: SwapRequestBodyKind,
+    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
 
     let request_kind = match request_body_kind {
@@ -91,6 +120,22 @@ pub fn post_swap(
                 frunk::labelled_convert_from(body),
             )
         }
+        SwapRequestBodyKind::UnsupportedCombination(body) => {
+            error!(
+                "Swapping {:?} for {:?} from {:?} to {:?} is not supported",
+                body.alpha_asset, body.beta_asset, body.alpha_ledger, body.beta_ledger
+            );
+            return Err(problem::unsupported());
+        }
+        SwapRequestBodyKind::MalformedRequest(body) => {
+            error!(
+                "Malformed request body: {}",
+                serde_json::to_string(&body)
+                    .expect("failed to serialize serde_json::Value as string ?!")
+            );
+            return Err(HttpApiProblem::with_title_and_type_from_status(400)
+                .set_detail("The request body was malformed"));
+        }
     };
 
     if let Err(e) = sender.unbounded_send((id, request_kind)) {
@@ -99,17 +144,10 @@ pub fn post_swap(
             e.into_inner(),
             id
         );
-        return Err(warp::reject::custom(HttpApiProblemStdError::from(
-            HttpApiProblem::with_title_from_status(500),
-        )));
+        return Err(HttpApiProblem::with_title_from_status(500));
     }
 
-    let swap_created = SwapCreated { id };
-    let body = warp::reply::json(&swap_created);
-    let response = warp::reply::with_header(body, header::LOCATION, swap_path(id));
-    let response = warp::reply::with_status(response, warp::http::StatusCode::CREATED);
-
-    Ok(response)
+    Ok(SwapCreated { id })
 }
 
 #[derive(Debug, Serialize)]
