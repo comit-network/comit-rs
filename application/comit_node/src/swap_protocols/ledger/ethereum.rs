@@ -12,6 +12,7 @@ impl Ledger for Ethereum {
     type Address = Address;
     type Identity = Address;
     type Transaction = Transaction;
+    type HttpIdentity = Address;
 
     fn address_for_identity(&self, address: Address) -> Address {
         address

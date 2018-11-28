@@ -54,8 +54,8 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     alpha_ledger: AL,
     #[serde(with = "http_api::ledger::serde")]
     beta_ledger: BL,
-    alpha_ledger_refund_identity: AL::Identity,
-    beta_ledger_success_identity: BL::Identity,
+    alpha_ledger_refund_identity: AL::HttpIdentity,
+    beta_ledger_success_identity: BL::HttpIdentity,
     alpha_ledger_lock_duration: AL::LockDuration,
 }
 
@@ -298,7 +298,7 @@ mod tests {
                     "name": "Ether",
                     "quantity": "10000000000000000000"
                 },
-                "alpha_ledger_refund_identity": "ac2db2f2615c81b83fe9366450799b4992931575",
+                "alpha_ledger_refund_identity": null,
                 "beta_ledger_success_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 "alpha_ledger_lock_duration": 144
             }"#;
@@ -310,10 +310,7 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::regtest(),
             beta_ledger: Ethereum::default(),
-            alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
-                "ac2db2f2615c81b83fe9366450799b4992931575",
-            )
-            .unwrap(),
+            alpha_ledger_refund_identity: (),
             beta_ledger_success_identity: ethereum_support::Address::from(
                 "0x00a329c0648769a73afac7f9381e08fb43dbea72",
             ),

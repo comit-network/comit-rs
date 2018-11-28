@@ -12,8 +12,8 @@ pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
     pub beta_asset: BA,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_success_identity: BL::Identity,
+    pub alpha_ledger_refund_identity: AL::HttpIdentity,
+    pub beta_ledger_success_identity: BL::HttpIdentity,
     pub alpha_ledger_lock_duration: AL::LockDuration,
 }
 
