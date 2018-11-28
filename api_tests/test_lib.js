@@ -291,29 +291,6 @@ module.exports.ledger_query_service_conf = (host, port) => {
     return new LedgerQueryServiceConf(host, port);
 };
 
-{
-    let nonce = 0;
-
-    module.exports.give_eth_to = (address, value) => {
-        const tx = new EthereumTx({
-            nonce: "0x" + nonce.toString(16),
-            gasPrice: "0x0",
-            gasLimit: "0x5208",
-            to: address,
-            value: web3.utils.numberToHex(
-                web3.utils.toWei(value.toString(), "ether")
-            ),
-            chainId: 1
-        });
-        tx.sign(eth_funded_private_key);
-        const serializedTx = tx.serialize();
-        nonce++;
-        return web3.eth.sendSignedTransaction(
-            "0x" + serializedTx.toString("hex")
-        );
-    };
-}
-
 
 {
     const function_identifier = "40c10f19";
