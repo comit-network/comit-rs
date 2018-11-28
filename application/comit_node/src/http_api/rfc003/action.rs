@@ -1,4 +1,4 @@
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::{serialize::serialize_hex, BitcoinQuantity};
 use comit_client::SwapReject;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
 use http_api::{problem, HttpApiProblemStdError};
@@ -10,7 +10,9 @@ use swap_protocols::{
     metadata_store::Metadata,
     rfc003::{
         actions::{Action, StateActions},
+        bitcoin,
         bob::PendingResponses,
+        ethereum,
         roles::{Alice, Bob},
         state_machine::StateMachineResponse,
         state_store::StateStore,
@@ -35,6 +37,142 @@ impl FromStr for PostAction {
             "accept" => Ok(PostAction::Accept),
             "decline" => Ok(PostAction::Decline),
             _ => Err(()),
+        }
+    }
+}
+
+#[derive(Clone, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum GetActionQueryParams {
+    NoParams,
+    BitcoinIdentityAndFee {
+        identity: bitcoin_support::Address,
+        fee_per_byte: f64,
+    },
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum ActionResponseBody {
+    SendToBitcoinAddress {
+        address: bitcoin_support::Address,
+        value: BitcoinQuantity,
+    },
+    BroadcastSignedBitcoinTransaction {
+        hex: String,
+    },
+    SendEthereumTransaction {
+        to: Option<ethereum_support::Address>,
+        data: ethereum_support::Bytes,
+        value: EtherQuantity,
+        gas_limit: ethereum_support::U256,
+    },
+}
+
+pub trait IntoResponseBody {
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem>;
+}
+
+impl IntoResponseBody for bitcoin::SendToAddress {
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        match query_params {
+            GetActionQueryParams::NoParams => {
+                let bitcoin::SendToAddress { address, value } = self.clone();
+                Ok(ActionResponseBody::SendToBitcoinAddress { address, value })
+            }
+            _ => {
+                error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
+                Err(HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("Incorrect GET query parameters"))
+            }
+        }
+    }
+}
+
+impl IntoResponseBody for bitcoin::SpendOutput {
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        match query_params {
+            GetActionQueryParams::BitcoinIdentityAndFee {
+                identity,
+                fee_per_byte,
+            } => {
+                let transaction = self.spend_to(identity).sign_with_rate(fee_per_byte);
+                match serialize_hex(&transaction) {
+                    Ok(hex) => Ok(ActionResponseBody::BroadcastSignedBitcoinTransaction { hex }),
+                    Err(e) => {
+                        error!("Could not serialized signed Bitcoin transaction: {:?}", e);
+                        Err(HttpApiProblem::with_title_and_type_from_status(500)
+                            .set_detail("Issue encountered when serializing Bitcoin transaction"))
+                    }
+                }
+            }
+            _ => {
+                error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: identity and fee-per-byte.");
+                Err(HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("Incorrect GET query parameters"))
+            }
+        }
+    }
+}
+
+impl IntoResponseBody for ethereum::ContractDeploy {
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        let ethereum::ContractDeploy {
+            data,
+            value,
+            gas_limit,
+        } = self;
+        match query_params {
+            GetActionQueryParams::NoParams => Ok(ActionResponseBody::SendEthereumTransaction {
+                to: None,
+                data,
+                value,
+                gas_limit,
+            }),
+            _ => {
+                error!("Unexpected GET parameters for an ethereum::ContractDeploy action type. Expected: None.");
+                Err(HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("Incorrect GET query parameters"))
+            }
+        }
+    }
+}
+
+impl IntoResponseBody for ethereum::SendTransaction {
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        let ethereum::SendTransaction {
+            to,
+            data,
+            value,
+            gas_limit,
+        } = self;
+        match query_params {
+            GetActionQueryParams::NoParams => Ok(ActionResponseBody::SendEthereumTransaction {
+                to: Some(to),
+                data,
+                value,
+                gas_limit,
+            }),
+            _ => {
+                error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");
+                Err(HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("Incorrect GET query parameters"))
+            }
         }
     }
 }
@@ -169,8 +307,9 @@ pub fn get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     state_store: Arc<S>,
     id: SwapId,
     action: GetAction,
+    query_params: GetActionQueryParams,
 ) -> Result<impl Reply, Rejection> {
-    handle_get(metadata_store, state_store, &id, &action)
+    handle_get(metadata_store, state_store, &id, &action, query_params)
         .map_err(HttpApiProblemStdError::from)
         .map_err(warp::reject::custom)
 }
@@ -180,6 +319,7 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     state_store: Arc<S>,
     id: &SwapId,
     action: &GetAction,
+    query_params: GetActionQueryParams,
 ) -> Result<impl Reply, HttpApiProblem> {
     let metadata = metadata_store
         .get(id)?
@@ -194,24 +334,38 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             trace!("Retrieved state for {}: {:?}", id, state);
 
             match action {
-                GetAction::Fund => {
-                    let action =
-                        state
-                            .actions()
-                            .iter()
-                            .find_map(|state_action| match state_action {
-                                Action::Fund(fund_action) => {
-                                    Some(serde_json::to_value(&fund_action).unwrap())
-                                }
-                                _ => None,
-                            });
-
-                    action.map(|action| warp::reply::json(&action)).ok_or(
-                        HttpApiProblem::with_title_and_type_from_status(400)
-                            .set_detail("Requested action is not supported for this swap"),
-                    )
-                }
-                GetAction::Redeem => unimplemented!(),
+                GetAction::Fund => state
+                    .actions()
+                    .iter()
+                    .find_map(|state_action| match state_action {
+                        Action::Fund(fund_action) => Some(
+                            fund_action
+                                .clone()
+                                .into_response_body(query_params.clone())
+                                .map(|body| warp::reply::json(&body)),
+                        ),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| {
+                        Err(HttpApiProblem::with_title_and_type_from_status(400)
+                            .set_detail("Requested action is not supported for this swap"))
+                    }),
+                GetAction::Redeem => state
+                    .actions()
+                    .iter()
+                    .find_map(|state_action| match state_action {
+                        Action::Redeem(redeem_action) => Some(
+                            redeem_action
+                                .clone()
+                                .into_response_body(query_params.clone())
+                                .map(|body| warp::reply::json(&body)),
+                        ),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| {
+                        Err(HttpApiProblem::with_title_and_type_from_status(400)
+                            .set_detail("Requested action is not supported for this swap"))
+                    }),
                 GetAction::Refund => unimplemented!(),
             }
         })

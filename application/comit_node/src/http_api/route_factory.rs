@@ -1,5 +1,5 @@
 use futures::sync::mpsc::UnboundedSender;
-use http_api;
+use http_api::{self, rfc003::action::GetActionQueryParams};
 use key_store::KeyStore;
 use std::sync::Arc;
 use swap_protocols::{
@@ -64,6 +64,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .and(warp::path::param::<http_api::rfc003::action::GetAction>())
         .and(warp::get2())
         .and(warp::path::end())
+        .and(warp::query::<GetActionQueryParams>())
         .and_then(http_api::rfc003::action::get);
 
     rfc003_get_swap
