@@ -36,6 +36,7 @@ workspace = false
 dependencies = [
     "lqs",
     "e2e",
+    "dry",       
 ]
 
 # Overridden because: added dependencies
