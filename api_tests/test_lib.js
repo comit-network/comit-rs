@@ -59,13 +59,14 @@ function test_rng() {
 }
 
 const token_contract_deploy =
-      "0x" +
-      fs
-      .readFileSync(
-          "../application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
-          "utf8"
-      )
-      .trim();
+    "0x" +
+    fs
+        .readFileSync(
+            process.env.PROJECT_ROOT +
+                "/application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
+            "utf8"
+        )
+        .trim();
 
 class WalletConf {
     constructor() {
@@ -290,7 +291,6 @@ module.exports.wallet_conf = (eth_private_key, utxo) => {
 module.exports.ledger_query_service_conf = (host, port) => {
     return new LedgerQueryServiceConf(host, port);
 };
-
 
 {
     const function_identifier = "40c10f19";

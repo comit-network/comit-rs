@@ -99,14 +99,13 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
-            SS::AlphaFundedBetaRefunded { .. } => vec![],
-            SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
+            })
+            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
-            SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
+            })
+            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..

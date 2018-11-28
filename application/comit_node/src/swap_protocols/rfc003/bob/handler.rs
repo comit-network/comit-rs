@@ -185,7 +185,7 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
         communication_events,
     };
 
-    info!("Starting state machine as Bob for {:?}", id);
+    info!("Starting state machine for {:?}", id);
     tokio::spawn(
         Swap::start_in(state, context)
             .map(move |outcome| {
