@@ -67,6 +67,10 @@ impl Erc20Htlc {
 
         Bytes::from(data.to_vec())
     }
+
+    pub fn token_contract_address(&self) -> Address {
+        self.token_contract_address
+    }
 }
 
 impl Htlc for Erc20Htlc {

@@ -28,12 +28,8 @@ const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
 describe("RFC003 Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
-        await test_lib.fund_eth(20);
-        await test_lib.give_eth_to(bob.wallet.eth_address(), bob_initial_eth);
-        await test_lib.give_eth_to(
-            alice.wallet.eth_address(),
-            alice_initial_eth
-        );
+        await bob.wallet.fund_eth(bob_initial_eth);
+        await alice.wallet.fund_eth(alice_initial_eth);
         await alice.wallet.fund_btc(10);
     });
 
@@ -86,12 +82,16 @@ describe("RFC003 Bitcoin for Ether", () => {
         bob_swap_href.should.be.a("string");
     });
 
-    it("[Bob] Can execute the accept action", async () => {
+    let bob_accept_href;
+    it("[Bob] Can get the accept action", async () => {
         let res = await chai.request(bob.comit_node_url()).get(bob_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Start");
         res.body._links.accept.href.should.be.a("string");
-        let accept_href = res.body._links.accept.href;
+        bob_accept_href = res.body._links.accept.href;
+    });
+
+    it("[Bob] Can execute the accept action", async () => {
         let bob_response = {
             beta_ledger_refund_identity: bob.wallet.eth_address(),
             alpha_ledger_success_identity: null,
@@ -100,7 +100,7 @@ describe("RFC003 Bitcoin for Ether", () => {
 
         let accept_res = await chai
             .request(bob.comit_node_url())
-            .post(accept_href)
+            .post(bob_accept_href)
             .send(bob_response);
 
         accept_res.should.have.status(200);

@@ -9,7 +9,7 @@ use swap_protocols::{
     metadata_store::MetadataStore,
     rfc003::{
         alice::SwapRequestKind,
-        events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents},
+        events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
         roles::Alice,
         state_machine::{Context, Start, Swap, SwapStates},
         state_store::StateStore,
@@ -62,16 +62,12 @@ impl<
         receiver
             .for_each(move |(id, requests)| {
                 match requests {
-                    SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(request) => {
-                        // Generated with KeyPair for Bitcoin
-                        let _ = request.alpha_ledger_refund_identity;
-
+                    SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(request) => {
                         let alpha_ledger_refund_identity =
                             key_store.get_transient_keypair(&id.into(), b"REFUND");
 
                         if let Err(e) = metadata_store.insert(id, request.clone()) {
                             error!("Failed to store metadata for swap {} because {:?}", id, e);
-
                             // Return Ok to keep the loop running
                             return Ok(());
                         }
@@ -106,6 +102,56 @@ impl<
                                 FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
                             )),
                             Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(
+                                    Arc::clone(&lqs_api_client),
+                                    ethereum_poll_interval,
+                                ),
+                            )),
+                            Box::new(AliceToBob::new(Arc::clone(&comit_client))),
+                        );
+                        Ok(())
+                    }
+                    SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(request) => {
+                        let alpha_ledger_refund_identity =
+                            key_store.get_transient_keypair(&id.into(), b"REFUND");
+
+                        if let Err(e) = metadata_store.insert(id, request.clone()) {
+                            error!("Failed to store metadata for swap {} because {:?}", id, e);
+                            // Return Ok to keep the loop running
+                            return Ok(());
+                        }
+
+                        let secret = Secret::generate(&mut thread_rng());
+
+                        let start_state = Start {
+                            alpha_ledger_refund_identity,
+                            beta_ledger_success_identity: request.beta_ledger_success_identity,
+                            alpha_ledger: request.alpha_ledger,
+                            beta_ledger: request.beta_ledger,
+                            alpha_asset: request.alpha_asset,
+                            beta_asset: request.beta_asset,
+                            alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
+                            secret,
+                        };
+
+                        let comit_client = match client_factory.client_for(comit_node_addr) {
+                            Ok(client) => client,
+                            Err(e) => {
+                                debug!("Couldn't get client for {}: {:?}", comit_node_addr, e);
+                                return Ok(());
+                            }
+                        };
+
+                        spawn_state_machine(
+                            id,
+                            start_state,
+                            state_store.as_ref(),
+                            Box::new(LqsEvents::new(
+                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
+                            )),
+                            Box::new(LqsEventsForErc20::new(
                                 QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
                                 FirstMatch::new(
                                     Arc::clone(&lqs_api_client),

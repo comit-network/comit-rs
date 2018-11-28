@@ -45,10 +45,47 @@ macro_rules! get_swap {
                     }
                 }
             }
-            _ => {
-                error!("Found an unknown pair in the metadata for {}", id);
-                Err(HttpApiProblem::with_title_and_type_from_status(500))
+            metadata @ Metadata {
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Erc20,
+                ..
+            } => {
+                info!("Fetched metadata of swap with id {}: {:?}", id, metadata);
+                match metadata.role {
+                    RoleKind::Alice => {
+                        let state =
+                            state_store
+                                .get::<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>>(
+                                    id,
+                                );
+
+                        match state {
+                            Ok(state) => {
+                                let $state_name = state;
+                                $found_fn()
+                            }
+                            Err(e) => Err(e.into()),
+                        }
+                    }
+                    RoleKind::Bob => {
+                        let state =
+                            state_store
+                                .get::<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>>(id);
+
+                        match state {
+                            Ok(state) => {
+                                let $state_name = state;
+                                $found_fn()
+                            }
+                            Err(e) => Err(e.into()),
+                        }
+                    }
+                }
             }
+            _ => Err(HttpApiProblem::with_title_and_type_from_status(500)
+                .set_detail("Unknown metadata for swap")),
         }
     }};
 }

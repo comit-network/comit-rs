@@ -1,5 +1,5 @@
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EtherQuantity;
+use ethereum_support::{Erc20Quantity, EtherQuantity};
 use frunk;
 use futures::sync::mpsc::UnboundedSender;
 use http_api::{
@@ -33,10 +33,12 @@ pub const PROTOCOL_NAME: &str = "rfc003";
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinQuantityEthereumQuantity(
+    BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
-
+    BitcoinEthereumBitcoinQuantityErc20Quantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    ),
     // It is important that these two come last because untagged enums are tried in order
     UnsupportedCombination(UnsupportedSwapRequestBody),
     MalformedRequest(serde_json::Value),
@@ -99,8 +101,13 @@ fn handle_post_swap(
     let id = SwapId::default();
 
     let request_kind = match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(body) => {
-            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
+            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
+                frunk::labelled_convert_from(body),
+            )
+        }
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
+            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
                 frunk::labelled_convert_from(body),
             )
         }
@@ -190,18 +197,18 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             let state = state.ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            let swap_details = state
-                .swap_details()
+            let start_state = state
+                .start_state()
                 .ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
             let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
             (Ok((
                 GetSwapResource {
                     state: state.name(),
                     swap: SwapDescription {
-                        alpha_ledger: swap_details.alpha_ledger.to_http_ledger().unwrap(),
-                        beta_ledger: swap_details.beta_ledger.to_http_ledger().unwrap(),
-                        alpha_asset: swap_details.alpha_asset.to_http_asset().unwrap(),
-                        beta_asset: swap_details.beta_asset.to_http_asset().unwrap(),
+                        alpha_ledger: start_state.alpha_ledger.to_http_ledger().unwrap(),
+                        beta_ledger: start_state.beta_ledger.to_http_ledger().unwrap(),
+                        alpha_asset: start_state.alpha_asset.to_http_asset().unwrap(),
+                        beta_asset: start_state.beta_asset.to_http_asset().unwrap(),
                     },
                     role: format!("{}", metadata.role),
                 },

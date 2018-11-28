@@ -1,7 +1,7 @@
 use bitcoin_support::Script;
 use secp256k1_support::{KeyPair, PublicKey};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Witness {
     Data(Vec<u8>),
     Signature(KeyPair),
@@ -18,7 +18,7 @@ pub enum Witness {
 /// * The `prev_script` of the output you're unlocking
 /// This trait may add more things to this list in the future (such as
 /// the locktime the transaction must use to pass CHECKLOCKTIMEVERIFY).
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UnlockParameters {
     pub witness: Vec<Witness>,
     pub sequence: u32,

@@ -5,12 +5,14 @@ use swap_protocols::{
     rfc003::{state_machine::HtlcParams, Ledger},
 };
 
+mod actions;
 mod extract_secret;
 mod htlc;
 mod queries;
 mod validation;
 
 pub use self::{
+    actions::*,
     htlc::{Htlc, UnlockingError},
     queries::*,
 };

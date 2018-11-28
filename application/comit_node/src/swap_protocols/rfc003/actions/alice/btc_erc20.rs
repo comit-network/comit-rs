@@ -1,6 +1,6 @@
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, EtherQuantity, U256};
+use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
@@ -11,10 +11,11 @@ use swap_protocols::{
     },
 };
 
-impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
+impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
+        let htlc: bitcoin::Htlc = self.alpha_htlc_params().into();
         bitcoin::SendToAddress {
-            address: self.alpha_htlc_params().compute_address(),
+            address: htlc.compute_address(self.alpha_ledger.network),
             value: self.alpha_asset,
         }
     }
@@ -38,12 +39,12 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             to: beta_htlc_location,
             data: Bytes::from(self.secret.raw_secret().to_vec()),
             gas_limit: 42_000.into(), //TODO: Calculate properly
-            value: EtherQuantity::from_wei(U256::zero()),
+            value: EtherQuantity::zero(),
         }
     }
 }
 
-impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
+impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     type Accept = ();
     type Decline = ();
     type Deploy = ();

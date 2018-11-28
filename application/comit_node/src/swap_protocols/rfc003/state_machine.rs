@@ -479,7 +479,7 @@ impl<R: Role> SwapStates<R> {
         }
     }
 
-    pub fn swap_details(&self) -> Option<Start<R>> {
+    pub fn start_state(&self) -> Option<Start<R>> {
         use self::SwapStates as SS;
         match *self {
             SS::Start(ref start) => Some(start.clone()),

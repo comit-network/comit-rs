@@ -12,7 +12,7 @@ use swap_protocols::{
     rfc003::{
         self,
         bob::{PendingResponses, SwapRequestKind},
-        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents},
+        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
         roles::Bob,
         state_machine::*,
         state_store::StateStore,
@@ -51,55 +51,113 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
 
         receiver
-            .for_each(move |(id, requests, response_sender)| match requests {
-                rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEthereumQuantity(
-                    request,
-                ) => {
-                    if let Err(e) = metadata_store.insert(id, request.clone()) {
-                        error!("Failed to store metadata for swap {} because {:?}", id, e);
+            .for_each(move |(id, requests, response_sender)| {
+                info!("Received swap {:?} on channel", id);
+                match requests {
+                    rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
+                        request,
+                    ) => {
+                        if let Err(e) = metadata_store.insert(id, request.clone()) {
+                            error!("Failed to store metadata for swap {} because {:?}", id, e);
 
-                        // Return Ok to keep the loop running
-                        return Ok(());
-                    }
+                            // Return Ok to keep the loop running
+                            return Ok(());
+                        }
 
-                    {
-                        let request = request.clone();
+                        {
+                            let request = request.clone();
 
-                        let start_state = Start {
-                            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
-                            beta_ledger_success_identity: request.beta_ledger_success_identity,
-                            alpha_ledger: request.alpha_ledger,
-                            beta_ledger: request.beta_ledger,
-                            alpha_asset: request.alpha_asset,
-                            beta_asset: request.beta_asset,
-                            alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
-                            secret: request.secret_hash,
-                        };
+                            let start_state = Start {
+                                alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+                                beta_ledger_success_identity: request.beta_ledger_success_identity,
+                                alpha_ledger: request.alpha_ledger,
+                                beta_ledger: request.beta_ledger,
+                                alpha_asset: request.alpha_asset,
+                                beta_asset: request.beta_asset,
+                                alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
+                                secret: request.secret_hash,
+                            };
 
-                        spawn_state_machine(
-                            id,
-                            start_state,
-                            state_store.as_ref(),
-                            Box::new(LqsEvents::new(
-                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
-                                FirstMatch::new(Arc::clone(&lqs_api_client), bitcoin_poll_interval),
-                            )),
-                            Box::new(LqsEvents::new(
-                                QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
-                                FirstMatch::new(
-                                    Arc::clone(&lqs_api_client),
-                                    ethereum_poll_interval,
-                                ),
-                            )),
-                            Box::new(BobToAlice::new(
-                                Arc::clone(&pending_responses),
+                            spawn_state_machine(
                                 id,
-                                response_sender,
-                            )),
-                        );
-                    }
+                                start_state,
+                                state_store.as_ref(),
+                                Box::new(LqsEvents::new(
+                                    QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                    FirstMatch::new(
+                                        Arc::clone(&lqs_api_client),
+                                        bitcoin_poll_interval,
+                                    ),
+                                )),
+                                Box::new(LqsEvents::new(
+                                    QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                    FirstMatch::new(
+                                        Arc::clone(&lqs_api_client),
+                                        ethereum_poll_interval,
+                                    ),
+                                )),
+                                Box::new(BobToAlice::new(
+                                    Arc::clone(&pending_responses),
+                                    id,
+                                    response_sender,
+                                )),
+                            );
+                        }
 
-                    Ok(())
+                        Ok(())
+                    }
+                    rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
+                        request,
+                    ) => {
+                        if let Err(e) = metadata_store.insert(id, request.clone()) {
+                            error!("Failed to store metadata for swap {} because {:?}", id, e);
+
+                            // Return Ok to keep the loop running
+                            return Ok(());
+                        }
+
+                        {
+                            let request = request.clone();
+
+                            let start_state = Start {
+                                alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+                                beta_ledger_success_identity: request.beta_ledger_success_identity,
+                                alpha_ledger: request.alpha_ledger,
+                                beta_ledger: request.beta_ledger,
+                                alpha_asset: request.alpha_asset,
+                                beta_asset: request.beta_asset,
+                                alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
+                                secret: request.secret_hash,
+                            };
+
+                            spawn_state_machine(
+                                id,
+                                start_state,
+                                state_store.as_ref(),
+                                Box::new(LqsEvents::new(
+                                    QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                    FirstMatch::new(
+                                        Arc::clone(&lqs_api_client),
+                                        bitcoin_poll_interval,
+                                    ),
+                                )),
+                                Box::new(LqsEventsForErc20::new(
+                                    QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                    FirstMatch::new(
+                                        Arc::clone(&lqs_api_client),
+                                        ethereum_poll_interval,
+                                    ),
+                                )),
+                                Box::new(BobToAlice::new(
+                                    Arc::clone(&pending_responses),
+                                    id,
+                                    response_sender,
+                                )),
+                            );
+                        }
+
+                        Ok(())
+                    }
                 }
             })
             .map_err(|_| ())
@@ -127,6 +185,7 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
         communication_events,
     };
 
+    info!("Starting state machine for {:?}", id);
     tokio::spawn(
         Swap::start_in(state, context)
             .map(move |outcome| {

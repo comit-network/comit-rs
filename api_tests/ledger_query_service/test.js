@@ -21,7 +21,7 @@ function sleep(ms) {
 describe("Test Ledger Query Service API", () => {
     before(async function() {
         await wallet.fund_btc(5);
-        await test_lib.fund_eth(20);
+        await wallet.fund_eth(20);
     });
 
     describe("Bitcoin", () => {
@@ -181,22 +181,8 @@ describe("Test Ledger Query Service API", () => {
 
     describe("Ethereum", () => {
         describe("Transactions", () => {
-            before(async function() {
-                Promise.all([
-                    await test_lib.give_eth_to(wallet.eth_address(), "10")
-                ])
-                    .then(receipt => {
-                        console.log(
-                            `Giving 10 Ether to the wallet; success: ${
-                                receipt[0].status
-                            }`
-                        );
-                    })
-                    .catch(error => {
-                        console.log(
-                            `Error on giving Ether to the wallet: ${error}`
-                        );
-                    });
+            before(async () =>  {
+                await wallet.fund_eth(10);
             });
 
             it("LQS should respond not found when getting a non-existent ethereum transaction query", async function() {

@@ -85,7 +85,7 @@ mod tests {
             beta_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),
-            alpha_ledger: Bitcoin::regtest(),
+            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
