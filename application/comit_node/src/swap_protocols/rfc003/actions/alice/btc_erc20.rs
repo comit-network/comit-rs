@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::{
         actions::{Action, StateActions},
         bitcoin,
-        ethereum::{self, Erc20Htlc, Htlc},
+        ethereum::{self, Erc20Htlc},
         roles::Alice,
         state_machine::*,
     },
@@ -15,6 +15,7 @@ use swap_protocols::{
 impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
         let htlc: bitcoin::Htlc = self.alpha_htlc_params().into();
+
         bitcoin::SendToAddress {
             address: htlc.compute_address(self.alpha_ledger.network),
             value: self.alpha_asset,
@@ -37,7 +38,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
         beta_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
         let data = Bytes::from(self.secret.raw_secret().to_vec());
-        let gas_limit = Erc20Htlc::transaction_gas_limit(&data);
+        let gas_limit = Erc20Htlc::redemption_gas_limit(&data);
 
         ethereum::SendTransaction {
             to: beta_htlc_location,

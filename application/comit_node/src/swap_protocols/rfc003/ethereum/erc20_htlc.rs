@@ -71,6 +71,41 @@ impl Erc20Htlc {
     pub fn token_contract_address(&self) -> Address {
         self.token_contract_address
     }
+
+    pub fn deployment_gas_limit(&self) -> U256 {
+        let bytes: Bytes = self.compile_to_hex().into();
+        let create = 32_000;
+        let constructor = 1_000;
+        let gas_per_byte = 200;
+        let n_bytes = bytes.0.len();
+
+        let estimate = create + constructor + n_bytes * gas_per_byte;
+        let buffer = 10_000;
+        (estimate + buffer).into()
+    }
+
+    pub fn redemption_gas_limit(bytes: &Bytes) -> U256 {
+        Self::transaction_gas_limit(bytes)
+    }
+
+    pub fn fund_gas_limit(bytes: &Bytes) -> U256 {
+        let factor = U256::from(4);
+        factor * Self::transaction_gas_limit(bytes)
+    }
+
+    fn transaction_gas_limit(bytes: &Bytes) -> U256 {
+        let base_tx = 21_000;
+        let gas_per_non_zero_byte = 64.0;
+        let gas_per_zero_byte = 4.0;
+        let zero_byte_percent = 0.05;
+        let avg_gas_per_byte = zero_byte_percent * gas_per_zero_byte
+            + (1.0 - zero_byte_percent) * gas_per_non_zero_byte;
+        let n_bytes = bytes.0.len();
+
+        let estimate = base_tx + n_bytes * avg_gas_per_byte as usize;
+        let buffer = 10_000;
+        (estimate + buffer).into()
+    }
 }
 
 impl Htlc for Erc20Htlc {
@@ -120,28 +155,6 @@ impl Htlc for Erc20Htlc {
         debug!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
-    }
-    fn deployment_gas_limit(data: &Bytes) -> U256 {
-        let create = 32_000;
-        let constructor = 1_000;
-        let gas_per_byte = 200;
-        let n_bytes = data.0.len();
-        let estimate = create + constructor + n_bytes * gas_per_byte;
-        let buffer = 10_000;
-        (estimate + buffer).into()
-    }
-    fn transaction_gas_limit(data: &Bytes) -> U256 {
-        let base_tx = 21_000;
-        let gas_per_non_zero_byte = 64.0;
-        let gas_per_zero_byte = 4.0;
-        let zero_byte_percent = 0.05;
-        let avg_gas_per_byte = zero_byte_percent * gas_per_zero_byte
-            + (1.0 - zero_byte_percent) * gas_per_non_zero_byte;
-        let n_bytes = data.0.len();
-
-        let estimate = base_tx + n_bytes * avg_gas_per_byte as usize;
-        let buffer = 10_000;
-        (estimate + buffer).into()
     }
 }
 

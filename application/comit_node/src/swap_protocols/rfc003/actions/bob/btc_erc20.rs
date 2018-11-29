@@ -17,7 +17,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     pub fn deploy_action(&self) -> ethereum::ContractDeploy {
         let htlc = Erc20Htlc::from(self.beta_htlc_params());
         let data = htlc.compile_to_hex().into();
-        let gas_limit = Erc20Htlc::deployment_gas_limit(&data);
+        let gas_limit = htlc.deployment_gas_limit();
 
         ethereum::ContractDeploy {
             data,
@@ -31,7 +31,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
         beta_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
         let data = Bytes::default();
-        let gas_limit = Erc20Htlc::transaction_gas_limit(&data);
+        let gas_limit = Erc20Htlc::redemption_gas_limit(&data);
 
         ethereum::SendTransaction {
             to: beta_htlc_location,
@@ -47,7 +47,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     ) -> ethereum::SendTransaction {
         let htlc = Erc20Htlc::from(self.beta_htlc_params());
         let data = htlc.funding_tx_payload(beta_htlc_location);
-        let gas_limit = Erc20Htlc::transaction_gas_limit(&data);
+        let gas_limit = Erc20Htlc::fund_gas_limit(&data);
 
         ethereum::SendTransaction {
             to: self.beta_asset.token_contract(),

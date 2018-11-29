@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::{
         actions::{Action, StateActions},
         bitcoin,
-        ethereum::{self, EtherHtlc, Htlc},
+        ethereum::{self, EtherHtlc},
         roles::Alice,
         state_machine::*,
     },

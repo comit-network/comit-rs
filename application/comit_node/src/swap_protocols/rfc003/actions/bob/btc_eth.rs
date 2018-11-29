@@ -17,7 +17,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     pub fn fund_action(&self) -> ethereum::ContractDeploy {
         let htlc = EtherHtlc::from(self.beta_htlc_params());
         let data = htlc.compile_to_hex().into();
-        let gas_limit = EtherHtlc::deployment_gas_limit(&data);
+        let gas_limit = htlc.deployment_gas_limit();
 
         ethereum::ContractDeploy {
             data,
@@ -25,6 +25,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             gas_limit,
         }
     }
+
     pub fn refund_action(
         &self,
         alpha_htlc_location: ethereum_support::Address,
