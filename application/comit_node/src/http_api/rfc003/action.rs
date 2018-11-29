@@ -177,6 +177,41 @@ impl IntoResponseBody for ethereum::SendTransaction {
     }
 }
 
+impl IntoResponseBody for () {
+    fn into_response_body(
+        self,
+        _: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        error!("IntoResponseBody should not be called for ()");
+        Err(HttpApiProblem::with_title_and_type_from_status(500))
+    }
+}
+
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponseBody
+    for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
+where
+    Deploy: IntoResponseBody,
+    Fund: IntoResponseBody,
+    Redeem: IntoResponseBody,
+    Refund: IntoResponseBody,
+{
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        match self {
+            Action::Deploy(payload) => payload.into_response_body(query_params),
+            Action::Fund(payload) => payload.into_response_body(query_params),
+            Action::Redeem(payload) => payload.into_response_body(query_params),
+            Action::Refund(payload) => payload.into_response_body(query_params),
+            _ => {
+                error!("IntoResponseBody is not implemented for Accept/Decline");
+                Err(HttpApiProblem::with_title_and_type_from_status(500))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, LabelledGeneric)]
 struct AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
     alpha_ledger_success_identity: AL::HttpIdentity,
@@ -282,11 +317,24 @@ fn forward_response<AL: Ledger, BL: Ledger>(
         })
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum GetAction {
     Fund,
     Redeem,
     Refund,
+}
+
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
+    PartialEq<Action<Accept, Decline, Deploy, Fund, Redeem, Refund>> for GetAction
+{
+    fn eq(&self, other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>) -> bool {
+        match other {
+            Action::Fund(_) => *self == GetAction::Fund,
+            Action::Redeem(_) => *self == GetAction::Redeem,
+            Action::Refund(_) => *self == GetAction::Refund,
+            _ => false,
+        }
+    }
 }
 
 impl FromStr for GetAction {
@@ -333,41 +381,25 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             let state = state.ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            match action {
-                GetAction::Fund => state
-                    .actions()
-                    .iter()
-                    .find_map(|state_action| match state_action {
-                        Action::Fund(fund_action) => Some(
-                            fund_action
+            state
+                .actions()
+                .iter()
+                .find_map(|state_action| {
+                    if action == state_action {
+                        Some(
+                            state_action
                                 .clone()
                                 .into_response_body(query_params.clone())
                                 .map(|body| warp::reply::json(&body)),
-                        ),
-                        _ => None,
-                    })
-                    .unwrap_or_else(|| {
-                        Err(HttpApiProblem::with_title_and_type_from_status(400)
-                            .set_detail("Requested action is not supported for this swap"))
-                    }),
-                GetAction::Redeem => state
-                    .actions()
-                    .iter()
-                    .find_map(|state_action| match state_action {
-                        Action::Redeem(redeem_action) => Some(
-                            redeem_action
-                                .clone()
-                                .into_response_body(query_params.clone())
-                                .map(|body| warp::reply::json(&body)),
-                        ),
-                        _ => None,
-                    })
-                    .unwrap_or_else(|| {
-                        Err(HttpApiProblem::with_title_and_type_from_status(400)
-                            .set_detail("Requested action is not supported for this swap"))
-                    }),
-                GetAction::Refund => unimplemented!(),
-            }
+                        )
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| {
+                    Err(HttpApiProblem::with_title_and_type_from_status(400)
+                        .set_detail("Requested action is not supported for this swap"))
+                })
         })
     )
 }
