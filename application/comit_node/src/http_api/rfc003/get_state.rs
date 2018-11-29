@@ -89,3 +89,67 @@ macro_rules! get_swap {
         }
     }};
 }
+
+macro_rules! _match_role {
+    ($role:ident, $fn:tt) => {
+        match $role {
+            RoleKind::Alice => {
+                #[allow(dead_code)]
+                type Role = Alice<AL, BL, AA, BA>;
+                $fn()
+            }
+            RoleKind::Bob => {
+                #[allow(dead_code)]
+                type Role = Bob<AL, BL, AA, BA>;
+                $fn()
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! with_swap_types {
+    ($metadata:expr, $fn:tt) => {{
+        let metadata = $metadata;
+
+        match metadata {
+            Metadata {
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Ether,
+                role,
+            } => {
+                #[allow(dead_code)]
+                type AL = Bitcoin;
+                #[allow(dead_code)]
+                type BL = Ethereum;
+                #[allow(dead_code)]
+                type AA = BitcoinQuantity;
+                #[allow(dead_code)]
+                type BA = EtherQuantity;
+
+                _match_role!(role, $fn)
+            }
+            Metadata {
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Erc20,
+                role,
+            } => {
+                #[allow(dead_code)]
+                type AL = Bitcoin;
+                #[allow(dead_code)]
+                type BL = Ethereum;
+                #[allow(dead_code)]
+                type AA = BitcoinQuantity;
+                #[allow(dead_code)]
+                type BA = Erc20Quantity;
+
+                _match_role!(role, $fn)
+            }
+            _ => unimplemented!(),
+        }
+    }};
+}
