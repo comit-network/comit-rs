@@ -335,5 +335,5 @@ module.exports.import_address = async function (address) {
 };
 
 module.exports.eth_balance = async function (address) {
-    return web3.eth.getBalance(address);
+    return web3.eth.getBalance(address).then(balance => new ethutil.BN(balance, 10));
 };
