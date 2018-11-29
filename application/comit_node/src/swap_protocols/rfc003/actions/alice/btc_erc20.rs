@@ -38,7 +38,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
         beta_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
         let data = Bytes::from(self.secret.raw_secret().to_vec());
-        let gas_limit = Erc20Htlc::redemption_gas_limit(&data);
+        let gas_limit = Erc20Htlc::tx_gas_limit();
 
         ethereum::SendTransaction {
             to: beta_htlc_location,

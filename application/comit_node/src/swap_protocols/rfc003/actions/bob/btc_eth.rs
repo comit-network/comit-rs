@@ -31,7 +31,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
         alpha_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
         let data = Bytes::default();
-        let gas_limit = EtherHtlc::transaction_gas_limit(&data);
+        let gas_limit = EtherHtlc::tx_gas_limit();
 
         ethereum::SendTransaction {
             to: alpha_htlc_location,
