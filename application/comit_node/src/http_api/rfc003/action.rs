@@ -44,7 +44,7 @@ impl FromStr for PostAction {
 #[derive(Clone, Deserialize, Debug)]
 #[serde(untagged)]
 pub enum GetActionQueryParams {
-    NoParams,
+    None,
     BitcoinIdentityAndFee {
         identity: bitcoin_support::Address,
         fee_per_byte: f64,
@@ -82,7 +82,7 @@ impl IntoResponseBody for bitcoin::SendToAddress {
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
-            GetActionQueryParams::NoParams => {
+            GetActionQueryParams::None => {
                 let bitcoin::SendToAddress { address, value } = self.clone();
                 Ok(ActionResponseBody::SendToBitcoinAddress { address, value })
             }
@@ -162,7 +162,7 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             gas_limit,
         } = self;
         match query_params {
-            GetActionQueryParams::NoParams => Ok(ActionResponseBody::SendEthereumTransaction {
+            GetActionQueryParams::None => Ok(ActionResponseBody::SendEthereumTransaction {
                 to: None,
                 data,
                 value,
@@ -189,7 +189,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
             gas_limit,
         } = self;
         match query_params {
-            GetActionQueryParams::NoParams => Ok(ActionResponseBody::SendEthereumTransaction {
+            GetActionQueryParams::None => Ok(ActionResponseBody::SendEthereumTransaction {
                 to: Some(to),
                 data,
                 value,
