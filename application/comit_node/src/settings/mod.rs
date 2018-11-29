@@ -27,7 +27,6 @@ pub struct EthereumSettings {
     pub network_id: u8,
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
-    pub gas_price: u64,
 }
 
 #[derive(Debug, Deserialize)]
