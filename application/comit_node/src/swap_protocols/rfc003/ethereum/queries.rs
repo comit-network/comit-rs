@@ -73,7 +73,7 @@ pub mod erc20 {
     ) -> EthereumQuery {
         EthereumQuery::Transaction {
             from_address: None,
-            to_address: Some(htlc_location.clone()),
+            to_address: Some(htlc_params.asset.token_contract()),
             is_contract_creation: None,
             transaction_data: Some(htlc_params.funding_tx_payload(htlc_location.clone())),
             transaction_data_length: None,

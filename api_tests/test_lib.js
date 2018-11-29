@@ -138,7 +138,12 @@ class WalletConf {
         return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
-    async send_eth_transaction_to(to, data = "0x0", value = "0x0", gas_limit = "0x100000") {
+    async send_eth_transaction_to(
+        to,
+        data = "0x0",
+        value = "0x0",
+        gas_limit = "0x100000"
+    ) {
         if (!to) {
             throw new Error("`to` cannot be null");
         }
@@ -198,7 +203,8 @@ class WalletConf {
             data: payload
         };
 
-        return web3.eth.call(tx);
+        let hex_balance = await web3.eth.call(tx);
+        return web3.utils.toBN(hex_balance);
     }
 }
 

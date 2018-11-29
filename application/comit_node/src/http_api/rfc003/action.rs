@@ -356,6 +356,7 @@ fn forward_response<AL: Ledger, BL: Ledger>(
 #[derive(Debug, PartialEq)]
 pub enum GetAction {
     Fund,
+    Deploy,
     Redeem,
     Refund,
 }
@@ -366,6 +367,7 @@ impl GetAction {
         other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>,
     ) -> bool {
         match other {
+            Action::Deploy(_) => *self == GetAction::Deploy,
             Action::Fund(_) => *self == GetAction::Fund,
             Action::Redeem(_) => *self == GetAction::Redeem,
             Action::Refund(_) => *self == GetAction::Refund,
@@ -382,6 +384,7 @@ impl FromStr for GetAction {
             "fund" => Ok(GetAction::Fund),
             "redeem" => Ok(GetAction::Redeem),
             "refund" => Ok(GetAction::Refund),
+            "deploy" => Ok(GetAction::Deploy),
             _ => Err(()),
         }
     }
