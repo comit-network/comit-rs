@@ -85,32 +85,72 @@ pub fn handle_post<T: MetadataStore<SwapId>>(
             beta_asset: AssetKind::Ether,
             role,
         }) => match role {
-            RoleKind::Alice => Err(HttpApiProblem::with_title_and_type_from_status(400)
-                .set_detail(format!("Swap {} was initiated by this comit_node, only the counter-part can accept or decline", id))),
-            RoleKind::Bob => {
-                match action {
-                    PostAction::Accept => serde_json::from_value::<AcceptSwapRequestHttpBody<Bitcoin, Ethereum>>(body)
-                        .map_err(|e| {
-                            error!(
-                                "Failed to deserialize body of accept response for swap {}: {:?}",
-                                id, e
-                            );
-                            HttpApiProblem::new("invalid-body")
-                                .set_status(400)
-                                .set_detail("Failed to deserialize given body.")
-                        })
-                        .and_then(|accept_body| {
-                            let keypair = key_store.get_transient_keypair(&id.into(), b"SUCCESS");
-                            forward_response::<Bitcoin, Ethereum>(pending_responses.as_ref(), &id, Ok(StateMachineResponse{
-                                alpha_ledger_success_identity: keypair,
-                                beta_ledger_refund_identity: accept_body.beta_ledger_refund_identity,
-                                beta_ledger_lock_duration: accept_body.beta_ledger_lock_duration,
-                            }))
+            RoleKind::Alice => Err(HttpApiProblem::with_title_and_type_from_status(404)),
+            RoleKind::Bob => match action {
+                PostAction::Accept => serde_json::from_value::<
+                    AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
+                >(body)
+                .map_err(|e| {
+                    error!(
+                        "Failed to deserialize body of accept response for swap {}: {:?}",
+                        id, e
+                    );
+                    HttpApiProblem::new("invalid-body")
+                        .set_status(400)
+                        .set_detail("Failed to deserialize given body.")
+                })
+                .and_then(|accept_body| {
+                    let keypair = key_store.get_transient_keypair(&id.into(), b"SUCCESS");
+                    forward_response::<Bitcoin, Ethereum>(
+                        pending_responses.as_ref(),
+                        &id,
+                        Ok(StateMachineResponse {
+                            alpha_ledger_success_identity: keypair,
+                            beta_ledger_refund_identity: accept_body.beta_ledger_refund_identity,
+                            beta_ledger_lock_duration: accept_body.beta_ledger_lock_duration,
                         }),
-                    PostAction::Decline => Err(HttpApiProblem::with_title_from_status(500)
-                                           .set_detail("declining a swap is not yet implemented")),
-                }
-            }
+                    )
+                }),
+                PostAction::Decline => Err(HttpApiProblem::with_title_from_status(500)
+                    .set_detail("declining a swap is not yet implemented")),
+            },
+        },
+        Some(Metadata {
+            alpha_ledger: LedgerKind::Bitcoin,
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Erc20,
+            role,
+        }) => match role {
+            RoleKind::Alice => Err(HttpApiProblem::with_title_and_type_from_status(404)),
+            RoleKind::Bob => match action {
+                PostAction::Accept => serde_json::from_value::<
+                    AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
+                >(body)
+                .map_err(|e| {
+                    error!(
+                        "Failed to deserialize body of accept response for swap {}: {:?}",
+                        id, e
+                    );
+                    HttpApiProblem::new("invalid-body")
+                        .set_status(400)
+                        .set_detail("Failed to deserialize given body.")
+                })
+                .and_then(|accept_body| {
+                    let keypair = key_store.get_transient_keypair(&id.into(), b"SUCCESS");
+                    forward_response::<Bitcoin, Ethereum>(
+                        pending_responses.as_ref(),
+                        &id,
+                        Ok(StateMachineResponse {
+                            alpha_ledger_success_identity: keypair,
+                            beta_ledger_refund_identity: accept_body.beta_ledger_refund_identity,
+                            beta_ledger_lock_duration: accept_body.beta_ledger_lock_duration,
+                        }),
+                    )
+                }),
+                PostAction::Decline => Err(HttpApiProblem::with_title_from_status(500)
+                    .set_detail("declining a swap is not yet implemented")),
+            },
         },
         Some(_) => Err(problem::unsupported()),
         None => {
