@@ -181,13 +181,18 @@ describe("RFC003 Bitcoin for Ether", () => {
         await bob.wallet.deploy_eth_contract(bob_funding_action.data, new ethutil.BN(bob_funding_action.value, 10));
     });
 
+    let alice_redeem_href;
+
     it("[Alice] Should be in BothFunded state after Bob executes the funding action", async function() {
         this.timeout(10000);
-        await alice.poll_comit_node_until(
+        let swap = await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
             "BothFunded"
         );
+        swap.should.have.property("_links");
+        swap._links.should.have.property("redeem");
+        alice_redeem_href = swap._links.redeem.href;
     });
 
     it("[Bob] Should be in BothFunded state after executing the funding action", async function() {
@@ -199,41 +204,41 @@ describe("RFC003 Bitcoin for Ether", () => {
         );
     });
 
-    // let alice_funding_required;
+    let alice_redeem_action;
 
-    // it("The request should eventually be accepted by Bob", function (done) {
-    //     this.timeout(10000);
-    //     alice.poll_comit_node_until(chai, swap_location, "accepted").then((status) => {
-    //         alice_funding_required = status.funding_required;
-    //         done();
-    //     });
-    // });
+    it("[Alice] Can get the redeem action from the ‘redeem’ link", async () => {
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get(alice_redeem_href);
+        res.should.have.status(200);
+        alice_redeem_action = res.body;
+    });
 
-    // it("Alice should be able to manually fund the bitcoin HTLC", async function () {
-    //     this.slow(500);
-    //     return alice.wallet.send_btc_to_p2wsh_address(alice_funding_required, 100000000);
-    // });
+    it("[Alice] Can execute the redeem action", async function () {
+        alice_redeem_action.should.include.all.keys("to", "data", "gas_limit", "value");
+            await alice.wallet.send_eth_transaction_to(
+            alice_redeem_action.to,
+            alice_redeem_action.data,
+            alice_redeem_action.value,
+            alice_redeem_action.gas_limit)
+    });
 
-    // let redeem_details;
+    it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
+        this.timeout(10000);
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "AlphaFundedBetaRedeemed"
+        );
+    });
 
-    // it("Bob should eventually deploy the Ethereum HTLC and Alice should see it", function (done) {
-    //     this.slow(7000);
-    //     this.timeout(10000);
-    //     alice.poll_comit_node_until(chai, swap_location, "redeemable").then((status) => {
-    //         redeem_details = status;
-    //         done();
-    //     });
-    // });
+    it("[Bob] Should be in AlphaFundedBetaRedeemed state after Alice executes the redeem action", async function() {
+        this.timeout(10000);
+        await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            "AlphaFundedBetaRedeemed"
+        );
+    });
 
-    // it("Alice should be able to redeem Ether", async function () {
-    //     this.slow(6000);
-    //     this.timeout(10000);
-    //     await test_lib.sleep(2000);
-    //     let old_balance = new BigNumber(await web3.eth.getBalance(alice_final_address));
-    //     await alice.wallet.send_eth_transaction_to(redeem_details.contract_address, "0x" + redeem_details.data);
-    //     await test_lib.sleep(2000);
-    //     let new_balance = new BigNumber(await web3.eth.getBalance(alice_final_address));
-    //     let diff = new_balance.minus(old_balance);
-    //     diff.toString().should.equal(beta_asset.toString());
-    // });
 });

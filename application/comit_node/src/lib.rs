@@ -28,6 +28,8 @@ extern crate binary_macros;
 #[cfg(test)]
 extern crate pretty_env_logger;
 #[cfg(test)]
+extern crate serde_urlencoded;
+#[cfg(test)]
 extern crate spectral;
 
 extern crate bitcoin_rpc_client;

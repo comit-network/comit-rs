@@ -78,6 +78,7 @@ pretty_env_logger = "0.2"
 spectral = "0.6"
 tiny-keccak = "1.4"
 testcontainers = "0.3"
+serde_urlencoded = "0.5.4"
 
 [dev-dependencies.key_gen]
 path = "../../vendor/key_gen"

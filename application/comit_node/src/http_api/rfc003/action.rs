@@ -41,10 +41,10 @@ impl FromStr for PostAction {
     }
 }
 
-#[derive(Clone, Deserialize, Debug)]
+#[derive(Clone, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum GetActionQueryParams {
-    None,
+    None {},
     BitcoinIdentityAndFee {
         identity: bitcoin_support::Address,
         fee_per_byte: f64,
@@ -82,7 +82,7 @@ impl IntoResponseBody for bitcoin::SendToAddress {
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
-            GetActionQueryParams::None => {
+            GetActionQueryParams::None {} => {
                 let bitcoin::SendToAddress { address, value } = self.clone();
                 Ok(ActionResponseBody::SendToBitcoinAddress { address, value })
             }
@@ -140,7 +140,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         &MissingQueryParameter {
                             data_type: "float",
                             description:
-                                "The fee-per-byte you want to pay for the redeem transactions",
+                                "The fee-per-byte you want to pay for the redeem transaction in satoshis",
                         },
                     )
                     .expect("invalid use of HttpApiProblem");
@@ -162,7 +162,7 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             gas_limit,
         } = self;
         match query_params {
-            GetActionQueryParams::None => Ok(ActionResponseBody::SendEthereumTransaction {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::SendEthereumTransaction {
                 to: None,
                 data,
                 value,
@@ -189,7 +189,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
             gas_limit,
         } = self;
         match query_params {
-            GetActionQueryParams::None => Ok(ActionResponseBody::SendEthereumTransaction {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::SendEthereumTransaction {
                 to: Some(to),
                 data,
                 value,
@@ -429,4 +429,34 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                 })
         })
     )
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use serde_urlencoded;
+
+    #[test]
+    fn given_no_query_parameters_deserialize_to_none() {
+        let s = "";
+
+        let res = serde_urlencoded::from_str::<GetActionQueryParams>(s);
+        assert_eq!(res, Ok(GetActionQueryParams::None {}));
+    }
+
+    #[test]
+    fn given_bitcoin_identity_and_fee_deserialize_to_ditto() {
+        let s = "identity=18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725&fee_per_byte=10.59";
+
+        let res = serde_urlencoded::from_str::<GetActionQueryParams>(s);
+        assert_eq!(
+            res,
+            Ok(GetActionQueryParams::BitcoinIdentityAndFee {
+                identity: "18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725"
+                    .parse()
+                    .unwrap(),
+                fee_per_byte: 10.59
+            })
+        );
+    }
 }
