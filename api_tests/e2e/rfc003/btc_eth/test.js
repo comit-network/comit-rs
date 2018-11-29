@@ -16,7 +16,7 @@ const alice_final_address = "0x00a329c0648769a73afac7f9381e02fb43dbea72";
 const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 
 const alpha_asset = "100000000";
-const beta_asset = new ethutil.BN(web3.utils.toWei("10", "ether"), 10);
+const beta_asset = new ethutil.BN(web3.utils.toWei("4.2", "ether"), 10);
 
 describe("RFC003 Bitcoin for Ether", () => {
     before(async function() {
@@ -226,9 +226,13 @@ describe("RFC003 Bitcoin for Ether", () => {
             alice_swap_href,
             "AlphaFundedBetaRedeemed"
         );
+    });
+
+    it("[Alice] Should have received the beta asset after the redeem", async function() {
         let alice_eth_balance_after = await test_lib.eth_balance(alice_final_address);
-        let alice_eth_balance_expected_balance = new ethutil.BN(alice_eth_balance_before, 10).add(beta_asset).toString();
-        alice_eth_balance_after.should.equal(alice_eth_balance_expected_balance);
+        alice_eth_balance_after = new ethutil.BN(alice_eth_balance_after, 10);
+        let alice_eth_balance_expected_balance = new ethutil.BN(alice_eth_balance_before, 10).add(beta_asset);
+        alice_eth_balance_after.gte(alice_eth_balance_expected_balance).should.be.equal(true);
     });
 
     let bob_redeem_href;
