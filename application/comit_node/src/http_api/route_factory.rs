@@ -9,12 +9,6 @@ use swap_protocols::{
 use swaps::common::SwapId;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct GetActionQueryParams {
-    #[serde(default)]
-    pub identity: String,
-}
-
 pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
