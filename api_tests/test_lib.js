@@ -165,7 +165,7 @@ class WalletConf {
         return this.deploy_eth_contract(token_contract_deploy);
     }
 
-    async deploy_eth_contract(data = "0x0") {
+    async deploy_eth_contract(data = "0x0", value = "0x0") {
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
 
         const tx = new EthereumTx({
@@ -174,7 +174,7 @@ class WalletConf {
             gasLimit: "0x3D0900",
             to: null,
             data: data,
-            value: "0x0",
+            value: value,
             chainId: 1
         });
 

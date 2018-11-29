@@ -1,7 +1,7 @@
 use comit_client;
 use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
-use std::sync::Arc;
+use std::{fmt, sync::Arc};
 use swap_protocols::{
     self,
     asset::Asset,
@@ -457,6 +457,33 @@ impl<R: Role> PollSwap<R> for Swap<R> {
                 Final(SwapOutcome::AlphaRefundedBetaRedeemed)
             ),
         }
+    }
+}
+
+macro_rules! impl_display {
+    ($state:ident) => {
+        impl<R: Role> fmt::Display for $state<R> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+                write!(f, stringify!($state))
+            }
+        }
+    };
+}
+
+impl_display!(Start);
+impl_display!(Accepted);
+impl_display!(AlphaDeployed);
+impl_display!(AlphaFunded);
+impl_display!(AlphaFundedBetaDeployed);
+impl_display!(BothFunded);
+impl_display!(AlphaFundedBetaRefunded);
+impl_display!(AlphaRefundedBetaFunded);
+impl_display!(AlphaFundedBetaRedeemed);
+impl_display!(AlphaRedeemedBetaFunded);
+
+impl fmt::Display for Final {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "Final")
     }
 }
 

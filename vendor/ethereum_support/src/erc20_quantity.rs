@@ -1,3 +1,5 @@
+use std::fmt;
+use u256_ext::ToBigDecimal;
 use web3::types::Address;
 use U256;
 
@@ -5,6 +7,12 @@ use U256;
 pub struct Erc20Quantity {
     token_contract: Address,
     quantity: U256,
+}
+
+impl fmt::Display for Erc20Quantity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "{}", self.quantity.to_bigdec(0))
+    }
 }
 
 impl Erc20Quantity {

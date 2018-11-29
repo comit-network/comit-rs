@@ -1,7 +1,17 @@
 use block_processor::{Block, Query, QueryMatchResult, Transaction};
 use ethereum_support::{
-    web3::types::U256, Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction,
+    web3::{
+        transports::Http,
+        types::{H256, U256},
+        Web3,
+    },
+    Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction, TransactionId,
 };
+use futures::{
+    future::Future,
+    stream::{self, Stream},
+};
+use hex;
 use query_result_repository::QueryResult;
 use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
 use std::sync::Arc;
@@ -22,17 +32,51 @@ impl QueryType for EthereumTransactionQuery {
 }
 
 impl ShouldExpand for EthereumTransactionQuery {
-    fn should_expand(_: &QueryParams) -> bool {
-        false
+    fn should_expand(params: &QueryParams) -> bool {
+        params.expand_results
+    }
+}
+
+fn clean_0x(s: &str) -> &str {
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
     }
 }
 
 impl ExpandResult for EthereumTransactionQuery {
-    type Client = ();
-    type Item = ();
+    type Client = Web3<Http>;
+    type Item = EthereumTransaction;
 
-    fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
-        unimplemented!()
+    fn expand_result(
+        result: &QueryResult,
+        client: Arc<Web3<Http>>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        let futures: Vec<_> = result
+            .0
+            .iter()
+            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
+                Ok(bytes) => Some(bytes),
+                Err(e) => {
+                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
+                    None
+                }
+            })
+            .map(|id| {
+                client
+                    .eth()
+                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
+                    .map_err(Error::Web3)
+            })
+            .collect();
+
+        let results = stream::futures_ordered(futures)
+            .filter_map(|item| item)
+            .collect()
+            .wait();
+
+        results
     }
 }
 

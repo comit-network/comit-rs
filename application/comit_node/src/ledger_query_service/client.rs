@@ -1,9 +1,10 @@
+use futures::{stream::Stream, Async};
 use ledger_query_service::{
     bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
-    FetchQueryResults, LedgerQueryServiceApiClient, QueryId,
+    FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
 };
-use reqwest::{async::Client, header::LOCATION, Url};
-use serde::{Deserialize, Serialize};
+use reqwest::{async::Client, header::LOCATION, StatusCode, Url};
+use serde::Deserialize;
 use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::future::Future;
 
@@ -40,24 +41,60 @@ impl DefaultLedgerQueryServiceApiClient {
         }
     }
 
-    fn _create<L: Ledger, Q: Serialize>(
+    fn _create<L: Ledger, Q: Query>(
         &self,
         create_endpoint: Url,
-        query: &Q,
+        query: Q,
     ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+        debug!("Creating {:?} at {}", query, create_endpoint);
+
         let query_id = self
             .client
             .post(create_endpoint)
             .json(&query)
             .send()
-            .map_err(|_| Error::FailedRequest)
+            .map_err(move |e| {
+                Error::FailedRequest(format!("Failed to create {:?} because {:?}", query, e))
+            })
             .and_then(|response| {
+                if response.status() != StatusCode::CREATED {
+                    if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
+                        error!(
+                            "Failed to create query. LQS returned: {}",
+                            String::from_utf8(bytes.to_vec()).expect("LQS returned non-utf8 error")
+                        );
+                    }
+
+                    return Err(Error::MalformedResponse(format!("Could not create query")));
+                }
+
                 response
                     .headers()
                     .get(LOCATION)
-                    .ok_or_else(|| Error::MalformedResponse)
-                    .and_then(|value| value.to_str().map_err(|_| Error::MalformedResponse))
-                    .and_then(|location| Url::parse(location).map_err(|_| Error::MalformedResponse))
+                    .ok_or_else(|| {
+                        Error::MalformedResponse(format!(
+                            "Location header was not present in response"
+                        ))
+                    })
+                    .and_then(|value| {
+                        value.to_str().map_err(|e| {
+                            Error::MalformedResponse(format!(
+                                "Unable to extract Location from response: {:?}",
+                                e
+                            ))
+                        })
+                    })
+                    .and_then(|location| {
+                        Url::parse(location).map_err(|e| {
+                            Error::MalformedResponse(format!(
+                                "Failed to parse {} as URL: {:?}",
+                                location, e
+                            ))
+                        })
+                    })
+            })
+            .inspect(|query_id| {
+                info!("Created new query at location {}", query_id);
             })
             .map(QueryId::new);
 
@@ -68,12 +105,18 @@ impl DefaultLedgerQueryServiceApiClient {
         &self,
         query: &QueryId<L>,
     ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send> {
+        let url = query.as_ref().clone();
         let transactions = self
             .client
-            .get(query.as_ref().clone())
+            .get(url.clone())
             .send()
             .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
-            .map_err(|_| Error::FailedRequest)
+            .map_err(move |e| {
+                Error::FailedRequest(format!(
+                    "Failed to fetch results for {:?} because {:?}",
+                    url, e
+                ))
+            })
             .map(|response| response.matches);
 
         Box::new(transactions)
@@ -88,10 +131,15 @@ impl DefaultLedgerQueryServiceApiClient {
 
         let transactions = self
             .client
-            .get(url)
+            .get(url.clone())
             .send()
             .and_then(|mut response| response.json::<QueryResponse<L::Transaction>>())
-            .map_err(|_| Error::FailedRequest)
+            .map_err(move |e| {
+                Error::FailedRequest(format!(
+                    "Failed to fetch results for {:?} because {:?}",
+                    url, e
+                ))
+            })
             .map(|response| response.matches);
 
         Box::new(transactions)
@@ -106,7 +154,9 @@ impl DefaultLedgerQueryServiceApiClient {
                 .delete(query.as_ref().clone())
                 .send()
                 .map(|_| ())
-                .map_err(|_| Error::FailedRequest),
+                .map_err(|e| {
+                    Error::FailedRequest(format!("Failed to delete query because {:?}", e))
+                }),
         )
     }
 }
@@ -122,7 +172,7 @@ impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
             }
             BitcoinQuery::Block { .. } => self.create_bitcoin_block_query_endpoint.clone(),
         };
-        self._create(endpoint, &query)
+        self._create(endpoint, query)
     }
 }
 
@@ -161,7 +211,7 @@ impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient
             }
             EthereumQuery::Block { .. } => self.create_ethereum_block_query_endpoint.clone(),
         };
-        self._create(endpoint, &query)
+        self._create(endpoint, query)
     }
 }
 

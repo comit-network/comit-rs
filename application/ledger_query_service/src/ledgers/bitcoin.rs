@@ -39,8 +39,7 @@ impl ExpandResult for BitcoinTransactionQuery {
     ) -> Result<Vec<BitcoinTransaction>, Error> {
         let mut expanded_result: Vec<BitcoinTransaction> = Vec::new();
         for tx_id in result.clone().0 {
-            let tx_id =
-                TransactionId::from_hex(tx_id.as_str()).map_err(Error::TransactionIdConversion)?;
+            let tx_id = TransactionId::from_hex(tx_id.as_str()).map_err(|_| Error::InvalidHex)?;
 
             let transaction = client
                 .get_raw_transaction_verbose(&tx_id)
@@ -92,7 +91,7 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
         }
     }
     fn is_empty(&self) -> bool {
-        self.to_address.is_none()
+        self.to_address.is_none() && self.from_outpoint.is_none() && self.unlock_script.is_none()
     }
 }
 

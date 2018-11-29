@@ -2,7 +2,7 @@ use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        find_htlc_location::{Error, FindHtlcLocation},
+        find_htlc_location::{compare_assets, Error, FindHtlcLocation},
         state_machine::HtlcParams,
     },
 };
@@ -24,24 +24,7 @@ impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
         let actual_value = BitcoinQuantity::from_satoshi(txout.value);
         let required_value = htlc_params.asset;
 
-        debug!("Value of HTLC at {:?} is {}", location, actual_value);
-
-        let has_enough_money = actual_value >= required_value;
-
-        trace!(
-            "{} >= {} -> {}",
-            actual_value,
-            required_value,
-            has_enough_money
-        );
-        if has_enough_money {
-            Ok(location)
-        } else {
-            Err(Error::UnexpectedAsset {
-                found: actual_value,
-                expected: required_value,
-            })
-        }
+        compare_assets(location, actual_value, required_value)
     }
 }
 

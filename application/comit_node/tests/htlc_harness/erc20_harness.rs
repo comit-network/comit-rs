@@ -17,6 +17,7 @@ use std::{sync::Arc, time::Duration};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
+#[derive(Debug)]
 pub struct Erc20HarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_timeout: Duration,

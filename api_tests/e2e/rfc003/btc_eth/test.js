@@ -166,6 +166,38 @@ describe("RFC003 Bitcoin for Ether", () => {
         bob_funding_href = swap._links.fund.href;
     });
 
+    let bob_funding_action;
+
+    it("[Bob] Can get the funding action from the ‘fund’ link", async () => {
+        let res = await chai
+            .request(bob.comit_node_url())
+            .get(bob_funding_href);
+        res.should.have.status(200);
+        bob_funding_action = res.body;
+    });
+
+    it("[Bob] Can execute the funding action", async () => {
+        bob_funding_action.should.include.all.keys("data", "gas_limit", "value");
+        await bob.wallet.deploy_eth_contract(bob_funding_action.data, new ethutil.BN(bob_funding_action.value, 10));
+    });
+
+    it("[Alice] Should be in BothFunded state after Bob executes the funding action", async function() {
+        this.timeout(10000);
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "BothFunded"
+        );
+    });
+
+    it("[Bob] Should be in BothFunded state after executing the funding action", async function() {
+        this.timeout(10000);
+        await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            "BothFunded"
+        );
+    });
 
     // let alice_funding_required;
 

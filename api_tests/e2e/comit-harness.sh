@@ -88,7 +88,7 @@ function setup() {
     LQS_PID=$(
         export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service;
         export ETHEREUM_POLLING_TIME_SEC=1;
-        export RUST_LOG=debug;
+        export RUST_LOG=warn,ledger_query_service=debug,warp=info;
 
         start_target "ledger_query_service" "LQS";
     );

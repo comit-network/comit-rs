@@ -3,7 +3,7 @@ use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc},
-        find_htlc_location::{Error, FindHtlcLocation},
+        find_htlc_location::{compare_assets, Error, FindHtlcLocation},
         state_machine::HtlcParams,
     },
 };
@@ -21,14 +21,11 @@ impl FindHtlcLocation<Ethereum, EtherQuantity> for Transaction {
             return Err(Error::WrongTransaction);
         }
 
-        if self.value < htlc_params.asset.wei() {
-            return Err(Error::UnexpectedAsset {
-                found: EtherQuantity::from_wei(self.value),
-                expected: htlc_params.asset,
-            });
-        }
+        let location = self.from.calculate_contract_address(&self.nonce);
+        let actual_value = EtherQuantity::from_wei(self.value);
+        let required_value = htlc_params.asset;
 
-        Ok(self.from.calculate_contract_address(&self.nonce))
+        compare_assets(location, actual_value, required_value)
     }
 }
 
@@ -45,6 +42,9 @@ impl FindHtlcLocation<Ethereum, Erc20Quantity> for Transaction {
             return Err(Error::WrongTransaction);
         }
 
+        panic!("make sure to validate the contract address of the token before using compare_assets in this impl");
+
+        #[allow(unreachable_code)]
         Ok(self.from.calculate_contract_address(&self.nonce))
     }
 }

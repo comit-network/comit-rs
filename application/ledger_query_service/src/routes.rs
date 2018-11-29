@@ -72,6 +72,7 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 
 pub fn non_empty_query<O, Q: Query<O>>(query: Q) -> Result<Q, Rejection> {
     if query.is_empty() {
+        error!("Rejected {:?} because it is an empty query", query);
         Err(warp::reject::custom(HttpApiProblemStdError {
             http_api_problem: Error::EmptyQuery.into(),
         }))
