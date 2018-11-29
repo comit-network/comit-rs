@@ -263,7 +263,7 @@ describe("RFC003 Bitcoin for Ether", () => {
         await bob.wallet.send_raw_tx(bob_redeem_action.hex)
     });
 
-    it("[Alice] Should be in BothRedeemed state after Bob executes the the redeem action", async function() {
+    it("[Alice] Should be in BothRedeemed state after Bob executes the redeem action", async function() {
         this.timeout(10000);
         await alice.poll_comit_node_until(
             chai,
