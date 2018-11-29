@@ -370,6 +370,14 @@ mod tests {
             transaction_data_length: Some(5),
         };
 
+        let refund_query = EthereumTransactionQuery {
+            from_address: None,
+            to_address: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
+            is_contract_creation: Some(false),
+            transaction_data: Some(Bytes::from(vec![])),
+            transaction_data_length: None,
+        };
+
         let transaction = Transaction {
             hash: H256::from(123),
             nonce: U256::from(1),
@@ -388,6 +396,7 @@ mod tests {
             .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
         assert_that(&query_data_length.matches(&transaction))
             .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&refund_query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]

@@ -138,7 +138,7 @@ class WalletConf {
         return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
-    async send_eth_transaction_to(to, data = "0x0", value = "0x0") {
+    async send_eth_transaction_to(to, data = "0x0", value = "0x0", gas_limit = "0x100000") {
         if (!to) {
             throw new Error("`to` cannot be null");
         }
@@ -148,7 +148,7 @@ class WalletConf {
         const tx = new EthereumTx({
             nonce: "0x" + nonce.toString(16),
             gasPrice: "0x1",
-            gasLimit: "0x100000",
+            gasLimit: gas_limit,
             to: to,
             data: data,
             value: value,

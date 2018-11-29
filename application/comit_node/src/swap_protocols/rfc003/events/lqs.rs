@@ -68,26 +68,26 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
 
     fn htlc_redeemed_or_refunded(
         &mut self,
-        refunded_query: Q,
         redeemed_query: Q,
+        refunded_query: Q,
     ) -> &mut RedeemedOrRefunded<L> {
         let ledger_first_match = self.ledger_first_match.clone();
-        let refunded_query_id = self.create_ledger_query.create_query(refunded_query);
         let redeemed_query_id = self.create_ledger_query.create_query(redeemed_query);
+        let refunded_query_id = self.create_ledger_query.create_query(refunded_query);
 
         self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
-            let inner_first_match = ledger_first_match.clone();
-            let refunded_future = refunded_query_id
-                .map_err(rfc003::Error::LedgerQueryService)
-                .and_then(move |query_id| inner_first_match.first_match_of(query_id));
             let inner_first_match = ledger_first_match.clone();
             let redeemed_future = redeemed_query_id
                 .map_err(rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| inner_first_match.first_match_of(query_id));
+            let inner_first_match = ledger_first_match.clone();
+            let refunded_future = refunded_query_id
+                .map_err(rfc003::Error::LedgerQueryService)
+                .and_then(move |query_id| inner_first_match.first_match_of(query_id));
 
             Box::new(
-                refunded_future
-                    .select2(redeemed_future)
+                redeemed_future
+                    .select2(refunded_future)
                     .map(|either| match either {
                         Either::A((item, _stream)) => Either::A(item),
                         Either::B((item, _stream)) => Either::B(item),
@@ -128,7 +128,7 @@ where
         let refunded_query = Q::new_htlc_refunded_query(&htlc_params, htlc_location);
         let redeemed_query = Q::new_htlc_redeemed_query(&htlc_params, htlc_location);
 
-        self.htlc_redeemed_or_refunded(refunded_query, redeemed_query)
+        self.htlc_redeemed_or_refunded(redeemed_query, refunded_query)
     }
 }
 
@@ -194,6 +194,6 @@ impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
         let redeemed_query = erc20::new_htlc_redeemed_query(htlc_location);
 
         self.lqs_events
-            .htlc_redeemed_or_refunded(refunded_query, redeemed_query)
+            .htlc_redeemed_or_refunded(redeemed_query, refunded_query)
     }
 }
