@@ -24,6 +24,7 @@ pub use self::{
     bob::BobToAlice,
     lqs::{LqsEvents, LqsEventsForErc20},
 };
+use swap_protocols::rfc003::{FundTransaction, RedeemTransaction, RefundTransaction};
 
 type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
@@ -38,12 +39,12 @@ pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
 >;
 
 pub type Deployed<L: Ledger> = Future<L::HtlcLocation>;
-pub type Funded<L: Ledger> = Future<Option<L::Transaction>>;
+pub type Funded<L: Ledger> = Future<Option<FundTransaction<L>>>;
 pub type Refunded<L: Ledger> = Future<L::TxId>;
 pub type Redeemed<L: Ledger> = Future<L::TxId>;
 pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
     Future<Either<AL::Transaction, BL::HtlcLocation>>;
-pub type RedeemedOrRefunded<L: Ledger> = Future<Either<L::Transaction, L::Transaction>>;
+pub type RedeemedOrRefunded<L: Ledger> = Future<Either<RedeemTransaction<L>, RefundTransaction<L>>>;
 
 pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
     fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Deployed<L>;

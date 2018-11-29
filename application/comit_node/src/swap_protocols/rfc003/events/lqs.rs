@@ -17,7 +17,7 @@ use swap_protocols::{
         },
         find_htlc_location::FindHtlcLocation,
         state_machine::HtlcParams,
-        Ledger,
+        FundTransaction, Ledger, RedeemTransaction, RefundTransaction,
     },
 };
 
@@ -79,11 +79,13 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
             let inner_first_match = ledger_first_match.clone();
             let redeemed_future = redeemed_query_id
                 .map_err(rfc003::Error::LedgerQueryService)
-                .and_then(move |query_id| inner_first_match.first_match_of(query_id));
+                .and_then(move |query_id| inner_first_match.first_match_of(query_id))
+                .map(RedeemTransaction);
             let inner_first_match = ledger_first_match.clone();
             let refunded_future = refunded_query_id
                 .map_err(rfc003::Error::LedgerQueryService)
-                .and_then(move |query_id| inner_first_match.first_match_of(query_id));
+                .and_then(move |query_id| inner_first_match.first_match_of(query_id))
+                .map(RefundTransaction);
 
             Box::new(
                 redeemed_future
@@ -178,7 +180,8 @@ impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
                 .and_then(move |query_id| {
                     ledger_first_match
                         .first_match_of(query_id)
-                        .map(move |tx| Some(tx))
+                        .map(FundTransaction)
+                        .map(Some)
                 });
 
             Box::new(funded_future)

@@ -3,11 +3,10 @@ use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 use swap_protocols::{
-    self,
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, roles::Role, ExtractSecret, SaveState, Secret, SecretHash,
-        SwapOutcome,
+        self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, Secret,
+        SecretHash, SwapOutcome,
     },
 };
 
@@ -181,7 +180,7 @@ pub enum Swap<R: Role> {
     #[state_machine_future(transitions(Final))]
     AlphaFundedBetaRedeemed {
         swap: OngoingSwap<R>,
-        beta_redeemed_tx: <R::BetaLedger as swap_protocols::Ledger>::Transaction,
+        beta_redeemed_tx: RedeemTransaction<R::BetaLedger>,
         alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
         secret: Secret,
     },

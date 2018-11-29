@@ -7,7 +7,7 @@ use swap_protocols::{
         events::{self, LedgerEvents},
         roles::test::{Alisha, Bobisha, FakeCommunicationEvents},
         state_machine::*,
-        Secret,
+        RedeemTransaction, Secret,
     },
 };
 
@@ -191,14 +191,14 @@ fn alpha_refunded() {
                 vout: 0,
             }))),
             htlc_funded: Some(Box::new(future::ok(None))),
-            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(
+            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(RedeemTransaction(
                 bitcoin_support::Transaction {
                     version: 1,
                     lock_time: 42,
                     input: vec![],
                     output: vec![],
                 }
-            )))),
+            ))))),
             ..Default::default()
         },
         FakeLedgerEvents::<Ethereum> {
@@ -273,14 +273,14 @@ fn bob_transition_alpha_refunded() {
                 vout: 0,
             }))),
             htlc_funded: Some(Box::new(future::ok(None))),
-            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(
+            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(RedeemTransaction(
                 bitcoin_support::Transaction {
                     version: 1,
                     lock_time: 42,
                     input: vec![],
                     output: vec![],
                 }
-            )))),
+            ))))),
             ..Default::default()
         },
         FakeLedgerEvents::<Ethereum> {
