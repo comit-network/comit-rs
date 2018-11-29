@@ -1,4 +1,4 @@
-use ethereum_support::Address;
+use ethereum_support::{Address, Bytes, U256};
 use swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc, Seconds},
     SecretHash,
@@ -82,6 +82,29 @@ impl Htlc for EtherHtlc {
         debug!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
+    }
+    fn deployment_gas_limit(data: &Bytes) -> U256 {
+        let create = 32_000;
+        let constructor = 1_000;
+        let gas_per_byte = 200;
+        let n_bytes = data.0.len();
+
+        let estimate = create + constructor + n_bytes * gas_per_byte;
+        let buffer = 10_000;
+        (estimate + buffer).into()
+    }
+    fn transaction_gas_limit(data: &Bytes) -> U256 {
+        let base_tx = 21_000;
+        let gas_per_non_zero_byte = 64.0;
+        let gas_per_zero_byte = 4.0;
+        let zero_byte_percent = 0.05;
+        let avg_gas_per_byte = zero_byte_percent * gas_per_zero_byte
+            + (1.0 - zero_byte_percent) * gas_per_non_zero_byte;
+        let n_bytes = data.0.len();
+
+        let estimate = base_tx + n_bytes * avg_gas_per_byte as usize;
+        let buffer = 10_000;
+        (estimate + buffer).into()
     }
 }
 

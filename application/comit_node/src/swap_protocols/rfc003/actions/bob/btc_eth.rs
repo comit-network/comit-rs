@@ -16,20 +16,26 @@ use swap_protocols::{
 impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     pub fn fund_action(&self) -> ethereum::ContractDeploy {
         let htlc = EtherHtlc::from(self.beta_htlc_params());
+        let data = htlc.compile_to_hex().into();
+        let gas_limit = EtherHtlc::deployment_gas_limit(&data);
+
         ethereum::ContractDeploy {
-            data: htlc.compile_to_hex().into(),
+            data,
             value: self.beta_asset,
-            gas_limit: 420_000.into(), //TODO: Calculate properly
+            gas_limit,
         }
     }
     pub fn refund_action(
         &self,
         alpha_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
+        let data = Bytes::default();
+        let gas_limit = EtherHtlc::transaction_gas_limit(&data);
+
         ethereum::SendTransaction {
             to: alpha_htlc_location,
-            data: Bytes::default(),
-            gas_limit: 42_000.into(), //TODO: Calculate properly
+            data,
+            gas_limit,
             value: EtherQuantity::zero(),
         }
     }

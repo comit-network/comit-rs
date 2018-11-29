@@ -1,4 +1,7 @@
-use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{
+    web3::types::{Address, U256},
+    Bytes, Erc20Quantity, EtherQuantity,
+};
 use hex;
 use std::time::Duration;
 use swap_protocols::{
@@ -29,6 +32,8 @@ impl Into<Bytes> for ByteCode {
 
 pub trait Htlc {
     fn compile_to_hex(&self) -> ByteCode;
+    fn deployment_gas_limit(data: &Bytes) -> U256;
+    fn transaction_gas_limit(data: &Bytes) -> U256;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

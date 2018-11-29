@@ -5,7 +5,8 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::{Action, StateActions},
-        bitcoin, ethereum,
+        bitcoin,
+        ethereum::{self, Erc20Htlc, Htlc},
         roles::Alice,
         state_machine::*,
     },
@@ -35,10 +36,13 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
         &self,
         beta_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
+        let data = Bytes::from(self.secret.raw_secret().to_vec());
+        let gas_limit = Erc20Htlc::transaction_gas_limit(&data);
+
         ethereum::SendTransaction {
             to: beta_htlc_location,
-            data: Bytes::from(self.secret.raw_secret().to_vec()),
-            gas_limit: 42_000.into(), //TODO: Calculate properly
+            data,
+            gas_limit,
             value: EtherQuantity::zero(),
         }
     }
