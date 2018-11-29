@@ -15,7 +15,6 @@ pub mod state_store;
 mod error;
 
 mod ledger;
-mod outcome;
 mod save_state;
 mod secret;
 
@@ -25,7 +24,6 @@ mod state_machine_test;
 pub use self::{
     error::Error,
     ledger::{FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
-    outcome::SwapOutcome,
     save_state::SaveState,
     secret::{RandomnessSource, Secret, SecretFromErr, SecretHash},
 };

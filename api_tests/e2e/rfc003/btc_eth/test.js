@@ -257,4 +257,27 @@ describe("RFC003 Bitcoin for Ether", () => {
         bob_redeem_action = res.body;
     });
 
+
+    it("[Bob] Can execute the redeem action", async function () {
+        bob_redeem_action.should.include.all.keys("hex");
+        await bob.wallet.send_raw_tx(bob_redeem_action.hex)
+    });
+
+    it("[Alice] Should be in BothRedeemed state after Bob executes the the redeem action", async function() {
+        this.timeout(10000);
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "BothRedeemed"
+        );
+    });
+
+    it("[Bob] Should be in BothRedeemed state after executing the redeem action", async function() {
+        this.timeout(10000);
+        await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            "BothRedeemed"
+        );
+    });
 });

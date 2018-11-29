@@ -138,6 +138,10 @@ class WalletConf {
         return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
+    async send_raw_tx(hex) {
+        return bitcoin_rpc_client.sendRawTransaction(hex);
+    }
+
     async send_eth_transaction_to(
         to,
         data = "0x0",
