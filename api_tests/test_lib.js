@@ -156,7 +156,7 @@ class WalletConf {
 
         const tx = new EthereumTx({
             nonce: "0x" + nonce.toString(16),
-            gasPrice: "0x1",
+            gasPrice: "0x0",
             gasLimit: gas_limit,
             to: to,
             data: data,
@@ -179,7 +179,7 @@ class WalletConf {
 
         const tx = new EthereumTx({
             nonce: "0x" + nonce.toString(16),
-            gasPrice: "0x1",
+            gasPrice: "0x0",
             gasLimit: gas_limit,
             to: null,
             data: data,
@@ -320,3 +320,11 @@ module.exports.ledger_query_service_conf = (host, port) => {
         return owner_wallet.send_eth_transaction_to(contract_address, payload);
     };
 }
+
+module.exports.btc_balance = async function (address) {
+    return bitcoin_rpc_client.getReceivedByAddress(address)
+};
+
+module.exports.eth_balance = async function (address) {
+    return web3.eth.getBalance(address)
+};

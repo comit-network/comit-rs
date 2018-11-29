@@ -157,7 +157,7 @@ fn create_htlc(
         .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_CHECKSIG)
         .into_script();
-    debug!("BTC HTLC: {}", script);
+    trace!("BTC HTLC: {}", script);
     script
 }
 

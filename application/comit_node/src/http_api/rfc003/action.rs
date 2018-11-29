@@ -430,7 +430,10 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             state_action
                                 .clone()
                                 .into_response_body(query_params.clone())
-                                .map(|body| warp::reply::json(&body)),
+                                .map(|body| {
+                                    trace!("Swap {}: Returning {:?} for {:?}", id, body, action);
+                                    warp::reply::json(&body)
+                                }),
                         )
                     } else {
                         None
