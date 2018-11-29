@@ -351,10 +351,11 @@ pub enum GetAction {
     Refund,
 }
 
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
-    PartialEq<Action<Accept, Decline, Deploy, Fund, Redeem, Refund>> for GetAction
-{
-    fn eq(&self, other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>) -> bool {
+impl GetAction {
+    fn matches<Accept, Decline, Deploy, Fund, Redeem, Refund>(
+        &self,
+        other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>,
+    ) -> bool {
         match other {
             Action::Fund(_) => *self == GetAction::Fund,
             Action::Redeem(_) => *self == GetAction::Redeem,
@@ -412,7 +413,7 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                 .actions()
                 .iter()
                 .find_map(|state_action| {
-                    if action == state_action {
+                    if action.matches(state_action) {
                         Some(
                             state_action
                                 .clone()
