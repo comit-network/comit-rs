@@ -89,10 +89,16 @@ impl IntoResponseBody for bitcoin::SendToAddress {
             _ => {
                 error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
                 Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("Incorrect GET query parameters"))
+                    .set_detail("This action does not take any query parameters"))
             }
         }
     }
+}
+
+#[derive(Serialize)]
+struct MissingQueryParameter {
+    data_type: &'static str,
+    description: &'static str,
 }
 
 impl IntoResponseBody for bitcoin::SpendOutput {
@@ -117,8 +123,29 @@ impl IntoResponseBody for bitcoin::SpendOutput {
             }
             _ => {
                 error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: identity and fee-per-byte.");
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("Incorrect GET query parameters"))
+                let mut problem = HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("This action requires additional query parameters");
+                problem
+                    .set_value(
+                        "identity",
+                        &MissingQueryParameter {
+                            data_type: "string",
+                            description: "The bitcoin address to where the funds should be sent",
+                        },
+                    )
+                    .expect("invalid use of HttpApiProblem");
+                problem
+                    .set_value(
+                        "fee_per_byte",
+                        &MissingQueryParameter {
+                            data_type: "float",
+                            description:
+                                "The fee-per-byte you want to pay for the redeem transactions",
+                        },
+                    )
+                    .expect("invalid use of HttpApiProblem");
+
+                Err(problem)
             }
         }
     }
@@ -144,7 +171,7 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             _ => {
                 error!("Unexpected GET parameters for an ethereum::ContractDeploy action type. Expected: None.");
                 Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("Incorrect GET query parameters"))
+                    .set_detail("This action does not take any query parameters"))
             }
         }
     }
@@ -171,7 +198,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
             _ => {
                 error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");
                 Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("Incorrect GET query parameters"))
+                    .set_detail("This action does not take any query parameters"))
             }
         }
     }
@@ -182,7 +209,7 @@ impl IntoResponseBody for () {
         self,
         _: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
-        error!("IntoResponseBody should not be called for ()");
+        error!("IntoResponseBody should not be called for the unit type");
         Err(HttpApiProblem::with_title_and_type_from_status(500))
     }
 }
