@@ -43,6 +43,18 @@ pub fn unsupported() -> HttpApiProblem {
     HttpApiProblem::new("swap-not-supported").set_status(400)
 }
 
+pub fn serde(_e: serde_json::Error) -> HttpApiProblem {
+    //FIXME: Use error to give more detail to the user
+    HttpApiProblem::new("invalid-body")
+        .set_status(400)
+        .set_detail("Failed to deserialize given body.")
+}
+
+pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
+    HttpApiProblem::with_title_and_type_from_status(500)
+        .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
+}
+
 impl From<state_store::Error> for HttpApiProblem {
     fn from(_e: state_store::Error) -> Self {
         HttpApiProblem::with_title_and_type_from_status(500).set_detail("Storage layer failure")
