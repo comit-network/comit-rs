@@ -1,4 +1,4 @@
-use ethereum_support::Address;
+use ethereum_support::{Address, Bytes, U256};
 use swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc, Seconds},
     SecretHash,
@@ -42,6 +42,18 @@ impl EtherHtlc {
         debug!("Created new HTLC for ethereum: {:#?}", htlc);
 
         htlc
+    }
+
+    pub fn deployment_gas_limit(&self) -> U256 {
+        let bytes: Bytes = self.compile_to_hex().into();
+        let n_bytes = bytes.0.len();
+        let gas_per_byte = 200;
+
+        U256::from(50_000 + n_bytes * gas_per_byte)
+    }
+
+    pub fn tx_gas_limit() -> U256 {
+        U256::from(100_000)
     }
 }
 

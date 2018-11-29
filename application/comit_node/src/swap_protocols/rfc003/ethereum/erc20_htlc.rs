@@ -71,6 +71,22 @@ impl Erc20Htlc {
     pub fn token_contract_address(&self) -> Address {
         self.token_contract_address
     }
+
+    pub fn deployment_gas_limit(&self) -> U256 {
+        let bytes: Bytes = self.compile_to_hex().into();
+        let n_bytes = bytes.0.len();
+        let gas_per_byte = 200;
+
+        U256::from(50_000 + n_bytes * gas_per_byte)
+    }
+
+    pub fn tx_gas_limit() -> U256 {
+        U256::from(100_000)
+    }
+
+    pub fn fund_tx_gas_limit() -> U256 {
+        U256::from(100_000)
+    }
 }
 
 impl Htlc for Erc20Htlc {

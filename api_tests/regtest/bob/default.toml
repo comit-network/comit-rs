@@ -2,7 +2,6 @@
 [ethereum]
 network_id = 1
 node_url = "http://localhost:8545"
-gas_price=2_000_000_000
 queries_poll_interval_secs = 1
 
 [bitcoin]
