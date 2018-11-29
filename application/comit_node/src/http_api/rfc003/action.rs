@@ -44,11 +44,11 @@ impl FromStr for PostAction {
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum GetActionQueryParams {
-    None {},
-    BitcoinIdentityAndFee {
-        identity: bitcoin_support::Address,
-        fee_per_byte: f64,
+    BitcoinAddressAndFee {
+        address: bitcoin_support::Address,
+        fee_per_byte: String,
     },
+    None {},
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -107,27 +107,36 @@ impl IntoResponseBody for bitcoin::SpendOutput {
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
-            GetActionQueryParams::BitcoinIdentityAndFee {
-                identity,
+            GetActionQueryParams::BitcoinAddressAndFee {
+                address,
                 fee_per_byte,
-            } => {
-                let transaction = self.spend_to(identity).sign_with_rate(fee_per_byte);
-                match serialize_hex(&transaction) {
-                    Ok(hex) => Ok(ActionResponseBody::BroadcastSignedBitcoinTransaction { hex }),
-                    Err(e) => {
-                        error!("Could not serialized signed Bitcoin transaction: {:?}", e);
-                        Err(HttpApiProblem::with_title_and_type_from_status(500)
-                            .set_detail("Issue encountered when serializing Bitcoin transaction"))
+            } => match fee_per_byte.parse::<f64>() {
+                Ok(fee_per_byte) => {
+                    let transaction = self.spend_to(address).sign_with_rate(fee_per_byte);
+                    match serialize_hex(&transaction) {
+                        Ok(hex) => {
+                            Ok(ActionResponseBody::BroadcastSignedBitcoinTransaction { hex })
+                        }
+                        Err(e) => {
+                            error!("Could not serialized signed Bitcoin transaction: {:?}", e);
+                            Err(
+                                HttpApiProblem::with_title_and_type_from_status(500).set_detail(
+                                    "Issue encountered when serializing Bitcoin transaction",
+                                ),
+                            )
+                        }
                     }
                 }
-            }
+                Err(_) => Err(HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("fee-per-byte is not a valid float")),
+            },
             _ => {
-                error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: identity and fee-per-byte.");
+                error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: address and fee-per-byte.");
                 let mut problem = HttpApiProblem::with_title_and_type_from_status(400)
                     .set_detail("This action requires additional query parameters");
                 problem
                     .set_value(
-                        "identity",
+                        "address",
                         &MissingQueryParameter {
                             data_type: "string",
                             description: "The bitcoin address to where the funds should be sent",
@@ -447,16 +456,14 @@ mod test {
 
     #[test]
     fn given_bitcoin_identity_and_fee_deserialize_to_ditto() {
-        let s = "identity=18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725&fee_per_byte=10.59";
+        let s = "address=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa&fee_per_byte=10.59";
 
         let res = serde_urlencoded::from_str::<GetActionQueryParams>(s);
         assert_eq!(
             res,
-            Ok(GetActionQueryParams::BitcoinIdentityAndFee {
-                identity: "18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725"
-                    .parse()
-                    .unwrap(),
-                fee_per_byte: 10.59
+            Ok(GetActionQueryParams::BitcoinAddressAndFee {
+                address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".parse().unwrap(),
+                fee_per_byte: "10.59".to_string(),
             })
         );
     }

@@ -20,6 +20,7 @@ const alice_initial_eth = "0.1";
 const alice = test_lib.comit_conf("alice", {});
 
 const bob = test_lib.comit_conf("bob", {});
+const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const beta_asset = new BigNumber(web3.utils.toWei("10", "ether"));
@@ -232,13 +233,28 @@ describe("RFC003 Bitcoin for Ether", () => {
         );
     });
 
+    let bob_redeem_href;
+
     it("[Bob] Should be in AlphaFundedBetaRedeemed state after Alice executes the redeem action", async function() {
         this.timeout(10000);
-        await bob.poll_comit_node_until(
+        let swap = await bob.poll_comit_node_until(
             chai,
             bob_swap_href,
             "AlphaFundedBetaRedeemed"
         );
+        swap.should.have.property("_links");
+        swap._links.should.have.property("redeem");
+        bob_redeem_href = swap._links.redeem.href;
+    });
+
+    let bob_redeem_action;
+
+    it("[Bob] Can get the redeem action from the ‘redeem’ link", async () => {
+        let res = await chai
+            .request(bob.comit_node_url())
+            .get(bob_redeem_href + "?address=" + bob_final_address + "&fee_per_byte=20");
+        res.should.have.status(200);
+        bob_redeem_action = res.body;
     });
 
 });
