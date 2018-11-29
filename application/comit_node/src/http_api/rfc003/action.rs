@@ -381,10 +381,10 @@ impl FromStr for GetAction {
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         match s {
+            "deploy" => Ok(GetAction::Deploy),
             "fund" => Ok(GetAction::Fund),
             "redeem" => Ok(GetAction::Redeem),
             "refund" => Ok(GetAction::Refund),
-            "deploy" => Ok(GetAction::Deploy),
             _ => Err(()),
         }
     }
