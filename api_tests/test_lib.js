@@ -321,10 +321,19 @@ module.exports.ledger_query_service_conf = (host, port) => {
     };
 }
 
+module.exports.btc_generate = async function (num = 1) {
+    return bitcoin_rpc_client.generate(num);
+};
+
 module.exports.btc_balance = async function (address) {
-    return bitcoin_rpc_client.getReceivedByAddress(address)
+    let btc_balance = await bitcoin_rpc_client.getReceivedByAddress(address);
+    return parseFloat(btc_balance) * 100000000;
+};
+
+module.exports.import_address = async function (address) {
+    return bitcoin_rpc_client.importAddress(address);
 };
 
 module.exports.eth_balance = async function (address) {
-    return web3.eth.getBalance(address)
+    return web3.eth.getBalance(address);
 };

@@ -15,8 +15,9 @@ const bob = test_lib.comit_conf("bob", {});
 const alice_final_address = "0x00a329c0648769a73afac7f9381e02fb43dbea72";
 const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 
-const alpha_asset = "100000000";
+const alpha_asset = 100000000;
 const beta_asset = new ethutil.BN(web3.utils.toWei("4.2", "ether"), 10);
+const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 describe("RFC003 Bitcoin for Ether", () => {
     before(async function() {
@@ -24,6 +25,8 @@ describe("RFC003 Bitcoin for Ether", () => {
         await bob.wallet.fund_eth(bob_initial_eth);
         await alice.wallet.fund_eth(alice_initial_eth);
         await alice.wallet.fund_btc(10);
+        await test_lib.import_address(bob_final_address); // Watch only import
+        await test_lib.btc_generate();
     });
 
     let swap_location;
@@ -42,7 +45,7 @@ describe("RFC003 Bitcoin for Ether", () => {
                 },
                 alpha_asset: {
                     name: "Bitcoin",
-                    quantity: alpha_asset
+                    quantity: alpha_asset.toString()
                 },
                 beta_asset: {
                     name: "Ether",
@@ -265,6 +268,13 @@ describe("RFC003 Bitcoin for Ether", () => {
         bob_redeem_action.should.include.all.keys("hex");
         bob_btc_balance_before = await test_lib.btc_balance(bob_final_address);
         await bob.wallet.send_raw_tx(bob_redeem_action.hex)
+        await test_lib.btc_generate();
+    });
+
+    it("[Bob] Should have received the alpha asset after the redeem", async function() {
+        let bob_btc_balance_after = await test_lib.btc_balance(bob_final_address);
+        const bob_btc_balance_expected = bob_btc_balance_before + alpha_asset - alpha_max_fee;
+        bob_btc_balance_after.should.be.at.least(bob_btc_balance_expected);
     });
 
     it("[Alice] Should be in BothRedeemed state after Bob executes the redeem action", async function() {
@@ -274,9 +284,6 @@ describe("RFC003 Bitcoin for Ether", () => {
             alice_swap_href,
             "BothRedeemed"
         );
-
-        let bob_btc_balance_after = await test_lib.btc_balance(bob_final_address);
-        bob_btc_balance_after.should.equal(bob_btc_balance_before + alpha_asset);
     });
 
     it("[Bob] Should be in BothRedeemed state after executing the redeem action", async function() {
