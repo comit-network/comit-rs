@@ -42,9 +42,6 @@ impl FindHtlcLocation<Ethereum, Erc20Quantity> for Transaction {
             return Err(Error::WrongTransaction);
         }
 
-        panic!("make sure to validate the contract address of the token before using compare_assets in this impl");
-
-        #[allow(unreachable_code)]
         Ok(self.from.calculate_contract_address(&self.nonce))
     }
 }

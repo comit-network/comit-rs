@@ -77,7 +77,7 @@ impl Erc20Htlc {
         let n_bytes = bytes.0.len();
         let gas_per_byte = 200;
 
-        U256::from(50_000 + n_bytes * gas_per_byte)
+        U256::from(100_000 + n_bytes * gas_per_byte)
     }
 
     pub fn tx_gas_limit() -> U256 {

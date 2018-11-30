@@ -138,7 +138,12 @@ class WalletConf {
         return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
-    async send_eth_transaction_to(to, data = "0x0", value = "0x0", gas_limit = "0x100000") {
+    async send_eth_transaction_to(
+        to,
+        data = "0x0",
+        value = "0",
+        gas_limit = "0x100000"
+    ) {
         if (!to) {
             throw new Error("`to` cannot be null");
         }
@@ -151,7 +156,7 @@ class WalletConf {
             gasLimit: gas_limit,
             to: to,
             data: data,
-            value: value,
+            value: web3.utils.numberToHex(value),
             chainId: 1
         });
 
@@ -165,13 +170,13 @@ class WalletConf {
         return this.deploy_eth_contract(token_contract_deploy);
     }
 
-    async deploy_eth_contract(data = "0x0", value = "0x0") {
+    async deploy_eth_contract(data = "0x0", value = "0x0", gas_limit = "0x3D0900") {
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
 
         const tx = new EthereumTx({
             nonce: "0x" + nonce.toString(16),
             gasPrice: "0x1",
-            gasLimit: "0x3D0900",
+            gasLimit: gas_limit,
             to: null,
             data: data,
             value: value,
@@ -198,7 +203,8 @@ class WalletConf {
             data: payload
         };
 
-        return web3.eth.call(tx);
+        let hex_balance = await web3.eth.call(tx);
+        return web3.utils.toBN(hex_balance);
     }
 }
 
