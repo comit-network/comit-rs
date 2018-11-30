@@ -280,4 +280,25 @@ describe('RFC003: Bitcoin for ERC20', () => {
                 alice_redeem_action.gas_limit);
     });
 
+    it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
+        this.timeout(10000);
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "AlphaFundedBetaRedeemed"
+        );
+    });
+
+    let bob_redeem_href;
+    it("[Bob] Should be in AlphaFundedBetaRedeemed state after Alice executes the redeem action", async function() {
+        this.timeout(10000);
+        let swap = await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            "AlphaFundedBetaRedeemed"
+        );
+        swap.should.have.property("_links");
+        swap._links.should.have.property("redeem");
+        bob_redeem_href = swap._links.redeem.href;
+    });
 });
