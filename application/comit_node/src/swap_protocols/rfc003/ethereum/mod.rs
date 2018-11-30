@@ -50,7 +50,6 @@ impl Ledger for Ethereum {
     type LockDuration = Seconds;
     type HtlcLocation = Address;
     type HtlcIdentity = Address;
-    type HttpIdentity = Address;
 
     fn extract_secret(
         transaction: &RedeemTransaction<Self>,

@@ -23,10 +23,7 @@ mod state_machine_test;
 
 pub use self::{
     error::Error,
-    ledger::{
-        FundTransaction, HttpRefundIdentity, HttpSuccessIdentity, Ledger, RedeemTransaction,
-        RefundTransaction,
-    },
+    ledger::{FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
     save_state::SaveState,
     secret::{RandomnessSource, Secret, SecretFromErr, SecretHash},
 };

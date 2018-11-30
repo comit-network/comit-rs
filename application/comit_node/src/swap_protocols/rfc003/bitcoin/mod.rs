@@ -24,7 +24,6 @@ impl Ledger for Bitcoin {
     type LockDuration = Blocks;
     type HtlcLocation = OutPoint;
     type HtlcIdentity = KeyPair;
-    type HttpIdentity = ();
 
     fn extract_secret(
         transaction: &RedeemTransaction<Self>,

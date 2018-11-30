@@ -24,18 +24,11 @@ pub trait Ledger: swap_protocols::Ledger {
         + Debug
         + Into<<Self as swap_protocols::ledger::Ledger>::Identity>;
 
-    type HttpIdentity: DeserializeOwned;
-
     fn extract_secret(
         transaction: &RedeemTransaction<Self>,
         secret_hash: &SecretHash,
     ) -> Option<Secret>;
 }
-
-#[derive(Deserialize, Debug)]
-pub struct HttpRefundIdentity<I>(pub I);
-#[derive(Deserialize, Debug)]
-pub struct HttpSuccessIdentity<I>(pub I);
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FundTransaction<L: Ledger>(pub L::Transaction);

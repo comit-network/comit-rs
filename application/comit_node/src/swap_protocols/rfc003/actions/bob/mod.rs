@@ -49,7 +49,7 @@ impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
         let mut sender = self.sender.lock().unwrap();
         match sender.take() {
             Some(sender) => {
-                sender //TODO: Implement SwapReject::Decline(reason)
+                sender // TODO: Implement SwapReject::Decline(reason)
                     .send(Err(SwapReject::Rejected))
                     .expect("Action shouldn't outlive BobToAlice");
                 Ok(())

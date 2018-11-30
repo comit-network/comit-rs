@@ -25,8 +25,9 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
-        .and(warp::body::json())
+        .and(key_store.clone())
         .and(sender)
+        .and(warp::body::json())
         .and_then(http_api::rfc003::swap::post_swap);
 
     let rfc003_get_swap = rfc003
@@ -47,7 +48,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let rfc003_post_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
-        .and(key_store)
+        .and(key_store.clone())
         .and(warp::path::param::<SwapId>())
         .and(warp::path::param::<http_api::rfc003::action::PostAction>())
         .and(warp::post2())
