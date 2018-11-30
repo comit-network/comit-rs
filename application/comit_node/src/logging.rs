@@ -21,6 +21,7 @@ pub fn set_up_logging() {
         //TODO: get level from config file once implemented with #136
         .level(LevelFilter::Debug)
         .level_for("comit_node", LevelFilter::Trace)
+        .level_for("comit_node::ledger_query_service", LevelFilter::Info)
         .level_for("bitcoin_htlc", LevelFilter::Trace)
         .level_for("comit_wallet", LevelFilter::Trace)
         .level_for("ethereum_htlc", LevelFilter::Trace)

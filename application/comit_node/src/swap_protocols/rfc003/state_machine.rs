@@ -5,8 +5,7 @@ use std::{fmt, sync::Arc};
 use swap_protocols::{
     asset::Asset,
     rfc003::{
-        self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, Secret,
-        SecretHash, SwapOutcome,
+        self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, Secret, SecretHash,
     },
 };
 
@@ -100,6 +99,16 @@ impl<R: Role> OngoingSwap<R> {
         }
     }
 }
+// TODO: Add a `Declined` outcome
+#[derive(Debug, PartialEq, Clone)]
+pub enum SwapOutcome<R: Role> {
+    Rejected { start: Start<R> },
+    AlphaRefunded { swap: OngoingSwap<R> },
+    BothRefunded { swap: OngoingSwap<R> },
+    BothRedeemed { swap: OngoingSwap<R> },
+    AlphaRedeemedBetaRefunded { swap: OngoingSwap<R> },
+    AlphaRefundedBetaRedeemed { swap: OngoingSwap<R> },
+}
 
 #[allow(missing_debug_implementations)]
 pub struct Context<R: Role> {
@@ -186,7 +195,7 @@ pub enum Swap<R: Role> {
     },
 
     #[state_machine_future(ready)]
-    Final(SwapOutcome),
+    Final(SwapOutcome<R>),
 
     #[state_machine_future(error)]
     Error(rfc003::Error),
@@ -222,7 +231,10 @@ impl<R: Role> PollSwap<R> for Swap<R> {
                     swap: OngoingSwap::new(state, swap_accepted),
                 }
             ),
-            Err(_) => transition_save!(context.state_repo, Final(SwapOutcome::Rejected)),
+            Err(_) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::Rejected { start: state })
+            ),
         }
     }
 
@@ -271,7 +283,12 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
             .poll()?
         {
-            transition_save!(context.state_repo, Final(SwapOutcome::AlphaRefunded))
+            transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::AlphaRefunded {
+                    swap: state.take().swap
+                })
+            )
         }
 
         let beta_htlc_location = try_ready!(context
@@ -298,7 +315,12 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
             .poll()?
         {
-            transition_save!(context.state_repo, Final(SwapOutcome::AlphaRefunded))
+            transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::AlphaRefunded {
+                    swap: state.take().swap
+                })
+            )
         }
 
         let _ = try_ready!(context
@@ -385,7 +407,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     fn poll_alpha_funded_beta_refunded<'s, 'c>(
         state: &'s mut RentToOwn<'s, AlphaFundedBetaRefunded<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaFundedBetaRefunded>, rfc003::Error> {
+    ) -> Result<Async<AfterAlphaFundedBetaRefunded<R>>, rfc003::Error> {
         match try_ready!(context
             .alpha_ledger_events
             .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
@@ -393,18 +415,23 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         {
             Either::A(_alpha_redeemed_txid) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::AlphaRedeemedBetaRefunded)
+                Final(SwapOutcome::AlphaRedeemedBetaRefunded {
+                    swap: state.take().swap
+                })
             ),
-            Either::B(_alpha_refunded_txid) => {
-                transition_save!(context.state_repo, Final(SwapOutcome::BothRefunded))
-            }
+            Either::B(_alpha_refunded_txid) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::BothRefunded {
+                    swap: state.take().swap
+                })
+            ),
         }
     }
 
     fn poll_alpha_refunded_beta_funded<'s, 'c>(
         state: &'s mut RentToOwn<'s, AlphaRefundedBetaFunded<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaRefundedBetaFunded>, rfc003::Error> {
+    ) -> Result<Async<AfterAlphaRefundedBetaFunded<R>>, rfc003::Error> {
         match try_ready!(context
             .beta_ledger_events
             .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
@@ -412,29 +439,39 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         {
             Either::A(_beta_redeemed_txid) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::AlphaRefundedBetaRedeemed)
+                Final(SwapOutcome::AlphaRefundedBetaRedeemed {
+                    swap: state.take().swap
+                })
             ),
-            Either::B(_beta_refunded_txid) => {
-                transition_save!(context.state_repo, Final(SwapOutcome::BothRefunded))
-            }
+            Either::B(_beta_refunded_txid) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::BothRefunded {
+                    swap: state.take().swap
+                })
+            ),
         }
     }
 
     fn poll_alpha_redeemed_beta_funded<'s, 'c>(
         state: &'s mut RentToOwn<'s, AlphaRedeemedBetaFunded<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaRedeemedBetaFunded>, rfc003::Error> {
+    ) -> Result<Async<AfterAlphaRedeemedBetaFunded<R>>, rfc003::Error> {
         match try_ready!(context
             .beta_ledger_events
             .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
             .poll())
         {
-            Either::A(_beta_redeemed_txid) => {
-                transition_save!(context.state_repo, Final(SwapOutcome::BothRedeemed))
-            }
+            Either::A(_beta_redeemed_txid) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::BothRedeemed {
+                    swap: state.take().swap
+                })
+            ),
             Either::B(_beta_refunded_txid) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::AlphaRedeemedBetaRefunded)
+                Final(SwapOutcome::AlphaRedeemedBetaRefunded {
+                    swap: state.take().swap
+                })
             ),
         }
     }
@@ -442,18 +479,23 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     fn poll_alpha_funded_beta_redeemed<'s, 'c>(
         state: &'s mut RentToOwn<'s, AlphaFundedBetaRedeemed<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaFundedBetaRedeemed>, rfc003::Error> {
+    ) -> Result<Async<AfterAlphaFundedBetaRedeemed<R>>, rfc003::Error> {
         match try_ready!(context
             .alpha_ledger_events
             .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
             .poll())
         {
-            Either::A(_beta_redeemed_txid) => {
-                transition_save!(context.state_repo, Final(SwapOutcome::BothRedeemed))
-            }
+            Either::A(_beta_redeemed_txid) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::BothRedeemed {
+                    swap: state.take().swap
+                })
+            ),
             Either::B(_beta_refunded_txid) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::AlphaRefundedBetaRedeemed)
+                Final(SwapOutcome::AlphaRefundedBetaRedeemed {
+                    swap: state.take().swap
+                })
             ),
         }
     }
@@ -479,12 +521,7 @@ impl_display!(AlphaFundedBetaRefunded);
 impl_display!(AlphaRefundedBetaFunded);
 impl_display!(AlphaFundedBetaRedeemed);
 impl_display!(AlphaRedeemedBetaFunded);
-
-impl fmt::Display for Final {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "Final")
-    }
-}
+impl_display!(Final);
 
 impl<R: Role> SwapStates<R> {
     pub fn name(&self) -> String {
@@ -500,15 +537,26 @@ impl<R: Role> SwapStates<R> {
             SS::AlphaRefundedBetaFunded { .. } => String::from("AlphaRefundedBetaFunded"),
             SS::AlphaFundedBetaRedeemed { .. } => String::from("AlphaFundedBetaRedeemed"),
             SS::AlphaRedeemedBetaFunded { .. } => String::from("AlphaRedeemedBetaFunded"),
+            SS::Final(Final(SwapOutcome::Rejected { .. })) => String::from("Rejected"),
+            SS::Final(Final(SwapOutcome::AlphaRefunded { .. })) => String::from("AlphaRefunded"),
+            SS::Final(Final(SwapOutcome::BothRefunded { .. })) => String::from("BothRefunded"),
+            SS::Final(Final(SwapOutcome::BothRedeemed { .. })) => String::from("BothRedeemed"),
+            SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { .. })) => {
+                String::from("AlphaRedeemedBetaRefunded")
+            }
+            SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { .. })) => {
+                String::from("AlphaRefundedBetaRedeemed")
+            }
             SS::Error(_) => String::from("Error"),
-            SS::Final(_) => String::from("Final"),
         }
     }
 
     pub fn start_state(&self) -> Option<Start<R>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start(ref start) => Some(start.clone()),
+            SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start })) => {
+                Some(start.clone())
+            }
             SS::Accepted(Accepted { ref swap, .. })
             | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
             | SS::AlphaFunded(AlphaFunded { ref swap, .. })
@@ -517,7 +565,12 @@ impl<R: Role> SwapStates<R> {
             | SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded { ref swap, .. })
             | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
             | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed { ref swap, .. })
-            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. }) => {
+            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. })
+            | SS::Final(Final(SwapOutcome::AlphaRefunded { ref swap }))
+            | SS::Final(Final(SwapOutcome::BothRefunded { ref swap }))
+            | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
+            | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
+            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
                 Some(Start {
                     alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
                     beta_ledger_success_identity: swap.beta_ledger_success_identity.clone(),
@@ -529,7 +582,7 @@ impl<R: Role> SwapStates<R> {
                     secret: swap.secret.clone(),
                 })
             }
-            SS::Error(_) | SS::Final(_) => None,
+            SS::Error(_) => None,
         }
     }
 }

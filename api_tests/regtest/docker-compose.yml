@@ -2,7 +2,7 @@ version: '3'
 services:
   eth:
     image: parity/parity:v2.1.3
-    command: --config dev --jsonrpc-apis=all --unsafe-expose --tracing=on --logging=info,ethcore-miner=trace,miner=trace,rpc=trace
+    command: --config dev --jsonrpc-apis=all --unsafe-expose --tracing=on --logging=debug,ethcore-miner=trace,miner=trace,rpc=trace,tokio_core=warn,tokio_reactor=warn
     ports:
     - "8545:8545"
 

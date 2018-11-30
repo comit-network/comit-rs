@@ -195,7 +195,7 @@ script_runner = "bash"
 script = [
 '''
 cd api_tests;
-./dry/harness.sh ./dry/rfc003.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+./dry/harness.sh ./dry/rfc003.js
 '''
 ]
 
@@ -249,7 +249,7 @@ for GLOB_DIR in ${PARAMS}; do
     for DIR in ${GLOB_DIR}; do
         cd "$ROOT";
         export LOG_DIR="./e2e/rfc003/${DIR}/log";
-        ./api_tests/e2e/comit-harness.sh ./api_tests/e2e/rfc003/${DIR} || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+        ./api_tests/e2e/comit-harness.sh ./api_tests/e2e/rfc003/${DIR}
     done;
 done;
 '''
@@ -287,7 +287,7 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm use;
-./ledger_query_service/harness.sh ./ledger_query_service/test.js || { [ "$CAT_LOGS" ] && cd "$LOG_DIR" && cat *.log; exit 1; }
+./ledger_query_service/harness.sh ./ledger_query_service/test.js
 '''
 ]
 

@@ -24,6 +24,8 @@ BETA_CHAIN=${BETA%-*}
 
 CHAINS="${ALPHA_CHAIN} ${BETA_CHAIN}" # Extract chain name before and after underscore
 
+LOG_DIR="$TEST_PATH/log"
+
 cd "$PROJECT_ROOT/api_tests";
 
 END(){
@@ -47,8 +49,9 @@ trap 'END' EXIT;
 
 function setup() {
     if test "$LOG_DIR"; then
+        log "INFO: Removing all previous logs from $LOG_DIR"
+        rm -rf "$LOG_DIR"
         mkdir -p "$LOG_DIR"
-        rm -f "$LOG_DIR/*.log"
     fi
 
     #### Env variable to run all services
@@ -110,4 +113,4 @@ set +x;
 export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
 . "$NVM_SH"
 nvm use;
-npm test "${TEST_PATH}/test.js";
+npm test "${TEST_PATH}/test.js" || { [ "$CAT_LOGS" ] && (cd "$LOG_DIR"; tail -n +1 *.log); exit 1; }

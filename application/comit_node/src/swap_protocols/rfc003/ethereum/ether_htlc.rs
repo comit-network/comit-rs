@@ -39,7 +39,7 @@ impl EtherHtlc {
             secret_hash,
         };
 
-        debug!("Created new HTLC for ethereum: {:#?}", htlc);
+        trace!("Created new HTLC for ethereum: {:#?}", htlc);
 
         htlc
     }
@@ -86,12 +86,12 @@ impl Htlc for EtherHtlc {
             )
             .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
-        debug!("Final contract code: {}", &contract_code);
-        debug!("Deploy header: {}", &deploy_header);
+        trace!("Final contract code: {}", &contract_code);
+        trace!("Deploy header: {}", &deploy_header);
 
         let deployable_contract = deploy_header + &contract_code;
 
-        debug!("Deployable contract: {}", &deployable_contract);
+        trace!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
     }
