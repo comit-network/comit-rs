@@ -33,6 +33,7 @@ describe('RFC003: Bitcoin for ERC20', () => {
         await toby_wallet.fund_eth(10);
         await bob.wallet.fund_eth(bob_initial_eth);
         await alice.wallet.fund_btc(10);
+        await alice.wallet.fund_eth(1);
         let receipt = await toby_wallet.deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
     });
@@ -269,4 +270,14 @@ describe('RFC003: Bitcoin for ERC20', () => {
         res.should.have.status(200);
         alice_redeem_action = res.body;
     });
+
+    it("[Alice] Can execute the redeem action", async function () {
+        alice_redeem_action.should.include.all.keys("to", "data", "gas_limit", "value");
+        await alice.wallet.send_eth_transaction_to(
+                alice_redeem_action.to,
+                alice_redeem_action.data,
+                alice_redeem_action.value,
+                alice_redeem_action.gas_limit);
+    });
+
 });
