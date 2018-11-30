@@ -45,7 +45,7 @@ impl Htlc {
         recipient_success_pubkey_hash: RecipientSuccessPubkeyHash,
         sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
-        //TODO: use bitcoin_support::Blocks type
+        // TODO: use bitcoin_support::Blocks type
         relative_timelock: u32,
     ) -> Htlc {
         let recipient_success_pubkey_hash = recipient_success_pubkey_hash.into();
@@ -170,15 +170,18 @@ mod tests {
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
 
     // Sender address: bcrt1qryj6ya9vqpph8w65992nhk64cs890vfy0khsfg
-    // Sender pubkey: 020c04eb8cb87485501e30b656f37439ea7866d7c58b3c38161e5793b68e712356
-    // Sender pubkey hash: 1925a274ac004373bb5429553bdb55c40e57b124
+    // Sender pubkey:
+    // 020c04eb8cb87485501e30b656f37439ea7866d7c58b3c38161e5793b68e712356 Sender
+    // pubkey hash: 1925a274ac004373bb5429553bdb55c40e57b124
 
     // Recipient address: bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap
-    // Recipient pubkey: 0298e113cc06bc862ac205f2c0f27ee8c0de98d0716537bbf74e2ea6f38a84d5dc
+    // Recipient pubkey:
+    // 0298e113cc06bc862ac205f2c0f27ee8c0de98d0716537bbf74e2ea6f38a84d5dc
     // Recipient pubkey hash: c021f17be99c6adfbcba5d38ee0d292c0399d2f5
 
     // htlc script: 63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b27576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac
-    // sha256 of htlc script: 82badc8d1175d1c7ecfceb67a6b8d24fa51718beb594002c7cd9ca1da706b4ef
+    // sha256 of htlc script:
+    // 82badc8d1175d1c7ecfceb67a6b8d24fa51718beb594002c7cd9ca1da706b4ef
 
     #[test]
     fn given_a_vec_u8_pubkey_hash_return_htlc_redeem_script() {

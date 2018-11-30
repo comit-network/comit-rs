@@ -92,7 +92,8 @@ impl Response {
 
 impl IntoFrame<Frame> for Response {
     fn into_frame(self, id: u32) -> Frame {
-        // Serializing Response should never fail because its members are just Strings and JsonValues
+        // Serializing Response should never fail because its members are just Strings
+        // and JsonValues
         let payload = serde_json::to_value(self).unwrap();
 
         Frame::new("RESPONSE".into(), id, payload)

@@ -9,8 +9,8 @@ pub struct SendToAddress {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpendOutput {
-    //Remember: One man's input is another man's output!
-    //TODO: decide whether we want to serialize this directly
+    // Remember: One man's input is another man's output!
+    // TODO: decide whether we want to serialize this directly
     pub output: PrimedInput,
 }
 

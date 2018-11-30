@@ -54,7 +54,8 @@ impl Erc20Htlc {
         htlc
     }
 
-    /// Constructs the payload for funding an `Erc20` HTLC located at the given address.
+    /// Constructs the payload for funding an `Erc20` HTLC located at the given
+    /// address.
     pub fn funding_tx_payload(&self, htlc_contract_address: Address) -> Bytes {
         let transfer_fn_abi = base16!("A9059CBB");
         let htlc_contract_address = <[u8; 20]>::from(htlc_contract_address);

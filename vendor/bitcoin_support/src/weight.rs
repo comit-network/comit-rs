@@ -1,4 +1,5 @@
-// TODO: contribute this to rust_bitcoin so it is returned by Transaction::get_weight
+// TODO: contribute this to rust_bitcoin so it is returned by
+// Transaction::get_weight
 use bitcoin_quantity::BitcoinQuantity;
 
 #[derive(Debug, PartialEq)]

@@ -158,7 +158,8 @@ fn redeem_refund_htlc() {
     let error = rpc_redeem_txid_error.unwrap_err();
 
     assert_eq!(error.code, -26);
-    ///RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by network rules
+    /// RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by
+    /// network rules
     assert!(error.message.contains("non-BIP68-final"));
 
     client.generate(nsequence).unwrap().unwrap();

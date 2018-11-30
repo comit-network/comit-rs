@@ -172,7 +172,7 @@ impl ParityClient {
                     gas: None,
                     gas_price: None,
                     value: None,
-                    data: data,
+                    data,
                     nonce: None,
                     condition: None,
                 },

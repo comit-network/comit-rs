@@ -134,7 +134,7 @@ impl ClientFactory<BamClient> for BamClientPool {
     fn client_for(
         &self,
         comit_node_socket_addr: SocketAddr,
-        //TODO: Return a future and ensure no duplicate connections
+        // TODO: Return a future and ensure no duplicate connections
     ) -> Result<Arc<BamClient>, ClientFactoryError> {
         debug!("Trying to get client for {}", comit_node_socket_addr);
         let existing_client = self

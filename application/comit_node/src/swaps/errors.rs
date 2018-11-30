@@ -3,9 +3,9 @@ use bitcoin_support;
 use reqwest;
 use rustc_hex;
 
-#[derive(Debug)] //TODO merge these errors into error
+#[derive(Debug)] // TODO merge these errors into error
 pub enum Error {
-    TradingService(String), //TODO this should not exist anymore
+    TradingService(String), // TODO this should not exist anymore
     BitcoinRpc(bitcoin_rpc_client::RpcError),
     BitcoinNode(reqwest::Error),
     Unlocking(String),
