@@ -5,6 +5,22 @@ const Toml = require("toml");
 const fs = require("fs");
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
+const log4js = require("log4js");
+log4js.configure({
+    appenders: {
+        test_suite: {
+            type: "file",
+            filename: process.env.LOG_DIR + "/test-suite.log"
+        },
+    },
+    categories: { default: { appenders: ['test_suite'], level: 'ALL' } }
+});
+
+const logger = log4js.getLogger( 'test_suite' );
+
+module.exports.logger = function () {
+    return logger;
+};
 
 module.exports.sleep = time => {
     return new Promise((res, rej) => {
@@ -69,38 +85,44 @@ const token_contract_deploy =
         .trim();
 
 class WalletConf {
-    constructor() {
+    constructor(owner) {
         this.eth_keypair = bitcoin.ECPair.makeRandom({ rng: test_rng });
         this.btc_keypair = bitcoin.ECPair.makeRandom({ rng: test_rng });
         this.bitcoin_utxos = [];
-    }
-
-    eth_address() {
-        return (
+        this.owner = owner;
+        this._eth_address = (
             "0x" +
             ethutil
                 .privateToAddress(this.eth_keypair.privateKey)
                 .toString("hex")
         );
-    }
-
-    btc_address() {
-        return bitcoin.payments.p2wpkh({
+        this._btc_identity = bitcoin.payments.p2wpkh({
             pubkey: this.btc_keypair.publicKey,
             network: regtest
         });
+
+        logger.trace("Generated eth address for %s is %s", this.owner, this._eth_address);
+        logger.trace("Generated btc address for %s is %s", this.owner, this._btc_identity.address);
+    }
+
+    eth_address() {
+        return this._eth_address;
+    }
+
+    btc_identity() {
+        return this._btc_identity;
     }
 
     async fund_btc(btc_value) {
         let txid = await module.exports
             .bitcoin_rpc_client()
-            .sendToAddress(this.btc_address().address, btc_value);
+            .sendToAddress(this.btc_identity().address, btc_value);
         let raw_transaction = await module.exports
             .bitcoin_rpc_client()
             .getRawTransaction(txid);
         let transaction = bitcoin.Transaction.fromHex(raw_transaction);
         for (let [i, out] of transaction.outs.entries()) {
-            if (out.script.equals(this.btc_address().output)) {
+            if (out.script.equals(this.btc_identity().output)) {
                 out.txid = txid;
                 out.vout = i;
                 this.bitcoin_utxos.push(out);
@@ -129,9 +151,9 @@ class WalletConf {
         const key_pair = this.btc_keypair;
         const fee = 2500;
         const change = input_amount - value - fee;
-        txb.addInput(utxo.txid, utxo.vout, null, this.btc_address().output);
+        txb.addInput(utxo.txid, utxo.vout, null, this.btc_identity().output);
         //TODO: Add it back to UTXOs after transaction is successful
-        txb.addOutput(this.btc_address().output, change);
+        txb.addOutput(this.btc_identity().output, change);
         txb.addOutput(bitcoin.address.toOutputScript(to, regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
@@ -164,17 +186,16 @@ class WalletConf {
             chainId: 1
         });
 
-        tx.sign(this.eth_keypair.privateKey);
-        const serializedTx = tx.serialize();
-        let hex = "0x" + serializedTx.toString("hex");
-        return web3.eth.sendSignedTransaction(hex);
+        logger.trace("Transaction %s transfers %s wei to %s", tx.hash().toString("hex"), tx.value, tx.to.toString("hex"));
+
+        return this.sign_and_send(tx);
     }
 
     async deploy_erc20_token_contract() {
         return this.deploy_eth_contract(token_contract_deploy);
     }
 
-    async deploy_eth_contract(data = "0x0", value = "0x0", gas_limit = "0x3D0900") {
+    async deploy_eth_contract(data = "0x0", value = "0", gas_limit = "0x3D0900") {
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
 
         const tx = new EthereumTx({
@@ -183,14 +204,28 @@ class WalletConf {
             gasLimit: gas_limit,
             to: null,
             data: data,
-            value: value,
+            value: web3.utils.numberToHex(value),
             chainId: 1
         });
 
+        let receipt = await this.sign_and_send(tx);
+
+        let contract_balance = await web3.eth.getBalance(receipt.contractAddress);
+
+        logger.trace("Contract deployed at %s holds %s wei", receipt.contractAddress, contract_balance);
+
+        return receipt;
+    }
+
+    async sign_and_send(tx) {
         tx.sign(this.eth_keypair.privateKey);
         const serializedTx = tx.serialize();
         let hex = "0x" + serializedTx.toString("hex");
-        return web3.eth.sendSignedTransaction(hex);
+        let receipt =  await web3.eth.sendSignedTransaction(hex);
+
+        logger.trace("Receipt for transaction %s", receipt.transactionHash, receipt);
+
+        return receipt
     }
 
     async erc20_balance(contract_address) {
@@ -222,7 +257,7 @@ class ComitConf {
                 "utf8"
             )
         );
-        this.wallet = new WalletConf();
+        this.wallet = new WalletConf(name);
     }
 
     comit_node_url() {
@@ -317,7 +352,7 @@ module.exports.ledger_query_service_conf = (host, port) => {
             .padStart(64, "0");
         const payload = "0x" + function_identifier + to_address + amount;
 
-        return owner_wallet.send_eth_transaction_to(contract_address, payload);
+        return owner_wallet.send_eth_transaction_to(contract_address, payload, "0x0");
     };
 }
 
