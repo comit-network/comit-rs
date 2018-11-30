@@ -260,4 +260,13 @@ describe('RFC003: Bitcoin for ERC20', () => {
         swap._links.should.have.property("redeem");
         alice_redeem_href = swap._links.redeem.href;
     });
+
+    let alice_redeem_action;
+    it("[Alice] Can get the redeem action from the ‘redeem’ link", async () => {
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get(alice_redeem_href);
+        res.should.have.status(200);
+        alice_redeem_action = res.body;
+    });
 });
