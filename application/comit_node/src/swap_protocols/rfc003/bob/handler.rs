@@ -176,7 +176,7 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
 
     let save_state = state_store
         .insert(id, state.clone())
-        .expect("handle errors :)"); //TODO: handle errors
+        .expect("handle errors :)"); // TODO: handle errors
 
     let context = Context {
         alpha_ledger_events,

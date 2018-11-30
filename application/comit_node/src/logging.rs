@@ -18,7 +18,7 @@ pub fn set_context<S: ToString>(input: &S) {
 pub fn set_up_logging() {
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
-        //TODO: get level from config file once implemented with #136
+        // TODO: get level from config file once implemented with #136
         .level(LevelFilter::Debug)
         .level_for("comit_node", LevelFilter::Trace)
         .level_for("comit_node::ledger_query_service", LevelFilter::Info)

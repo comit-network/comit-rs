@@ -79,7 +79,7 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
                         }
                         (Some(from_outpoint), None) => transaction.spends_from(from_outpoint),
                         (None, Some(unlock_script)) => transaction.spends_with(unlock_script),
-                        (_, _) => result,
+                        (..) => result,
                     };
 
                 if result {

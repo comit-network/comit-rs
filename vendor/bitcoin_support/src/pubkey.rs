@@ -178,13 +178,15 @@ mod test {
     // ToP2wpkhAddress NYI for PubkeyHash
     // #[test]
     // fn correct_address_from_pubkey_hash() {
-    //     let pubkey_hash = PubkeyHash::from(&hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap()[..]);
-    //     let address = pubkey_hash.to_p2wpkh_address(Network::Regtest);
+    //     let pubkey_hash =
+    // PubkeyHash::from(&hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").
+    // unwrap()[..]);     let address =
+    // pubkey_hash.to_p2wpkh_address(Network::Regtest);
 
     //     assert_eq!(
     //         address,
-    //         Address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").unwrap(),
-    //     )
+    //         Address::from_str("bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap").
+    // unwrap(),     )
     // }
 
     #[test]

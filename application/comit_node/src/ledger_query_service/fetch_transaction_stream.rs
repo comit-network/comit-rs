@@ -296,7 +296,8 @@ mod tests {
         // A stream of no items will never complete.
         // Thus we `select2` it with a delay that completes after 1 second
         // We have to do this weird assertion because some things are not Debug :(
-        // TL;DR: If we don't hit this branch, the Either is Either::B (the timeout) so we are fine.
+        // TL;DR: If we don't hit this branch, the Either is Either::B (the timeout) so
+        // we are fine.
         if let Either::A(_transaction) = either {
             panic!("should not emit a transaction")
         }

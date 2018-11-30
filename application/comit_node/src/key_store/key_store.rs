@@ -32,12 +32,12 @@ pub struct KeyStore {
     internal_root_privkey: ExtendedPrivKey,
     // TODO: replace with AtomicU32 once stable https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU32.html
     next_internal_index: Mutex<u32>,
-    // Do we want to remember already generated addresses or regenerate them?
-    // Memory vs CPU -> could be a switch/option
-    // Common practice for wallets is to pre-generate some addresses, hence:
-    // TODO: manage a key pool
-    // - key ready for use (pool)
-    // - key already used
+    /* Do we want to remember already generated addresses or regenerate them?
+     * Memory vs CPU -> could be a switch/option
+     * Common practice for wallets is to pre-generate some addresses, hence:
+     * TODO: manage a key pool
+     * - key ready for use (pool)
+     * - key already used */
 }
 
 impl KeyStore {
@@ -45,12 +45,12 @@ impl KeyStore {
         // As per bip32 and bitcoind reference implementation
         //
         // We use the following child keys:
-        // m/0'/1 for bip32 internal chain (ie, where the BTC is sent after redeem, bitcoind-like)
-        // m/0'/2' for HTLC (ie, locking the money in HTLC). 2 is an arbitrary value I chose
-        // (1' being reserved for the bip32 external chain)
-        // At this stage we expect an extended master private key in the configuration (m)
-        // Then we just assume that we use account 0' (like bitcoind), hence we derive m/0'
-        // and create our child keys from there.
+        // m/0'/1 for bip32 internal chain (ie, where the BTC is sent after redeem,
+        // bitcoind-like) m/0'/2' for HTLC (ie, locking the money in HTLC). 2 is
+        // an arbitrary value I chose (1' being reserved for the bip32 external
+        // chain) At this stage we expect an extended master private key in the
+        // configuration (m) Then we just assume that we use account 0' (like
+        // bitcoind), hence we derive m/0' and create our child keys from there.
 
         // TODO: set derivation path for Ethereum to m/44'/60'/a'/0/n, see #291
         // see https://github.com/ethereum/EIPs/issues/85 https://github.com/ethereum/EIPs/pull/600/files
@@ -68,7 +68,7 @@ impl KeyStore {
             transient_root_privkey,
             internal_root_privkey,
             next_internal_index: Mutex::new(0),
-            //transient_keys: HashMap::new(),
+            // transient_keys: HashMap::new(),
         })
     }
 
@@ -78,8 +78,8 @@ impl KeyStore {
     }
 
     fn get_and_update_internal_index(&self) -> u32 {
-        // This panic if the mutex is poisoned, ie, another thread panic'd while holding it
-        // Hence it would be fair to make all thread panic
+        // This panic if the mutex is poisoned, ie, another thread panic'd while holding
+        // it Hence it would be fair to make all thread panic
         let mut next_internal_index = self.next_internal_index.lock().unwrap();
         let next_internal_index = next_internal_index.deref_mut();
         let index: u32 = *next_internal_index;
@@ -89,8 +89,8 @@ impl KeyStore {
 
     fn get_new_internal_privkey(&self) -> ExtendedPrivKey {
         let index = self.get_and_update_internal_index();
-        // If it fails next then it means we should just proceed to the next index as per
-        // https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#child-key-derivation-ckd-functions
+        // If it fails next then it means we should just proceed to the next index as
+        // per https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#child-key-derivation-ckd-functions
         self.internal_root_privkey
             .ckd_priv(&*SECP, ChildNumber::from_hardened_idx(index))
             .unwrap_or_else(|e| {
@@ -125,7 +125,8 @@ impl KeyStore {
             &data[..],
             &mut result,
         );
-        // This returns a result as it can fail if the slice is empty which is very unlikely hence the expect.
+        // This returns a result as it can fail if the slice is empty which is very
+        // unlikely hence the expect.
         KeyPair::from_secret_key_slice(&result).expect("Should never fail")
     }
 }
