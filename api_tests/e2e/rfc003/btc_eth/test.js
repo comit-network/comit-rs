@@ -61,6 +61,7 @@ describe("RFC003 Bitcoin for Ether", () => {
 
     let swap_location;
     let alice_swap_href;
+
     it("[Alice] Should be able to make first swap request via HTTP api", async () => {
         await chai
             .request(alice.comit_node_url())
@@ -111,6 +112,7 @@ describe("RFC003 Bitcoin for Ether", () => {
     });
 
     let bob_accept_href;
+
     it("[Bob] Can get the accept action", async () => {
         let res = await chai.request(bob.comit_node_url()).get(bob_swap_href);
         res.should.have.status(200);
@@ -260,7 +262,7 @@ describe("RFC003 Bitcoin for Ether", () => {
             alice_redeem_action.to,
             alice_redeem_action.data,
             alice_redeem_action.value,
-            alice_redeem_action.gas_limit)
+            alice_redeem_action.gas_limit);
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
@@ -310,7 +312,7 @@ describe("RFC003 Bitcoin for Ether", () => {
     it("[Bob] Can execute the redeem action", async function () {
         bob_redeem_action.should.include.all.keys("hex");
         bob_btc_balance_before = await test_lib.btc_balance(bob_final_address);
-        await bob.wallet.send_raw_tx(bob_redeem_action.hex)
+        await bob.wallet.send_raw_tx(bob_redeem_action.hex);
         await test_lib.btc_generate();
     });
 
