@@ -196,8 +196,7 @@ describe('RFC003: Bitcoin for ERC20', () => {
     it("[Bob] Can execute the deploy action", async () => {
         bob_deploy_action.should.include.all.keys("data", "gas_limit", "value");
         bob_deploy_action.value.should.equal("0");
-        let receipt = await bob.wallet.deploy_eth_contract(bob_deploy_action.data, "0x0", bob_deploy_action.gas_limit);
-        console.log(receipt);
+        await bob.wallet.deploy_eth_contract(bob_deploy_action.data, "0x0", bob_deploy_action.gas_limit);
     });
 
     it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the funding action", async function() {
