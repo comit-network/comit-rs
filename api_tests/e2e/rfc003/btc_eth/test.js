@@ -107,7 +107,7 @@ describe("RFC003 Bitcoin for Ether", () => {
         swap_link.should.be.a("object");
         bob_swap_href = swap_link.self.href;
         bob_swap_href.should.be.a("string");
-        logger.info("Bob discoverd a new swap at %s", bob_swap_href);
+        logger.info("Bob discovered a new swap at %s", bob_swap_href);
     });
 
     let bob_accept_href;
@@ -275,8 +275,8 @@ describe("RFC003 Bitcoin for Ether", () => {
     it("[Alice] Should have received the beta asset after the redeem", async function() {
         let alice_eth_balance_after = await test_lib.eth_balance(alice_final_address);
 
-        let alice_etc_balance_expected = alice_eth_balance_before.add(beta_asset);
-        alice_eth_balance_after.toString().should.be.equal(alice_etc_balance_expected.toString());
+        let alice_eth_balance_expected = alice_eth_balance_before.add(beta_asset);
+        alice_eth_balance_after.toString().should.be.equal(alice_eth_balance_expected.toString());
     });
 
     let bob_redeem_href;
