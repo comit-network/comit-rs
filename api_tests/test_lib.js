@@ -227,24 +227,6 @@ class WalletConf {
 
         return receipt
     }
-
-    async erc20_balance(contract_address) {
-        const function_identifier = "70a08231";
-
-        const address = this.eth_address()
-            .replace(/^0x/, "")
-            .padStart(64, "0");
-        const payload = "0x" + function_identifier + address;
-
-        const tx = {
-            from: this.eth_address(),
-            to: contract_address,
-            data: payload
-        };
-
-        let hex_balance = await web3.eth.call(tx);
-        return web3.utils.toBN(hex_balance);
-    }
 }
 
 class ComitConf {
@@ -371,4 +353,22 @@ module.exports.import_address = async function (address) {
 
 module.exports.eth_balance = async function (address) {
     return web3.eth.getBalance(address).then(balance => new ethutil.BN(balance, 10));
+};
+
+module.exports.erc20_balance = async function (token_holder_address, contract_address) {
+    const function_identifier = "70a08231";
+
+    const padded_address = token_holder_address
+          .replace(/^0x/, "")
+          .padStart(64, "0");
+    const payload = "0x" + function_identifier + padded_address;
+
+    const tx = {
+        from: token_holder_address,
+        to: contract_address,
+        data: payload
+    };
+
+    let hex_balance = await web3.eth.call(tx);
+    return web3.utils.toBN(hex_balance);
 };
