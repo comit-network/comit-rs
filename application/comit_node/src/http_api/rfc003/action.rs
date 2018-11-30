@@ -1,8 +1,9 @@
-use bitcoin_support::{serialize::serialize_hex, BitcoinQuantity};
-use ethereum_support::{Erc20Quantity, EtherQuantity};
+use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
+use ethereum_support::{self, Erc20Quantity, EtherQuantity};
 use http_api::{problem, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
 use key_store::KeyStore;
+use secp256k1_support;
 use std::{str::FromStr, sync::Arc};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
@@ -13,7 +14,7 @@ use swap_protocols::{
         roles::{Alice, Bob},
         state_machine::StateMachineResponse,
         state_store::StateStore,
-        HttpRefundIdentity, HttpSuccessIdentity, IntoHtlcIdentity, Ledger,
+        HttpRefundIdentity, HttpSuccessIdentity, Ledger,
     },
     AssetKind, LedgerKind, MetadataStore, RoleKind,
 };
@@ -49,8 +50,8 @@ trait ExecuteAccept<AL: Ledger, BL: Ledger> {
 
 impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for Accept<AL, BL>
 where
-    HttpSuccessIdentity<AL::HttpIdentity>: IntoHtlcIdentity<AL>,
-    HttpRefundIdentity<BL::HttpIdentity>: IntoHtlcIdentity<BL>,
+    StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>:
+        FromAcceptSwapRequestHttpBody<AL, BL>,
 {
     fn execute(
         &self,
@@ -58,16 +59,45 @@ where
         key_store: &KeyStore,
         id: SwapId,
     ) -> Result<(), HttpApiProblem> {
-        self.accept(StateMachineResponse {
-            beta_ledger_refund_identity: body
-                .beta_ledger_refund_identity
-                .into_htlc_identity(id, &key_store),
-            alpha_ledger_success_identity: body
-                .alpha_ledger_success_identity
-                .into_htlc_identity(id, &key_store),
-            beta_ledger_lock_duration: body.beta_ledger_lock_duration,
-        })
+        self.accept(StateMachineResponse::from_accept_swap_request_http_body(
+            body, id, key_store,
+        )?)
         .map_err(|_| problem::action_already_taken())
+    }
+}
+
+trait FromAcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger>
+where
+    Self: Sized,
+{
+    fn from_accept_swap_request_http_body(
+        body: AcceptSwapRequestHttpBody<AL, BL>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem>;
+}
+
+impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
+    for StateMachineResponse<
+        secp256k1_support::KeyPair,
+        ethereum_support::Address,
+        ethereum::Seconds,
+    >
+{
+    fn from_accept_swap_request_http_body(
+        body: AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem> {
+        match body {
+            AcceptSwapRequestHttpBody::OnlySuccess { .. } | AcceptSwapRequestHttpBody::RefundAndSuccess { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The success identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
+            AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_refund_identity")),
+            AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
+                beta_ledger_refund_identity: beta_ledger_refund_identity.0,
+                beta_ledger_lock_duration,
+                alpha_ledger_success_identity: key_store.get_transient_keypair(&id.into(), b"SUCCESS"),
+            }),
+        }
     }
 }
 
@@ -290,10 +320,25 @@ where
 }
 
 #[derive(Deserialize)]
-struct AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
-    alpha_ledger_success_identity: HttpSuccessIdentity<AL::HttpIdentity>,
-    beta_ledger_refund_identity: HttpRefundIdentity<BL::HttpIdentity>,
-    beta_ledger_lock_duration: BL::LockDuration,
+#[serde(untagged)]
+#[allow(dead_code)] // TODO: Remove once we have ledgers where we use all the combinations
+enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
+    RefundAndSuccess {
+        alpha_ledger_success_identity: HttpSuccessIdentity<AL::Identity>,
+        beta_ledger_refund_identity: HttpRefundIdentity<BL::Identity>,
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
+    OnlySuccess {
+        alpha_ledger_success_identity: HttpSuccessIdentity<AL::Identity>,
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
+    OnlyRefund {
+        beta_ledger_refund_identity: HttpSuccessIdentity<BL::Identity>,
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
+    None {
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
 }
 
 pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(

@@ -1,11 +1,9 @@
-use key_store::KeyStore;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, hash::Hash};
 use swap_protocols::{
     self,
     rfc003::secret::{Secret, SecretHash},
 };
-use swaps::common::SwapId;
 
 pub trait Ledger: swap_protocols::Ledger {
     type LockDuration: PartialEq
@@ -32,10 +30,6 @@ pub trait Ledger: swap_protocols::Ledger {
         transaction: &RedeemTransaction<Self>,
         secret_hash: &SecretHash,
     ) -> Option<Secret>;
-}
-
-pub trait IntoHtlcIdentity<L: Ledger> {
-    fn into_htlc_identity(self, swap_id: SwapId, key_store: &KeyStore) -> L::HtlcIdentity;
 }
 
 #[derive(Deserialize, Debug)]

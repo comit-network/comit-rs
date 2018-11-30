@@ -1,16 +1,13 @@
 use bitcoin_support::{Address, BitcoinQuantity, Blocks, OutPoint};
-use key_store::KeyStore;
 use secp256k1_support::KeyPair;
 use swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        ledger::{HttpRefundIdentity, HttpSuccessIdentity},
         secret::{Secret, SecretHash},
         state_machine::HtlcParams,
-        IntoHtlcIdentity, Ledger, RedeemTransaction,
+        Ledger, RedeemTransaction,
     },
 };
-use swaps::common::SwapId;
 
 mod actions;
 mod htlc;
@@ -44,18 +41,6 @@ impl Ledger for Bitcoin {
                     Err(_) => None,
                 })
         })
-    }
-}
-
-impl IntoHtlcIdentity<Bitcoin> for HttpSuccessIdentity<()> {
-    fn into_htlc_identity(self, swap_id: SwapId, key_store: &KeyStore) -> KeyPair {
-        key_store.get_transient_keypair(&swap_id.into(), b"SUCCESS")
-    }
-}
-
-impl IntoHtlcIdentity<Bitcoin> for HttpRefundIdentity<()> {
-    fn into_htlc_identity(self, swap_id: SwapId, key_store: &KeyStore) -> KeyPair {
-        key_store.get_transient_keypair(&swap_id.into(), b"REFUND")
     }
 }
 
