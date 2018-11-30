@@ -1,14 +1,17 @@
 use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
 use hex;
+use key_store::KeyStore;
 use std::time::Duration;
 use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
+        ledger::{HttpRefundIdentity, HttpSuccessIdentity},
         secret::{Secret, SecretHash},
         state_machine::HtlcParams,
-        Ledger, RedeemTransaction,
+        IntoHtlcIdentity, Ledger, RedeemTransaction,
     },
 };
+use swaps::common::SwapId;
 
 mod actions;
 mod erc20_htlc;
@@ -50,6 +53,7 @@ impl Ledger for Ethereum {
     type LockDuration = Seconds;
     type HtlcLocation = Address;
     type HtlcIdentity = Address;
+    type HttpIdentity = Address;
 
     fn extract_secret(
         transaction: &RedeemTransaction<Self>,
@@ -78,6 +82,18 @@ impl Ledger for Ethereum {
                 None
             }
         }
+    }
+}
+
+impl IntoHtlcIdentity<Ethereum> for HttpSuccessIdentity<Address> {
+    fn into_htlc_identity(self, _swap_id: SwapId, _key_store: &KeyStore) -> Address {
+        self.0
+    }
+}
+
+impl IntoHtlcIdentity<Ethereum> for HttpRefundIdentity<Address> {
+    fn into_htlc_identity(self, _swap_id: SwapId, _key_store: &KeyStore) -> Address {
+        self.0
     }
 }
 

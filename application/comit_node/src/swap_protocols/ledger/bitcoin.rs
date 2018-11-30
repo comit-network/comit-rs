@@ -37,7 +37,6 @@ impl Ledger for Bitcoin {
     type Address = Address;
     type Identity = PubkeyHash;
     type Transaction = Transaction;
-    type HttpIdentity = ();
 
     fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
         pubkeyhash.into_p2wpkh_address(self.network)

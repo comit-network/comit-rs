@@ -35,6 +35,10 @@ impl Error for HttpApiProblemStdError {
     }
 }
 
+pub fn state_store() -> HttpApiProblem {
+    error!("State store didn't have state in it despite having the metadata");
+    HttpApiProblem::with_title_and_type_from_status(500)
+}
 pub fn swap_not_found() -> HttpApiProblem {
     HttpApiProblem::new("swap-not-found").set_status(404)
 }
@@ -53,6 +57,10 @@ pub fn serde(_e: serde_json::Error) -> HttpApiProblem {
 pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
     HttpApiProblem::with_title_and_type_from_status(500)
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
+}
+
+pub fn action_already_taken() -> HttpApiProblem {
+    HttpApiProblem::new("action-already-taken").set_status(400)
 }
 
 impl From<state_store::Error> for HttpApiProblem {

@@ -52,6 +52,7 @@ pub struct OngoingSwap<R: Role> {
     pub alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
     pub beta_ledger_lock_duration: <R::BetaLedger as Ledger>::LockDuration,
     pub secret: R::Secret,
+    pub role: R,
 }
 
 impl<R: Role> OngoingSwap<R> {
@@ -75,6 +76,7 @@ impl<R: Role> OngoingSwap<R> {
             alpha_ledger_lock_duration: start.alpha_ledger_lock_duration,
             beta_ledger_lock_duration: response.beta_ledger_lock_duration,
             secret: start.secret,
+            role: start.role,
         }
     }
 
@@ -123,6 +125,7 @@ pub enum Swap<R: Role> {
         beta_asset: R::BetaAsset,
         alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
         secret: R::Secret,
+        role: R,
     },
 
     #[state_machine_future(transitions(AlphaDeployed))]
@@ -527,6 +530,7 @@ impl<R: Role> SwapStates<R> {
                     beta_asset: swap.beta_asset.clone(),
                     alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
                     secret: swap.secret.clone(),
+                    role: swap.role.clone(),
                 })
             }
             SS::Error(_) | SS::Final(_) => None,

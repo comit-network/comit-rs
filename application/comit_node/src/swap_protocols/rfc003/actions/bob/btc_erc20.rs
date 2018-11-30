@@ -4,7 +4,10 @@ use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        actions::{Accept, Action, Decline, StateActions},
+        actions::{
+            bob::{Accept, Decline},
+            Action, StateActions,
+        },
         bitcoin,
         ethereum::{self, Erc20Htlc, Htlc},
         roles::Bob,
@@ -73,8 +76,8 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
 }
 
 impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
-    type Accept = Accept;
-    type Decline = Decline;
+    type Accept = Accept<Bitcoin, Ethereum>;
+    type Decline = Decline<Bitcoin, Ethereum>;
     type Deploy = ethereum::ContractDeploy;
     type Fund = ethereum::SendTransaction;
     type Redeem = bitcoin::SpendOutput;
@@ -83,18 +86,14 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
     fn actions(
         &self,
     ) -> Vec<
-        Action<
-            Accept,
-            Decline,
-            ethereum::ContractDeploy,
-            ethereum::SendTransaction,
-            bitcoin::SpendOutput,
-            ethereum::SendTransaction,
-        >,
+        Action<Self::Accept, Self::Decline, Self::Deploy, Self::Fund, Self::Redeem, Self::Refund>,
     > {
         use self::SwapStates as SS;
         match *self {
-            SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
+            SS::Start(Start { ref role, .. }) => vec![
+                Action::Accept(role.accept_action()),
+                Action::Decline(role.decline_action()),
+            ],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
                 vec![Action::Deploy(swap.deploy_action())]
             }

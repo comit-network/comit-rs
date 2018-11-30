@@ -11,7 +11,7 @@ use swap_protocols::{
     metadata_store::MetadataStore,
     rfc003::{
         self,
-        bob::{PendingResponses, SwapRequestKind},
+        bob::SwapRequestKind,
         events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
         roles::Bob,
         state_machine::*,
@@ -34,7 +34,6 @@ pub struct SwapRequestHandler<MetadataStore, StateStore> {
     pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     pub bitcoin_poll_interval: Duration,
     pub ethereum_poll_interval: Duration,
-    pub pending_responses: Arc<PendingResponses<SwapId>>,
     pub key_store: Arc<KeyStore>,
 }
 
@@ -47,7 +46,6 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
             self.ethereum_poll_interval,
         );
         let state_store = Arc::clone(&self.state_store);
-        let pending_responses = Arc::clone(&self.pending_responses);
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
 
         receiver
@@ -66,6 +64,13 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                         {
                             let request = request.clone();
+                            let (bob, response_future) = Bob::new();
+
+                            let response_future = response_future.inspect(|response| {
+                                response_sender
+                                    .send(response.clone().into())
+                                    .expect("receiver should never go out of scope");
+                            });
 
                             let start_state = Start {
                                 alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
@@ -76,6 +81,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
                                 beta_asset: request.beta_asset,
                                 alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                                 secret: request.secret_hash,
+                                role: bob,
                             };
 
                             spawn_state_machine(
@@ -96,11 +102,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
                                         ethereum_poll_interval,
                                     ),
                                 )),
-                                Box::new(BobToAlice::new(
-                                    Arc::clone(&pending_responses),
-                                    id,
-                                    response_sender,
-                                )),
+                                Box::new(BobToAlice::new(Box::new(response_future))),
                             );
                         }
 
@@ -118,6 +120,13 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                         {
                             let request = request.clone();
+                            let (bob, response_future) = Bob::new();
+
+                            let response_future = response_future.inspect(|response| {
+                                response_sender
+                                    .send(response.clone().into())
+                                    .expect("receiver should never go out of scope");
+                            });
 
                             let start_state = Start {
                                 alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
@@ -128,6 +137,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
                                 beta_asset: request.beta_asset,
                                 alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                                 secret: request.secret_hash,
+                                role: bob,
                             };
 
                             spawn_state_machine(
@@ -148,11 +158,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
                                         ethereum_poll_interval,
                                     ),
                                 )),
-                                Box::new(BobToAlice::new(
-                                    Arc::clone(&pending_responses),
-                                    id,
-                                    response_sender,
-                                )),
+                                Box::new(BobToAlice::new(Box::new(response_future))),
                             );
                         }
 

@@ -110,6 +110,9 @@ macro_rules! _match_role {
 #[macro_export]
 macro_rules! with_swap_types {
     ($metadata:expr, $fn:tt) => {{
+        use bitcoin_support::BitcoinQuantity;
+        use ethereum_support::EtherQuantity;
+        use swap_protocols::rfc003::roles::{Alice, Bob};
         let metadata = $metadata;
 
         match metadata {
