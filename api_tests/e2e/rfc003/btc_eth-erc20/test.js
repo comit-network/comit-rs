@@ -23,6 +23,7 @@ const bob = test_lib.comit_conf("bob");
 const bob_initial_eth = 5;
 const bob_initial_erc20 = web3.utils.toWei("10000", 'ether');
 const bob_config = Toml.parse(fs.readFileSync(process.env.BOB_CONFIG_FILE, 'utf8'));
+const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 
 const beta_asset_amount = web3.utils.toWei("5000", 'ether');
 
@@ -300,5 +301,14 @@ describe('RFC003: Bitcoin for ERC20', () => {
         swap.should.have.property("_links");
         swap._links.should.have.property("redeem");
         bob_redeem_href = swap._links.redeem.href;
+    });
+
+    let bob_redeem_action;
+    it("[Bob] Can get the redeem action from the ‘redeem’ link", async () => {
+        let res = await chai
+            .request(bob.comit_node_url())
+            .get(bob_redeem_href + "?address=" + bob_final_address + "&fee_per_byte=20");
+        res.should.have.status(200);
+        bob_redeem_action = res.body;
     });
 });
