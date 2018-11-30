@@ -226,8 +226,8 @@ export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/lo
 . "$NVM_SH"
 cd api_tests;
 nvm install;
-nvm use;
-npm install;
+nvm use node;
+yarn install
 '''
 ]
 
