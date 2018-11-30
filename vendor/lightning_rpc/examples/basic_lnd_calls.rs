@@ -13,10 +13,13 @@
 ///     - lnd started with --no-macaroons OR admin.macaroon file in ~/.lnd/
 ///    `cargo run --package lightning_rpc --example basic_lnd_calls`
 /// 4.b. run this example, passing tls.cert file path, lnd started with
-/// --no-macaroons    `cargo run --package lightning_rpc --example
-/// basic_lnd_calls -- $HOME/.lnd/tls.cert` 4.c. run this example, passing both
-/// tls.cert and macaroon file paths    `cargo run --package lighthning_rpc
-/// --example basic_lnd_calls -- $HOME/.lnd/tls.cert $HOME/.lnd/admin.macaroon`
+/// --no-macaroons
+///     `cargo run --package lightning_rpc --example basic_lnd_calls --
+/// $HOME/.lnd/tls.cert`
+/// 4.c. run this example, passing both tls.cert and
+/// macaroon file paths:
+///     `cargo run --package lightning_rpc --example basic_lnd_calls --
+/// $HOME/.lnd/tls.cert $HOME/.lnd/admin.macaroon`
 extern crate hex;
 extern crate http;
 extern crate lightning_rpc;

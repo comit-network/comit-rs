@@ -29,7 +29,7 @@ async function log_btc_balance(when, player, address, address_type) {
     logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await test_lib.btc_balance(address), address_type, address);
 }
 
-describe("RFC003 Bitcoin for Ether", () => {
+describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
         await bob.wallet.fund_eth(bob_initial_eth);

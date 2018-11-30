@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-import "google/api/annotations.proto";
+// Ref. https://dev.lightning.community/guides/javascript-grpc/
+// import "google/api/annotations.proto";
 
 package lnrpc;
 /**
