@@ -3,7 +3,7 @@ use http_api::{self, rfc003::action::GetActionQueryParams};
 use key_store::KeyStore;
 use std::sync::Arc;
 use swap_protocols::{
-    rfc003::{self, bob::PendingResponses, state_store},
+    rfc003::{self, state_store},
     MetadataStore,
 };
 use swaps::common::SwapId;
@@ -12,7 +12,6 @@ use warp::{self, filters::BoxedFilter, Filter, Reply};
 pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    pending_responses: Arc<PendingResponses<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     key_store: Arc<KeyStore>,
 ) -> BoxedFilter<(impl Reply,)> {
@@ -22,7 +21,6 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let key_store = warp::any().map(move || key_store.clone());
     let state_store = warp::any().map(move || state_store.clone());
     let sender = warp::any().map(move || sender.clone());
-    let pending_responses = warp::any().map(move || Arc::clone(&pending_responses));
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -48,7 +46,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
 
     let rfc003_post_action = rfc003
         .and(metadata_store.clone())
-        .and(pending_responses)
+        .and(state_store.clone())
         .and(key_store)
         .and(warp::path::param::<SwapId>())
         .and(warp::path::param::<http_api::rfc003::action::PostAction>())

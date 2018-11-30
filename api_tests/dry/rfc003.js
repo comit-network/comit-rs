@@ -198,6 +198,7 @@ describe("RFC003 HTTP API", () => {
                 action_links.accept.href.should.equal(
                     swap_link_href + "/accept"
                 );
+
                 action_links.decline.should.be.a("object");
                 action_links.decline.href.should.equal(
                     swap_link_href + "/decline"

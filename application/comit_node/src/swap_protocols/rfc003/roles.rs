@@ -1,12 +1,23 @@
-use std::{fmt::Debug, marker::PhantomData};
+use comit_client::SwapReject;
+use futures::{sync::oneshot, Future};
+use std::{
+    fmt::Debug,
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
+use swap_protocols::rfc003::{events::ResponseFuture, state_machine::StateMachineResponse};
 
 use swap_protocols::{
     self,
     asset::Asset,
-    rfc003::{ledger::Ledger, Secret, SecretHash},
+    rfc003::{
+        actions::bob::{Accept, Decline},
+        ledger::Ledger,
+        Secret, SecretHash,
+    },
 };
 
-pub trait Role: Send + Clone + Debug + 'static {
+pub trait Role: Send + Sync + Debug + Clone + 'static {
     type AlphaLedger: Ledger;
     type BetaLedger: Ledger;
     type AlphaAsset: Asset;
@@ -47,6 +58,14 @@ pub struct Alice<AL, BL, AA, BA> {
     phantom_data: PhantomData<(AL, BL, AA, BA)>,
 }
 
+impl<AL, BL, AA, BA> Alice<AL, BL, AA, BA> {
+    pub fn new() -> Self {
+        Self {
+            phantom_data: PhantomData,
+        }
+    }
+}
+
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Alice<AL, BL, AA, BA> {
     type AlphaLedger = AL;
     type BetaLedger = BL;
@@ -60,8 +79,44 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Alice<AL, BL, AA, BA
 }
 
 #[derive(Debug, Clone)]
-pub struct Bob<AL, BL, AA, BA> {
+pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
     phantom_data: PhantomData<(AL, BL, AA, BA)>,
+    response_sender: Arc<
+        Mutex<
+            Option<
+                oneshot::Sender<
+                    Result<
+                        StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,
+                        SwapReject,
+                    >,
+                >,
+            >,
+        >,
+    >,
+}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Bob<AL, BL, AA, BA> {
+    pub fn new() -> (Self, Box<ResponseFuture<Self>>) {
+        let (sender, receiver) = oneshot::channel();
+        (
+            Bob {
+                phantom_data: PhantomData,
+                response_sender: Arc::new(Mutex::new(Some(sender))),
+            },
+            Box::new(
+                receiver
+                    .map_err(|_e| unreachable!("For now, it should be impossible for the sender to go out of scope before the receiver") ),
+            ),
+        )
+    }
+
+    pub fn accept_action(&self) -> Accept<AL, BL> {
+        Accept::new(self.response_sender.clone())
+    }
+
+    pub fn decline_action(&self) -> Decline<AL, BL> {
+        Decline::new(self.response_sender.clone())
+    }
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Bob<AL, BL, AA, BA> {
@@ -92,17 +147,13 @@ pub mod test {
 
     impl PartialEq<Alisha> for Alisha {
         fn eq(&self, _: &Alisha) -> bool {
-            unreachable!(
-                "Rust erroneously forces me to be PartialEq even though I'm never instantiated"
-            )
+            true
         }
     }
 
     impl PartialEq<Bobisha> for Bobisha {
         fn eq(&self, _: &Bobisha) -> bool {
-            unreachable!(
-                "Rust erroneously forces me to be PartialEq even though I'm never instantiated"
-            )
+            true
         }
     }
 

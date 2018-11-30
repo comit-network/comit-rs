@@ -4,7 +4,10 @@ use ethereum_support::{Bytes, EtherQuantity};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        actions::{Accept, Action, Decline, StateActions},
+        actions::{
+            bob::{Accept, Decline},
+            Action, StateActions,
+        },
         bitcoin,
         ethereum::{self, EtherHtlc, Htlc},
         roles::Bob,
@@ -59,8 +62,8 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 }
 
 impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
-    type Accept = Accept;
-    type Decline = Decline;
+    type Accept = Accept<Bitcoin, Ethereum>;
+    type Decline = Decline<Bitcoin, Ethereum>;
     type Deploy = ();
     type Fund = ethereum::ContractDeploy;
     type Redeem = bitcoin::SpendOutput;
@@ -68,19 +71,13 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
 
     fn actions(
         &self,
-    ) -> Vec<
-        Action<
-            Accept,
-            Decline,
-            (),
-            ethereum::ContractDeploy,
-            bitcoin::SpendOutput,
-            ethereum::SendTransaction,
-        >,
-    > {
+    ) -> Vec<Action<Self::Accept, Self::Decline, (), Self::Fund, Self::Redeem, Self::Refund>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start { .. } => vec![Action::Accept(Accept), Action::Decline(Decline)],
+            SS::Start(Start { ref role, .. }) => vec![
+                Action::Accept(role.accept_action()),
+                Action::Decline(role.decline_action()),
+            ],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => vec![Action::Fund(swap.fund_action())],
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
@@ -121,6 +118,7 @@ mod tests {
 
     #[test]
     fn given_state_instance_when_calling_actions_should_not_need_to_specify_type_arguments() {
+        let (bobisha, _) = Bobisha::new();
         let swap_state = SwapStates::from(Start::<Bobisha> {
             alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
                 "875638cac0b0ae9f826575e190f2788918c354c2",
@@ -135,14 +133,18 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger_lock_duration: bitcoin_support::Blocks::from(144),
             secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
+            role: bobisha,
         });
 
         let actions = swap_state.actions();
 
-        assert_eq!(
-            actions,
-            vec![Action::Accept(Accept), Action::Decline(Decline)]
-        );
+        assert!(actions
+            .into_iter()
+            .find(|a| match a {
+                Action::Accept(_) => true,
+                _ => false,
+            })
+            .is_some());
     }
 
 }
