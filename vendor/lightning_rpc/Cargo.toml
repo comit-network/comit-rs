@@ -16,8 +16,7 @@ prost-derive = "0.4"
 tls-api = "0.1"
 tls-api-native-tls = "0.1"
 tokio = "0.1"
-tokio-core = "0.1"
-tokio-io = "0.1"
+log = "0.4"
 tokio-tls-api = "0.1"
 tower-grpc = { git = "https://github.com/tower-rs/tower-grpc" }
 tower-h2 = { git = "https://github.com/tower-rs/tower-h2" }
