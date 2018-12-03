@@ -21,14 +21,6 @@ const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const logger = test_lib.logger();
 
-async function log_eth_balance(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s wei at the %s address %s", when, player, await test_lib.eth_balance(address), address_type, address);
-}
-
-async function log_btc_balance(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await test_lib.btc_balance(address), address_type, address);
-}
-
 describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
@@ -40,23 +32,23 @@ describe("RFC003: Bitcoin for Ether", () => {
         await test_lib.import_address(bob.wallet.btc_identity().address); // Watch only import
         await test_lib.btc_generate();
 
-        await log_eth_balance("Before", "Alice", alice_final_address, "final");
-        await log_eth_balance("Before", "Alice", alice.wallet.eth_address(), "wallet");
-        await log_btc_balance("Before", "Alice", alice.wallet.btc_identity().address, "wallet");
+        await test_lib.log_eth_balance("Before", "Alice", alice_final_address, "final");
+        await test_lib.log_eth_balance("Before", "Alice", alice.wallet.eth_address(), "wallet");
+        await test_lib.log_btc_balance("Before", "Alice", alice.wallet.btc_identity().address, "wallet");
 
-        await log_btc_balance("Before", "Bob", bob_final_address, "final");
-        await log_eth_balance("Before", "Bob", bob.wallet.eth_address(), "wallet");
-        await log_btc_balance("Before", "Bob", bob.wallet.btc_identity().address, "wallet");
+        await test_lib.log_btc_balance("Before", "Bob", bob_final_address, "final");
+        await test_lib.log_eth_balance("Before", "Bob", bob.wallet.eth_address(), "wallet");
+        await test_lib.log_btc_balance("Before", "Bob", bob.wallet.btc_identity().address, "wallet");
     });
 
     after(async function () {
-        await log_eth_balance("After", "Alice", alice_final_address, "final");
-        await log_eth_balance("After", "Alice", alice.wallet.eth_address(), "wallet");
-        await log_btc_balance("After", "Alice", alice.wallet.btc_identity().address, "wallet");
+        await test_lib.log_eth_balance("After", "Alice", alice_final_address, "final");
+        await test_lib.log_eth_balance("After", "Alice", alice.wallet.eth_address(), "wallet");
+        await test_lib.log_btc_balance("After", "Alice", alice.wallet.btc_identity().address, "wallet");
 
-        await log_btc_balance("After", "Bob", bob_final_address, "final");
-        await log_eth_balance("After", "Bob", bob.wallet.eth_address(), "wallet");
-        await log_btc_balance("After", "Bob", bob.wallet.btc_identity().address, "wallet");
+        await test_lib.log_btc_balance("After", "Bob", bob_final_address, "final");
+        await test_lib.log_eth_balance("After", "Bob", bob.wallet.eth_address(), "wallet");
+        await test_lib.log_btc_balance("After", "Bob", bob.wallet.btc_identity().address, "wallet");
     });
 
     let swap_location;

@@ -537,3 +537,11 @@ module.exports.erc20_balance = async function (token_holder_address, contract_ad
     let hex_balance = await web3.eth.call(tx);
     return web3.utils.toBN(hex_balance);
 };
+
+module.exports.log_eth_balance = async function(when, player, address, address_type) {
+    logger.info("%s the swap, %s has %s wei at the %s address %s", when, player, await module.exports.eth_balance(address), address_type, address);
+};
+
+module.exports.log_btc_balance = async function(when, player, address, address_type) {
+    logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await module.exports.btc_balance(address), address_type, address);
+};

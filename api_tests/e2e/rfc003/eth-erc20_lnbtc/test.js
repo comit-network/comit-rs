@@ -22,6 +22,7 @@ const beta_asset = 230000000;
 const toby_wallet = test_lib.wallet_conf();
 
 describe("RFC003: ERC20 for Lightning Bitcoin", () => {
+
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
