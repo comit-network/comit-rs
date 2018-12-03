@@ -71,12 +71,10 @@ impl ExpandResult for EthereumTransactionQuery {
             })
             .collect();
 
-        let results = stream::futures_ordered(futures)
+        stream::futures_ordered(futures)
             .filter_map(|item| item)
             .collect()
-            .wait();
-
-        results
+            .wait()
     }
 }
 

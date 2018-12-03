@@ -24,7 +24,7 @@ impl Erc20Quantity {
     }
 
     pub fn token_contract(&self) -> Address {
-        self.token_contract.clone()
+        self.token_contract
     }
 
     pub fn quantity(&self) -> U256 {

@@ -43,7 +43,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
             .list_unspent(
                 rpc::TxOutConfirmations::AtLeast(1),
                 None,
-                Some(vec![address.clone().into()]),
+                Some(vec![address.clone()]),
             )
             .unwrap()
             .unwrap();
@@ -79,7 +79,7 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
         let address = dest.into_p2wpkh_address(Network::Regtest);
 
         let txid = self
-            .send_to_address(&address.clone().into(), value.bitcoin())
+            .send_to_address(&address.clone(), value.bitcoin())
             .unwrap()
             .unwrap();
 
@@ -87,6 +87,6 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
 
         let vout = self.find_vout_for_address(&txid, &address);
 
-        (txid.into(), vout)
+        (txid, vout)
     }
 }

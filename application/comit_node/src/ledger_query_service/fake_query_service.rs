@@ -102,12 +102,14 @@ impl<L: Ledger, Q: Query> LedgerQueryServiceApiClient<L, Q>
     }
 }
 
+#[allow(type_alias_bounds)]
+type Response<L: Ledger> = Future<Item = Vec<L::TxId>, Error = Error> + Send;
+
 #[derive(DebugStub)]
 pub struct LedgerQueryServiceMock<L: Ledger, Q> {
     number_of_invocations: Mutex<u32>,
     #[debug_stub = "next result"]
-    results_for_next_invocation:
-        Mutex<Option<Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>>>,
+    results_for_next_invocation: Mutex<Option<Box<Response<L>>>>,
     query_type: PhantomData<Q>,
 }
 

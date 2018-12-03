@@ -65,16 +65,18 @@ impl DefaultLedgerQueryServiceApiClient {
                         );
                     }
 
-                    return Err(Error::MalformedResponse(format!("Could not create query")));
+                    return Err(Error::MalformedResponse(
+                        "Could not create query".to_string(),
+                    ));
                 }
 
                 response
                     .headers()
                     .get(LOCATION)
                     .ok_or_else(|| {
-                        Error::MalformedResponse(format!(
-                            "Location header was not present in response"
-                        ))
+                        Error::MalformedResponse(
+                            "Location header was not present in response".to_string(),
+                        )
                     })
                     .and_then(|value| {
                         value.to_str().map_err(|e| {

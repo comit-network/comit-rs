@@ -341,6 +341,7 @@ enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
     },
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -349,16 +350,24 @@ pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     action: PostAction,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_post(metadata_store, state_store, key_store, id, action, body)
-        .map(|_| warp::reply())
-        .map_err(HttpApiProblemStdError::from)
-        .map_err(warp::reject::custom)
+    handle_post(
+        metadata_store.as_ref(),
+        state_store.as_ref(),
+        key_store.as_ref(),
+        id,
+        action,
+        body,
+    )
+    .map(|_| warp::reply())
+    .map_err(HttpApiProblemStdError::from)
+    .map_err(warp::reject::custom)
 }
 
+#[allow(clippy::unit_arg, clippy::let_unit_value)]
 pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    key_store: Arc<KeyStore>,
+    metadata_store: &T,
+    state_store: &S,
+    key_store: &KeyStore,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -378,30 +387,34 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                         "Failed to deserialize body of accept response for swap {}: {:?}",
                         id, e
                     );
-                    problem::serde(e)
+                    problem::serde(&e)
                 })
                 .and_then(|accept_body| {
                     let state = state_store
                         .get::<Role>(&id)?
                         .ok_or_else(problem::state_store)?;
 
-                    let accept_action = state
-                        .actions()
-                        .into_iter()
-                        .find_map(move |action| match action {
-                            Action::Accept(accept) => Some(Ok(accept)),
-                            _ => None,
-                        })
-                        .unwrap_or(Err(HttpApiProblem::with_title_and_type_from_status(404)))?;
+                    let accept_action = {
+                        state
+                            .actions()
+                            .into_iter()
+                            .find_map(move |action| match action {
+                                Action::Accept(accept) => Some(Ok(accept)),
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| {
+                                Err(HttpApiProblem::with_title_and_type_from_status(404))
+                            })?
+                    };
 
-                    accept_action.execute(accept_body, key_store.as_ref(), id)
+                    accept_action.execute(accept_body, key_store, id)
                 }),
             PostAction::Decline => Err(problem::not_yet_implemented("Declining a swap")),
         })
     )
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GetAction {
     Fund,
     Deploy,
@@ -411,14 +424,14 @@ pub enum GetAction {
 
 impl GetAction {
     fn matches<Accept, Decline, Deploy, Fund, Redeem, Refund>(
-        &self,
+        self,
         other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>,
     ) -> bool {
         match other {
-            Action::Deploy(_) => *self == GetAction::Deploy,
-            Action::Fund(_) => *self == GetAction::Fund,
-            Action::Redeem(_) => *self == GetAction::Redeem,
-            Action::Refund(_) => *self == GetAction::Refund,
+            Action::Deploy(_) => self == GetAction::Deploy,
+            Action::Fund(_) => self == GetAction::Fund,
+            Action::Redeem(_) => self == GetAction::Redeem,
+            Action::Refund(_) => self == GetAction::Refund,
             _ => false,
         }
     }
@@ -438,6 +451,7 @@ impl FromStr for GetAction {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -445,17 +459,23 @@ pub fn get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     action: GetAction,
     query_params: GetActionQueryParams,
 ) -> Result<impl Reply, Rejection> {
-    handle_get(metadata_store, state_store, &id, &action, query_params)
-        .map_err(HttpApiProblemStdError::from)
-        .map_err(warp::reject::custom)
+    handle_get(
+        metadata_store.as_ref(),
+        state_store,
+        &id,
+        action,
+        &query_params,
+    )
+    .map_err(HttpApiProblemStdError::from)
+    .map_err(warp::reject::custom)
 }
 
 fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    metadata_store: Arc<T>,
+    metadata_store: &T,
     state_store: Arc<S>,
     id: &SwapId,
-    action: &GetAction,
-    query_params: GetActionQueryParams,
+    action: GetAction,
+    query_params: &GetActionQueryParams,
 ) -> Result<impl Reply, HttpApiProblem> {
     let metadata = metadata_store
         .get(id)?
@@ -466,7 +486,8 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         id,
         state,
         (|| {
-            let state = state.ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
+            let state =
+                state.ok_or_else(|| HttpApiProblem::with_title_and_type_from_status(500))?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
             state

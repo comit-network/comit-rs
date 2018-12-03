@@ -5,6 +5,7 @@ macro_rules! get_swap {
         let state_store = $state_store;
         let id = $id;
 
+        #[allow(clippy::redundant_closure_call)]
         match metadata {
             metadata @ Metadata {
                 alpha_ledger: LedgerKind::Bitcoin,
@@ -92,6 +93,7 @@ macro_rules! get_swap {
 
 macro_rules! _match_role {
     ($role:ident, $fn:tt) => {
+        #[allow(clippy::redundant_closure_call)]
         match $role {
             RoleKind::Alice => {
                 #[allow(dead_code)]
