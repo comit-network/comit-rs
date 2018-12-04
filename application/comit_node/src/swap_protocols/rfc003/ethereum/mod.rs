@@ -1,6 +1,6 @@
 use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
 use hex;
-pub use misc::Seconds;
+pub use std_ext::time::Seconds;
 use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
