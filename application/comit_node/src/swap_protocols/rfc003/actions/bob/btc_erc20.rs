@@ -120,10 +120,10 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref swap,
                 ref alpha_htlc_location,
-                ref secret,
+                ref beta_redeemed_tx,
                 ..
             }) => vec![Action::Redeem(
-                swap.redeem_action(*alpha_htlc_location, *secret),
+                swap.redeem_action(*alpha_htlc_location, beta_redeemed_tx.secret),
             )],
             _ => vec![],
         }
