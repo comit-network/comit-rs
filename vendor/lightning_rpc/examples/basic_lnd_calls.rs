@@ -4,23 +4,29 @@ extern crate futures;
 /// 1. Run lnd. see https://github.com/lightningnetwork/lnd/
 ///    We expect lnd to listen on 127.0.0.1:10009
 /// 2. Have access to the lnd's tls.cert:
-///     - By default, it is expected to be at ~/.lnd/tls.cert
-///     - if using docker: `docker cp lnd_btc:/root/.lnd/tls.cert ~/.lnd/`
+///    - By default, it is expected to be at ~/.lnd/tls.cert
+///    - if using docker: `docker cp lnd_btc:/root/.lnd/tls.cert ~/.lnd/`
 /// 3. Have access to lnd admin.macaroon file
-///     - By default, it is expected to be at ~/.lnd/admin.macaroon
-///     - if using docker: `docker cp lnd_btc:/root/.lnd/admin.macaroon ~/.lnd/`
+///    - By default, it is expected to be at ~/.lnd/admin.macaroon
+///    - if using docker: `docker cp \
+///      lnd_btc:/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon/admin.
+///      macaroon ~/.lnd/`
 /// 4.a. run this example, with:
-///     - tls.cert file in ~/.lnd/
-///     - lnd started with --no-macaroons OR admin.macaroon file in ~/.lnd/
+///    - tls.cert file in ~/.lnd/
+///    - lnd started with --no-macaroons OR admin.macaroon file in ~/.lnd/
 ///    `cargo run --package lightning_rpc --example basic_lnd_calls`
 /// 4.b. run this example, passing tls.cert file path, lnd started with
 /// --no-macaroons
-///     `cargo run --package lightning_rpc --example basic_lnd_calls --
+///    `cargo run --package lightning_rpc --example basic_lnd_calls -- \
 /// $HOME/.lnd/tls.cert`
 /// 4.c. run this example, passing both tls.cert and
 /// macaroon file paths:
-///     `cargo run --package lightning_rpc --example basic_lnd_calls --
-/// $HOME/.lnd/tls.cert $HOME/.lnd/admin.macaroon`
+///    `cargo run --package lightning_rpc --example basic_lnd_calls -- \
+/// $HOME/.lnd/tls.cert $HOME/.lnd/data/chain/bitcoin/regtest/admin.macaroon`
+/// 4.d using the docker containers started by the comit e2e tests:
+///     `cargo run --package lightning_rpc --example basic_lnd_calls -- \
+/// ./api_tests/regtest/lnd_certs/alice-tls.cert \
+/// ./lnd_certs/alice-admin.macaroon`
 extern crate hex;
 extern crate http;
 extern crate lightning_rpc;

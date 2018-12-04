@@ -35,7 +35,7 @@ where
         {
             let headers = &mut head.headers;
 
-            match HeaderValue::from_bytes(self.macaroon.as_ref()) {
+            match self.macaroon.to_hex().parse::<HeaderValue>() {
                 Ok(header_value) => {
                     headers.insert("macaroon", header_value);
                 }
