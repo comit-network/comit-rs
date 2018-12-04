@@ -20,7 +20,6 @@ use swap_protocols::{
         self,
         actions::{Action, StateActions},
         alice::SwapRequestIdentities,
-        roles::{Alice, Bob},
         state_store::StateStore,
         Ledger,
     },
