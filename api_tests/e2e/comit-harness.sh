@@ -47,7 +47,7 @@ END(){
 
 trap 'END' EXIT;
 
-function start() {
+function start_chain_services() {
     if test "$LOG_DIR"; then
         log "INFO: Removing all previous logs from $LOG_DIR"
         rm -rf "$LOG_DIR"
@@ -72,7 +72,9 @@ function start() {
     );
 
     sleep 10;
+}
 
+function start_comit_services() {
     export BOB_CONFIG_FILE=./regtest/bob/default.toml;
     export BOB_COMIT_NODE_HOST=127.0.0.1;
     BOB_COMIT_NODE_PID=$(
@@ -99,14 +101,16 @@ function start() {
 
 test "$*" || { log "ERROR: The harness requires to test to run!"; exit 1; }
 
-start;
-
-debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
-debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
+start_chain_services;
 
 for chain in ${CHAINS}; do
     setup_${chain};
 done;
+
+start_comit_services;
+
+debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
+debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 
 sleep 2;
 

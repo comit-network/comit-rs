@@ -10,6 +10,13 @@ node_url = "http://localhost:18443"
 node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 
+[lightning_bitcoin]
+network = "regtest"
+node_uri = "127.0.0.1:10009"
+tls_cert_path = "~/.lnd/tls.cert"
+readonly_macaroon_path = "~/.lnd/data/chain/bitcoin/regtest/readonly.macaroon"
+grpc_origin_uri = "http://127.0.0.1"
+
 [comit]
 remote_comit_node_url = "0.0.0.0:8010"
 comit_listen = "0.0.0.0:8011"

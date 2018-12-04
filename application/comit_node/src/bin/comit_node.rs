@@ -6,7 +6,9 @@ extern crate ethereum_support;
 #[macro_use]
 extern crate log;
 extern crate futures;
+extern crate lightning_rpc;
 extern crate tokio;
+extern crate tower_grpc;
 extern crate warp;
 
 use comit_node::{
@@ -23,12 +25,14 @@ use comit_node::{
     },
     swaps::common::SwapId,
 };
+use lightning_rpc::lnrpc;
 
 use ethereum_support::*;
 use futures::sync::{
     mpsc::{self, UnboundedSender},
     oneshot,
 };
+use lightning_rpc::{certificate::Certificate, macaroon::Macaroon, LndClient};
 use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -47,8 +51,9 @@ fn main() {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
-
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut runtime = tokio::runtime::Runtime::new().expect("Could not get a runtime");
+    let _lightning_bitcoin_factory =
+        create_lightning_bitcoin_client_factory(&mut runtime, &settings);
 
     let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
@@ -103,6 +108,41 @@ fn create_ledger_query_service_api_client(
     Arc::new(DefaultLedgerQueryServiceApiClient::new(
         &settings.ledger_query_service.url,
     ))
+}
+
+fn create_lightning_bitcoin_client_factory(
+    runtime: &tokio::runtime::Runtime,
+    settings: &ComitNodeSettings,
+) -> lightning_rpc::ClientFactory {
+    use lightning_rpc::FromFile;
+
+    let tls_cert_path = &settings.lightning_bitcoin.tls_cert_path;
+    let tls_cert = Certificate::from_file(tls_cert_path)
+        .expect(format!("LND TLS Cert could not be found: {:?}", tls_cert_path).as_str());
+    let macaroon_path = &settings.lightning_bitcoin.readonly_macaroon_path;
+    let macaroon = Macaroon::from_file(macaroon_path).expect(
+        format!(
+            "Lnd read-only macaroon could not be found: {:?}",
+            macaroon_path
+        )
+        .as_str(),
+    );
+
+    lightning_rpc::ClientFactory::new(
+        runtime.executor(),
+        settings.lightning_bitcoin.grpc_origin_uri.clone(),
+        tls_cert.into(),
+        settings.lightning_bitcoin.node_uri,
+        macaroon,
+    )
+    // runtime
+    // .block_on(factory.with_macaroon(
+    //     settings.lightning_bitcoin.grpc_origin_uri.clone(),
+    //     tls_cert,
+    //     settings.lightning_bitcoin.node_uri,
+    //     macaroon,
+    // ))
+    // .expect("Could not create a Lightning Network RPC Client (Bitcoin)")
 }
 
 fn spawn_warp_instance(
