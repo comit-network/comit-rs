@@ -11,7 +11,7 @@ use futures::{
 };
 use swap_protocols::{
     asset::Asset,
-    ledger::{Bitcoin, Ethereum},
+    ledger::{Bitcoin, Ethereum, Lightning},
     rfc003::{self, state_machine::StateMachineResponse, Ledger},
     SwapProtocols,
 };
@@ -35,7 +35,12 @@ pub fn swap_config(
         ],
         move |request: Request| {
             let swap_protocol = header!(request.get_header("swap_protocol"));
-
+            //TODO: PASTA
+            // This requires two things to fix:
+            // 1. We should not use an unbounded sender here we should just call a function which returns us the future
+            // 2. This function should take type parameters so we can pass in a statically dispatched swap_request
+            // 3. Write a macro that matches on the strings in the header and translates them into concrete types and
+            //    construct the concrete request from them
             match SwapProtocols::from_bam_header(swap_protocol).unwrap() {
                 SwapProtocols::Rfc003 => {
                     let swap_id = SwapId::default();
@@ -51,6 +56,10 @@ pub fn swap_config(
                         Box::new(response_receiver.then(move |result| {
                             match result {
                                 Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
+                                Ok(_) => {
+                                    error!("receiver is returned the wrong type");
+                                    Ok(Response::new(Status::SE(0)))
+                                }
                                 Err(_) => {
                                     warn!("Failed to receive from oneshot channel for swap {}", swap_id);
                                     Ok(Response::new(Status::SE(0)))
@@ -67,6 +76,31 @@ pub fn swap_config(
                         Box::new(response_receiver.then(move |result| {
                             match result {
                                 Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
+                                Ok(_) => {
+                                    error!("receiver is returned the wrong type");
+                                    Ok(Response::new(Status::SE(0)))
+                                },
+                                Err(_) => {
+                                    warn!("Failed to receive from oneshot channel for swap {}", swap_id);
+                                    Ok(Response::new(Status::SE(0)))
+                                }
+                            }
+                        }))
+                    }
+                    else if let Ok(swap_request) = decode_request(&request) {
+                        let request_kind =
+                            rfc003::bob::SwapRequestKind::EthereumLightningBitcoinQuantityErc20Quantity(
+                                swap_request,
+                            );
+                        sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
+
+                        Box::new(response_receiver.then(move |result| {
+                            match result {
+                                Ok(rfc003::bob::SwapResponseKind::EthereumLightning(response)) => Ok(to_bam_response::<Ethereum, Lightning>(response)),
+                                Ok(_) => {
+                                    error!("receiver is returned the wrong type");
+                                    Ok(Response::new(Status::SE(0)))
+                                }
                                 Err(_) => {
                                     warn!("Failed to receive from oneshot channel for swap {}", swap_id);
                                     Ok(Response::new(Status::SE(0)))

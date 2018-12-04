@@ -66,5 +66,6 @@ pub mod key_store;
 pub mod ledger_query_service;
 pub mod logging;
 pub mod settings;
+pub mod std_ext;
 pub mod swap_protocols;
 pub mod swaps;

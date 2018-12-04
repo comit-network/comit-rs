@@ -3,8 +3,9 @@ use std::fmt::Debug;
 
 mod bitcoin;
 mod ethereum;
+mod lightning;
 
-pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
+pub use self::{bitcoin::Bitcoin, ethereum::Ethereum, lightning::Lightning};
 use bam_api::header::{FromBamHeader, ToBamHeader};
 use http_api::ledger::{FromHttpLedger, ToHttpLedger};
 use std::hash::Hash;
@@ -17,14 +18,11 @@ pub trait Ledger:
     + 'static
     + Default
     + PartialEq
-    + Eq
-    + Hash
     + FromHttpLedger
     + ToHttpLedger
     + FromBamHeader
     + ToBamHeader
 {
-    type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;
     type Pubkey: Clone + Debug + Send + Sync + 'static;
     type Address: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
@@ -39,14 +37,7 @@ pub trait Ledger:
         + From<Self::Address>
         + Serialize
         + DeserializeOwned;
-    type Transaction: Debug
-        + Clone
-        + DeserializeOwned
-        + Serialize
-        + Send
-        + Sync
-        + PartialEq
-        + 'static;
+    type Transaction: Debug + Clone + Send + Sync + PartialEq + 'static;
 
     fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }

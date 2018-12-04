@@ -10,6 +10,7 @@ pub enum RoleKind {
 pub enum LedgerKind {
     Bitcoin,
     Ethereum,
+    Lightning,
 }
 
 #[derive(Clone, Copy, Debug, Display)]

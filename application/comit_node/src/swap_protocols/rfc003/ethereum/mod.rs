@@ -1,6 +1,6 @@
 use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
 use hex;
-use std::time::Duration;
+pub use std_ext::time::Seconds;
 use swap_protocols::{
     ledger::Ethereum,
     rfc003::{
@@ -29,21 +29,6 @@ impl Into<Bytes> for ByteCode {
 
 pub trait Htlc {
     fn compile_to_hex(&self) -> ByteCode;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Seconds(pub u64);
-
-impl From<Duration> for Seconds {
-    fn from(duration: Duration) -> Self {
-        Seconds(duration.as_secs())
-    }
-}
-
-impl From<Seconds> for Duration {
-    fn from(seconds: Seconds) -> Duration {
-        Duration::from_secs(seconds.0)
-    }
 }
 
 impl Ledger for Ethereum {

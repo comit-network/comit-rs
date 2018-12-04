@@ -11,7 +11,6 @@ use swap_protocols::{
     rfc003::{
         actions::{bob::Accept, Action, StateActions},
         bitcoin, ethereum,
-        roles::{Alice, Bob},
         state_machine::StateMachineResponse,
         state_store::StateStore,
         Ledger,

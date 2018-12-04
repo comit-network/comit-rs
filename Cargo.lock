@@ -360,6 +360,7 @@ dependencies = [
  "hyper 0.12.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "key_gen 0.1.0",
  "lazy_static 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lightning_rpc 0.1.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "memsocket 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
