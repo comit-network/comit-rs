@@ -176,12 +176,12 @@ pub enum ActionResponseBody {
         value: EtherQuantity,
         gas_limit: ethereum_support::U256,
     },
-    AddInvoice {
+    LndAddInvoice {
         r_preimage: Secret,
         r_hash: SecretHash,
         value: BitcoinQuantity,
     },
-    SendPayment {
+    LndSendPayment {
         dest: secp256k1_support::PublicKey,
         amt: BitcoinQuantity,
         payment_hash: SecretHash,
@@ -333,25 +333,25 @@ impl IntoResponseBody for ethereum::SendTransaction {
     }
 }
 
-impl IntoResponseBody for lightning::AddInvoice {
+impl IntoResponseBody for lightning::LndAddInvoice {
     fn into_response_body(
         self,
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
-        let lightning::AddInvoice {
+        let lightning::LndAddInvoice {
             r_preimage,
             r_hash,
             value,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::AddInvoice {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::LndAddInvoice {
                 r_preimage,
                 r_hash,
                 value,
             }),
             _ => {
                 error!(
-                    "Unexpected GET parameters for a lightning::AddInvoice action. Expected: None."
+                    "Unexpected GET parameters for a lightning::LndAddInvoice action. Expected: None."
                 );
                 Err(HttpApiProblem::with_title_and_type_from_status(400)
                     .set_detail("This action does not take any query parameters"))
@@ -360,26 +360,26 @@ impl IntoResponseBody for lightning::AddInvoice {
     }
 }
 
-impl IntoResponseBody for lightning::SendPayment {
+impl IntoResponseBody for lightning::LndSendPayment {
     fn into_response_body(
         self,
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
-        let lightning::SendPayment {
+        let lightning::LndSendPayment {
             dest,
             amt,
             payment_hash,
             final_cltv_delta,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::SendPayment {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::LndSendPayment {
                 dest,
                 amt,
                 payment_hash,
                 final_cltv_delta,
             }),
             _ => {
-                error!("Unexpected GET parameters for a lightning::SendPayment action. Expected: None.");
+                error!("Unexpected GET parameters for a lightning::LndSendPayment action. Expected: None.");
                 Err(HttpApiProblem::with_title_and_type_from_status(400)
                     .set_detail("This action does not take any query parameters"))
             }
@@ -397,8 +397,8 @@ impl IntoResponseBody for () {
     }
 }
 
-impl<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund> IntoResponseBody
-    for Action<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund>
+impl<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund> IntoResponseBody
+    for Action<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>
 where
     Deploy: IntoResponseBody,
     Fund: IntoResponseBody,
@@ -506,7 +506,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 
 #[derive(Debug, PartialEq)]
 pub enum GetAction {
-    AddInvoice,
+    LndAddInvoice,
     Fund,
     Deploy,
     Redeem,
@@ -514,12 +514,12 @@ pub enum GetAction {
 }
 
 impl GetAction {
-    fn matches<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund>(
+    fn matches<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>(
         &self,
-        other: &Action<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund>,
+        other: &Action<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>,
     ) -> bool {
         match other {
-            Action::AddInvoice(_) => *self == GetAction::AddInvoice,
+            Action::LndAddInvoice(_) => *self == GetAction::LndAddInvoice,
             Action::Deploy(_) => *self == GetAction::Deploy,
             Action::Fund(_) => *self == GetAction::Fund,
             Action::Redeem(_) => *self == GetAction::Redeem,
