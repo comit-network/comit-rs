@@ -1,9 +1,12 @@
+use bitcoin_support::Blocks;
 use secp256k1_support::PublicKey;
-use std_ext::time::Seconds;
 use swap_protocols::{ledger::Lightning, rfc003::Ledger};
+mod actions;
+
+pub use self::actions::*;
 
 impl Ledger for Lightning {
-    type LockDuration = Seconds;
+    type LockDuration = Blocks;
     type HtlcLocation = ();
     type HtlcIdentity = PublicKey;
 }

@@ -64,6 +64,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     type Accept = Accept<Bitcoin, Ethereum>;
     type Decline = Decline<Bitcoin, Ethereum>;
+    type AddInvoice = ();
     type Deploy = ();
     type Fund = ethereum::ContractDeploy;
     type Redeem = bitcoin::SpendOutput;
@@ -71,7 +72,8 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQu
 
     fn actions(
         &self,
-    ) -> Vec<Action<Self::Accept, Self::Decline, (), Self::Fund, Self::Redeem, Self::Refund>> {
+    ) -> Vec<Action<Self::Accept, Self::Decline, (), (), Self::Fund, Self::Redeem, Self::Refund>>
+    {
         use self::SwapStates as SS;
         match *self {
             SS::Start(Start { ref role, .. }) => vec![

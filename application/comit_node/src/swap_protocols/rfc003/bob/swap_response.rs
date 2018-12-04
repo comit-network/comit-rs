@@ -1,3 +1,4 @@
+use bitcoin_support;
 use comit_client::SwapReject;
 use ethereum_support;
 use std_ext::time::Seconds;
@@ -14,7 +15,11 @@ pub enum SwapResponseKind {
 
     EthereumLightning(
         Result<
-            StateMachineResponse<ethereum_support::Address, secp256k1_support::PublicKey, Seconds>,
+            StateMachineResponse<
+                ethereum_support::Address,
+                secp256k1_support::PublicKey,
+                bitcoin_support::Blocks,
+            >,
             SwapReject,
         >,
     ),
@@ -41,14 +46,22 @@ impl
 impl
     From<
         Result<
-            StateMachineResponse<ethereum_support::Address, secp256k1_support::PublicKey, Seconds>,
+            StateMachineResponse<
+                ethereum_support::Address,
+                secp256k1_support::PublicKey,
+                bitcoin_support::Blocks,
+            >,
             SwapReject,
         >,
     > for SwapResponseKind
 {
     fn from(
         result: Result<
-            StateMachineResponse<ethereum_support::Address, secp256k1_support::PublicKey, Seconds>,
+            StateMachineResponse<
+                ethereum_support::Address,
+                secp256k1_support::PublicKey,
+                bitcoin_support::Blocks,
+            >,
             SwapReject,
         >,
     ) -> Self {
