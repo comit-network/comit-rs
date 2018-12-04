@@ -27,16 +27,16 @@ describe("RFC003: ERC20 for Lightning Bitcoin", () => {
     before(async function() {
         this.timeout(5000);
 
-        const alice_info = await alice.ln.getInfoAsync();
-        const bob_info = await bob.ln.getInfoAsync();
+        const alice_info = await alice.ln.getInfo();
+        const bob_info = await bob.ln.getInfo();
         const alice_ln_pubkey = alice_info.identity_pubkey;
         const bob_ln_pubkey = bob_info.identity_pubkey;
-        await alice.ln.connectToPeerAsync(bob_ln_pubkey, bob.ln.host);
+        await alice.ln.connectToPeer(bob_ln_pubkey, bob.ln.host);
         await bob.wallet.fund_btc(5);
         await bob.ln.send_btc_to_wallet(3);
         await test_lib.btc_generate(1);
-        await bob.ln.openChannelAsync(7000000, alice_ln_pubkey);
-        let bob_channel_balance = await bob.ln.channelBalanceAsync();
+        await bob.ln.openChannel(7000000, alice_ln_pubkey);
+        let bob_channel_balance = await bob.ln.channelBalance();
         if (parseInt(bob_channel_balance.balance) === 0) {
             throw new Error("Bob should have some balance in a channel with Alice.");
         }

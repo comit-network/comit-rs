@@ -305,10 +305,20 @@ class ComitConf {
     }
 }
 
+function resolveReject(resolve, reject) {
+    return function (err, response) {
+        if (err !== null) {
+            reject(err);
+        }
+        else {
+            resolve(response)
+        }
+    }
+}
+
 class LightningNetwork {
     constructor(name, lnd_port) {
         this.rpc_client = create_lnrpc_client(name, lnd_port);
-        this.rpc_port = lnd_port;
         switch (name) {
             case "alice":
                 this.host = process.env.lnd_alice_ip;
@@ -321,38 +331,33 @@ class LightningNetwork {
         }
     }
 
-    async lnNewAddressAsync() {
+    async lnNewAddress() {
         const request = {
             type: "np2wkh"
         };
         const ln_client = this.rpc_client;
         return new Promise(function(resolve, reject) {
-            ln_client.newAddress(request, function(err, data) {
-                if (err !== null) reject(err);
-                else resolve(data.address);
-            });
+            ln_client.newAddress(request, resolveReject(resolve, reject));
         });
     }
 
     async send_btc_to_wallet(btc_value) {
         if (!this._wallet_address) {
-            this._wallet_address = await this.lnNewAddressAsync();
+            let res = await this.lnNewAddress();
+            this._wallet_address = res.address;
         }
         return bitcoin_rpc_client()
             .sendToAddress(this._wallet_address, btc_value);
     }
 
-    async getInfoAsync() {
+    async getInfo() {
         const ln_client = this.rpc_client;
         return new Promise(function(resolve, reject) {
-            ln_client.getInfo({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
+            ln_client.getInfo({}, resolveReject(resolve, reject));
         });
     }
 
-    async connectToPeerAsync (to_ln_pubkey, to_ln_host) {
+    async connectToPeer (to_ln_pubkey, to_ln_host) {
         const from_ln_client = this.rpc_client;
         const address = {
             pubkey: to_ln_pubkey,
@@ -364,24 +369,18 @@ class LightningNetwork {
         };
 
         return new Promise(function(resolve, reject) {
-            from_ln_client.connectPeer(request, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
+            from_ln_client.connectPeer(request, resolveReject(resolve, reject));
         });
     }
 
-    async listPeersAsync() {
+    async listPeers() {
         const ln_client = this.rpc_client;
         return new Promise(function(resolve, reject) {
-            ln_client.listPeers({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
+            ln_client.listPeers({}, resolveReject(resolve, reject));
         });
     }
 
-    async openChannelAsync (funding_amount_satoshi, to_ln_pubkey) {
+    async openChannel (funding_amount_satoshi, to_ln_pubkey) {
         const from_ln_client = this.rpc_client;
         const request = {
             node_pubkey: Buffer.from(to_ln_pubkey, "hex"),
@@ -402,7 +401,7 @@ class LightningNetwork {
         });
     }
 
-    async listChannelsAsync() {
+    async listChannels() {
         const ln_client = this.rpc_client;
         const request = {
             active_only: false,
@@ -411,30 +410,21 @@ class LightningNetwork {
             private_only: false,
         };
         return new Promise(function(resolve, reject) {
-            ln_client.listChannels(request, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
+            ln_client.listChannels(request, resolveReject(resolve, reject));
         });
     }
 
-    async walletBalanceAsync() {
+    async walletBalance() {
         const ln_client = this.rpc_client;
         return new Promise(function(resolve, reject) {
-            ln_client.walletBalance({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
+            ln_client.walletBalance({}, resolveReject(resolve, reject));
         });
     }
 
-    async channelBalanceAsync() {
+    async channelBalance() {
         const ln_client = this.rpc_client;
         return new Promise(function(resolve, reject) {
-            ln_client.channelBalance({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
+            ln_client.channelBalance({}, resolveReject(resolve, reject));
         });
     }
 }
