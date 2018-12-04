@@ -55,11 +55,11 @@ module.exports.sleep = time => {
     });
 };
 
-let bitcoin_rpc_client;
+let _bitcoin_rpc_client;
 
-module.exports.bitcoin_rpc_client = () => {
-    return (bitcoin_rpc_client =
-        bitcoin_rpc_client ||
+function bitcoin_rpc_client () {
+    return (_bitcoin_rpc_client =
+        _bitcoin_rpc_client ||
         new BitcoinRpcClient({
             network: "regtest",
             port: process.env.BITCOIN_RPC_PORT,
@@ -67,6 +67,10 @@ module.exports.bitcoin_rpc_client = () => {
             username: process.env.BITCOIN_RPC_USERNAME,
             password: process.env.BITCOIN_RPC_PASSWORD
         }));
+}
+
+module.exports.bitcoin_rpc_client = () => {
+    return bitcoin_rpc_client()
 };
 
 //FIXME: Remove this whenever this change:
@@ -141,11 +145,9 @@ class WalletConf {
     }
 
     async fund_btc(btc_value) {
-        let txid = await module.exports
-            .bitcoin_rpc_client()
+        let txid = await bitcoin_rpc_client()
             .sendToAddress(this.btc_identity().address, btc_value);
-        let raw_transaction = await module.exports
-            .bitcoin_rpc_client()
+        let raw_transaction = await bitcoin_rpc_client()
             .getRawTransaction(txid);
         let transaction = bitcoin.Transaction.fromHex(raw_transaction);
         for (let [i, out] of transaction.outs.entries()) {
@@ -184,11 +186,11 @@ class WalletConf {
         txb.addOutput(bitcoin.address.toOutputScript(to, regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
-        return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
+        return bitcoin_rpc_client().sendRawTransaction(txb.build().toHex());
     }
 
     async send_raw_tx(hex) {
-        return bitcoin_rpc_client.sendRawTransaction(hex);
+        return bitcoin_rpc_client().sendRawTransaction(hex);
     }
 
     async send_eth_transaction_to(
@@ -336,8 +338,7 @@ class LightningNetwork {
         if (!this._wallet_address) {
             this._wallet_address = await this.lnNewAddressAsync();
         }
-        return module.exports
-            .bitcoin_rpc_client()
+        return bitcoin_rpc_client()
             .sendToAddress(this._wallet_address, btc_value);
     }
 
@@ -395,7 +396,7 @@ class LightningNetwork {
                 if (response.update === "chan_open") {
                     resolve(response);
                 } else {
-                    await module.exports.btc_generate(1);
+                    await bitcoin_rpc_client().generate(1);;
                 }
             });
         });
@@ -504,20 +505,28 @@ module.exports.ledger_query_service_conf = (host, port) => {
 }
 
 module.exports.btc_generate = async function (num = 1) {
-    return bitcoin_rpc_client.generate(num);
+    return bitcoin_rpc_client().generate(num);
 };
 
-module.exports.btc_balance = async function (address) {
-    let btc_balance = await bitcoin_rpc_client.getReceivedByAddress(address);
+async function btc_balance (address) {
+    let btc_balance = await bitcoin_rpc_client().getReceivedByAddress(address);
     return parseFloat(btc_balance) * 100000000;
 };
 
-module.exports.import_address = async function (address) {
-    return bitcoin_rpc_client.importAddress(address);
+module.exports.btc_balance = async function (address) {
+    return btc_balance(address);
 };
 
-module.exports.eth_balance = async function (address) {
+module.exports.import_address = async function (address) {
+    return bitcoin_rpc_client().importAddress(address);
+};
+
+async function eth_balance(address) {
     return web3.eth.getBalance(address).then(balance => new ethutil.BN(balance, 10));
+}
+
+module.exports.eth_balance = async function (address) {
+    return eth_balance(address);
 };
 
 module.exports.erc20_balance = async function (token_holder_address, contract_address) {
@@ -539,9 +548,9 @@ module.exports.erc20_balance = async function (token_holder_address, contract_ad
 };
 
 module.exports.log_eth_balance = async function(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s wei at the %s address %s", when, player, await module.exports.eth_balance(address), address_type, address);
+    logger.info("%s the swap, %s has %s wei at the %s address %s", when, player, await eth_balance(address), address_type, address);
 };
 
 module.exports.log_btc_balance = async function(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await module.exports.btc_balance(address), address_type, address);
+    logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await btc_balance(address), address_type, address);
 };
