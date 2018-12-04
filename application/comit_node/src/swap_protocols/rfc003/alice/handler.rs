@@ -53,7 +53,7 @@ impl<
             self.bitcoin_poll_interval,
             self.ethereum_poll_interval,
         );
-        let key_store = Arc::clone(&self.key_store);
+        let _key_store = Arc::clone(&self.key_store);
         let state_store = Arc::clone(&self.state_store);
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
         let client_factory = Arc::clone(&self.client_factory);
@@ -63,9 +63,6 @@ impl<
             .for_each(move |(id, requests)| {
                 match requests {
                     SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(request) => {
-                        let alpha_ledger_refund_identity =
-                            key_store.get_transient_keypair(&id.into(), b"REFUND");
-
                         if let Err(e) = metadata_store.insert(id, request.clone()) {
                             error!("Failed to store metadata for swap {} because {:?}", id, e);
                             // Return Ok to keep the loop running
@@ -75,14 +72,19 @@ impl<
                         let secret = Secret::generate(&mut thread_rng());
 
                         let start_state = Start {
-                            alpha_ledger_refund_identity,
-                            beta_ledger_success_identity: request.beta_ledger_success_identity,
+                            alpha_ledger_refund_identity: request
+                                .identities
+                                .alpha_ledger_refund_identity,
+                            beta_ledger_success_identity: request
+                                .identities
+                                .beta_ledger_success_identity,
                             alpha_ledger: request.alpha_ledger,
                             beta_ledger: request.beta_ledger,
                             alpha_asset: request.alpha_asset,
                             beta_asset: request.beta_asset,
                             alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
+                            role: Alice::new(),
                         };
 
                         let comit_client = match client_factory.client_for(comit_node_addr) {
@@ -113,9 +115,6 @@ impl<
                         Ok(())
                     }
                     SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(request) => {
-                        let alpha_ledger_refund_identity =
-                            key_store.get_transient_keypair(&id.into(), b"REFUND");
-
                         if let Err(e) = metadata_store.insert(id, request.clone()) {
                             error!("Failed to store metadata for swap {} because {:?}", id, e);
                             // Return Ok to keep the loop running
@@ -125,14 +124,19 @@ impl<
                         let secret = Secret::generate(&mut thread_rng());
 
                         let start_state = Start {
-                            alpha_ledger_refund_identity,
-                            beta_ledger_success_identity: request.beta_ledger_success_identity,
+                            alpha_ledger_refund_identity: request
+                                .identities
+                                .alpha_ledger_refund_identity,
+                            beta_ledger_success_identity: request
+                                .identities
+                                .beta_ledger_success_identity,
                             alpha_ledger: request.alpha_ledger,
                             beta_ledger: request.beta_ledger,
                             alpha_asset: request.alpha_asset,
                             beta_asset: request.beta_asset,
                             alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
+                            role: Alice::new(),
                         };
 
                         let comit_client = match client_factory.client_for(comit_node_addr) {

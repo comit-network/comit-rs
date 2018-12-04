@@ -1,18 +1,16 @@
-use bitcoin_support::{serialize::serialize_hex, BitcoinQuantity};
-use comit_client::SwapReject;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
+use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
+use ethereum_support::{self, Erc20Quantity, EtherQuantity};
 use http_api::{problem, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
 use key_store::KeyStore;
+use secp256k1_support;
 use std::{str::FromStr, sync::Arc};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     metadata_store::Metadata,
     rfc003::{
-        actions::{Action, StateActions},
-        bitcoin,
-        bob::PendingResponses,
-        ethereum,
+        actions::{bob::Accept, Action, StateActions},
+        bitcoin, ethereum,
         roles::{Alice, Bob},
         state_machine::StateMachineResponse,
         state_store::StateStore,
@@ -38,6 +36,79 @@ impl FromStr for PostAction {
             "decline" => Ok(PostAction::Decline),
             _ => Err(()),
         }
+    }
+}
+
+trait ExecuteAccept<AL: Ledger, BL: Ledger> {
+    fn execute(
+        &self,
+        body: AcceptSwapRequestHttpBody<AL, BL>,
+        key_store: &KeyStore,
+        id: SwapId,
+    ) -> Result<(), HttpApiProblem>;
+}
+
+impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for Accept<AL, BL>
+where
+    StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>:
+        FromAcceptSwapRequestHttpBody<AL, BL>,
+{
+    fn execute(
+        &self,
+        body: AcceptSwapRequestHttpBody<AL, BL>,
+        key_store: &KeyStore,
+        id: SwapId,
+    ) -> Result<(), HttpApiProblem> {
+        self.accept(StateMachineResponse::from_accept_swap_request_http_body(
+            body, id, key_store,
+        )?)
+        .map_err(|_| problem::action_already_taken())
+    }
+}
+
+trait FromAcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger>
+where
+    Self: Sized,
+{
+    fn from_accept_swap_request_http_body(
+        body: AcceptSwapRequestHttpBody<AL, BL>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem>;
+}
+
+impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
+    for StateMachineResponse<
+        secp256k1_support::KeyPair,
+        ethereum_support::Address,
+        ethereum::Seconds,
+    >
+{
+    fn from_accept_swap_request_http_body(
+        body: AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem> {
+        match body {
+            AcceptSwapRequestHttpBody::OnlySuccess { .. } | AcceptSwapRequestHttpBody::RefundAndSuccess { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The success identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
+            AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_refund_identity")),
+            AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
+                beta_ledger_refund_identity,
+                beta_ledger_lock_duration,
+                alpha_ledger_success_identity: key_store.get_transient_keypair(&id.into(), b"SUCCESS"),
+            }),
+        }
+    }
+}
+
+impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
+    fn execute(
+        &self,
+        _body: AcceptSwapRequestHttpBody<AL, BL>,
+        _key_store: &KeyStore,
+        _id: SwapId,
+    ) -> Result<(), HttpApiProblem> {
+        unreachable!("FIXIME: Alice will never return this action so we shouldn't have to deal with this case")
     }
 }
 
@@ -248,37 +319,45 @@ where
     }
 }
 
-#[derive(Debug, Deserialize, LabelledGeneric)]
-struct AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
-    alpha_ledger_success_identity: AL::HttpIdentity,
-    beta_ledger_refund_identity: BL::HttpIdentity,
-    beta_ledger_lock_duration: BL::LockDuration,
+#[derive(Deserialize)]
+#[serde(untagged)]
+#[allow(dead_code)] // TODO: Remove once we have ledgers where we use all the combinations
+enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
+    RefundAndSuccess {
+        alpha_ledger_success_identity: AL::Identity,
+        beta_ledger_refund_identity: BL::Identity,
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
+    OnlySuccess {
+        alpha_ledger_success_identity: AL::Identity,
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
+    OnlyRefund {
+        beta_ledger_refund_identity: BL::Identity,
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
+    None {
+        beta_ledger_lock_duration: BL::LockDuration,
+    },
 }
 
-pub fn post<T: MetadataStore<SwapId>>(
+pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
-    pending_responses: Arc<PendingResponses<SwapId>>,
+    state_store: Arc<S>,
     key_store: Arc<KeyStore>,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_post(
-        metadata_store,
-        pending_responses,
-        key_store,
-        id,
-        action,
-        body,
-    )
-    .map(|_| warp::reply())
-    .map_err(HttpApiProblemStdError::from)
-    .map_err(warp::reject::custom)
+    handle_post(metadata_store, state_store, key_store, id, action, body)
+        .map(|_| warp::reply())
+        .map_err(HttpApiProblemStdError::from)
+        .map_err(warp::reject::custom)
 }
 
-pub fn handle_post<T: MetadataStore<SwapId>>(
+pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
-    pending_responses: Arc<PendingResponses<SwapId>>,
+    state_store: Arc<S>,
     key_store: Arc<KeyStore>,
     id: SwapId,
     action: PostAction,
@@ -292,65 +371,34 @@ pub fn handle_post<T: MetadataStore<SwapId>>(
 
     with_swap_types!(
         &metadata,
-        (|| match metadata {
-            Metadata {
-                role: RoleKind::Alice,
-                ..
-            } => Err(HttpApiProblem::with_title_and_type_from_status(404)),
-            Metadata {
-                role: RoleKind::Bob,
-                ..
-            } => match action {
-                PostAction::Accept => {
-                    serde_json::from_value::<AcceptSwapRequestHttpBody<AL, BL>>(body)
-                        .map_err(|e| {
-                            error!(
-                                "Failed to deserialize body of accept response for swap {}: {:?}",
-                                id, e
-                            );
-                            problem::serde(e)
+        (|| match action {
+            PostAction::Accept => serde_json::from_value::<AcceptSwapRequestHttpBody<AL, BL>>(body)
+                .map_err(|e| {
+                    error!(
+                        "Failed to deserialize body of accept response for swap {}: {:?}",
+                        id, e
+                    );
+                    problem::serde(e)
+                })
+                .and_then(|accept_body| {
+                    let state = state_store
+                        .get::<Role>(&id)?
+                        .ok_or_else(problem::state_store)?;
+
+                    let accept_action = state
+                        .actions()
+                        .into_iter()
+                        .find_map(move |action| match action {
+                            Action::Accept(accept) => Some(Ok(accept)),
+                            _ => None,
                         })
-                        .and_then(|accept_body| {
-                            let keypair = key_store.get_transient_keypair(&id.into(), b"SUCCESS");
-                            forward_response::<AL, BL>(
-                                pending_responses.as_ref(),
-                                &id,
-                                Ok(StateMachineResponse {
-                                    alpha_ledger_success_identity: keypair,
-                                    beta_ledger_refund_identity: accept_body
-                                        .beta_ledger_refund_identity,
-                                    beta_ledger_lock_duration: accept_body
-                                        .beta_ledger_lock_duration,
-                                }),
-                            )
-                        })
-                }
-                PostAction::Decline => Err(problem::not_yet_implemented("Declining a swap")),
-            },
+                        .unwrap_or(Err(HttpApiProblem::with_title_and_type_from_status(404)))?;
+
+                    accept_action.execute(accept_body, key_store.as_ref(), id)
+                }),
+            PostAction::Decline => Err(problem::not_yet_implemented("Declining a swap")),
         })
     )
-}
-
-fn forward_response<AL: Ledger, BL: Ledger>(
-    pending_responses: &PendingResponses<SwapId>,
-    id: &SwapId,
-    response: Result<
-        StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,
-        SwapReject,
-    >,
-) -> Result<(), HttpApiProblem> {
-    pending_responses
-        .take::<AL, BL>(id)
-        .ok_or_else(|| HttpApiProblem::with_title_from_status(500))
-        .and_then(|pending_response| {
-            pending_response.send(response).map_err(|_| {
-                error!(
-                    "Failed to send pending response of swap {} through channel",
-                    id
-                );
-                HttpApiProblem::with_title_from_status(500)
-            })
-        })
 }
 
 #[derive(Debug, PartialEq)]

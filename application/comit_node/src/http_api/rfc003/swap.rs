@@ -1,6 +1,5 @@
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
-use frunk;
+use bitcoin_support::{self, BitcoinQuantity};
+use ethereum_support::{self, Erc20Quantity, EtherQuantity};
 use futures::sync::mpsc::UnboundedSender;
 use http_api::{
     self,
@@ -13,12 +12,14 @@ use hyper::header;
 use rustic_hal::HalResource;
 use std::sync::Arc;
 
+use key_store::KeyStore;
 use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
         actions::{Action, StateActions},
+        alice::SwapRequestIdentities,
         roles::{Alice, Bob},
         state_store::StateStore,
         Ledger,
@@ -44,7 +45,7 @@ pub enum SwapRequestBodyKind {
     MalformedRequest(serde_json::Value),
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, LabelledGeneric)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[serde(with = "http_api::asset::serde")]
     alpha_asset: AA,
@@ -54,9 +55,100 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     alpha_ledger: AL,
     #[serde(with = "http_api::ledger::serde")]
     beta_ledger: BL,
-    alpha_ledger_refund_identity: AL::HttpIdentity,
-    beta_ledger_success_identity: BL::HttpIdentity,
     alpha_ledger_lock_duration: AL::LockDuration,
+    #[serde(flatten)]
+    identities: SwapRequestBodyIdentities<AL::Identity, BL::Identity>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum SwapRequestBodyIdentities<AI, BI> {
+    RefundAndSuccess {
+        alpha_ledger_refund_identity: AI,
+        beta_ledger_success_identity: BI,
+    },
+    OnlySuccess {
+        beta_ledger_success_identity: BI,
+    },
+    OnlyRefund {
+        alpha_ledger_refund_identity: AI,
+    },
+    None {},
+}
+
+trait FromSwapRequestBodyIdentities<AL: Ledger, BL: Ledger>
+where
+    Self: Sized,
+{
+    fn from_swap_request_body_identities(
+        identities: SwapRequestBodyIdentities<AL::Identity, BL::Identity>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem>;
+}
+
+impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
+    for rfc003::alice::SwapRequestIdentities<Bitcoin, Ethereum>
+{
+    fn from_swap_request_body_identities(
+        identities: SwapRequestBodyIdentities<
+            bitcoin_support::PubkeyHash,
+            ethereum_support::Address,
+        >,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem> {
+        match identities {
+            SwapRequestBodyIdentities::RefundAndSuccess { .. }
+            | SwapRequestBodyIdentities::OnlyRefund { .. }
+            | SwapRequestBodyIdentities::None {} => {
+                Err(HttpApiProblem::with_title_and_type_from_status(400))
+            }
+            SwapRequestBodyIdentities::OnlySuccess {
+                beta_ledger_success_identity,
+            } => Ok(rfc003::alice::SwapRequestIdentities {
+                alpha_ledger_refund_identity: key_store
+                    .get_transient_keypair(&id.into(), b"REFUND"),
+                beta_ledger_success_identity,
+            }),
+        }
+    }
+}
+
+trait FromSwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>
+where
+    Self: Sized,
+{
+    fn from_swap_request_body(
+        body: SwapRequestBody<AL, BL, AA, BA>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem>;
+}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> FromSwapRequestBody<AL, BL, AA, BA>
+    for rfc003::alice::SwapRequest<AL, BL, AA, BA>
+where
+    SwapRequestIdentities<AL, BL>: FromSwapRequestBodyIdentities<AL, BL>,
+{
+    fn from_swap_request_body(
+        body: SwapRequestBody<AL, BL, AA, BA>,
+        id: SwapId,
+        key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem> {
+        Ok(rfc003::alice::SwapRequest {
+            alpha_asset: body.alpha_asset,
+            beta_asset: body.beta_asset,
+            alpha_ledger: body.alpha_ledger,
+            beta_ledger: body.beta_ledger,
+            alpha_ledger_lock_duration: body.alpha_ledger_lock_duration,
+            identities: SwapRequestIdentities::from_swap_request_body_identities(
+                body.identities,
+                id,
+                key_store,
+            )?,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -65,8 +157,8 @@ pub struct UnsupportedSwapRequestBody {
     beta_asset: HttpAsset,
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,
-    alpha_ledger_refund_identity: String,
-    beta_ledger_success_identity: String,
+    alpha_ledger_refund_identity: Option<String>,
+    beta_ledger_success_identity: Option<String>,
     alpha_ledger_lock_duration: i64,
 }
 
@@ -81,10 +173,11 @@ fn swap_path(id: SwapId) -> String {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
-    request_body_kind: SwapRequestBodyKind,
+    key_store: Arc<KeyStore>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(request_body_kind, sender)
+    handle_post_swap(key_store.as_ref(), sender, request_body_kind)
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -95,20 +188,21 @@ pub fn post_swap(
 }
 
 fn handle_post_swap(
-    request_body_kind: SwapRequestBodyKind,
+    key_store: &KeyStore,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
 
     let request_kind = match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
-                frunk::labelled_convert_from(body),
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
             )
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
-                frunk::labelled_convert_from(body),
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
             )
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
@@ -309,11 +403,12 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::regtest(),
             beta_ledger: Ethereum::default(),
-            alpha_ledger_refund_identity: (),
-            beta_ledger_success_identity: ethereum_support::Address::from(
-                "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-            ),
             alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
+            identities: SwapRequestBodyIdentities::OnlySuccess {
+                beta_ledger_success_identity: ethereum_support::Address::from(
+                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                ),
+            },
         })
     }
 

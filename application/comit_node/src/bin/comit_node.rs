@@ -24,7 +24,6 @@ use comit_node::{
     swaps::common::SwapId,
 };
 
-use comit_node::swap_protocols::rfc003::bob::PendingResponses;
 use ethereum_support::*;
 use futures::sync::{
     mpsc::{self, UnboundedSender},
@@ -48,7 +47,6 @@ fn main() {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
-    let pending_responses = Arc::new(PendingResponses::default());
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
@@ -67,7 +65,6 @@ fn main() {
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        Arc::clone(&pending_responses),
         sender,
         Arc::clone(&key_store),
         &mut runtime,
@@ -81,7 +78,6 @@ fn main() {
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
-        Arc::clone(&pending_responses),
     );
 
     spawn_comit_server(&settings, sender, &mut runtime);
@@ -113,18 +109,11 @@ fn spawn_warp_instance(
     settings: &ComitNodeSettings,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    pending_responses: Arc<PendingResponses<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     key_store: Arc<KeyStore>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(
-        metadata_store,
-        state_store,
-        pending_responses,
-        sender,
-        key_store,
-    );
+    let routes = route_factory::create(metadata_store, state_store, sender, key_store);
 
     let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -174,7 +163,6 @@ fn spawn_bob_swap_request_handler_for_rfc003(
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,
-    pending_responses: Arc<PendingResponses<SwapId>>,
 ) -> UnboundedSender<(
     SwapId,
     rfc003::bob::SwapRequestKind,
@@ -190,7 +178,6 @@ fn spawn_bob_swap_request_handler_for_rfc003(
         key_store,
         bitcoin_poll_interval,
         ethereum_poll_interval,
-        pending_responses,
     };
 
     runtime.spawn(bob_swap_request_handler.start());

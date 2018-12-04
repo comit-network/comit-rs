@@ -6,15 +6,20 @@ use swap_protocols::{
     rfc003::Ledger,
 };
 
-#[derive(Clone, Debug, PartialEq, LabelledGeneric)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
     pub alpha_asset: AA,
     pub beta_asset: BA,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
-    pub alpha_ledger_refund_identity: AL::HttpIdentity,
-    pub beta_ledger_success_identity: BL::HttpIdentity,
     pub alpha_ledger_lock_duration: AL::LockDuration,
+    pub identities: SwapRequestIdentities<AL, BL>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SwapRequestIdentities<AL: Ledger, BL: Ledger> {
+    pub alpha_ledger_refund_identity: AL::HtlcIdentity,
+    pub beta_ledger_success_identity: BL::HtlcIdentity,
 }
 
 impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {
