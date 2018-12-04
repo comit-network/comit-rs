@@ -17,6 +17,5 @@ members = [
 ]
 
 [replace]
-"web3:0.4.0" = { git = "https://github.com/coblox/rust-web3", branch = "bytes-eq-hash" }
 "bitcoin_rpc_client:0.4.0" = { git = "https://github.com/coblox/bitcoinrpc-rust-client", branch = "from-verboserawtx-to-bitcointx" } 
 "rustic_hal:0.1.3" = { git = "https://github.com/coblox/rustic_hal" }
