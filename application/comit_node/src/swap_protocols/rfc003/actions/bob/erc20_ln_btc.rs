@@ -11,7 +11,7 @@ use swap_protocols::{
         lightning,
         roles::Bob,
         state_machine::*,
-        SecretHash,
+        Secret, SecretHash,
     },
 };
 
@@ -19,9 +19,9 @@ impl OngoingSwap<Bob<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>> {
     pub fn redeem_action(
         &self,
         beta_htlc_location: ethereum_support::Address,
-        secret_hash: SecretHash,
+        secret: Secret,
     ) -> ethereum::SendTransaction {
-        let data = Bytes::from(secret_hash.0);
+        let data = Bytes::from(secret.raw_secret().to_vec());
         let gas_limit = Erc20Htlc::tx_gas_limit();
 
         ethereum::SendTransaction {
@@ -73,13 +73,11 @@ impl StateActions for SwapStates<Bob<Ethereum, Lightning, Erc20Quantity, Bitcoin
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref swap,
                 ref alpha_htlc_location,
+                ref beta_redeemed_tx,
                 ..
-            }) => {
-                let secret_hash = swap.secret.clone();
-                vec![Action::Redeem(
-                    swap.redeem_action(*alpha_htlc_location, secret_hash),
-                )]
-            }
+            }) => vec![Action::Redeem(
+                swap.redeem_action(*alpha_htlc_location, beta_redeemed_tx.secret),
+            )],
             _ => vec![],
         }
     }
