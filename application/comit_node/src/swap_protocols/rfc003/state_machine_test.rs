@@ -192,14 +192,15 @@ fn alpha_refunded() {
                 vout: 0,
             }))),
             htlc_funded: Some(Box::new(future::ok(None))),
-            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(RedeemTransaction(
-                bitcoin_support::Transaction {
+            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(RedeemTransaction {
+                transaction: bitcoin_support::Transaction {
                     version: 1,
                     lock_time: 42,
                     input: vec![],
                     output: vec![],
-                }
-            ))))),
+                },
+                secret: start.secret,
+            })))),
             ..Default::default()
         },
         FakeLedgerEvents::<Ethereum> {
@@ -276,14 +277,15 @@ fn bob_transition_alpha_refunded() {
                 vout: 0,
             }))),
             htlc_funded: Some(Box::new(future::ok(None))),
-            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(RedeemTransaction(
-                bitcoin_support::Transaction {
+            htlc_redeemed_or_refunded: Some(Box::new(future::ok(Either::A(RedeemTransaction {
+                transaction: bitcoin_support::Transaction {
                     version: 1,
                     lock_time: 42,
                     input: vec![],
                     output: vec![],
-                }
-            ))))),
+                },
+                secret: Secret::from(*b"hello world, you are beautiful!!"),
+            })))),
             ..Default::default()
         },
         FakeLedgerEvents::<Ethereum> {

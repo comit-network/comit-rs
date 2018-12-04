@@ -194,7 +194,6 @@ pub enum Swap<R: Role> {
         swap: OngoingSwap<R>,
         beta_redeemed_tx: RedeemTransaction<R::BetaLedger>,
         alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
-        secret: Secret,
     },
 
     #[state_machine_future(ready)]
@@ -353,22 +352,14 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             let state = state.take();
             let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
-                Either::A(beta_redeemed_tx) => {
-                    match R::BetaLedger::extract_secret(&beta_redeemed_tx, &secret_hash) {
-                        Some(secret) => transition_save!(
-                            context.state_repo,
-                            AlphaFundedBetaRedeemed {
-                                swap: state.swap,
-                                beta_redeemed_tx,
-                                alpha_htlc_location: state.alpha_htlc_location,
-                                secret,
-                            }
-                        ),
-                        None => {
-                            return Err(rfc003::Error::Internal(format!("Somehow reached transition with an invalid secret, transaction: {:?}", beta_redeemed_tx).to_string()));
-                        }
+                Either::A(beta_redeemed_tx) => transition_save!(
+                    context.state_repo,
+                    AlphaFundedBetaRedeemed {
+                        swap: state.swap,
+                        beta_redeemed_tx,
+                        alpha_htlc_location: state.alpha_htlc_location,
                     }
-                }
+                ),
                 Either::B(_beta_refunded_txid) => transition_save!(
                     context.state_repo,
                     AlphaFundedBetaRefunded {

@@ -16,8 +16,9 @@ use swap_protocols::{
             NewHtlcRefundedQuery, RedeemedOrRefunded,
         },
         find_htlc_location::FindHtlcLocation,
+        secret::SecretHash,
         state_machine::HtlcParams,
-        FundTransaction, Ledger, RedeemTransaction, RefundTransaction,
+        ExtractSecret, FundTransaction, Ledger, RedeemTransaction, RefundTransaction,
     },
 };
 
@@ -31,7 +32,10 @@ pub struct LqsEvents<L: Ledger, Q: Query> {
     htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<L>>>,
 }
 
-impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
+impl<L: Ledger, Q: Query> LqsEvents<L, Q>
+where
+    L::Transaction: ExtractSecret,
+{
     pub fn new(create_ledger_query: QueryIdCache<L, Q>, ledger_first_match: FirstMatch<L>) -> Self {
         Self {
             create_ledger_query,
@@ -70,6 +74,7 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
         &mut self,
         redeemed_query: Q,
         refunded_query: Q,
+        secret_hash: SecretHash,
     ) -> &mut RedeemedOrRefunded<L> {
         let ledger_first_match = self.ledger_first_match.clone();
         let redeemed_query_id = self.create_ledger_query.create_query(redeemed_query);
@@ -80,7 +85,21 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
             let redeemed_future = redeemed_query_id
                 .map_err(rfc003::Error::LedgerQueryService)
                 .and_then(move |query_id| inner_first_match.first_match_of(query_id))
-                .map(RedeemTransaction);
+                .and_then(move |transaction| {
+                    let secret = transaction.extract_secret(&secret_hash).ok_or_else(|| {
+                        error!(
+                            "Redeem transaction didn't have secret it in: {:?}",
+                            transaction
+                        );
+                        rfc003::Error::Internal(
+                            "Redeem transaction didn't have the secret in it".into(),
+                        )
+                    })?;
+                    Ok(RedeemTransaction {
+                        transaction,
+                        secret,
+                    })
+                });
             let inner_first_match = ledger_first_match.clone();
             let refunded_future = refunded_query_id
                 .map_err(rfc003::Error::LedgerQueryService)
@@ -105,6 +124,7 @@ impl<L: Ledger, Q: Query> LqsEvents<L, Q> {
 impl<L, A, Q> LedgerEvents<L, A> for LqsEvents<L, Q>
 where
     L: Ledger,
+    L::Transaction: ExtractSecret,
     A: Asset,
     Q: Query + NewHtlcRefundedQuery<L, A> + NewHtlcFundedQuery<L, A> + NewHtlcRedeemedQuery<L, A>,
     <L as swap_protocols::Ledger>::Transaction: FindHtlcLocation<L, A>,
@@ -130,7 +150,7 @@ where
         let refunded_query = Q::new_htlc_refunded_query(&htlc_params, htlc_location);
         let redeemed_query = Q::new_htlc_redeemed_query(&htlc_params, htlc_location);
 
-        self.htlc_redeemed_or_refunded(redeemed_query, refunded_query)
+        self.htlc_redeemed_or_refunded(redeemed_query, refunded_query, htlc_params.secret_hash)
     }
 }
 
@@ -190,13 +210,16 @@ impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
 
     fn htlc_redeemed_or_refunded(
         &mut self,
-        _htlc_params: HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_params: HtlcParams<Ethereum, Erc20Quantity>,
         htlc_location: &<Ethereum as Ledger>::HtlcLocation,
     ) -> &mut RedeemedOrRefunded<Ethereum> {
         let refunded_query = erc20::new_htlc_refunded_query(htlc_location);
         let redeemed_query = erc20::new_htlc_redeemed_query(htlc_location);
 
-        self.lqs_events
-            .htlc_redeemed_or_refunded(redeemed_query, refunded_query)
+        self.lqs_events.htlc_redeemed_or_refunded(
+            redeemed_query,
+            refunded_query,
+            htlc_params.secret_hash,
+        )
     }
 }
