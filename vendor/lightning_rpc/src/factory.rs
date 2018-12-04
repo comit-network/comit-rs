@@ -20,41 +20,26 @@ pub type LndClient = Lightning<
     >,
 >;
 
-#[derive(DebugStub)]
+#[derive(Debug)]
 pub struct ClientFactory {
     executor: TaskExecutor,
-    origin_uri: Uri,
-    // Certificate doesn't do clone so we store the der bytes which do
-    tls_cert: Vec<u8>,
-    lnd_addr: SocketAddr,
-    macaroon: Macaroon,
 }
 
 impl ClientFactory {
-    pub fn new(
-        executor: TaskExecutor,
+    pub fn new(executor: TaskExecutor) -> Self {
+        Self { executor }
+    }
+
+    pub fn with_macaroon(
+        &self,
         origin_uri: Uri,
         tls_cert: Certificate,
         lnd_addr: SocketAddr,
         macaroon: Macaroon,
-    ) -> Self {
-        Self {
-            executor,
-            origin_uri,
-            tls_cert: tls_cert.into_der(),
-            lnd_addr,
-            macaroon,
-        }
-    }
-
-    pub fn new_client(&self) -> impl Future<Item = LndClient, Error = Error> {
+    ) -> impl Future<Item = LndClient, Error = Error> {
         let executor = self.executor.clone();
-        let origin_uri = self.origin_uri.clone();
-        let macaroon = self.macaroon.clone();
-        // TODO: Get this to return a client on the same connection rather than making a
-        // new connection each time
-        let tls_cert = Certificate::from_der(self.tls_cert.clone());
-        TcpStream::connect(&self.lnd_addr)
+
+        TcpStream::connect(&lnd_addr)
             .map_err(Error::TcpStream)
             .join(create_tls_connector(tls_cert))
             .and_then(|(tcp_stream, connector)| {

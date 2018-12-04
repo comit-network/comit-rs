@@ -72,15 +72,10 @@ fn create_lnd_client(runtime: &mut Runtime, cert_path: String, macaroon_path: St
     let lnd_addr = LND_URI.parse().unwrap();
     let origin_uri: http::Uri = ORIGIN_URI.parse().unwrap();
 
-    let factory = ClientFactory::new(
-        runtime.executor(),
-        origin_uri,
-        certificate,
-        lnd_addr,
-        macaroon,
-    );
-
-    runtime.block_on(factory.new_client()).unwrap()
+    let factory = ClientFactory::new(runtime.executor());
+    runtime
+        .block_on(factory.with_macaroon(origin_uri, certificate, lnd_addr, macaroon))
+        .unwrap()
 }
 
 fn add_invoice(runtime: &mut Runtime, lnd_client: &mut LndClient) {

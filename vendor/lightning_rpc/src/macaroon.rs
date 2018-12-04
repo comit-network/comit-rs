@@ -6,7 +6,7 @@ use std::{
 };
 use FromFile;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Macaroon(Vec<u8>);
 
 #[derive(Debug)]

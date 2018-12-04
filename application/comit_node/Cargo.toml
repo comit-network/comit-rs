@@ -59,6 +59,9 @@ path = "../../vendor/ethereum_support"
 features = ["colored"]
 version = "0.5"
 
+[dependencies.lightning_rpc]
+path = "../../vendor/lightning_rpc"
+
 [dependencies.secp256k1_support]
 path = "../../vendor/secp256k1_support"
 
@@ -68,9 +71,6 @@ git = "https://github.com/coblox/state_machine_future.git"
 
 [dependencies.tc_bitcoincore_client]
 path = "../../vendor/tc_bitcoincore_client"
-
-[dependencies.lightning_rpc]
-path = "../../vendor/lightning_rpc"
 
 [dependencies.uuid]
 features = ["serde", "v4"]
