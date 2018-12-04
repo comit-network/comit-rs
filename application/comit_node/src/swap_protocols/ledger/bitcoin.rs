@@ -1,5 +1,5 @@
 use bitcoin_support::{
-    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
+    Address, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
 use secp256k1_support::PublicKey;
 use swap_protocols::ledger::Ledger;
@@ -31,7 +31,6 @@ impl Default for Bitcoin {
 }
 
 impl Ledger for Bitcoin {
-    type Quantity = BitcoinQuantity;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
     type Address = Address;

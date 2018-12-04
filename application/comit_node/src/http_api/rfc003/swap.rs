@@ -15,7 +15,7 @@ use std::sync::Arc;
 use key_store::KeyStore;
 use swap_protocols::{
     asset::Asset,
-    ledger::{Bitcoin, Ethereum},
+    ledger::{Bitcoin, Ethereum, Lightning},
     rfc003::{
         self,
         actions::{Action, StateActions},
@@ -39,6 +39,9 @@ pub enum SwapRequestBodyKind {
     ),
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    ),
+    EthereumLightningBitcoinQuantityErc20Quantity(
+        SwapRequestBody<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>,
     ),
     // It is important that these two come last because untagged enums are tried in order
     UnsupportedCombination(UnsupportedSwapRequestBody),
@@ -73,7 +76,7 @@ pub enum SwapRequestBodyIdentities<AI, BI> {
     OnlyRefund {
         alpha_ledger_refund_identity: AI,
     },
-    None {},
+    None,
 }
 
 trait FromSwapRequestBodyIdentities<AL: Ledger, BL: Ledger>
@@ -101,7 +104,7 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
         match identities {
             SwapRequestBodyIdentities::RefundAndSuccess { .. }
             | SwapRequestBodyIdentities::OnlyRefund { .. }
-            | SwapRequestBodyIdentities::None {} => {
+            | SwapRequestBodyIdentities::None => {
                 Err(HttpApiProblem::with_title_and_type_from_status(400))
             }
             SwapRequestBodyIdentities::OnlySuccess {
@@ -109,6 +112,34 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
             } => Ok(rfc003::alice::SwapRequestIdentities {
                 alpha_ledger_refund_identity: key_store
                     .get_transient_keypair(&id.into(), b"REFUND"),
+                beta_ledger_success_identity,
+            }),
+        }
+    }
+}
+
+impl FromSwapRequestBodyIdentities<Ethereum, Lightning>
+    for rfc003::alice::SwapRequestIdentities<Ethereum, Lightning>
+{
+    fn from_swap_request_body_identities(
+        identities: SwapRequestBodyIdentities<
+            ethereum_support::Address,
+            secp256k1_support::PublicKey,
+        >,
+        _id: SwapId,
+        _key_store: &KeyStore,
+    ) -> Result<Self, HttpApiProblem> {
+        match identities {
+            SwapRequestBodyIdentities::OnlyRefund { .. }
+            | SwapRequestBodyIdentities::OnlySuccess { .. }
+            | SwapRequestBodyIdentities::None => {
+                Err(HttpApiProblem::with_title_and_type_from_status(400))
+            }
+            SwapRequestBodyIdentities::RefundAndSuccess {
+                alpha_ledger_refund_identity,
+                beta_ledger_success_identity,
+            } => Ok(rfc003::alice::SwapRequestIdentities {
+                alpha_ledger_refund_identity,
                 beta_ledger_success_identity,
             }),
         }
@@ -202,6 +233,11 @@ fn handle_post_swap(
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
+            )
+        }
+        SwapRequestBodyKind::EthereumLightningBitcoinQuantityErc20Quantity(body) => {
+            rfc003::alice::SwapRequestKind::EthereumLightningErc20QuantityBitcoinQuantity(
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
             )
         }
