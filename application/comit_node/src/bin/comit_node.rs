@@ -25,14 +25,12 @@ use comit_node::{
     },
     swaps::common::SwapId,
 };
-use lightning_rpc::lnrpc;
-
 use ethereum_support::*;
 use futures::sync::{
     mpsc::{self, UnboundedSender},
     oneshot,
 };
-use lightning_rpc::{certificate::Certificate, macaroon::Macaroon, LndClient};
+use lightning_rpc::{certificate::Certificate, lnrpc, macaroon::Macaroon, LndClient};
 use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -52,12 +50,18 @@ fn main() {
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not get a runtime");
-    let mut lightning_bitcoin_client = create_lightning_bitcoin_client(&mut runtime, &settings);
-
-    let ln_btc_info = runtime.block_on(
-        lightning_bitcoin_client.get_info(tower_grpc::Request::new(lnrpc::GetInfoRequest {})),
-    );
-    info!("Lightning Bitcoin node info: {:?}", ln_btc_info);
+    match create_lightning_bitcoin_client(&mut runtime, &settings) {
+        Ok(ref mut lightning_bitcoin_client) => {
+            let ln_btc_info = runtime.block_on(
+                lightning_bitcoin_client
+                    .get_info(tower_grpc::Request::new(lnrpc::GetInfoRequest {})),
+            );
+            info!("Lightning Bitcoin node info: {:?}", ln_btc_info);
+        }
+        Err(e) => {
+            error!("Lightning Bitcoin is unavailable: {:?}", e);
+        }
+    };
 
     let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
@@ -114,34 +118,36 @@ fn create_ledger_query_service_api_client(
     ))
 }
 
+#[derive(Debug)]
+enum Error {
+    LnCertNotFound(lightning_rpc::certificate::ReadCertificateError),
+    LnMacaroonNotFound(lightning_rpc::macaroon::ReadMacaroonError),
+    LnClientCreation(lightning_rpc::Error),
+}
+
 fn create_lightning_bitcoin_client(
     runtime: &mut tokio::runtime::Runtime,
     settings: &ComitNodeSettings,
-) -> LndClient {
+) -> Result<LndClient, Error> {
     use lightning_rpc::FromFile;
 
     let tls_cert_path = &settings.lightning_bitcoin.tls_cert_path;
     let tls_cert = Certificate::from_file(tls_cert_path)
-        .expect(format!("LND TLS Cert could not be found: {:?}", tls_cert_path).as_str())
+        .map_err(|e| Error::LnCertNotFound(e))?
         .into();
     let macaroon_path = &settings.lightning_bitcoin.readonly_macaroon_path;
-    let macaroon = Macaroon::from_file(macaroon_path).expect(
-        format!(
-            "Lnd read-only macaroon could not be found: {:?}",
-            macaroon_path
-        )
-        .as_str(),
-    );
+    let macaroon = Macaroon::from_file(macaroon_path).map_err(|e| Error::LnMacaroonNotFound(e))?;
 
     let factory = lightning_rpc::ClientFactory::new(runtime.executor());
-    runtime
+    let client = runtime
         .block_on(factory.with_macaroon(
             settings.lightning_bitcoin.grpc_origin_uri.clone(),
             tls_cert,
             settings.lightning_bitcoin.node_uri,
             macaroon,
         ))
-        .expect("Could not create a Lightning Network RPC Client (Bitcoin)")
+        .map_err(|e| Error::LnClientCreation(e))?;
+    Ok(client)
 }
 
 fn spawn_warp_instance(
