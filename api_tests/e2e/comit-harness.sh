@@ -41,13 +41,13 @@ END(){
     log "KILLING docker containers";
     (
         cd regtest;
-        docker-compose rm -sfv ${CHAINS};
+        docker-compose rm -sfv;
     );
 }
 
 trap 'END' EXIT;
 
-function setup() {
+function start() {
     if test "$LOG_DIR"; then
         log "INFO: Removing all previous logs from $LOG_DIR"
         rm -rf "$LOG_DIR"
@@ -99,13 +99,15 @@ function setup() {
 
 test "$*" || { log "ERROR: The harness requires to test to run!"; exit 1; }
 
-setup;
+start;
 
 debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
 debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
-activate_segwit;
 
-generate_btc_blocks_every 5;
+for chain in ${CHAINS}; do
+    setup_${chain};
+done;
+
 sleep 2;
 
 log "Run test";

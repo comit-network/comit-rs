@@ -1,10 +1,11 @@
-const chai = require('chai');
-chai.use(require('chai-http'));
+const chai = require("chai");
+chai.use(require("chai-http"));
 const test_lib = require("../../../test_lib.js");
 const should = chai.should();
-const ethutil = require('ethereumjs-util');
+const ethutil = require("ethereumjs-util");
 
 const web3 = test_lib.web3();
+const logger = test_lib.logger();
 
 const toby_wallet = test_lib.wallet_conf();
 
@@ -23,20 +24,9 @@ const alpha_asset = 100000000;
 const beta_asset_amount = new ethutil.BN(web3.utils.toWei("5000", 'ether'), 10);
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
-const logger = test_lib.logger();
-
-async function log_eth_balance(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s wei at the %s address %s", when, player, await test_lib.eth_balance(address), address_type, address);
-}
-
-async function log_btc_balance(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await test_lib.btc_balance(address), address_type, address);
-}
-
-describe('RFC003: Bitcoin for ERC20', () => {
+describe("RFC003: Bitcoin for ERC20", () => {
 
     let token_contract_address;
-
     before(async function() {
         this.timeout(5000);
         await toby_wallet.fund_eth(toby_initial_eth);
