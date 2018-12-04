@@ -1,6 +1,8 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
+#[macro_use]
+extern crate debug_stub_derive;
 extern crate futures;
 extern crate hex;
 extern crate http;

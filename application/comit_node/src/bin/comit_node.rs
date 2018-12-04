@@ -52,12 +52,8 @@ fn main() {
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not get a runtime");
-    let mut lightning_bitcoin_client = create_lightning_bitcoin_client(&mut runtime, &settings);
-
-    let ln_btc_info = runtime.block_on(
-        lightning_bitcoin_client.get_info(tower_grpc::Request::new(lnrpc::GetInfoRequest {})),
-    );
-    info!("Lightning Bitcoin node info: {:?}", ln_btc_info);
+    let _lightning_bitcoin_factory =
+        create_lightning_bitcoin_client_factory(&mut runtime, &settings);
 
     let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
@@ -114,16 +110,15 @@ fn create_ledger_query_service_api_client(
     ))
 }
 
-fn create_lightning_bitcoin_client(
-    runtime: &mut tokio::runtime::Runtime,
+fn create_lightning_bitcoin_client_factory(
+    runtime: &tokio::runtime::Runtime,
     settings: &ComitNodeSettings,
-) -> LndClient {
+) -> lightning_rpc::ClientFactory {
     use lightning_rpc::FromFile;
 
     let tls_cert_path = &settings.lightning_bitcoin.tls_cert_path;
     let tls_cert = Certificate::from_file(tls_cert_path)
-        .expect(format!("LND TLS Cert could not be found: {:?}", tls_cert_path).as_str())
-        .into();
+        .expect(format!("LND TLS Cert could not be found: {:?}", tls_cert_path).as_str());
     let macaroon_path = &settings.lightning_bitcoin.readonly_macaroon_path;
     let macaroon = Macaroon::from_file(macaroon_path).expect(
         format!(
@@ -133,15 +128,21 @@ fn create_lightning_bitcoin_client(
         .as_str(),
     );
 
-    let factory = lightning_rpc::ClientFactory::new(runtime.executor());
-    runtime
-        .block_on(factory.with_macaroon(
-            settings.lightning_bitcoin.grpc_origin_uri.clone(),
-            tls_cert,
-            settings.lightning_bitcoin.node_uri,
-            macaroon,
-        ))
-        .expect("Could not create a Lightning Network RPC Client (Bitcoin)")
+    lightning_rpc::ClientFactory::new(
+        runtime.executor(),
+        settings.lightning_bitcoin.grpc_origin_uri.clone(),
+        tls_cert.into(),
+        settings.lightning_bitcoin.node_uri,
+        macaroon,
+    )
+    // runtime
+    // .block_on(factory.with_macaroon(
+    //     settings.lightning_bitcoin.grpc_origin_uri.clone(),
+    //     tls_cert,
+    //     settings.lightning_bitcoin.node_uri,
+    //     macaroon,
+    // ))
+    // .expect("Could not create a Lightning Network RPC Client (Bitcoin)")
 }
 
 fn spawn_warp_instance(

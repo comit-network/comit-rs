@@ -59,9 +59,6 @@ path = "../../vendor/ethereum_support"
 features = ["colored"]
 version = "0.5"
 
-[dependencies.lightning_rpc]
-path = "../../vendor/lightning_rpc"
-
 [dependencies.secp256k1_support]
 path = "../../vendor/secp256k1_support"
 

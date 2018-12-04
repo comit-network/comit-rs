@@ -242,7 +242,7 @@ script_runner = "bash"
 script = [
 '''
 export PARAMS=$@;
-[[ -z ${PARAMS} ]] && export PARAMS=$(ls ./api_tests/e2e/rfc003/);
+[[ -z ${PARAMS} ]] && export PARAMS=$(ls ./api_tests/e2e/rfc003/ | sort --reverse); #ABSOLUTE HACK REMOVE AFTER DEMO
 export ROOT=$(pwd);
 for GLOB_DIR in ${PARAMS}; do
     cd "$ROOT/api_tests/e2e/rfc003/"
