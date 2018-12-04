@@ -3,10 +3,9 @@ use swap_protocols::ledger::Ledger;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Lightning {}
-type PaymentHash = String;
 
 impl Ledger for Lightning {
-    type TxId = PaymentHash;
+    type TxId = ();
     type Pubkey = PublicKey;
     type Address = PublicKey;
     type Identity = PublicKey;
