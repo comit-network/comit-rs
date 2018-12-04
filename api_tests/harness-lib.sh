@@ -99,6 +99,8 @@ function extract_lnd_certs() {
             || docker logs lnd-${role}
         docker cp lnd-${role}:/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon "${LND_CERTS_DIR}/${role}-admin.macaroon" \
             || docker logs lnd-${role}
+        docker cp lnd-${role}:/root/.lnd/data/chain/bitcoin/regtest/readonly.macaroon "${LND_CERTS_DIR}/${role}-readonly.macaroon" \
+            || docker logs lnd-${role}
         export lnd_${role}_ip=$(docker inspect lnd-${role} | jq .[0].NetworkSettings.Networks.regtest_lnd_network.IPAddress | xargs)
     done
 }
