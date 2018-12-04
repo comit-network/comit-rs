@@ -52,6 +52,7 @@ extern crate rustic_hal;
 extern crate secp256k1_support;
 extern crate serde;
 extern crate serde_json;
+extern crate shellexpand;
 extern crate tokio;
 extern crate url;
 extern crate uuid;

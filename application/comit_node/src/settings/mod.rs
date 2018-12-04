@@ -7,7 +7,7 @@ use serde::Deserialize;
 use std::{
     ffi::OsStr,
     net::{IpAddr, SocketAddr},
-    path::Path,
+    path::{Path, PathBuf},
     time::Duration,
 };
 use url;
@@ -16,6 +16,7 @@ use url;
 pub struct ComitNodeSettings {
     pub ethereum: EthereumSettings,
     pub bitcoin: BitcoinSettings,
+    pub lightning_bitcoin: LightningBitcoinSettings,
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
@@ -39,6 +40,19 @@ pub struct BitcoinSettings {
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: bitcoin_support::ExtendedPrivKey,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LightningBitcoinSettings {
+    network: bitcoin_support::Network,
+    #[serde(with = "serde::socket_addr")]
+    node_uri: SocketAddr,
+    #[serde(with = "serde::path")]
+    tls_cert_path: PathBuf,
+    #[serde(with = "serde::path")]
+    readonly_macaroon_path: PathBuf,
+    #[serde(with = "serde::url")]
+    grpc_origin_url: url::Url,
 }
 
 #[derive(Debug, Deserialize)]
