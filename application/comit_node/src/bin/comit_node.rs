@@ -23,7 +23,6 @@ use comit_node::{
     },
     swaps::common::SwapId,
 };
-
 use ethereum_support::*;
 use futures::sync::{
     mpsc::{self, UnboundedSender},

@@ -1,19 +1,5 @@
-# This is should not be used in production
-[ethereum]
-network_id = 1
-node_url = "http://localhost:8545"
-queries_poll_interval_secs = 1
-
 [bitcoin]
-network = "regtest"
-satoshi_per_byte = 50 # used for calculating transaction fees
-node_url = "http://localhost:18443"
-node_username = "bitcoin"
-node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-# The extended private key is this private key + Chaincode [0u8; 32]
-# private_key="40cd99d83421fa2c19459f019d83ca641ca64b2e99d65109b35660da7cc0ea5d"
 extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSAKhjQEcrsZTSsJWvjX4XvtRLPMq3q5xKqoW1A5p3RBmwDLdFZ5J"
-queries_poll_interval_secs = 1
 
 [comit]
 remote_comit_node_url = "127.0.0.1:8001"
