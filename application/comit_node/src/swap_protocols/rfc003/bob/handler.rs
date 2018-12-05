@@ -34,6 +34,7 @@ pub struct SwapRequestHandler<MetadataStore, StateStore> {
     pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     pub bitcoin_poll_interval: Duration,
     pub ethereum_poll_interval: Duration,
+    pub lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
     pub key_store: Arc<KeyStore>,
 }
 

@@ -17,6 +17,7 @@ use tokio::{self, prelude::future::Either};
 
 mod alice;
 mod bob;
+mod lightning;
 mod lqs;
 
 pub use self::{

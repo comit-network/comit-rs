@@ -45,6 +45,7 @@ extern crate hex;
 extern crate http;
 extern crate http_api_problem;
 extern crate hyper;
+extern crate lightning_rpc;
 extern crate rand;
 extern crate reqwest;
 extern crate rustc_hex;

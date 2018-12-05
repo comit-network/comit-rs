@@ -52,8 +52,10 @@ fn main() {
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not get a runtime");
-    let _lightning_bitcoin_factory =
-        create_lightning_bitcoin_client_factory(&mut runtime, &settings);
+    let lightning_bitcoin_factory = Arc::new(create_lightning_bitcoin_client_factory(
+        &mut runtime,
+        &settings,
+    ));
 
     let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
@@ -61,6 +63,7 @@ fn main() {
         Arc::clone(&state_store),
         Arc::clone(&key_store),
         Arc::clone(&ledger_query_service_api_client),
+        Arc::clone(&lightning_bitcoin_factory),
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
@@ -80,6 +83,7 @@ fn main() {
         Arc::clone(&state_store),
         Arc::clone(&ledger_query_service_api_client),
         Arc::clone(&key_store),
+        Arc::clone(&lightning_bitcoin_factory),
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
@@ -168,6 +172,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     state_store: Arc<InMemoryStateStore<SwapId>>,
     key_store: Arc<KeyStore>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
+    lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,
@@ -184,6 +189,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
         state_store,
         client_factory,
         comit_node_addr,
+        lightning_client_factory,
         bitcoin_poll_interval,
         ethereum_poll_interval,
         lqs_api_client,
@@ -200,6 +206,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
     state_store: Arc<InMemoryStateStore<SwapId>>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     key_store: Arc<KeyStore>,
+    lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,
@@ -216,6 +223,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
         state_store,
         lqs_api_client,
         key_store,
+        lightning_client_factory,
         bitcoin_poll_interval,
         ethereum_poll_interval,
     };

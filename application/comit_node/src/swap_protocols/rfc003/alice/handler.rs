@@ -35,6 +35,7 @@ pub struct SwapRequestHandler<
     pub client_factory: Arc<F>,
     pub comit_node_addr: SocketAddr,
     pub phantom_data: PhantomData<C>,
+    pub lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
     pub bitcoin_poll_interval: Duration,
     pub ethereum_poll_interval: Duration,
 }

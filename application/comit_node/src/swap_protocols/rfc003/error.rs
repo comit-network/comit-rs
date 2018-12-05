@@ -5,6 +5,7 @@ use ledger_query_service;
 pub enum Error {
     SwapResponse(SwapResponseError),
     LedgerQueryService(ledger_query_service::Error),
+    Lnd,
     TimerError,
     InsufficientFunding,
     HtlcDeployment,

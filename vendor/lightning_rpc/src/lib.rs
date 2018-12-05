@@ -21,6 +21,7 @@ extern crate log;
 
 // Includes the proto generated files
 pub mod lnrpc {
+    pub use tower_grpc::{Error, Request};
     include!(concat!(env!("OUT_DIR"), "/lnrpc.rs"));
 }
 pub mod certificate;
