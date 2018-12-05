@@ -23,8 +23,10 @@ pub struct ComitNodeSettings {
 
 #[derive(Debug, Deserialize)]
 pub struct BitcoinSettings {
+    /// An extended private key that will be used for deriving transient keys
+    /// for swaps that involve the Bitcoin ledger
     #[serde(with = "serde::extended_privkey")]
-    pub extended_private_key: bitcoin_support::ExtendedPrivKey,
+    pub transient_root_key: bitcoin_support::ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]

@@ -39,7 +39,7 @@ fn main() {
     info!("Starting up with {:#?}", settings);
 
     let key_store = Arc::new(
-        KeyStore::new(settings.bitcoin.extended_private_key)
+        KeyStore::new(settings.bitcoin.transient_root_key)
             .expect("Could not HD derive keys from the private key"),
     );
 
