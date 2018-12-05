@@ -19,7 +19,6 @@ const bob = test_lib.comit_conf("bob", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
-
 const alpha_asset = 100000000;
 const beta_asset_amount = new ethutil.BN(web3.utils.toWei("5000", 'ether'), 10);
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
@@ -299,7 +298,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Alice] Can execute the redeem action", async function () {
         alice_redeem_action.should.include.all.keys("to", "data", "gas_limit", "value");
-        alice_erc20_balance_before = await test_lib.erc20_balance(alice_final_address, token_contract_address);        
+        alice_erc20_balance_before = await test_lib.erc20_balance(alice_final_address, token_contract_address);
         await alice.wallet.send_eth_transaction_to(
                 alice_redeem_action.to,
                 alice_redeem_action.data,

@@ -2,10 +2,10 @@ use bitcoin_support::{BitcoinQuantity, Blocks};
 use comit_client;
 use futures::{
     future::{self, Either},
-    Future, Stream,
+    stream, Future, IntoFuture, Stream,
 };
 use lightning_rpc::{
-    lnrpc::{InvoiceSubscription, Request},
+    lnrpc::{InvoiceSubscription, ListPaymentsRequest, Payment, Request},
     LndClient,
 };
 use secp256k1_support;
@@ -33,6 +33,16 @@ pub struct AliceToBob<C, AL: Ledger> {
         Option<Box<StateMachineResponseFuture<AL::Identity, secp256k1_support::PublicKey, Blocks>>>,
 }
 
+impl<C, AL: Ledger> AliceToBob<C, AL> {
+    pub fn new(comit_client: Arc<C>, lnd_client: Arc<Mutex<LndClient>>) -> Self {
+        Self {
+            comit_client,
+            lnd_client,
+            response_future: None,
+        }
+    }
+}
+
 pub struct AliceLightningEvents {
     lnd_client: Arc<Mutex<LndClient>>,
     invoice_paid: Option<Box<Deployed<Lightning>>>,
@@ -41,7 +51,7 @@ pub struct AliceLightningEvents {
 }
 
 impl AliceLightningEvents {
-    fn new(lnd_client: Arc<Mutex<LndClient>>, secret: Secret) -> Self {
+    pub fn new(lnd_client: Arc<Mutex<LndClient>>, secret: Secret) -> Self {
         AliceLightningEvents {
             lnd_client,
             invoice_paid: None,
@@ -177,17 +187,17 @@ pub struct BobLightningEvents {
     lnd_client: Arc<Mutex<LndClient>>,
     invoice_paid: Option<Box<Deployed<Lightning>>>,
     dummy_funded: Box<Funded<Lightning>>,
-    //    redeemed_or_refunded: Option<Box<RedeemedOrRefunded<Lightning>>>,
+    redeemed_or_refunded: Option<Box<RedeemedOrRefunded<Lightning>>>,
     secret: Arc<Mutex<Option<Secret>>>,
 }
 
 impl BobLightningEvents {
-    fn new(lnd_client: Arc<Mutex<LndClient>>) -> Self {
+    pub fn new(lnd_client: Arc<Mutex<LndClient>>) -> Self {
         BobLightningEvents {
             lnd_client,
             invoice_paid: None,
             dummy_funded: Box::new(future::ok(Some(FundTransaction(())))),
-            // redeemed_or_refunded: None,
+            redeemed_or_refunded: None,
             secret: Arc::new(Mutex::new(None)),
         }
     }
@@ -199,12 +209,32 @@ impl LedgerEvents<Lightning, BitcoinQuantity> for BobLightningEvents {
         htlc_params: HtlcParams<Lightning, BitcoinQuantity>,
     ) -> &mut Deployed<Lightning> {
         let lnd_client = Arc::clone(&self.lnd_client);
+        let secret_store_hack = Arc::clone(&self.secret);
         self.invoice_paid.get_or_insert_with(|| {
-            let mut lnd_client = lnd_client.lock().unwrap();
-            // let payment_was_made = unimplemented!();
-
-            // Box::new(payment_was_made)
-            unimplemented!()
+            Box::new(
+                lnd_client
+                    .subscribe_payments()
+                    .filter(move |payment| {
+                        payment.payment_hash == format!("{:x}", htlc_params.secret_hash)
+                    })
+                    .into_future()
+                    .map_err(|(e, _)| e)
+                    .and_then(|(payment, _)| {
+                        payment.ok_or_else(|| {
+                            error!("Payment stream stopped before payment found");
+                            rfc003::Error::Lnd
+                        })
+                    })
+                    .map(move |payment| {
+                        use std::str::FromStr;
+                        let mut secret = secret_store_hack.lock().unwrap();
+                        *secret = Some(
+                            Secret::from_str(&payment.payment_preimage)
+                                .expect("This cannot happen"),
+                        );
+                        ()
+                    }),
+            )
         })
     }
 
@@ -221,9 +251,54 @@ impl LedgerEvents<Lightning, BitcoinQuantity> for BobLightningEvents {
         _htlc_params: HtlcParams<Lightning, BitcoinQuantity>,
         _htlc_location: &(),
     ) -> &mut RedeemedOrRefunded<Lightning> {
-        unimplemented!()
-        //&mut self.redeemed_or_refunded
+        let secret = self.secret.lock().unwrap().clone();
+        match secret {
+            Some(secret) => self.redeemed_or_refunded.get_or_insert_with(|| {
+                Box::new(future::ok(Either::A(RedeemTransaction::<Lightning> {
+                    transaction: (),
+                    secret,
+                })))
+            }),
+            None => unreachable!(
+                "We should never have got polled here unless we got the secret in htlc_deployed"
+            ),
+        }
     }
 }
 
-// TODO: DO THE PAYMENTS POLL THING
+trait StreamPayments {
+    fn subscribe_payments(&self) -> Box<Stream<Item = Payment, Error = rfc003::Error> + Send>;
+}
+
+impl StreamPayments for Arc<Mutex<LndClient>> {
+    fn subscribe_payments(&self) -> Box<Stream<Item = Payment, Error = rfc003::Error> + Send> {
+        use std::time::{Duration, Instant};
+        use tokio::timer::Interval;
+        let mut seen_payments = Vec::new();
+        let lnd_client = Arc::clone(&self);
+        Box::new(
+            Interval::new(Instant::now(), Duration::from_secs(1))
+                .map_err(|e| rfc003::Error::Internal(String::from("Interval stopped working")))
+                .and_then(move |_tick| {
+                    let mut lnd_client = lnd_client.lock().unwrap();
+                    lnd_client
+                        .list_payments(Request::new(ListPaymentsRequest {}))
+                        .into_future()
+                        .map(|payments_response| payments_response.into_inner().payments)
+                        .map_err(|e| {
+                            error!("List payments failed: {:?}", e);
+                            rfc003::Error::Lnd
+                        })
+                })
+                .map(stream::iter_ok)
+                .flatten()
+                .filter(move |payment| {
+                    let is_new_payment = !seen_payments.contains(payment);
+                    if is_new_payment {
+                        seen_payments.push(payment.clone())
+                    }
+                    is_new_payment
+                }),
+        )
+    }
+}

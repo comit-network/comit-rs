@@ -79,7 +79,6 @@ impl ClientFactory {
             .map(Lightning::new)
     }
 }
-
 fn create_tls_connector(tls_cert: Certificate) -> Result<tls_api_native_tls::TlsConnector, Error> {
     let mut connector_builder = tls_api_native_tls::TlsConnector::builder().map_err(Error::Tls)?;
 

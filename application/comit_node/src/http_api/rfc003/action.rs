@@ -404,6 +404,7 @@ where
     Fund: IntoResponseBody,
     Redeem: IntoResponseBody,
     Refund: IntoResponseBody,
+    LndAddInvoice: IntoResponseBody,
 {
     fn into_response_body(
         self,
@@ -414,6 +415,7 @@ where
             Action::Fund(payload) => payload.into_response_body(query_params),
             Action::Redeem(payload) => payload.into_response_body(query_params),
             Action::Refund(payload) => payload.into_response_body(query_params),
+            Action::LndAddInvoice(payload) => payload.into_response_body(query_params),
             _ => {
                 error!("IntoResponseBody is not implemented for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(500))
@@ -538,6 +540,7 @@ impl FromStr for GetAction {
             "fund" => Ok(GetAction::Fund),
             "redeem" => Ok(GetAction::Redeem),
             "refund" => Ok(GetAction::Refund),
+            "add_invoice" => Ok(GetAction::LndAddInvoice),
             _ => Err(()),
         }
     }

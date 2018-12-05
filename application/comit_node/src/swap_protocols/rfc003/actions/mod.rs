@@ -20,7 +20,7 @@ impl<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>
         match *self {
             Accept(_) => String::from("accept"),
             Decline(_) => String::from("decline"),
-            LndAddInvoice(_) => String::from("addInvoice"),
+            LndAddInvoice(_) => String::from("add_invoice"),
             Deploy(_) => String::from("deploy"),
             Fund(_) => String::from("fund"),
             Redeem(_) => String::from("redeem"),

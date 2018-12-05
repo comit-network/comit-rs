@@ -3,13 +3,21 @@ use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
 use key_store::KeyStore;
 use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
 use rand::thread_rng;
-use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
+use std::{
+    marker::PhantomData,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 use swap_protocols::{
     asset::Asset,
     metadata_store::MetadataStore,
     rfc003::{
         alice::SwapRequestKind,
-        events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
+        events::{
+            lightning::{self, AliceLightningEvents},
+            AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20,
+        },
         roles::Alice,
         state_machine::{Context, Start, Swap, SwapStates},
         state_store::StateStore,
@@ -59,6 +67,7 @@ impl<
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
         let client_factory = Arc::clone(&self.client_factory);
         let comit_node_addr = self.comit_node_addr.clone();
+        let lightning_client_factory = Arc::clone(&self.lightning_client_factory);
 
         receiver
             .for_each(move |(id, requests)| {
@@ -176,7 +185,7 @@ impl<
 
                         let secret = Secret::generate(&mut thread_rng());
 
-                        let _start_state = Start {
+                        let start_state = Start {
                             alpha_ledger_refund_identity: request
                                 .identities
                                 .alpha_ledger_refund_identity,
@@ -192,7 +201,7 @@ impl<
                             role: Alice::new(),
                         };
 
-                        let _comit_client = match client_factory.client_for(comit_node_addr) {
+                        let comit_client = match client_factory.client_for(comit_node_addr) {
                             Ok(client) => client,
                             Err(e) => {
                                 debug!("Couldn't get client for {}: {:?}", comit_node_addr, e);
@@ -201,26 +210,44 @@ impl<
                         };
 
                         // spawn state machne here
+                        let state_store = Arc::clone(&state_store);
+                        let lqs_api_client = Arc::clone(&lqs_api_client);
+                        info!("Attempting to get lnd client for {}", id);
+                        tokio::spawn(
+                            lightning_client_factory
+                                .new_client()
+                                .and_then(move |lnd_client| {
+                                    info!("Got lnd client for {}", id);
+                                    let lnd_client = Arc::new(Mutex::new(lnd_client));
+                                    let secret = start_state.secret;
+                                    spawn_state_machine(
+                                        id,
+                                        start_state,
+                                        state_store.as_ref(),
+                                        Box::new(LqsEventsForErc20::new(
+                                            QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
+                                            FirstMatch::new(
+                                                Arc::clone(&lqs_api_client),
+                                                ethereum_poll_interval,
+                                            ),
+                                        )),
+                                        Box::new(AliceLightningEvents::new(
+                                            Arc::clone(&lnd_client),
+                                            secret,
+                                        )),
+                                        Box::new(lightning::AliceToBob::new(
+                                            Arc::clone(&comit_client),
+                                            Arc::clone(&lnd_client),
+                                        )),
+                                    );
+                                    Ok(())
+                                })
+                                .map_err(|e| {
+                                    error!("Failed to get lnd client: {:?}", e);
+                                    ()
+                                }),
+                        );
                         Ok(())
-
-                        // spawn_state_machine(
-                        //     id,
-                        //     start_state,
-                        //     state_store.as_ref(),
-                        //     Box::new(LqsEvents::new(
-                        //         QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
-                        //         FirstMatch::new(Arc::clone(&lqs_api_client),
-                        // bitcoin_poll_interval),     )),
-                        //     Box::new(LqsEventsForErc20::new(
-                        //         QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
-                        //         FirstMatch::new(
-                        //             Arc::clone(&lqs_api_client),
-                        //             ethereum_poll_interval,
-                        //         ),
-                        //     )),
-                        //     Box::new(AliceToBob::new(Arc::clone(&comit_client))),
-                        // );
-                        // Ok(())
                     }
                 }
             })
