@@ -2,9 +2,14 @@
 
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
-cd "$PROJECT_ROOT/api_tests";
-
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
+
+TEST_PATH="$1";
+export TEST_PATH=$(cd ${TEST_PATH} && pwd); # Convert to absolute path
+
+LOG_DIR="$TEST_PATH/log"
+
+cd "$PROJECT_ROOT/api_tests";
 
 END(){
     set +e;
@@ -71,4 +76,4 @@ debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 activate_segwit;
 sleep 2;
 
-npm test "$@";
+run_test "${TEST_PATH}/test.js";

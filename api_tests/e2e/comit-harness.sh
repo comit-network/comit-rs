@@ -110,9 +110,4 @@ done;
 
 sleep 2;
 
-log "Run test";
-set +x;
-export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
-. "$NVM_SH"
-nvm use;
-npm test "${TEST_PATH}/test.js" || { [ "$CAT_LOGS" ] && (cd "$LOG_DIR"; tail -n +1 *.log); exit 1; }
+run_test "${TEST_PATH}/test.js";
