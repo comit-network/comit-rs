@@ -1,10 +1,7 @@
 use bitcoin_support::Transaction;
-use swap_protocols::{
-    ledger::Bitcoin,
-    rfc003::{
-        secret::{Secret, SecretHash},
-        ExtractSecret, Ledger,
-    },
+use swap_protocols::rfc003::{
+    secret::{Secret, SecretHash},
+    ExtractSecret,
 };
 
 impl ExtractSecret for Transaction {

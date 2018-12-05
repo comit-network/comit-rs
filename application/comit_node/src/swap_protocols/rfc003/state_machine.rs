@@ -4,9 +4,7 @@ use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 use swap_protocols::{
     asset::Asset,
-    rfc003::{
-        self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, Secret, SecretHash,
-    },
+    rfc003::{self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
@@ -350,7 +348,6 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .poll()?
         {
             let state = state.take();
-            let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
                 Either::A(beta_redeemed_tx) => transition_save!(
                     context.state_repo,
