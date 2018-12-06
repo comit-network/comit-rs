@@ -37,10 +37,10 @@ const lnrpc = grpc.loadPackageDefinition(packageDefinition).lnrpc;
 process.env.GRPC_SSL_CIPHER_SUITES = 'HIGH+ECDSA';
 
 function create_lnrpc_client (name, uri) {
-    const lnd_cert = fs.readFileSync(process.env.LND_CERTS_DIR + '/' + name + '-tls.cert');
+    const lnd_cert = fs.readFileSync(process.env.LND_MISC_DIR + '/' + name + '-tls.cert');
     const ssl_credentials = grpc.credentials.createSsl(lnd_cert);
     const macaroon = grpc.credentials.createFromMetadataGenerator(function (args, callback) {
-        const macaroon = fs.readFileSync(process.env.LND_CERTS_DIR + name + '-admin.macaroon').toString('hex');
+        const macaroon = fs.readFileSync(process.env.LND_MISC_DIR + name + '-admin.macaroon').toString('hex');
         let metadata = new grpc.Metadata();
         metadata.add('macaroon', macaroon);
         callback(null, metadata);

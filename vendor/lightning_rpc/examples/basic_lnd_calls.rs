@@ -25,8 +25,8 @@ extern crate futures;
 /// $HOME/.lnd/tls.cert $HOME/.lnd/data/chain/bitcoin/regtest/admin.macaroon`
 /// 4.d using the docker containers started by the comit e2e tests:
 ///     `cargo run --package lightning_rpc --example basic_lnd_calls -- \
-/// ./api_tests/regtest/lnd_certs/alice-tls.cert \
-/// ./lnd_certs/alice-admin.macaroon`
+/// ./api_tests/regtest/lnd/alice-tls.cert \
+/// ./lnd/alice-admin.macaroon`
 extern crate hex;
 extern crate http;
 extern crate lightning_rpc;

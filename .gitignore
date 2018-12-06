@@ -87,4 +87,4 @@ fabric.properties
 # vi swap files
 *.swp
 
-api_tests/regtest/lnd_certs
+api_tests/regtest/lnd

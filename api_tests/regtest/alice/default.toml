@@ -16,8 +16,8 @@ extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxd
 [lightning_bitcoin]
 network = "regtest"
 node_uri = "127.0.0.1:10009"
-tls_cert_path = "$PROJECT_ROOT/api_tests/regtest/lnd_certs/alice-tls.cert"
-readonly_macaroon_path = "$PROJECT_ROOT/api_tests/regtest/lnd_certs/alice-readonly.macaroon"
+tls_cert_path = "$PROJECT_ROOT/api_tests/regtest/lnd/alice-tls.cert"
+readonly_macaroon_path = "$PROJECT_ROOT/api_tests/regtest/lnd/alice-readonly.macaroon"
 grpc_origin_uri = "http://127.0.0.1"
 
 [comit]
