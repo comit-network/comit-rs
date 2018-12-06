@@ -83,7 +83,7 @@ impl<C: comit_client::Client, AL: Ledger, AA: Asset, BA: Asset>
                 .map_err(rfc003::Error::SwapResponse)
                 .map(|result| result.map(Into::into));
 
-            let invoice_was_added = lnd_client
+            let invoice_added = lnd_client
                 .subscribe_invoices(Request::new(InvoiceSubscription {
                     add_index: 0,
                     settle_index: 0,
@@ -113,7 +113,7 @@ impl<C: comit_client::Client, AL: Ledger, AA: Asset, BA: Asset>
 
             Box::new(
                 got_response
-                    .join(invoice_was_added)
+                    .join(invoice_added)
                     .map(|(response, _)| response),
             )
         })
@@ -128,7 +128,7 @@ impl LedgerEvents<Lightning, BitcoinQuantity> for AliceLightningEvents {
         let lnd_client = Arc::clone(&self.lnd_client);
         self.invoice_paid.get_or_insert_with(|| {
             let mut lnd_client = lnd_client.lock().unwrap();
-            let invoice_was_settled = lnd_client
+            let invoice_settled = lnd_client
                 .subscribe_invoices(Request::new(InvoiceSubscription {
                     add_index: 0,
                     settle_index: 0,
@@ -162,7 +162,7 @@ impl LedgerEvents<Lightning, BitcoinQuantity> for AliceLightningEvents {
                         })
                 });
 
-            Box::new(invoice_was_settled)
+            Box::new(invoice_settled)
         })
     }
 

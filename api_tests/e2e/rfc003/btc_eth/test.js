@@ -9,8 +9,8 @@ const web3 = test_lib.web3();
 const bob_initial_eth = "11";
 const alice_initial_eth = "0.1";
 
-const alice = test_lib.comit_conf("alice", {});
-const bob = test_lib.comit_conf("bob", {});
+const alice = test_lib.comit_conf("alice", false);
+const bob = test_lib.comit_conf("bob", false);
 
 const alice_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";

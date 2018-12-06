@@ -18,8 +18,8 @@ const beta_asset_quantity = new BigNumber(
     web3.utils.toWei("10", "ether")
 ).toString();
 
-const alice = test_lib.comit_conf("alice", {});
-const bob = test_lib.comit_conf("bob", {});
+const alice = test_lib.comit_conf("alice", false);
+const bob = test_lib.comit_conf("bob", false);
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 

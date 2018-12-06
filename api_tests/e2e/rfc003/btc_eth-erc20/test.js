@@ -14,8 +14,8 @@ const alice_initial_eth = "0.1";
 const bob_initial_eth = "5";
 const bob_initial_erc20 = web3.utils.toWei("10000", 'ether');
 
-const alice = test_lib.comit_conf("alice", {});
-const bob = test_lib.comit_conf("bob", {});
+const alice = test_lib.comit_conf("alice", false);
+const bob = test_lib.comit_conf("bob", false);
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_final_address = "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";

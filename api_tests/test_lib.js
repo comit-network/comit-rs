@@ -12,7 +12,7 @@ log4js.configure({
         test_suite: {
             type: "file",
             filename: process.env.LOG_DIR + "/test-suite.log"
-        },
+        }
     },
     categories: { default: { appenders: ['test_suite'], level: 'ALL' } }
 });
@@ -36,7 +36,7 @@ const packageDefinition = protoLoader.loadSync(process.env.PROJECT_ROOT + '/api_
 const lnrpc = grpc.loadPackageDefinition(packageDefinition).lnrpc;
 process.env.GRPC_SSL_CIPHER_SUITES = 'HIGH+ECDSA';
 
-function create_lnrpc_client (name, port) {
+function create_lnrpc_client (name, uri) {
     const lnd_cert = fs.readFileSync(process.env.LND_CERTS_DIR + '/' + name + '-tls.cert');
     const ssl_credentials = grpc.credentials.createSsl(lnd_cert);
     const macaroon = grpc.credentials.createFromMetadataGenerator(function (args, callback) {
@@ -46,7 +46,7 @@ function create_lnrpc_client (name, port) {
         callback(null, metadata);
     });
     const credentials = grpc.credentials.combineChannelCredentials(ssl_credentials,macaroon);
-    return new lnrpc.Lightning('127.0.0.1:' + port.toString(), credentials);
+    return new lnrpc.Lightning(uri, credentials);
 };
 
 module.exports.sleep = time => {
@@ -70,7 +70,7 @@ function bitcoin_rpc_client () {
 }
 
 module.exports.bitcoin_rpc_client = () => {
-    return bitcoin_rpc_client()
+    return bitcoin_rpc_client();
 };
 
 //FIXME: Remove this whenever this change:
@@ -254,12 +254,12 @@ class WalletConf {
 
         logger.trace("Receipt for transaction %s", receipt.transactionHash, receipt);
 
-        return receipt
+        return receipt;
     }
 }
 
 class ComitConf {
-    constructor(name, bitcoin_utxo, lnd_port = null) {
+    constructor(name, should_configure_lnd) {
         this.name = name;
         this.host = process.env[this.name.toUpperCase() + "_COMIT_NODE_HOST"];
         this.config = Toml.parse(
@@ -269,8 +269,8 @@ class ComitConf {
             )
         );
         this.wallet = new WalletConf(name);
-        if (lnd_port) {
-            this.ln = new LightningNetwork(name, lnd_port);
+        if (should_configure_lnd) {
+            this.ln = new LightningNetwork(name, this.config.lightning_bitcoin.node_uri);
         }
     }
 
@@ -311,14 +311,14 @@ function resolveReject(resolve, reject) {
             reject(err);
         }
         else {
-            resolve(response)
+            resolve(response);
         }
-    }
+    };
 }
 
 class LightningNetwork {
-    constructor(name, lnd_port) {
-        this.rpc_client = create_lnrpc_client(name, lnd_port);
+    constructor(name, uri) {
+        this.rpc_client = create_lnrpc_client(name, uri);
         switch (name) {
             case "alice":
                 this.host = process.env.lnd_alice_ip;
@@ -361,11 +361,11 @@ class LightningNetwork {
         const from_ln_client = this.rpc_client;
         const address = {
             pubkey: to_ln_pubkey,
-            host: to_ln_host,
+            host: to_ln_host
         };
         const request = {
             addr: address,
-            perm: false,
+            perm: false
         };
 
         return new Promise(function(resolve, reject) {
@@ -386,7 +386,7 @@ class LightningNetwork {
             node_pubkey: Buffer.from(to_ln_pubkey, "hex"),
             node_pubkey_string: to_ln_pubkey,
             local_funding_amount: funding_amount_satoshi,
-            spend_unconfirmed: true,
+            spend_unconfirmed: true
         };
         let call = from_ln_client.openChannel(request);
 
@@ -407,7 +407,7 @@ class LightningNetwork {
             active_only: false,
             inactive_only: false,
             public_only: false,
-            private_only: false,
+            private_only: false
         };
         return new Promise(function(resolve, reject) {
             ln_client.listChannels(request, resolveReject(resolve, reject));
@@ -489,8 +489,8 @@ class LedgerQueryServiceConf {
     }
 }
 
-module.exports.comit_conf = (name, utxo, lnd_port = null) => {
-    return new ComitConf(name, utxo, lnd_port);
+module.exports.comit_conf = (name, should_configure_lnd) => {
+    return new ComitConf(name, should_configure_lnd);
 };
 
 module.exports.wallet_conf = (eth_private_key, utxo) => {

@@ -14,8 +14,8 @@ const bob_initial_eth = "0.1";
 const alice_initial_eth = "5";
 const alice_initial_erc20 = web3.utils.toWei("10000", 'ether');
 
-const alice = test_lib.comit_conf("alice", {}, 10009);
-const bob = test_lib.comit_conf("bob", {}, 10019);
+const alice = test_lib.comit_conf("alice", true);
+const bob = test_lib.comit_conf("bob", true);
 
 const alpha_asset_amount = new ethutil.BN(web3.utils.toWei("5000", 'ether'), 10);
 const beta_asset = 4000000;
@@ -160,8 +160,6 @@ describe("RFC003: ERC20 for Lightning Bitcoin", () => {
         links.should.have.property("add_invoice");
         alice_add_invoice_href = links.add_invoice.href;
     });
-
-    // let alice_funding_action;
 
     let alice_add_invoice_action;
     it("[Alice] Can get the invoice from the ‘add_invoice’ link", async () => {
