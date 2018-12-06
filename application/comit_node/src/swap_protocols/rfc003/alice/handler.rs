@@ -209,7 +209,6 @@ impl<
                             }
                         };
 
-                        // spawn state machne here
                         let state_store = Arc::clone(&state_store);
                         let lqs_api_client = Arc::clone(&lqs_api_client);
                         info!("Attempting to get lnd client for {}", id);
