@@ -15,9 +15,9 @@ If you find a bug we would be greatly grateful if you decide to report it.
 
 **If you believe that reporting your bug publicly represents a security or financial risk to COMIT users and developers, please refer to the [reporting a security issue](#ReportingASecurityIssue) section.**
 
-First, please check that no user has already reported the same problem by [searching issues](/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc).
+First, please check that no user has already reported the same problem by [searching through existing issues](/issues?q=is%3Aissue+is%3Aopen+sort%3Aupdated-desc).
 
-To report the bug, just head over to the [create issue](/issues/new/choose) page.
+To report a bug, just head over to the [create issue](/issues/new/choose) page.
 Please try to provide as much information as possible by following the GitHub template.
 
 
@@ -33,7 +33,7 @@ Thank you for taking the time to make COMIT safer!
 
 ## Feature Requests
 
-To request a change on the way COMIT works, please head over to the [RFCs repository](https://github.com/comit-network/rfc) and checkout the [RFC contributing guidelines](https://github.com/comit-network/rfc/blob/master/CONTRIBUTING.md)
+To request a change on the way COMIT works, please head over to the [RFCs repository](https://github.com/comit-network/rfc) and checkout the [RFC contributing guidelines](https://github.com/comit-network/rfc/blob/master/CONTRIBUTING.md).
  
 For changes related to our implementation, please [create a feature request](/issues/new/choose) and follow the GitHub template.
 

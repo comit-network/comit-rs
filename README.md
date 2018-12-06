@@ -11,9 +11,9 @@ The repository contains two main folders: `vendor` and `application`.
 
 ### Vendor
 
-Contains crates that provides general functionality that is not specific to the domain of atomic swaps. 
+Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
 Crates defined in here MUST NOT depend on crates in `application`. 
-They may be separated out of the repository at some point (and possibly released on crates.io).
+They may be separated from the repository at some point (and possibly released on crates.io).
 
 ### Application
 
@@ -38,7 +38,7 @@ Put a [`default.toml`](application/comit_node/config/default.toml) config file i
 
 ## Contributing
 
-Contributions are welcome, please see [CONTRIBUTING](CONTRIBUTING.md) for more details
+Contributions are welcome, please visit [CONTRIBUTING](CONTRIBUTING.md) for more details.
 
 ## License
 
