@@ -217,7 +217,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
         await bob.wallet.deploy_eth_contract(bob_deploy_action.data, "0x0", bob_deploy_action.gas_limit);
     });
 
-    it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the funding action", async function() {
+    it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the deploy action", async function() {
         this.timeout(10000);
         await alice.poll_comit_node_until(
             chai,
@@ -228,7 +228,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     let bob_fund_href;
 
-    it("[Bob] Should be in AlphaFundedBetaDeployed state after executing the funding action", async function() {
+    it("[Bob] Should be in AlphaFundedBetaDeployed state after executing the deploy action", async function() {
         this.timeout(10000);
         let swap = await bob.poll_comit_node_until(
             chai,

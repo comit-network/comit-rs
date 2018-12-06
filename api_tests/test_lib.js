@@ -427,6 +427,31 @@ class LightningNetwork {
             ln_client.channelBalance({}, resolveReject(resolve, reject));
         });
     }
+
+    async addInvoice(r_preimage, r_hash, value) {
+        const ln_client = this.rpc_client;
+        const request = {
+            r_preimage: Buffer.from(r_preimage, "hex"),
+            r_hash: Buffer.from(r_hash, "hex"),
+            value: value
+        };
+        return new Promise(function(resolve, reject) {
+            ln_client.addInvoice(request, resolveReject(resolve, reject));
+        });
+    }
+
+    async sendPaymentSync(dest, amt, payment_hash, final_cltv_delta) {
+        const ln_client = this.rpc_client;
+        const request = {
+            dest: Buffer.from(dest, "hex"),
+            amt,
+            payment_hash: Buffer.from(payment_hash, "hex"),
+            final_cltv_delta
+        };
+        return new Promise(function(resolve, reject) {
+            ln_client.sendPaymentSync(request, resolveReject(resolve, reject));
+        });
+    }
 }
 
 class LedgerQueryServiceConf {
