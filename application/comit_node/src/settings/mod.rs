@@ -17,11 +17,11 @@ use url;
 pub struct ComitNodeSettings {
     pub ethereum: EthereumSettings,
     pub bitcoin: BitcoinSettings,
-    pub lightning_bitcoin: LightningBitcoinSettings,
+    pub lightning_bitcoin: Option<LightningBitcoinSettings>,
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
-    pub tokens: Vec<ethereum_support::Erc20Token>,
+    pub tokens: Option<Vec<ethereum_support::Erc20Token>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -111,7 +111,7 @@ impl ComitNodeSettings {
         config.merge(File::from(environment_config_file).required(false))?;
 
         // Load erc20 token config file
-        config.merge(File::from(erc20_config_file))?;
+        config.merge(File::from(erc20_config_file).required(false))?;
 
         // Add in a local configuration file
         // This file shouldn't be checked in to git
@@ -166,8 +166,10 @@ mod tests {
         assert_that(&settings).is_ok();
         let settings = settings.unwrap();
 
-        assert_that(&settings.tokens.len()).is_equal_to(1);
-        let token = &settings.tokens[0];
+        let tokens = settings.tokens.unwrap();
+
+        assert_that(&tokens.len()).is_equal_to(1);
+        let token = &tokens[0];
         assert_that(token).is_equal_to(ethereum_support::Erc20Token {
             symbol: String::from("PAY"),
             decimals: 18,

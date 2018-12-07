@@ -8,31 +8,28 @@ extern crate log;
 extern crate futures;
 extern crate lightning_rpc;
 extern crate tokio;
-extern crate tower_grpc;
 extern crate warp;
 
 use comit_node::{
     comit_client,
     comit_server::ComitServer,
-    http_api::route_factory,
+    http_api::route_factory::{self, EnabledServices},
     key_store::KeyStore,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
-    settings::ComitNodeSettings,
+    settings::{ComitNodeSettings, LightningBitcoinSettings},
     swap_protocols::{
         rfc003::{self, state_store::InMemoryStateStore},
         InMemoryMetadataStore,
     },
     swaps::common::SwapId,
 };
-use lightning_rpc::lnrpc;
-
 use ethereum_support::*;
 use futures::sync::{
     mpsc::{self, UnboundedSender},
     oneshot,
 };
-use lightning_rpc::{certificate::Certificate, macaroon::Macaroon, LndClient};
+use lightning_rpc::{certificate::Certificate, macaroon::Macaroon};
 use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -52,10 +49,10 @@ fn main() {
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
     let mut runtime = tokio::runtime::Runtime::new().expect("Could not get a runtime");
-    let lightning_bitcoin_factory = Arc::new(create_lightning_bitcoin_client_factory(
-        &mut runtime,
-        &settings,
-    ));
+    let lightning_bitcoin_factory =
+        create_lightning_bitcoin_client_factory(&mut runtime, &settings.lightning_bitcoin)
+            .ok()
+            .map(|factory| Arc::new(factory));
 
     let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
@@ -63,11 +60,15 @@ fn main() {
         Arc::clone(&state_store),
         Arc::clone(&key_store),
         Arc::clone(&ledger_query_service_api_client),
-        Arc::clone(&lightning_bitcoin_factory),
+        lightning_bitcoin_factory.clone(),
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
     );
+
+    let enabled_services = EnabledServices {
+        lightning_bitcoin: lightning_bitcoin_factory.is_some(),
+    };
 
     spawn_warp_instance(
         &settings,
@@ -75,6 +76,7 @@ fn main() {
         Arc::clone(&state_store),
         sender,
         Arc::clone(&key_store),
+        enabled_services,
         &mut runtime,
     );
 
@@ -83,7 +85,7 @@ fn main() {
         Arc::clone(&state_store),
         Arc::clone(&ledger_query_service_api_client),
         Arc::clone(&key_store),
-        Arc::clone(&lightning_bitcoin_factory),
+        lightning_bitcoin_factory,
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
@@ -116,37 +118,43 @@ fn create_ledger_query_service_api_client(
 
 fn create_lightning_bitcoin_client_factory(
     runtime: &tokio::runtime::Runtime,
-    settings: &ComitNodeSettings,
-) -> lightning_rpc::ClientFactory {
+    settings: &Option<LightningBitcoinSettings>,
+) -> Result<lightning_rpc::ClientFactory, ()> {
     use lightning_rpc::FromFile;
 
-    let tls_cert_path = &settings.lightning_bitcoin.tls_cert_path;
-    let tls_cert = Certificate::from_file(tls_cert_path)
-        .expect(format!("LND TLS Cert could not be found: {:?}", tls_cert_path).as_str());
-    let macaroon_path = &settings.lightning_bitcoin.readonly_macaroon_path;
-    let macaroon = Macaroon::from_file(macaroon_path).expect(
-        format!(
-            "Lnd read-only macaroon could not be found: {:?}",
-            macaroon_path
-        )
-        .as_str(),
-    );
+    match settings {
+        Some(settings) => {
+            let tls_cert_path = &settings.tls_cert_path;
+            info!("tls_cert_path: {:?}", tls_cert_path);
+            let tls_cert = Certificate::from_file(tls_cert_path).map_err(|e| {
+                error!(
+                    "LND TLS Cert could not be found: {:?}; {:?}",
+                    e, tls_cert_path
+                );
+                ()
+            })?;
+            let macaroon_path = &settings.readonly_macaroon_path;
+            let macaroon = Macaroon::from_file(macaroon_path).map_err(|e| {
+                error!(
+                    "Lnd read-only macaroon could not be found: {:?}; {:?}",
+                    e, macaroon_path
+                );
+                ()
+            })?;
 
-    lightning_rpc::ClientFactory::new(
-        runtime.executor(),
-        settings.lightning_bitcoin.grpc_origin_uri.clone(),
-        tls_cert.into(),
-        settings.lightning_bitcoin.node_uri,
-        macaroon,
-    )
-    // runtime
-    // .block_on(factory.with_macaroon(
-    //     settings.lightning_bitcoin.grpc_origin_uri.clone(),
-    //     tls_cert,
-    //     settings.lightning_bitcoin.node_uri,
-    //     macaroon,
-    // ))
-    // .expect("Could not create a Lightning Network RPC Client (Bitcoin)")
+            Ok(lightning_rpc::ClientFactory::new(
+                runtime.executor(),
+                settings.grpc_origin_uri.clone(),
+                tls_cert.into(),
+                settings.node_uri,
+                macaroon,
+            ))
+        }
+        None => {
+            info!("Lightning Bitcoin settings are not present.");
+            Err(())
+        }
+    }
 }
 
 fn spawn_warp_instance(
@@ -155,9 +163,16 @@ fn spawn_warp_instance(
     state_store: Arc<InMemoryStateStore<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     key_store: Arc<KeyStore>,
+    enabled_services: EnabledServices,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(metadata_store, state_store, sender, key_store);
+    let routes = route_factory::create(
+        metadata_store,
+        state_store,
+        sender,
+        key_store,
+        enabled_services,
+    );
 
     let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -172,7 +187,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     state_store: Arc<InMemoryStateStore<SwapId>>,
     key_store: Arc<KeyStore>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
+    lightning_client_factory: Option<Arc<lightning_rpc::ClientFactory>>,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,
@@ -206,7 +221,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
     state_store: Arc<InMemoryStateStore<SwapId>>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     key_store: Arc<KeyStore>,
-    lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
+    lightning_client_factory: Option<Arc<lightning_rpc::ClientFactory>>,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,

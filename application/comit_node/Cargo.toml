@@ -36,7 +36,6 @@ shellexpand = "1"
 tls-api = "0.1"
 tokio = "0.1"
 tokio-timer = "0.2"
-tower-grpc = { git = "https://github.com/tower-rs/tower-grpc" }
 url = "1.7"
 warp = "0.1"
 

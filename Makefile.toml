@@ -228,6 +228,7 @@ cd api_tests;
 nvm install;
 nvm use node;
 yarn install
+rm -f ./api_tests/regtest/lnd/*
 '''
 ]
 
@@ -242,7 +243,7 @@ script_runner = "bash"
 script = [
 '''
 export PARAMS=$@;
-[[ -z ${PARAMS} ]] && export PARAMS=$(ls ./api_tests/e2e/rfc003/ | sort --reverse); #ABSOLUTE HACK REMOVE AFTER DEMO
+[[ -z ${PARAMS} ]] && export PARAMS=$(ls ./api_tests/e2e/rfc003/);
 export ROOT=$(pwd);
 for GLOB_DIR in ${PARAMS}; do
     cd "$ROOT/api_tests/e2e/rfc003/"

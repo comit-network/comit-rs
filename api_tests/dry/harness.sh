@@ -40,9 +40,9 @@ function setup() {
     );
 
     export ALICE_COMIT_NODE_HOST=127.0.0.1;
-    export ALICE_CONFIG_FILE=./regtest/alice/default.toml;
+    export ALICE_CONFIG_FILE=./regtest/alice/dry/default.toml;
     ALICE_COMIT_NODE_PID=$(
-        export COMIT_NODE_CONFIG_PATH=./regtest/alice;
+        export COMIT_NODE_CONFIG_PATH=./regtest/alice/dry;
         start_target "comit_node" "Alice";
     );
 }

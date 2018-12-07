@@ -26,6 +26,7 @@ use swap_protocols::{
     },
 };
 
+#[allow(missing_debug_implementations)]
 pub struct AliceToBob<C, AL: Ledger> {
     lnd_client: Arc<Mutex<LndClient>>,
     comit_client: Arc<C>,
@@ -43,6 +44,7 @@ impl<C, AL: Ledger> AliceToBob<C, AL> {
     }
 }
 
+#[allow(missing_debug_implementations)]
 pub struct AliceLightningEvents {
     lnd_client: Arc<Mutex<LndClient>>,
     invoice_paid: Option<Box<Deployed<Lightning>>>,
@@ -183,6 +185,7 @@ impl LedgerEvents<Lightning, BitcoinQuantity> for AliceLightningEvents {
     }
 }
 
+#[allow(missing_debug_implementations)]
 pub struct BobLightningEvents {
     lnd_client: Arc<Mutex<LndClient>>,
     invoice_paid: Option<Box<Deployed<Lightning>>>,
@@ -278,7 +281,7 @@ impl StreamPayments for Arc<Mutex<LndClient>> {
         let lnd_client = Arc::clone(&self);
         Box::new(
             Interval::new(Instant::now(), Duration::from_secs(1))
-                .map_err(|e| rfc003::Error::Internal(String::from("Interval stopped working")))
+                .map_err(|e| rfc003::Error::Internal(format!("Interval stopped working: {:?}", e)))
                 .and_then(move |_tick| {
                     let mut lnd_client = lnd_client.lock().unwrap();
                     lnd_client

@@ -9,11 +9,17 @@ use swap_protocols::{
 use swaps::common::SwapId;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
+#[derive(Copy, Clone, Debug)]
+pub struct EnabledServices {
+    pub lightning_bitcoin: bool,
+}
+
 pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     key_store: Arc<KeyStore>,
+    enabled_services: EnabledServices,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(http_api::rfc003::swap::PROTOCOL_NAME));
@@ -21,12 +27,14 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let key_store = warp::any().map(move || key_store.clone());
     let state_store = warp::any().map(move || state_store.clone());
     let sender = warp::any().map(move || sender.clone());
+    let enabled_services = warp::any().map(move || enabled_services);
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
         .and(key_store.clone())
         .and(sender)
+        .and(enabled_services)
         .and(warp::body::json())
         .and_then(http_api::rfc003::swap::post_swap);
 

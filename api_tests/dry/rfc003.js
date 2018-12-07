@@ -85,7 +85,7 @@ describe("RFC003 HTTP API", () => {
                     "name": "Thomas' wallet",
                 },
                 "beta_ledger": {
-                    "name": "Higher-Dimension" // This is the coffee place downstairs
+                    "name": "Higher-Dimension"
                 },
                 "alpha_asset": {
                     "name": "AUD",
@@ -102,6 +102,25 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(400);
                 res.body.title.should.equal("swap-not-supported");
             });
+    });
+
+    it("[Alice] Returns 400 swap-not-supported for a lightning swap without lightning setup", async () => {
+        await chai.request(alice.comit_node_url())
+            .post('/swaps/rfc003')
+            .send({ alpha_ledger: { name: 'Ethereum' },
+                beta_ledger: { name: 'Lightning' },
+                alpha_asset:
+                    { name: 'ERC20',
+                        quantity: '5000000000000000000000',
+                        token_contract: '0x54a3f6747A5Dc5711C926bc94b0eC25499800882' },
+                beta_asset: { name: 'Bitcoin', quantity: '4000000' },
+                alpha_ledger_refund_identity: '0x4c3f30ea3b606f46c48b94ea53bb514999058524',
+                beta_ledger_success_identity:
+                    '03f07bdb86eec8ceb52c901c87e024ed0e36cc56a04e946d944117c075a7faab12',
+                alpha_ledger_lock_duration: 86400 }).then((res) => {
+                            res.should.have.status(400);
+                            res.body.title.should.equal("swap-not-supported");
+                        });
     });
 
     it("[Alice] Returns 400 bad request for malformed requests", async () => {

@@ -36,7 +36,7 @@ function setup() {
     source ./regtest/regtest.env
     set +a;
 
-    export ALICE_CONFIG_FILE=./regtest/alice/default.toml;
+    export ALICE_CONFIG_FILE=./regtest/alice/e2e/default.toml;
 
     export BITCOIN_RPC_URL="http://$BITCOIN_RPC_HOST:$BITCOIN_RPC_PORT";
     #### Start all services

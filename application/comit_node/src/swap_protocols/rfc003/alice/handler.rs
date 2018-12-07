@@ -43,7 +43,7 @@ pub struct SwapRequestHandler<
     pub client_factory: Arc<F>,
     pub comit_node_addr: SocketAddr,
     pub phantom_data: PhantomData<C>,
-    pub lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
+    pub lightning_client_factory: Option<Arc<lightning_rpc::ClientFactory>>,
     pub bitcoin_poll_interval: Duration,
     pub ethereum_poll_interval: Duration,
 }
@@ -67,7 +67,9 @@ impl<
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
         let client_factory = Arc::clone(&self.client_factory);
         let comit_node_addr = self.comit_node_addr.clone();
-        let lightning_client_factory = Arc::clone(&self.lightning_client_factory);
+        let lightning_client_factory = self
+            .lightning_client_factory
+            .map(|factory| Arc::clone(&factory));
 
         receiver
             .for_each(move |(id, requests)| {
@@ -177,6 +179,17 @@ impl<
                         Ok(())
                     }
                     SwapRequestKind::EthereumLightningErc20QuantityBitcoinQuantity(request) => {
+                        let lightning_client_factory = match lightning_client_factory {
+                            None => {
+                                error!("Lightning client is not available");
+                                return Ok(());
+                            }
+                            Some(ref f) => {
+                                info!("Lightning client is available");
+                                f
+                            }
+                        };
+
                         if let Err(e) = metadata_store.insert(id, request.clone()) {
                             error!("Failed to store metadata for swap {} because {:?}", id, e);
                             // Return Ok to keep the loop running
@@ -242,6 +255,8 @@ impl<
                                     Ok(())
                                 })
                                 .map_err(|e| {
+                                    // TODO: Need to remove this silent failure and make the http
+                                    // request fail
                                     error!("Failed to get lnd client: {:?}", e);
                                     ()
                                 }),

@@ -45,7 +45,7 @@ function create_lnrpc_client (name, uri) {
         metadata.add('macaroon', macaroon);
         callback(null, metadata);
     });
-    const credentials = grpc.credentials.combineChannelCredentials(ssl_credentials,macaroon);
+    const credentials = grpc.credentials.combineChannelCredentials(ssl_credentials, macaroon);
     return new lnrpc.Lightning(uri, credentials);
 };
 

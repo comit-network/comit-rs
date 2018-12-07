@@ -40,7 +40,7 @@ pub struct SwapRequestHandler<MetadataStore, StateStore> {
     pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     pub bitcoin_poll_interval: Duration,
     pub ethereum_poll_interval: Duration,
-    pub lightning_client_factory: Arc<lightning_rpc::ClientFactory>,
+    pub lightning_client_factory: Option<Arc<lightning_rpc::ClientFactory>>,
     pub key_store: Arc<KeyStore>,
 }
 
@@ -54,7 +54,9 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
         );
         let state_store = Arc::clone(&self.state_store);
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
-        let lightning_client_factory = Arc::clone(&self.lightning_client_factory);
+        let lightning_client_factory = self
+            .lightning_client_factory
+            .map(|factory| Arc::clone(&factory));
 
         receiver
             .for_each(move |(id, requests, response_sender)| {
@@ -175,6 +177,14 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
                     rfc003::bob::SwapRequestKind::EthereumLightningBitcoinQuantityErc20Quantity(
                         request,
                     ) => {
+                        let lightning_client_factory = match lightning_client_factory {
+                            None => {
+                                error!("Lightning client is not available");
+                                return Ok(());
+                            }
+                            Some(ref f) => f,
+                        };
+
                         if let Err(e) = metadata_store.insert(id, request.clone()) {
                             error!("Failed to store metadata for swap {} because {:?}", id, e);
 

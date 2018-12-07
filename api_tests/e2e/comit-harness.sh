@@ -84,9 +84,9 @@ function start_comit_services() {
     );
 
     export ALICE_COMIT_NODE_HOST=127.0.0.1;
-    export ALICE_CONFIG_FILE=./regtest/alice/default.toml;
+    export ALICE_CONFIG_FILE=./regtest/alice/e2e/default.toml;
     ALICE_COMIT_NODE_PID=$(
-        export COMIT_NODE_CONFIG_PATH=./regtest/alice;
+        export COMIT_NODE_CONFIG_PATH=./regtest/alice/e2e;
         start_target "comit_node" "Alice";
     );
 

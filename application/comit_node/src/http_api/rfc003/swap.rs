@@ -12,6 +12,7 @@ use hyper::header;
 use rustic_hal::HalResource;
 use std::sync::Arc;
 
+use http_api::route_factory::EnabledServices;
 use key_store::KeyStore;
 use swap_protocols::{
     asset::Asset,
@@ -205,21 +206,27 @@ fn swap_path(id: SwapId) -> String {
 pub fn post_swap(
     key_store: Arc<KeyStore>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    enabled_services: EnabledServices,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(key_store.as_ref(), sender, request_body_kind)
-        .map(|swap_created| {
-            let body = warp::reply::json(&swap_created);
-            let response =
-                warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
-            warp::reply::with_status(response, warp::http::StatusCode::CREATED)
-        })
-        .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
+    handle_post_swap(
+        key_store.as_ref(),
+        sender,
+        enabled_services,
+        request_body_kind,
+    )
+    .map(|swap_created| {
+        let body = warp::reply::json(&swap_created);
+        let response = warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
+        warp::reply::with_status(response, warp::http::StatusCode::CREATED)
+    })
+    .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
 }
 
 fn handle_post_swap(
     key_store: &KeyStore,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    enabled_services: EnabledServices,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
@@ -236,9 +243,17 @@ fn handle_post_swap(
             )
         }
         SwapRequestBodyKind::EthereumLightningBitcoinQuantityErc20Quantity(body) => {
-            rfc003::alice::SwapRequestKind::EthereumLightningErc20QuantityBitcoinQuantity(
-                rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
-            )
+            match enabled_services.lightning_bitcoin {
+                true => {
+                    rfc003::alice::SwapRequestKind::EthereumLightningErc20QuantityBitcoinQuantity(
+                        rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
+                    )
+                }
+                false => {
+                    error!("Lightning Bitcoin Service is not available");
+                    return Err(problem::unsupported());
+                }
+            }
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
             error!(
