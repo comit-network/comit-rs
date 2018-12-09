@@ -1,6 +1,6 @@
 use comit_client::SwapReject;
 use ethereum_support;
-use std_ext::time::Seconds;
+use misc::Seconds;
 use swap_protocols::rfc003::state_machine::StateMachineResponse;
 
 #[derive(Clone, Debug, PartialEq)]
