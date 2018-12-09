@@ -348,6 +348,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .poll()?
         {
             let state = state.take();
+            let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
                 Either::A(beta_redeemed_tx) => transition_save!(
                     context.state_repo,
