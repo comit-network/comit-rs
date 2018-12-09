@@ -52,7 +52,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
 impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     type Accept = ();
     type Decline = ();
-    type LndAddInvoice = ();
+    type AddInvoice = ();
     type Deploy = ();
     type Fund = bitcoin::SendToAddress;
     type Redeem = ethereum::SendTransaction;

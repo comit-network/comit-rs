@@ -2,25 +2,25 @@ pub mod alice;
 pub mod bob;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub enum Action<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund> {
+pub enum Action<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund> {
     Accept(Accept),
     Decline(Decline),
-    LndAddInvoice(LndAddInvoice),
+    AddInvoice(AddInvoice),
     Deploy(Deploy),
     Fund(Fund),
     Redeem(Redeem),
     Refund(Refund),
 }
 
-impl<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>
-    Action<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>
+impl<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund>
+    Action<Accept, Decline, AddInvoice, Deploy, Fund, Redeem, Refund>
 {
     pub fn name(&self) -> String {
         use self::Action::*;
         match *self {
             Accept(_) => String::from("accept"),
             Decline(_) => String::from("decline"),
-            LndAddInvoice(_) => String::from("addInvoice"),
+            AddInvoice(_) => String::from("addInvoice"),
             Deploy(_) => String::from("deploy"),
             Fund(_) => String::from("fund"),
             Redeem(_) => String::from("redeem"),
@@ -32,7 +32,7 @@ impl<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>
 pub trait StateActions {
     type Accept;
     type Decline;
-    type LndAddInvoice;
+    type AddInvoice;
     type Deploy;
     type Fund;
     type Redeem;
@@ -44,7 +44,7 @@ pub trait StateActions {
         Action<
             Self::Accept,
             Self::Decline,
-            Self::LndAddInvoice,
+            Self::AddInvoice,
             Self::Deploy,
             Self::Fund,
             Self::Redeem,

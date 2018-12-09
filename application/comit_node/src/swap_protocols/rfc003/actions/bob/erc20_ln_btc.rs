@@ -36,9 +36,9 @@ impl OngoingSwap<Bob<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>> {
 impl StateActions for SwapStates<Bob<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>> {
     type Accept = Accept<Ethereum, Lightning>;
     type Decline = Decline<Ethereum, Lightning>;
-    type LndAddInvoice = ();
+    type AddInvoice = ();
     type Deploy = ();
-    type Fund = lightning::LndSendPayment;
+    type Fund = lightning::SendPayment;
     type Redeem = ethereum::SendTransaction;
     type Refund = ();
 
@@ -50,7 +50,7 @@ impl StateActions for SwapStates<Bob<Ethereum, Lightning, Erc20Quantity, Bitcoin
             Self::Decline,
             (),
             (),
-            lightning::LndSendPayment,
+            lightning::SendPayment,
             ethereum::SendTransaction,
             (),
         >,
@@ -62,7 +62,7 @@ impl StateActions for SwapStates<Bob<Ethereum, Lightning, Erc20Quantity, Bitcoin
                 Action::Decline(role.decline_action()),
             ],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
-                let send_payment_action = lightning::LndSendPayment {
+                let send_payment_action = lightning::SendPayment {
                     dest: swap.beta_ledger_success_identity,
                     amt: swap.beta_asset,
                     payment_hash: SecretHash::from(swap.secret.clone()),

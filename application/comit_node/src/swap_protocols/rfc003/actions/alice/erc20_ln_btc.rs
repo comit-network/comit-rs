@@ -59,7 +59,7 @@ impl OngoingSwap<Alice<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>> {
 impl StateActions for SwapStates<Alice<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>> {
     type Accept = ();
     type Decline = ();
-    type LndAddInvoice = lightning::LndAddInvoice;
+    type AddInvoice = lightning::AddInvoice;
     type Deploy = ethereum::ContractDeploy;
     type Fund = ethereum::SendTransaction;
     type Redeem = ();
@@ -71,7 +71,7 @@ impl StateActions for SwapStates<Alice<Ethereum, Lightning, Erc20Quantity, Bitco
         Action<
             (),
             (),
-            lightning::LndAddInvoice,
+            lightning::AddInvoice,
             ethereum::ContractDeploy,
             ethereum::SendTransaction,
             (),
@@ -86,12 +86,12 @@ impl StateActions for SwapStates<Alice<Ethereum, Lightning, Erc20Quantity, Bitco
                 ..
             }) => {
                 let secret_hash = SecretHash::from(secret.clone());
-                let add_invoice_action = lightning::LndAddInvoice {
+                let add_invoice_action = lightning::AddInvoice {
                     r_preimage: *secret,
                     r_hash: secret_hash,
                     value: *beta_asset,
                 };
-                vec![Action::LndAddInvoice(add_invoice_action)]
+                vec![Action::AddInvoice(add_invoice_action)]
             }
             SS::Accepted(Accepted { ref swap, .. }) => vec![Action::Deploy(swap.deploy_action())],
             SS::AlphaDeployed(AlphaDeployed {

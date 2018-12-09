@@ -64,7 +64,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     type Accept = Accept<Bitcoin, Ethereum>;
     type Decline = Decline<Bitcoin, Ethereum>;
-    type LndAddInvoice = ();
+    type AddInvoice = ();
     type Deploy = ();
     type Fund = ethereum::ContractDeploy;
     type Redeem = bitcoin::SpendOutput;
