@@ -3,7 +3,6 @@ mod serde;
 use bitcoin_support;
 use config::{Config, ConfigError, File};
 use ethereum_support;
-use http;
 use serde::Deserialize;
 use std::{
     ffi::OsStr,
@@ -45,15 +44,15 @@ pub struct BitcoinSettings {
 
 #[derive(Debug, Deserialize)]
 pub struct LightningBitcoinSettings {
-    pub network: bitcoin_support::Network,
+    network: bitcoin_support::Network,
     #[serde(with = "serde::socket_addr")]
-    pub node_uri: SocketAddr,
+    node_uri: SocketAddr,
     #[serde(with = "serde::path")]
-    pub tls_cert_path: PathBuf,
+    tls_cert_path: PathBuf,
     #[serde(with = "serde::path")]
-    pub readonly_macaroon_path: PathBuf,
-    #[serde(with = "serde::uri")]
-    pub grpc_origin_uri: http::Uri,
+    readonly_macaroon_path: PathBuf,
+    #[serde(with = "serde::url")]
+    grpc_origin_url: url::Url,
 }
 
 #[derive(Debug, Deserialize)]
