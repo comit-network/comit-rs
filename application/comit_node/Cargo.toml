@@ -66,9 +66,6 @@ git = "https://github.com/coblox/state_machine_future.git"
 [dependencies.tc_bitcoincore_client]
 path = "../../vendor/tc_bitcoincore_client"
 
-[dependencies.lightning_rpc]
-path = "../../vendor/lightning_rpc"
-
 [dependencies.uuid]
 features = ["serde", "v4"]
 version = "0.6"

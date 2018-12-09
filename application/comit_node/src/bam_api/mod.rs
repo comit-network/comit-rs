@@ -7,7 +7,7 @@ pub mod header;
 
 mod ledger_impls {
     use bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
-    use swap_protocols::ledger::{Bitcoin, Ethereum, Lightning};
+    use swap_protocols::ledger::{Bitcoin, Ethereum};
 
     impl FromBamHeader for Bitcoin {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
@@ -36,19 +36,6 @@ mod ledger_impls {
     impl ToBamHeader for Ethereum {
         fn to_bam_header(&self) -> Result<Header, Error> {
             Ok(Header::with_value("Ethereum"))
-        }
-    }
-
-    impl FromBamHeader for Lightning {
-        fn from_bam_header(header: Header) -> Result<Self, Error> {
-            let _ = header.has_value("Lightning")?;
-            Ok(Lightning {})
-        }
-    }
-
-    impl ToBamHeader for Lightning {
-        fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("Lightning"))
         }
     }
 }

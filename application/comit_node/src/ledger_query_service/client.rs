@@ -4,7 +4,7 @@ use ledger_query_service::{
     FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
 };
 use reqwest::{async::Client, header::LOCATION, StatusCode, Url};
-use serde::{de::DeserializeOwned, Deserialize};
+use serde::Deserialize;
 use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::future::Future;
 
@@ -125,10 +125,7 @@ impl DefaultLedgerQueryServiceApiClient {
     fn fetch_full_results<L: Ledger>(
         &self,
         query: &QueryId<L>,
-    ) -> Box<Future<Item = Vec<L::Transaction>, Error = Error> + Send>
-    where
-        L::Transaction: DeserializeOwned,
-    {
+    ) -> Box<Future<Item = Vec<L::Transaction>, Error = Error> + Send> {
         let mut url = query.as_ref().clone();
         url.set_query(Some("expand_results=true"));
 

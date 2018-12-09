@@ -15,11 +15,11 @@ pub const PATH: &str = "swaps";
 
 mod ledger_impls {
     use super::ledger::{Error, FromHttpLedger, HttpLedger, ToHttpLedger};
-    use swap_protocols::ledger::{Bitcoin, Ethereum, Lightning};
+    use swap_protocols::ledger::{Bitcoin, Ethereum};
 
     impl_http_ledger!(Bitcoin { network });
     impl_http_ledger!(Ethereum);
-    impl_http_ledger!(Lightning);
+
 }
 
 mod asset_impls {
