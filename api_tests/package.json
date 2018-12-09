@@ -9,7 +9,6 @@
   "author": "CoBloX Team",
   "license": "ISC",
   "dependencies": {
-    "@grpc/proto-loader": "^0.3.0",
     "bignumber.js": "^7.2.1",
     "bitcoin-core": "^2.0.0",
     "bitcoinjs-lib": "^4.0.2",

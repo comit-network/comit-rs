@@ -22,33 +22,6 @@ module.exports.logger = function () {
     return logger;
 };
 
-// GRPC setup
-const grpc = require('grpc');
-const protoLoader = require('@grpc/proto-loader');
-const options = {
-    keepCase: true,
-    longs: String,
-    enums: String,
-    defaults: true,
-    oneofs: true
-};
-const packageDefinition = protoLoader.loadSync(process.env.PROJECT_ROOT + '/api_tests/proto/lnd.proto', options);
-const lnrpc = grpc.loadPackageDefinition(packageDefinition).lnrpc;
-process.env.GRPC_SSL_CIPHER_SUITES = 'HIGH+ECDSA';
-
-function create_lnrpc_client (name, port) {
-    const lnd_cert = fs.readFileSync(process.env.LND_CERTS_DIR + '/' + name + '-tls.cert');
-    const ssl_credentials = grpc.credentials.createSsl(lnd_cert);
-    const macaroon = grpc.credentials.createFromMetadataGenerator(function (args, callback) {
-        const macaroon = fs.readFileSync(process.env.LND_CERTS_DIR + name + '-admin.macaroon').toString('hex');
-        let metadata = new grpc.Metadata();
-        metadata.add('macaroon', macaroon);
-        callback(null, metadata);
-    });
-    const credentials = grpc.credentials.combineChannelCredentials(ssl_credentials,macaroon);
-    return new lnrpc.Lightning('127.0.0.1:' + port.toString(), credentials);
-};
-
 module.exports.sleep = time => {
     return new Promise((res, rej) => {
         setTimeout(res, time);
@@ -259,7 +232,7 @@ class WalletConf {
 }
 
 class ComitConf {
-    constructor(name, bitcoin_utxo, lnd_port = null) {
+    constructor(name, bitcoin_utxo) {
         this.name = name;
         this.host = process.env[this.name.toUpperCase() + "_COMIT_NODE_HOST"];
         this.config = Toml.parse(
@@ -269,9 +242,6 @@ class ComitConf {
             )
         );
         this.wallet = new WalletConf(name);
-        if (lnd_port) {
-            this.ln = new LightningNetwork(name, lnd_port);
-        }
     }
 
     comit_node_url() {
@@ -301,140 +271,6 @@ class ComitConf {
                         }, 500);
                     }
                 });
-        });
-    }
-}
-
-class LightningNetwork {
-    constructor(name, lnd_port) {
-        this.rpc_client = create_lnrpc_client(name, lnd_port);
-        this.rpc_port = lnd_port;
-        switch (name) {
-            case "alice":
-                this.host = process.env.lnd_alice_ip;
-                break;
-            case "bob":
-                this.host = process.env.lnd_bob_ip;
-                break;
-            default:
-                throw new Error("Name is needed to setup lnd rpc client");
-        }
-    }
-
-    async lnNewAddressAsync() {
-        const request = {
-            type: "np2wkh"
-        };
-        const ln_client = this.rpc_client;
-        return new Promise(function(resolve, reject) {
-            ln_client.newAddress(request, function(err, data) {
-                if (err !== null) reject(err);
-                else resolve(data.address);
-            });
-        });
-    }
-
-    async send_btc_to_wallet(btc_value) {
-        if (!this._wallet_address) {
-            this._wallet_address = await this.lnNewAddressAsync();
-        }
-        return bitcoin_rpc_client()
-            .sendToAddress(this._wallet_address, btc_value);
-    }
-
-    async getInfoAsync() {
-        const ln_client = this.rpc_client;
-        return new Promise(function(resolve, reject) {
-            ln_client.getInfo({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
-        });
-    }
-
-    async connectToPeerAsync (to_ln_pubkey, to_ln_host) {
-        const from_ln_client = this.rpc_client;
-        const address = {
-            pubkey: to_ln_pubkey,
-            host: to_ln_host,
-        };
-        const request = {
-            addr: address,
-            perm: false,
-        };
-
-        return new Promise(function(resolve, reject) {
-            from_ln_client.connectPeer(request, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
-        });
-    }
-
-    async listPeersAsync() {
-        const ln_client = this.rpc_client;
-        return new Promise(function(resolve, reject) {
-            ln_client.listPeers({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
-        });
-    }
-
-    async openChannelAsync (funding_amount_satoshi, to_ln_pubkey) {
-        const from_ln_client = this.rpc_client;
-        const request = {
-            node_pubkey: Buffer.from(to_ln_pubkey, "hex"),
-            node_pubkey_string: to_ln_pubkey,
-            local_funding_amount: funding_amount_satoshi,
-            spend_unconfirmed: true,
-        };
-        let call = from_ln_client.openChannel(request);
-
-        return new Promise(function(resolve, reject) {
-            call.on("data", async function (response) {
-                if (response.update === "chan_open") {
-                    resolve(response);
-                } else {
-                    await bitcoin_rpc_client().generate(1);;
-                }
-            });
-        });
-    }
-
-    async listChannelsAsync() {
-        const ln_client = this.rpc_client;
-        const request = {
-            active_only: false,
-            inactive_only: false,
-            public_only: false,
-            private_only: false,
-        };
-        return new Promise(function(resolve, reject) {
-            ln_client.listChannels(request, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
-        });
-    }
-
-    async walletBalanceAsync() {
-        const ln_client = this.rpc_client;
-        return new Promise(function(resolve, reject) {
-            ln_client.walletBalance({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
-        });
-    }
-
-    async channelBalanceAsync() {
-        const ln_client = this.rpc_client;
-        return new Promise(function(resolve, reject) {
-            ln_client.channelBalance({}, function(err, response) {
-                if (err !== null) reject(err);
-                else resolve(response);
-            });
         });
     }
 }
@@ -474,8 +310,8 @@ class LedgerQueryServiceConf {
     }
 }
 
-module.exports.comit_conf = (name, utxo, lnd_port = null) => {
-    return new ComitConf(name, utxo, lnd_port);
+module.exports.comit_conf = (name, utxo) => {
+    return new ComitConf(name, utxo);
 };
 
 module.exports.wallet_conf = (eth_private_key, utxo) => {
