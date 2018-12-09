@@ -4,7 +4,9 @@ use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 use swap_protocols::{
     asset::Asset,
-    rfc003::{self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash},
+    rfc003::{
+        self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, Secret, SecretHash,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]

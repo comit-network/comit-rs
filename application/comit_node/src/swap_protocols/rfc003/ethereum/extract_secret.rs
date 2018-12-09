@@ -1,7 +1,10 @@
 use ethereum_support::Transaction;
-use swap_protocols::rfc003::{
-    secret::{Secret, SecretHash},
-    ExtractSecret,
+use swap_protocols::{
+    ledger::Ethereum,
+    rfc003::{
+        secret::{Secret, SecretHash},
+        ExtractSecret, Ledger,
+    },
 };
 
 impl ExtractSecret for Transaction {

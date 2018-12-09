@@ -1,6 +1,5 @@
 mod btc_erc20;
 mod btc_eth;
-mod erc20_ln_btc;
 use comit_client::SwapReject;
 use futures::sync::oneshot;
 use std::sync::{Arc, Mutex};

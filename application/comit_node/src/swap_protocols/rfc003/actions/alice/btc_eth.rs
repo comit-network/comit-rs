@@ -50,7 +50,6 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     type Accept = ();
     type Decline = ();
-    type AddInvoice = ();
     type Deploy = ();
     type Fund = bitcoin::SendToAddress;
     type Redeem = ethereum::SendTransaction;
@@ -59,15 +58,7 @@ impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Ether
     fn actions(
         &self,
     ) -> Vec<
-        Action<
-            (),
-            (),
-            (),
-            (),
-            bitcoin::SendToAddress,
-            ethereum::SendTransaction,
-            bitcoin::SpendOutput,
-        >,
+        Action<(), (), (), bitcoin::SendToAddress, ethereum::SendTransaction, bitcoin::SpendOutput>,
     > {
         use self::SwapStates as SS;
         match *self {
