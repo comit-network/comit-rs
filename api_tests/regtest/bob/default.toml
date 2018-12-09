@@ -15,13 +15,6 @@ node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSAKhjQEcrsZTSsJWvjX4XvtRLPMq3q5xKqoW1A5p3RBmwDLdFZ5J"
 queries_poll_interval_secs = 1
 
-[lightning_bitcoin]
-network = "regtest"
-node_uri = "127.0.0.1:10019"
-tls_cert_path = "./api_tests/regtest/lnd_certs/bob-tls.cert"
-readonly_macaroon_path = "./api_tests/regtest/lnd_certs/bob-readonly.macaroon"
-grpc_origin_url = "http://127.0.0.1"
-
 [comit]
 remote_comit_node_url = "127.0.0.1:8001"
 comit_listen = "0.0.0.0:8011"
