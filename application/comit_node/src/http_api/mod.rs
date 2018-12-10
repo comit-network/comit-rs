@@ -7,6 +7,9 @@ pub mod ledger;
 #[macro_use]
 pub mod asset;
 
+#[macro_use]
+pub mod lock_duration;
+
 mod problem;
 
 pub use self::problem::*;
@@ -52,6 +55,15 @@ mod asset_impls {
                 .with_parameter("token_contract", self.token_contract())?)
         }
     }
+}
+
+mod lock_duration_impls {
+    use super::lock_duration::{Error, HttpLockDuration, ToHttpLockDuration};
+    use bitcoin_support::Blocks;
+    use swap_protocols::rfc003::ethereum::Seconds;
+
+    impl_to_http_lock_duration!(Blocks);
+    impl_to_http_lock_duration!(Seconds);
 }
 
 #[cfg(test)]

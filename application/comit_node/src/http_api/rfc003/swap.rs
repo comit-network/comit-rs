@@ -5,6 +5,7 @@ use http_api::{
     self,
     asset::{HttpAsset, ToHttpAsset},
     ledger::{HttpLedger, ToHttpLedger},
+    lock_duration::{HttpLockDuration, ToHttpLockDuration},
     problem::{self, HttpApiProblemStdError},
 };
 use http_api_problem::HttpApiProblem;
@@ -241,6 +242,9 @@ pub struct SwapDescription {
     beta_ledger: HttpLedger,
     alpha_asset: HttpAsset,
     beta_asset: HttpAsset,
+    alpha_lock_duration: HttpLockDuration,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    beta_lock_duration: Option<HttpLockDuration>,
 }
 
 #[derive(Debug, Serialize)]
@@ -304,6 +308,13 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                         beta_ledger: start_state.beta_ledger.to_http_ledger().unwrap(),
                         alpha_asset: start_state.alpha_asset.to_http_asset().unwrap(),
                         beta_asset: start_state.beta_asset.to_http_asset().unwrap(),
+                        alpha_lock_duration: start_state
+                            .alpha_ledger_lock_duration
+                            .to_http_lock_duration()
+                            .unwrap(),
+                        beta_lock_duration: state
+                            .beta_ledger_lock_duration()
+                            .map(|lock| lock.to_http_lock_duration().unwrap()),
                     },
                     role: format!("{}", metadata.role),
                 },

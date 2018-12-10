@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Blocks(u32);
+pub struct Blocks(pub u32);
 
 pub const BTC_BLOCKS_IN_24H: Blocks = Blocks::new(24 * 60 / 10);
 
