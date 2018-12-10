@@ -8,7 +8,7 @@ pub mod ledger;
 pub mod asset;
 
 #[macro_use]
-pub mod lock;
+pub mod lock_duration;
 
 mod problem;
 
@@ -58,12 +58,12 @@ mod asset_impls {
 }
 
 mod lock_duration_impls {
-    use super::lock::{Error, HttpLock, ToHttpLock};
+    use super::lock_duration::{Error, HttpLockDuration, ToHttpLockDuration};
     use bitcoin_support::Blocks;
     use swap_protocols::rfc003::ethereum::Seconds;
 
-    impl_to_http_lock!(Blocks, "Block");
-    impl_to_http_lock!(Seconds, "Second");
+    impl_to_http_lock_duration!(Blocks);
+    impl_to_http_lock_duration!(Seconds);
 }
 
 #[cfg(test)]
