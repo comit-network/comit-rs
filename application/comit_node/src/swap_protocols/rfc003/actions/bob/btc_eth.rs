@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::{
         actions::{
             bob::{Accept, Decline},
-            Action, Actions,
+            ActionKind, Actions,
         },
         bitcoin,
         ethereum::{self, EtherHtlc, Htlc},
@@ -61,7 +61,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     }
 }
 
-type BobActionKind = Action<
+type BobActionKind = ActionKind<
     Accept<Bitcoin, Ethereum>,
     Decline<Bitcoin, Ethereum>,
     (),
@@ -77,32 +77,34 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantit
         use self::SwapStates as SS;
         match *self {
             SS::Start(Start { ref role, .. }) => vec![
-                Action::Accept(role.accept_action()),
-                Action::Decline(role.decline_action()),
+                ActionKind::Accept(role.accept_action()),
+                ActionKind::Decline(role.decline_action()),
             ],
-            SS::AlphaFunded(AlphaFunded { ref swap, .. }) => vec![Action::Fund(swap.fund_action())],
+            SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
+                vec![ActionKind::Fund(swap.fund_action())]
+            }
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
+            }) => vec![ActionKind::Refund(swap.refund_action(*beta_htlc_location))],
             SS::AlphaFundedBetaRefunded { .. } => vec![],
             SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
+            }) => vec![ActionKind::Refund(swap.refund_action(*beta_htlc_location))],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
+            }) => vec![ActionKind::Refund(swap.refund_action(*beta_htlc_location))],
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref swap,
                 ref alpha_htlc_location,
                 ref beta_redeemed_tx,
                 ..
-            }) => vec![Action::Redeem(
+            }) => vec![ActionKind::Redeem(
                 swap.redeem_action(*alpha_htlc_location, beta_redeemed_tx.secret),
             )],
             _ => vec![],
@@ -143,7 +145,7 @@ mod tests {
         assert!(actions
             .into_iter()
             .find(|a| match a {
-                Action::Accept(_) => true,
+                ActionKind::Accept(_) => true,
                 _ => false,
             })
             .is_some());
