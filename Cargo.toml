@@ -10,7 +10,6 @@ members = [
     "vendor/bitcoin_witness",
     "vendor/ethereum_support",
     "vendor/key_gen",
-    "vendor/lightning_rpc",
     "vendor/secp256k1_support",
     "vendor/tc_bitcoincore_client",
     "vendor/tc_web3_client",
