@@ -201,7 +201,7 @@ script_runner = "bash"
 script = [
 '''
 cd api_tests;
-./dry/harness.sh ./dry/rfc003.js
+./dry/harness.sh ./dry/rfc003
 '''
 ]
 

@@ -1,5 +1,5 @@
 const chai = require("chai");
-const test_lib = require("../test_lib.js");
+const test_lib = require("../../test_lib.js");
 const should = chai.should();
 chai.use(require("chai-http"));
 const web3 = test_lib.web3();
