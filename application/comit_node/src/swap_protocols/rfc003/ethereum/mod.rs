@@ -54,7 +54,7 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
         EtherHtlc::new(
             htlc_params.lock_duration,
             htlc_params.refund_identity,
-            htlc_params.success_identity,
+            htlc_params.redeem_identity,
             htlc_params.secret_hash,
         )
     }
@@ -71,7 +71,7 @@ impl From<HtlcParams<Ethereum, Erc20Quantity>> for Erc20Htlc {
         Erc20Htlc::new(
             htlc_params.lock_duration,
             htlc_params.refund_identity,
-            htlc_params.success_identity,
+            htlc_params.redeem_identity,
             htlc_params.secret_hash,
             htlc_params.asset.token_contract(),
             htlc_params.asset.quantity(),

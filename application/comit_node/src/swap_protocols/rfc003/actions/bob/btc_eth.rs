@@ -55,7 +55,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             output: PrimedInput::new(
                 beta_htlc_location,
                 self.alpha_asset,
-                htlc.unlock_with_secret(self.alpha_ledger_success_identity, &secret),
+                htlc.unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
             ),
         }
     }
@@ -124,7 +124,7 @@ mod tests {
                 "875638cac0b0ae9f826575e190f2788918c354c2",
             )
             .unwrap(),
-            beta_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
+            beta_ledger_redeem_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),
             alpha_ledger: Bitcoin::default(),

@@ -20,17 +20,9 @@ pub enum UnlockingError {
     },
 }
 
-// Create BTC HTLC
-// Returns P2WSH address
-// Input:
-// - BTC address of Bob to receive the funds (bob_success_address)
-// - BTC timeout
-// - BTC amount
-// - hashed secret
-
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Htlc {
-    recipient_success_pubkey_hash: PubkeyHash,
+    recipient_redeem_pubkey_hash: PubkeyHash,
     sender_refund_pubkey_hash: PubkeyHash,
     secret_hash: SecretHash,
     relative_timelock: u32,
@@ -39,26 +31,26 @@ pub struct Htlc {
 
 impl Htlc {
     pub fn new<
-        RecipientSuccessPubkeyHash: Into<PubkeyHash>,
+        RecipientRedeemPubkeyHash: Into<PubkeyHash>,
         SenderRefundPubkeyHash: Into<PubkeyHash>,
     >(
-        recipient_success_pubkey_hash: RecipientSuccessPubkeyHash,
+        recipient_redeem_pubkey_hash: RecipientRedeemPubkeyHash,
         sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
         // TODO: use bitcoin_support::Blocks type
         relative_timelock: u32,
     ) -> Htlc {
-        let recipient_success_pubkey_hash = recipient_success_pubkey_hash.into();
+        let recipient_redeem_pubkey_hash = recipient_redeem_pubkey_hash.into();
         let sender_refund_pubkey_hash = sender_refund_pubkey_hash.into();
         let script = create_htlc(
-            &recipient_success_pubkey_hash,
+            &recipient_redeem_pubkey_hash,
             &sender_refund_pubkey_hash,
             &secret_hash.0,
             relative_timelock,
         );
 
         Htlc {
-            recipient_success_pubkey_hash,
+            recipient_redeem_pubkey_hash,
             sender_refund_pubkey_hash,
             secret_hash,
             relative_timelock,
@@ -81,7 +73,7 @@ impl Htlc {
     ) -> Result<(), UnlockingError> {
         let got_pubkey_hash: PubkeyHash = got_keypair.public_key().into();
         let got_secret_hash = got_secret.hash();
-        let expected_pubkey_hash = self.recipient_success_pubkey_hash;
+        let expected_pubkey_hash = self.recipient_redeem_pubkey_hash;
         let expected_secret_hash = &self.secret_hash;
 
         if *expected_secret_hash != got_secret_hash {

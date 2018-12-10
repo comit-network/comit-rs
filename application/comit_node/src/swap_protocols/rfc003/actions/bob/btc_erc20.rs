@@ -69,7 +69,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
                 beta_htlc_location,
                 self.alpha_asset,
                 bitcoin::Htlc::from(self.alpha_htlc_params())
-                    .unlock_with_secret(self.alpha_ledger_success_identity, &secret),
+                    .unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
             ),
         }
     }

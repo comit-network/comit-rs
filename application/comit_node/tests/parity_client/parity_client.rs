@@ -23,7 +23,7 @@ pub struct ParityClient {
 #[derive(Clone, Debug)]
 pub struct EtherHtlcFundingParams {
     pub refund_address: Address,
-    pub success_address: Address,
+    pub redeem_address: Address,
     pub time_lock: Seconds,
     pub amount: EtherQuantity,
     pub secret_hash: SecretHash,

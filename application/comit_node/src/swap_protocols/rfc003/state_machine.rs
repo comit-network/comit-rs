@@ -11,7 +11,7 @@ use swap_protocols::{
 
 #[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
 pub struct StateMachineResponse<ALSI, BLRI, BLLD> {
-    pub alpha_ledger_success_identity: ALSI,
+    pub alpha_ledger_redeem_identity: ALSI,
     pub beta_ledger_refund_identity: BLRI,
     pub beta_ledger_lock_duration: BLLD,
 }
@@ -21,7 +21,7 @@ impl<AL: Ledger, BL: Ledger> From<comit_client::rfc003::AcceptResponseBody<AL, B
 {
     fn from(accept_response: comit_client::rfc003::AcceptResponseBody<AL, BL>) -> Self {
         Self {
-            alpha_ledger_success_identity: accept_response.alpha_ledger_success_identity,
+            alpha_ledger_redeem_identity: accept_response.alpha_ledger_redeem_identity,
             beta_ledger_refund_identity: accept_response.beta_ledger_refund_identity,
             beta_ledger_lock_duration: accept_response.beta_ledger_lock_duration,
         }
@@ -32,7 +32,7 @@ impl<AL: Ledger, BL: Ledger> From<comit_client::rfc003::AcceptResponseBody<AL, B
 pub struct HtlcParams<L: Ledger, A: Asset> {
     pub asset: A,
     pub ledger: L,
-    pub success_identity: L::Identity,
+    pub redeem_identity: L::Identity,
     pub refund_identity: L::Identity,
     pub lock_duration: L::LockDuration,
     pub secret_hash: SecretHash,
@@ -44,9 +44,9 @@ pub struct OngoingSwap<R: Role> {
     pub beta_ledger: R::BetaLedger,
     pub alpha_asset: R::AlphaAsset,
     pub beta_asset: R::BetaAsset,
-    pub alpha_ledger_success_identity: R::AlphaSuccessHtlcIdentity,
+    pub alpha_ledger_redeem_identity: R::AlphaRedeemHtlcIdentity,
     pub alpha_ledger_refund_identity: R::AlphaRefundHtlcIdentity,
-    pub beta_ledger_success_identity: R::BetaSuccessHtlcIdentity,
+    pub beta_ledger_redeem_identity: R::BetaRedeemHtlcIdentity,
     pub beta_ledger_refund_identity: R::BetaRefundHtlcIdentity,
     pub alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
     pub beta_ledger_lock_duration: <R::BetaLedger as Ledger>::LockDuration,
@@ -58,7 +58,7 @@ impl<R: Role> OngoingSwap<R> {
     pub fn new(
         start: Start<R>,
         response: StateMachineResponse<
-            R::AlphaSuccessHtlcIdentity,
+            R::AlphaRedeemHtlcIdentity,
             R::BetaRefundHtlcIdentity,
             <R::BetaLedger as Ledger>::LockDuration,
         >,
@@ -68,9 +68,9 @@ impl<R: Role> OngoingSwap<R> {
             beta_ledger: start.beta_ledger,
             alpha_asset: start.alpha_asset,
             beta_asset: start.beta_asset,
-            alpha_ledger_success_identity: response.alpha_ledger_success_identity,
+            alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity,
             alpha_ledger_refund_identity: start.alpha_ledger_refund_identity,
-            beta_ledger_success_identity: start.beta_ledger_success_identity,
+            beta_ledger_redeem_identity: start.beta_ledger_redeem_identity,
             beta_ledger_refund_identity: response.beta_ledger_refund_identity,
             alpha_ledger_lock_duration: start.alpha_ledger_lock_duration,
             beta_ledger_lock_duration: response.beta_ledger_lock_duration,
@@ -83,7 +83,7 @@ impl<R: Role> OngoingSwap<R> {
         HtlcParams {
             asset: self.alpha_asset.clone(),
             ledger: self.alpha_ledger.clone(),
-            success_identity: self.alpha_ledger_success_identity.clone().into(),
+            redeem_identity: self.alpha_ledger_redeem_identity.clone().into(),
             refund_identity: self.alpha_ledger_refund_identity.clone().into(),
             lock_duration: self.alpha_ledger_lock_duration.clone(),
             secret_hash: self.secret.clone().into(),
@@ -94,7 +94,7 @@ impl<R: Role> OngoingSwap<R> {
         HtlcParams {
             asset: self.beta_asset.clone(),
             ledger: self.beta_ledger.clone(),
-            success_identity: self.beta_ledger_success_identity.clone().into(),
+            redeem_identity: self.beta_ledger_redeem_identity.clone().into(),
             refund_identity: self.beta_ledger_refund_identity.clone().into(),
             lock_duration: self.beta_ledger_lock_duration.clone(),
             secret_hash: self.secret.clone().into(),
@@ -127,7 +127,7 @@ pub enum Swap<R: Role> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
         alpha_ledger_refund_identity: R::AlphaRefundHtlcIdentity,
-        beta_ledger_success_identity: R::BetaSuccessHtlcIdentity,
+        beta_ledger_redeem_identity: R::BetaRedeemHtlcIdentity,
         alpha_ledger: R::AlphaLedger,
         beta_ledger: R::BetaLedger,
         alpha_asset: R::AlphaAsset,
@@ -214,7 +214,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             alpha_ledger: state.alpha_ledger.clone(),
             beta_ledger: state.beta_ledger.clone(),
             alpha_ledger_refund_identity: state.alpha_ledger_refund_identity.clone().into(),
-            beta_ledger_success_identity: state.beta_ledger_success_identity.clone().into(),
+            beta_ledger_redeem_identity: state.beta_ledger_redeem_identity.clone().into(),
             alpha_ledger_lock_duration: state.alpha_ledger_lock_duration.clone(),
             secret_hash: state.secret.clone().into(),
         };
@@ -567,7 +567,7 @@ impl<R: Role> SwapStates<R> {
             | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
                 Some(Start {
                     alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
-                    beta_ledger_success_identity: swap.beta_ledger_success_identity.clone(),
+                    beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
                     alpha_ledger: swap.alpha_ledger.clone(),
                     beta_ledger: swap.beta_ledger.clone(),
                     alpha_asset: swap.alpha_asset.clone(),

@@ -13,7 +13,7 @@ pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
     pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_success_identity: BL::Identity,
+    pub beta_ledger_redeem_identity: BL::Identity,
     pub alpha_ledger_lock_duration: AL::LockDuration,
     pub secret_hash: SecretHash,
 }

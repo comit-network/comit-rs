@@ -19,7 +19,7 @@ pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SwapRequestIdentities<AL: Ledger, BL: Ledger> {
     pub alpha_ledger_refund_identity: AL::HtlcIdentity,
-    pub beta_ledger_success_identity: BL::HtlcIdentity,
+    pub beta_ledger_redeem_identity: BL::HtlcIdentity,
 }
 
 impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {

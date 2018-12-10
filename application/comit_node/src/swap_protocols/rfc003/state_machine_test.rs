@@ -85,7 +85,7 @@ fn gen_start_state() -> Start<Alisha> {
                 .unwrap(),
         )
         .unwrap(),
-        beta_ledger_success_identity: ethereum_support::Address::from_str(
+        beta_ledger_redeem_identity: ethereum_support::Address::from_str(
             "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
         )
         .unwrap(),
@@ -171,7 +171,7 @@ fn alpha_refunded() {
             "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
         )
         .unwrap(),
-        alpha_ledger_success_identity: bitcoin_support::PubkeyHash::from_hex(
+        alpha_ledger_redeem_identity: bitcoin_support::PubkeyHash::from_hex(
             "d38e554430c4035f2877a579a07a99886153f071",
         )
         .unwrap(),
@@ -239,7 +239,7 @@ fn bob_transition_alpha_refunded() {
             "d38e554430c4035f2877a579a07a99886153f071",
         )
         .unwrap(),
-        beta_ledger_success_identity: ethereum_support::Address::from_str(
+        beta_ledger_redeem_identity: ethereum_support::Address::from_str(
             "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
         )
         .unwrap(),
@@ -253,7 +253,7 @@ fn bob_transition_alpha_refunded() {
     };
 
     let response = StateMachineResponse {
-        alpha_ledger_success_identity: secp256k1_support::KeyPair::from_secret_key_slice(
+        alpha_ledger_redeem_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                 .unwrap(),
         )

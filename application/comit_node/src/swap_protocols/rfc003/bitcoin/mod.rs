@@ -26,7 +26,7 @@ impl Ledger for Bitcoin {
 impl From<HtlcParams<Bitcoin, BitcoinQuantity>> for Htlc {
     fn from(htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>) -> Self {
         Htlc::new(
-            htlc_params.success_identity,
+            htlc_params.redeem_identity,
             htlc_params.refund_identity,
             htlc_params.secret_hash,
             htlc_params.lock_duration.into(),

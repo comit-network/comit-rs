@@ -75,9 +75,9 @@ impl<
                             alpha_ledger_refund_identity: request
                                 .identities
                                 .alpha_ledger_refund_identity,
-                            beta_ledger_success_identity: request
+                            beta_ledger_redeem_identity: request
                                 .identities
-                                .beta_ledger_success_identity,
+                                .beta_ledger_redeem_identity,
                             alpha_ledger: request.alpha_ledger,
                             beta_ledger: request.beta_ledger,
                             alpha_asset: request.alpha_asset,
@@ -127,9 +127,9 @@ impl<
                             alpha_ledger_refund_identity: request
                                 .identities
                                 .alpha_ledger_refund_identity,
-                            beta_ledger_success_identity: request
+                            beta_ledger_redeem_identity: request
                                 .identities
-                                .beta_ledger_success_identity,
+                                .beta_ledger_redeem_identity,
                             alpha_ledger: request.alpha_ledger,
                             beta_ledger: request.beta_ledger,
                             alpha_asset: request.alpha_asset,

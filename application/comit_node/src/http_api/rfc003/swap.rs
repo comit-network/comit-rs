@@ -63,12 +63,12 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SwapRequestBodyIdentities<AI, BI> {
-    RefundAndSuccess {
+    RefundAndRedeem {
         alpha_ledger_refund_identity: AI,
-        beta_ledger_success_identity: BI,
+        beta_ledger_redeem_identity: BI,
     },
-    OnlySuccess {
-        beta_ledger_success_identity: BI,
+    OnlyRedeem {
+        beta_ledger_redeem_identity: BI,
     },
     OnlyRefund {
         alpha_ledger_refund_identity: AI,
@@ -99,17 +99,17 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
         key_store: &KeyStore,
     ) -> Result<Self, HttpApiProblem> {
         match identities {
-            SwapRequestBodyIdentities::RefundAndSuccess { .. }
+            SwapRequestBodyIdentities::RefundAndRedeem { .. }
             | SwapRequestBodyIdentities::OnlyRefund { .. }
             | SwapRequestBodyIdentities::None {} => {
                 Err(HttpApiProblem::with_title_and_type_from_status(400))
             }
-            SwapRequestBodyIdentities::OnlySuccess {
-                beta_ledger_success_identity,
+            SwapRequestBodyIdentities::OnlyRedeem {
+                beta_ledger_redeem_identity,
             } => Ok(rfc003::alice::SwapRequestIdentities {
                 alpha_ledger_refund_identity: key_store
                     .get_transient_keypair(&id.into(), b"REFUND"),
-                beta_ledger_success_identity,
+                beta_ledger_redeem_identity,
             }),
         }
     }
@@ -158,7 +158,7 @@ pub struct UnsupportedSwapRequestBody {
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,
     alpha_ledger_refund_identity: Option<String>,
-    beta_ledger_success_identity: Option<String>,
+    beta_ledger_redeem_identity: Option<String>,
     alpha_ledger_lock_duration: i64,
 }
 
@@ -392,7 +392,7 @@ mod tests {
                     "quantity": "10000000000000000000"
                 },
                 "alpha_ledger_refund_identity": null,
-                "beta_ledger_success_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 "alpha_ledger_lock_duration": 144
             }"#;
 
@@ -404,8 +404,8 @@ mod tests {
             alpha_ledger: Bitcoin::regtest(),
             beta_ledger: Ethereum::default(),
             alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
-            identities: SwapRequestBodyIdentities::OnlySuccess {
-                beta_ledger_success_identity: ethereum_support::Address::from(
+            identities: SwapRequestBodyIdentities::OnlyRedeem {
+                beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 ),
             },

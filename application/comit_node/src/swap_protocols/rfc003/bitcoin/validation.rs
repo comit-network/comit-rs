@@ -42,7 +42,7 @@ mod tests {
         HtlcParams {
             asset: bitcoin_amount,
             ledger: Bitcoin::regtest(),
-            success_identity: bitcoin_support::PubkeyHash::from_hex(
+            redeem_identity: bitcoin_support::PubkeyHash::from_hex(
                 "d38e554430c4035f2877a579a07a99886153f071",
             )
             .unwrap(),

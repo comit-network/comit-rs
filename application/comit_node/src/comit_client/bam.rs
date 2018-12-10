@@ -47,7 +47,7 @@ impl Client for BamClient {
             > + Send,
     > {
         let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
-        let beta_ledger_success_identity = request.beta_ledger_success_identity;
+        let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
         let alpha_ledger_lock_duration = request.alpha_ledger_lock_duration;
         let secret_hash = request.secret_hash;
 
@@ -66,7 +66,7 @@ impl Client for BamClient {
             ),
             serde_json::to_value(rfc003::RequestBody::<AL, BL> {
                 alpha_ledger_refund_identity,
-                beta_ledger_success_identity,
+                beta_ledger_redeem_identity,
                 alpha_ledger_lock_duration,
                 secret_hash,
             })

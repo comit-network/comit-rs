@@ -33,7 +33,7 @@ pub type StateMachineResponseFuture<ALSI, BLRI, BLLD> =
 
 #[allow(type_alias_bounds)]
 pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
-    R::AlphaSuccessHtlcIdentity,
+    R::AlphaRedeemHtlcIdentity,
     R::BetaRefundHtlcIdentity,
     <R::BetaLedger as Ledger>::LockDuration,
 >;
