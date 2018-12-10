@@ -50,6 +50,7 @@ describe("RFC003 HTTP API", () => {
             .get("/swaps")
             .then(res => {
                 let swaps = res.body._embedded.swaps;
+                swaps.should.be.an("array");
                 swaps.should.have.lengthOf(0);
             });
     });
