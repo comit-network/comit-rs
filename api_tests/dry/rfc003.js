@@ -153,7 +153,6 @@ describe("RFC003 HTTP API", () => {
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.alpha_lock_duration.type.should.equal("blocks");
                 swap.alpha_lock_duration.value.should.equal(alpha_ledger_lock_duration);
-                should.equal(swap.beta_lock_duration, null);
             });
     });
 
@@ -213,7 +212,6 @@ describe("RFC003 HTTP API", () => {
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.alpha_lock_duration.type.should.equal("blocks");
                 swap.alpha_lock_duration.value.should.equal(alpha_ledger_lock_duration);
-                should.equal(swap.beta_lock_duration, null);
 
                 let action_links = body._links;
                 action_links.should.be.a("object");

@@ -243,6 +243,7 @@ pub struct SwapDescription {
     alpha_asset: HttpAsset,
     beta_asset: HttpAsset,
     alpha_lock_duration: HttpLockDuration,
+    #[serde(skip_serializing_if = "Option::is_none")]
     beta_lock_duration: Option<HttpLockDuration>,
 }
 
