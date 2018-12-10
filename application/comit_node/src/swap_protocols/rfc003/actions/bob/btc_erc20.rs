@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::{
         actions::{
             bob::{Accept, Decline},
-            Action, StateActions,
+            ActionKind, Actions,
         },
         bitcoin,
         ethereum::{self, Erc20Htlc, Htlc},
@@ -75,34 +75,33 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
-    type Accept = Accept<Bitcoin, Ethereum>;
-    type Decline = Decline<Bitcoin, Ethereum>;
-    type Deploy = ethereum::ContractDeploy;
-    type Fund = ethereum::SendTransaction;
-    type Redeem = bitcoin::SpendOutput;
-    type Refund = ethereum::SendTransaction;
+type BobActionKind = ActionKind<
+    Accept<Bitcoin, Ethereum>,
+    Decline<Bitcoin, Ethereum>,
+    ethereum::ContractDeploy,
+    ethereum::SendTransaction,
+    bitcoin::SpendOutput,
+    ethereum::SendTransaction,
+>;
 
-    #[allow(clippy::type_complexity)]
-    fn actions(
-        &self,
-    ) -> Vec<
-        Action<Self::Accept, Self::Decline, Self::Deploy, Self::Fund, Self::Redeem, Self::Refund>,
-    > {
+impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+    type ActionKind = BobActionKind;
+
+    fn actions(&self) -> Vec<BobActionKind> {
         use self::SwapStates as SS;
         match *self {
             SS::Start(Start { ref role, .. }) => vec![
-                Action::Accept(role.accept_action()),
-                Action::Decline(role.decline_action()),
+                ActionKind::Accept(role.accept_action()),
+                ActionKind::Decline(role.decline_action()),
             ],
             SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
-                vec![Action::Deploy(swap.deploy_action())]
+                vec![ActionKind::Deploy(swap.deploy_action())]
             }
             SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed {
                 ref swap,
                 ref beta_htlc_location,
                 ..
-            }) => vec![Action::Fund(swap.fund_action(*beta_htlc_location))],
+            }) => vec![ActionKind::Fund(swap.fund_action(*beta_htlc_location))],
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ref swap,
@@ -117,13 +116,13 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
+            }) => vec![ActionKind::Refund(swap.refund_action(*beta_htlc_location))],
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
                 ref swap,
                 ref alpha_htlc_location,
                 ref beta_redeemed_tx,
                 ..
-            }) => vec![Action::Redeem(
+            }) => vec![ActionKind::Redeem(
                 swap.redeem_action(*alpha_htlc_location, beta_redeemed_tx.secret),
             )],
             _ => vec![],

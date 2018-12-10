@@ -19,7 +19,7 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
-        actions::{Action, StateActions},
+        actions::{ActionKind, Actions},
         alice::SwapRequestIdentities,
         roles::{Alice, Bob},
         state_store::StateStore,
@@ -299,7 +299,7 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             let start_state = state
                 .start_state()
                 .ok_or_else(|| HttpApiProblem::with_title_and_type_from_status(500))?;
-            let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
+            let actions: Vec<ActionName> = state.actions().iter().map(ActionKind::name).collect();
             (Ok((
                 GetSwapResource {
                     state: state.name(),

@@ -9,7 +9,7 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     metadata_store::Metadata,
     rfc003::{
-        actions::{bob::Accept, Action, StateActions},
+        actions::{bob::Accept, ActionKind, Actions},
         bitcoin, ethereum,
         roles::{Alice, Bob},
         state_machine::StateMachineResponse,
@@ -295,7 +295,7 @@ impl IntoResponseBody for () {
 }
 
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponseBody
-    for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
+    for ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
 where
     Deploy: IntoResponseBody,
     Fund: IntoResponseBody,
@@ -307,10 +307,10 @@ where
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match self {
-            Action::Deploy(payload) => payload.into_response_body(query_params),
-            Action::Fund(payload) => payload.into_response_body(query_params),
-            Action::Redeem(payload) => payload.into_response_body(query_params),
-            Action::Refund(payload) => payload.into_response_body(query_params),
+            ActionKind::Deploy(payload) => payload.into_response_body(query_params),
+            ActionKind::Fund(payload) => payload.into_response_body(query_params),
+            ActionKind::Redeem(payload) => payload.into_response_body(query_params),
+            ActionKind::Refund(payload) => payload.into_response_body(query_params),
             _ => {
                 error!("IntoResponseBody is not implemented for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(500))
@@ -399,7 +399,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             .actions()
                             .into_iter()
                             .find_map(move |action| match action {
-                                Action::Accept(accept) => Some(Ok(accept)),
+                                ActionKind::Accept(accept) => Some(Ok(accept)),
                                 _ => None,
                             })
                             .unwrap_or_else(|| {
@@ -425,13 +425,13 @@ pub enum GetAction {
 impl GetAction {
     fn matches<Accept, Decline, Deploy, Fund, Redeem, Refund>(
         self,
-        other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>,
+        other: &ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>,
     ) -> bool {
         match other {
-            Action::Deploy(_) => self == GetAction::Deploy,
-            Action::Fund(_) => self == GetAction::Fund,
-            Action::Redeem(_) => self == GetAction::Redeem,
-            Action::Refund(_) => self == GetAction::Refund,
+            ActionKind::Deploy(_) => self == GetAction::Deploy,
+            ActionKind::Fund(_) => self == GetAction::Fund,
+            ActionKind::Redeem(_) => self == GetAction::Redeem,
+            ActionKind::Refund(_) => self == GetAction::Refund,
             _ => false,
         }
     }

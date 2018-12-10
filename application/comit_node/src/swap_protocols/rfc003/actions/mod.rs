@@ -2,7 +2,7 @@ pub mod alice;
 pub mod bob;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
+pub enum ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Accept(Accept),
     Decline(Decline),
     Deploy(Deploy),
@@ -12,10 +12,10 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
 }
 
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
-    Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
+    ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
 {
     pub fn name(&self) -> String {
-        use self::Action::*;
+        use self::ActionKind::*;
         match *self {
             Accept(_) => String::from("accept"),
             Decline(_) => String::from("decline"),
@@ -27,18 +27,8 @@ impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
     }
 }
 
-pub trait StateActions {
-    type Accept;
-    type Decline;
-    type Deploy;
-    type Fund;
-    type Redeem;
-    type Refund;
+pub trait Actions {
+    type ActionKind;
 
-    #[allow(clippy::type_complexity)]
-    fn actions(
-        &self,
-    ) -> Vec<
-        Action<Self::Accept, Self::Decline, Self::Deploy, Self::Fund, Self::Redeem, Self::Refund>,
-    >;
+    fn actions(&self) -> Vec<Self::ActionKind>;
 }

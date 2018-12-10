@@ -4,7 +4,7 @@ use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        actions::{Action, StateActions},
+        actions::{ActionKind, Actions},
         bitcoin,
         ethereum::{self, Erc20Htlc},
         roles::Alice,
@@ -49,30 +49,24 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
-    type Accept = ();
-    type Decline = ();
-    type Deploy = ();
-    type Fund = bitcoin::SendToAddress;
-    type Redeem = ethereum::SendTransaction;
-    type Refund = bitcoin::SpendOutput;
+type AliceActionKind =
+    ActionKind<(), (), (), bitcoin::SendToAddress, ethereum::SendTransaction, bitcoin::SpendOutput>;
 
-    fn actions(
-        &self,
-    ) -> Vec<
-        Action<(), (), (), bitcoin::SendToAddress, ethereum::SendTransaction, bitcoin::SpendOutput>,
-    > {
+impl Actions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+    type ActionKind = AliceActionKind;
+
+    fn actions(&self) -> Vec<AliceActionKind> {
         use self::SwapStates as SS;
         match *self {
-            SS::Accepted(Accepted { ref swap, .. }) => vec![Action::Fund(swap.fund_action())],
+            SS::Accepted(Accepted { ref swap, .. }) => vec![ActionKind::Fund(swap.fund_action())],
             SS::BothFunded(BothFunded {
                 ref alpha_htlc_location,
                 ref beta_htlc_location,
                 ref swap,
                 ..
             }) => vec![
-                Action::Redeem(swap.redeem_action(*beta_htlc_location)),
-                Action::Refund(swap.refund_action(*alpha_htlc_location)),
+                ActionKind::Redeem(swap.redeem_action(*beta_htlc_location)),
+                ActionKind::Refund(swap.refund_action(*alpha_htlc_location)),
             ],
             SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded {
                 ref swap,
@@ -83,7 +77,7 @@ impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20
                 ref swap,
                 ref alpha_htlc_location,
                 ..
-            }) => vec![Action::Refund(swap.refund_action(*alpha_htlc_location))],
+            }) => vec![ActionKind::Refund(swap.refund_action(*alpha_htlc_location))],
             SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
@@ -93,7 +87,7 @@ impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![Action::Redeem(swap.redeem_action(*beta_htlc_location))],
+            }) => vec![ActionKind::Redeem(swap.redeem_action(*beta_htlc_location))],
             _ => vec![],
         }
     }
