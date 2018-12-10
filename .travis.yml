@@ -17,7 +17,9 @@ addons:
     - yarn
 install: true
 services: docker
-before_script: which cargo-make || cargo install --debug cargo-make
+before_script:
+- which cargo-make || cargo install --debug cargo-make
+- nvm install 11
 script: cargo make travis
 notifications:
   email: false
