@@ -4,10 +4,10 @@ set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 
-TEST_PATH="$1";
-export TEST_PATH=$(cd ${TEST_PATH} && pwd); # Convert to absolute path
+GIVEN_TEST_PATH="$1";
 
-LOG_DIR="$TEST_PATH/log"
+export TEST_PATH=$(cd ${GIVEN_TEST_PATH} && pwd); # Convert to absolute path
+export LOG_DIR="$TEST_PATH/log"
 
 END(){
     set +e;

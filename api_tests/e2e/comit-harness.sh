@@ -6,6 +6,7 @@ source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 
 TEST_PATH="$1";
 export TEST_PATH=$(cd ${TEST_PATH} && pwd); # Convert to absolute path
+export LOG_DIR="$TEST_PATH/log"
 
 if [[ -z "${TEST_PATH}" ]] || [[ ! -d "${TEST_PATH}" ]]
 then
@@ -23,8 +24,6 @@ BETA=${DIR#*_}
 BETA_CHAIN=${BETA%-*}
 
 CHAINS="${ALPHA_CHAIN} ${BETA_CHAIN}" # Extract chain name before and after underscore
-
-LOG_DIR="$TEST_PATH/log"
 
 END(){
     set +e;
