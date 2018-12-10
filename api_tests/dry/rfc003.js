@@ -44,6 +44,17 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
+    it("Returns an empty list when calling GET /swaps when there are no swaps", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .get("/swaps")
+            .then(res => {
+                let swaps = res.body._embedded.swaps;
+                swaps.should.be.an("array");
+                swaps.should.have.lengthOf(0);
+            });
+    });
+
     it("[Alice] Should be able to make first swap request via HTTP api", async () => {
         await chai
             .request(alice.comit_node_url())
