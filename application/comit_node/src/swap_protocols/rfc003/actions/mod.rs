@@ -27,7 +27,7 @@ impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
     }
 }
 
-pub trait StateActions {
+pub trait Actions {
     type Accept;
     type Decline;
     type Deploy;

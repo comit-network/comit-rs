@@ -19,7 +19,7 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         self,
-        actions::{Action, StateActions},
+        actions::{Action, Actions},
         alice::SwapRequestIdentities,
         roles::{Alice, Bob},
         state_store::StateStore,

@@ -6,7 +6,7 @@ use swap_protocols::{
     rfc003::{
         actions::{
             bob::{Accept, Decline},
-            Action, StateActions,
+            Action, Actions,
         },
         bitcoin,
         ethereum::{self, Erc20Htlc, Htlc},
@@ -75,7 +75,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     type Accept = Accept<Bitcoin, Ethereum>;
     type Decline = Decline<Bitcoin, Ethereum>;
     type Deploy = ethereum::ContractDeploy;

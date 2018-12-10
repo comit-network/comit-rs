@@ -9,7 +9,7 @@ use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     metadata_store::Metadata,
     rfc003::{
-        actions::{bob::Accept, Action, StateActions},
+        actions::{bob::Accept, Action, Actions},
         bitcoin, ethereum,
         roles::{Alice, Bob},
         state_machine::StateMachineResponse,

@@ -4,7 +4,7 @@ use ethereum_support::{Bytes, EtherQuantity, U256};
 use swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        actions::{Action, StateActions},
+        actions::{Action, Actions},
         bitcoin,
         ethereum::{self, EtherHtlc},
         roles::Alice,
@@ -47,7 +47,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     }
 }
 
-impl StateActions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
+impl Actions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     type Accept = ();
     type Decline = ();
     type Deploy = ();
