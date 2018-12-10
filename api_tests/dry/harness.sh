@@ -3,13 +3,16 @@ export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
 export RUST_LOG=debug;
 
-TEST_PATH="$1"
+GIVEN_TEST_PATH="$1";
 
-if [[ -z "${TEST_PATH}" ]]
+if [[ -z "${GIVEN_TEST_PATH}" ]]
 then
     log "Path to test needs to passed";
     exit 1;
 fi
+
+export TEST_PATH=$(cd ${GIVEN_TEST_PATH} && pwd); # Convert to absolute path
+export LOG_DIR="$TEST_PATH/log"
 
 END(){
     set +e;
@@ -49,8 +52,5 @@ function setup() {
 
 
 setup;
-log "Run test";
-export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
-. "$NVM_SH";
-nvm use;
-npm test "${TEST_PATH}";
+run_test "${TEST_PATH}/test.js";
+
