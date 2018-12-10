@@ -312,7 +312,7 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             .to_http_lock()
                             .unwrap(),
                         beta_lock: state
-                            .get_beta_ledger_lock_duration()
+                            .beta_ledger_lock_duration()
                             .map(|lock| lock.to_http_lock().unwrap()),
                     },
                     role: format!("{}", metadata.role),

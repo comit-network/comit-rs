@@ -580,7 +580,7 @@ impl<R: Role> SwapStates<R> {
         }
     }
 
-    pub fn get_beta_ledger_lock_duration(&self) -> Option<<R::BetaLedger as Ledger>::LockDuration> {
+    pub fn beta_ledger_lock_duration(&self) -> Option<<R::BetaLedger as Ledger>::LockDuration> {
         use self::SwapStates as SS;
         match *self {
             SS::Accepted(Accepted { ref swap, .. })
