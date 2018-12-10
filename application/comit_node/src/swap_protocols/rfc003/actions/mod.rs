@@ -28,17 +28,7 @@ impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
 }
 
 pub trait Actions {
-    type Accept;
-    type Decline;
-    type Deploy;
-    type Fund;
-    type Redeem;
-    type Refund;
+    type ActionKind;
 
-    #[allow(clippy::type_complexity)]
-    fn actions(
-        &self,
-    ) -> Vec<
-        Action<Self::Accept, Self::Decline, Self::Deploy, Self::Fund, Self::Redeem, Self::Refund>,
-    >;
+    fn actions(&self) -> Vec<Self::ActionKind>;
 }

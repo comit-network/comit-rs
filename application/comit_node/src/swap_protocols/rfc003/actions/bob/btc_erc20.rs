@@ -75,20 +75,19 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
-    type Accept = Accept<Bitcoin, Ethereum>;
-    type Decline = Decline<Bitcoin, Ethereum>;
-    type Deploy = ethereum::ContractDeploy;
-    type Fund = ethereum::SendTransaction;
-    type Redeem = bitcoin::SpendOutput;
-    type Refund = ethereum::SendTransaction;
+type BobActionKind = Action<
+    Accept<Bitcoin, Ethereum>,
+    Decline<Bitcoin, Ethereum>,
+    ethereum::ContractDeploy,
+    ethereum::SendTransaction,
+    bitcoin::SpendOutput,
+    ethereum::SendTransaction,
+>;
 
-    #[allow(clippy::type_complexity)]
-    fn actions(
-        &self,
-    ) -> Vec<
-        Action<Self::Accept, Self::Decline, Self::Deploy, Self::Fund, Self::Redeem, Self::Refund>,
-    > {
+impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+    type ActionKind = BobActionKind;
+
+    fn actions(&self) -> Vec<BobActionKind> {
         use self::SwapStates as SS;
         match *self {
             SS::Start(Start { ref role, .. }) => vec![

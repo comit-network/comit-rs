@@ -49,19 +49,13 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl Actions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
-    type Accept = ();
-    type Decline = ();
-    type Deploy = ();
-    type Fund = bitcoin::SendToAddress;
-    type Redeem = ethereum::SendTransaction;
-    type Refund = bitcoin::SpendOutput;
+type AliceActionKind =
+    Action<(), (), (), bitcoin::SendToAddress, ethereum::SendTransaction, bitcoin::SpendOutput>;
 
-    fn actions(
-        &self,
-    ) -> Vec<
-        Action<(), (), (), bitcoin::SendToAddress, ethereum::SendTransaction, bitcoin::SpendOutput>,
-    > {
+impl Actions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+    type ActionKind = AliceActionKind;
+
+    fn actions(&self) -> Vec<AliceActionKind> {
         use self::SwapStates as SS;
         match *self {
             SS::Accepted(Accepted { ref swap, .. }) => vec![Action::Fund(swap.fund_action())],
