@@ -103,6 +103,9 @@ function run_test() {
 
     log "Running $1";
 
+    # Make sure we are in the right directory so that nvm use picks up the .nvmrc file
+    cd "${PROJECT_ROOT}/api_tests";
+
     set +x;
     export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
     . "$NVM_SH"
