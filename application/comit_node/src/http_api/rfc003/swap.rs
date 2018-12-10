@@ -41,7 +41,7 @@ pub enum SwapRequestBodyKind {
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
     ),
     // It is important that these two come last because untagged enums are tried in order
-    UnsupportedCombination(UnsupportedSwapRequestBody),
+    UnsupportedCombination(Box<UnsupportedSwapRequestBody>),
     MalformedRequest(serde_json::Value),
 }
 
@@ -177,7 +177,7 @@ pub fn post_swap(
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(key_store.as_ref(), sender, request_body_kind)
+    handle_post_swap(key_store.as_ref(), &sender, request_body_kind)
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -189,7 +189,7 @@ pub fn post_swap(
 
 fn handle_post_swap(
     key_store: &KeyStore,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    sender: &UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
@@ -288,12 +288,13 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         id,
         state,
         (|| {
-            let state = state.ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
+            let state =
+                state.ok_or_else(|| HttpApiProblem::with_title_and_type_from_status(500))?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
             let start_state = state
                 .start_state()
-                .ok_or(HttpApiProblem::with_title_and_type_from_status(500))?;
+                .ok_or_else(|| HttpApiProblem::with_title_and_type_from_status(500))?;
             let actions: Vec<ActionName> = state.actions().iter().map(Action::name).collect();
             (Ok((
                 GetSwapResource {
@@ -323,7 +324,7 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
 ) -> Result<impl Reply, Rejection> {
-    match handle_get_swaps(metadata_store, state_store) {
+    match handle_get_swaps(metadata_store.as_ref(), state_store.as_ref()) {
         Ok(swaps) => {
             let mut response = HalResource::new("");
             response.with_resources("swaps", swaps);
@@ -334,8 +335,8 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 }
 
 fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
+    metadata_store: &T,
+    state_store: &S,
 ) -> Result<Vec<HalResource>, HttpApiProblem> {
     let mut resources = vec![];
     for (id, metadata) in metadata_store.all()?.into_iter() {

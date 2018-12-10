@@ -1,12 +1,12 @@
+#![allow(clippy::too_many_arguments)] // TODO: Figure out how to properly place this on the state_machine_future derive so that is is forwarded to the generated structs and impl
+
 use comit_client;
 use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 use swap_protocols::{
     asset::Asset,
-    rfc003::{
-        self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, Secret, SecretHash,
-    },
+    rfc003::{self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
@@ -122,7 +122,7 @@ pub struct Context<R: Role> {
 
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
-#[allow(missing_debug_implementations, clippy::too_many_arguments)]
+#[allow(missing_debug_implementations)]
 pub enum Swap<R: Role> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
@@ -350,7 +350,6 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .poll()?
         {
             let state = state.take();
-            let secret_hash = state.swap.secret.clone().into();
             match redeemed_or_refunded {
                 Either::A(beta_redeemed_tx) => transition_save!(
                     context.state_repo,

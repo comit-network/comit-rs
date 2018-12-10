@@ -83,6 +83,7 @@ pub fn swap_config(
     )
 }
 
+#[allow(clippy::type_complexity)]
 fn to_bam_response<AL: Ledger, BL: Ledger>(
     result: Result<
         StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,

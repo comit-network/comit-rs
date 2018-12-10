@@ -13,11 +13,11 @@ pub trait SpendsFrom {
 }
 
 pub trait SpendsFromWith {
-    fn spends_from_with(&self, outpoint: &OutPoint, script: &Vec<Vec<u8>>) -> bool;
+    fn spends_from_with(&self, outpoint: &OutPoint, script: &[Vec<u8>]) -> bool;
 }
 
 pub trait SpendsWith {
-    fn spends_with(&self, script: &Vec<Vec<u8>>) -> bool;
+    fn spends_with(&self, script: &[Vec<u8>]) -> bool;
 }
 
 impl SpendsTo for Transaction {
@@ -41,7 +41,7 @@ impl SpendsFrom for Transaction {
 }
 
 impl SpendsFromWith for Transaction {
-    fn spends_from_with(&self, outpoint: &OutPoint, unlock_script: &Vec<Vec<u8>>) -> bool {
+    fn spends_from_with(&self, outpoint: &OutPoint, unlock_script: &[Vec<u8>]) -> bool {
         self.input
             .iter()
             .filter(|previous_outpoint| &previous_outpoint.previous_output == outpoint)
@@ -50,14 +50,14 @@ impl SpendsFromWith for Transaction {
 }
 
 impl SpendsWith for Transaction {
-    fn spends_with(&self, unlock_script: &Vec<Vec<u8>>) -> bool {
+    fn spends_with(&self, unlock_script: &[Vec<u8>]) -> bool {
         self.input
             .iter()
             .any(|txin| any_unlock_script_matches(txin, unlock_script))
     }
 }
 
-fn any_unlock_script_matches(txin: &TxIn, unlock_script: &Vec<Vec<u8>>) -> bool {
+fn any_unlock_script_matches(txin: &TxIn, unlock_script: &[Vec<u8>]) -> bool {
     unlock_script.iter().all(|item| {
         txin.witness.contains(item)
             || unlock_script.iter().all(|item| {

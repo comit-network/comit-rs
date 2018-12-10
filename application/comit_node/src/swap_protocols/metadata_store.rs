@@ -66,7 +66,7 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemory
 
         Ok(metadata
             .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
+            .map(|(key, value)| (key.clone(), *value))
             .collect())
     }
 }

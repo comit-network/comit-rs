@@ -1,10 +1,7 @@
 use ethereum_support::Transaction;
-use swap_protocols::{
-    ledger::Ethereum,
-    rfc003::{
-        secret::{Secret, SecretHash},
-        ExtractSecret, Ledger,
-    },
+use swap_protocols::rfc003::{
+    secret::{Secret, SecretHash},
+    ExtractSecret,
 };
 
 impl ExtractSecret for Transaction {
@@ -15,16 +12,14 @@ impl ExtractSecret for Transaction {
             secret_hash, self.hash
         );
         match Secret::from_vec(&data) {
-            Ok(secret) => match secret.hash() == *secret_hash {
-                true => Some(secret),
-                false => {
-                    error!(
-                        "Input ({:?}) in transaction {:?} is NOT the pre-image to {:?}",
-                        data, self.hash, secret_hash
-                    );
-                    None
-                }
-            },
+            Ok(secret) if secret.hash() == *secret_hash => Some(secret),
+            Ok(_) => {
+                error!(
+                    "Input ({:?}) in transaction {:?} is NOT the pre-image to {:?}",
+                    data, self.hash, secret_hash
+                );
+                None
+            }
             Err(e) => {
                 error!("Failed to create secret from {:?}: {:?}", data, e);
                 None

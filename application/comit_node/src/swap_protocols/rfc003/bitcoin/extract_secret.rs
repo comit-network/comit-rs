@@ -1,10 +1,7 @@
 use bitcoin_support::Transaction;
-use swap_protocols::{
-    ledger::Bitcoin,
-    rfc003::{
-        secret::{Secret, SecretHash},
-        ExtractSecret, Ledger,
-    },
+use swap_protocols::rfc003::{
+    secret::{Secret, SecretHash},
+    ExtractSecret,
 };
 
 impl ExtractSecret for Transaction {
@@ -13,10 +10,8 @@ impl ExtractSecret for Transaction {
             txin.witness
                 .iter()
                 .find_map(|script_item| match Secret::from_vec(&script_item) {
-                    Ok(secret) => match secret.hash() == *secret_hash {
-                        true => Some(secret),
-                        false => None,
-                    },
+                    Ok(secret) if secret.hash() == *secret_hash => Some(secret),
+                    Ok(_) => None,
                     Err(_) => None,
                 })
         })

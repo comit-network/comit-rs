@@ -53,7 +53,7 @@ pub trait Role: Send + Sync + Debug + Clone + 'static {
     type Secret: Send + Sync + Clone + Into<SecretHash> + Debug + PartialEq;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Alice<AL, BL, AA, BA> {
     phantom_data: PhantomData<(AL, BL, AA, BA)>,
 }
@@ -81,6 +81,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Alice<AL, BL, AA, BA
 #[derive(Debug, Clone)]
 pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
     phantom_data: PhantomData<(AL, BL, AA, BA)>,
+    #[allow(clippy::type_complexity)]
     response_sender: Arc<
         Mutex<
             Option<

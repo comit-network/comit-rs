@@ -66,12 +66,18 @@ args = ["build", "--all", "--all-targets", "--verbose"]
 workspace = false
 args = ["test", "--all", "--all-targets", "--verbose"]
 
+# Overridden because: add script
 [tasks.init]
 script = [
 '''
 git config core.hooksPath .githooks
 '''
 ]
+
+# Overridden because: we want to fail if there are warnings (-D warn)
+[tasks.clippy]
+workspace = false
+args = ["clippy", "--", "-D", "warnings"]
 
 ################
 # Task aliases #

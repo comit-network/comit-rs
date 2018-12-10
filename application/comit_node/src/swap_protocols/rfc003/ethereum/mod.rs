@@ -84,8 +84,6 @@ impl HtlcParams<Ethereum, Erc20Quantity> {
         Erc20Htlc::from(self.clone()).compile_to_hex().into()
     }
     pub fn funding_tx_payload(&self, htlc_location: Address) -> Bytes {
-        Erc20Htlc::from(self.clone())
-            .funding_tx_payload(htlc_location)
-            .into()
+        Erc20Htlc::from(self.clone()).funding_tx_payload(htlc_location)
     }
 }

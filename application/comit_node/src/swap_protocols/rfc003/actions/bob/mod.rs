@@ -11,10 +11,12 @@ type Response<AL: Ledger, BL: Ledger> =
 
 #[derive(Debug, Clone)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
+    #[allow(clippy::type_complexity)]
     sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>,
 }
 
 impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
+    #[allow(clippy::type_complexity)]
     pub fn new(sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>) -> Self {
         Self { sender }
     }
@@ -38,10 +40,12 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
 
 #[derive(Debug, Clone)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
+    #[allow(clippy::type_complexity)]
     sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>,
 }
 
 impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
+    #[allow(clippy::type_complexity)]
     pub fn new(sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>) -> Self {
         Self { sender }
     }

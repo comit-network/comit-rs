@@ -121,6 +121,7 @@ fn spawn_warp_instance(
     runtime.spawn(server);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn spawn_alice_swap_request_handler_for_rfc003(
     settings: &ComitNodeSettings,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
@@ -154,6 +155,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     sender
 }
 
+#[allow(clippy::too_many_arguments)]
 fn spawn_bob_swap_request_handler_for_rfc003(
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,

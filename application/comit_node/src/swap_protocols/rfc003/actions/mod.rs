@@ -35,6 +35,7 @@ pub trait StateActions {
     type Redeem;
     type Refund;
 
+    #[allow(clippy::type_complexity)]
     fn actions(
         &self,
     ) -> Vec<

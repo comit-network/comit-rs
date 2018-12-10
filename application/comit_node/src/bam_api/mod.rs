@@ -11,7 +11,7 @@ mod ledger_impls {
 
     impl FromBamHeader for Bitcoin {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            let _ = header.has_value("Bitcoin")?;
+            header.has_value("Bitcoin")?;
 
             Ok(Bitcoin {
                 network: header.parameter("network")?,
@@ -27,7 +27,7 @@ mod ledger_impls {
 
     impl FromBamHeader for Ethereum {
         fn from_bam_header(header: Header) -> Result<Self, Error> {
-            let _ = header.has_value("Ethereum")?;
+            header.has_value("Ethereum")?;
 
             Ok(Ethereum {})
         }
@@ -49,7 +49,7 @@ mod asset_impls {
 
     impl FromBamHeader for BitcoinQuantity {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            let _ = header.has_value("Bitcoin")?;
+            header.has_value("Bitcoin")?;
 
             Ok(header.parameter("quantity")?)
         }
@@ -63,7 +63,7 @@ mod asset_impls {
 
     impl FromBamHeader for EtherQuantity {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            let _ = header.has_value("Ether")?;
+            header.has_value("Ether")?;
 
             Ok(header.parameter("quantity")?)
         }
@@ -77,7 +77,7 @@ mod asset_impls {
 
     impl FromBamHeader for Erc20Quantity {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            let _ = header.has_value("ERC20")?;
+            header.has_value("ERC20")?;
 
             let amount: String = header.parameter("quantity")?;
 

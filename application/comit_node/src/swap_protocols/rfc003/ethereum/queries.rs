@@ -28,7 +28,7 @@ impl NewHtlcRefundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     ) -> Self {
         EthereumQuery::Transaction {
             from_address: None,
-            to_address: Some(htlc_location.clone()),
+            to_address: Some(*htlc_location),
             is_contract_creation: Some(false),
             transaction_data: Some(Bytes::from(vec![])),
             transaction_data_length: None,
@@ -43,7 +43,7 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     ) -> Self {
         EthereumQuery::Transaction {
             from_address: None,
-            to_address: Some(htlc_location.clone()),
+            to_address: Some(*htlc_location),
             is_contract_creation: Some(false),
             transaction_data: None,
             transaction_data_length: Some(secret::SECRET_LENGTH),
@@ -75,7 +75,7 @@ pub mod erc20 {
             from_address: None,
             to_address: Some(htlc_params.asset.token_contract()),
             is_contract_creation: None,
-            transaction_data: Some(htlc_params.funding_tx_payload(htlc_location.clone())),
+            transaction_data: Some(htlc_params.funding_tx_payload(*htlc_location)),
             transaction_data_length: None,
         }
     }
@@ -83,7 +83,7 @@ pub mod erc20 {
     pub fn new_htlc_refunded_query(htlc_location: &Address) -> EthereumQuery {
         EthereumQuery::Transaction {
             from_address: None,
-            to_address: Some(htlc_location.clone()),
+            to_address: Some(*htlc_location),
             is_contract_creation: Some(false),
             transaction_data: Some(Bytes::from(vec![])),
             transaction_data_length: None,
@@ -93,7 +93,7 @@ pub mod erc20 {
     pub fn new_htlc_redeemed_query(htlc_location: &Address) -> EthereumQuery {
         EthereumQuery::Transaction {
             from_address: None,
-            to_address: Some(htlc_location.clone()),
+            to_address: Some(*htlc_location),
             is_contract_creation: Some(false),
             transaction_data: None,
             transaction_data_length: Some(secret::SECRET_LENGTH),

@@ -57,7 +57,7 @@ impl<
         let state_store = Arc::clone(&self.state_store);
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
         let client_factory = Arc::clone(&self.client_factory);
-        let comit_node_addr = self.comit_node_addr.clone();
+        let comit_node_addr = self.comit_node_addr;
 
         receiver
             .for_each(move |(id, requests)| {

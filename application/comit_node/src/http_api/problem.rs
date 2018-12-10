@@ -47,7 +47,7 @@ pub fn unsupported() -> HttpApiProblem {
     HttpApiProblem::new("swap-not-supported").set_status(400)
 }
 
-pub fn serde(_e: serde_json::Error) -> HttpApiProblem {
+pub fn serde(_e: &serde_json::Error) -> HttpApiProblem {
     // FIXME: Use error to give more detail to the user
     HttpApiProblem::new("invalid-body")
         .set_status(400)

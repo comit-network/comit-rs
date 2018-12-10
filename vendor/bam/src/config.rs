@@ -30,7 +30,7 @@ impl<Req, Res> Config<Req, Res> {
     where
         RH: FnMut(Req) -> Box<ResponseFuture<Res>> + Send + 'static,
     {
-        let header_keys = header_keys.into_iter().map(|key| (*key).into()).collect();
+        let header_keys = header_keys.iter().map(|key| (*key).into()).collect();
 
         let request_handler = Box::new(request_handler);
 

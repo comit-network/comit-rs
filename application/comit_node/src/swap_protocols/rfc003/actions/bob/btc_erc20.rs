@@ -83,6 +83,7 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
     type Redeem = bitcoin::SpendOutput;
     type Refund = ethereum::SendTransaction;
 
+    #[allow(clippy::type_complexity)]
     fn actions(
         &self,
     ) -> Vec<
