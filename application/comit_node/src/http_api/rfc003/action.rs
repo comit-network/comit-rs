@@ -90,12 +90,12 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
         key_store: &KeyStore,
     ) -> Result<Self, HttpApiProblem> {
         match body {
-            AcceptSwapRequestHttpBody::OnlySuccess { .. } | AcceptSwapRequestHttpBody::RefundAndSuccess { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The success identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
+            AcceptSwapRequestHttpBody::OnlyRedeem { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The redeem identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
             AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_refund_identity")),
             AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
                 beta_ledger_refund_identity,
                 beta_ledger_lock_duration,
-                alpha_ledger_success_identity: key_store.get_transient_keypair(&id.into(), b"SUCCESS"),
+                alpha_ledger_redeem_identity: key_store.get_transient_keypair(&id.into(), b"REDEEM"),
             }),
         }
     }
@@ -323,13 +323,13 @@ where
 #[serde(untagged)]
 #[allow(dead_code)] // TODO: Remove once we have ledgers where we use all the combinations
 enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
-    RefundAndSuccess {
-        alpha_ledger_success_identity: AL::Identity,
+    RefundAndRedeem {
+        alpha_ledger_redeem_identity: AL::Identity,
         beta_ledger_refund_identity: BL::Identity,
         beta_ledger_lock_duration: BL::LockDuration,
     },
-    OnlySuccess {
-        alpha_ledger_success_identity: AL::Identity,
+    OnlyRedeem {
+        alpha_ledger_redeem_identity: AL::Identity,
         beta_ledger_lock_duration: BL::LockDuration,
     },
     OnlyRefund {

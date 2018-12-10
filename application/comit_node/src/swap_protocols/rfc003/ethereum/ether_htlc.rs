@@ -8,7 +8,7 @@ use swap_protocols::rfc003::{
 pub struct EtherHtlc {
     refund_timeout: Seconds,
     refund_address: Address,
-    success_address: Address,
+    redeem_address: Address,
     secret_hash: SecretHash,
 }
 
@@ -16,7 +16,7 @@ impl EtherHtlc {
     const CONTRACT_CODE_TEMPLATE: &'static str =
         include_str!("./contract_templates/out/ether_contract.asm.hex");
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
-    const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
+    const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
@@ -29,13 +29,13 @@ impl EtherHtlc {
     pub fn new(
         refund_timeout: Seconds,
         refund_address: Address,
-        success_address: Address,
+        redeem_address: Address,
         secret_hash: SecretHash,
     ) -> Self {
         let htlc = EtherHtlc {
             refund_timeout,
             refund_address,
-            success_address,
+            redeem_address,
             secret_hash,
         };
 
@@ -60,14 +60,14 @@ impl EtherHtlc {
 impl Htlc for EtherHtlc {
     fn compile_to_hex(&self) -> ByteCode {
         let refund_timeout = format!("{:0>8x}", self.refund_timeout.0);
-        let success_address = format!("{:x}", self.success_address);
+        let redeem_address = format!("{:x}", self.redeem_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
 
         let contract_code = Self::CONTRACT_CODE_TEMPLATE
             .to_string()
             .replace(Self::REFUND_TIMEOUT_PLACEHOLDER, &refund_timeout)
-            .replace(Self::SUCCESS_ADDRESS_PLACEHOLDER, &success_address)
+            .replace(Self::REDEEM_ADDRESS_PLACEHOLDER, &redeem_address)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash);
 
@@ -136,7 +136,7 @@ mod tests {
         let compiled_code = htlc.compile_to_hex().0;
 
         assert!(!compiled_code.contains(EtherHtlc::REFUND_TIMEOUT_PLACEHOLDER));
-        assert!(!compiled_code.contains(EtherHtlc::SUCCESS_ADDRESS_PLACEHOLDER));
+        assert!(!compiled_code.contains(EtherHtlc::REDEEM_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(EtherHtlc::REFUND_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(EtherHtlc::SECRET_HASH_PLACEHOLDER));
     }

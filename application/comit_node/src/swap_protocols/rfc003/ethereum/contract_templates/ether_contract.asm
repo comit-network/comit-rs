@@ -20,8 +20,8 @@
     // Combine `eq` result with `call` result
     and
 
-    // Jump to success if hashes match
-    success
+    // Jump to redeem if hashes match
+    redeem
     jumpi
 
     timestamp
@@ -42,7 +42,7 @@
     // Don't do anything if we get here (e.g. secret didn't match and time didn't expire)
     return(0, 0)
 
-success:
+redeem:
     selfdestruct(0x3000000000000000000000000000000000000003) 
 
 refund:

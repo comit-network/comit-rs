@@ -32,10 +32,10 @@ fn fund_htlc(
     KeyPair,
     KeyPair,
 ) {
-    let success_privkey =
+    let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let success_keypair: KeyPair = success_privkey.secret_key().clone().into();
-    let success_pubkey_hash: PubkeyHash = success_keypair.public_key().clone().into();
+    let redeem_keypair: KeyPair = redeem_privkey.secret_key().clone().into();
+    let redeem_pubkey_hash: PubkeyHash = redeem_keypair.public_key().clone().into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
     let refund_keypair: KeyPair = refund_privkey.secret_key().clone().into();
@@ -46,7 +46,7 @@ fn fund_htlc(
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
     let htlc = Htlc::new(
-        success_pubkey_hash,
+        redeem_pubkey_hash,
         refund_pubkey_hash,
         secret.hash(),
         sequence_lock,
@@ -70,7 +70,7 @@ fn fund_htlc(
         htlc,
         sequence_lock,
         secret,
-        success_keypair,
+        redeem_keypair,
         refund_keypair,
     )
 }

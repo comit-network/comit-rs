@@ -65,7 +65,7 @@ describe("RFC003 HTTP API", () => {
                     quantity: beta_asset_quantity
                 },
                 alpha_ledger_refund_identity: null,
-                beta_ledger_success_identity: alice_final_address,
+                beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: 144
             })
             .then(res => {
@@ -96,7 +96,7 @@ describe("RFC003 HTTP API", () => {
                     "double-shot": true
                 },
                 "alpha_ledger_refund_identity": "",
-                "beta_ledger_success_identity": "",
+                "beta_ledger_redeem_identity": "",
                 "alpha_ledger_lock_duration": 0
             }).then((res) => {
                 res.should.have.status(400);

@@ -22,7 +22,7 @@ pub trait Role: Send + Sync + Debug + Clone + 'static {
     type BetaLedger: Ledger;
     type AlphaAsset: Asset;
     type BetaAsset: Asset;
-    type AlphaSuccessHtlcIdentity: Send
+    type AlphaRedeemHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
@@ -36,7 +36,7 @@ pub trait Role: Send + Sync + Debug + Clone + 'static {
         + PartialEq
         + Into<<Self::AlphaLedger as swap_protocols::Ledger>::Identity>;
 
-    type BetaSuccessHtlcIdentity: Send
+    type BetaRedeemHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
@@ -71,9 +71,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Alice<AL, BL, AA, BA
     type BetaLedger = BL;
     type AlphaAsset = AA;
     type BetaAsset = BA;
-    type AlphaSuccessHtlcIdentity = AL::Identity;
+    type AlphaRedeemHtlcIdentity = AL::Identity;
     type AlphaRefundHtlcIdentity = AL::HtlcIdentity;
-    type BetaSuccessHtlcIdentity = BL::HtlcIdentity;
+    type BetaRedeemHtlcIdentity = BL::HtlcIdentity;
     type BetaRefundHtlcIdentity = BL::Identity;
     type Secret = Secret;
 }
@@ -124,9 +124,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Bob<AL, BL, AA, BA> 
     type BetaLedger = BL;
     type AlphaAsset = AA;
     type BetaAsset = BA;
-    type AlphaSuccessHtlcIdentity = AL::HtlcIdentity;
+    type AlphaRedeemHtlcIdentity = AL::HtlcIdentity;
     type AlphaRefundHtlcIdentity = AL::Identity;
-    type BetaSuccessHtlcIdentity = BL::Identity;
+    type BetaRedeemHtlcIdentity = BL::Identity;
     type BetaRefundHtlcIdentity = BL::HtlcIdentity;
     type Secret = SecretHash;
 }

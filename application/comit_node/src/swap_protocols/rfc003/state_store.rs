@@ -82,7 +82,7 @@ mod tests {
                     .unwrap(),
             )
             .unwrap(),
-            beta_ledger_success_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
+            beta_ledger_redeem_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),
             alpha_ledger: Bitcoin::default(),

@@ -13,14 +13,14 @@ use swap_protocols::{
 };
 
 #[allow(missing_debug_implementations)]
-pub struct AliceToBob<C, SL: Ledger, TL: Ledger> {
+pub struct AliceToBob<C, AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
     response_future:
-        Option<Box<StateMachineResponseFuture<SL::Identity, TL::Identity, TL::LockDuration>>>,
+        Option<Box<StateMachineResponseFuture<AL::Identity, BL::Identity, BL::LockDuration>>>,
     client: Arc<C>,
 }
 
-impl<C, SL: Ledger, TL: Ledger> AliceToBob<C, SL, TL> {
+impl<C, AL: Ledger, BL: Ledger> AliceToBob<C, AL, BL> {
     pub fn new(client: Arc<C>) -> Self {
         AliceToBob {
             client,
@@ -29,13 +29,13 @@ impl<C, SL: Ledger, TL: Ledger> AliceToBob<C, SL, TL> {
     }
 }
 
-impl<C: comit_client::Client, SL: Ledger, TL: Ledger, SA: Asset, TA: Asset>
-    CommunicationEvents<Alice<SL, TL, SA, TA>> for AliceToBob<C, SL, TL>
+impl<C: comit_client::Client, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>
+    CommunicationEvents<Alice<AL, BL, AA, BA>> for AliceToBob<C, AL, BL>
 {
     fn request_responded(
         &mut self,
-        request: &comit_client::rfc003::Request<SL, TL, SA, TA>,
-    ) -> &mut ResponseFuture<Alice<SL, TL, SA, TA>> {
+        request: &comit_client::rfc003::Request<AL, BL, AA, BA>,
+    ) -> &mut ResponseFuture<Alice<AL, BL, AA, BA>> {
         let client = Arc::clone(&self.client);
         self.response_future.get_or_insert_with(|| {
             Box::new(

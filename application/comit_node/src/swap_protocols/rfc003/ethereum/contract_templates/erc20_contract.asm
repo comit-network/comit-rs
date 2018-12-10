@@ -20,8 +20,8 @@
     // Combine `eq` result with `call` result
     and
 
-    // Jump to success if hashes match
-    success
+    // Jump to redeem if hashes match
+    redeem
     jumpi
 
     timestamp
@@ -53,14 +53,14 @@
     96 transfer return
 
     place holders
-    0x3000000000000000000000000000000000000003 // success address
+    0x3000000000000000000000000000000000000003 // redeem address
     0x4000000000000000000000000000000000000004 // refund address
     0x6000000000000000000000000000000000000000000000000000000000000006 // amount
     0x7000000000000000000000000000000000000007 //token contract address
 
 */
-success:
-    mstore(32,0x3000000000000000000000000000000000000003) // success address
+redeem:
+    mstore(32,0x3000000000000000000000000000000000000003) // redeem address
     finishTransferTokens
     jump
 

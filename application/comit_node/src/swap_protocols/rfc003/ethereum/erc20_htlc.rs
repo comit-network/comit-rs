@@ -8,7 +8,7 @@ use swap_protocols::rfc003::{
 pub struct Erc20Htlc {
     refund_timeout: Seconds,
     refund_address: Address,
-    success_address: Address,
+    redeem_address: Address,
     secret_hash: SecretHash,
     token_contract_address: Address,
     amount: U256,
@@ -20,7 +20,7 @@ impl Erc20Htlc {
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
-    const SUCCESS_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
+    const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const AMOUNT_PLACEHOLDER: &'static str =
         "5000000000000000000000000000000000000000000000000000000000000005";
@@ -35,7 +35,7 @@ impl Erc20Htlc {
     pub fn new(
         refund_timeout: Seconds,
         refund_address: Address,
-        success_address: Address,
+        redeem_address: Address,
         secret_hash: SecretHash,
         token_contract_address: Address,
         amount: U256,
@@ -43,7 +43,7 @@ impl Erc20Htlc {
         let htlc = Erc20Htlc {
             refund_timeout,
             refund_address,
-            success_address,
+            redeem_address,
             secret_hash,
             token_contract_address,
             amount,
@@ -93,7 +93,7 @@ impl Erc20Htlc {
 impl Htlc for Erc20Htlc {
     fn compile_to_hex(&self) -> ByteCode {
         let refund_timeout = format!("{:0>8x}", self.refund_timeout.0);
-        let success_address = format!("{:x}", self.success_address);
+        let redeem_address = format!("{:x}", self.redeem_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
 
@@ -103,7 +103,7 @@ impl Htlc for Erc20Htlc {
         let contract_code = Self::CONTRACT_CODE_TEMPLATE
             .to_string()
             .replace(Self::REFUND_TIMEOUT_PLACEHOLDER, &refund_timeout)
-            .replace(Self::SUCCESS_ADDRESS_PLACEHOLDER, &success_address)
+            .replace(Self::REDEEM_ADDRESS_PLACEHOLDER, &redeem_address)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash)
             .replace(Self::AMOUNT_PLACEHOLDER, &amount)

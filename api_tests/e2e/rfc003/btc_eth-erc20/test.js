@@ -81,7 +81,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
                     "token_contract" : token_contract_address
                 },
                 "alpha_ledger_refund_identity": null,
-                "beta_ledger_success_identity": alice_final_address,
+                "beta_ledger_redeem_identity": alice_final_address,
                 "alpha_ledger_lock_duration": 144
             }).then((res) => {
                 res.should.have.status(201);
@@ -122,7 +122,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     it("[Bob] Can execute the accept action", async () => {
         let bob_response = {
             beta_ledger_refund_identity: bob.wallet.eth_address(),
-            alpha_ledger_success_identity: null,
+            alpha_ledger_redeem_identity: null,
             beta_ledger_lock_duration: 43200
         };
 
