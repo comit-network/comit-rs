@@ -21,13 +21,13 @@ pub struct FakeClient {
 
 impl FakeClient {
     pub fn resolve_request<
-        SL: swap_protocols::rfc003::Ledger,
-        TL: swap_protocols::rfc003::Ledger,
+        AL: swap_protocols::rfc003::Ledger,
+        BL: swap_protocols::rfc003::Ledger,
     >(
         &self,
-        response: Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
+        response: Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
     ) {
-        let type_id = TypeId::of::<rfc003::AcceptResponseBody<SL, TL>>();
+        let type_id = TypeId::of::<rfc003::AcceptResponseBody<AL, BL>>();
         let mut pending_requests = self.pending_requests.lock().unwrap();
         pending_requests
             .remove(&type_id)
@@ -39,20 +39,20 @@ impl FakeClient {
 
 impl Client for FakeClient {
     fn send_swap_request<
-        SL: swap_protocols::rfc003::Ledger,
-        TL: swap_protocols::rfc003::Ledger,
-        SA: Asset,
-        TA: Asset,
+        AL: swap_protocols::rfc003::Ledger,
+        BL: swap_protocols::rfc003::Ledger,
+        AA: Asset,
+        BA: Asset,
     >(
         &self,
-        _request: rfc003::Request<SL, TL, SA, TA>,
+        _request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
         Future<
-                Item = Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
+                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,
     > {
-        let type_id = TypeId::of::<rfc003::AcceptResponseBody<SL, TL>>();
+        let type_id = TypeId::of::<rfc003::AcceptResponseBody<AL, BL>>();
         let (sender, receiver) = oneshot::channel::<Box<Any + Send>>();
 
         {
@@ -65,7 +65,7 @@ impl Client for FakeClient {
         Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
             use std::borrow::Borrow;
             let _any: &(Any + Send) = response.borrow();
-            _any.downcast_ref::<Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>>()
+            _any.downcast_ref::<Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>>()
                 .unwrap()
                 .to_owned()
         }))

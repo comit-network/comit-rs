@@ -10,16 +10,16 @@ use swap_protocols::{self, asset::Asset};
 
 pub trait Client: Send + Sync + 'static {
     fn send_swap_request<
-        SL: swap_protocols::rfc003::Ledger,
-        TL: swap_protocols::rfc003::Ledger,
-        SA: Asset,
-        TA: Asset,
+        AL: swap_protocols::rfc003::Ledger,
+        BL: swap_protocols::rfc003::Ledger,
+        AA: Asset,
+        BA: Asset,
     >(
         &self,
-        request: rfc003::Request<SL, TL, SA, TA>,
+        request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
         Future<
-                Item = Result<rfc003::AcceptResponseBody<SL, TL>, SwapReject>,
+                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,
     >;

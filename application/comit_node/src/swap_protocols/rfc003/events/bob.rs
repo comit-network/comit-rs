@@ -9,24 +9,24 @@ use swap_protocols::{
 };
 
 #[derive(DebugStub)]
-pub struct BobToAlice<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> {
+pub struct BobToAlice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[debug_stub = "ResponseFuture"]
-    response_future: Box<ResponseFuture<Bob<SL, TL, SA, TA>>>,
+    response_future: Box<ResponseFuture<Bob<AL, BL, AA, BA>>>,
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> BobToAlice<SL, TL, SA, TA> {
-    pub fn new(response_future: Box<ResponseFuture<Bob<SL, TL, SA, TA>>>) -> Self {
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> BobToAlice<AL, BL, AA, BA> {
+    pub fn new(response_future: Box<ResponseFuture<Bob<AL, BL, AA, BA>>>) -> Self {
         Self { response_future }
     }
 }
 
-impl<SL: Ledger, TL: Ledger, SA: Asset, TA: Asset> CommunicationEvents<Bob<SL, TL, SA, TA>>
-    for BobToAlice<SL, TL, SA, TA>
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> CommunicationEvents<Bob<AL, BL, AA, BA>>
+    for BobToAlice<AL, BL, AA, BA>
 {
     fn request_responded(
         &mut self,
-        _request: &comit_client::rfc003::Request<SL, TL, SA, TA>,
-    ) -> &mut ResponseFuture<Bob<SL, TL, SA, TA>> {
+        _request: &comit_client::rfc003::Request<AL, BL, AA, BA>,
+    ) -> &mut ResponseFuture<Bob<AL, BL, AA, BA>> {
         &mut self.response_future
     }
 }
