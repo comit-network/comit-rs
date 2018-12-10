@@ -14,7 +14,6 @@ use url;
 
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
-    pub ethereum: EthereumSettings,
     pub bitcoin: BitcoinSettings,
     pub comit: Comit,
     pub http_api: HttpApi,
@@ -23,22 +22,11 @@ pub struct ComitNodeSettings {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct EthereumSettings {
-    pub network_id: u8,
-    #[serde(with = "serde::url")]
-    pub node_url: url::Url,
-}
-
-#[derive(Debug, Deserialize)]
 pub struct BitcoinSettings {
-    pub network: bitcoin_support::Network,
-    pub satoshi_per_byte: f64,
-    #[serde(with = "serde::url")]
-    pub node_url: url::Url,
-    pub node_username: String,
-    pub node_password: String,
+    /// An extended private key that will be used for deriving transient keys
+    /// for swaps that involve the Bitcoin ledger
     #[serde(with = "serde::extended_privkey")]
-    pub extended_private_key: bitcoin_support::ExtendedPrivKey,
+    pub transient_root_key: bitcoin_support::ExtendedPrivKey,
 }
 
 #[derive(Debug, Deserialize)]
