@@ -1,4 +1,4 @@
-use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity, Blocks};
+use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Quantity, EtherQuantity};
 use http_api::{problem, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
@@ -6,14 +6,15 @@ use key_store::KeyStore;
 use secp256k1_support;
 use std::{str::FromStr, sync::Arc};
 use swap_protocols::{
-    ledger::{Bitcoin, Ethereum, Lightning},
+    ledger::{Bitcoin, Ethereum},
     metadata_store::Metadata,
     rfc003::{
         actions::{bob::Accept, Action, StateActions},
-        bitcoin, ethereum, lightning,
+        bitcoin, ethereum,
+        roles::{Alice, Bob},
         state_machine::StateMachineResponse,
         state_store::StateStore,
-        Ledger, Secret, SecretHash,
+        Ledger,
     },
     AssetKind, LedgerKind, MetadataStore, RoleKind,
 };
@@ -100,45 +101,6 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
     }
 }
 
-impl FromAcceptSwapRequestHttpBody<Ethereum, Lightning>
-    for StateMachineResponse<
-        ethereum_support::Address,
-        secp256k1_support::PublicKey,
-        bitcoin_support::Blocks,
-    >
-{
-    fn from_accept_swap_request_http_body(
-        body: AcceptSwapRequestHttpBody<Ethereum, Lightning>,
-        _id: SwapId,
-        _key_store: &KeyStore,
-    ) -> Result<Self, HttpApiProblem> {
-        match body {
-            AcceptSwapRequestHttpBody::RefundAndSuccess {
-                alpha_ledger_success_identity,
-                beta_ledger_refund_identity,
-                beta_ledger_lock_duration,
-            } => Ok(StateMachineResponse {
-                alpha_ledger_success_identity,
-                beta_ledger_refund_identity,
-                beta_ledger_lock_duration,
-            }),
-            AcceptSwapRequestHttpBody::OnlySuccess { .. } => {
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("Missing beta_ledger_refund_identity"))
-            }
-            AcceptSwapRequestHttpBody::OnlyRefund { .. } => {
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("Missing alpha_ledger_success_identity"))
-            }
-            AcceptSwapRequestHttpBody::None { .. } => Err(
-                HttpApiProblem::with_title_and_type_from_status(400).set_detail(
-                    "Missing alpha_ledger_success_identity and beta_ledger_refund_identity",
-                ),
-            ),
-        }
-    }
-}
-
 impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
     fn execute(
         &self,
@@ -146,7 +108,7 @@ impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
         _key_store: &KeyStore,
         _id: SwapId,
     ) -> Result<(), HttpApiProblem> {
-        unreachable!("FIXME: Alice will never return this action so we shouldn't have to deal with this case")
+        unreachable!("FIXIME: Alice will never return this action so we shouldn't have to deal with this case")
     }
 }
 
@@ -175,17 +137,6 @@ pub enum ActionResponseBody {
         data: ethereum_support::Bytes,
         value: EtherQuantity,
         gas_limit: ethereum_support::U256,
-    },
-    LndAddInvoice {
-        r_preimage: Secret,
-        r_hash: SecretHash,
-        value: BitcoinQuantity,
-    },
-    LndSendPayment {
-        dest: secp256k1_support::PublicKey,
-        amt: BitcoinQuantity,
-        payment_hash: SecretHash,
-        final_cltv_delta: Blocks,
     },
 }
 
@@ -333,60 +284,6 @@ impl IntoResponseBody for ethereum::SendTransaction {
     }
 }
 
-impl IntoResponseBody for lightning::LndAddInvoice {
-    fn into_response_body(
-        self,
-        query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
-        let lightning::LndAddInvoice {
-            r_preimage,
-            r_hash,
-            value,
-        } = self;
-        match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::LndAddInvoice {
-                r_preimage,
-                r_hash,
-                value,
-            }),
-            _ => {
-                error!(
-                    "Unexpected GET parameters for a lightning::LndAddInvoice action. Expected: None."
-                );
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action does not take any query parameters"))
-            }
-        }
-    }
-}
-
-impl IntoResponseBody for lightning::LndSendPayment {
-    fn into_response_body(
-        self,
-        query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
-        let lightning::LndSendPayment {
-            dest,
-            amt,
-            payment_hash,
-            final_cltv_delta,
-        } = self;
-        match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::LndSendPayment {
-                dest,
-                amt,
-                payment_hash,
-                final_cltv_delta,
-            }),
-            _ => {
-                error!("Unexpected GET parameters for a lightning::LndSendPayment action. Expected: None.");
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action does not take any query parameters"))
-            }
-        }
-    }
-}
-
 impl IntoResponseBody for () {
     fn into_response_body(
         self,
@@ -397,8 +294,8 @@ impl IntoResponseBody for () {
     }
 }
 
-impl<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund> IntoResponseBody
-    for Action<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponseBody
+    for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
 where
     Deploy: IntoResponseBody,
     Fund: IntoResponseBody,
@@ -506,7 +403,6 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 
 #[derive(Debug, PartialEq)]
 pub enum GetAction {
-    LndAddInvoice,
     Fund,
     Deploy,
     Redeem,
@@ -514,12 +410,11 @@ pub enum GetAction {
 }
 
 impl GetAction {
-    fn matches<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>(
+    fn matches<Accept, Decline, Deploy, Fund, Redeem, Refund>(
         &self,
-        other: &Action<Accept, Decline, LndAddInvoice, Deploy, Fund, Redeem, Refund>,
+        other: &Action<Accept, Decline, Deploy, Fund, Redeem, Refund>,
     ) -> bool {
         match other {
-            Action::LndAddInvoice(_) => *self == GetAction::LndAddInvoice,
             Action::Deploy(_) => *self == GetAction::Deploy,
             Action::Fund(_) => *self == GetAction::Fund,
             Action::Redeem(_) => *self == GetAction::Redeem,

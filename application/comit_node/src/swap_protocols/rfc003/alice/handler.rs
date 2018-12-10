@@ -166,61 +166,6 @@ impl<
                         );
                         Ok(())
                     }
-                    SwapRequestKind::EthereumLightningErc20QuantityBitcoinQuantity(request) => {
-                        if let Err(e) = metadata_store.insert(id, request.clone()) {
-                            error!("Failed to store metadata for swap {} because {:?}", id, e);
-                            // Return Ok to keep the loop running
-                            return Ok(());
-                        }
-
-                        let secret = Secret::generate(&mut thread_rng());
-
-                        let _start_state = Start {
-                            alpha_ledger_refund_identity: request
-                                .identities
-                                .alpha_ledger_refund_identity,
-                            beta_ledger_success_identity: request
-                                .identities
-                                .beta_ledger_success_identity,
-                            alpha_ledger: request.alpha_ledger,
-                            beta_ledger: request.beta_ledger,
-                            alpha_asset: request.alpha_asset,
-                            beta_asset: request.beta_asset,
-                            alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
-                            secret,
-                            role: Alice::new(),
-                        };
-
-                        let _comit_client = match client_factory.client_for(comit_node_addr) {
-                            Ok(client) => client,
-                            Err(e) => {
-                                debug!("Couldn't get client for {}: {:?}", comit_node_addr, e);
-                                return Ok(());
-                            }
-                        };
-
-                        // spawn state machne here
-                        Ok(())
-
-                        // spawn_state_machine(
-                        //     id,
-                        //     start_state,
-                        //     state_store.as_ref(),
-                        //     Box::new(LqsEvents::new(
-                        //         QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
-                        //         FirstMatch::new(Arc::clone(&lqs_api_client),
-                        // bitcoin_poll_interval),     )),
-                        //     Box::new(LqsEventsForErc20::new(
-                        //         QueryIdCache::wrap(Arc::clone(&lqs_api_client)),
-                        //         FirstMatch::new(
-                        //             Arc::clone(&lqs_api_client),
-                        //             ethereum_poll_interval,
-                        //         ),
-                        //     )),
-                        //     Box::new(AliceToBob::new(Arc::clone(&comit_client))),
-                        // );
-                        // Ok(())
-                    }
                 }
             })
             .map_err(|_| ())

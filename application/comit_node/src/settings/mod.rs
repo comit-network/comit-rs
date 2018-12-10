@@ -3,12 +3,11 @@ mod serde;
 use bitcoin_support;
 use config::{Config, ConfigError, File};
 use ethereum_support;
-use http;
 use serde::Deserialize;
 use std::{
     ffi::OsStr,
     net::{IpAddr, SocketAddr},
-    path::{Path, PathBuf},
+    path::Path,
     time::Duration,
 };
 use url;
@@ -17,7 +16,6 @@ use url;
 pub struct ComitNodeSettings {
     pub ethereum: EthereumSettings,
     pub bitcoin: BitcoinSettings,
-    pub lightning_bitcoin: LightningBitcoinSettings,
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
@@ -41,19 +39,6 @@ pub struct BitcoinSettings {
     pub node_password: String,
     #[serde(with = "serde::extended_privkey")]
     pub extended_private_key: bitcoin_support::ExtendedPrivKey,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct LightningBitcoinSettings {
-    pub network: bitcoin_support::Network,
-    #[serde(with = "serde::socket_addr")]
-    pub node_uri: SocketAddr,
-    #[serde(with = "serde::path")]
-    pub tls_cert_path: PathBuf,
-    #[serde(with = "serde::path")]
-    pub readonly_macaroon_path: PathBuf,
-    #[serde(with = "serde::uri")]
-    pub grpc_origin_uri: http::Uri,
 }
 
 #[derive(Debug, Deserialize)]

@@ -1,7 +1,7 @@
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
 use swap_protocols::{
-    ledger::{Bitcoin, Ethereum, Lightning},
+    ledger::{Bitcoin, Ethereum},
     metadata_store::{AssetKind, LedgerKind, Metadata, RoleKind},
     rfc003::{Ledger, SecretHash},
 };
@@ -42,18 +42,6 @@ impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> for Me
     }
 }
 
-impl From<SwapRequest<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>> for Metadata {
-    fn from(_: SwapRequest<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>) -> Self {
-        Self {
-            alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Lightning,
-            alpha_asset: AssetKind::Erc20,
-            beta_asset: AssetKind::Bitcoin,
-            role: RoleKind::Bob,
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapRequestKind {
     BitcoinEthereumBitcoinQuantityEtherQuantity(
@@ -61,8 +49,5 @@ pub enum SwapRequestKind {
     ),
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
-    ),
-    EthereumLightningBitcoinQuantityErc20Quantity(
-        SwapRequest<Ethereum, Lightning, Erc20Quantity, BitcoinQuantity>,
     ),
 }

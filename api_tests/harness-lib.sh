@@ -90,29 +90,9 @@ function fund_bitcoin_address() {
     export BTC_FUNDED_VOUT=$funding_tx_vout;
 }
 
-function extract_lnd_certs() {
-    # TODO: use https://www.npmjs.com/package/docker-cli-js instead of going through files
-    export LND_CERTS_DIR="${PROJECT_ROOT}/api_tests/regtest/lnd_certs/"
-    mkdir -p "${LND_CERTS_DIR}"
-    for role in alice bob; do
-        docker cp lnd-${role}:/root/.lnd/tls.cert "${LND_CERTS_DIR}/${role}-tls.cert" \
-            || docker logs lnd-${role}
-        docker cp lnd-${role}:/root/.lnd/data/chain/bitcoin/regtest/admin.macaroon "${LND_CERTS_DIR}/${role}-admin.macaroon" \
-            || docker logs lnd-${role}
-        docker cp lnd-${role}:/root/.lnd/data/chain/bitcoin/regtest/readonly.macaroon "${LND_CERTS_DIR}/${role}-readonly.macaroon" \
-            || docker logs lnd-${role}
-        export lnd_${role}_ip=$(docker inspect lnd-${role} | jq .[0].NetworkSettings.Networks.regtest_lnd_network.IPAddress | xargs)
-    done
-}
-
 function setup_btc() {
     activate_segwit;
     generate_btc_blocks_every 5;
-}
-
-function setup_lnbtc() {
-    extract_lnd_certs;
-    setup_btc;
 }
 
 function setup_eth() {

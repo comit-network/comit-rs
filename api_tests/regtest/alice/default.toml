@@ -13,13 +13,6 @@ node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 # private_key="d14645573802900964c63e00e9e238aef9152b95e2f9aa1b534323951258d7fc"
 extended_private_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSALoMjDCZoi5BwobjymauUwpJXXhHoCMTC7nVo183SqnVBDGZ8i3"
 
-[lightning_bitcoin]
-network = "regtest"
-node_uri = "127.0.0.1:10009"
-tls_cert_path = "$PROJECT_ROOT/api_tests/regtest/lnd_certs/alice-tls.cert"
-readonly_macaroon_path = "$PROJECT_ROOT/api_tests/regtest/lnd_certs/alice-readonly.macaroon"
-grpc_origin_uri = "http://127.0.0.1"
-
 [comit]
 remote_comit_node_url = "127.0.0.1:8011"
 comit_listen = "0.0.0.0:8001"

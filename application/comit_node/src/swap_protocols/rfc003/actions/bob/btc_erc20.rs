@@ -78,7 +78,6 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
 impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     type Accept = Accept<Bitcoin, Ethereum>;
     type Decline = Decline<Bitcoin, Ethereum>;
-    type LndAddInvoice = ();
     type Deploy = ethereum::ContractDeploy;
     type Fund = ethereum::SendTransaction;
     type Redeem = bitcoin::SpendOutput;
@@ -87,15 +86,7 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
     fn actions(
         &self,
     ) -> Vec<
-        Action<
-            Self::Accept,
-            Self::Decline,
-            (),
-            Self::Deploy,
-            Self::Fund,
-            Self::Redeem,
-            Self::Refund,
-        >,
+        Action<Self::Accept, Self::Decline, Self::Deploy, Self::Fund, Self::Redeem, Self::Refund>,
     > {
         use self::SwapStates as SS;
         match *self {
@@ -112,18 +103,18 @@ impl StateActions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Qu
                 ..
             }) => vec![Action::Fund(swap.fund_action(*beta_htlc_location))],
             SS::BothFunded(BothFunded {
-                ref swap,
                 ref beta_htlc_location,
+                ref swap,
                 ..
             })
             | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
-                ref swap,
                 ref beta_htlc_location,
+                ref swap,
                 ..
             })
             | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
-                ref swap,
                 ref beta_htlc_location,
+                ref swap,
                 ..
             }) => vec![Action::Refund(swap.refund_action(*beta_htlc_location))],
             SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
