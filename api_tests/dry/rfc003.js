@@ -18,6 +18,8 @@ const beta_asset_quantity = new BigNumber(
     web3.utils.toWei("10", "ether")
 ).toString();
 
+const alpha_ledger_lock_duration = 144;
+
 const alice = test_lib.comit_conf("alice", {});
 const bob = test_lib.comit_conf("bob", {});
 
@@ -77,7 +79,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: 144
+                alpha_ledger_lock_duration: alpha_ledger_lock_duration
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -136,18 +138,22 @@ describe("RFC003 HTTP API", () => {
                 let body = res.body;
                 body.role.should.equal("Alice");
                 body.state.should.equal("Start");
-                body.swap.should.be.a("object");
-                body.swap.alpha_ledger.name.should.equal(alpha_ledger_name);
-                body.swap.alpha_ledger.network.should.equal(
+                let swap = body.swap;
+                swap.should.be.a("object");
+                swap.alpha_ledger.name.should.equal(alpha_ledger_name);
+                swap.alpha_ledger.network.should.equal(
                     alpha_ledger_network
                 );
-                body.swap.beta_ledger.name.should.equal(beta_ledger_name);
-                body.swap.alpha_asset.name.should.equal(alpha_asset_name);
-                body.swap.alpha_asset.quantity.should.equal(
+                swap.beta_ledger.name.should.equal(beta_ledger_name);
+                swap.alpha_asset.name.should.equal(alpha_asset_name);
+                swap.alpha_asset.quantity.should.equal(
                     alpha_asset_quantity
                 );
-                body.swap.beta_asset.name.should.equal(beta_asset_name);
-                body.swap.beta_asset.quantity.should.equal(beta_asset_quantity);
+                swap.beta_asset.name.should.equal(beta_asset_name);
+                swap.beta_asset.quantity.should.equal(beta_asset_quantity);
+                swap.alpha_lock.unit.should.equal("Block");
+                swap.alpha_lock.value.should.equal(alpha_ledger_lock_duration);
+                should.equal(swap.beta_lock, null);
             });
     });
 
@@ -191,17 +197,23 @@ describe("RFC003 HTTP API", () => {
                 let body = res.body;
                 body.state.should.equal("Start");
                 body.swap.should.be.a("object");
-                body.swap.alpha_ledger.name.should.equal(alpha_ledger_name);
-                body.swap.alpha_ledger.network.should.equal(
+                let swap = body.swap;
+                swap.alpha_ledger.name.should.equal(alpha_ledger_name);
+                swap.alpha_ledger.network.should.equal(
                     alpha_ledger_network
                 );
-                body.swap.beta_ledger.name.should.equal(beta_ledger_name);
-                body.swap.alpha_asset.name.should.equal(alpha_asset_name);
-                body.swap.alpha_asset.quantity.should.equal(
+                swap.beta_ledger.name.should.equal(beta_ledger_name);
+                swap.alpha_asset.name.should.equal(alpha_asset_name);
+                swap.alpha_asset.quantity.should.equal(
                     alpha_asset_quantity
                 );
-                body.swap.beta_asset.name.should.equal(beta_asset_name);
-                body.swap.beta_asset.quantity.should.equal(beta_asset_quantity);
+                swap.beta_asset.name.should.equal(beta_asset_name);
+                swap.beta_asset.quantity.should.equal(beta_asset_quantity);
+                swap.beta_asset.name.should.equal(beta_asset_name);
+                swap.beta_asset.quantity.should.equal(beta_asset_quantity);
+                swap.alpha_lock.unit.should.equal("Block");
+                swap.alpha_lock.value.should.equal(alpha_ledger_lock_duration);
+                should.equal(swap.beta_lock, null);
 
                 let action_links = body._links;
                 action_links.should.be.a("object");

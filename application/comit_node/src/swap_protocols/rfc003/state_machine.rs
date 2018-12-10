@@ -565,18 +565,41 @@ impl<R: Role> SwapStates<R> {
             | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
                 Some(Start {
-                    alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
-                    beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
                     alpha_ledger: swap.alpha_ledger.clone(),
                     beta_ledger: swap.beta_ledger.clone(),
                     alpha_asset: swap.alpha_asset.clone(),
                     beta_asset: swap.beta_asset.clone(),
+                    alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
+                    beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
                     alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
                     secret: swap.secret.clone(),
                     role: swap.role.clone(),
                 })
             }
             SS::Error(_) => None,
+        }
+    }
+
+    pub fn get_beta_ledger_lock_duration(&self) -> Option<<R::BetaLedger as Ledger>::LockDuration> {
+        use self::SwapStates as SS;
+        match *self {
+            SS::Accepted(Accepted { ref swap, .. })
+            | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
+            | SS::AlphaFunded(AlphaFunded { ref swap, .. })
+            | SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { ref swap, .. })
+            | SS::BothFunded(BothFunded { ref swap, .. })
+            | SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded { ref swap, .. })
+            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
+            | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed { ref swap, .. })
+            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. })
+            | SS::Final(Final(SwapOutcome::AlphaRefunded { ref swap }))
+            | SS::Final(Final(SwapOutcome::BothRefunded { ref swap }))
+            | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
+            | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
+            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
+                Some(swap.beta_ledger_lock_duration.clone())
+            }
+            SS::Start(_) | SS::Final(_) | SS::Error(_) => None,
         }
     }
 }
