@@ -103,12 +103,8 @@ function run_test() {
 
     log "Running $1";
 
-    # Make sure we are in the right directory so that nvm use picks up the .nvmrc file
-    cd "${PROJECT_ROOT}/api_tests";
-
-    set +x;
     export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
     . "$NVM_SH"
-    nvm use node || (nvm install && nvm use node);
+    nvm use 11 || (nvm install 11 && nvm use 11);
     npm test "$1" || { [ "$CAT_LOGS" ] && (cd "$LOG_DIR"; tail -n +1 *.log); exit 1; }
 }
