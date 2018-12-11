@@ -4,8 +4,8 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
-            secret,
             state_machine::HtlcParams,
+            Secret,
         },
     },
 };
@@ -48,7 +48,7 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
             to_address: Some(*htlc_location),
             is_contract_creation: Some(false),
             transaction_data: None,
-            transaction_data_length: Some(secret::SECRET_LENGTH),
+            transaction_data_length: Some(Secret::SECRET_LENGTH),
         }
     }
 }
@@ -98,7 +98,7 @@ pub mod erc20 {
             to_address: Some(*htlc_location),
             is_contract_creation: Some(false),
             transaction_data: None,
-            transaction_data_length: Some(secret::SECRET_LENGTH),
+            transaction_data_length: Some(Secret::SECRET_LENGTH),
         }
     }
 }
