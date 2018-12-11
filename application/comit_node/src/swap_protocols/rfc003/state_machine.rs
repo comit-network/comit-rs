@@ -118,10 +118,10 @@ pub enum SwapOutcome<R: Role> {
 
 #[allow(missing_debug_implementations)]
 pub struct Context<R: Role> {
-    pub alpha_ledger_events: Box<events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
-    pub beta_ledger_events: Box<events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
-    pub state_repo: Arc<SaveState<R>>,
-    pub communication_events: Box<events::CommunicationEvents<R>>,
+    pub alpha_ledger_events: Box<dyn events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
+    pub beta_ledger_events: Box<dyn events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
+    pub state_repo: Arc<dyn SaveState<R>>,
+    pub communication_events: Box<dyn events::CommunicationEvents<R>>,
 }
 
 #[derive(StateMachineFuture)]

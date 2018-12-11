@@ -18,7 +18,7 @@ use std::{
 #[allow(dead_code)]
 #[derive(Debug, Default)]
 pub struct FakeClient {
-    pending_requests: Mutex<HashMap<TypeId, Sender<Box<Any + Send>>>>,
+    pending_requests: Mutex<HashMap<TypeId, Sender<Box<dyn Any + Send>>>>,
 }
 
 impl FakeClient {
@@ -49,13 +49,13 @@ impl Client for FakeClient {
         &self,
         _request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
-        Future<
+        dyn Future<
                 Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,
     > {
         let type_id = TypeId::of::<rfc003::AcceptResponseBody<AL, BL>>();
-        let (sender, receiver) = oneshot::channel::<Box<Any + Send>>();
+        let (sender, receiver) = oneshot::channel::<Box<dyn Any + Send>>();
 
         {
             self.pending_requests
@@ -66,7 +66,7 @@ impl Client for FakeClient {
 
         Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
             use std::borrow::Borrow;
-            let _any: &(Any + Send) = response.borrow();
+            let _any: &(dyn Any + Send) = response.borrow();
             _any.downcast_ref::<Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>>()
                 .unwrap()
                 .to_owned()

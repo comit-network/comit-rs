@@ -28,7 +28,7 @@ pub use self::{
     lqs::{LqsEvents, LqsEventsForErc20},
 };
 
-type Future<I> = tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
+type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
 pub type StateMachineResponseFuture<ALSI, BLRI, BLLD> =
     Future<Result<StateMachineResponse<ALSI, BLRI, BLLD>, SwapReject>>;

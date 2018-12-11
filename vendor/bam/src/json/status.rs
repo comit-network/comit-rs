@@ -23,7 +23,7 @@ struct StatusVisitor;
 impl<'de> Visitor<'de> for StatusVisitor {
     type Value = Status;
 
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(formatter, "A status code like 'OK00', 'SE00' or 'RE00'")
     }
 

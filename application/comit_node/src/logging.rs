@@ -37,7 +37,7 @@ pub fn set_up_logging() {
         .unwrap();
 }
 
-fn formatter(out: FormatCallback, message: &Arguments, record: &Record) {
+fn formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
     // configure colors for the whole line
     let colors_line = ColoredLevelConfig::default()
         .info(Color::Green)

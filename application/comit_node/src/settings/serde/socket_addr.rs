@@ -10,7 +10,7 @@ where
     impl<'de> de::Visitor<'de> for Visitor {
         type Value = SocketAddr;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
             formatter.write_str("an ip address with port")
         }
 

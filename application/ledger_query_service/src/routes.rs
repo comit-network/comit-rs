@@ -26,7 +26,7 @@ pub struct HttpApiProblemStdError {
 }
 
 impl fmt::Display for HttpApiProblemStdError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.http_api_problem.title)
     }
 }

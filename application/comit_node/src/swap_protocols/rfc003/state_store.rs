@@ -13,21 +13,26 @@ pub enum Error {
 }
 
 pub trait StateStore<K>: Send + Sync + 'static {
-    fn insert<R: Role>(&self, key: K, state: SwapStates<R>) -> Result<Arc<SaveState<R>>, Error>;
+    fn insert<R: Role>(&self, key: K, state: SwapStates<R>)
+        -> Result<Arc<dyn SaveState<R>>, Error>;
 
     fn get<R: Role>(&self, key: &K) -> Result<Option<SwapStates<R>>, Error>;
 
     #[allow(clippy::type_complexity)]
-    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<SaveState<R>>>, Error>;
+    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error>;
 }
 
 #[derive(Default, Debug)]
 pub struct InMemoryStateStore<K: Hash + Eq> {
-    states: Mutex<HashMap<K, Box<Any + Send + Sync>>>,
+    states: Mutex<HashMap<K, Box<dyn Any + Send + Sync>>>,
 }
 
 impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemoryStateStore<K> {
-    fn insert<R: Role>(&self, key: K, state: SwapStates<R>) -> Result<Arc<SaveState<R>>, Error> {
+    fn insert<R: Role>(
+        &self,
+        key: K,
+        state: SwapStates<R>,
+    ) -> Result<Arc<dyn SaveState<R>>, Error> {
         let mut states = self.states.lock().unwrap();
 
         if states.contains_key(&key) {
@@ -36,7 +41,7 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
 
         let state = Arc::new(RwLock::new(state));
 
-        let value: Box<Any + Send + Sync> = Box::new(state.clone());
+        let value: Box<dyn Any + Send + Sync> = Box::new(state.clone());
         let _old = states.insert(key, value);
 
         Ok(state)
@@ -51,9 +56,9 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         }))
     }
 
-    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<SaveState<R>>>, Error> {
+    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error> {
         let states = self.states.lock().unwrap();
-        Ok(states.get(key).map(|state| -> Arc<SaveState<R>> {
+        Ok(states.get(key).map(|state| -> Arc<dyn SaveState<R>> {
             let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
             state.clone()
         }))

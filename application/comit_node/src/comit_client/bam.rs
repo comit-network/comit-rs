@@ -43,7 +43,7 @@ impl Client for BamClient {
         &self,
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
-        Future<
+        dyn Future<
                 Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,

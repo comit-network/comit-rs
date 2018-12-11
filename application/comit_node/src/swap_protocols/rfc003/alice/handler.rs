@@ -179,9 +179,9 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
     id: SwapId,
     start_state: Start<Alice<AL, BL, AA, BA>>,
     state_store: &S,
-    alpha_ledger_events: Box<LedgerEvents<AL, AA>>,
-    beta_ledger_events: Box<LedgerEvents<BL, BA>>,
-    communication_events: Box<CommunicationEvents<Alice<AL, BL, AA, BA>>>,
+    alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
+    beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+    communication_events: Box<dyn CommunicationEvents<Alice<AL, BL, AA, BA>>>,
 ) {
     let state = SwapStates::Start(start_state);
     let state_repo = state_store.insert(id, state.clone()).expect("");

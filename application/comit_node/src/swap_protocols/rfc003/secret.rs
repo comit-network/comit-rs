@@ -13,7 +13,7 @@ pub const SECRET_LENGTH: usize = 32;
 pub struct SecretHash(pub Vec<u8>);
 
 impl Debug for SecretHash {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str(&format!("SecretHash({:x})", self))
     }
 }
@@ -25,13 +25,13 @@ impl<'a> From<&'a SecretHash> for SecretHash {
 }
 
 impl fmt::Display for SecretHash {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.write_str(&format!("{:x}", self))
     }
 }
 
 impl fmt::LowerHex for SecretHash {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_str(hex::encode(&self.0).as_str())
     }
 }
@@ -55,7 +55,7 @@ impl<'de> Deserialize<'de> for SecretHash {
         impl<'vde> de::Visitor<'vde> for Visitor {
             type Value = SecretHash;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 formatter.write_str("a hex encoded 32 byte value")
             }
 
@@ -132,7 +132,7 @@ impl Secret {
 }
 
 impl fmt::LowerHex for Secret {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_str(hex::encode(&self.0).as_str())
     }
 }
@@ -168,7 +168,7 @@ impl<'de> Deserialize<'de> for Secret {
         impl<'vde> de::Visitor<'vde> for Visitor {
             type Value = Secret;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 formatter.write_str("a hex encoded 32 byte value")
             }
 

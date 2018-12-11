@@ -13,7 +13,7 @@ pub trait FetchTransactionIdStream<L: Ledger> {
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = L::TxId, Error = S::Error> + Send + 'static>;
+    ) -> Box<dyn Stream<Item = L::TxId, Error = S::Error> + Send + 'static>;
 }
 
 pub trait FetchTransactionStream<L: Ledger> {
@@ -25,7 +25,7 @@ pub trait FetchTransactionStream<L: Ledger> {
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = L::Transaction, Error = S::Error> + Send + 'static>;
+    ) -> Box<dyn Stream<Item = L::Transaction, Error = S::Error> + Send + 'static>;
 }
 
 impl<L: Ledger, C> FetchTransactionIdStream<L> for Arc<C>
@@ -40,7 +40,7 @@ where
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = <L as Ledger>::TxId, Error = S::Error> + Send + 'static> {
+    ) -> Box<dyn Stream<Item = <L as Ledger>::TxId, Error = S::Error> + Send + 'static> {
         let mut emitted_transactions = Vec::new();
 
         let inner_self = self.clone();
@@ -68,7 +68,7 @@ where
     }
 }
 
-impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
+impl<L: Ledger> FetchTransactionStream<L> for Arc<dyn FetchFullQueryResults<L>> {
     fn fetch_transaction_stream<
         I,
         E: Send + 'static,
@@ -77,7 +77,7 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = <L as Ledger>::Transaction, Error = S::Error> + Send + 'static> {
+    ) -> Box<dyn Stream<Item = <L as Ledger>::Transaction, Error = S::Error> + Send + 'static> {
         let mut emitted_transactions = Vec::new();
 
         let inner_self = self.clone();

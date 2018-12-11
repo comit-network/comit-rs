@@ -8,7 +8,7 @@ use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};
 
-pub type ConnectionLoop<E> = Box<Future<Item = (), Error = ClosedReason<E>> + Send>;
+pub type ConnectionLoop<E> = Box<dyn Future<Item = (), Error = ClosedReason<E>> + Send>;
 
 #[derive(Debug)]
 pub enum ClosedReason<C> {

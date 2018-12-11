@@ -9,10 +9,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+type ResponseSource<Frame> = Arc<Mutex<dyn ResponseFrameSource<Frame>>>;
+
 #[derive(DebugStub)]
 pub struct Client<Frame, Req, Res> {
     #[debug_stub = "ResponseSource"]
-    response_source: Arc<Mutex<ResponseFrameSource<Frame>>>,
+    response_source: ResponseSource<Frame>,
     next_id: u32,
     #[debug_stub = "Sender"]
     sender: UnboundedSender<Frame>,
@@ -30,7 +32,7 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
     Client<Frame, Req, Res>
 {
     pub fn new(
-        response_source: Arc<Mutex<ResponseFrameSource<Frame>>>,
+        response_source: Arc<Mutex<dyn ResponseFrameSource<Frame>>>,
     ) -> (Self, impl Stream<Item = Frame, Error = ()>) {
         let (sender, receiver) = mpsc::unbounded();
 
@@ -48,7 +50,7 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
     pub fn send_request(
         &mut self,
         request: Req,
-    ) -> Box<Future<Item = Res, Error = Error<Frame>> + Send> {
+    ) -> Box<dyn Future<Item = Res, Error = Error<Frame>> + Send> {
         let (request_frame, response_future) = {
             let mut response_source = self.response_source.lock().unwrap();
 
@@ -74,7 +76,7 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
     pub fn send_frame(
         &mut self,
         frame: Frame,
-    ) -> Box<Future<Item = (), Error = Error<Frame>> + Send> {
+    ) -> Box<dyn Future<Item = (), Error = Error<Frame>> + Send> {
         let send_result = self.sender.unbounded_send(frame);
 
         match send_result {
@@ -114,7 +116,7 @@ mod tests {
         fn on_response_frame(
             &mut self,
             frame_id: u32,
-        ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
             let future = match self.responses.remove(&frame_id) {
                 Some(response) => future::ok(response),
                 None => future::err(()),
@@ -208,7 +210,7 @@ mod tests {
         fn on_response_frame(
             &mut self,
             frame_id: u32,
-        ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
             self.when = Some(Instant::now());
 
             Box::new(future::ok(

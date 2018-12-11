@@ -52,7 +52,7 @@ impl ResponseFrameSource<json::Frame> for JsonResponseSource {
     fn on_response_frame(
         &mut self,
         frame_id: u32,
-    ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
         let (sender, receiver) = oneshot::channel();
 
         self.awaiting_responses.insert(frame_id, sender);
@@ -91,7 +91,7 @@ impl From<HeaderErrors> for RequestError {
 impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandler {
     fn new(
         config: Config<json::Request, json::Response>,
-    ) -> (Self, Arc<Mutex<ResponseFrameSource<json::Frame>>>) {
+    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Frame>>>) {
         let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
 
         let handler = JsonFrameHandler {
@@ -106,7 +106,8 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
     fn handle(
         &mut self,
         frame: json::Frame,
-    ) -> Result<Option<Box<Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error> {
+    ) -> Result<Option<Box<dyn Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error>
+    {
         match frame._type.as_str() {
             "REQUEST" => {
                 let mut payload = frame.payload;
@@ -161,7 +162,7 @@ impl JsonFrameHandler {
         _type: &JsonValue,
         headers: JsonValue,
         body: JsonValue,
-    ) -> Box<Future<Item = json::Response, Error = RequestError> + Send + 'static> {
+    ) -> Box<dyn Future<Item = json::Response, Error = RequestError> + Send + 'static> {
         let _type = match _type.as_str() {
             Some(_type) => _type,
             None => {
