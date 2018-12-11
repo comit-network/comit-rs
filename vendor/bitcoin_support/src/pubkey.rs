@@ -102,7 +102,7 @@ impl Into<Hash160> for PubkeyHash {
 }
 
 impl fmt::LowerHex for PubkeyHash {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_str(format!("{:?}", self.0).as_str())
     }
 }
@@ -117,7 +117,7 @@ impl<'de> Deserialize<'de> for PubkeyHash {
         impl<'vde> de::Visitor<'vde> for Visitor {
             type Value = PubkeyHash;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 formatter.write_str("A hex-encoded compressed SECP256k1 public key")
             }
 

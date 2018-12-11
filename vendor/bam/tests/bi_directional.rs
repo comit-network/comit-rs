@@ -1,12 +1,9 @@
-extern crate bam;
-extern crate futures;
-extern crate memsocket;
-extern crate pretty_env_logger;
-extern crate serde;
-extern crate serde_json;
-extern crate spectral;
-extern crate tokio;
-extern crate tokio_codec;
+use memsocket;
+use pretty_env_logger;
+
+use serde_json;
+
+use tokio;
 
 use bam::{config::Config, connection::Connection, json::*, shutdown_handle, *};
 use futures::future::{self, Future};

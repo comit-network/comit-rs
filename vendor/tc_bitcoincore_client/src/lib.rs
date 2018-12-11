@@ -4,7 +4,7 @@
 use bitcoin_rpc_client::BitcoinCoreClient;
 use testcontainers::{images::coblox_bitcoincore::BitcoinCore, Container, Docker};
 
-pub fn new<D: Docker>(container: &Container<D, BitcoinCore>) -> BitcoinCoreClient {
+pub fn new<D: Docker>(container: &Container<'_, D, BitcoinCore>) -> BitcoinCoreClient {
     let port = container.get_host_port(18443).unwrap();
     let auth = container.image().auth();
 

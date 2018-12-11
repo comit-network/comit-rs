@@ -1,13 +1,10 @@
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate bam;
-extern crate futures;
-extern crate memsocket;
-extern crate pretty_env_logger;
-extern crate spectral;
-extern crate tokio;
-extern crate tokio_codec;
+use bam;
+
+use memsocket;
+use pretty_env_logger;
+
 #[macro_use]
 extern crate log;
 

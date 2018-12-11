@@ -8,7 +8,7 @@ pub struct Erc20Quantity {
 }
 
 impl fmt::Display for Erc20Quantity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{}", self.quantity.to_bigdec(0))
     }
 }

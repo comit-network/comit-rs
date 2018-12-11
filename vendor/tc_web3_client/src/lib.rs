@@ -7,7 +7,7 @@ use web3::{
     transports::{EventLoopHandle, Http},
 };
 
-pub fn new<D: Docker, E: Image>(container: &Container<D, E>) -> (EventLoopHandle, Web3<Http>) {
+pub fn new<D: Docker, E: Image>(container: &Container<'_, D, E>) -> (EventLoopHandle, Web3<Http>) {
     let port = container.get_host_port(8545).unwrap();
     let endpoint = format!("http://localhost:{}", port);
 

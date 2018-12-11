@@ -15,7 +15,7 @@ impl FromStr for TradeId {
 }
 
 impl fmt::Display for TradeId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
     }
 }

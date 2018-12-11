@@ -44,7 +44,7 @@ pub fn ether_harness<D: Docker>(
     Address,
     ParityClient,
     EventLoopHandle,
-    Container<D, ParityEthereum>,
+    Container<'_, D, ParityEthereum>,
 ) {
     let _ = pretty_env_logger::try_init();
 

@@ -17,7 +17,7 @@ pub enum Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Error::Secp256k1(_) => write!(f, "Not a secp256k1 private key"),
             Error::Hex(_) => write!(f, "Invalid hex value"),

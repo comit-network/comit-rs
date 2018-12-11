@@ -34,7 +34,7 @@ pub enum PubkeyFromHexError {
 }
 
 impl fmt::Display for PubkeyFromHexError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             PubkeyFromHexError::Secp256k1(ref e) => fmt.write_str(&format!("{}", e)),
             PubkeyFromHexError::InvalidHex(ref e) => fmt.write_str(&format!("{}", e)),
@@ -68,7 +68,7 @@ impl<'de> Deserialize<'de> for PublicKey {
         impl<'vde> de::Visitor<'vde> for Visitor {
             type Value = PublicKey;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 formatter.write_str("A hex-encoded compressed SECP256k1 public key")
             }
 

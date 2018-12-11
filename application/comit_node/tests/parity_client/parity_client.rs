@@ -16,7 +16,7 @@ use std::{
 #[allow(missing_debug_implementations)]
 pub struct ParityClient {
     client: Arc<Web3<Http>>,
-    wallet: Arc<Wallet>,
+    wallet: Arc<dyn Wallet>,
     nonce: Mutex<U256>,
 }
 
@@ -40,7 +40,7 @@ const PARITY_DEV_PASSWORD: &str = "";
 
 impl ParityClient {
     pub fn new<N: Into<U256>>(
-        wallet: Arc<Wallet>,
+        wallet: Arc<dyn Wallet>,
         client: Arc<Web3<Http>>,
         current_nonce: N,
     ) -> Self {

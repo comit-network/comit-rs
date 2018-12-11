@@ -1,16 +1,13 @@
-extern crate serde;
-extern crate serde_json;
+use serde_json;
 #[macro_use]
 extern crate serde_derive;
-extern crate futures;
+
 #[macro_use]
 extern crate log;
-extern crate bam;
-extern crate memsocket;
-extern crate pretty_env_logger;
-extern crate spectral;
-extern crate tokio;
-extern crate tokio_codec;
+
+use memsocket;
+use pretty_env_logger;
+
 #[macro_use]
 pub mod common;
 
