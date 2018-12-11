@@ -2,9 +2,12 @@
 
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
-cd "$PROJECT_ROOT/api_tests";
-
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
+
+GIVEN_TEST_PATH="$1";
+
+export TEST_PATH=$(cd ${GIVEN_TEST_PATH} && pwd); # Convert to absolute path
+export LOG_DIR="$TEST_PATH/log"
 
 END(){
     set +e;
@@ -26,34 +29,30 @@ END(){
 trap 'END' EXIT;
 
 function setup() {
-    if test "$LOG_DIR"; then
-        mkdir -p "$LOG_DIR"
-        rm -f "$LOG_DIR/*.log"
-    fi
+    mkdir -p "$LOG_DIR"
+    rm -f "$LOG_DIR/*.log"
 
     #### Env variable to run all services
     set -a;
-    source ./regtest/regtest.env
+    source "$PROJECT_ROOT/api_tests/regtest/regtest.env"
     set +a;
 
-    export ALICE_CONFIG_FILE=./regtest/alice/default.toml;
+    export ALICE_CONFIG_FILE="$PROJECT_ROOT/api_tests/regtest/alice/default.toml";
 
     export BITCOIN_RPC_URL="http://$BITCOIN_RPC_HOST:$BITCOIN_RPC_PORT";
     #### Start all services
     (
-        cd ./regtest;
         log "Starting up docker containers";
+
+        cd "$PROJECT_ROOT/api_tests/regtest";
         docker-compose up -d btc eth;
-        if test -d "$LOG_DIR"; then
-            log_file="$LOG_DIR/docker-compose.log"
-            # docker-compose logs --tail=all >$log_file
-        fi
+        docker-compose logs --tail=all > "$LOG_DIR/docker-compose.log"
     );
 
     sleep 6;
 
     LQS_PID=$(
-        export LEDGER_QUERY_SERVICE_CONFIG_PATH=./regtest/ledger_query_service
+        export LEDGER_QUERY_SERVICE_CONFIG_PATH="$PROJECT_ROOT/api_tests/regtest/ledger_query_service"
         export ETHEREUM_POLLING_TIME_SEC=1
         export RUST_LOG=trace;
 
@@ -71,4 +70,4 @@ debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 activate_segwit;
 sleep 2;
 
-npm test "$@";
+run_test "${TEST_PATH}/test.js";

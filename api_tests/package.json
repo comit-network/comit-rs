@@ -4,7 +4,7 @@
   "description": "COMIT node end-to-end testing suite",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha --bail"
+    "test": "mocha --bail"
   },
   "author": "CoBloX Team",
   "license": "ISC",

@@ -201,7 +201,7 @@ script_runner = "bash"
 script = [
 '''
 cd api_tests;
-./dry/harness.sh ./dry/rfc003.js
+./dry/harness.sh ./dry/rfc003
 '''
 ]
 
@@ -221,21 +221,10 @@ dependencies = [
 ]
 
 [tasks.pre-e2e-tests]
-description = "Install dependencies for e2e tests."
+description = "Do stuff before the e2e tests are run."
 workspace = false
 private = true
-script_runner = "bash"
-script = [
-'''
-set +x;
-export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
-. "$NVM_SH"
-cd api_tests;
-nvm install;
-nvm use node;
-yarn install
-'''
-]
+script = []
 
 [tasks.e2e-tests]
 # Usage: `cargo make e2e <folder>` folder can be:
@@ -284,16 +273,10 @@ alias = "pre-e2e-tests"
 description = "Runs ledger_query_service API tests."
 workspace = false
 private = true
-env = { "LOG_DIR" = "./ledger_query_service/log" }
 script_runner = "bash"
 script = [
 '''
-set +x;
-export NVM_SH=$([ -e $NVM_DIR/nvm.sh ] && echo "$NVM_DIR/nvm.sh" || echo /usr/local/opt/nvm/nvm.sh );
-. "$NVM_SH"
-cd api_tests;
-nvm use;
-./ledger_query_service/harness.sh ./ledger_query_service/test.js
+./api_tests/ledger_query_service/harness.sh ./api_tests/ledger_query_service
 '''
 ]
 
