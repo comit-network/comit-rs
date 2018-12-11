@@ -1,14 +1,10 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
-extern crate ledger_query_service;
-extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
-extern crate bitcoin_rpc_client;
-extern crate ethereum_support;
-extern crate warp;
 
+use bitcoin_rpc_client;
 use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
@@ -20,7 +16,9 @@ use ledger_query_service::{
     BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
     InMemoryQueryResultRepository, RouteFactory,
 };
+use pretty_env_logger;
 use std::{env::var, sync::Arc, thread};
+use warp;
 use warp::{filters::BoxedFilter, Filter, Reply};
 
 fn main() {

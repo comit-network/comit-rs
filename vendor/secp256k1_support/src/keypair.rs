@@ -85,7 +85,7 @@ impl From<KeyPair> for (SecretKey, PublicKey) {
 #[cfg(test)]
 mod test {
     use super::*;
-    extern crate hex;
+    use hex;
     use hex::FromHex;
 
     #[test]

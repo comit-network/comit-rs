@@ -144,11 +144,11 @@ impl Serialize for PubkeyHash {
 
 #[cfg(test)]
 mod test {
-    extern crate hex;
-    extern crate serde_json;
     use super::*;
     use bitcoin::util::privkey::Privkey as PrivateKey;
+    use hex;
     use secp256k1_support::KeyPair;
+    use serde_json;
     use std::str::FromStr;
 
     #[test]

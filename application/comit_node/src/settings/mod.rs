@@ -1,7 +1,9 @@
 mod serde;
+
+use crate::seed::Seed;
+use crate::serde::Deserialize;
+use bitcoin_support;
 use config::{Config, ConfigError, File};
-use seed::Seed;
-use serde::Deserialize;
 use std::{
     ffi::OsStr,
     net::{IpAddr, SocketAddr},

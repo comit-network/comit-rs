@@ -209,7 +209,7 @@ impl JsonFrameHandler {
         let mut parsed_headers = HashMap::new();
         let mut header_errors = HeaderErrors::new();
 
-        for (mut key, value) in request_headers.into_iter() {
+        for (key, value) in request_headers.into_iter() {
             if let Err(e) = Self::validate_header(&value) {
                 header_errors.add_error(key.clone(), e)
                 // TODO make test that forces continue here

@@ -1,6 +1,6 @@
+use crate::seed::Seed;
+use crate::swap_protocols::{rfc003::Secret, SwapId};
 use secp256k1_support::KeyPair;
-use seed::Seed;
-use swap_protocols::{rfc003::Secret, SwapId};
 
 pub trait SecretSource: Send + Sync {
     fn new_secret(&self, id: SwapId) -> Secret;

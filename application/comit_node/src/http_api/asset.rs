@@ -1,4 +1,4 @@
-use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
+use crate::serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use serde_json;
 use std::{collections::BTreeMap, fmt};
 
@@ -131,7 +131,7 @@ pub mod serde {
     where
         D: Deserializer<'de>,
     {
-        use serde::{de::Error, Deserialize};
+        use crate::serde::{de::Error, Deserialize};
         let asset = HttpAsset::deserialize(deserializer)?;
 
         T::from_http_asset(asset).map_err(D::Error::custom)
@@ -141,7 +141,7 @@ pub mod serde {
     where
         S: Serializer,
     {
-        use serde::{ser::Error, Serialize};
+        use crate::serde::{ser::Error, Serialize};
 
         let asset = value.to_http_asset().map_err(S::Error::custom)?;
 

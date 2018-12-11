@@ -7,22 +7,12 @@ extern crate debug_stub_derive;
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
-#[cfg(test)]
-extern crate spectral;
 
-extern crate bitcoin_rpc_client;
-extern crate bitcoin_support;
-extern crate byteorder;
-extern crate config;
-extern crate ethereum_support;
-extern crate futures;
-extern crate hex;
-extern crate http_api_problem;
-extern crate hyper;
-extern crate serde;
-extern crate url;
-extern crate warp;
-extern crate zmq_rs as zmq;
+use bitcoin_rpc_client;
+use hex;
+use url;
+use warp;
+use zmq_rs as zmq;
 
 mod bitcoind_zmq_listener;
 mod block_processor;

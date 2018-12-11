@@ -1,17 +1,17 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-extern crate bitcoin_support;
-extern crate comit_node_client;
-extern crate ethereum_support;
-extern crate reqwest;
-extern crate structopt;
+
 #[macro_use]
 extern crate maplit;
 
+use bitcoin_support;
 use comit_node_client::api_client::{
     ApiClient, Asset, ComitNodeApiUrl, DefaultApiClient, Ledger, SwapRequest, SwapStatus, TradeId,
 };
+use ethereum_support;
+use reqwest;
 use std::{collections::HashMap, env::var, str::FromStr, string::String};
+use structopt;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

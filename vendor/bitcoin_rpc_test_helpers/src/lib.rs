@@ -2,9 +2,6 @@
 #![deny(unsafe_code)]
 
 // Place for putting common queries needed in tests
-extern crate bitcoin_rpc_client;
-extern crate bitcoin_support;
-
 use bitcoin_rpc_client::*;
 use bitcoin_support::{Address, BitcoinQuantity, IntoP2wpkhAddress, Network, Sha256dHash};
 

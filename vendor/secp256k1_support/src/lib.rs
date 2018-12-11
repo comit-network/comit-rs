@@ -1,12 +1,11 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
-extern crate secp256k1;
 #[macro_use]
 extern crate lazy_static;
-extern crate hex;
-extern crate rand;
-extern crate serde;
+
+use hex;
+use secp256k1;
 
 pub use secp256k1::{constants::SECRET_KEY_SIZE, All, Secp256k1};
 mod signature;

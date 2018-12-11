@@ -15,7 +15,6 @@ extern crate log;
 extern crate bam;
 #[macro_use]
 extern crate futures;
-extern crate state_machine_future;
 #[macro_use]
 extern crate maplit;
 #[macro_use]
@@ -27,31 +26,21 @@ extern crate hex_serde;
 extern crate pretty_env_logger;
 #[cfg(test)]
 extern crate serde_urlencoded;
-#[cfg(test)]
-extern crate spectral;
 
-extern crate bitcoin_support;
-extern crate bitcoin_witness;
-extern crate chrono;
-extern crate config;
-extern crate crypto;
-extern crate ethereum_support;
-extern crate fern;
-extern crate frunk_core;
-extern crate hex;
-extern crate http;
-extern crate http_api_problem;
-extern crate hyper;
-extern crate rand;
-extern crate reqwest;
-extern crate rustic_hal;
-extern crate secp256k1_support;
-extern crate serde;
-extern crate serde_json;
-extern crate tokio;
-extern crate url;
-extern crate uuid;
-extern crate warp;
+use bitcoin_rpc_client;
+use bitcoin_support;
+use chrono;
+use ethereum_support;
+use frunk_core;
+use hex;
+use reqwest;
+use rustc_hex;
+use secp256k1_support;
+use serde;
+use serde_json;
+use tokio;
+use url;
+use warp;
 
 pub mod bam_api;
 pub mod comit_client;

@@ -1,4 +1,4 @@
-use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
+use crate::serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use serde_json;
 use std::{collections::HashMap, fmt};
 
@@ -157,7 +157,7 @@ pub mod serde {
     where
         D: Deserializer<'de>,
     {
-        use serde::{de::Error, Deserialize};
+        use crate::serde::{de::Error, Deserialize};
         let ledger = HttpLedger::deserialize(deserializer)?;
 
         T::from_http_ledger(ledger).map_err(D::Error::custom)
@@ -167,7 +167,7 @@ pub mod serde {
     where
         S: Serializer,
     {
-        use serde::{ser::Error, Serialize};
+        use crate::serde::{ser::Error, Serialize};
 
         let ledger = value.to_http_ledger().map_err(S::Error::custom)?;
 

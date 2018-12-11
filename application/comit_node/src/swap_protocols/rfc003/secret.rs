@@ -210,9 +210,9 @@ impl RandomnessSource for ThreadRng {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::vec::Vec;
-    extern crate serde_json;
     use rand;
+    use serde_json;
+    use std::vec::Vec;
 
     #[test]
     fn gen_random_bytes_not_zeros() {

@@ -1,12 +1,11 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-extern crate comit_node;
-extern crate ethereum_support;
+
 #[macro_use]
 extern crate log;
-extern crate futures;
-extern crate tokio;
-extern crate warp;
+
+use tokio;
+use warp;
 
 use comit_node::{
     comit_client,

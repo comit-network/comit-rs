@@ -14,8 +14,8 @@ extern crate tokio_codec;
 #[macro_use]
 pub mod common;
 
+use crate::common::{setup::start_server_with, *};
 use bam::{json::*, *};
-use common::{setup::start_server_with, *};
 use futures::*;
 use std::{collections::HashMap, time::Duration};
 

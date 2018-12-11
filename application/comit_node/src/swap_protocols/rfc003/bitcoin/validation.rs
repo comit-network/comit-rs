@@ -30,7 +30,7 @@ impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
 
 #[cfg(test)]
 mod tests {
-    extern crate bitcoin_support;
+    use bitcoin_support;
 
     use super::{Error as ValidationError, *};
     use crate::swap_protocols::rfc003::{state_machine::*, Secret};
