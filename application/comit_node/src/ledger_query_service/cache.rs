@@ -72,7 +72,7 @@ mod tests {
         fn create_query(
             &self,
             query: SomeQuery,
-        ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send + 'static> {
+        ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send + 'static> {
             let mut count = self.how_many.lock().unwrap();
 
             *count += 1;
@@ -146,7 +146,7 @@ mod tests {
         fn create_query(
             &self,
             _: SomeQuery,
-        ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send + 'static> {
+        ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send + 'static> {
             let mut next_response = self.next_response.lock().unwrap();
 
             let receiver = next_response.take().unwrap();

@@ -7,7 +7,7 @@ pub const SEED_LENGTH: usize = 32;
 pub struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
 
 impl fmt::Debug for Seed {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Seed")
     }
 }

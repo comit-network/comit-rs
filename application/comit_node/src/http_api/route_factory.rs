@@ -20,7 +20,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(http_api::rfc003::swap::PROTOCOL_NAME));
     let metadata_store = warp::any().map(move || metadata_store.clone());
-    let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<SecretSource>);
+    let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<dyn SecretSource>);
     let state_store = warp::any().map(move || state_store.clone());
     let sender = warp::any().map(move || sender.clone());
 

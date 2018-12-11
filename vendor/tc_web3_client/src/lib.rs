@@ -1,4 +1,4 @@
-#![warn(unused_extern_crates, missing_debug_implementations)]
+#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
 use testcontainers::{Container, Docker, Image};
