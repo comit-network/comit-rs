@@ -2,6 +2,7 @@
 name = "bitcoin_rpc_test_helpers"
 version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
+edition = "2018"
 
 [dependencies]
 bitcoin_rpc_client = "0.4"

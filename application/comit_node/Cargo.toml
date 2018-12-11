@@ -2,6 +2,8 @@
 authors = ["CoBloX developers <team@coblox.tech>"]
 name = "comit_node"
 version = "0.1.0"
+edition = "2018"
+
 [build-dependencies]
 regex = "1"
 
