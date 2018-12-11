@@ -1,8 +1,8 @@
-use ethereum_support::{web3::types::Bytes, Address, U256};
-use swap_protocols::rfc003::{
+use crate::swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc, Seconds},
     SecretHash,
 };
+use ethereum_support::{web3::types::Bytes, Address, U256};
 
 #[derive(Debug, Clone)]
 pub struct Erc20Htlc {

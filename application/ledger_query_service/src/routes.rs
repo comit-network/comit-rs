@@ -1,9 +1,11 @@
-use block_processor::Query;
+use crate::{
+    block_processor::Query,
+    query_repository::QueryRepository,
+    query_result_repository::QueryResultRepository,
+    route_factory::{ExpandResult, QueryParams, ShouldExpand},
+};
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
-use query_repository::QueryRepository;
-use query_result_repository::QueryResultRepository;
-use route_factory::{ExpandResult, QueryParams, ShouldExpand};
 use serde::Serialize;
 use std::{error::Error as StdError, fmt, sync::Arc};
 use url::Url;
@@ -24,7 +26,7 @@ pub struct HttpApiProblemStdError {
 }
 
 impl fmt::Display for HttpApiProblemStdError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.http_api_problem.title)
     }
 }

@@ -4,11 +4,11 @@ use tokio::prelude::*;
 
 enum ItemOrFuture<T, E> {
     Item(T),
-    Future(Box<Future<Item = T, Error = E> + Send + 'static>),
+    Future(Box<dyn Future<Item = T, Error = E> + Send + 'static>),
 }
 
 impl<T: Debug, E> Debug for ItemOrFuture<T, E> {
-    fn fmt(&self, f: &mut Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             ItemOrFuture::Item(i) => write!(f, "ItemOrFuture::Item({:?})", i),
             ItemOrFuture::Future(_) => write!(f, "ItemOrFuture::Future"),

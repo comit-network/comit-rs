@@ -1,17 +1,19 @@
-use futures::{stream::Stream, Future};
-use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionStream, FetchFullQueryResults, QueryId,
+use crate::{
+    ledger_query_service::{
+        fetch_transaction_stream::FetchTransactionStream, FetchFullQueryResults, QueryId,
+    },
+    swap_protocols::ledger::Ledger,
 };
+use futures::{stream::Stream, Future};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use swap_protocols::ledger::Ledger;
 use tokio::timer::Interval;
 
 #[derive(Debug, Clone)]
 pub struct FirstMatch<L: Ledger> {
-    fetch_results: Arc<FetchFullQueryResults<L>>,
+    fetch_results: Arc<dyn FetchFullQueryResults<L>>,
     poll_interval: Duration,
 }
 
@@ -21,7 +23,7 @@ impl<L: Ledger> FirstMatch<L> {
         poll_interval: Duration,
     ) -> Self {
         Self {
-            fetch_results: fetch_full_query_results as Arc<FetchFullQueryResults<L>>,
+            fetch_results: fetch_full_query_results as Arc<dyn FetchFullQueryResults<L>>,
             poll_interval,
         }
     }

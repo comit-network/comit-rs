@@ -1,5 +1,5 @@
+use crate::ledger_query_service::Query;
 use ethereum_support::web3::types::{Address, Bytes};
-use ledger_query_service::Query;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]

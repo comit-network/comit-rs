@@ -1,9 +1,9 @@
-use serde::{de::DeserializeOwned, Serialize};
-use std::{fmt::Debug, hash::Hash};
-use swap_protocols::{
+use crate::swap_protocols::{
     self,
     rfc003::secret::{Secret, SecretHash},
 };
+use serde::{de::DeserializeOwned, Serialize};
+use std::{fmt::Debug, hash::Hash};
 
 pub trait Ledger: swap_protocols::Ledger {
     type LockDuration: PartialEq

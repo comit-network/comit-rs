@@ -5,8 +5,8 @@ pub mod rfc003;
 use futures::Future;
 use std::{io, net::SocketAddr, sync::Arc};
 
+use crate::swap_protocols::{self, asset::Asset};
 use std::{fmt::Debug, panic::RefUnwindSafe};
-use swap_protocols::{self, asset::Asset};
 
 pub trait Client: Send + Sync + 'static {
     fn send_swap_request<
@@ -18,7 +18,7 @@ pub trait Client: Send + Sync + 'static {
         &self,
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
-        Future<
+        dyn Future<
                 Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,

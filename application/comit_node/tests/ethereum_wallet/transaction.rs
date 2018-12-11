@@ -16,7 +16,7 @@ pub struct UnsignedTransaction {
 struct Signature([u8; 64]);
 
 impl fmt::Debug for Signature {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&&self.0[..], f)
     }
 }
@@ -56,7 +56,7 @@ impl<'a> Encodable for SignedTransaction<'a> {
 }
 
 impl<'a> From<SignedTransaction<'a>> for Bytes {
-    fn from(s: SignedTransaction) -> Self {
+    fn from(s: SignedTransaction<'_>) -> Self {
         let mut stream = RlpStream::new();
 
         let bytes = stream.append(&s).as_raw();

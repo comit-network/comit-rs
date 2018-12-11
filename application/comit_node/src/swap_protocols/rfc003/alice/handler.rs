@@ -1,23 +1,25 @@
-use comit_client;
-use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
-use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
-use rand::thread_rng;
-use seed::Seed;
-use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
-use swap_protocols::{
-    asset::Asset,
-    metadata_store::MetadataStore,
-    rfc003::{
-        alice::SwapRequestKind,
-        events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
-        roles::Alice,
-        secret_source::SecretSource,
-        state_machine::{Context, Start, Swap, SwapStates},
-        state_store::StateStore,
-        Ledger, Secret,
+use crate::{
+    comit_client,
+    ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache},
+    seed::Seed,
+    swap_protocols::{
+        asset::Asset,
+        metadata_store::MetadataStore,
+        rfc003::{
+            alice::SwapRequestKind,
+            events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
+            roles::Alice,
+            secret_source::SecretSource,
+            state_machine::{Context, Start, Swap, SwapStates},
+            state_store::StateStore,
+            Ledger, Secret,
+        },
+        SwapId,
     },
-    SwapId,
 };
+use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
+use rand::thread_rng;
+use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<
@@ -85,7 +87,7 @@ impl<
                             beta_asset: request.beta_asset,
                             alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
-                            role: Alice::new(),
+                            role: Alice::default(),
                         };
 
                         let comit_client = match client_factory.client_for(comit_node_addr) {
@@ -137,7 +139,7 @@ impl<
                             beta_asset: request.beta_asset,
                             alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
-                            role: Alice::new(),
+                            role: Alice::default(),
                         };
 
                         let comit_client = match client_factory.client_for(comit_node_addr) {
@@ -177,9 +179,9 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
     id: SwapId,
     start_state: Start<Alice<AL, BL, AA, BA>>,
     state_store: &S,
-    alpha_ledger_events: Box<LedgerEvents<AL, AA>>,
-    beta_ledger_events: Box<LedgerEvents<BL, BA>>,
-    communication_events: Box<CommunicationEvents<Alice<AL, BL, AA, BA>>>,
+    alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
+    beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+    communication_events: Box<dyn CommunicationEvents<Alice<AL, BL, AA, BA>>>,
 ) {
     let state = SwapStates::Start(start_state);
     let state_repo = state_store.insert(id, state.clone()).expect("");

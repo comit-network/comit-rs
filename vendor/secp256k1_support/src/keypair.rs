@@ -1,5 +1,5 @@
+use crate::public_key::PublicKey;
 use hex;
-use public_key::PublicKey;
 use rand::Rng;
 use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
 use std::fmt;
@@ -17,7 +17,7 @@ pub enum Error {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Error::Secp256k1(_) => write!(f, "Not a secp256k1 private key"),
             Error::Hex(_) => write!(f, "Invalid hex value"),
@@ -85,8 +85,7 @@ impl From<KeyPair> for (SecretKey, PublicKey) {
 #[cfg(test)]
 mod test {
     use super::*;
-    extern crate hex;
-    use hex::FromHex;
+    use hex::{self, FromHex};
 
     #[test]
     fn correct_keypair_from_secret_key_slice() {

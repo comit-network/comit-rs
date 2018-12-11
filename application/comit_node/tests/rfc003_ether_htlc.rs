@@ -1,25 +1,17 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-extern crate comit_node;
-extern crate ethereum_support;
-extern crate hex;
-extern crate pretty_env_logger;
-extern crate secp256k1_support;
+
 #[macro_use]
 extern crate log;
-extern crate tc_web3_client;
-extern crate testcontainers;
 #[macro_use]
 extern crate lazy_static;
-extern crate rlp;
-extern crate tiny_keccak;
 
 pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
+use crate::htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
 use ethereum_support::{Bytes, EtherQuantity, U256};
-use htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
 use testcontainers::clients::Cli;
 
 const HTLC_GAS_COST: u64 = 8879000;

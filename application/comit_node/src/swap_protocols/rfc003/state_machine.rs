@@ -1,13 +1,17 @@
 #![allow(clippy::too_many_arguments)] // TODO: Figure out how to properly place this on the state_machine_future derive so that is is forwarded to the generated structs and impl
 
-use comit_client;
+use crate::{
+    comit_client,
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash,
+        },
+    },
+};
 use futures::{future::Either, Async};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
-use swap_protocols::{
-    asset::Asset,
-    rfc003::{self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash},
-};
 
 #[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
 pub struct StateMachineResponse<ALSI, BLRI, BLLD> {
@@ -114,10 +118,10 @@ pub enum SwapOutcome<R: Role> {
 
 #[allow(missing_debug_implementations)]
 pub struct Context<R: Role> {
-    pub alpha_ledger_events: Box<events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
-    pub beta_ledger_events: Box<events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
-    pub state_repo: Arc<SaveState<R>>,
-    pub communication_events: Box<events::CommunicationEvents<R>>,
+    pub alpha_ledger_events: Box<dyn events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
+    pub beta_ledger_events: Box<dyn events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
+    pub state_repo: Arc<dyn SaveState<R>>,
+    pub communication_events: Box<dyn events::CommunicationEvents<R>>,
 }
 
 #[derive(StateMachineFuture)]

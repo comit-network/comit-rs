@@ -1,3 +1,4 @@
+use crate::web3::types::U256;
 use bigdecimal::BigDecimal;
 use num::{
     bigint::{BigInt, ParseBigIntError, Sign},
@@ -5,7 +6,6 @@ use num::{
 };
 use regex::Regex;
 use std::{f64, mem};
-use web3::types::U256;
 
 const U64SIZE: usize = mem::size_of::<u64>();
 

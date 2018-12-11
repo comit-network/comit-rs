@@ -1,17 +1,19 @@
-use api::{Error, FrameHandler, IntoFrame, ResponseFrameSource};
-use config::Config;
+use crate::{
+    api::{Error, FrameHandler, IntoFrame, ResponseFrameSource},
+    config::Config,
+    json::{self, response::Response},
+    RequestError,
+};
 use futures::{
     future,
     sync::oneshot::{self, Sender},
     Future,
 };
-use json::{self, response::Response};
 use serde_json::{self, Value as JsonValue};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
-use RequestError;
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
@@ -50,7 +52,7 @@ impl ResponseFrameSource<json::Frame> for JsonResponseSource {
     fn on_response_frame(
         &mut self,
         frame_id: u32,
-    ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
         let (sender, receiver) = oneshot::channel();
 
         self.awaiting_responses.insert(frame_id, sender);
@@ -87,9 +89,9 @@ impl From<HeaderErrors> for RequestError {
 }
 
 impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandler {
-    fn new(
+    fn create(
         config: Config<json::Request, json::Response>,
-    ) -> (Self, Arc<Mutex<ResponseFrameSource<json::Frame>>>) {
+    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Frame>>>) {
         let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
 
         let handler = JsonFrameHandler {
@@ -104,7 +106,8 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
     fn handle(
         &mut self,
         frame: json::Frame,
-    ) -> Result<Option<Box<Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error> {
+    ) -> Result<Option<Box<dyn Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error>
+    {
         match frame._type.as_str() {
             "REQUEST" => {
                 let mut payload = frame.payload;
@@ -159,13 +162,13 @@ impl JsonFrameHandler {
         _type: &JsonValue,
         headers: JsonValue,
         body: JsonValue,
-    ) -> Box<Future<Item = json::Response, Error = RequestError> + Send + 'static> {
+    ) -> Box<dyn Future<Item = json::Response, Error = RequestError> + Send + 'static> {
         let _type = match _type.as_str() {
             Some(_type) => _type,
             None => {
                 return Box::new(future::err(RequestError::MalformedField(
                     "type".to_string(),
-                )))
+                )));
             }
         };
 
@@ -175,7 +178,7 @@ impl JsonFrameHandler {
             _ => {
                 return Box::new(future::err(RequestError::MalformedField(
                     "headers".to_string(),
-                )))
+                )));
             }
         };
 
@@ -207,7 +210,7 @@ impl JsonFrameHandler {
         let mut parsed_headers = HashMap::new();
         let mut header_errors = HeaderErrors::new();
 
-        for (mut key, value) in request_headers.into_iter() {
+        for (key, value) in request_headers.into_iter() {
             if let Err(e) = Self::validate_header(&value) {
                 header_errors.add_error(key.clone(), e)
                 // TODO make test that forces continue here

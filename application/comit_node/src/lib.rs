@@ -1,6 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(plugin, decl_macro)]
 
 #[macro_use]
 extern crate debug_stub_derive;
@@ -17,43 +16,11 @@ extern crate bam;
 #[macro_use]
 extern crate futures;
 #[macro_use]
-extern crate state_machine_future;
-#[macro_use]
 extern crate maplit;
 #[macro_use]
 extern crate frunk;
 #[macro_use]
 extern crate binary_macros;
-extern crate hex_serde;
-#[cfg(test)]
-extern crate pretty_env_logger;
-#[cfg(test)]
-extern crate serde_urlencoded;
-#[cfg(test)]
-extern crate spectral;
-
-extern crate bitcoin_support;
-extern crate bitcoin_witness;
-extern crate chrono;
-extern crate config;
-extern crate crypto;
-extern crate ethereum_support;
-extern crate fern;
-extern crate frunk_core;
-extern crate hex;
-extern crate http;
-extern crate http_api_problem;
-extern crate hyper;
-extern crate rand;
-extern crate reqwest;
-extern crate rustic_hal;
-extern crate secp256k1_support;
-extern crate serde;
-extern crate serde_json;
-extern crate tokio;
-extern crate url;
-extern crate uuid;
-extern crate warp;
 
 pub mod bam_api;
 pub mod comit_client;

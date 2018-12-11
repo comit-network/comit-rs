@@ -1,18 +1,20 @@
-use api::{FrameHandler, IntoFrame};
-use client::Client;
-use config::Config;
+use crate::{
+    api::{FrameHandler, IntoFrame},
+    client::Client,
+    config::Config,
+};
 use futures::{Future, Sink, Stream};
 use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};
 
-pub type ConnectionLoop<E> = Box<Future<Item = (), Error = ClosedReason<E>> + Send>;
+pub type ConnectionLoop<E> = Box<dyn Future<Item = (), Error = ClosedReason<E>> + Send>;
 
 #[derive(Debug)]
 pub enum ClosedReason<C> {
     CodecError(C),
     InternalError,
-    InvalidFrame(::api::Error),
+    InvalidFrame(crate::api::Error),
 }
 
 #[derive(Debug)]
@@ -47,8 +49,8 @@ impl<
     ) -> (ConnectionLoop<CodecErr>, Client<Frame, Req, Res>) {
         let (sink, stream) = self.codec.framed(self.socket).split();
 
-        let (mut frame_handler, response_source) = FH::new(self.config);
-        let (client, request_stream) = Client::new(response_source);
+        let (mut frame_handler, response_source) = FH::create(self.config);
+        let (client, request_stream) = Client::create(response_source);
 
         let connection_loop = stream
             .map_err(ClosedReason::CodecError)
@@ -56,11 +58,11 @@ impl<
             .and_then(move |frame| {
                 // Some errors are non-fatal, keep going if we get these
                 match frame_handler.handle(frame) {
-                    Err(::api::Error::UnexpectedResponse) => {
+                    Err(crate::api::Error::UnexpectedResponse) => {
                         warn!("Received unexpected response - ignoring it.");
                         Ok(None)
                     }
-                    Err(::api::Error::OutOfOrderRequest) => {
+                    Err(crate::api::Error::OutOfOrderRequest) => {
                         warn!("Received out of order request - ignoring it.");
                         Ok(None)
                     }

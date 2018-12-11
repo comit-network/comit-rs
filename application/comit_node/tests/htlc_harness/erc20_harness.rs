@@ -1,3 +1,8 @@
+use crate::{
+    ethereum_wallet::InMemoryWallet,
+    htlc_harness::{new_account, HTLC_TIMEOUT, SECRET},
+    parity_client::ParityClient,
+};
 use comit_node::swap_protocols::rfc003::{
     ethereum::{Erc20Htlc, Seconds},
     Secret,
@@ -9,9 +14,6 @@ use ethereum_support::{
     },
     EtherQuantity,
 };
-use ethereum_wallet::InMemoryWallet;
-use htlc_harness::{new_account, HTLC_TIMEOUT, SECRET};
-use parity_client::ParityClient;
 use pretty_env_logger;
 use std::{sync::Arc, time::Duration};
 use tc_web3_client;
@@ -49,7 +51,7 @@ pub fn erc20_harness<D: Docker>(
     Address,
     ParityClient,
     EventLoopHandle,
-    Container<D, ParityEthereum>,
+    Container<'_, D, ParityEthereum>,
 ) {
     let _ = pretty_env_logger::try_init();
 

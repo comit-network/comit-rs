@@ -1,8 +1,11 @@
-use bam::{self, config::Config, connection::Connection, json, Status};
-use bam_api::{self, header::ToBamHeader};
-use comit_client::{
-    rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+use crate::{
+    bam_api::{self, header::ToBamHeader},
+    comit_client::{
+        rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+    },
+    swap_protocols::{self, asset::Asset, SwapProtocols},
 };
+use bam::{self, config::Config, connection::Connection, json, Status};
 use futures::Future;
 use serde_json;
 use std::{
@@ -10,7 +13,6 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex, RwLock},
 };
-use swap_protocols::{self, asset::Asset, SwapProtocols};
 use tokio::{self, net::TcpStream};
 
 #[derive(Debug)]
@@ -41,7 +43,7 @@ impl Client for BamClient {
         &self,
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<
-        Future<
+        dyn Future<
                 Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
                 Error = SwapResponseError,
             > + Send,

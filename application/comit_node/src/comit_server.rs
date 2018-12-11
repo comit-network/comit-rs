@@ -1,11 +1,13 @@
+use crate::{
+    bam_api::rfc003::swap_config,
+    swap_protocols::{rfc003, SwapId},
+};
 use bam::{connection::Connection, json};
-use bam_api::rfc003::swap_config;
 use futures::{
     sync::{mpsc, oneshot},
     Future, Stream,
 };
 use std::{io, net::SocketAddr};
-use swap_protocols::{rfc003, SwapId};
 use tokio::{self, net::TcpListener};
 
 impl ComitServer {

@@ -1,16 +1,8 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(const_fn)]
-extern crate bitcoin;
-extern crate bitcoin_quantity;
-extern crate hex;
-extern crate secp256k1_support;
-extern crate serde;
+
 #[macro_use]
 extern crate serde_derive;
-extern crate bitcoin_bech32;
-#[cfg(test)]
-extern crate spectral;
 
 pub use bitcoin::{
     blockdata::{
@@ -31,13 +23,11 @@ pub use bitcoin::{
     },
     Address,
 };
+use bitcoin_bech32;
+use hex;
 
+pub use crate::{blocks::*, mined_block::*, pubkey::*, transaction::*, weight::*};
 pub use bitcoin_quantity::*;
-pub use blocks::*;
-pub use mined_block::*;
-pub use pubkey::*;
-pub use transaction::*;
-pub use weight::*;
 
 mod blocks;
 mod mined_block;

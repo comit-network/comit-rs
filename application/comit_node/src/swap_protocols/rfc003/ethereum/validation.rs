@@ -1,5 +1,4 @@
-use ethereum_support::{self, CalculateContractAddress, Erc20Quantity, EtherQuantity, Transaction};
-use swap_protocols::{
+use crate::swap_protocols::{
     ledger::Ethereum,
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc},
@@ -7,6 +6,7 @@ use swap_protocols::{
         state_machine::HtlcParams,
     },
 };
+use ethereum_support::{self, CalculateContractAddress, Erc20Quantity, EtherQuantity, Transaction};
 
 impl FindHtlcLocation<Ethereum, EtherQuantity> for Transaction {
     fn find_htlc_location(

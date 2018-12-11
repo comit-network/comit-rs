@@ -1,8 +1,8 @@
+use crate::swap_protocols::ledger::Ledger;
 use bitcoin_support::{
     Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
 use secp256k1_support::PublicKey;
-use swap_protocols::ledger::Ledger;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {

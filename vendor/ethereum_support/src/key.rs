@@ -1,6 +1,6 @@
+use crate::Address;
 use secp256k1_support::PublicKey;
 use tiny_keccak;
-use Address;
 
 pub trait ToEthereumAddress {
     fn to_ethereum_address(&self) -> Address;
@@ -25,8 +25,8 @@ impl ToEthereumAddress for PublicKey {
 #[cfg(test)]
 mod test {
 
-    extern crate hex;
     use super::*;
+    use hex;
     use secp256k1_support::KeyPair;
     use std::str::FromStr;
 

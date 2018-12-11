@@ -1,10 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-extern crate bitcoin_support;
-extern crate comit_node_client;
-extern crate ethereum_support;
-extern crate reqwest;
-extern crate structopt;
+
 #[macro_use]
 extern crate maplit;
 
@@ -12,7 +8,7 @@ use comit_node_client::api_client::{
     ApiClient, Asset, ComitNodeApiUrl, DefaultApiClient, Ledger, SwapRequest, SwapStatus, TradeId,
 };
 use std::{collections::HashMap, env::var, str::FromStr, string::String};
-use structopt::StructOpt;
+use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Comit Node Client", about = "CLI for the COMIT Node.")]
@@ -142,7 +138,7 @@ fn main() {
             let response = client.get_swap_status(id);
             match response {
                 Ok(swap_status) => {
-                    use SwapStatus::*;
+                    use crate::SwapStatus::*;
                     match swap_status {
                         Pending => {
                             println!("status: pending");

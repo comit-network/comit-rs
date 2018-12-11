@@ -1,19 +1,21 @@
+use crate::{
+    bam_api::header::FromBamHeader,
+    comit_client::{self, rfc003::RequestBody, SwapReject},
+    swap_protocols::{
+        asset::Asset,
+        ledger::{Bitcoin, Ethereum},
+        rfc003::{self, state_machine::StateMachineResponse, Ledger},
+        SwapId, SwapProtocols,
+    },
+};
 use bam::{
     config::Config,
     json::{Request, Response},
     Status,
 };
-use bam_api::header::FromBamHeader;
-use comit_client::{self, rfc003::RequestBody, SwapReject};
 use futures::{
     future::Future,
     sync::{mpsc, oneshot},
-};
-use swap_protocols::{
-    asset::Asset,
-    ledger::{Bitcoin, Ethereum},
-    rfc003::{self, state_machine::StateMachineResponse, Ledger},
-    SwapId, SwapProtocols,
 };
 
 pub fn swap_config(

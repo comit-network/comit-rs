@@ -1,25 +1,27 @@
+use crate::{
+    ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache},
+    seed::Seed,
+    swap_protocols::{
+        asset::Asset,
+        metadata_store::MetadataStore,
+        rfc003::{
+            self,
+            bob::SwapRequestKind,
+            events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
+            roles::Bob,
+            state_machine::*,
+            state_store::StateStore,
+            Ledger,
+        },
+        SwapId,
+    },
+};
 use futures::{
     stream::Stream,
     sync::{mpsc::UnboundedReceiver, oneshot},
     Future,
 };
-use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
-use seed::Seed;
 use std::{sync::Arc, time::Duration};
-use swap_protocols::{
-    asset::Asset,
-    metadata_store::MetadataStore,
-    rfc003::{
-        self,
-        bob::SwapRequestKind,
-        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
-        roles::Bob,
-        state_machine::*,
-        state_store::StateStore,
-        Ledger,
-    },
-    SwapId,
-};
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<MetadataStore, StateStore> {
@@ -64,7 +66,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                         {
                             let request = request.clone();
-                            let (bob, response_future) = Bob::new();
+                            let (bob, response_future) = Bob::create();
 
                             let response_future = response_future.inspect(|response| {
                                 response_sender
@@ -120,7 +122,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                         {
                             let request = request.clone();
-                            let (bob, response_future) = Bob::new();
+                            let (bob, response_future) = Bob::create();
 
                             let response_future = response_future.inspect(|response| {
                                 response_sender
@@ -174,9 +176,9 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
     id: SwapId,
     start_state: Start<Bob<AL, BL, AA, BA>>,
     state_store: &S,
-    alpha_ledger_events: Box<LedgerEvents<AL, AA>>,
-    beta_ledger_events: Box<LedgerEvents<BL, BA>>,
-    communication_events: Box<CommunicationEvents<Bob<AL, BL, AA, BA>>>,
+    alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
+    beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+    communication_events: Box<dyn CommunicationEvents<Bob<AL, BL, AA, BA>>>,
 ) {
     let state = SwapStates::Start(start_state);
 

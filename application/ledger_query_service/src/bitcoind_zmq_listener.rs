@@ -1,8 +1,8 @@
+use crate::block_processor::BlockProcessor;
+use ::zmq_rs::{self as zmq, Context, Socket};
 use bitcoin_support::{serialize::deserialize, MinedBlock};
-use block_processor::BlockProcessor;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
-use zmq::{self, Context, Socket};
 
 #[derive(DebugStub)]
 pub struct BitcoindZmqListener<P> {
@@ -15,7 +15,7 @@ pub struct BitcoindZmqListener<P> {
 }
 
 impl<P: BlockProcessor<MinedBlock>> BitcoindZmqListener<P> {
-    pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
+    pub fn create(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
         let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
 

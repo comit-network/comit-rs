@@ -1,9 +1,3 @@
-extern crate bitcoin_support;
-extern crate ethereum_support;
-extern crate hex;
-extern crate rand;
-extern crate secp256k1_support;
-
 use bitcoin_support::{
     ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint, IntoP2wpkhAddress,
     Network, PrivateKey, PubkeyHash,

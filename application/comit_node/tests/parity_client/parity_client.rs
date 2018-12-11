@@ -1,3 +1,4 @@
+use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
 use comit_node::swap_protocols::rfc003::{
     ethereum::{Htlc, Seconds},
     SecretHash,
@@ -6,7 +7,6 @@ use ethereum_support::{
     web3::{transports::Http, Web3},
     Address, Bytes, CallRequest, EtherQuantity, Future, TransactionRequest, H256, U256,
 };
-use ethereum_wallet::{UnsignedTransaction, Wallet};
 use hex;
 use std::{
     ops::DerefMut,
@@ -16,7 +16,7 @@ use std::{
 #[allow(missing_debug_implementations)]
 pub struct ParityClient {
     client: Arc<Web3<Http>>,
-    wallet: Arc<Wallet>,
+    wallet: Arc<dyn Wallet>,
     nonce: Mutex<U256>,
 }
 
@@ -40,7 +40,7 @@ const PARITY_DEV_PASSWORD: &str = "";
 
 impl ParityClient {
     pub fn new<N: Into<U256>>(
-        wallet: Arc<Wallet>,
+        wallet: Arc<dyn Wallet>,
         client: Arc<Web3<Http>>,
         current_nonce: N,
     ) -> Self {

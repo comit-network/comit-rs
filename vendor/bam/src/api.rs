@@ -1,4 +1,4 @@
-use config::Config;
+use crate::config::Config;
 use futures::Future;
 use std::sync::{Arc, Mutex};
 
@@ -35,11 +35,11 @@ pub trait FrameHandler<Frame, Req, Res>
 where
     Self: Sized,
 {
-    fn new(config: Config<Req, Res>) -> (Self, Arc<Mutex<ResponseFrameSource<Frame>>>);
+    fn create(config: Config<Req, Res>) -> (Self, Arc<Mutex<dyn ResponseFrameSource<Frame>>>);
     fn handle(
         &mut self,
         frame: Frame,
-    ) -> Result<Option<Box<Future<Item = Frame, Error = ()> + Send + 'static>>, Error>;
+    ) -> Result<Option<Box<dyn Future<Item = Frame, Error = ()> + Send + 'static>>, Error>;
 }
 
 pub trait IntoFrame<F> {
@@ -54,5 +54,5 @@ pub enum Status {
 }
 
 pub trait ResponseFrameSource<F>: Send {
-    fn on_response_frame(&mut self, frame_id: u32) -> Box<Future<Item = F, Error = ()> + Send>;
+    fn on_response_frame(&mut self, frame_id: u32) -> Box<dyn Future<Item = F, Error = ()> + Send>;
 }

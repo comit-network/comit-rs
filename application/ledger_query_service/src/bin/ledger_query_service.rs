@@ -1,14 +1,8 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(plugin, decl_macro)]
 
-extern crate ledger_query_service;
-extern crate pretty_env_logger;
 #[macro_use]
 extern crate log;
-extern crate bitcoin_rpc_client;
-extern crate ethereum_support;
-extern crate warp;
 
 use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
@@ -22,7 +16,7 @@ use ledger_query_service::{
     InMemoryQueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc, thread};
-use warp::{filters::BoxedFilter, Filter, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
@@ -68,7 +62,7 @@ fn create_bitcoin_routes(
     );
     thread::spawn(move || {
         let bitcoind_zmq_listener =
-            BitcoindZmqListener::new(settings.zmq_endpoint.as_str(), transaction_processor);
+            BitcoindZmqListener::create(settings.zmq_endpoint.as_str(), transaction_processor);
 
         match bitcoind_zmq_listener {
             Ok(mut listener) => listener.start(),
@@ -123,7 +117,7 @@ fn create_ethereum_routes(
     let poller_client = Arc::clone(&client);
 
     thread::spawn(move || {
-        let web3_poller = EthereumWeb3BlockPoller::new(
+        let web3_poller = EthereumWeb3BlockPoller::create(
             poller_client,
             settings.poll_interval_secs,
             transaction_processor,
@@ -161,6 +155,6 @@ fn load_settings() -> Settings {
     info!("Using settings located in {}", config_path);
     let default_config = format!("{}/{}", config_path.trim(), "default");
 
-    let settings = Settings::new(default_config);
+    let settings = Settings::create(default_config);
     settings.unwrap()
 }

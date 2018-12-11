@@ -1,11 +1,11 @@
-use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
-use swap_protocols::{
+use crate::swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
         find_htlc_location::{compare_assets, Error, FindHtlcLocation},
         state_machine::HtlcParams,
     },
 };
+use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 
 impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
     fn find_htlc_location(
@@ -30,13 +30,11 @@ impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
 
 #[cfg(test)]
 mod tests {
-    extern crate bitcoin_support;
-
     use super::{Error as ValidationError, *};
-    use bitcoin_support::{BitcoinQuantity, Blocks, Transaction, TxOut};
+    use crate::swap_protocols::rfc003::{state_machine::*, Secret};
+    use bitcoin_support::{self, BitcoinQuantity, Blocks, Transaction, TxOut};
     use hex::FromHex;
     use spectral::prelude::*;
-    use swap_protocols::rfc003::{state_machine::*, Secret};
 
     fn gen_htlc_params(bitcoin_amount: BitcoinQuantity) -> HtlcParams<Bitcoin, BitcoinQuantity> {
         HtlcParams {

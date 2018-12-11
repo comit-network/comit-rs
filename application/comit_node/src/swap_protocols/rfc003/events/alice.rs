@@ -1,16 +1,17 @@
-use comit_client;
-use futures::Future;
-use std::sync::Arc;
-use swap_protocols::rfc003::roles::Alice;
-
-use swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        self,
-        events::{CommunicationEvents, ResponseFuture, StateMachineResponseFuture},
-        ledger::Ledger,
+use crate::{
+    comit_client,
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            self,
+            events::{CommunicationEvents, ResponseFuture, StateMachineResponseFuture},
+            ledger::Ledger,
+            roles::Alice,
+        },
     },
 };
+use futures::Future;
+use std::sync::Arc;
 
 #[allow(missing_debug_implementations)]
 pub struct AliceToBob<C, AL: Ledger, BL: Ledger> {

@@ -1,11 +1,13 @@
-use futures::{stream::Stream, Async};
-use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
-    FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
+use crate::{
+    ledger_query_service::{
+        bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
+        FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
+    },
+    swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
 };
-use reqwest::{async::Client, header::LOCATION, StatusCode, Url};
+use futures::{stream::Stream, Async};
+use reqwest::{header::LOCATION, r#async::Client, StatusCode, Url};
 use serde::Deserialize;
-use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::future::Future;
 
 #[derive(Debug)]
@@ -45,7 +47,7 @@ impl DefaultLedgerQueryServiceApiClient {
         &self,
         create_endpoint: Url,
         query: Q,
-    ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
         debug!("Creating {:?} at {}", query, create_endpoint);
 
         let query_id = self
@@ -106,7 +108,7 @@ impl DefaultLedgerQueryServiceApiClient {
     fn fetch_results<L: Ledger>(
         &self,
         query: &QueryId<L>,
-    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = Vec<L::TxId>, Error = Error> + Send> {
         let url = query.as_ref().clone();
         let transactions = self
             .client
@@ -127,7 +129,7 @@ impl DefaultLedgerQueryServiceApiClient {
     fn fetch_full_results<L: Ledger>(
         &self,
         query: &QueryId<L>,
-    ) -> Box<Future<Item = Vec<L::Transaction>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = Vec<L::Transaction>, Error = Error> + Send> {
         let mut url = query.as_ref().clone();
         url.set_query(Some("expand_results=true"));
 
@@ -150,7 +152,7 @@ impl DefaultLedgerQueryServiceApiClient {
     fn _delete<L: Ledger>(
         &self,
         query: &QueryId<L>,
-    ) -> Box<Future<Item = (), Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = (), Error = Error> + Send> {
         Box::new(
             self.client
                 .delete(query.as_ref().clone())
@@ -167,7 +169,7 @@ impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
     fn create_query(
         &self,
         query: BitcoinQuery,
-    ) -> Box<Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
         let endpoint = match &query {
             BitcoinQuery::Transaction { .. } => {
                 self.create_bitcoin_transaction_query_endpoint.clone()
@@ -182,7 +184,7 @@ impl FetchQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
     fn fetch_query_results(
         &self,
         query: &QueryId<Bitcoin>,
-    ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = Vec<<Bitcoin as Ledger>::TxId>, Error = Error> + Send> {
         self.fetch_results(query)
     }
 }
@@ -191,13 +193,13 @@ impl FetchFullQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
     fn fetch_full_query_results(
         &self,
         query: &QueryId<Bitcoin>,
-    ) -> Box<Future<Item = Vec<<Bitcoin as Ledger>::Transaction>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = Vec<<Bitcoin as Ledger>::Transaction>, Error = Error> + Send> {
         self.fetch_full_results(query)
     }
 }
 
 impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
-    fn delete(&self, query: &QueryId<Bitcoin>) -> Box<Future<Item = (), Error = Error> + Send> {
+    fn delete(&self, query: &QueryId<Bitcoin>) -> Box<dyn Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }
 }
@@ -206,7 +208,7 @@ impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient
     fn create_query(
         &self,
         query: EthereumQuery,
-    ) -> Box<Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
         let endpoint = match &query {
             EthereumQuery::Transaction { .. } => {
                 self.create_ethereum_transaction_query_endpoint.clone()
@@ -221,7 +223,7 @@ impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
     fn fetch_query_results(
         &self,
         query: &QueryId<Ethereum>,
-    ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = Vec<<Ethereum as Ledger>::TxId>, Error = Error> + Send> {
         self.fetch_results(query)
     }
 }
@@ -230,13 +232,16 @@ impl FetchFullQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
     fn fetch_full_query_results(
         &self,
         query: &QueryId<Ethereum>,
-    ) -> Box<Future<Item = Vec<<Ethereum as Ledger>::Transaction>, Error = Error> + Send> {
+    ) -> Box<dyn Future<Item = Vec<<Ethereum as Ledger>::Transaction>, Error = Error> + Send> {
         self.fetch_full_results(query)
     }
 }
 
 impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
-    fn delete(&self, query: &QueryId<Ethereum>) -> Box<Future<Item = (), Error = Error> + Send> {
+    fn delete(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<dyn Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }
 }

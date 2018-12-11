@@ -104,7 +104,7 @@ alias = "lqs-tests-flow"
 [tasks.check-format]
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
-install_crate = { crate_name = "fmt", rustup_component_name = "rustfmt-preview", binary = "rustfmt", test_arg = "--help" }
+install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustfmt-preview", binary = "rustfmt", test_arg = "--help" }
 command = "cargo"
 args = ["fmt", "--", "--check"]
 

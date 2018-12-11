@@ -1,6 +1,6 @@
+use crate::web3::types::{Address, U256};
 use rlp::RlpStream;
 use tiny_keccak;
-use web3::types::{Address, U256};
 
 pub trait CalculateContractAddress {
     fn calculate_contract_address(&self, nonce: &U256) -> Address;
@@ -26,8 +26,8 @@ impl CalculateContractAddress for Address {
 mod tests {
 
     use super::*;
+    use crate::web3::types::Address;
     use std::str::FromStr;
-    use web3::types::Address;
 
     #[test]
     fn given_an_address_and_a_nonce_should_give_contract_address() {

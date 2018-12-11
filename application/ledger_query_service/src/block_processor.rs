@@ -1,5 +1,4 @@
-use query_repository::QueryRepository;
-use query_result_repository::QueryResultRepository;
+use crate::{query_repository::QueryRepository, query_result_repository::QueryResultRepository};
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 pub trait BlockProcessor<B> {
@@ -52,16 +51,19 @@ pub struct PendingTransaction {
     pending_confirmations: u32,
 }
 
+type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
+type ArcQueryResultRepository<Q> = Arc<dyn QueryResultRepository<Q>>;
+
 #[derive(DebugStub)]
 pub struct DefaultBlockProcessor<T, B, TQ, BQ> {
     #[debug_stub = "Queries"]
-    transaction_queries: Arc<QueryRepository<TQ>>,
+    transaction_queries: ArcQueryRepository<TQ>,
     #[debug_stub = "Queries"]
-    block_queries: Arc<QueryRepository<BQ>>,
+    block_queries: ArcQueryRepository<BQ>,
     #[debug_stub = "Results"]
-    transaction_results: Arc<QueryResultRepository<TQ>>,
+    transaction_results: ArcQueryResultRepository<TQ>,
     #[debug_stub = "Results"]
-    block_results: Arc<QueryResultRepository<BQ>>,
+    block_results: ArcQueryResultRepository<BQ>,
     pending_transactions: Vec<PendingTransaction>,
     blockhashes: Vec<String>,
     tx_type: PhantomData<T>,
@@ -198,10 +200,10 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
 
 impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
     pub fn new(
-        transaction_query_repository: Arc<QueryRepository<TQ>>,
-        block_query_repository: Arc<QueryRepository<BQ>>,
-        transaction_query_result_repository: Arc<QueryResultRepository<TQ>>,
-        block_query_result_repository: Arc<QueryResultRepository<BQ>>,
+        transaction_query_repository: Arc<dyn QueryRepository<TQ>>,
+        block_query_repository: Arc<dyn QueryRepository<BQ>>,
+        transaction_query_result_repository: Arc<dyn QueryResultRepository<TQ>>,
+        block_query_result_repository: Arc<dyn QueryResultRepository<BQ>>,
     ) -> Self {
         Self {
             transaction_queries: transaction_query_repository,
@@ -219,8 +221,10 @@ impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use in_memory_query_repository::InMemoryQueryRepository;
-    use in_memory_query_result_repository::InMemoryQueryResultRepository;
+    use crate::{
+        in_memory_query_repository::InMemoryQueryRepository,
+        in_memory_query_result_repository::InMemoryQueryResultRepository,
+    };
 
     #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
     struct GenericTransactionQuery {

@@ -1,8 +1,8 @@
 pub use self::{bitcoin::*, cache::*, client::*, ethereum::*, first_match::*};
+use crate::swap_protocols::ledger::Ledger;
 use reqwest::Url;
 use serde::Serialize;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
-use swap_protocols::ledger::Ledger;
 use tokio::prelude::Future;
 
 mod bitcoin;
@@ -47,26 +47,26 @@ pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + '
 pub trait LedgerQueryServiceApiClient<L: Ledger, Q: Query>:
     'static + Send + Sync + CreateQuery<L, Q> + FetchQueryResults<L>
 {
-    fn delete(&self, query: &QueryId<L>) -> Box<Future<Item = (), Error = Error> + Send>;
+    fn delete(&self, query: &QueryId<L>) -> Box<dyn Future<Item = (), Error = Error> + Send>;
 }
 
 pub trait CreateQuery<L: Ledger, Q: Query>: 'static + Send + Sync + Debug {
     fn create_query(
         &self,
         query: Q,
-    ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
+    ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
 }
 
 pub trait FetchQueryResults<L: Ledger>: 'static + Send + Sync {
     fn fetch_query_results(
         &self,
         query: &QueryId<L>,
-    ) -> Box<Future<Item = Vec<L::TxId>, Error = Error> + Send>;
+    ) -> Box<dyn Future<Item = Vec<L::TxId>, Error = Error> + Send>;
 }
 
 pub trait FetchFullQueryResults<L: Ledger>: 'static + Send + Sync + Debug {
     fn fetch_full_query_results(
         &self,
         query: &QueryId<L>,
-    ) -> Box<Future<Item = Vec<L::Transaction>, Error = Error> + Send>;
+    ) -> Box<dyn Future<Item = Vec<L::Transaction>, Error = Error> + Send>;
 }

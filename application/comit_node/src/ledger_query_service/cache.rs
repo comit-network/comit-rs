@@ -1,23 +1,25 @@
-use item_cache::ItemCache;
-use ledger_query_service::{CreateQuery, Error, Query, QueryId};
+use crate::{
+    item_cache::ItemCache,
+    ledger_query_service::{CreateQuery, Error, Query, QueryId},
+    swap_protocols::ledger::Ledger,
+};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use swap_protocols::ledger::Ledger;
 use tokio::prelude::*;
 
 #[derive(Debug)]
 pub struct QueryIdCache<L: Ledger, Q: Query> {
     query_ids: Mutex<HashMap<Q, ItemCache<QueryId<L>, Error>>>,
-    inner: Arc<CreateQuery<L, Q>>,
+    inner: Arc<dyn CreateQuery<L, Q>>,
 }
 
 impl<L: Ledger, Q: Query> QueryIdCache<L, Q> {
     pub fn wrap<C: CreateQuery<L, Q>>(inner: Arc<C>) -> Self {
         Self {
             query_ids: Mutex::new(HashMap::new()),
-            inner: inner as Arc<CreateQuery<L, Q>>,
+            inner: inner as Arc<dyn CreateQuery<L, Q>>,
         }
     }
 }
@@ -26,7 +28,7 @@ impl<L: Ledger, Q: Query> CreateQuery<L, Q> for QueryIdCache<L, Q> {
     fn create_query(
         &self,
         query: Q,
-    ) -> Box<Future<Item = QueryId<L>, Error = Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send + 'static> {
         let mut query_ids = self.query_ids.lock().unwrap();
 
         let query_id = match query_ids.remove(&query) {
@@ -49,9 +51,9 @@ impl<L: Ledger, Q: Query> CreateQuery<L, Q> for QueryIdCache<L, Q> {
 mod tests {
 
     use super::*;
+    use crate::swap_protocols::ledger::Bitcoin;
     use futures::sync::oneshot::{self, Receiver};
     use std::sync::Arc;
-    use swap_protocols::ledger::Bitcoin;
     use tokio::runtime::Runtime;
 
     #[derive(Default, Debug)]

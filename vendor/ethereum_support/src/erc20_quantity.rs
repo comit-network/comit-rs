@@ -1,7 +1,5 @@
+use crate::{u256_ext::ToBigDecimal, web3::types::Address, U256};
 use std::fmt;
-use u256_ext::ToBigDecimal;
-use web3::types::Address;
-use U256;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity {
@@ -10,7 +8,7 @@ pub struct Erc20Quantity {
 }
 
 impl fmt::Display for Erc20Quantity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         write!(f, "{}", self.quantity.to_bigdec(0))
     }
 }

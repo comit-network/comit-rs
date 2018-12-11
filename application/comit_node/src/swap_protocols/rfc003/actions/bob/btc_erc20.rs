@@ -1,7 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, OutPoint};
-use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
-use swap_protocols::{
+use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::{
@@ -15,6 +12,9 @@ use swap_protocols::{
         state_machine::*,
     },
 };
+use bitcoin_support::{BitcoinQuantity, OutPoint};
+use bitcoin_witness::PrimedInput;
+use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
 
 impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     pub fn deploy_action(&self) -> ethereum::ContractDeploy {

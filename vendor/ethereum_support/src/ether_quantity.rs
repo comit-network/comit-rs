@@ -1,3 +1,7 @@
+use crate::{
+    u256_ext::{FromBigUInt, FromDecimalStr, ToBigDecimal, ToDecimalStr, ToFloat},
+    U256,
+};
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use num::FromPrimitive;
 use serde::{
@@ -5,8 +9,6 @@ use serde::{
     ser::{Serialize, Serializer},
 };
 use std::{f64, fmt, str::FromStr};
-use u256_ext::{FromBigUInt, FromDecimalStr, ToBigDecimal, ToDecimalStr, ToFloat};
-use U256;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct EtherQuantity(U256);
@@ -41,7 +43,7 @@ impl EtherQuantity {
 }
 
 impl fmt::Display for EtherQuantity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let nice_decimals = self.0.to_decimal_str(18);
         write!(f, "{} ETH", nice_decimals)
     }
@@ -65,7 +67,7 @@ impl<'de> Deserialize<'de> for EtherQuantity {
         impl<'vde> de::Visitor<'vde> for Visitor {
             type Value = EtherQuantity;
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 formatter.write_str("A string representing a wei quantity")
             }
 

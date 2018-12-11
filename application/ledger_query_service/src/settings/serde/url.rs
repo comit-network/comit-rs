@@ -10,7 +10,7 @@ where
     impl<'de> de::Visitor<'de> for Visitor {
         type Value = Url;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
             formatter.write_str("an url")
         }
 

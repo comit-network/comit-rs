@@ -1,4 +1,4 @@
-use api::{IntoFrame, ResponseFrameSource};
+use crate::api::{IntoFrame, ResponseFrameSource};
 use futures::{
     future,
     sync::mpsc::{self, UnboundedSender},
@@ -9,10 +9,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+type ResponseSource<Frame> = Arc<Mutex<dyn ResponseFrameSource<Frame>>>;
+
 #[derive(DebugStub)]
 pub struct Client<Frame, Req, Res> {
     #[debug_stub = "ResponseSource"]
-    response_source: Arc<Mutex<ResponseFrameSource<Frame>>>,
+    response_source: ResponseSource<Frame>,
     next_id: u32,
     #[debug_stub = "Sender"]
     sender: UnboundedSender<Frame>,
@@ -29,8 +31,8 @@ pub enum Error<F> {
 impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static>
     Client<Frame, Req, Res>
 {
-    pub fn new(
-        response_source: Arc<Mutex<ResponseFrameSource<Frame>>>,
+    pub fn create(
+        response_source: Arc<Mutex<dyn ResponseFrameSource<Frame>>>,
     ) -> (Self, impl Stream<Item = Frame, Error = ()>) {
         let (sender, receiver) = mpsc::unbounded();
 
@@ -48,7 +50,7 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
     pub fn send_request(
         &mut self,
         request: Req,
-    ) -> Box<Future<Item = Res, Error = Error<Frame>> + Send> {
+    ) -> Box<dyn Future<Item = Res, Error = Error<Frame>> + Send> {
         let (request_frame, response_future) = {
             let mut response_source = self.response_source.lock().unwrap();
 
@@ -74,7 +76,7 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
     pub fn send_frame(
         &mut self,
         frame: Frame,
-    ) -> Box<Future<Item = (), Error = Error<Frame>> + Send> {
+    ) -> Box<dyn Future<Item = (), Error = Error<Frame>> + Send> {
         let send_result = self.sender.unbounded_send(frame);
 
         match send_result {
@@ -88,9 +90,8 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
 mod tests {
 
     use super::*;
-    use api::Status;
+    use crate::{api::Status, json};
     use futures::Async;
-    use json;
     use serde_json;
     use std::{collections::HashMap, time::Instant};
     use tokio::runtime::Runtime;
@@ -115,7 +116,7 @@ mod tests {
         fn on_response_frame(
             &mut self,
             frame_id: u32,
-        ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
             let future = match self.responses.remove(&frame_id) {
                 Some(response) => future::ok(response),
                 None => future::err(()),
@@ -129,7 +130,7 @@ mod tests {
     fn given_a_request_emits_it_on_stream() {
         let response_source = Arc::new(Mutex::new(StaticResponseFrameSource::new()));
 
-        let (mut client, mut receiver) = Client::new(response_source.clone());
+        let (mut client, mut receiver) = Client::create(response_source.clone());
 
         let request = json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null);
 
@@ -157,7 +158,7 @@ mod tests {
     fn resolves_correct_future_for_request() {
         let response_source = Arc::new(Mutex::new(StaticResponseFrameSource::new()));
 
-        let (mut client, mut receiver) = Client::new(response_source.clone());
+        let (mut client, mut receiver) = Client::create(response_source.clone());
 
         let foo_request = json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null);
 
@@ -209,7 +210,7 @@ mod tests {
         fn on_response_frame(
             &mut self,
             frame_id: u32,
-        ) -> Box<Future<Item = json::Frame, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
             self.when = Some(Instant::now());
 
             Box::new(future::ok(
@@ -222,7 +223,7 @@ mod tests {
     fn registers_response_before_sending_request() {
         let response_frame_source = Arc::new(Mutex::new(RememberInvocation::default()));
 
-        let (mut client, requests) = Client::<json::Frame, json::Request, json::Response>::new(
+        let (mut client, requests) = Client::<json::Frame, json::Request, json::Response>::create(
             response_frame_source.clone(),
         );
 

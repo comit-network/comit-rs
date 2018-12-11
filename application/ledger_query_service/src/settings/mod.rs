@@ -40,7 +40,7 @@ pub struct Ethereum {
 }
 
 impl Settings {
-    pub fn new<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
+    pub fn create<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
         let default_config_file = Path::new(&default_config);
@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn can_read_default_config() {
-        let settings = Settings::new("./config/default.toml");
+        let settings = Settings::create("./config/default.toml");
 
         assert_that(&settings).is_ok();
     }

@@ -1,8 +1,8 @@
-use std::fmt::Debug;
-use swap_protocols::{
+use crate::swap_protocols::{
     asset::Asset,
     rfc003::{state_machine::HtlcParams, Ledger},
 };
+use std::fmt::Debug;
 
 #[derive(Debug, PartialEq)]
 pub enum Error<A: Asset> {

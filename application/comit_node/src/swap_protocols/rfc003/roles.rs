@@ -1,20 +1,22 @@
-use comit_client::SwapReject;
+use crate::{
+    comit_client::SwapReject,
+    swap_protocols::{
+        self,
+        asset::Asset,
+        rfc003::{
+            actions::bob::{Accept, Decline},
+            events::ResponseFuture,
+            ledger::Ledger,
+            state_machine::StateMachineResponse,
+            Secret, SecretHash,
+        },
+    },
+};
 use futures::{sync::oneshot, Future};
 use std::{
     fmt::Debug,
     marker::PhantomData,
     sync::{Arc, Mutex},
-};
-use swap_protocols::rfc003::{events::ResponseFuture, state_machine::StateMachineResponse};
-
-use swap_protocols::{
-    self,
-    asset::Asset,
-    rfc003::{
-        actions::bob::{Accept, Decline},
-        ledger::Ledger,
-        Secret, SecretHash,
-    },
 };
 
 pub trait Role: Send + Sync + Debug + Clone + 'static {
@@ -53,13 +55,13 @@ pub trait Role: Send + Sync + Debug + Clone + 'static {
     type Secret: Send + Sync + Clone + Into<SecretHash> + Debug + PartialEq;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Alice<AL, BL, AA, BA> {
     phantom_data: PhantomData<(AL, BL, AA, BA)>,
 }
 
-impl<AL, BL, AA, BA> Alice<AL, BL, AA, BA> {
-    pub fn new() -> Self {
+impl<AL, BL, AA, BA> Default for Alice<AL, BL, AA, BA> {
+    fn default() -> Self {
         Self {
             phantom_data: PhantomData,
         }
@@ -97,7 +99,7 @@ pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Bob<AL, BL, AA, BA> {
-    pub fn new() -> (Self, Box<ResponseFuture<Self>>) {
+    pub fn create() -> (Self, Box<ResponseFuture<Self>>) {
         let (sender, receiver) = oneshot::channel();
         (
             Bob {
@@ -135,13 +137,15 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Role for Bob<AL, BL, AA, BA> 
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use bitcoin_support::BitcoinQuantity;
-    use comit_client;
-    use ethereum_support::EtherQuantity;
-    use swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
-        rfc003::events::{CommunicationEvents, ResponseFuture},
+    use crate::{
+        comit_client,
+        swap_protocols::{
+            ledger::{Bitcoin, Ethereum},
+            rfc003::events::{CommunicationEvents, ResponseFuture},
+        },
     };
+    use bitcoin_support::BitcoinQuantity;
+    use ethereum_support::EtherQuantity;
 
     pub type Alisha = Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
     pub type Bobisha = Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;

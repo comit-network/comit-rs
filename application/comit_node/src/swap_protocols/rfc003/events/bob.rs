@@ -1,10 +1,12 @@
-use comit_client;
-use swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        events::{CommunicationEvents, ResponseFuture},
-        ledger::Ledger,
-        roles::Bob,
+use crate::{
+    comit_client,
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            events::{CommunicationEvents, ResponseFuture},
+            ledger::Ledger,
+            roles::Bob,
+        },
     },
 };
 

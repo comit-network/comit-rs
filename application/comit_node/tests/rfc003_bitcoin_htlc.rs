@@ -1,14 +1,3 @@
-extern crate bitcoin_rpc_client;
-extern crate bitcoin_rpc_test_helpers;
-extern crate bitcoin_support;
-extern crate bitcoin_witness;
-extern crate comit_node;
-extern crate hex;
-extern crate pretty_env_logger;
-extern crate secp256k1_support;
-extern crate tc_bitcoincore_client;
-extern crate testcontainers;
-
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{

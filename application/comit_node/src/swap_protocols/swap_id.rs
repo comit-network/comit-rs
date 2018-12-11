@@ -30,7 +30,7 @@ impl From<SwapId> for Uuid {
 }
 
 impl fmt::Display for SwapId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
     }
 }

@@ -18,7 +18,7 @@ pub const PATH: &str = "swaps";
 
 mod ledger_impls {
     use super::ledger::{Error, FromHttpLedger, HttpLedger, ToHttpLedger};
-    use swap_protocols::ledger::{Bitcoin, Ethereum};
+    use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
 
     impl_http_ledger!(Bitcoin { network });
     impl_http_ledger!(Ethereum);
@@ -59,8 +59,8 @@ mod asset_impls {
 
 mod lock_duration_impls {
     use super::lock_duration::{Error, HttpLockDuration, ToHttpLockDuration};
+    use crate::swap_protocols::rfc003::ethereum::Seconds;
     use bitcoin_support::Blocks;
-    use swap_protocols::rfc003::ethereum::Seconds;
 
     impl_to_http_lock_duration!(Blocks);
     impl_to_http_lock_duration!(Seconds);
@@ -69,11 +69,12 @@ mod lock_duration_impls {
 #[cfg(test)]
 mod tests {
 
+    use crate::{
+        http_api::{asset::ToHttpAsset, ledger::ToHttpLedger},
+        swap_protocols::ledger::{Bitcoin, Ethereum},
+    };
     use bitcoin_support::{BitcoinQuantity, Network};
     use ethereum_support::{Address, Erc20Quantity, EtherQuantity, U256};
-    use http_api::{asset::ToHttpAsset, ledger::ToHttpLedger};
-    use serde_json;
-    use swap_protocols::ledger::{Bitcoin, Ethereum};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {

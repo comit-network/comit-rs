@@ -1,4 +1,4 @@
-use query_repository::{Error, QueryRepository};
+use crate::query_repository::{Error, QueryRepository};
 use std::{collections::HashMap, sync::RwLock};
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl<Q> Default for InMemoryQueryRepository<Q> {
 }
 
 impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepository<T> {
-    fn all(&self) -> Box<Iterator<Item = (u32, T)>> {
+    fn all(&self) -> Box<dyn Iterator<Item = (u32, T)>> {
         let state = self.state.read().unwrap();
 
         Box::new(state.storage.clone().into_iter())

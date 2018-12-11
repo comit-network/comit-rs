@@ -1,5 +1,4 @@
-use serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
-use serde_json;
+use ::serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
 use std::{collections::BTreeMap, fmt};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -105,7 +104,7 @@ pub mod serde {
     where
         D: Deserializer<'de>,
     {
-        use serde::{de::Error, Deserialize};
+        use ::serde::{de::Error, Deserialize};
 
         let header = Header::deserialize(deserializer)?;
 
@@ -116,7 +115,7 @@ pub mod serde {
     where
         S: Serializer,
     {
-        use serde::{ser::Error, Serialize};
+        use ::serde::ser::Error;
 
         let header = value.to_bam_header().map_err(S::Error::custom)?;
 

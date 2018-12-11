@@ -1,8 +1,8 @@
 use futures::Future;
 use std::collections::{HashMap, HashSet};
 
-pub type ResponseFuture<I> = Future<Item = I, Error = ()> + Send + 'static;
-pub type RequestFn<Req, Res> = FnMut(Req) -> Box<ResponseFuture<Res>> + Send + 'static;
+pub type ResponseFuture<I> = dyn Future<Item = I, Error = ()> + Send + 'static;
+pub type RequestFn<Req, Res> = dyn FnMut(Req) -> Box<ResponseFuture<Res>> + Send + 'static;
 
 #[derive(DebugStub)]
 pub struct Config<Req, Res> {

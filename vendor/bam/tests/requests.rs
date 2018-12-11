@@ -1,23 +1,15 @@
-extern crate serde;
 #[macro_use]
 extern crate serde_derive;
-extern crate bam;
-extern crate futures;
-extern crate memsocket;
-extern crate pretty_env_logger;
-extern crate spectral;
-extern crate tokio;
-extern crate tokio_codec;
 #[macro_use]
 extern crate log;
 
 #[macro_use]
 pub mod common;
-use bam::{connection, json};
-use common::{
+use crate::common::{
     setup::{create_server_with, start_server_with},
     *,
 };
+use bam::{connection, json};
 use futures::future::Future;
 use spectral::prelude::*;
 

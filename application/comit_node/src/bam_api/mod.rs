@@ -1,13 +1,16 @@
-use bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
-use swap_protocols::SwapProtocols;
-
-pub mod rfc003;
+use crate::{
+    bam_api::header::{Error, FromBamHeader, Header, ToBamHeader},
+    swap_protocols::SwapProtocols,
+};
 
 pub mod header;
+pub mod rfc003;
 
 mod ledger_impls {
-    use bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
-    use swap_protocols::ledger::{Bitcoin, Ethereum};
+    use crate::{
+        bam_api::header::{Error, FromBamHeader, Header, ToBamHeader},
+        swap_protocols::ledger::{Bitcoin, Ethereum},
+    };
 
     impl FromBamHeader for Bitcoin {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
@@ -41,7 +44,7 @@ mod ledger_impls {
 }
 
 mod asset_impls {
-    use bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
+    use crate::bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
     use bitcoin_support::BitcoinQuantity;
     use ethereum_support::{
         web3::types::U256, Erc20Quantity, EtherQuantity, FromDecimalStr, ToBigInt,
@@ -117,7 +120,7 @@ impl ToBamHeader for SwapProtocols {
 #[cfg(test)]
 mod tests {
 
-    use bam_api::header::{Error, Header, ToBamHeader};
+    use crate::bam_api::header::{Error, Header, ToBamHeader};
     use ethereum_support::{Address, Erc20Quantity, U256};
 
     #[test]

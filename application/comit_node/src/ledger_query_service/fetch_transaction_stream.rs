@@ -1,7 +1,8 @@
-use ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId};
-
+use crate::{
+    ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId},
+    swap_protocols::ledger::Ledger,
+};
 use std::sync::Arc;
-use swap_protocols::ledger::Ledger;
 use tokio::prelude::{stream::iter_ok, *};
 
 pub trait FetchTransactionIdStream<L: Ledger> {
@@ -13,7 +14,7 @@ pub trait FetchTransactionIdStream<L: Ledger> {
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = L::TxId, Error = S::Error> + Send + 'static>;
+    ) -> Box<dyn Stream<Item = L::TxId, Error = S::Error> + Send + 'static>;
 }
 
 pub trait FetchTransactionStream<L: Ledger> {
@@ -25,7 +26,7 @@ pub trait FetchTransactionStream<L: Ledger> {
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = L::Transaction, Error = S::Error> + Send + 'static>;
+    ) -> Box<dyn Stream<Item = L::Transaction, Error = S::Error> + Send + 'static>;
 }
 
 impl<L: Ledger, C> FetchTransactionIdStream<L> for Arc<C>
@@ -40,7 +41,7 @@ where
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = <L as Ledger>::TxId, Error = S::Error> + Send + 'static> {
+    ) -> Box<dyn Stream<Item = <L as Ledger>::TxId, Error = S::Error> + Send + 'static> {
         let mut emitted_transactions = Vec::new();
 
         let inner_self = self.clone();
@@ -68,7 +69,7 @@ where
     }
 }
 
-impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
+impl<L: Ledger> FetchTransactionStream<L> for Arc<dyn FetchFullQueryResults<L>> {
     fn fetch_transaction_stream<
         I,
         E: Send + 'static,
@@ -77,7 +78,7 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
         &self,
         ticker: S,
         query_id: QueryId<L>,
-    ) -> Box<Stream<Item = <L as Ledger>::Transaction, Error = S::Error> + Send + 'static> {
+    ) -> Box<dyn Stream<Item = <L as Ledger>::Transaction, Error = S::Error> + Send + 'static> {
         let mut emitted_transactions = Vec::new();
 
         let inner_self = self.clone();
@@ -108,15 +109,14 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock},
+        swap_protocols::ledger::Bitcoin,
+    };
     use bitcoin_support::TransactionId;
     use futures::sync::mpsc;
-    use ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock};
-    use pretty_env_logger;
     use std::time::{Duration, Instant};
-    use swap_protocols::ledger::Bitcoin;
-    use tokio::{prelude::future::Either, runtime::Runtime};
-    extern crate tokio_timer;
-    use self::tokio_timer::Delay;
+    use tokio::{prelude::future::Either, runtime::Runtime, timer::Delay};
 
     #[test]
     fn should_emit_transactions_as_they_appear_without_waiting_for_the_next_tick() {

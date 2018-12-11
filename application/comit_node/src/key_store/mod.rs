@@ -45,7 +45,7 @@ pub struct KeyStore {
 }
 
 impl KeyStore {
-    pub fn new(master_privkey: ExtendedPrivKey) -> Result<KeyStore, Error> {
+    pub fn create(master_privkey: ExtendedPrivKey) -> Result<KeyStore, Error> {
         // As per bip32 and bitcoind reference implementation
         //
         // We use the following child keys:
@@ -144,7 +144,7 @@ mod tests {
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
                 .parse().unwrap();
 
-        KeyStore::new(master_priv_key).unwrap()
+        KeyStore::create(master_priv_key).unwrap()
     }
 
     #[test]
@@ -193,7 +193,7 @@ mod tests {
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
                 .parse().unwrap();
 
-        let keystore = KeyStore::new(master_priv_key).unwrap();
+        let keystore = KeyStore::create(master_priv_key).unwrap();
 
         let uid0 = Uuid::new_v4();
         let uid1 = Uuid::new_v4();
@@ -211,7 +211,7 @@ mod tests {
             "xprv9s21ZrQH143K457pTbhs1LcmMnc4pCyqNTe9iEyoR8iTZeLtRzL6SpWCzK5iEP7fk72VhqkiNHuKQfqRVHTHBHQjxDDU7kTKHUuQCLNCbYi"
                 .parse().unwrap();
 
-        let keystore = KeyStore::new(master_priv_key).unwrap();
+        let keystore = KeyStore::create(master_priv_key).unwrap();
 
         let uid = Uuid::new_v4();
         let data0 = vec![0u8];
