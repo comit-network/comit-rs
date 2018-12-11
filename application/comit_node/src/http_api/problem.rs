@@ -76,7 +76,7 @@ impl From<metadata_store::Error> for HttpApiProblem {
 }
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(ref err) = rejection.find_cause::<HttpApiProblemStdError>() {
+    if let Some(err) = rejection.find_cause::<HttpApiProblemStdError>() {
         let code = err
             .inner
             .status

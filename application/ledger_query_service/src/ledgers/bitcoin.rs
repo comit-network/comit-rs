@@ -146,8 +146,8 @@ impl ExpandResult for BitcoinBlockQuery {
 impl Query<BitcoinBlock> for BitcoinBlockQuery {
     fn matches(&self, block: &BitcoinBlock) -> QueryMatchResult {
         match self.min_height {
-            Some(ref height) => {
-                if *height <= block.height {
+            Some(height) => {
+                if height <= block.height {
                     QueryMatchResult::yes()
                 } else {
                     QueryMatchResult::no()

@@ -73,7 +73,7 @@ impl Encodable for UnsignedTransaction {
             .append(&self.gas_limit);
 
         match self.to {
-            Some(ref address) => s.append(address),
+            Some(address) => s.append(&address),
             None => s.append(&""),
         };
 
