@@ -25,8 +25,8 @@ impl ToEthereumAddress for PublicKey {
 #[cfg(test)]
 mod test {
 
-    extern crate hex;
     use super::*;
+    use hex;
     use secp256k1_support::KeyPair;
     use std::str::FromStr;
 

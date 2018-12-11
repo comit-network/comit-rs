@@ -1,23 +1,23 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
 
-extern crate bigdecimal;
-extern crate num;
-extern crate regex;
-extern crate rlp;
-extern crate secp256k1_support;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-#[cfg(test)]
-extern crate spectral;
-extern crate tiny_keccak;
-extern crate web3 as web3_crate;
+use bigdecimal;
+use num;
+use regex;
+use rlp;
+use secp256k1_support;
+use serde;
 
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate serde_derive;
 
-pub use crate::web3_crate::types::*;
+#[cfg(test)]
+use spectral;
+use tiny_keccak;
+
+pub use ::web3::types::*;
 
 mod contract_address;
 mod erc20_quantity;
@@ -26,19 +26,18 @@ mod key;
 mod u256_ext;
 
 pub use crate::{contract_address::*, erc20_quantity::*, ether_quantity::*, key::*, u256_ext::*};
-
-pub use crate::web3_crate::futures::Future;
+pub use ::web3::futures::Future;
 
 pub mod web3 {
-    pub use crate::web3_crate::{
+    pub use ::web3::{
         api,
         error::{Error, ErrorKind},
         futures, types,
     };
 
-    pub use crate::web3_crate::Web3;
+    pub use ::web3::Web3;
 
     pub mod transports {
-        pub use crate::web3_crate::transports::{EventLoopHandle, Http};
+        pub use ::web3::transports::{EventLoopHandle, Http};
     }
 }
