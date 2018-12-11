@@ -15,3 +15,6 @@ pub use self::{
 pub enum SwapProtocols {
     Rfc003,
 }
+
+mod swap_id;
+pub use self::swap_id::*;

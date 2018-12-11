@@ -2,7 +2,7 @@ use std::{fmt, str::FromStr};
 use uuid::{ParseError, Uuid};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct SwapId(Uuid);
+pub struct SwapId(pub Uuid);
 
 impl Default for SwapId {
     fn default() -> Self {

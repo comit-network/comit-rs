@@ -2,7 +2,6 @@ use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Quantity, EtherQuantity};
 use http_api::{problem, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
-use key_store::KeyStore;
 use secp256k1_support;
 use std::{str::FromStr, sync::Arc};
 use swap_protocols::{
@@ -14,11 +13,10 @@ use swap_protocols::{
         roles::{Alice, Bob},
         state_machine::StateMachineResponse,
         state_store::StateStore,
-        Ledger,
+        Ledger, SecretSource,
     },
-    AssetKind, LedgerKind, MetadataStore, RoleKind,
+    AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
 };
-use swaps::common::SwapId;
 use warp::{self, Rejection, Reply};
 
 #[derive(Clone, Copy, Debug)]
@@ -43,7 +41,7 @@ trait ExecuteAccept<AL: Ledger, BL: Ledger> {
     fn execute(
         &self,
         body: AcceptSwapRequestHttpBody<AL, BL>,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
         id: SwapId,
     ) -> Result<(), HttpApiProblem>;
 }
@@ -56,11 +54,13 @@ where
     fn execute(
         &self,
         body: AcceptSwapRequestHttpBody<AL, BL>,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
         id: SwapId,
     ) -> Result<(), HttpApiProblem> {
         self.accept(StateMachineResponse::from_accept_swap_request_http_body(
-            body, id, key_store,
+            body,
+            id,
+            secret_source,
         )?)
         .map_err(|_| problem::action_already_taken())
     }
@@ -73,7 +73,7 @@ where
     fn from_accept_swap_request_http_body(
         body: AcceptSwapRequestHttpBody<AL, BL>,
         id: SwapId,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
     ) -> Result<Self, HttpApiProblem>;
 }
 
@@ -87,7 +87,7 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
     fn from_accept_swap_request_http_body(
         body: AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
         id: SwapId,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
     ) -> Result<Self, HttpApiProblem> {
         match body {
             AcceptSwapRequestHttpBody::OnlyRedeem { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The redeem identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
@@ -95,7 +95,7 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
             AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
                 beta_ledger_refund_identity,
                 beta_ledger_lock_duration,
-                alpha_ledger_redeem_identity: key_store.get_transient_keypair(&id.into(), b"REDEEM"),
+                alpha_ledger_redeem_identity: secret_source.new_secp256k1_redeem(id),
             }),
         }
     }
@@ -105,7 +105,7 @@ impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
     fn execute(
         &self,
         _body: AcceptSwapRequestHttpBody<AL, BL>,
-        _key_store: &KeyStore,
+        _secret_source: &SecretSource,
         _id: SwapId,
     ) -> Result<(), HttpApiProblem> {
         unreachable!("FIXIME: Alice will never return this action so we shouldn't have to deal with this case")
@@ -345,7 +345,7 @@ enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
 pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    key_store: Arc<KeyStore>,
+    secret_source: Arc<SecretSource>,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -353,7 +353,7 @@ pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     handle_post(
         metadata_store.as_ref(),
         state_store.as_ref(),
-        key_store.as_ref(),
+        secret_source.as_ref(),
         id,
         action,
         body,
@@ -367,7 +367,7 @@ pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: &T,
     state_store: &S,
-    key_store: &KeyStore,
+    secret_source: &SecretSource,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -407,7 +407,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             })?
                     };
 
-                    accept_action.execute(accept_body, key_store, id)
+                    accept_action.execute(accept_body, secret_source, id)
                 }),
             PostAction::Decline => Err(problem::not_yet_implemented("Declining a swap")),
         })
