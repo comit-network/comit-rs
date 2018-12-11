@@ -92,7 +92,6 @@ mod tests {
     use super::*;
     use crate::{api::Status, json};
     use futures::Async;
-    use serde_json;
     use std::{collections::HashMap, time::Instant};
     use tokio::runtime::Runtime;
 

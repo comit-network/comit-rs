@@ -1,5 +1,4 @@
 use crypto::{digest::Digest, sha2::Sha256};
-use hex_serde;
 use std::fmt;
 
 pub const SEED_LENGTH: usize = 32;

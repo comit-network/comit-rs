@@ -15,7 +15,6 @@ use futures::{
     future::Future,
     stream::{self, Stream},
 };
-use hex;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]

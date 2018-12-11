@@ -156,7 +156,6 @@ fn create_htlc(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use hex;
 
     // Secret: 12345678901234567890123456789012
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c

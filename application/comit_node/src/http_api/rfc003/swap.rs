@@ -380,7 +380,6 @@ fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 mod tests {
 
     use super::*;
-    use serde_json;
     use spectral::prelude::*;
 
     #[test]

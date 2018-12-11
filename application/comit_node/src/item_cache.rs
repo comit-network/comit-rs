@@ -107,7 +107,6 @@ impl<T: Clone + Debug + Send + 'static, E: Clone + Debug + Send + 'static> ItemC
 mod tests {
 
     use super::*;
-    use futures;
 
     #[test]
     fn polling_sender_of_oneshot_twice_results_in_error() {

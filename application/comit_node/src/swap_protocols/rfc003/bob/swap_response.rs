@@ -2,7 +2,6 @@ use crate::{
     comit_client::SwapReject,
     swap_protocols::rfc003::{ethereum::Seconds, state_machine::StateMachineResponse},
 };
-use ethereum_support;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapResponseKind {

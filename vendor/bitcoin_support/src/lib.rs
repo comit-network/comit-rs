@@ -24,7 +24,6 @@ pub use bitcoin::{
     Address,
 };
 use bitcoin_bech32;
-use hex;
 
 pub use crate::{blocks::*, mined_block::*, pubkey::*, transaction::*, weight::*};
 pub use bitcoin_quantity::*;

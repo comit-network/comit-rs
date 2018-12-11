@@ -4,7 +4,6 @@ use crate::{
     query_result_repository::{QueryResult, QueryResultRepository},
     routes, web3,
 };
-use bitcoin_rpc_client;
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use url::Url;

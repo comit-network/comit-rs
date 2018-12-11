@@ -20,8 +20,6 @@ impl Query for BitcoinQuery {}
 mod tests {
     use super::*;
     use bitcoin_support::{Address, OutPoint, Sha256dHash};
-    use hex;
-    use serde_json;
     use std::str::FromStr;
 
     #[test]

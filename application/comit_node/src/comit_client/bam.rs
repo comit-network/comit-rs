@@ -7,7 +7,6 @@ use crate::{
 };
 use bam::{self, config::Config, connection::Connection, json, Status};
 use futures::Future;
-use serde_json;
 use std::{
     collections::HashMap,
     net::SocketAddr,

@@ -3,7 +3,6 @@ mod serde;
 use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
 use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
-use url;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {

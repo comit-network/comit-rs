@@ -520,7 +520,6 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_urlencoded;
 
     #[test]
     fn given_no_query_parameters_deserialize_to_none() {
