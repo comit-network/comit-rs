@@ -26,7 +26,7 @@ const bob = test_lib.comit_conf("bob", {});
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
 describe("RFC003 HTTP API", () => {
-    let swap_url;
+
     it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
         await chai
             .request(alice.comit_node_url())
@@ -57,6 +57,46 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
+    it("[Alice] Returns 400 swap-not-supported for an unsupported combination of parameters", async () => {
+        await chai.request(alice.comit_node_url())
+            .post('/swaps/rfc003')
+            .send({
+                "alpha_ledger": {
+                    "name": "Thomas' wallet",
+                },
+                "beta_ledger": {
+                    "name": "Higher-Dimension" // This is the coffee place downstairs
+                },
+                "alpha_asset": {
+                    "name": "AUD",
+                    "quantity": "3.5"
+                },
+                "beta_asset": {
+                    "name": "Espresso",
+                    "double-shot": true
+                },
+                "alpha_ledger_refund_identity": "",
+                "beta_ledger_redeem_identity": "",
+                "alpha_ledger_lock_duration": 0
+            }).then((res) => {
+                res.should.have.status(400);
+                res.body.title.should.equal("swap-not-supported");
+            });
+    });
+
+
+    it("[Alice] Returns 400 bad request for malformed requests", async () => {
+        await chai.request(alice.comit_node_url())
+            .post('/swaps/rfc003')
+            .send({
+                "garbage": true
+            }).then((res) => {
+                res.should.have.status(400);
+                res.body.title.should.equal("Bad Request");
+            });
+    });
+
+    let swap_url_1;
     it("[Alice] Should be able to make first swap request via HTTP api", async () => {
         await chai
             .request(alice.comit_node_url())
@@ -86,52 +126,48 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(201);
                 swap_location = res.headers.location;
                 swap_location.should.be.a("string");
-                swap_url = swap_location;
+                swap_url_1 = swap_location;
             });
     });
 
-    it("[Alice] Returns 400 swap-not-supported for an unsupported combination of parameters", async () => {
-        await chai.request(alice.comit_node_url())
-            .post('/swaps/rfc003')
+    let swap_url_2;
+    it("[Alice] Should be able to make second swap request via HTTP api", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .post("/swaps/rfc003")
             .send({
-                "alpha_ledger": {
-                    "name": "Thomas' wallet",
+                alpha_ledger: {
+                    name: alpha_ledger_name,
+                    network: alpha_ledger_network
                 },
-                "beta_ledger": {
-                    "name": "Higher-Dimension" // This is the coffee place downstairs
+                beta_ledger: {
+                    name: beta_ledger_name
                 },
-                "alpha_asset": {
-                    "name": "AUD",
-                    "quantity": "3.5"
+                alpha_asset: {
+                    name: alpha_asset_name,
+                    quantity: alpha_asset_quantity
                 },
-                "beta_asset": {
-                    "name": "Espresso",
-                    "double-shot": true
+                beta_asset: {
+                    name: beta_asset_name,
+                    quantity: beta_asset_quantity
                 },
-                "alpha_ledger_refund_identity": "",
-                "beta_ledger_redeem_identity": "",
-                "alpha_ledger_lock_duration": 0
-            }).then((res) => {
-                res.should.have.status(400);
-                res.body.title.should.equal("swap-not-supported");
-            });
-    });
-
-    it("[Alice] Returns 400 bad request for malformed requests", async () => {
-        await chai.request(alice.comit_node_url())
-            .post('/swaps/rfc003')
-            .send({
-                "garbage": true
-            }).then((res) => {
-                res.should.have.status(400);
-                res.body.title.should.equal("Bad Request");
+                alpha_ledger_refund_identity: null,
+                beta_ledger_redeem_identity: alice_final_address,
+                alpha_ledger_lock_duration: 144
+            })
+            .then(res => {
+                res.error.should.equal(false);
+                res.should.have.status(201);
+                swap_location = res.headers.location;
+                swap_location.should.be.a("string");
+                swap_url_2 = swap_location;
             });
     });
 
     it("[Alice] Is able to GET the swap after POSTing it", async () => {
         await chai
             .request(alice.comit_node_url())
-            .get(swap_url)
+            .get(swap_url_1)
             .then(res => {
                 res.should.have.status(200);
 
@@ -156,7 +192,7 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
-    it("[Alice] Shows the swap in GET /swaps", async () => {
+    it("[Alice] Shows the swaps in GET /swaps", async () => {
         await chai
             .request(alice.comit_node_url())
             .get("/swaps")
@@ -164,25 +200,34 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(200);
                 let embedded = res.body._embedded;
                 embedded.should.be.a("object");
-                let swap = embedded.swaps[0];
-                swap.protocol.should.equal("rfc003");
-                swap.state.should.equal("Start");
-                let links = swap._links;
-                links.self.href.should.equal(swap_url);
+                embedded.swaps.should.have.lengthOf(2);
+                let swaps = embedded.swaps;
+                for (swap of swaps) {
+                    swap.protocol.should.equal("rfc003");
+                    swap.state.should.equal("Start");
+                    let links = swap._links;
+                    links.self.href.should.be.oneOf([swap_url_1, swap_url_2]);
+                }
             });
     });
 
     let swap_link_href;
-    it("[Bob] Shows the Swap as Start in /swaps", async () => {
+    it("[Bob] Shows the swaps as Start in /swaps", async () => {
         let res = await chai.request(bob.comit_node_url()).get("/swaps");
-
         let embedded = res.body._embedded;
-        let swap_embedded = embedded.swaps[0];
-        swap_embedded.protocol.should.equal("rfc003");
-        swap_embedded.state.should.equal("Start");
-        let swap_link = swap_embedded._links;
+        embedded.swaps.should.have.lengthOf(2);
+        let swaps = embedded.swaps;
+
+        for (let swap of swaps) {
+            swap.protocol.should.equal("rfc003");
+            swap.state.should.equal("Start");
+        }
+
+
+        let swap = swaps[0];
+        let swap_link = swap._links.self;
         swap_link.should.be.a("object");
-        swap_link_href = swap_link.self.href;
+        swap_link_href = swap_link.href;
         swap_link_href.should.be.a("string");
     });
 
