@@ -50,7 +50,7 @@ pub struct PollParameters {
 }
 
 impl ComitNodeSettings {
-    pub fn new<D: AsRef<OsStr>, R: AsRef<OsStr>>(
+    pub fn create<D: AsRef<OsStr>, R: AsRef<OsStr>>(
         default_config: D,
         run_mode_config: R,
     ) -> Result<Self, ConfigError> {
@@ -86,7 +86,7 @@ mod tests {
     use spectral::prelude::*;
 
     fn comit_settings() -> Result<ComitNodeSettings, ConfigError> {
-        ComitNodeSettings::new("./config/default.toml", "./config/development.toml")
+        ComitNodeSettings::create("./config/default.toml", "./config/development.toml")
     }
 
     #[test]

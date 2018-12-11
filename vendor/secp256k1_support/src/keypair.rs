@@ -85,8 +85,7 @@ impl From<KeyPair> for (SecretKey, PublicKey) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use hex;
-    use hex::FromHex;
+    use hex::{self, FromHex};
 
     #[test]
     fn correct_keypair_from_secret_key_slice() {

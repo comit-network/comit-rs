@@ -31,7 +31,7 @@ pub enum Error<F> {
 impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static>
     Client<Frame, Req, Res>
 {
-    pub fn new(
+    pub fn create(
         response_source: Arc<Mutex<dyn ResponseFrameSource<Frame>>>,
     ) -> (Self, impl Stream<Item = Frame, Error = ()>) {
         let (sender, receiver) = mpsc::unbounded();
@@ -130,7 +130,7 @@ mod tests {
     fn given_a_request_emits_it_on_stream() {
         let response_source = Arc::new(Mutex::new(StaticResponseFrameSource::new()));
 
-        let (mut client, mut receiver) = Client::new(response_source.clone());
+        let (mut client, mut receiver) = Client::create(response_source.clone());
 
         let request = json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null);
 
@@ -158,7 +158,7 @@ mod tests {
     fn resolves_correct_future_for_request() {
         let response_source = Arc::new(Mutex::new(StaticResponseFrameSource::new()));
 
-        let (mut client, mut receiver) = Client::new(response_source.clone());
+        let (mut client, mut receiver) = Client::create(response_source.clone());
 
         let foo_request = json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null);
 
@@ -223,7 +223,7 @@ mod tests {
     fn registers_response_before_sending_request() {
         let response_frame_source = Arc::new(Mutex::new(RememberInvocation::default()));
 
-        let (mut client, requests) = Client::<json::Frame, json::Request, json::Response>::new(
+        let (mut client, requests) = Client::<json::Frame, json::Request, json::Response>::create(
             response_frame_source.clone(),
         );
 

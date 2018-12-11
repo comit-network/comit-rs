@@ -122,7 +122,7 @@ mod tests {
 
     #[test]
     fn given_state_instance_when_calling_actions_should_not_need_to_specify_type_arguments() {
-        let (bobisha, _) = Bobisha::new();
+        let (bobisha, _) = Bobisha::create();
         let swap_state = SwapStates::from(Start::<Bobisha> {
             alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
                 "875638cac0b0ae9f826575e190f2788918c354c2",

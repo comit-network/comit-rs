@@ -84,7 +84,7 @@ fn load_settings() -> ComitNodeSettings {
     let default_config = format!("{}/{}", comit_config_path.trim(), "default");
     let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
 
-    let settings = ComitNodeSettings::new(default_config, run_mode_config);
+    let settings = ComitNodeSettings::create(default_config, run_mode_config);
     settings.unwrap()
 }
 

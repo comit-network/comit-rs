@@ -87,7 +87,7 @@ impl<
                             beta_asset: request.beta_asset,
                             alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
-                            role: Alice::new(),
+                            role: Alice::default(),
                         };
 
                         let comit_client = match client_factory.client_for(comit_node_addr) {
@@ -139,7 +139,7 @@ impl<
                             beta_asset: request.beta_asset,
                             alpha_ledger_lock_duration: request.alpha_ledger_lock_duration,
                             secret,
-                            role: Alice::new(),
+                            role: Alice::default(),
                         };
 
                         let comit_client = match client_factory.client_for(comit_node_addr) {

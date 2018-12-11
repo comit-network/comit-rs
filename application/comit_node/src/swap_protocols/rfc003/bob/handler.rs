@@ -66,7 +66,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                         {
                             let request = request.clone();
-                            let (bob, response_future) = Bob::new();
+                            let (bob, response_future) = Bob::create();
 
                             let response_future = response_future.inspect(|response| {
                                 response_sender
@@ -122,7 +122,7 @@ impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {
 
                         {
                             let request = request.clone();
-                            let (bob, response_future) = Bob::new();
+                            let (bob, response_future) = Bob::create();
 
                             let response_future = response_future.inspect(|response| {
                                 response_sender

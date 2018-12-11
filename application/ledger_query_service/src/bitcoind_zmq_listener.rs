@@ -17,7 +17,7 @@ pub struct BitcoindZmqListener<P> {
 }
 
 impl<P: BlockProcessor<MinedBlock>> BitcoindZmqListener<P> {
-    pub fn new(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
+    pub fn create(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
         let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
 

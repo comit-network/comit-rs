@@ -11,8 +11,7 @@ use comit_node_client::api_client::{
 use ethereum_support;
 use reqwest;
 use std::{collections::HashMap, env::var, str::FromStr, string::String};
-use structopt;
-use structopt::StructOpt;
+use structopt::{self, StructOpt};
 
 #[derive(Debug, StructOpt)]
 #[structopt(name = "Comit Node Client", about = "CLI for the COMIT Node.")]

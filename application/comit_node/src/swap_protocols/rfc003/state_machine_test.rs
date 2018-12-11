@@ -95,7 +95,7 @@ fn gen_start_state() -> Start<Alisha> {
         beta_asset: EtherQuantity::from_eth(10.0),
         alpha_ledger_lock_duration: Blocks::from(144),
         secret: Secret::from(*b"hello world, you are beautiful!!"),
-        role: Alisha::new(),
+        role: Alisha::default(),
     }
 }
 
@@ -233,7 +233,7 @@ fn alpha_refunded() {
 
 #[test]
 fn bob_transition_alpha_refunded() {
-    let (bobisha, _) = Bobisha::new();
+    let (bobisha, _) = Bobisha::create();
     let start = Start {
         alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
             "d38e554430c4035f2877a579a07a99886153f071",

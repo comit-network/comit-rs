@@ -8,8 +8,10 @@ pub mod rfc003;
 pub mod header;
 
 mod ledger_impls {
-    use crate::bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
-    use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
+    use crate::{
+        bam_api::header::{Error, FromBamHeader, Header, ToBamHeader},
+        swap_protocols::ledger::{Bitcoin, Ethereum},
+    };
 
     impl FromBamHeader for Bitcoin {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {

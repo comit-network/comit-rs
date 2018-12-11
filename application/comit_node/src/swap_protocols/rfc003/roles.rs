@@ -55,13 +55,13 @@ pub trait Role: Send + Sync + Debug + Clone + 'static {
     type Secret: Send + Sync + Clone + Into<SecretHash> + Debug + PartialEq;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Alice<AL, BL, AA, BA> {
     phantom_data: PhantomData<(AL, BL, AA, BA)>,
 }
 
-impl<AL, BL, AA, BA> Alice<AL, BL, AA, BA> {
-    pub fn new() -> Self {
+impl<AL, BL, AA, BA> Default for Alice<AL, BL, AA, BA> {
+    fn default() -> Self {
         Self {
             phantom_data: PhantomData,
         }
@@ -99,7 +99,7 @@ pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Bob<AL, BL, AA, BA> {
-    pub fn new() -> (Self, Box<ResponseFuture<Self>>) {
+    pub fn create() -> (Self, Box<ResponseFuture<Self>>) {
         let (sender, receiver) = oneshot::channel();
         (
             Bob {

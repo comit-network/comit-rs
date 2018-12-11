@@ -49,8 +49,8 @@ impl<
     ) -> (ConnectionLoop<CodecErr>, Client<Frame, Req, Res>) {
         let (sink, stream) = self.codec.framed(self.socket).split();
 
-        let (mut frame_handler, response_source) = FH::new(self.config);
-        let (client, request_stream) = Client::new(response_source);
+        let (mut frame_handler, response_source) = FH::create(self.config);
+        let (client, request_stream) = Client::create(response_source);
 
         let connection_loop = stream
             .map_err(ClosedReason::CodecError)

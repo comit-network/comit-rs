@@ -89,7 +89,7 @@ impl From<HeaderErrors> for RequestError {
 }
 
 impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandler {
-    fn new(
+    fn create(
         config: Config<json::Request, json::Response>,
     ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Frame>>>) {
         let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));

@@ -94,7 +94,7 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger_lock_duration: Blocks::from(144),
             secret: Secret::from(*b"hello world, you are beautiful!!"),
-            role: Alisha::new(),
+            role: Alisha::default(),
         };
 
         let state = SwapStates::from(start_state.clone());

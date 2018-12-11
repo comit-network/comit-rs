@@ -21,7 +21,7 @@ pub struct EthereumWeb3BlockPoller<P> {
 }
 
 impl<P: BlockProcessor<Block<EthereumTransaction>>> EthereumWeb3BlockPoller<P> {
-    pub fn new(
+    pub fn create(
         client: Arc<Web3<Http>>,
         polling_wait_time: Duration,
         processor: P,

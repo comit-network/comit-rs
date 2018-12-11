@@ -18,8 +18,7 @@ use ledger_query_service::{
 };
 use pretty_env_logger;
 use std::{env::var, sync::Arc, thread};
-use warp;
-use warp::{filters::BoxedFilter, Filter, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
@@ -65,7 +64,7 @@ fn create_bitcoin_routes(
     );
     thread::spawn(move || {
         let bitcoind_zmq_listener =
-            BitcoindZmqListener::new(settings.zmq_endpoint.as_str(), transaction_processor);
+            BitcoindZmqListener::create(settings.zmq_endpoint.as_str(), transaction_processor);
 
         match bitcoind_zmq_listener {
             Ok(mut listener) => listener.start(),
@@ -120,7 +119,7 @@ fn create_ethereum_routes(
     let poller_client = Arc::clone(&client);
 
     thread::spawn(move || {
-        let web3_poller = EthereumWeb3BlockPoller::new(
+        let web3_poller = EthereumWeb3BlockPoller::create(
             poller_client,
             settings.poll_interval_secs,
             transaction_processor,
@@ -158,6 +157,6 @@ fn load_settings() -> Settings {
     info!("Using settings located in {}", config_path);
     let default_config = format!("{}/{}", config_path.trim(), "default");
 
-    let settings = Settings::new(default_config);
+    let settings = Settings::create(default_config);
     settings.unwrap()
 }

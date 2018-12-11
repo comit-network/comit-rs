@@ -35,7 +35,7 @@ pub trait FrameHandler<Frame, Req, Res>
 where
     Self: Sized,
 {
-    fn new(config: Config<Req, Res>) -> (Self, Arc<Mutex<dyn ResponseFrameSource<Frame>>>);
+    fn create(config: Config<Req, Res>) -> (Self, Arc<Mutex<dyn ResponseFrameSource<Frame>>>);
     fn handle(
         &mut self,
         frame: Frame,
