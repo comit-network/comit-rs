@@ -1,7 +1,6 @@
 set -e;
 export PROJECT_ROOT=$(git rev-parse --show-toplevel)
 source "$PROJECT_ROOT/api_tests/harness-lib.sh"
-export RUST_LOG=debug;
 
 GIVEN_TEST_PATH="$1";
 

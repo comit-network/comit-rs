@@ -33,11 +33,16 @@ impl ComitServer {
 
             let connection = Connection::new(config, codec, connection);
             let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
-            tokio::spawn(close_future.map_err(move |e| {
-                error!(
-                    "Unexpected error in connection with {:?}: {:?}",
-                    peer_addr, e
-                );
+
+            tokio::spawn(close_future.then(move |result| {
+                match result {
+                    Ok(()) => info!("Connection with {:?} closed", peer_addr),
+                    Err(e) => error!(
+                        "Unexpected error in connection with {:?}: {:?}",
+                        peer_addr, e
+                    ),
+                }
+                Ok(())
             }));
             Ok(())
         })
