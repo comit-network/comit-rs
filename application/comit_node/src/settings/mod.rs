@@ -1,8 +1,7 @@
 mod serde;
 
 use crate::seed::Seed;
-use crate::serde::Deserialize;
-use bitcoin_support;
+use ::serde::Deserialize;
 use config::{Config, ConfigError, File};
 use std::{
     ffi::OsStr,
@@ -10,7 +9,6 @@ use std::{
     path::Path,
     time::Duration,
 };
-use url;
 
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {

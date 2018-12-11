@@ -1,5 +1,7 @@
-use crate::seed::Seed;
-use crate::swap_protocols::{rfc003::Secret, SwapId};
+use crate::{
+    seed::Seed,
+    swap_protocols::{rfc003::Secret, SwapId},
+};
 use secp256k1_support::KeyPair;
 
 pub trait SecretSource: Send + Sync {

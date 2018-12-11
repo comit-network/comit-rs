@@ -1,6 +1,7 @@
-use crate::ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId};
-
-use crate::swap_protocols::ledger::Ledger;
+use crate::{
+    ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId},
+    swap_protocols::ledger::Ledger,
+};
 use std::sync::Arc;
 use tokio::prelude::{stream::iter_ok, *};
 

@@ -1,6 +1,5 @@
 use crate::json;
 use bytes::BytesMut;
-use serde_json;
 use std::io;
 use tokio_codec::{Decoder, Encoder};
 

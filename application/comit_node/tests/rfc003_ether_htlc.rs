@@ -6,10 +6,6 @@ extern crate log;
 #[macro_use]
 extern crate lazy_static;
 
-use hex;
-use pretty_env_logger;
-use tc_web3_client;
-
 pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;

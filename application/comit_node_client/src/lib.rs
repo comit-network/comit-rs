@@ -4,6 +4,4 @@
 #[macro_use]
 extern crate serde_derive;
 
-use reqwest;
-
 pub mod api_client;

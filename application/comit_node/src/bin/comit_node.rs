@@ -4,9 +4,6 @@
 #[macro_use]
 extern crate log;
 
-use tokio;
-use warp;
-
 use comit_node::{
     comit_client,
     comit_server::ComitServer,

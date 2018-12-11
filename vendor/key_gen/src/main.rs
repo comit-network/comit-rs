@@ -1,7 +1,3 @@
-use bitcoin_support;
-
-use hex;
-
 use bitcoin_support::{
     ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint, IntoP2wpkhAddress,
     Network, PrivateKey, PubkeyHash,

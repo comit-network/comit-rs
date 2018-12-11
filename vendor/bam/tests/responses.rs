@@ -1,13 +1,7 @@
-use serde_json;
 #[macro_use]
 extern crate serde_derive;
-
 #[macro_use]
 extern crate log;
-
-use memsocket;
-use pretty_env_logger;
-
 #[macro_use]
 pub mod common;
 

@@ -4,7 +4,6 @@
 #[macro_use]
 extern crate log;
 
-use bitcoin_rpc_client;
 use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
@@ -16,7 +15,6 @@ use ledger_query_service::{
     BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
     InMemoryQueryResultRepository, RouteFactory,
 };
-use pretty_env_logger;
 use std::{env::var, sync::Arc, thread};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 

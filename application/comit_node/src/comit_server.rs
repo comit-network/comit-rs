@@ -1,5 +1,7 @@
-use crate::bam_api::rfc003::swap_config;
-use crate::swap_protocols::{rfc003, SwapId};
+use crate::{
+    bam_api::rfc003::swap_config,
+    swap_protocols::{rfc003, SwapId},
+};
 use bam::{connection::Connection, json};
 use futures::{
     sync::{mpsc, oneshot},

@@ -8,12 +8,6 @@ extern crate serde_derive;
 #[macro_use]
 extern crate log;
 
-use bitcoin_rpc_client;
-use hex;
-use url;
-use warp;
-use zmq_rs as zmq;
-
 mod bitcoind_zmq_listener;
 mod block_processor;
 mod ethereum_web3_block_poller;

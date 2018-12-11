@@ -1,7 +1,3 @@
-use pretty_env_logger;
-
-use tc_bitcoincore_client;
-
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{

@@ -1,5 +1,4 @@
 use crypto::{digest::Digest, sha2::Sha256};
-use hex;
 use rand::{Rng, ThreadRng};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -210,8 +209,6 @@ impl RandomnessSource for ThreadRng {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand;
-    use serde_json;
     use std::vec::Vec;
 
     #[test]

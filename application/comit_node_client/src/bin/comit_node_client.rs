@@ -4,12 +4,9 @@
 #[macro_use]
 extern crate maplit;
 
-use bitcoin_support;
 use comit_node_client::api_client::{
     ApiClient, Asset, ComitNodeApiUrl, DefaultApiClient, Ledger, SwapRequest, SwapStatus, TradeId,
 };
-use ethereum_support;
-use reqwest;
 use std::{collections::HashMap, env::var, str::FromStr, string::String};
 use structopt::{self, StructOpt};
 

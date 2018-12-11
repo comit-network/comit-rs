@@ -1,10 +1,5 @@
 #[macro_use]
 extern crate serde_derive;
-use bam;
-
-use memsocket;
-use pretty_env_logger;
-
 #[macro_use]
 extern crate log;
 

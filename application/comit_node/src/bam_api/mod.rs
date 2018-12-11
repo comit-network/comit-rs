@@ -3,9 +3,8 @@ use crate::{
     swap_protocols::SwapProtocols,
 };
 
-pub mod rfc003;
-
 pub mod header;
+pub mod rfc003;
 
 mod ledger_impls {
     use crate::{

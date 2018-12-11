@@ -21,26 +21,6 @@ extern crate maplit;
 extern crate frunk;
 #[macro_use]
 extern crate binary_macros;
-extern crate hex_serde;
-#[cfg(test)]
-extern crate pretty_env_logger;
-#[cfg(test)]
-extern crate serde_urlencoded;
-
-use bitcoin_rpc_client;
-use bitcoin_support;
-use chrono;
-use ethereum_support;
-use frunk_core;
-use hex;
-use reqwest;
-use rustc_hex;
-use secp256k1_support;
-use serde;
-use serde_json;
-use tokio;
-use url;
-use warp;
 
 pub mod bam_api;
 pub mod comit_client;
