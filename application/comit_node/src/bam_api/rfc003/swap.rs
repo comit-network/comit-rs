@@ -13,9 +13,8 @@ use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{self, state_machine::StateMachineResponse, Ledger},
-    SwapProtocols,
+    SwapId, SwapProtocols,
 };
-use swaps::common::SwapId;
 
 pub fn swap_config(
     sender: mpsc::UnboundedSender<(

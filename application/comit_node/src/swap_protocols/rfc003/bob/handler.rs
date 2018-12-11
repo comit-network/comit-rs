@@ -3,8 +3,8 @@ use futures::{
     sync::{mpsc::UnboundedReceiver, oneshot},
     Future,
 };
-use key_store::KeyStore;
 use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
+use seed::Seed;
 use std::{sync::Arc, time::Duration};
 use swap_protocols::{
     asset::Asset,
@@ -18,8 +18,8 @@ use swap_protocols::{
         state_store::StateStore,
         Ledger,
     },
+    SwapId,
 };
-use swaps::common::SwapId;
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<MetadataStore, StateStore> {
@@ -34,7 +34,7 @@ pub struct SwapRequestHandler<MetadataStore, StateStore> {
     pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     pub bitcoin_poll_interval: Duration,
     pub ethereum_poll_interval: Duration,
-    pub key_store: Arc<KeyStore>,
+    pub seed: Seed,
 }
 
 impl<M: MetadataStore<SwapId>, S: StateStore<SwapId>> SwapRequestHandler<M, S> {

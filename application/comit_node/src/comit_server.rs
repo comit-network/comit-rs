@@ -5,8 +5,7 @@ use futures::{
     Future, Stream,
 };
 use std::{io, net::SocketAddr};
-use swap_protocols::rfc003;
-use swaps::common::SwapId;
+use swap_protocols::{rfc003, SwapId};
 use tokio::{self, net::TcpListener};
 
 impl ComitServer {

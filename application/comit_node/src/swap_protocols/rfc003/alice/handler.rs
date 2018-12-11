@@ -1,8 +1,8 @@
 use comit_client;
 use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
-use key_store::KeyStore;
 use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
 use rand::thread_rng;
+use seed::Seed;
 use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 use swap_protocols::{
     asset::Asset,
@@ -11,12 +11,13 @@ use swap_protocols::{
         alice::SwapRequestKind,
         events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
         roles::Alice,
+        secret_source::SecretSource,
         state_machine::{Context, Start, Swap, SwapStates},
         state_store::StateStore,
         Ledger, Secret,
     },
+    SwapId,
 };
-use swaps::common::SwapId;
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<
@@ -28,7 +29,7 @@ pub struct SwapRequestHandler<
     // new dependencies
     pub receiver: UnboundedReceiver<(SwapId, SwapRequestKind)>,
     pub metadata_store: Arc<MetadataStore>,
-    pub key_store: Arc<KeyStore>,
+    pub seed: Seed,
     pub state_store: Arc<StateStore>,
     pub lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     // legacy code dependencies
@@ -53,7 +54,7 @@ impl<
             self.bitcoin_poll_interval,
             self.ethereum_poll_interval,
         );
-        let _key_store = Arc::clone(&self.key_store);
+        let seed = self.seed;
         let state_store = Arc::clone(&self.state_store);
         let lqs_api_client = Arc::clone(&self.lqs_api_client);
         let client_factory = Arc::clone(&self.client_factory);
@@ -69,7 +70,7 @@ impl<
                             return Ok(());
                         }
 
-                        let secret = Secret::generate(&mut thread_rng());
+                        let secret = seed.new_secret(id);
 
                         let start_state = Start {
                             alpha_ledger_refund_identity: request

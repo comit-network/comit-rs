@@ -1,9 +1,8 @@
-[bitcoin]
-transient_root_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSAKhjQEcrsZTSsJWvjX4XvtRLPMq3q5xKqoW1A5p3RBmwDLdFZ5J"
-
 [comit]
 remote_comit_node_url = "127.0.0.1:8001"
 comit_listen = "0.0.0.0:8011"
+secret_seed = "1a1707bb54e5fb4deddd19f07adcb4f1e022ca7879e3c8348da8d4fa496ae8e2"
+
 
 [http_api]
 address="0.0.0.0"

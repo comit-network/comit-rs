@@ -12,8 +12,6 @@ use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
 use std::sync::Arc;
-
-use key_store::KeyStore;
 use swap_protocols::{
     asset::Asset,
     ledger::{Bitcoin, Ethereum},
@@ -23,11 +21,10 @@ use swap_protocols::{
         alice::SwapRequestIdentities,
         roles::{Alice, Bob},
         state_store::StateStore,
-        Ledger,
+        Ledger, SecretSource,
     },
-    AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind,
+    AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
 };
-use swaps::common::SwapId;
 use warp::{self, Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";
@@ -84,7 +81,7 @@ where
     fn from_swap_request_body_identities(
         identities: SwapRequestBodyIdentities<AL::Identity, BL::Identity>,
         id: SwapId,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
     ) -> Result<Self, HttpApiProblem>;
 }
 
@@ -97,7 +94,7 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
             ethereum_support::Address,
         >,
         id: SwapId,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
     ) -> Result<Self, HttpApiProblem> {
         match identities {
             SwapRequestBodyIdentities::RefundAndRedeem { .. }
@@ -108,8 +105,7 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
             SwapRequestBodyIdentities::OnlyRedeem {
                 beta_ledger_redeem_identity,
             } => Ok(rfc003::alice::SwapRequestIdentities {
-                alpha_ledger_refund_identity: key_store
-                    .get_transient_keypair(&id.into(), b"REFUND"),
+                alpha_ledger_refund_identity: secret_source.new_secp256k1_refund(id),
                 beta_ledger_redeem_identity,
             }),
         }
@@ -123,7 +119,7 @@ where
     fn from_swap_request_body(
         body: SwapRequestBody<AL, BL, AA, BA>,
         id: SwapId,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
     ) -> Result<Self, HttpApiProblem>;
 }
 
@@ -135,7 +131,7 @@ where
     fn from_swap_request_body(
         body: SwapRequestBody<AL, BL, AA, BA>,
         id: SwapId,
-        key_store: &KeyStore,
+        secret_source: &SecretSource,
     ) -> Result<Self, HttpApiProblem> {
         Ok(rfc003::alice::SwapRequest {
             alpha_asset: body.alpha_asset,
@@ -146,7 +142,7 @@ where
             identities: SwapRequestIdentities::from_swap_request_body_identities(
                 body.identities,
                 id,
-                key_store,
+                secret_source,
             )?,
         })
     }
@@ -174,11 +170,11 @@ fn swap_path(id: SwapId) -> String {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
-    key_store: Arc<KeyStore>,
+    secret_source: Arc<SecretSource>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(key_store.as_ref(), &sender, request_body_kind)
+    handle_post_swap(secret_source.as_ref(), &sender, request_body_kind)
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -189,7 +185,7 @@ pub fn post_swap(
 }
 
 fn handle_post_swap(
-    key_store: &KeyStore,
+    secret_source: &SecretSource,
     sender: &UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
@@ -198,12 +194,12 @@ fn handle_post_swap(
     let request_kind = match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
-                rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
             rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
-                rfc003::alice::SwapRequest::from_swap_request_body(body, id, key_store)?,
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {

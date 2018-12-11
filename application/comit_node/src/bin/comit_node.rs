@@ -13,15 +13,14 @@ use comit_node::{
     comit_client,
     comit_server::ComitServer,
     http_api::route_factory,
-    key_store::KeyStore,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
+    seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{
         rfc003::{self, state_store::InMemoryStateStore},
-        InMemoryMetadataStore,
+        InMemoryMetadataStore, SwapId,
     },
-    swaps::common::SwapId,
 };
 use ethereum_support::*;
 use futures::sync::{
@@ -38,11 +37,7 @@ fn main() {
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
-    let key_store = Arc::new(
-        KeyStore::new(settings.bitcoin.transient_root_key)
-            .expect("Could not HD derive keys from the private key"),
-    );
-
+    let seed = settings.comit.secret_seed;
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
@@ -53,7 +48,7 @@ fn main() {
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        Arc::clone(&key_store),
+        seed,
         Arc::clone(&ledger_query_service_api_client),
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
@@ -65,7 +60,7 @@ fn main() {
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         sender,
-        Arc::clone(&key_store),
+        seed,
         &mut runtime,
     );
 
@@ -73,7 +68,7 @@ fn main() {
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         Arc::clone(&ledger_query_service_api_client),
-        Arc::clone(&key_store),
+        seed,
         settings.ledger_query_service.bitcoin.poll_interval_secs,
         settings.ledger_query_service.ethereum.poll_interval_secs,
         &mut runtime,
@@ -89,10 +84,9 @@ fn load_settings() -> ComitNodeSettings {
     let comit_config_path = var_or_default("COMIT_NODE_CONFIG_PATH", "~/.config/comit_node".into());
     let run_mode_config = var_or_default("RUN_MODE", "development".into());
     let default_config = format!("{}/{}", comit_config_path.trim(), "default");
-    let erc20_config = format!("{}/{}", comit_config_path.trim(), "erc20");
     let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
 
-    let settings = ComitNodeSettings::new(default_config, run_mode_config, erc20_config);
+    let settings = ComitNodeSettings::new(default_config, run_mode_config);
     settings.unwrap()
 }
 
@@ -109,10 +103,10 @@ fn spawn_warp_instance(
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
-    key_store: Arc<KeyStore>,
+    seed: Seed,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(metadata_store, state_store, sender, key_store);
+    let routes = route_factory::create(metadata_store, state_store, sender, seed);
 
     let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -126,7 +120,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     settings: &ComitNodeSettings,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    key_store: Arc<KeyStore>,
+    seed: Seed,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
@@ -140,7 +134,7 @@ fn spawn_alice_swap_request_handler_for_rfc003(
     let alice_swap_request_handler = rfc003::alice::SwapRequestHandler {
         receiver,
         metadata_store,
-        key_store,
+        seed,
         state_store,
         client_factory,
         comit_node_addr,
@@ -160,7 +154,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
     lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    key_store: Arc<KeyStore>,
+    seed: Seed,
     bitcoin_poll_interval: Duration,
     ethereum_poll_interval: Duration,
     runtime: &mut tokio::runtime::Runtime,
@@ -176,7 +170,7 @@ fn spawn_bob_swap_request_handler_for_rfc003(
         metadata_store,
         state_store,
         lqs_api_client,
-        key_store,
+        seed,
         bitcoin_poll_interval,
         ethereum_poll_interval,
     };

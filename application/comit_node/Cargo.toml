@@ -36,6 +36,7 @@ tokio = "0.1"
 tokio-timer = "0.2"
 url = "1.7"
 warp = "0.1"
+hex-serde = "0.1.0"
 
 [dependencies.bam]
 path = "../../vendor/bam"
