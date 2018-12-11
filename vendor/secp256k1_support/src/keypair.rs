@@ -1,5 +1,5 @@
+use crate::public_key::PublicKey;
 use hex;
-use public_key::PublicKey;
 use rand::Rng;
 use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
 use std::fmt;

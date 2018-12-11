@@ -1,8 +1,10 @@
+use crate::{
+    block_processor::BlockProcessor,
+    zmq::{self, Context, Socket},
+};
 use bitcoin_support::{serialize::deserialize, MinedBlock};
-use block_processor::BlockProcessor;
 use byteorder::{LittleEndian, ReadBytesExt};
 use std::io::Cursor;
-use zmq::{self, Context, Socket};
 
 #[derive(DebugStub)]
 pub struct BitcoindZmqListener<P> {

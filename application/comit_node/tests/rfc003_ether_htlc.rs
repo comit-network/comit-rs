@@ -18,8 +18,8 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
+use crate::htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
 use ethereum_support::{Bytes, EtherQuantity, U256};
-use htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
 use testcontainers::clients::Cli;
 
 const HTLC_GAS_COST: u64 = 8879000;

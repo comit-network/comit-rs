@@ -1,5 +1,5 @@
+use crate::common::place_order::{PriceHeader, ThingHeader};
 use bam::{config::Config, json::*, *};
-use common::place_order::{PriceHeader, ThingHeader};
 use futures::future;
 
 pub fn config() -> Config<Request, Response> {

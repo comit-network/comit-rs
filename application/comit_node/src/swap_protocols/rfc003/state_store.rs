@@ -1,10 +1,10 @@
+use crate::swap_protocols::rfc003::{roles::Role, state_machine::SwapStates, SaveState};
 use std::{
     any::Any,
     collections::HashMap,
     hash::Hash,
     sync::{Arc, Mutex, RwLock},
 };
-use swap_protocols::rfc003::{roles::Role, state_machine::SwapStates, SaveState};
 
 #[derive(Debug, Fail)]
 pub enum Error {
@@ -63,15 +63,13 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_support::{BitcoinQuantity, Blocks};
-    use ethereum_support::EtherQuantity;
-    use hex;
-    use secp256k1_support;
-    use spectral::prelude::*;
-    use swap_protocols::{
+    use crate::swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{roles::test::Alisha, state_machine::Start, Secret},
     };
+    use bitcoin_support::{BitcoinQuantity, Blocks};
+    use ethereum_support::EtherQuantity;
+    use spectral::prelude::*;
 
     #[test]
     fn store_get_and_save_state() {

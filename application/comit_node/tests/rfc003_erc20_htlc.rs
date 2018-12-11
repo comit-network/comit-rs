@@ -18,9 +18,11 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
+use crate::{
+    ethereum_wallet::transaction::UnsignedTransaction,
+    htlc_harness::{erc20_harness, Erc20HarnessParams, HTLC_TIMEOUT, SECRET},
+};
 use ethereum_support::{Bytes, U256};
-use ethereum_wallet::transaction::UnsignedTransaction;
-use htlc_harness::{erc20_harness, Erc20HarnessParams, HTLC_TIMEOUT, SECRET};
 use testcontainers::clients::Cli;
 
 #[test]

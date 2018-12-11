@@ -5,8 +5,10 @@ mod bitcoin;
 mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
-use bam_api::header::{FromBamHeader, ToBamHeader};
-use http_api::ledger::{FromHttpLedger, ToHttpLedger};
+use crate::{
+    bam_api::header::{FromBamHeader, ToBamHeader},
+    http_api::ledger::{FromHttpLedger, ToHttpLedger},
+};
 use std::hash::Hash;
 
 pub trait Ledger:

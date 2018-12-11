@@ -1,4 +1,8 @@
-use block_processor::{Block, Query, QueryMatchResult, Transaction};
+use crate::{
+    block_processor::{Block, Query, QueryMatchResult, Transaction},
+    query_result_repository::QueryResult,
+    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+};
 use ethereum_support::{
     web3::{
         transports::Http,
@@ -12,8 +16,6 @@ use futures::{
     stream::{self, Stream},
 };
 use hex;
-use query_result_repository::QueryResult;
-use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -202,8 +204,8 @@ impl ExpandResult for EthereumBlockQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::web3::types::{Bytes, Transaction, H256, U256};
     use spectral::prelude::*;
-    use web3::types::{Bytes, Transaction, H256, U256};
 
     #[test]
     fn given_query_from_address_contract_creation_transaction_matches() {

@@ -1,4 +1,4 @@
-use api::{IntoFrame, ResponseFrameSource};
+use crate::api::{IntoFrame, ResponseFrameSource};
 use futures::{
     future,
     sync::mpsc::{self, UnboundedSender},
@@ -88,9 +88,8 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
 mod tests {
 
     use super::*;
-    use api::Status;
+    use crate::{api::Status, json};
     use futures::Async;
-    use json;
     use serde_json;
     use std::{collections::HashMap, time::Instant};
     use tokio::runtime::Runtime;

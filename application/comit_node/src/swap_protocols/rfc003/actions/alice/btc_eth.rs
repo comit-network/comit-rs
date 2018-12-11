@@ -1,7 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, OutPoint};
-use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, EtherQuantity, U256};
-use swap_protocols::{
+use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::{ActionKind, Actions},
@@ -11,6 +8,9 @@ use swap_protocols::{
         state_machine::*,
     },
 };
+use bitcoin_support::{BitcoinQuantity, OutPoint};
+use bitcoin_witness::PrimedInput;
+use ethereum_support::{Bytes, EtherQuantity, U256};
 
 impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {

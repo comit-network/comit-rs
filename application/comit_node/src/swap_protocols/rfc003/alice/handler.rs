@@ -1,23 +1,25 @@
-use comit_client;
-use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
-use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
-use rand::thread_rng;
-use seed::Seed;
-use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
-use swap_protocols::{
-    asset::Asset,
-    metadata_store::MetadataStore,
-    rfc003::{
-        alice::SwapRequestKind,
-        events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
-        roles::Alice,
-        secret_source::SecretSource,
-        state_machine::{Context, Start, Swap, SwapStates},
-        state_store::StateStore,
-        Ledger, Secret,
+use crate::{
+    comit_client,
+    ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache},
+    seed::Seed,
+    swap_protocols::{
+        asset::Asset,
+        metadata_store::MetadataStore,
+        rfc003::{
+            alice::SwapRequestKind,
+            events::{AliceToBob, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
+            roles::Alice,
+            secret_source::SecretSource,
+            state_machine::{Context, Start, Swap, SwapStates},
+            state_store::StateStore,
+            Ledger, Secret,
+        },
+        SwapId,
     },
-    SwapId,
 };
+use futures::{stream::Stream, sync::mpsc::UnboundedReceiver, Future};
+use rand::thread_rng;
+use std::{marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<

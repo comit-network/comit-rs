@@ -1,4 +1,4 @@
-use query_result_repository::{QueryResult, QueryResultRepository};
+use crate::query_result_repository::{QueryResult, QueryResultRepository};
 use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 
 #[derive(Debug, Default)]

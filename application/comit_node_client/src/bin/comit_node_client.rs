@@ -142,7 +142,7 @@ fn main() {
             let response = client.get_swap_status(id);
             match response {
                 Ok(swap_status) => {
-                    use SwapStatus::*;
+                    use crate::SwapStatus::*;
                     match swap_status {
                         Pending => {
                             println!("status: pending");

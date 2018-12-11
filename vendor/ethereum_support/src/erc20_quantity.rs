@@ -1,7 +1,5 @@
+use crate::{u256_ext::ToBigDecimal, web3::types::Address, U256};
 use std::fmt;
-use u256_ext::ToBigDecimal;
-use web3::types::Address;
-use U256;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity {

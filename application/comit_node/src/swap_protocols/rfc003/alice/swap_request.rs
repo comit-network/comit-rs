@@ -1,10 +1,10 @@
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
-use swap_protocols::{
+use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     metadata_store::{AssetKind, LedgerKind, Metadata, RoleKind},
     rfc003::Ledger,
 };
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::{Erc20Quantity, EtherQuantity};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {

@@ -1,8 +1,8 @@
-use ethereum_support::{Address, Bytes, U256};
-use swap_protocols::rfc003::{
+use crate::swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc, Seconds},
     SecretHash,
 };
+use ethereum_support::{Address, Bytes, U256};
 
 #[derive(Debug)]
 pub struct EtherHtlc {

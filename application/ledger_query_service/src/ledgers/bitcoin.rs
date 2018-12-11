@@ -1,11 +1,13 @@
+use crate::{
+    block_processor::{Block, Query, QueryMatchResult, Transaction},
+    query_result_repository::QueryResult,
+    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+};
 use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, OutPoint, SpendsFrom,
     SpendsFromWith, SpendsTo, SpendsWith, Transaction as BitcoinTransaction, TransactionId,
 };
-use block_processor::{Block, Query, QueryMatchResult, Transaction};
-use query_result_repository::QueryResult;
-use route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand};
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]

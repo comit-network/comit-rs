@@ -16,6 +16,4 @@ mod p2wpkh;
 mod primed_transaction;
 mod witness;
 
-pub use p2wpkh::*;
-pub use primed_transaction::*;
-pub use witness::*;
+pub use crate::{p2wpkh::*, primed_transaction::*, witness::*};

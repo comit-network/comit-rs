@@ -1,11 +1,13 @@
+use crate::{
+    ledger_query_service::{
+        bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
+        LedgerQueryServiceApiClient, Query, QueryId,
+    },
+    swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
+};
 use bitcoin_support::TransactionId as BitcoinTxId;
 use ethereum_support::H256 as EthereumTxId;
-use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
-    LedgerQueryServiceApiClient, Query, QueryId,
-};
 use std::{marker::PhantomData, sync::Mutex};
-use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::{future::IntoFuture, Future};
 
 #[derive(Debug)]

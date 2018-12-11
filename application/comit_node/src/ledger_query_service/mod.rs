@@ -1,8 +1,8 @@
 pub use self::{bitcoin::*, cache::*, client::*, ethereum::*, first_match::*};
+use crate::swap_protocols::ledger::Ledger;
 use reqwest::Url;
 use serde::Serialize;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
-use swap_protocols::ledger::Ledger;
 use tokio::prelude::Future;
 
 mod bitcoin;

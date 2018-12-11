@@ -1,25 +1,27 @@
+use crate::{
+    ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache},
+    seed::Seed,
+    swap_protocols::{
+        asset::Asset,
+        metadata_store::MetadataStore,
+        rfc003::{
+            self,
+            bob::SwapRequestKind,
+            events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
+            roles::Bob,
+            state_machine::*,
+            state_store::StateStore,
+            Ledger,
+        },
+        SwapId,
+    },
+};
 use futures::{
     stream::Stream,
     sync::{mpsc::UnboundedReceiver, oneshot},
     Future,
 };
-use ledger_query_service::{DefaultLedgerQueryServiceApiClient, FirstMatch, QueryIdCache};
-use seed::Seed;
 use std::{sync::Arc, time::Duration};
-use swap_protocols::{
-    asset::Asset,
-    metadata_store::MetadataStore,
-    rfc003::{
-        self,
-        bob::SwapRequestKind,
-        events::{BobToAlice, CommunicationEvents, LedgerEvents, LqsEvents, LqsEventsForErc20},
-        roles::Bob,
-        state_machine::*,
-        state_store::StateStore,
-        Ledger,
-    },
-    SwapId,
-};
 
 #[derive(Debug)]
 pub struct SwapRequestHandler<MetadataStore, StateStore> {

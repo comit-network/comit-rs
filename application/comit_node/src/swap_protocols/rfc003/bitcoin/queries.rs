@@ -1,12 +1,14 @@
-use bitcoin_support::{BitcoinQuantity, OutPoint};
-use ledger_query_service::BitcoinQuery;
-use swap_protocols::{
-    ledger::Bitcoin,
-    rfc003::{
-        events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
-        state_machine::HtlcParams,
+use crate::{
+    ledger_query_service::BitcoinQuery,
+    swap_protocols::{
+        ledger::Bitcoin,
+        rfc003::{
+            events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
+            state_machine::HtlcParams,
+        },
     },
 };
+use bitcoin_support::{BitcoinQuantity, OutPoint};
 
 impl NewHtlcFundedQuery<Bitcoin, BitcoinQuantity> for BitcoinQuery {
     fn new_htlc_funded_query(htlc_params: &HtlcParams<Bitcoin, BitcoinQuantity>) -> Self {

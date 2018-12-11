@@ -1,6 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(const_fn)]
 extern crate bitcoin;
 extern crate bitcoin_quantity;
 extern crate hex;
@@ -32,12 +31,8 @@ pub use bitcoin::{
     Address,
 };
 
+pub use crate::{blocks::*, mined_block::*, pubkey::*, transaction::*, weight::*};
 pub use bitcoin_quantity::*;
-pub use blocks::*;
-pub use mined_block::*;
-pub use pubkey::*;
-pub use transaction::*;
-pub use weight::*;
 
 mod blocks;
 mod mined_block;

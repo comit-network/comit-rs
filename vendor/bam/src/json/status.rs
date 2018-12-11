@@ -1,4 +1,4 @@
-use api::Status;
+use crate::api::Status;
 use serde::{
     de::{Error, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -43,7 +43,7 @@ impl<'de> Visitor<'de> for StatusVisitor {
                 return Err(Error::custom(format!(
                     "Unknown status family: {}",
                     status_family
-                )))
+                )));
             }
         };
 

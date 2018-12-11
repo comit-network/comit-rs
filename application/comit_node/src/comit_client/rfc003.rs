@@ -1,4 +1,4 @@
-use swap_protocols::rfc003::{Ledger, SecretHash};
+use crate::swap_protocols::rfc003::{Ledger, SecretHash};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Request<AL: Ledger, BL: Ledger, AA, BA> {

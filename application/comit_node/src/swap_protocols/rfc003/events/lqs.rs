@@ -1,25 +1,27 @@
+use crate::{
+    ledger_query_service::{CreateQuery, EthereumQuery, FirstMatch, Query, QueryIdCache},
+    swap_protocols::{
+        self,
+        asset::Asset,
+        ledger::Ethereum,
+        rfc003::{
+            self,
+            ethereum::erc20,
+            events::{
+                Deployed, Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
+                NewHtlcRefundedQuery, RedeemedOrRefunded,
+            },
+            find_htlc_location::FindHtlcLocation,
+            secret::SecretHash,
+            state_machine::HtlcParams,
+            ExtractSecret, FundTransaction, Ledger, RedeemTransaction, RefundTransaction,
+        },
+    },
+};
 use ethereum_support::Erc20Quantity;
 use futures::{
     future::{self, Either},
     Future,
-};
-use ledger_query_service::{CreateQuery, EthereumQuery, FirstMatch, Query, QueryIdCache};
-use swap_protocols::{
-    self,
-    asset::Asset,
-    ledger::Ethereum,
-    rfc003::{
-        self,
-        ethereum::erc20,
-        events::{
-            Deployed, Funded, LedgerEvents, NewHtlcFundedQuery, NewHtlcRedeemedQuery,
-            NewHtlcRefundedQuery, RedeemedOrRefunded,
-        },
-        find_htlc_location::FindHtlcLocation,
-        secret::SecretHash,
-        state_machine::HtlcParams,
-        ExtractSecret, FundTransaction, Ledger, RedeemTransaction, RefundTransaction,
-    },
 };
 
 #[allow(missing_debug_implementations)]

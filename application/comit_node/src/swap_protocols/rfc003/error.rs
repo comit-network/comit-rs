@@ -1,5 +1,4 @@
-use comit_client::SwapResponseError;
-use ledger_query_service;
+use crate::{comit_client::SwapResponseError, ledger_query_service};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {

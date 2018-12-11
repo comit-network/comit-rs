@@ -1,8 +1,8 @@
-use ethereum_support::Transaction;
-use swap_protocols::rfc003::{
+use crate::swap_protocols::rfc003::{
     secret::{Secret, SecretHash},
     ExtractSecret,
 };
+use ethereum_support::Transaction;
 
 impl ExtractSecret for Transaction {
     fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret> {

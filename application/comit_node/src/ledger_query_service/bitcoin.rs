@@ -1,5 +1,4 @@
-use bitcoin_support;
-use ledger_query_service::Query;
+use crate::ledger_query_service::Query;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]

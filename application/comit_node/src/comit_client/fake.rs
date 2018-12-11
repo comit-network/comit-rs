@@ -1,5 +1,8 @@
-use comit_client::{
-    rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+use crate::{
+    comit_client::{
+        rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+    },
+    swap_protocols::{self, asset::Asset},
 };
 use futures::{
     sync::oneshot::{self, Sender},
@@ -11,7 +14,6 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-use swap_protocols::{self, asset::Asset};
 
 #[allow(dead_code)]
 #[derive(Debug, Default)]

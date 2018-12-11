@@ -13,11 +13,11 @@ extern crate log;
 
 #[macro_use]
 pub mod common;
-use bam::{connection, json};
-use common::{
+use crate::common::{
     setup::{create_server_with, start_server_with},
     *,
 };
+use bam::{connection, json};
 use futures::future::Future;
 use spectral::prelude::*;
 

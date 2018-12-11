@@ -1,9 +1,11 @@
 mod btc_erc20;
 mod btc_eth;
-use comit_client::SwapReject;
+use crate::{
+    comit_client::SwapReject,
+    swap_protocols::rfc003::{state_machine::StateMachineResponse, Ledger},
+};
 use futures::sync::oneshot;
 use std::sync::{Arc, Mutex};
-use swap_protocols::rfc003::{state_machine::StateMachineResponse, Ledger};
 
 #[allow(type_alias_bounds)]
 type Response<AL: Ledger, BL: Ledger> =

@@ -1,4 +1,4 @@
-use config::Config;
+use crate::config::Config;
 use futures::Future;
 use std::sync::{Arc, Mutex};
 

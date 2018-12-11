@@ -1,6 +1,6 @@
+use crate::Address;
 use secp256k1_support::PublicKey;
 use tiny_keccak;
-use Address;
 
 pub trait ToEthereumAddress {
     fn to_ethereum_address(&self) -> Address;

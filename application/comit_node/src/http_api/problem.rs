@@ -1,7 +1,7 @@
+use crate::swap_protocols::{metadata_store, rfc003::state_store};
 use http::StatusCode;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use std::{error::Error, fmt};
-use swap_protocols::{metadata_store, rfc003::state_store};
 use warp::{Rejection, Reply};
 
 #[derive(Debug)]

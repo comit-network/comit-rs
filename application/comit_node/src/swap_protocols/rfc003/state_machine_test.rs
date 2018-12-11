@@ -1,16 +1,17 @@
-use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
-use comit_client::SwapReject;
-use swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
-    rfc003::{
-        ethereum::Seconds,
-        events::{self, LedgerEvents},
-        roles::test::{Alisha, Bobisha, FakeCommunicationEvents},
-        state_machine::*,
-        RedeemTransaction, Secret,
+use crate::{
+    comit_client::SwapReject,
+    swap_protocols::{
+        ledger::{Bitcoin, Ethereum},
+        rfc003::{
+            ethereum::Seconds,
+            events::{self, LedgerEvents},
+            roles::test::{Alisha, Bobisha, FakeCommunicationEvents},
+            state_machine::*,
+            Ledger, RedeemTransaction, Secret,
+        },
     },
 };
-
+use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
@@ -19,7 +20,6 @@ use futures::{
 };
 use hex::FromHex;
 use std::{str::FromStr, sync::Arc};
-use swap_protocols::rfc003::Ledger;
 
 #[derive(Default)]
 struct FakeLedgerEvents<L: Ledger> {

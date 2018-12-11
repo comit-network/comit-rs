@@ -1,9 +1,9 @@
+use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{
     Address, BitcoinQuantity, OutPoint, Script, SigHashType, SighashComponents, Transaction, TxIn,
     TxOut, Weight,
 };
 use secp256k1_support::{DerSerializableSignature, Message};
-use witness::{UnlockParameters, Witness};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrimedInput {
@@ -146,8 +146,8 @@ impl PrimedTransaction {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::p2wpkh::UnlockP2wpkh;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use p2wpkh::UnlockP2wpkh;
     use secp256k1_support::KeyPair;
     use std::str::FromStr;
 

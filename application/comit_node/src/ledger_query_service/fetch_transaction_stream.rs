@@ -1,7 +1,7 @@
-use ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId};
+use crate::ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId};
 
+use crate::swap_protocols::ledger::Ledger;
 use std::sync::Arc;
-use swap_protocols::ledger::Ledger;
 use tokio::prelude::{stream::iter_ok, *};
 
 pub trait FetchTransactionIdStream<L: Ledger> {
@@ -108,15 +108,14 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<FetchFullQueryResults<L>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock},
+        swap_protocols::ledger::Bitcoin,
+    };
     use bitcoin_support::TransactionId;
     use futures::sync::mpsc;
-    use ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock};
-    use pretty_env_logger;
     use std::time::{Duration, Instant};
-    use swap_protocols::ledger::Bitcoin;
-    use tokio::{prelude::future::Either, runtime::Runtime};
-    extern crate tokio_timer;
-    use self::tokio_timer::Delay;
+    use tokio::{prelude::future::Either, runtime::Runtime, timer::Delay};
 
     #[test]
     fn should_emit_transactions_as_they_appear_without_waiting_for_the_next_tick() {

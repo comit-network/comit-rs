@@ -1,22 +1,23 @@
+use crate::{
+    http_api::{problem, HttpApiProblemStdError},
+    swap_protocols::{
+        ledger::{Bitcoin, Ethereum},
+        metadata_store::Metadata,
+        rfc003::{
+            actions::{bob::Accept, ActionKind, Actions},
+            bitcoin, ethereum,
+            roles::{Alice, Bob},
+            state_machine::StateMachineResponse,
+            state_store::StateStore,
+            Ledger, SecretSource,
+        },
+        AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
+    },
+};
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Quantity, EtherQuantity};
-use http_api::{problem, HttpApiProblemStdError};
 use http_api_problem::HttpApiProblem;
-use secp256k1_support;
 use std::{str::FromStr, sync::Arc};
-use swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
-    metadata_store::Metadata,
-    rfc003::{
-        actions::{bob::Accept, ActionKind, Actions},
-        bitcoin, ethereum,
-        roles::{Alice, Bob},
-        state_machine::StateMachineResponse,
-        state_store::StateStore,
-        Ledger, SecretSource,
-    },
-    AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
-};
 use warp::{self, Rejection, Reply};
 
 #[derive(Clone, Copy, Debug)]
@@ -372,7 +373,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     action: PostAction,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
-    use swap_protocols::{AssetKind, LedgerKind, Metadata, RoleKind};
+    use crate::swap_protocols::{AssetKind, LedgerKind, Metadata, RoleKind};
     trace!("accept action requested on {:?}", id);
     let metadata = metadata_store
         .get(&id)?

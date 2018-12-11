@@ -1,6 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(plugin, decl_macro)]
 extern crate comit_node;
 extern crate ethereum_support;
 #[macro_use]

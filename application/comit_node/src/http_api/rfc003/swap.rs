@@ -1,30 +1,32 @@
+use crate::{
+    http_api::{
+        self,
+        asset::{HttpAsset, ToHttpAsset},
+        ledger::{HttpLedger, ToHttpLedger},
+        lock_duration::{HttpLockDuration, ToHttpLockDuration},
+        problem::{self, HttpApiProblemStdError},
+    },
+    swap_protocols::{
+        asset::Asset,
+        ledger::{Bitcoin, Ethereum},
+        rfc003::{
+            self,
+            actions::{ActionKind, Actions},
+            alice::SwapRequestIdentities,
+            roles::{Alice, Bob},
+            state_store::StateStore,
+            Ledger, SecretSource,
+        },
+        AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
+    },
+};
 use bitcoin_support::{self, BitcoinQuantity};
 use ethereum_support::{self, Erc20Quantity, EtherQuantity};
 use futures::sync::mpsc::UnboundedSender;
-use http_api::{
-    self,
-    asset::{HttpAsset, ToHttpAsset},
-    ledger::{HttpLedger, ToHttpLedger},
-    lock_duration::{HttpLockDuration, ToHttpLockDuration},
-    problem::{self, HttpApiProblemStdError},
-};
 use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
 use std::sync::Arc;
-use swap_protocols::{
-    asset::Asset,
-    ledger::{Bitcoin, Ethereum},
-    rfc003::{
-        self,
-        actions::{ActionKind, Actions},
-        alice::SwapRequestIdentities,
-        roles::{Alice, Bob},
-        state_store::StateStore,
-        Ledger, SecretSource,
-    },
-    AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
-};
 use warp::{self, Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";

@@ -1,17 +1,19 @@
-use api::{Error, FrameHandler, IntoFrame, ResponseFrameSource};
-use config::Config;
+use crate::{
+    api::{Error, FrameHandler, IntoFrame, ResponseFrameSource},
+    config::Config,
+    json::{self, response::Response},
+    RequestError,
+};
 use futures::{
     future,
     sync::oneshot::{self, Sender},
     Future,
 };
-use json::{self, response::Response};
 use serde_json::{self, Value as JsonValue};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
-use RequestError;
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
@@ -165,7 +167,7 @@ impl JsonFrameHandler {
             None => {
                 return Box::new(future::err(RequestError::MalformedField(
                     "type".to_string(),
-                )))
+                )));
             }
         };
 
@@ -175,7 +177,7 @@ impl JsonFrameHandler {
             _ => {
                 return Box::new(future::err(RequestError::MalformedField(
                     "headers".to_string(),
-                )))
+                )));
             }
         };
 

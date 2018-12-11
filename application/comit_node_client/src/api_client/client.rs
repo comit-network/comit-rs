@@ -31,7 +31,7 @@ pub struct DefaultApiClient {
 }
 
 pub trait ApiClient {
-    fn send_swap_request(&self, SwapRequest) -> Result<SwapCreated, reqwest::Error>;
+    fn send_swap_request(&self, _: SwapRequest) -> Result<SwapCreated, reqwest::Error>;
     fn get_swap_status(&self, id: TradeId) -> Result<SwapStatus, reqwest::Error>;
 }
 

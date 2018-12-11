@@ -1,13 +1,15 @@
-use block_processor::BlockProcessor;
-use std::{sync::Arc, time::Duration};
-use web3::{
-    self,
-    api::BaseFilter,
-    futures::{Future, Stream},
-    transports::Http,
-    types::{Block, BlockId, Transaction as EthereumTransaction, H256},
-    Web3,
+use crate::{
+    block_processor::BlockProcessor,
+    web3::{
+        self,
+        api::BaseFilter,
+        futures::{Future, Stream},
+        transports::Http,
+        types::{Block, BlockId, Transaction as EthereumTransaction, H256},
+        Web3,
+    },
 };
+use std::{sync::Arc, time::Duration};
 
 #[derive(DebugStub)]
 pub struct EthereumWeb3BlockPoller<P> {

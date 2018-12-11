@@ -1,7 +1,9 @@
-use bam_api::header::{FromBamHeader, ToBamHeader};
+use crate::{
+    bam_api::header::{FromBamHeader, ToBamHeader},
+    http_api::asset::{FromHttpAsset, ToHttpAsset},
+};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
-use http_api::asset::{FromHttpAsset, ToHttpAsset};
 use std::{
     fmt::{Debug, Display},
     hash::Hash,

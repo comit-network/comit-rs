@@ -1,8 +1,8 @@
+use crate::script::Instruction::{Error, Op, PushBytes};
 use bitcoin::{
     blockdata::transaction::Transaction, util::address::Address as BitcoinAddress, OutPoint, TxIn,
     TxOut,
 };
-use script::Instruction::{Error, Op, PushBytes};
 
 pub trait SpendsTo {
     fn spends_to(&self, address: &BitcoinAddress) -> bool;

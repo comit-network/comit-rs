@@ -1,12 +1,14 @@
-use futures::{stream::Stream, Future};
-use ledger_query_service::{
-    fetch_transaction_stream::FetchTransactionStream, FetchFullQueryResults, QueryId,
+use crate::{
+    ledger_query_service::{
+        fetch_transaction_stream::FetchTransactionStream, FetchFullQueryResults, QueryId,
+    },
+    swap_protocols::ledger::Ledger,
 };
+use futures::{stream::Stream, Future};
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-use swap_protocols::ledger::Ledger;
 use tokio::timer::Interval;
 
 #[derive(Debug, Clone)]

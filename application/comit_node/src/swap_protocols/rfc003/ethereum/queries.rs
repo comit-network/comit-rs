@@ -1,13 +1,15 @@
-use ethereum_support::{web3::types::Address, Bytes, EtherQuantity};
-use ledger_query_service::EthereumQuery;
-use swap_protocols::{
-    ledger::Ethereum,
-    rfc003::{
-        events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
-        secret,
-        state_machine::HtlcParams,
+use crate::{
+    ledger_query_service::EthereumQuery,
+    swap_protocols::{
+        ledger::Ethereum,
+        rfc003::{
+            events::{NewHtlcFundedQuery, NewHtlcRedeemedQuery, NewHtlcRefundedQuery},
+            secret,
+            state_machine::HtlcParams,
+        },
     },
 };
+use ethereum_support::{web3::types::Address, Bytes, EtherQuantity};
 
 impl NewHtlcFundedQuery<Ethereum, EtherQuantity> for EthereumQuery {
     fn new_htlc_funded_query(htlc_params: &HtlcParams<Ethereum, EtherQuantity>) -> Self {

@@ -1,15 +1,15 @@
-use common::alice_and_bob::{Alice, Bob};
+use crate::common::alice_and_bob::{Alice, Bob};
 use futures::Future;
 use pretty_env_logger;
 use tokio::runtime::Runtime;
 
+use crate::common::alice_and_bob;
 use bam::{
     config::Config,
     connection,
     json::{self, *},
     shutdown_handle,
 };
-use common::alice_and_bob;
 
 pub fn start_server_with(config: Config<Request, Response>) -> (Runtime, Alice, Bob) {
     let _ = pretty_env_logger::try_init();

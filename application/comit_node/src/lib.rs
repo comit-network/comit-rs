@@ -1,6 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(plugin, decl_macro)]
 
 #[macro_use]
 extern crate debug_stub_derive;
@@ -16,7 +15,6 @@ extern crate log;
 extern crate bam;
 #[macro_use]
 extern crate futures;
-#[macro_use]
 extern crate state_machine_future;
 #[macro_use]
 extern crate maplit;

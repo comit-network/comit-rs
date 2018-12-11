@@ -1,10 +1,12 @@
-use item_cache::ItemCache;
-use ledger_query_service::{CreateQuery, Error, Query, QueryId};
+use crate::{
+    item_cache::ItemCache,
+    ledger_query_service::{CreateQuery, Error, Query, QueryId},
+    swap_protocols::ledger::Ledger,
+};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-use swap_protocols::ledger::Ledger;
 use tokio::prelude::*;
 
 #[derive(Debug)]
@@ -49,9 +51,9 @@ impl<L: Ledger, Q: Query> CreateQuery<L, Q> for QueryIdCache<L, Q> {
 mod tests {
 
     use super::*;
+    use crate::swap_protocols::ledger::Bitcoin;
     use futures::sync::oneshot::{self, Receiver};
     use std::sync::Arc;
-    use swap_protocols::ledger::Bitcoin;
     use tokio::runtime::Runtime;
 
     #[derive(Default, Debug)]

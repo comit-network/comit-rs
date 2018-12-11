@@ -1,13 +1,14 @@
+use crate::{
+    block_processor::Query,
+    query_repository::QueryRepository,
+    query_result_repository::{QueryResult, QueryResultRepository},
+    routes, web3,
+};
 use bitcoin_rpc_client;
-use block_processor::Query;
-use query_repository::QueryRepository;
-use query_result_repository::{QueryResult, QueryResultRepository};
-use routes;
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
 use url::Url;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
-use web3;
 
 #[derive(Debug)]
 pub enum Error {

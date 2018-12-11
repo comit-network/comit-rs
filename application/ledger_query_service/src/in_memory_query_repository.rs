@@ -1,4 +1,4 @@
-use query_repository::{Error, QueryRepository};
+use crate::query_repository::{Error, QueryRepository};
 use std::{collections::HashMap, sync::RwLock};
 
 #[derive(Debug)]

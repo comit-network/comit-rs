@@ -1,9 +1,8 @@
-use comit_client;
+use crate::{comit_client, swap_protocols::rfc003::roles::Alice};
 use futures::Future;
 use std::sync::Arc;
-use swap_protocols::rfc003::roles::Alice;
 
-use swap_protocols::{
+use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         self,

@@ -1,5 +1,4 @@
-use query_repository::QueryRepository;
-use query_result_repository::QueryResultRepository;
+use crate::{query_repository::QueryRepository, query_result_repository::QueryResultRepository};
 use std::{fmt::Debug, marker::PhantomData, sync::Arc};
 
 pub trait BlockProcessor<B> {
@@ -219,8 +218,10 @@ impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use in_memory_query_repository::InMemoryQueryRepository;
-    use in_memory_query_result_repository::InMemoryQueryResultRepository;
+    use crate::{
+        in_memory_query_repository::InMemoryQueryRepository,
+        in_memory_query_result_repository::InMemoryQueryResultRepository,
+    };
 
     #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
     struct GenericTransactionQuery {

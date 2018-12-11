@@ -1,6 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations)]
 #![deny(unsafe_code)]
-#![feature(plugin, decl_macro)]
 
 extern crate ledger_query_service;
 extern crate pretty_env_logger;

@@ -1,5 +1,5 @@
+use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
 use ethereum_support::{Address, ToEthereumAddress};
-use ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
 use secp256k1_support::{KeyPair, RecoverableSignature};
 
 pub trait Wallet: Send + Sync {

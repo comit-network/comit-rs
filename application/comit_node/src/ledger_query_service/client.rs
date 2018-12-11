@@ -1,11 +1,13 @@
-use futures::{stream::Stream, Async};
-use ledger_query_service::{
-    bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
-    FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
+use crate::{
+    ledger_query_service::{
+        bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
+        FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
+    },
+    swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
 };
-use reqwest::{async::Client, header::LOCATION, StatusCode, Url};
+use futures::{stream::Stream, Async};
+use reqwest::{header::LOCATION, r#async::Client, StatusCode, Url};
 use serde::Deserialize;
-use swap_protocols::ledger::{Bitcoin, Ethereum, Ledger};
 use tokio::prelude::future::Future;
 
 #[derive(Debug)]

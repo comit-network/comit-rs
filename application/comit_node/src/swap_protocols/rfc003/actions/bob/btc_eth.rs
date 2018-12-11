@@ -1,7 +1,4 @@
-use bitcoin_support::{BitcoinQuantity, OutPoint};
-use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, EtherQuantity};
-use swap_protocols::{
+use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::{
@@ -15,6 +12,9 @@ use swap_protocols::{
         state_machine::*,
     },
 };
+use bitcoin_support::{BitcoinQuantity, OutPoint};
+use bitcoin_witness::PrimedInput;
+use ethereum_support::{Bytes, EtherQuantity};
 
 impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     pub fn fund_action(&self) -> ethereum::ContractDeploy {
@@ -116,9 +116,9 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantit
 mod tests {
 
     use super::*;
+    use crate::swap_protocols::rfc003::{roles::test::Bobisha, Secret};
     use bitcoin_support;
     use hex::FromHex;
-    use swap_protocols::rfc003::{roles::test::Bobisha, Secret};
 
     #[test]
     fn given_state_instance_when_calling_actions_should_not_need_to_specify_type_arguments() {

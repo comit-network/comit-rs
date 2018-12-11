@@ -1,6 +1,8 @@
-use api::{FrameHandler, IntoFrame};
-use client::Client;
-use config::Config;
+use crate::{
+    api::{FrameHandler, IntoFrame},
+    client::Client,
+    config::Config,
+};
 use futures::{Future, Sink, Stream};
 use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -12,7 +14,7 @@ pub type ConnectionLoop<E> = Box<Future<Item = (), Error = ClosedReason<E>> + Se
 pub enum ClosedReason<C> {
     CodecError(C),
     InternalError,
-    InvalidFrame(::api::Error),
+    InvalidFrame(crate::api::Error),
 }
 
 #[derive(Debug)]
@@ -56,11 +58,11 @@ impl<
             .and_then(move |frame| {
                 // Some errors are non-fatal, keep going if we get these
                 match frame_handler.handle(frame) {
-                    Err(::api::Error::UnexpectedResponse) => {
+                    Err(crate::api::Error::UnexpectedResponse) => {
                         warn!("Received unexpected response - ignoring it.");
                         Ok(None)
                     }
-                    Err(::api::Error::OutOfOrderRequest) => {
+                    Err(crate::api::Error::OutOfOrderRequest) => {
                         warn!("Received out of order request - ignoring it.");
                         Ok(None)
                     }
