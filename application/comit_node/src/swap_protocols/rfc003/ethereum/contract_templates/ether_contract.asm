@@ -26,13 +26,13 @@
 
     timestamp
 
-    // Substract current timestamp from deployment timestamp (pushed to stack as first instruction of this contract)
+    // Subtract current timestamp from deployment timestamp (pushed to stack as first instruction of this contract)
     sub
 
     // Placeholder for relative expiry time
     0x20000002
 
-    // Compare relative expiry timestamp with result of substraction
+    // Compare relative expiry timestamp with result of subtraction
     lt
 
     // Jump to refund if time is expired
