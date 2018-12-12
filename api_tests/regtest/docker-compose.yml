@@ -7,7 +7,7 @@ services:
       - "8545:8545"
 
   btc:
-    image: ruimarinho/bitcoin-core:0.17.0-alpine
+    image: coblox/bitcoin-core:0.17.0
     command:
       -regtest
       -server
