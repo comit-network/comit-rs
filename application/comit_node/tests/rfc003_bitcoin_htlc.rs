@@ -153,7 +153,7 @@ fn redeem_refund_htlc() {
 
     client.generate(nsequence).unwrap().unwrap();
 
-    let _txn = client.get_transaction(&txid).unwrap().unwrap();
+    let _txn = client.get_raw_transaction_verbose(&txid).unwrap().unwrap();
 
     let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
 
