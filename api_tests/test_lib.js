@@ -22,10 +22,14 @@ module.exports.logger = function () {
     return logger;
 };
 
-module.exports.sleep = time => {
+async function sleep (time) {
     return new Promise((res, rej) => {
         setTimeout(res, time);
     });
+}
+
+module.exports.sleep = time => {
+    return sleep(time);
 };
 
 let _bitcoin_rpc_client;
@@ -344,6 +348,24 @@ module.exports.btc_generate = async function (num = 1) {
     return bitcoin_rpc_client().generate(num);
 };
 
+let btc_generate_every_enabled;
+
+module.exports.btc_enable_generate_every = async function (milliseconds) {
+    btc_generate_every_enabled = true;
+    while (btc_generate_every_enabled) {
+        bitcoin_rpc_client().generate(1);
+        await sleep(milliseconds);
+    }
+};
+
+module.exports.btc_disable_generate_every = function() {
+    btc_generate_every_enabled = false;
+};
+
+module.exports.btc_activate_segwit = async function () {
+    return bitcoin_rpc_client().generate(432);
+};
+
 async function btc_balance (address) {
     let btc_balance = await bitcoin_rpc_client().getReceivedByAddress(address);
     return parseFloat(btc_balance) * 100000000;
@@ -353,7 +375,7 @@ module.exports.btc_balance = async function (address) {
     return btc_balance(address);
 };
 
-module.exports.import_address = async function (address) {
+module.exports.btc_import_address = async function (address) {
     return bitcoin_rpc_client().importAddress(address);
 };
 
