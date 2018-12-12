@@ -21,7 +21,7 @@ END(){
     done
     log "KILLING docker containers";
     (
-        cd regtest;
+        cd "$PROJECT_ROOT/api_tests/regtest";
         docker-compose rm -sfv btc eth;
     );
 }
