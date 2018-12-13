@@ -21,7 +21,7 @@ END(){
     done
     log "KILLING docker containers";
     (
-        cd regtest;
+        cd "$PROJECT_ROOT/api_tests/regtest";
         docker-compose rm -sfv btc eth;
     );
 }
@@ -67,7 +67,6 @@ setup;
 debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
 debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 
-activate_segwit;
 sleep 2;
 
 run_test "${TEST_PATH}/test.js";

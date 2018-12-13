@@ -29,6 +29,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
+        await test_lib.btc_activate_segwit();
+        test_lib.btc_enable_generate_every(1000);
         await toby_wallet.fund_eth(toby_initial_eth);
         await bob.wallet.fund_eth(bob_initial_eth);
         await alice.wallet.fund_btc(10);
@@ -36,8 +38,12 @@ describe("RFC003: Bitcoin for ERC20", () => {
         let receipt = await toby_wallet.deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
 
-        await test_lib.import_address(bob_final_address); // Watch only import
+        await test_lib.btc_import_address(bob_final_address); // Watch only import
         await test_lib.btc_generate();
+    });
+
+    after(() => {
+        test_lib.btc_disable_generate_every();
     });
 
     it(bob_initial_erc20 + " tokens were minted to Bob", async function() {

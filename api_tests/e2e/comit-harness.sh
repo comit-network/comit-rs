@@ -97,10 +97,6 @@ start;
 debug "Bitcoin RPC url: $BITCOIN_RPC_URL";
 debug "Ethereum node url: $ETHEREUM_NODE_ENDPOINT";
 
-for chain in ${CHAINS}; do
-    setup_${chain};
-done;
-
 sleep 2;
 
 run_test "${TEST_PATH}/test.js";

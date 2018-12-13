@@ -24,12 +24,14 @@ const logger = test_lib.logger();
 describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
+        await test_lib.btc_activate_segwit();
+        test_lib.btc_enable_generate_every(1000);
         await bob.wallet.fund_eth(bob_initial_eth);
         await alice.wallet.fund_eth(alice_initial_eth);
         await alice.wallet.fund_btc(10);
-        await test_lib.import_address(bob_final_address); // Watch only import
-        await test_lib.import_address(alice.wallet.btc_identity().address); // Watch only import
-        await test_lib.import_address(bob.wallet.btc_identity().address); // Watch only import
+        await test_lib.btc_import_address(bob_final_address); // Watch only import
+        await test_lib.btc_import_address(alice.wallet.btc_identity().address); // Watch only import
+        await test_lib.btc_import_address(bob.wallet.btc_identity().address); // Watch only import
         await test_lib.btc_generate();
 
         await test_lib.log_eth_balance("Before", "Alice", alice_final_address, "final");
@@ -49,6 +51,7 @@ describe("RFC003: Bitcoin for Ether", () => {
         await test_lib.log_btc_balance("After", "Bob", bob_final_address, "final");
         await test_lib.log_eth_balance("After", "Bob", bob.wallet.eth_address(), "wallet");
         await test_lib.log_btc_balance("After", "Bob", bob.wallet.btc_identity().address, "wallet");
+        test_lib.btc_disable_generate_every();
     });
 
     let swap_location;
