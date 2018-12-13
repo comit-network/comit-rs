@@ -11,10 +11,11 @@ pub mod htlc_harness;
 pub mod parity_client;
 
 use crate::htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
-use ethereum_support::{Bytes, EtherQuantity, U256};
+use ethereum_support::{Bytes, EtherQuantity, Log, TransactionReceipt, H256, U256};
+use spectral::prelude::*;
 use testcontainers::clients::Cli;
 
-const HTLC_GAS_COST: u64 = 8879000;
+const HTLC_GAS_COST: u64 = 10885000;
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
@@ -125,4 +126,37 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
         client.eth_balance_of(htlc),
         EtherQuantity::from_eth(0.4).wei()
     );
+}
+
+#[test]
+fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
+    let docker = Cli::default();
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::default());
+
+    // Send correct secret to contract
+    let transaction_receipt = client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
+
+    assert_that(&transaction_receipt.logs).has_length(1);
+    let topic: H256 = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into(); // keccak256(Redeemed())
+    assert_that(&transaction_receipt.logs[0].topics).has_length(1);
+    assert_that(&transaction_receipt.logs[0].topics).contains(topic);
+}
+
+#[test]
+fn given_htlc_and_refund_should_emit_refund_log_msg() {
+    let docker = Cli::default();
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::default());
+
+    // Wait for timeout
+    // Wait for the contract to expire
+    ::std::thread::sleep(HTLC_TIMEOUT);
+    ::std::thread::sleep(HTLC_TIMEOUT);
+    let transaction_receipt = client.send_data(htlc, None);
+
+    assert_that(&transaction_receipt.logs).has_length(1);
+    let topic: H256 = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178".into(); // keccak256(Refunded())
+    assert_that(&transaction_receipt.logs[0].topics).has_length(1);
+    assert_that(&transaction_receipt.logs[0].topics).contains(topic);
 }
