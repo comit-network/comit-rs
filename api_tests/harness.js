@@ -23,7 +23,7 @@ process.env.LOG_DIR = log_dir;
 const test_lib = require("./test_lib.js"); // needs env var PROJECT_ROOT and LOG_DIR
 
 const docker_cwd = project_root + "/api_tests/regtest";
-const comit_node_cwd = project_root + "/api_tests/";
+const services_cwd = project_root + "/api_tests/";
 
 const docker_compose_options = {
   cwd: docker_cwd,
@@ -33,7 +33,7 @@ const docker_compose_options = {
 let subprocesses = [];
 function cleanUp() {
   subprocesses.forEach(function(subprocess) {
-    console.log("++ Killing ", subprocess.spawnfile, subprocess.pid);
+    console.log("++ Killing", subprocess.spawnfile, subprocess.pid);
     subprocess.kill();
   });
   console.log("++ Stopping docker containers");
@@ -46,7 +46,7 @@ process.once("SIGINT", function(code) {
 });
 
 const config = Toml.parse(fs.readFileSync(test_dir + "/config.toml", "utf8"));
-console.log("++ Config: \n", config, "\n++ --------------------");
+console.log("++ Config:\n", config, "\n++ --------------------");
 
 let docker_container_names = "";
 let ledger_up_time = 0;
@@ -73,20 +73,20 @@ let ledger_down_time = 0;
   docker_container_names = docker_containers.join(" ");
 
   console.log(
-    "++ Extracted values:\n  ++ docker containers: ",
+    "++ Extracted values:\n  ++ docker containers:",
     docker_container_names,
-    "\n  ++ ledger_up_time: ",
+    "\n  ++ ledger_up_time:",
     ledger_up_time,
-    "\n  ++ ledger_down_time: ",
+    "\n  ++ ledger_down_time:",
     ledger_down_time
   );
 }
 
 async function startComitNode(name, comit_config) {
-  console.log("Starting", name + "'s COMIT node: ", comit_config);
+  console.log("Starting", name + "'s COMIT node:", comit_config);
 
   const subprocess = await spawn(project_root + "/target/debug/comit_node", [], {
-    cwd: comit_node_cwd,
+    cwd: services_cwd,
     encoding: "utf-8",
     env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
     stdio: [
@@ -98,11 +98,26 @@ async function startComitNode(name, comit_config) {
   subprocesses.push(subprocess);
 }
 
+async function startLedgerQueryService(name, lqs_config) {
+  console.log("Starting", name, "Ledger Query Service:", lqs_config);
+
+  const subprocess = await spawn(project_root + "/target/debug/ledger_query_service", [], {
+    cwd: services_cwd,
+    encoding: "utf-8",
+    env: lqs_config.env,
+    stdio: [
+      "ignore",
+      fs.openSync(log_dir + "/ledger_query_service-" + name + ".log", "w"),
+      fs.openSync(log_dir + "/ledger_query_service-" + name + ".log", "w")
+    ]
+  });
+  subprocesses.push(subprocess);
+}
 describe("Starting services", async function() {
   before(async function() {
     this.timeout(50000);
 
-    console.log("++ Starting docker container(s): ", docker_container_names);
+    console.log("++ Starting docker container(s):", docker_container_names);
     await execSync(
       "docker-compose up -d " + docker_container_names,
       docker_compose_options
@@ -123,14 +138,18 @@ describe("Starting services", async function() {
 
     console.log("++ Starting COMIT nodes");
 
-    Object.keys(config.comit).forEach(async function(name) {
-        await startComitNode(name, config.comit[name]);
+    Object.keys(config.comit_node).forEach(async function(name) {
+        await startComitNode(name, config.comit_node[name]);
+    });
+
+    Object.keys(config.ledger_query_service).forEach(async function(name) {
+      await startLedgerQueryService(name, config.ledger_query_service[name]);
     });
 
   });
 
-  it("This is my test", async () => {
-    this.timeout(10200);
+  it("This is my test", async function () {
+    this.timeout(11000);
     await test_lib.sleep(10000);
   });
 
