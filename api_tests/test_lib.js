@@ -28,9 +28,7 @@ async function sleep (time) {
     });
 }
 
-module.exports.sleep = time => {
-    return sleep(time);
-};
+module.exports.sleep = sleep;
 
 let _bitcoin_rpc_client;
 
