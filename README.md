@@ -23,6 +23,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 
 - Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
 - Install `cargo-make`: `cargo install cargo-make`
+- Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
 - Install `docker` & `docker-compose`
 - Install `nvm`
 
