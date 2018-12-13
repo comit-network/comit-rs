@@ -8,23 +8,19 @@ const fs = require("fs");
 const project_root = execSync("git rev-parse --show-toplevel", {
   encoding: "utf-8"
 }).trim();
-console.log("project_root: ", project_root);
 // FIXME: there is probably a cleaner way to pass this to test_lib.js
 process.env.PROJECT_ROOT = project_root;
 
-const test_lib = require("./test_lib.js"); // needs env var PROJECT_ROOT
-
 const test_dir = process.env.TEST_DIR;
-console.log("test_dir: ", test_dir);
-
 if (!test_dir) {
   throw new Error("env var $TEST_DIR env variable must be set");
 }
 
 const log_dir = test_dir + "/log";
-console.log("log_dir: ", log_dir);
 // FIXME: there is probably a cleaner way to pass this to test.js
 process.env.LOG_DIR = log_dir;
+
+const test_lib = require("./test_lib.js"); // needs env var PROJECT_ROOT and LOG_DIR
 
 let pids = [];
 
@@ -50,18 +46,43 @@ process.once("SIGINT", function(code) {
 });
 
 const config = Toml.parse(fs.readFileSync(test_dir + "/config.toml", "utf8"));
-console.log("Config: ", config, "\n\n");
+console.log("++ Config: \n", config, "\n++ --------------------");
 
-let docker_containers = [];
-Object.keys(config.ledger).forEach(function(ledger) {
-  const docker = config.ledger[ledger].docker;
-  if (docker) {
-    docker_containers.push(docker);
-  }
-});
-const docker_container_names = docker_containers.join(" ");
+let docker_container_names = "";
+let ledger_up_time = 0;
+let ledger_down_time = 0;
+{
+  let docker_containers = [];
+  Object.keys(config.ledger).forEach(function(ledger) {
+    const config_ledger = config.ledger[ledger];
 
-describe("Harness", async function() {
+    if (config_ledger.docker) {
+      docker_containers.push(config_ledger.docker);
+    }
+
+    const up_time = config_ledger.up_time;
+    if (up_time && up_time > ledger_up_time) {
+      ledger_up_time = up_time;
+    }
+
+    const down_time = parseInt(config_ledger.down_time);
+    if (down_time && down_time > ledger_down_time) {
+      ledger_down_time = down_time;
+    }
+  });
+  docker_container_names = docker_containers.join(" ");
+
+  console.log(
+    "++ Extracted values:\n  ++ docker containers: ",
+    docker_container_names,
+    "\n  ++ ledger_up_time: ",
+    ledger_up_time,
+    "\n  ++ ledger_down_time: ",
+    ledger_down_time
+  );
+}
+
+describe("Starting services", async function() {
   before(async function() {
     this.timeout(50000);
 
@@ -82,7 +103,7 @@ describe("Harness", async function() {
       ]
     });
 
-    await test_lib.sleep(10000);
+    await test_lib.sleep(ledger_up_time);
   });
 
   it("This is my test", async () => {
@@ -90,7 +111,7 @@ describe("Harness", async function() {
   });
 
   after(function() {
-    this.timeout(15000);
+    this.timeout(ledger_down_time);
     cleanUp();
   });
 });
