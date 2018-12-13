@@ -1,6 +1,6 @@
 const execSync = require("child_process").execSync;
-const util = require('util');
-const exec = util.promisify(require('child_process').exec);
+const util = require("util");
+const exec = util.promisify(require("child_process").exec);
 const spawn = require("child_process").spawn;
 const Toml = require("toml");
 const fs = require("fs");
@@ -42,7 +42,6 @@ function cleanUp() {
   });
   console.log("++ Stopping docker containers");
   execSync("docker-compose rm -sfv", docker_compose_options);
-  return;
 }
 
 process.once("SIGINT", function(code) {
@@ -63,7 +62,6 @@ Object.keys(config.ledger).forEach(function(ledger) {
 const docker_container_names = docker_containers.join(" ");
 
 describe("Harness", async function() {
-
   before(async function() {
     this.timeout(50000);
 
@@ -72,7 +70,7 @@ describe("Harness", async function() {
       "docker-compose up -d " + docker_container_names,
       docker_compose_options
     );
-    console.log("++ Docker containers started")
+    console.log("++ Docker containers started");
 
     spawn("docker-compose", ["logs", "--tail=all", "-f"], {
       cwd: docker_cwd,
@@ -84,17 +82,15 @@ describe("Harness", async function() {
       ]
     });
 
-    console.log("Start sleeping");
     await test_lib.sleep(10000);
-    console.log("Well rested");
   });
 
   it("This is my test", async () => {
     return;
   });
 
-  after(async function() {
-    return cleanUp();
+  after(function() {
+    this.timeout(15000);
+    cleanUp();
   });
-
 });
