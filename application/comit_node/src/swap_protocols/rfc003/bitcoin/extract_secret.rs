@@ -22,7 +22,6 @@ impl ExtractSecret for Transaction {
 mod test {
     use super::*;
     use bitcoin_support::{serialize::deserialize, OutPoint, Script, Transaction, TxIn};
-    use hex;
     use spectral::prelude::*;
     use std::str::FromStr;
 

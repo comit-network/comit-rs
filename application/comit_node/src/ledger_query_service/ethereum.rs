@@ -23,7 +23,6 @@ impl Query for EthereumQuery {}
 mod tests {
     use super::*;
     use ethereum_support::Address;
-    use serde_json;
     use std::str::FromStr;
 
     #[test]

@@ -36,8 +36,8 @@ pub enum PubkeyFromHexError {
 impl fmt::Display for PubkeyFromHexError {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            PubkeyFromHexError::Secp256k1(ref e) => fmt.write_str(&format!("{}", e)),
-            PubkeyFromHexError::InvalidHex(ref e) => fmt.write_str(&format!("{}", e)),
+            PubkeyFromHexError::Secp256k1(e) => fmt.write_str(&format!("{}", e)),
+            PubkeyFromHexError::InvalidHex(e) => fmt.write_str(&format!("{}", e)),
         }
     }
 }

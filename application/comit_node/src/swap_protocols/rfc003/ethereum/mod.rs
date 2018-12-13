@@ -3,7 +3,6 @@ use crate::swap_protocols::{
     rfc003::{state_machine::HtlcParams, Ledger},
 };
 use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
-use hex;
 use std::time::Duration;
 
 mod actions;

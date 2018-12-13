@@ -250,7 +250,6 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQuery
 mod test {
     use super::*;
     use bitcoin_support::TransactionId;
-    use serde_json;
 
     #[test]
     fn json_deserialize() {

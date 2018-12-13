@@ -1,5 +1,4 @@
 use ethereum_support::{EtherQuantity, U256};
-use serde_json;
 #[macro_use]
 extern crate lazy_static;
 use std::{f64, str::FromStr};

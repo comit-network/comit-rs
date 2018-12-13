@@ -7,7 +7,6 @@ use ethereum_support::{
     web3::{transports::Http, Web3},
     Address, Bytes, CallRequest, EtherQuantity, Future, TransactionRequest, H256, U256,
 };
-use hex;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex},

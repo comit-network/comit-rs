@@ -117,7 +117,6 @@ mod tests {
 
     use super::*;
     use crate::swap_protocols::rfc003::{roles::test::Bobisha, Secret};
-    use bitcoin_support;
     use hex::FromHex;
 
     #[test]

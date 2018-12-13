@@ -58,7 +58,7 @@ impl From<Error> for HttpApiProblem {
 }
 
 pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(ref err) = rejection.find_cause::<HttpApiProblemStdError>() {
+    if let Some(err) = rejection.find_cause::<HttpApiProblemStdError>() {
         let code = err
             .http_api_problem
             .status

@@ -146,9 +146,7 @@ impl Serialize for PubkeyHash {
 mod test {
     use super::*;
     use bitcoin::util::privkey::Privkey as PrivateKey;
-    use hex;
     use secp256k1_support::KeyPair;
-    use serde_json;
     use std::str::FromStr;
 
     #[test]

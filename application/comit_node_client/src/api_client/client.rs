@@ -1,4 +1,3 @@
-use reqwest;
 use std::{collections::HashMap, fmt, str::FromStr};
 use uuid::{ParseError, Uuid};
 

@@ -6,8 +6,6 @@ use std::{
     str::FromStr,
 };
 
-pub const SECRET_LENGTH: usize = 32;
-
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SecretHash(pub Vec<u8>);
 
@@ -81,10 +79,10 @@ impl FromStr for SecretHash {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub struct Secret([u8; SECRET_LENGTH]);
+pub struct Secret([u8; Self::SECRET_LENGTH]);
 
-impl From<[u8; SECRET_LENGTH]> for Secret {
-    fn from(secret: [u8; SECRET_LENGTH]) -> Self {
+impl From<[u8; Self::SECRET_LENGTH]> for Secret {
+    fn from(secret: [u8; Self::SECRET_LENGTH]) -> Self {
         Secret(secret)
     }
 }
@@ -96,22 +94,24 @@ impl From<Secret> for SecretHash {
 }
 
 impl Secret {
+    pub const SECRET_LENGTH: usize = 32;
+
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
-        let random_bytes = rng.gen_random_bytes(SECRET_LENGTH);
-        let mut secret = [0; SECRET_LENGTH];
+        let random_bytes = rng.gen_random_bytes(Self::SECRET_LENGTH);
+        let mut secret = [0; Self::SECRET_LENGTH];
         secret.copy_from_slice(&random_bytes[..]);
         Secret::from(secret)
     }
 
     pub fn from_vec(vec: &[u8]) -> Result<Secret, SecretFromErr> {
-        if vec.len() != SECRET_LENGTH {
+        if vec.len() != Self::SECRET_LENGTH {
             return Err(SecretFromErr::InvalidLength {
-                expected: SECRET_LENGTH,
+                expected: Self::SECRET_LENGTH,
                 got: vec.len(),
             });
         }
-        let mut data = [0; SECRET_LENGTH];
-        let vec = &vec[..SECRET_LENGTH];
+        let mut data = [0; Self::SECRET_LENGTH];
+        let vec = &vec[..Self::SECRET_LENGTH];
         data.copy_from_slice(vec);
         Ok(Secret(data))
     }
@@ -120,12 +120,12 @@ impl Secret {
         let mut sha = Sha256::new();
         sha.input(&self.0);
 
-        let mut result: [u8; SECRET_LENGTH] = [0; SECRET_LENGTH];
+        let mut result: [u8; Self::SECRET_LENGTH] = [0; Self::SECRET_LENGTH];
         sha.result(&mut result);
         SecretHash(result.to_vec())
     }
 
-    pub fn raw_secret(&self) -> &[u8; SECRET_LENGTH] {
+    pub fn raw_secret(&self) -> &[u8; Self::SECRET_LENGTH] {
         &self.0
     }
 }

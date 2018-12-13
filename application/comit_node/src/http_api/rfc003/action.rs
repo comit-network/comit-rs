@@ -42,7 +42,7 @@ trait ExecuteAccept<AL: Ledger, BL: Ledger> {
     fn execute(
         &self,
         body: AcceptSwapRequestHttpBody<AL, BL>,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
         id: SwapId,
     ) -> Result<(), HttpApiProblem>;
 }
@@ -55,7 +55,7 @@ where
     fn execute(
         &self,
         body: AcceptSwapRequestHttpBody<AL, BL>,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
         id: SwapId,
     ) -> Result<(), HttpApiProblem> {
         self.accept(StateMachineResponse::from_accept_swap_request_http_body(
@@ -74,7 +74,7 @@ where
     fn from_accept_swap_request_http_body(
         body: AcceptSwapRequestHttpBody<AL, BL>,
         id: SwapId,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
     ) -> Result<Self, HttpApiProblem>;
 }
 
@@ -88,7 +88,7 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
     fn from_accept_swap_request_http_body(
         body: AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
         id: SwapId,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
     ) -> Result<Self, HttpApiProblem> {
         match body {
             AcceptSwapRequestHttpBody::OnlyRedeem { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The redeem identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
@@ -106,7 +106,7 @@ impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
     fn execute(
         &self,
         _body: AcceptSwapRequestHttpBody<AL, BL>,
-        _secret_source: &SecretSource,
+        _secret_source: &dyn SecretSource,
         _id: SwapId,
     ) -> Result<(), HttpApiProblem> {
         unreachable!("FIXIME: Alice will never return this action so we shouldn't have to deal with this case")
@@ -346,7 +346,7 @@ enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
 pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    secret_source: Arc<SecretSource>,
+    secret_source: Arc<dyn SecretSource>,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -368,7 +368,7 @@ pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: &T,
     state_store: &S,
-    secret_source: &SecretSource,
+    secret_source: &dyn SecretSource,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -520,7 +520,6 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_urlencoded;
 
     #[test]
     fn given_no_query_parameters_deserialize_to_none() {

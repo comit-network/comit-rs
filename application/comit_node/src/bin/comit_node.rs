@@ -1,4 +1,4 @@
-#![warn(unused_extern_crates, missing_debug_implementations)]
+#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
 #[macro_use]
@@ -25,9 +25,9 @@ use futures::sync::{
 use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
-fn main() {
+fn main() -> Result<(), failure::Error> {
     logging::set_up_logging();
-    let settings = load_settings();
+    let settings = load_settings()?;
 
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
@@ -37,7 +37,7 @@ fn main() {
     let state_store = Arc::new(InMemoryStateStore::default());
     let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
 
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let mut runtime = tokio::runtime::Runtime::new()?;
 
     let sender = spawn_alice_swap_request_handler_for_rfc003(
         &settings,
@@ -73,16 +73,17 @@ fn main() {
 
     // Block the current thread.
     ::std::thread::park();
+    Ok(())
 }
 
-fn load_settings() -> ComitNodeSettings {
+fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
     let comit_config_path = var_or_default("COMIT_NODE_CONFIG_PATH", "~/.config/comit_node".into());
     let run_mode_config = var_or_default("RUN_MODE", "development".into());
     let default_config = format!("{}/{}", comit_config_path.trim(), "default");
     let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
 
-    let settings = ComitNodeSettings::create(default_config, run_mode_config);
-    settings.unwrap()
+    let settings = ComitNodeSettings::create(default_config, run_mode_config)?;
+    Ok(settings)
 }
 
 fn create_ledger_query_service_api_client(

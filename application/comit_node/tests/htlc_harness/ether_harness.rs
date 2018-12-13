@@ -11,7 +11,6 @@ use ethereum_support::{
     web3::{transports::EventLoopHandle, types::Address},
     EtherQuantity,
 };
-use pretty_env_logger;
 use std::{sync::Arc, time::Duration};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};

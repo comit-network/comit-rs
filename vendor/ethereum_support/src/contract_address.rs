@@ -1,6 +1,5 @@
 use crate::web3::types::{Address, U256};
 use rlp::RlpStream;
-use tiny_keccak;
 
 pub trait CalculateContractAddress {
     fn calculate_contract_address(&self, nonce: &U256) -> Address;

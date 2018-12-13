@@ -83,7 +83,7 @@ where
     fn from_swap_request_body_identities(
         identities: SwapRequestBodyIdentities<AL::Identity, BL::Identity>,
         id: SwapId,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
     ) -> Result<Self, HttpApiProblem>;
 }
 
@@ -96,7 +96,7 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
             ethereum_support::Address,
         >,
         id: SwapId,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
     ) -> Result<Self, HttpApiProblem> {
         match identities {
             SwapRequestBodyIdentities::RefundAndRedeem { .. }
@@ -121,7 +121,7 @@ where
     fn from_swap_request_body(
         body: SwapRequestBody<AL, BL, AA, BA>,
         id: SwapId,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
     ) -> Result<Self, HttpApiProblem>;
 }
 
@@ -133,7 +133,7 @@ where
     fn from_swap_request_body(
         body: SwapRequestBody<AL, BL, AA, BA>,
         id: SwapId,
-        secret_source: &SecretSource,
+        secret_source: &dyn SecretSource,
     ) -> Result<Self, HttpApiProblem> {
         Ok(rfc003::alice::SwapRequest {
             alpha_asset: body.alpha_asset,
@@ -172,7 +172,7 @@ fn swap_path(id: SwapId) -> String {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap(
-    secret_source: Arc<SecretSource>,
+    secret_source: Arc<dyn SecretSource>,
     sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
@@ -187,7 +187,7 @@ pub fn post_swap(
 }
 
 fn handle_post_swap(
-    secret_source: &SecretSource,
+    secret_source: &dyn SecretSource,
     sender: &UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
@@ -380,7 +380,6 @@ fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 mod tests {
 
     use super::*;
-    use serde_json;
     use spectral::prelude::*;
 
     #[test]

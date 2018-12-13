@@ -32,7 +32,6 @@ impl ExtractSecret for Transaction {
 mod test {
     use super::*;
     use ethereum_support::{Bytes, Transaction, H256, U256};
-    use pretty_env_logger;
     use spectral::prelude::*;
     use std::str::FromStr;
 

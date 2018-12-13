@@ -501,7 +501,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
 macro_rules! impl_display {
     ($state:ident) => {
         impl<R: Role> fmt::Display for $state<R> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 write!(f, stringify!($state))
             }
         }

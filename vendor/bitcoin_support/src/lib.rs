@@ -1,4 +1,4 @@
-#![warn(unused_extern_crates, missing_debug_implementations)]
+#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
 #[macro_use]
@@ -24,7 +24,6 @@ pub use bitcoin::{
     Address,
 };
 use bitcoin_bech32;
-use hex;
 
 pub use crate::{blocks::*, mined_block::*, pubkey::*, transaction::*, weight::*};
 pub use bitcoin_quantity::*;

@@ -15,7 +15,6 @@ use futures::{
     future::Future,
     stream::{self, Stream},
 };
-use hex;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -112,11 +111,11 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
                     result = result && (*is_contract_creation == transaction.to.is_none());
                 }
 
-                if let Some(ref transaction_data) = transaction_data {
+                if let Some(transaction_data) = transaction_data {
                     result = result && (transaction.input == *transaction_data);
                 }
 
-                if let Some(ref transaction_data_length) = transaction_data_length {
+                if let Some(transaction_data_length) = transaction_data_length {
                     result = result && (transaction.input.0.len() == *transaction_data_length);
                 }
 
@@ -156,8 +155,8 @@ impl Block for EthereumBlock<EthereumTransaction> {
 impl Query<EthereumBlock<EthereumTransaction>> for EthereumBlockQuery {
     fn matches(&self, block: &EthereumBlock<EthereumTransaction>) -> QueryMatchResult {
         match self.min_timestamp_secs {
-            Some(ref min_timestamp_secs) => {
-                let min_timestamp_secs = U256::from(*min_timestamp_secs);
+            Some(min_timestamp_secs) => {
+                let min_timestamp_secs = U256::from(min_timestamp_secs);
                 if min_timestamp_secs <= block.timestamp {
                     QueryMatchResult::yes()
                 } else {
