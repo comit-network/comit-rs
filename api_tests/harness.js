@@ -130,7 +130,8 @@ describe("Starting services", async function() {
   });
 
   it("This is my test", async () => {
-    return;
+    this.timeout(10200);
+    await test_lib.sleep(10000);
   });
 
   after(function() {

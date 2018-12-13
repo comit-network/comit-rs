@@ -15,3 +15,7 @@ down_time = "15000"
 [comit.alice]
 host = "127.0.0.1"
 config_dir = "./regtest/alice/"
+
+[comit.bob]
+host = "127.0.0.1"
+config_dir = "./regtest/bob/"
