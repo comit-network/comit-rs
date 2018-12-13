@@ -193,7 +193,6 @@ dependencies = [
 
 [tasks.dry-tests]
 description = "Runs tests that don't require any external services"
-env = { "LOG_DIR" = "./dry/log" }
 workspace = false
 private = true
 script_runner = "bash"
@@ -242,7 +241,6 @@ for GLOB_DIR in ${PARAMS}; do
     cd "$ROOT/api_tests/e2e/rfc003/"
     for DIR in ${GLOB_DIR}; do
         cd "$ROOT";
-        export LOG_DIR="./e2e/rfc003/${DIR}/log";
         ./api_tests/e2e/comit-harness.sh ./api_tests/e2e/rfc003/${DIR}
     done;
 done;
