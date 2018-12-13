@@ -2,7 +2,6 @@
 
 members = [
     "application/comit_node",
-    "application/comit_node_client",
     "application/ledger_query_service",
     "vendor/bam",
     "vendor/bitcoin_rpc_test_helpers",
