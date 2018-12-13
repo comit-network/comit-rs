@@ -11,3 +11,7 @@ docker = "eth"
 rpc_url = "http://localhost:8545"
 up_time = "10000"
 down_time = "15000"
+
+[comit.alice]
+host = "127.0.0.1"
+config_dir = "./regtest/alice/"

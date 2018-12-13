@@ -35,11 +35,6 @@ END(){
             wait "$pid" 2>/dev/null;
         fi
     done
-    log "KILLING docker containers";
-    (
-        cd "$PROJECT_ROOT/api_tests/regtest";
-        docker-compose rm -sfv;
-    );
 }
 
 trap 'END' EXIT;
@@ -55,16 +50,6 @@ function start() {
     set +a;
 
     export BITCOIN_RPC_URL="http://$BITCOIN_RPC_HOST:$BITCOIN_RPC_PORT";
-    #### Start all services
-    (
-        cd "$PROJECT_ROOT/api_tests/regtest";
-
-        log "Starting up docker containers";
-        docker-compose up -d ${CHAINS};
-        docker-compose logs --tail=all >"$LOG_DIR/docker-compose.log";
-    );
-
-    sleep 10;
 
     export BOB_CONFIG_FILE="$PROJECT_ROOT/api_tests/regtest/bob/default.toml";
     export BOB_COMIT_NODE_HOST=127.0.0.1;

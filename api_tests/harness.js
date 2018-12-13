@@ -22,19 +22,19 @@ process.env.LOG_DIR = log_dir;
 
 const test_lib = require("./test_lib.js"); // needs env var PROJECT_ROOT and LOG_DIR
 
-let pids = [];
-
 const docker_cwd = project_root + "/api_tests/regtest";
+const comit_node_cwd = project_root + "/api_tests/";
 
 const docker_compose_options = {
   cwd: docker_cwd,
   encoding: "utf-8"
 };
 
+let subprocesses = [];
 function cleanUp() {
-  pids.forEach(function(pid) {
-    console.log("++ Killing ", pid);
-    process.kill(pid);
+  subprocesses.forEach(function(subprocess) {
+    console.log("++ Killing ", subprocess.spawnfile, subprocess.pid);
+    subprocess.kill();
   });
   console.log("++ Stopping docker containers");
   execSync("docker-compose rm -sfv", docker_compose_options);
@@ -82,6 +82,22 @@ let ledger_down_time = 0;
   );
 }
 
+async function startComitNode(name, comit_config) {
+  console.log("Starting", name + "'s COMIT node: ", comit_config);
+
+  const subprocess = await spawn(project_root + "/target/debug/comit_node", [], {
+    cwd: comit_node_cwd,
+    encoding: "utf-8",
+    env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
+    stdio: [
+      "ignore",
+      fs.openSync(log_dir + "/comit_node-" + name + ".log", "w"),
+      fs.openSync(log_dir + "/comit_node-" + name + ".log", "w")
+    ]
+  });
+  subprocesses.push(subprocess);
+}
+
 describe("Starting services", async function() {
   before(async function() {
     this.timeout(50000);
@@ -104,6 +120,13 @@ describe("Starting services", async function() {
     });
 
     await test_lib.sleep(ledger_up_time);
+
+    console.log("++ Starting COMIT nodes");
+
+    Object.keys(config.comit).forEach(async function(name) {
+        await startComitNode(name, config.comit[name]);
+    });
+
   });
 
   it("This is my test", async () => {
