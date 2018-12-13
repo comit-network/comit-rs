@@ -98,7 +98,7 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
-    let swap_url_1;
+    let alice_swap_1_href;
     it("[Alice] Should be able to make first swap request via HTTP api", async () => {
         await chai
             .request(alice.comit_node_url())
@@ -128,11 +128,11 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(201);
                 swap_location = res.headers.location;
                 swap_location.should.be.a("string");
-                swap_url_1 = swap_location;
+                alice_swap_1_href = swap_location;
             });
     });
 
-    let swap_url_2;
+    let alice_swap_2_href;
     it("[Alice] Should be able to make second swap request via HTTP api", async () => {
         await chai
             .request(alice.comit_node_url())
@@ -162,14 +162,14 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(201);
                 swap_location = res.headers.location;
                 swap_location.should.be.a("string");
-                swap_url_2 = swap_location;
+                alice_swap_2_href = swap_location;
             });
     });
 
     it("[Alice] Is able to GET the swap after POSTing it", async () => {
         await chai
             .request(alice.comit_node_url())
-            .get(swap_url_1)
+            .get(alice_swap_1_href)
             .then(res => {
                 res.should.have.status(200);
 
@@ -206,12 +206,14 @@ describe("RFC003 HTTP API", () => {
                     swap.protocol.should.equal("rfc003");
                     swap.state.should.equal("Start");
                     let links = swap._links;
-                    links.self.href.should.be.oneOf([swap_url_1, swap_url_2]);
+                    links.self.href.should.be.oneOf([alice_swap_1_href, alice_swap_2_href]);
                 }
             });
     });
 
-    let swap_link_href;
+    let bob_swap_1_href;
+    let bob_swap_2_href;
+
     it("[Bob] Shows the swaps as Start in /swaps", async () => {
         let res = await chai.request(bob.comit_node_url()).get("/swaps");
         let embedded = res.body._embedded;
@@ -223,17 +225,25 @@ describe("RFC003 HTTP API", () => {
             swap.state.should.equal("Start");
         }
 
-        let swap = swaps[0];
-        let swap_link = swap._links.self;
-        swap_link.should.be.a("object");
-        swap_link_href = swap_link.href;
-        swap_link_href.should.be.a("string");
+        let swap_1 = swaps[0];
+        let swap_1_link = swap_1._links.self;
+        swap_1_link.should.be.a("object");
+        bob_swap_1_href = swap_1_link.href;
+        bob_swap_1_href.should.be.a("string");
+
+        let swap_2 = swaps[1];
+        let swap_2_link = swap_2._links.self;
+        swap_1_link.should.be.a("object");
+        bob_swap_2_href = swap_2_link.href;
+        bob_swap_2_href.should.be.a("string");
     });
 
-    it("[Bob] Has the accept when GETing the swap", async () => {
+    let bob_decline_href_1;
+
+    it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
         await chai
             .request(bob.comit_node_url())
-            .get(swap_link_href)
+            .get(bob_swap_1_href)
             .then(res => {
                 res.should.have.status(200);
 
@@ -259,13 +269,68 @@ describe("RFC003 HTTP API", () => {
                 action_links.should.be.a("object");
                 action_links.accept.should.be.a("object");
                 action_links.accept.href.should.equal(
-                    swap_link_href + "/accept"
+                    bob_swap_1_href + "/accept"
                 );
 
                 action_links.decline.should.be.a("object");
-                action_links.decline.href.should.equal(
-                    swap_link_href + "/decline"
+                bob_decline_href_1 = action_links.decline.href;
+                bob_decline_href_1.should.equal(
+                    bob_swap_1_href + "/decline"
                 );
             });
     });
+
+    it("[Bob] Can execute a decline action providing a reason", async () => {
+        let bob_response = {
+            reason: "I don't like your name, Alice"
+        };
+
+        let decline_res = await chai
+            .request(bob.comit_node_url())
+            .post(bob_decline_href_1)
+            .send(bob_response);
+
+        decline_res.should.have.status(200);
+    });
+
+    it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async () => {
+        let res = await chai.request(bob.comit_node_url()).get(bob_swap_1_href);
+        res.should.have.status(200);
+        res.body.state.should.equal("Rejected");
+    });
+
+    // it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
+    //     let res = await chai.request(alice.comit_node_url()).get(alice_swap_1_href);
+    //     res.should.have.status(200);
+    //     res.body.state.should.equal("Rejected");
+    // });
+
+    it("[Bob] Can execute a decline action, without providing a reason", async () => {
+        let bob_decline_href_2;
+
+        await chai
+            .request(bob.comit_node_url())
+            .get(bob_swap_2_href)
+            .then(res => {
+                res.should.have.status(200);
+                bob_decline_href_2 = res.body._links.decline.href;
+                bob_decline_href_2.should.equal(
+                    bob_swap_2_href + "/decline"
+                );
+            });
+
+        let decline_res = await chai
+            .request(bob.comit_node_url())
+            .post(bob_decline_href_2)
+            .send({});
+
+        decline_res.should.have.status(200);
+    });
+
+    // it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
+    //     let res = await chai.request(alice.comit_node_url()).get(alice_swap_2_href);
+    //     res.should.have.status(200);
+    //     res.body.state.should.equal("Rejected");
+    // });
+
 });

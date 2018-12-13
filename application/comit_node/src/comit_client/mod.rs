@@ -31,6 +31,9 @@ pub trait ClientFactory<C: Client>: Send + Sync + RefUnwindSafe + Debug {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SwapReject {
+    Declined {
+        reason: Option<String>,
+    },
     /// The counterparty rejected the request
     Rejected,
 }
