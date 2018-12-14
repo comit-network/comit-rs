@@ -445,7 +445,6 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                         problem::serde(&e)
                     })
                     .and_then(move |decline_body| {
-                        println!("Deserialized body of decline action: {:?}", body);
                         let state = state_store
                             .get::<Role>(&id)?
                             .ok_or_else(problem::state_store)?;
