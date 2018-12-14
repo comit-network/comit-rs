@@ -273,7 +273,8 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/ledger_query_service/harness.sh ./api_tests/ledger_query_service
+export ROOT=$(pwd);
+./api_tests/npm_wrapper.sh ./ledger_query_service/
 '''
 ]
 

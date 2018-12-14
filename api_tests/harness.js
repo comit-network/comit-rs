@@ -171,7 +171,7 @@ async function startLedgerQueryService(name, lqs_config) {
 
 describe("Starting services", async function() {
     before(async function() {
-        this.timeout(ledger_up_time + 5000);
+        this.timeout(ledger_up_time + 4000);
 
         if (config.ledger) {
             console.log(
@@ -183,11 +183,6 @@ describe("Starting services", async function() {
             await test_lib.sleep(ledger_up_time);
         }
 
-        console.log("++ Starting COMIT node(s)");
-        Object.keys(config.comit_node).forEach(async function(name) {
-            await startComitNode(name, config.comit_node[name]);
-        });
-
         if (config.ledger_query_service) {
             console.log("++ Starting Ledger Query Service node(s)");
             Object.keys(config.ledger_query_service).forEach(async function(
@@ -197,6 +192,13 @@ describe("Starting services", async function() {
                     name,
                     config.ledger_query_service[name]
                 );
+            });
+        }
+
+        if (config.comit_node) {
+            console.log("++ Starting COMIT node(s)");
+            Object.keys(config.comit_node).forEach(async function(name) {
+                await startComitNode(name, config.comit_node[name]);
             });
         }
 

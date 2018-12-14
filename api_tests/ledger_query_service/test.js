@@ -20,6 +20,7 @@ function sleep(ms) {
 
 describe("Test Ledger Query Service API", () => {
     before(async function() {
+        this.timeout(5000);
         await test_lib.btc_activate_segwit();
         await wallet.fund_btc(5);
         await wallet.fund_eth(20);
