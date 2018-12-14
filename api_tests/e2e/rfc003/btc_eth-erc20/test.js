@@ -424,7 +424,6 @@ describe("RFC003: Bitcoin for ERC20", () => {
         await bob.poll_comit_node_until(chai, bob_swap_href, "BothRedeemed");
     });
 
-
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
         let bob_btc_balance_after = await test_lib.btc_balance(
             bob_final_address

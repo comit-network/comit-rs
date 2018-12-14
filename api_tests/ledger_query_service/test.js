@@ -44,7 +44,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/bitcoin/transactions")
                     .send({
-                        to_address: to_address
+                        to_address: to_address,
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -125,7 +125,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/bitcoin/blocks")
                     .send({
-                        min_height: min_height
+                        min_height: min_height,
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -183,7 +183,7 @@ describe("Test Ledger Query Service API", () => {
 
     describe("Ethereum", () => {
         describe("Transactions", () => {
-            before(async () =>  {
+            before(async () => {
                 await wallet.fund_eth(10);
             });
 
@@ -203,7 +203,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/ethereum/transactions")
                     .send({
-                        to_address: to_address
+                        to_address: to_address,
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -287,7 +287,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/ethereum/blocks")
                     .send({
-                        min_timestamp_secs: min_timestamp_secs
+                        min_timestamp_secs: min_timestamp_secs,
                     })
                     .then(res => {
                         res.should.have.status(201);

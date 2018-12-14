@@ -10,6 +10,7 @@ description = "Format, build and run the Rust tests. No clippy nor end-to-end."
 workspace = false
 dependencies = [
      "format",
+     "js-format",
      "build",
      "test"
 ]
@@ -27,6 +28,7 @@ dependencies = [
 workspace = false
 dependencies = [
     "check-format",
+    "check-js-format",
     "clippy"
 ]
 
@@ -108,6 +110,29 @@ install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustf
 command = "cargo"
 args = ["fmt", "--", "--check"]
 
+[tasks.js-format]
+description = "Runs prettier to check appropriate JS code format."
+workspace = false
+script = [
+'''
+jsfiles=$(git diff --no-ext-diff --name-only --diff-filter=ACM "*.js" "*.jsx" | tr '\n' ' ')
+[ -z "$jsfiles" ] && exit 0
+
+echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier --write
+'''
+]
+
+[tasks.check-js-format]
+description = "Runs prettier to check appropriate JS code format."
+workspace = false
+script = [
+'''
+jsfiles=$(git diff --no-ext-diff --cached --name-only --diff-filter=ACM "*.js" "*.jsx" | tr '\n' ' ')
+[ -z "$jsfiles" ] && exit 0
+
+echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier -l
+'''
+]
 
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
