@@ -70,12 +70,14 @@ const regtest = {
 let web3;
 
 module.exports.web3 = () => {
-    const eth_config = global.harness.config.ledger.ethereum;
-    if (!eth_config) {
-        throw new Error("ledger.ethereum configuration is needed");
+    if (global.harness.config.ledger && global.harness.config.ledger.ethereum) {
+        const eth_config = global.harness.config.ledger.ethereum;
+        return (web3 =
+            web3 ||
+            new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url)));
+    } else {
+        return new Web3();
     }
-    return (web3 =
-        web3 || new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url)));
 };
 
 let test_rng_counter = 0;

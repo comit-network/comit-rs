@@ -198,8 +198,8 @@ private = true
 script_runner = "bash"
 script = [
 '''
-cd api_tests;
-./dry/harness.sh ./dry/rfc003
+export ROOT=$(pwd);
+./api_tests/npm_wrapper.sh ./dry/rfc003
 '''
 ]
 

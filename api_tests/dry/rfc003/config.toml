@@ -1,0 +1,7 @@
+[comit_node.alice]
+host = "127.0.0.1"
+config_dir = "./regtest/alice/"
+
+[comit_node.bob]
+host = "127.0.0.1"
+config_dir = "./regtest/bob/"

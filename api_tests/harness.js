@@ -42,34 +42,36 @@ let docker_container_names = "";
 let ledger_up_time = 0;
 let ledger_down_time = 0;
 {
-    let docker_containers = [];
-    Object.keys(config.ledger).forEach(function(ledger) {
-        const config_ledger = config.ledger[ledger];
+    if (config.ledger) {
+        let docker_containers = [];
+        Object.keys(config.ledger).forEach(function(ledger) {
+            const config_ledger = config.ledger[ledger];
 
-        if (config_ledger.docker) {
-            docker_containers.push(config_ledger.docker);
-        }
+            if (config_ledger.docker) {
+                docker_containers.push(config_ledger.docker);
+            }
 
-        const up_time = config_ledger.up_time;
-        if (up_time && up_time > ledger_up_time) {
-            ledger_up_time = up_time;
-        }
+            const up_time = config_ledger.up_time;
+            if (up_time && up_time > ledger_up_time) {
+                ledger_up_time = up_time;
+            }
 
-        const down_time = parseInt(config_ledger.down_time);
-        if (down_time && down_time > ledger_down_time) {
-            ledger_down_time = down_time;
-        }
-    });
-    docker_container_names = docker_containers.join(" ");
+            const down_time = parseInt(config_ledger.down_time);
+            if (down_time && down_time > ledger_down_time) {
+                ledger_down_time = down_time;
+            }
+        });
+        docker_container_names = docker_containers.join(" ");
 
-    console.log(
-        "++ Extracted values:\n  ++ docker containers:",
-        docker_container_names,
-        "\n  ++ ledger_up_time:",
-        ledger_up_time,
-        "\n  ++ ledger_down_time:",
-        ledger_down_time
-    );
+        console.log(
+            "++ Extracted values:\n  ++ docker containers:",
+            docker_container_names,
+            "\n  ++ ledger_up_time:",
+            ledger_up_time,
+            "\n  ++ ledger_down_time:",
+            ledger_down_time
+        );
+    }
 }
 
 // To be done once all global variables are set
@@ -171,23 +173,32 @@ describe("Starting services", async function() {
     before(async function() {
         this.timeout(ledger_up_time + 5000);
 
-        console.log("++ Starting docker container(s):", docker_container_names);
-        await startDockerContainers(docker_container_names);
-        console.log("++ Docker containers started");
-        await test_lib.sleep(ledger_up_time);
+        if (config.ledger) {
+            console.log(
+                "++ Starting docker container(s):",
+                docker_container_names
+            );
+            await startDockerContainers(docker_container_names);
+            console.log("++ Docker containers started");
+            await test_lib.sleep(ledger_up_time);
+        }
 
         console.log("++ Starting COMIT node(s)");
         Object.keys(config.comit_node).forEach(async function(name) {
             await startComitNode(name, config.comit_node[name]);
         });
 
-        console.log("++ Starting Ledger Query Service node(s)");
-        Object.keys(config.ledger_query_service).forEach(async function(name) {
-            await startLedgerQueryService(
-                name,
-                config.ledger_query_service[name]
-            );
-        });
+        if (config.ledger_query_service) {
+            console.log("++ Starting Ledger Query Service node(s)");
+            Object.keys(config.ledger_query_service).forEach(async function(
+                name
+            ) {
+                await startLedgerQueryService(
+                    name,
+                    config.ledger_query_service[name]
+                );
+            });
+        }
 
         await test_lib.sleep(2000);
     });
