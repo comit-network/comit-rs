@@ -30,7 +30,7 @@ log4js.configure({
     appenders: {
         test_suite: {
             type: "file",
-            filename: global.harness.log_dir + "/test-suite.log",
+            filename: log_dir + "/test-suite.log",
         },
     },
     categories: { default: { appenders: ["test_suite"], level: "ALL" } },
@@ -51,14 +51,25 @@ const config = Toml.parse(fs.readFileSync(test_dir + "/config.toml", "utf8"));
 logger.debug("++ Config:\n", config, "\n++ --------------------");
 global.harness.config = config;
 
+const ledgers_config = Toml.parse(
+    fs.readFileSync(project_root + "/api_tests/regtest/ledgers.toml", "utf8")
+);
+logger.debug(
+    "++ Ledgers Config:\n",
+    ledgers_config,
+    "\n++ --------------------"
+);
+global.harness.ledgers_config = ledgers_config;
+
 let docker_container_names = "";
 let ledger_up_time = 0;
 let ledger_down_time = 0;
 {
-    if (config.ledger) {
+    if (config.ledgers) {
         let docker_containers = [];
-        Object.keys(config.ledger).forEach(function(ledger) {
-            const config_ledger = config.ledger[ledger];
+
+        config.ledgers.forEach(function(ledger) {
+            const config_ledger = ledgers_config[ledger];
 
             if (config_ledger.docker) {
                 docker_containers.push(config_ledger.docker);
@@ -177,7 +188,7 @@ describe("Starting services", async function() {
     before(async function() {
         this.timeout(ledger_up_time + 4000);
 
-        if (config.ledger) {
+        if (config.ledgers) {
             logger.info(
                 "++ Starting docker container(s):",
                 docker_container_names

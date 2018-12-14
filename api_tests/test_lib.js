@@ -22,7 +22,7 @@ module.exports.sleep = sleep;
 let _bitcoin_rpc_client;
 
 function bitcoin_rpc_client() {
-    const btc_config = global.harness.config.ledger.bitcoin;
+    const btc_config = global.harness.ledgers_config.bitcoin;
     if (!btc_config) {
         throw new Error("ledger.bitcoin configuration is needed");
     }
@@ -59,8 +59,8 @@ const regtest = {
 let web3;
 
 module.exports.web3 = () => {
-    if (global.harness.config.ledger && global.harness.config.ledger.ethereum) {
-        const eth_config = global.harness.config.ledger.ethereum;
+    if (global.harness.ledgers_config.ethereum) {
+        const eth_config = global.harness.ledgers_config.ethereum;
         return (web3 =
             web3 ||
             new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url)));
