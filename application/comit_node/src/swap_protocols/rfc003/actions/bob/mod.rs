@@ -1,7 +1,7 @@
 mod btc_erc20;
 mod btc_eth;
 use crate::{
-    comit_client::SwapReject,
+    comit_client::{SwapDeclineReason, SwapReject},
     swap_protocols::rfc003::{state_machine::StateMachineResponse, Ledger},
 };
 use futures::sync::oneshot;
@@ -51,7 +51,7 @@ impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
     pub fn new(sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>) -> Self {
         Self { sender }
     }
-    pub fn decline(&self, reason: Option<String>) -> Result<(), ()> {
+    pub fn decline(&self, reason: SwapDeclineReason) -> Result<(), ()> {
         let mut sender = self.sender.lock().unwrap();
         match sender.take() {
             Some(sender) => {

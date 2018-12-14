@@ -1,4 +1,5 @@
 use crate::{
+    comit_client::SwapDeclineReason,
     http_api::{problem, HttpApiProblemStdError},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
@@ -106,11 +107,11 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
 }
 
 trait ExecuteDecline {
-    fn execute(&self, reason: Option<String>) -> Result<(), HttpApiProblem>;
+    fn execute(&self, reason: SwapDeclineReason) -> Result<(), HttpApiProblem>;
 }
 
 impl<AL: Ledger, BL: Ledger> ExecuteDecline for Decline<AL, BL> {
-    fn execute(&self, reason: Option<String>) -> Result<(), HttpApiProblem> {
+    fn execute(&self, reason: SwapDeclineReason) -> Result<(), HttpApiProblem> {
         self.decline(reason)
             .map_err(|_| problem::action_already_taken())
     }
@@ -128,7 +129,7 @@ impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
 }
 
 impl ExecuteDecline for () {
-    fn execute(&self, _reason: Option<String>) -> Result<(), HttpApiProblem> {
+    fn execute(&self, _reason: SwapDeclineReason) -> Result<(), HttpApiProblem> {
         unreachable!("FIXME: Alice will never return this action so we shouldn't have to deal with this case")
     }
 }
@@ -364,7 +365,7 @@ enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
 
 #[derive(Deserialize)]
 struct DeclineSwapRequestHttpBody {
-    reason: Option<String>,
+    reason: Option<SwapDeclineReason>,
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -462,7 +463,11 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                                 })?
                         };
 
-                        ExecuteDecline::execute(&decline_action, decline_body.reason)
+                        let reason = decline_body
+                            .reason
+                            .unwrap_or(SwapDeclineReason::Unspecified);
+
+                        ExecuteDecline::execute(&decline_action, reason)
                     })
             }
         })
