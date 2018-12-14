@@ -25,6 +25,19 @@ if (!test_dir) {
 const log_dir = test_dir + "/log";
 global.harness.log_dir = log_dir;
 
+const log4js = require("log4js");
+log4js.configure({
+    appenders: {
+        test_suite: {
+            type: "file",
+            filename: global.harness.log_dir + "/test-suite.log",
+        },
+    },
+    categories: { default: { appenders: ["test_suite"], level: "ALL" } },
+});
+const logger = log4js.getLogger("test_suite");
+global.harness.logger = logger;
+
 const docker_cwd = project_root + "/api_tests/regtest";
 const services_cwd = project_root + "/api_tests/";
 process.chdir(services_cwd);
@@ -35,7 +48,7 @@ const docker_compose_options = {
 };
 
 const config = Toml.parse(fs.readFileSync(test_dir + "/config.toml", "utf8"));
-console.log("++ Config:\n", config, "\n++ --------------------");
+logger.debug("++ Config:\n", config, "\n++ --------------------");
 global.harness.config = config;
 
 let docker_container_names = "";
@@ -62,15 +75,6 @@ let ledger_down_time = 0;
             }
         });
         docker_container_names = docker_containers.join(" ");
-
-        console.log(
-            "++ Extracted values:\n  ++ docker containers:",
-            docker_container_names,
-            "\n  ++ ledger_up_time:",
-            ledger_up_time,
-            "\n  ++ ledger_down_time:",
-            ledger_down_time
-        );
     }
 }
 
@@ -84,15 +88,15 @@ const test_lib = require("./test_lib.js");
 let subprocesses = [];
 function cleanUp() {
     subprocesses.forEach(function(subprocess) {
-        console.log("++ Killing", subprocess.spawnfile, subprocess.pid);
+        logger.info("++ Killing", subprocess.spawnfile, subprocess.pid);
         subprocess.kill();
     });
-    console.log("++ Stopping docker containers");
+    logger.info("++ Stopping docker containers");
     execSync("docker-compose rm -sfv", docker_compose_options);
 }
 
 process.once("SIGINT", function(code) {
-    console.log("++ SIGINT received");
+    logger.debug("++ SIGINT received");
     cleanUp();
 });
 
@@ -120,7 +124,7 @@ async function startDockerContainers(names) {
 }
 
 async function startComitNode(name, comit_config) {
-    console.log("Starting", name + "'s COMIT node:", comit_config);
+    logger.info("Starting", name + "'s COMIT node:", comit_config);
 
     const subprocess = await spawn(
         project_root + "/target/debug/comit_node",
@@ -140,7 +144,7 @@ async function startComitNode(name, comit_config) {
 }
 
 async function startLedgerQueryService(name, lqs_config) {
-    console.log("Starting", name, "Ledger Query Service:", lqs_config);
+    logger.info("Starting", name, "Ledger Query Service:", lqs_config);
 
     const subprocess = await spawn(
         project_root + "/target/debug/ledger_query_service",
@@ -174,17 +178,17 @@ describe("Starting services", async function() {
         this.timeout(ledger_up_time + 4000);
 
         if (config.ledger) {
-            console.log(
+            logger.info(
                 "++ Starting docker container(s):",
                 docker_container_names
             );
             await startDockerContainers(docker_container_names);
-            console.log("++ Docker containers started");
+            logger.info("++ Docker containers started");
             await test_lib.sleep(ledger_up_time);
         }
 
         if (config.ledger_query_service) {
-            console.log("++ Starting Ledger Query Service node(s)");
+            logger.info("++ Starting Ledger Query Service node(s)");
             Object.keys(config.ledger_query_service).forEach(async function(
                 name
             ) {
@@ -196,7 +200,7 @@ describe("Starting services", async function() {
         }
 
         if (config.comit_node) {
-            console.log("++ Starting COMIT node(s)");
+            logger.info("++ Starting COMIT node(s)");
             Object.keys(config.comit_node).forEach(async function(name) {
                 await startComitNode(name, config.comit_node[name]);
             });

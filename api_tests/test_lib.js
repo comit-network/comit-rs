@@ -6,18 +6,7 @@ const fs = require("fs");
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
 
-const log4js = require("log4js");
-log4js.configure({
-    appenders: {
-        test_suite: {
-            type: "file",
-            filename: global.harness.log_dir + "/test-suite.log",
-        },
-    },
-    categories: { default: { appenders: ["test_suite"], level: "ALL" } },
-});
-const logger = log4js.getLogger("test_suite");
-
+const logger = global.harness.logger;
 module.exports.logger = function() {
     return logger;
 };
@@ -275,13 +264,11 @@ class ComitConf {
         if (!node_config) {
             throw new Error("comit_node." + name + " configuration is needed");
         }
-        console.log("++ Node config for", name, ":\n", node_config);
         this.name = name;
         this.host = node_config.host;
         this.config = Toml.parse(
             fs.readFileSync(node_config.config_dir + "/default.toml", "utf8")
         );
-        console.log("++ Config for ComitConf:", this.config);
         this.wallet = new WalletConf(name);
     }
 
