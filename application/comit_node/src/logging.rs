@@ -49,7 +49,7 @@ fn formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'
 
         out.finish(format_args!(
             "[{date}][{target}][{level}] {context}{message}",
-            date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+            date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
             target = record.target(),
             level = colors_line.color(record.level()),
             context = context,
