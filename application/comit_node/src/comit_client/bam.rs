@@ -1,7 +1,8 @@
 use crate::{
     bam_api::{self, header::ToBamHeader},
     comit_client::{
-        rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+        rfc003, Client, ClientFactory, ClientFactoryError, SwapDeclineReason, SwapReject,
+        SwapResponseError,
     },
     swap_protocols::{self, asset::Asset, SwapProtocols},
 };
@@ -98,7 +99,7 @@ impl Client for BamClient {
                         Ok(Err({
                             let reason = response
                                 .get_header("REASON")
-                                .map_or(Ok(None), |x| x.map(Some))
+                                .map_or(Ok(None), |x: Result<SwapDeclineReason, _>| x.map(Some))
                                 .map_err(|e| {
                                     error!(
                                         "Could not deserialize header in response {:?}: {}",
@@ -106,7 +107,13 @@ impl Client for BamClient {
                                     )
                                 })
                                 .unwrap();
-                            SwapReject::Declined { reason }
+
+                            match reason {
+                                None => SwapReject::Declined {
+                                    reason: SwapDeclineReason::Unspecified,
+                                },
+                                Some(reason) => SwapReject::Declined { reason },
+                            }
                         }))
                     }
                     Status::SE(_) => {
