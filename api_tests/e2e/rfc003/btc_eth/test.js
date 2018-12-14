@@ -25,7 +25,6 @@ describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
         await test_lib.btc_activate_segwit();
-        test_lib.btc_enable_generate_every(1000);
         await bob.wallet.fund_eth(bob_initial_eth);
         await alice.wallet.fund_eth(alice_initial_eth);
         await alice.wallet.fund_btc(10);
@@ -51,7 +50,6 @@ describe("RFC003: Bitcoin for Ether", () => {
         await test_lib.log_btc_balance("After", "Bob", bob_final_address, "final");
         await test_lib.log_eth_balance("After", "Bob", bob.wallet.eth_address(), "wallet");
         await test_lib.log_btc_balance("After", "Bob", bob.wallet.btc_identity().address, "wallet");
-        test_lib.btc_disable_generate_every();
     });
 
     let swap_location;
@@ -171,6 +169,7 @@ describe("RFC003: Bitcoin for Ether", () => {
             alice_funding_action.address,
             parseInt(alice_funding_action.value)
         );
+        await test_lib.btc_generate(1);
     });
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
