@@ -148,11 +148,17 @@ describe("RFC003: Bitcoin for Ether", () => {
             });
     });
 
+    it("[Alice] Should be in Start state after sending the swap request to Bob", async function() {
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "Start",
+        );
+    });
+
     let bob_swap_href;
 
     it("[Bob] Shows the Swap as Start in /swaps", async () => {
-        // Wait 100ms for Alice to send the swap request over
-        await test_lib.sleep(100);
         let res = await chai.request(bob.comit_node_url()).get("/swaps");
 
         let embedded = res.body._embedded;

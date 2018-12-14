@@ -276,7 +276,7 @@ class ComitConf {
         return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_comit_node_until(chai, location, state, generate_btc) {
+    poll_comit_node_until(chai, location, state, generate_btc = false) {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)
