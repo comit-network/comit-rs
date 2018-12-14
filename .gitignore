@@ -10,6 +10,7 @@
 .idea/**/tasks.xml
 .idea/dictionaries
 .idea/httpRequests
+.idea/codeStyles
 
 # Sensitive or high-churn files:
 .idea/**/dataSources/
@@ -64,7 +65,6 @@ fabric.properties
 # .idea/misc.xml
 # *.ipr
 .idea/inspectionProfiles
-.idea/codeStyles/codeStyleConfig.xml
 
 # Sonarlint plugin
 .idea/sonarlint
