@@ -241,7 +241,7 @@ for GLOB_DIR in ${PARAMS}; do
     cd "$ROOT/api_tests/e2e/rfc003/"
     for DIR in ${GLOB_DIR}; do
         cd "$ROOT";
-        ./api_tests/e2e/comit-harness.sh ./api_tests/e2e/rfc003/${DIR}
+        ./api_tests/run_test.sh "./e2e/rfc003/${DIR}"
     done;
 done;
 '''
