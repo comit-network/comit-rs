@@ -23,7 +23,7 @@ pub trait Client: Send + Sync + 'static {
     >;
 }
 
-pub trait ClientFactory<C: Client>: Send + Sync + RefUnwindSafe + Debug {
+pub trait ClientFactory<C>: Send + Sync + RefUnwindSafe + Debug {
     fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<Arc<C>, ClientFactoryError>;
 }
 

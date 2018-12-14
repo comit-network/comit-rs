@@ -13,13 +13,12 @@ pub enum Error {
 }
 
 pub trait StateStore<K>: Send + Sync + 'static {
-    fn insert<R: Role>(&self, key: K, state: SwapStates<R>)
-        -> Result<Arc<dyn SaveState<R>>, Error>;
+    fn new_save_state<R: Role>(&self, key: K) -> Result<Arc<dyn SaveState<R>>, Error>;
 
     fn get<R: Role>(&self, key: &K) -> Result<Option<SwapStates<R>>, Error>;
 
     #[allow(clippy::type_complexity)]
-    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error>;
+    fn get_save_state<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error>;
 }
 
 #[derive(Default, Debug)]
@@ -28,38 +27,37 @@ pub struct InMemoryStateStore<K: Hash + Eq> {
 }
 
 impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemoryStateStore<K> {
-    fn insert<R: Role>(
-        &self,
-        key: K,
-        state: SwapStates<R>,
-    ) -> Result<Arc<dyn SaveState<R>>, Error> {
+    fn new_save_state<R: Role>(&self, key: K) -> Result<Arc<dyn SaveState<R>>, Error> {
         let mut states = self.states.lock().unwrap();
 
         if states.contains_key(&key) {
             return Err(Error::DuplicateKey);
         }
 
-        let state = Arc::new(RwLock::new(state));
-
+        let state = Arc::new(RwLock::new(None));
         let value: Box<dyn Any + Send + Sync> = Box::new(state.clone());
-        let _old = states.insert(key, value);
+        let _ = states.insert(key, value);
 
         Ok(state)
     }
 
     fn get<R: Role>(&self, key: &K) -> Result<Option<SwapStates<R>>, Error> {
         let states = self.states.lock().unwrap();
-        Ok(states.get(key).map(|state| {
-            let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
+        Ok(states.get(key).and_then(|state| {
+            let state = state
+                .downcast_ref::<Arc<RwLock<Option<SwapStates<R>>>>>()
+                .unwrap();
             let state = state.read().unwrap();
             state.clone()
         }))
     }
 
-    fn save_state_for_key<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error> {
+    fn get_save_state<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error> {
         let states = self.states.lock().unwrap();
         Ok(states.get(key).map(|state| -> Arc<dyn SaveState<R>> {
-            let state = state.downcast_ref::<Arc<RwLock<SwapStates<R>>>>().unwrap();
+            let state = state
+                .downcast_ref::<Arc<RwLock<Option<SwapStates<R>>>>>()
+                .unwrap();
             state.clone()
         }))
     }
@@ -100,13 +98,16 @@ mod tests {
         let state = SwapStates::from(start_state.clone());
         let id = 1;
 
-        let res = state_store.insert(id, state.clone());
+        let res = state_store.new_save_state(id);
         assert!(res.is_ok());
+
+        let save_state = res.unwrap();
+        save_state.save(start_state.clone().into());
 
         let res = state_store.get(&id).unwrap();
         assert_that(&res).contains_value(state);
 
-        let save_state = state_store.save_state_for_key(&id).unwrap().unwrap();
+        let save_state = state_store.get_save_state(&id).unwrap().unwrap();
 
         let second_state = SwapStates::from(Start {
             secret: Secret::from(*b"!!lufituaeb era uoy ,dlrow olleh"),

@@ -182,10 +182,9 @@ fn spawn_state_machine<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: StateSto
 ) {
     let state = SwapStates::Start(start_state);
 
-    let save_state = state_store
-        .insert(id, state.clone())
-        .expect("handle errors :)"); // TODO: handle errors
+    let save_state = state_store.new_save_state(id).expect("handle errors :)"); // TODO: handle errors
 
+    save_state.save(state.clone());
     let context = Context {
         alpha_ledger_events,
         beta_ledger_events,

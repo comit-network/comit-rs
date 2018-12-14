@@ -1,19 +1,26 @@
 use crate::{
-    http_api::{self, rfc003::action::GetActionQueryParams},
+    comit_client,
+    http_api::{
+        self,
+        rfc003::{action::GetActionQueryParams, alice_spawner::AliceSpawner},
+    },
     seed::Seed,
     swap_protocols::{
-        rfc003::{self, state_store, SecretSource},
+        rfc003::{state_store, SecretSource},
         MetadataStore, SwapId,
     },
 };
-use futures::sync::mpsc::UnboundedSender;
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
+pub fn create<
+    T: MetadataStore<SwapId>,
+    S: state_store::StateStore<SwapId>,
+    C: comit_client::Client,
+>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    alice_spawner: Arc<AliceSpawner<C>>,
     seed: Seed,
 ) -> BoxedFilter<(impl Reply,)> {
     let seed = Arc::new(seed);
@@ -22,14 +29,16 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let metadata_store = warp::any().map(move || metadata_store.clone());
     let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<dyn SecretSource>);
     let state_store = warp::any().map(move || state_store.clone());
-    let sender = warp::any().map(move || sender.clone());
     let empty_json_body = warp::any().map(|| json!({}));
+    let alice_spawner = warp::any().map(move || alice_spawner.clone());
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
         .and(rfc003_secret_gen.clone())
-        .and(sender)
+        .and(alice_spawner)
+        .and(metadata_store.clone())
+        .and(state_store.clone())
         .and(warp::body::json())
         .and_then(http_api::rfc003::swap::post_swap);
 

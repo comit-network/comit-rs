@@ -6,10 +6,10 @@ pub trait SaveState<R: Role>: Send + Sync {
     fn save(&self, state: SwapStates<R>);
 }
 
-impl<R: Role + Sync> SaveState<R> for RwLock<SwapStates<R>> {
+impl<R: Role + Sync> SaveState<R> for RwLock<Option<SwapStates<R>>> {
     fn save(&self, state: SwapStates<R>) {
         let _self = &mut *self.write().unwrap();
-        *_self = state;
+        *_self = Some(state);
     }
 }
 

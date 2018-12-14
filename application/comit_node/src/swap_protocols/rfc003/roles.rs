@@ -1,21 +1,24 @@
 use crate::{
-    comit_client::SwapReject,
+    comit_client::{self, ClientFactory, SwapReject},
     swap_protocols::{
         self,
         asset::Asset,
         rfc003::{
+            self,
             actions::bob::{Accept, Decline},
-            events::ResponseFuture,
+            events::{AliceToBob, LedgerEvents, ResponseFuture},
             ledger::Ledger,
-            state_machine::StateMachineResponse,
+            save_state::SaveState,
+            state_machine::{Context, Start, StateMachineResponse, Swap, SwapOutcome},
             Secret, SecretHash,
         },
     },
 };
-use futures::{sync::oneshot, Future};
+use futures::{future, sync::oneshot, Future};
 use std::{
     fmt::Debug,
     marker::PhantomData,
+    net::SocketAddr,
     sync::{Arc, Mutex},
 };
 
@@ -65,6 +68,59 @@ impl<AL, BL, AA, BA> Default for Alice<AL, BL, AA, BA> {
         Self {
             phantom_data: PhantomData,
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Initiation<R: Role> {
+    pub alpha_ledger_refund_identity: R::AlphaRefundHtlcIdentity,
+    pub beta_ledger_redeem_identity: R::BetaRedeemHtlcIdentity,
+    pub alpha_ledger: R::AlphaLedger,
+    pub beta_ledger: R::BetaLedger,
+    pub alpha_asset: R::AlphaAsset,
+    pub beta_asset: R::BetaAsset,
+    pub alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
+    pub secret: R::Secret,
+}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Alice<AL, BL, AA, BA> {
+    pub fn new_state_machine<C: comit_client::Client>(
+        initiation: Initiation<Self>,
+        alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
+        beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+        comit_client_factory: Arc<dyn ClientFactory<C>>,
+        comit_node_addr: SocketAddr,
+        save_state: Arc<dyn SaveState<Self>>,
+    ) -> Box<dyn Future<Item = SwapOutcome<Alice<AL, BL, AA, BA>>, Error = rfc003::Error> + Send>
+    {
+        let start_state = Start {
+            alpha_ledger: initiation.alpha_ledger,
+            beta_ledger: initiation.beta_ledger,
+            alpha_asset: initiation.alpha_asset,
+            beta_asset: initiation.beta_asset,
+            alpha_ledger_refund_identity: initiation.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: initiation.beta_ledger_redeem_identity,
+            alpha_ledger_lock_duration: initiation.alpha_ledger_lock_duration,
+            secret: initiation.secret,
+            role: Alice::default(),
+        };
+        save_state.save(start_state.clone().into());
+        let comit_client = match comit_client_factory.client_for(comit_node_addr) {
+            Ok(comit_client) => comit_client,
+            // This mess will go away with #319
+            Err(e) => {
+                return Box::new(future::err(rfc003::Error::Internal(format!("{:?}", e))));
+            }
+        };
+
+        let context = Context {
+            alpha_ledger_events,
+            beta_ledger_events,
+            communication_events: Box::new(AliceToBob::new(Arc::clone(&comit_client))),
+            state_repo: save_state,
+        };
+
+        Box::new(Swap::start_in(start_state, context))
     }
 }
 

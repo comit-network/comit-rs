@@ -1,10 +1,12 @@
 use crate::{
+    comit_client,
     http_api::{
         self,
         asset::{HttpAsset, ToHttpAsset},
         ledger::{HttpLedger, ToHttpLedger},
         lock_duration::{HttpLockDuration, ToHttpLockDuration},
         problem::{self, HttpApiProblemStdError},
+        rfc003::alice_spawner::AliceSpawner,
     },
     swap_protocols::{
         asset::Asset,
@@ -21,7 +23,6 @@ use crate::{
 };
 use bitcoin_support::{self, BitcoinQuantity};
 use ethereum_support::{self, Erc20Quantity, EtherQuantity};
-use futures::sync::mpsc::UnboundedSender;
 use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
@@ -170,39 +171,53 @@ fn swap_path(id: SwapId) -> String {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap(
+
+pub fn post_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client>(
     secret_source: Arc<dyn SecretSource>,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    alice_spawner: Arc<AliceSpawner<C>>,
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(secret_source.as_ref(), &sender, request_body_kind)
-        .map(|swap_created| {
-            let body = warp::reply::json(&swap_created);
-            let response =
-                warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
-            warp::reply::with_status(response, warp::http::StatusCode::CREATED)
-        })
-        .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
+    handle_post_swap(
+        secret_source.as_ref(),
+        metadata_store.as_ref(),
+        state_store.as_ref(),
+        alice_spawner.as_ref(),
+        request_body_kind,
+    )
+    .map(|swap_created| {
+        let body = warp::reply::json(&swap_created);
+        let response = warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
+        warp::reply::with_status(response, warp::http::StatusCode::CREATED)
+    })
+    .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
 }
 
-fn handle_post_swap(
+fn handle_post_swap<C: comit_client::Client, T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     secret_source: &dyn SecretSource,
-    sender: &UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
+    metadata_store: &T,
+    state_store: &S,
+    alice_spawner: &AliceSpawner<C>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
 
-    let request_kind = match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
-            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
+    match request_body_kind {
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => alice_spawner
+            .spawn_alice(
+                id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
-            )
-        }
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => {
-            rfc003::alice::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
+                metadata_store,
+                state_store,
+            )?,
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => alice_spawner
+            .spawn_alice(
+                id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
-            )
-        }
+                metadata_store,
+                state_store,
+            )?,
         SwapRequestBodyKind::UnsupportedCombination(body) => {
             error!(
                 "Swapping {:?} for {:?} from {:?} to {:?} is not supported",
@@ -220,15 +235,6 @@ fn handle_post_swap(
                 .set_detail("The request body was malformed"));
         }
     };
-
-    if let Err(e) = sender.unbounded_send((id, request_kind)) {
-        error!(
-            "Swap request {:?} for id {} could not dispatched.",
-            e.into_inner(),
-            id
-        );
-        return Err(HttpApiProblem::with_title_from_status(500));
-    }
 
     Ok(SwapCreated { id })
 }
