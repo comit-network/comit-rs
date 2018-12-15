@@ -11,11 +11,15 @@ pub mod htlc_harness;
 pub mod parity_client;
 
 use crate::htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
-use ethereum_support::{Bytes, EtherQuantity, Log, TransactionReceipt, H256, U256};
+use ethereum_support::{Bytes, EtherQuantity, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
 
 const HTLC_GAS_COST: u64 = 10885000;
+// keccak256(Redeemed())
+const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+// keccak256(Refunded())
+const REFUNDED_LOG_MSG: &str = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
@@ -142,7 +146,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
     let transaction_receipt = client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
 
     assert_that(&transaction_receipt.logs).has_length(1);
-    let topic: H256 = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into(); // keccak256(Redeemed())
+    let topic: H256 = REDEEMED_LOG_MSG.into();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
 }
@@ -153,14 +157,13 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let (_alice, _bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
 
-    // Wait for timeout
     // Wait for the contract to expire
     ::std::thread::sleep(HTLC_TIMEOUT);
     ::std::thread::sleep(HTLC_TIMEOUT);
     let transaction_receipt = client.send_data(htlc, None);
 
     assert_that(&transaction_receipt.logs).has_length(1);
-    let topic: H256 = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178".into(); // keccak256(Refunded())
+    let topic: H256 = REFUNDED_LOG_MSG.into();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
 }

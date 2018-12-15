@@ -18,6 +18,11 @@ use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
 
+// keccak256(Redeemed())
+const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+// keccak256(Refunded())
+const REFUNDED_LOG_MSG: &str = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
+
 #[test]
 fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
     let docker = Cli::default();
@@ -209,19 +214,18 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
     // Send correct secret to contract
     let transaction_receipt = client.send_data(htlc_address, Some(Bytes(SECRET.to_vec())));
 
-    assert_that(&transaction_receipt.logs.len()).is_equal_to(2); // should contain token transfer logs (in 2 transactions) and redeemed log (in 1
-                                                                 // transaction)
-    let redeem_topic: H256 =
-        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into(); // keccak256(Redeemed())
-    let refund_topic: H256 =
-        "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178".into(); // keccak256(Refunded())
+    // should contain 2 logs: 1 for token transfer 1 for redeeming the htlc
+    assert_that(&transaction_receipt.logs.len()).is_equal_to(2);
+
+    let redeem_topic: H256 = REDEEMED_LOG_MSG.into();
+    let refund_topic: H256 = REFUNDED_LOG_MSG.into();
 
     let topics: Vec<H256> = transaction_receipt
         .logs
         .into_iter()
         .flat_map(|s| s.topics)
         .collect();
-    assert_that(&topics).has_length(4); // should contain token transfers log and redeemed log
+    assert_that(&topics).has_length(4);
     assert_that(&topics).contains(redeem_topic);
     assert_that(&topics).does_not_contain(refund_topic);
 }
@@ -248,19 +252,18 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     // Send correct secret to contract
     let transaction_receipt = client.send_data(htlc_address, None);
 
-    assert_that(&transaction_receipt.logs.len()).is_equal_to(2); // should contain token transfer logs (in 2 transactions) and redeemed log (in 1
-                                                                 // transaction)
-    let redeem_topic: H256 =
-        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into(); // keccak256(Redeemed())
-    let refund_topic: H256 =
-        "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178".into(); // keccak256(Refunded())
+    // should contain 2 logs: 1 for token transfer 1 for redeeming the htlc
+    assert_that(&transaction_receipt.logs.len()).is_equal_to(2);
+
+    let redeem_topic: H256 = REDEEMED_LOG_MSG.into();
+    let refund_topic: H256 = REFUNDED_LOG_MSG.into();
 
     let topics: Vec<H256> = transaction_receipt
         .logs
         .into_iter()
         .flat_map(|s| s.topics)
         .collect();
-    assert_that(&topics).has_length(4); // should contain token transfers log and redeemed log
+    assert_that(&topics).has_length(4);
     assert_that(&topics).does_not_contain(redeem_topic);
     assert_that(&topics).contains(refund_topic);
 }
