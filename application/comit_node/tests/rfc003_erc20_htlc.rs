@@ -189,7 +189,7 @@ fn given_not_enough_tokens_when_redeemed_token_balances_dont_change() {
 #[test]
 fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (_alice, _bob, htlc_address, htlc, token, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
 
     // fund erc20 htlc
@@ -201,6 +201,10 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
         value: U256::from(0),
         data: Some(htlc.funding_tx_payload(htlc_address)),
     });
+
+    // Send incorrect secret to contract
+    let transaction_receipt = client.send_data(htlc_address, Some(Bytes(b"I'm a h4x0r".to_vec())));
+    assert_that(&transaction_receipt.logs).has_length(0);
 
     // Send correct secret to contract
     let transaction_receipt = client.send_data(htlc_address, Some(Bytes(SECRET.to_vec())));
@@ -225,7 +229,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
 #[test]
 fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (_alice, _bob, htlc_address, htlc, token, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
 
     // fund erc20 htlc

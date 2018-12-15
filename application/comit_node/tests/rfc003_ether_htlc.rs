@@ -131,8 +131,12 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
 #[test]
 fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
     let docker = Cli::default();
-    let (alice, bob, htlc, client, _handle, _container) =
+    let (_alice, _bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
+
+    // Send incorrect secret to contract
+    let transaction_receipt = client.send_data(htlc, Some(Bytes(b"I'm a h4x0r".to_vec())));
+    assert_that(&transaction_receipt.logs).has_length(0);
 
     // Send correct secret to contract
     let transaction_receipt = client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
@@ -146,7 +150,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
 #[test]
 fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let docker = Cli::default();
-    let (alice, bob, htlc, client, _handle, _container) =
+    let (_alice, _bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
 
     // Wait for timeout
