@@ -292,7 +292,7 @@ describe("RFC003 HTTP API", () => {
 
     it("[Bob] Can execute a decline action providing a reason", async () => {
         let bob_response = {
-            reason: "Unspecified"
+            reason: "BadRate"
         };
 
         let decline_res = await chai
