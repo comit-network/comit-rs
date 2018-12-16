@@ -6,48 +6,39 @@ const fs = require("fs");
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
 
-const log4js = require("log4js");
-log4js.configure({
-    appenders: {
-        test_suite: {
-            type: "file",
-            filename: process.env.LOG_DIR + "/test-suite.log"
-        },
-    },
-    categories: { default: { appenders: ['test_suite'], level: 'ALL' } }
-});
-const logger = log4js.getLogger( 'test_suite' );
-
-module.exports.logger = function () {
+const logger = global.harness.logger;
+module.exports.logger = function() {
     return logger;
 };
 
-async function sleep (time) {
+async function sleep(time) {
     return new Promise((res, rej) => {
         setTimeout(res, time);
     });
 }
 
-module.exports.sleep = time => {
-    return sleep(time);
-};
+module.exports.sleep = sleep;
 
 let _bitcoin_rpc_client;
 
-function bitcoin_rpc_client () {
+function bitcoin_rpc_client() {
+    const btc_config = global.harness.ledgers_config.bitcoin;
+    if (!btc_config) {
+        throw new Error("ledger.bitcoin configuration is needed");
+    }
     return (_bitcoin_rpc_client =
         _bitcoin_rpc_client ||
         new BitcoinRpcClient({
             network: "regtest",
-            port: process.env.BITCOIN_RPC_PORT,
-            host: process.env.BITCOIN_RPC_HOST,
-            username: process.env.BITCOIN_RPC_USERNAME,
-            password: process.env.BITCOIN_RPC_PASSWORD
+            port: btc_config.rpc_port,
+            host: btc_config.rpc_host,
+            username: btc_config.rpc_username,
+            password: btc_config.rpc_password,
         }));
 }
 
 module.exports.bitcoin_rpc_client = () => {
-    return bitcoin_rpc_client()
+    return bitcoin_rpc_client();
 };
 
 //FIXME: Remove this whenever this change:
@@ -58,21 +49,24 @@ const regtest = {
     bech32: "bcrt",
     bip32: {
         public: 0x043587cf,
-        private: 0x04358394
+        private: 0x04358394,
     },
     pubKeyHash: 0x6f,
     scriptHash: 0xc4,
-    wif: 0xef
+    wif: 0xef,
 };
 
 let web3;
 
 module.exports.web3 = () => {
-    return (web3 =
-        web3 ||
-        new Web3(
-            new Web3.providers.HttpProvider(process.env.ETHEREUM_NODE_ENDPOINT)
-        ));
+    if (global.harness.ledgers_config.ethereum) {
+        const eth_config = global.harness.ledgers_config.ethereum;
+        return (web3 =
+            web3 ||
+            new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url)));
+    } else {
+        return new Web3();
+    }
 };
 
 let test_rng_counter = 0;
@@ -86,7 +80,7 @@ const token_contract_deploy =
     "0x" +
     fs
         .readFileSync(
-            process.env.PROJECT_ROOT +
+            global.harness.project_root +
                 "/application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
             "utf8"
         )
@@ -98,19 +92,26 @@ class WalletConf {
         this.btc_keypair = bitcoin.ECPair.makeRandom({ rng: test_rng });
         this.bitcoin_utxos = [];
         this.owner = owner;
-        this._eth_address = (
+        this._eth_address =
             "0x" +
             ethutil
                 .privateToAddress(this.eth_keypair.privateKey)
-                .toString("hex")
-        );
+                .toString("hex");
         this._btc_identity = bitcoin.payments.p2wpkh({
             pubkey: this.btc_keypair.publicKey,
-            network: regtest
+            network: regtest,
         });
 
-        logger.trace("Generated eth address for %s is %s", this.owner, this._eth_address);
-        logger.trace("Generated btc address for %s is %s", this.owner, this._btc_identity.address);
+        logger.trace(
+            "Generated eth address for %s is %s",
+            this.owner,
+            this._eth_address
+        );
+        logger.trace(
+            "Generated btc address for %s is %s",
+            this.owner,
+            this._btc_identity.address
+        );
     }
 
     eth_address() {
@@ -122,10 +123,13 @@ class WalletConf {
     }
 
     async fund_btc(btc_value) {
-        let txid = await bitcoin_rpc_client()
-            .sendToAddress(this.btc_identity().address, btc_value);
-        let raw_transaction = await bitcoin_rpc_client()
-            .getRawTransaction(txid);
+        let txid = await bitcoin_rpc_client().sendToAddress(
+            this.btc_identity().address,
+            btc_value
+        );
+        let raw_transaction = await bitcoin_rpc_client().getRawTransaction(
+            txid
+        );
         let transaction = bitcoin.Transaction.fromHex(raw_transaction);
         for (let [i, out] of transaction.outs.entries()) {
             if (out.script.equals(this.btc_identity().output)) {
@@ -144,7 +148,7 @@ class WalletConf {
             to: this.eth_address(),
             value: web3.utils.numberToHex(
                 web3.utils.toWei(eth_amount.toString(), "ether")
-            )
+            ),
         };
         return web3.eth.personal.sendTransaction(tx, parity_dev_password);
     }
@@ -189,10 +193,15 @@ class WalletConf {
             to: to,
             data: data,
             value: web3.utils.numberToHex(value),
-            chainId: 1
+            chainId: 1,
         });
 
-        logger.trace("Transaction %s transfers %s wei to %s", tx.hash().toString("hex"), tx.value, tx.to.toString("hex"));
+        logger.trace(
+            "Transaction %s transfers %s wei to %s",
+            tx.hash().toString("hex"),
+            tx.value,
+            tx.to.toString("hex")
+        );
 
         return this.sign_and_send(tx);
     }
@@ -201,7 +210,11 @@ class WalletConf {
         return this.deploy_eth_contract(token_contract_deploy);
     }
 
-    async deploy_eth_contract(data = "0x0", value = "0", gas_limit = "0x3D0900") {
+    async deploy_eth_contract(
+        data = "0x0",
+        value = "0",
+        gas_limit = "0x3D0900"
+    ) {
         let nonce = await web3.eth.getTransactionCount(this.eth_address());
 
         const tx = new EthereumTx({
@@ -211,14 +224,20 @@ class WalletConf {
             to: null,
             data: data,
             value: web3.utils.numberToHex(value),
-            chainId: 1
+            chainId: 1,
         });
 
         let receipt = await this.sign_and_send(tx);
 
-        let contract_balance = await web3.eth.getBalance(receipt.contractAddress);
+        let contract_balance = await web3.eth.getBalance(
+            receipt.contractAddress
+        );
 
-        logger.trace("Contract deployed at %s holds %s wei", receipt.contractAddress, contract_balance);
+        logger.trace(
+            "Contract deployed at %s holds %s wei",
+            receipt.contractAddress,
+            contract_balance
+        );
 
         return receipt;
     }
@@ -227,23 +246,28 @@ class WalletConf {
         tx.sign(this.eth_keypair.privateKey);
         const serializedTx = tx.serialize();
         let hex = "0x" + serializedTx.toString("hex");
-        let receipt =  await web3.eth.sendSignedTransaction(hex);
+        let receipt = await web3.eth.sendSignedTransaction(hex);
 
-        logger.trace("Receipt for transaction %s", receipt.transactionHash, receipt);
+        logger.trace(
+            "Receipt for transaction %s",
+            receipt.transactionHash,
+            receipt
+        );
 
-        return receipt
+        return receipt;
     }
 }
 
 class ComitConf {
     constructor(name, bitcoin_utxo) {
+        const node_config = global.harness.config.comit_node[name];
+        if (!node_config) {
+            throw new Error("comit_node." + name + " configuration is needed");
+        }
         this.name = name;
-        this.host = process.env[this.name.toUpperCase() + "_COMIT_NODE_HOST"];
+        this.host = node_config.host;
         this.config = Toml.parse(
-            fs.readFileSync(
-                process.env[name.toUpperCase() + "_CONFIG_FILE"],
-                "utf8"
-            )
+            fs.readFileSync(node_config.config_dir + "/default.toml", "utf8")
         );
         this.wallet = new WalletConf(name);
     }
@@ -252,7 +276,7 @@ class ComitConf {
         return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_comit_node_until(chai, location, state) {
+    poll_comit_node_until(chai, location, state, generate_btc = false) {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)
@@ -264,6 +288,9 @@ class ComitConf {
                     if (res.body.state === state) {
                         final_res(res.body);
                     } else {
+                        if (generate_btc) {
+                            bitcoin_rpc_client().generate(1);
+                        }
                         setTimeout(() => {
                             this.poll_comit_node_until(
                                 chai,
@@ -340,75 +367,94 @@ module.exports.ledger_query_service_conf = (host, port) => {
             .padStart(64, "0");
         const payload = "0x" + function_identifier + to_address + amount;
 
-        return owner_wallet.send_eth_transaction_to(contract_address, payload, "0x0");
+        return owner_wallet.send_eth_transaction_to(
+            contract_address,
+            payload,
+            "0x0"
+        );
     };
 }
 
-module.exports.btc_generate = async function (num = 1) {
+module.exports.btc_generate = async function(num = 1) {
     return bitcoin_rpc_client().generate(num);
 };
 
-let btc_generate_every_enabled;
-
-module.exports.btc_enable_generate_every = async function (milliseconds) {
-    btc_generate_every_enabled = true;
-    while (btc_generate_every_enabled) {
-        bitcoin_rpc_client().generate(1);
-        await sleep(milliseconds);
-    }
-};
-
-module.exports.btc_disable_generate_every = function() {
-    btc_generate_every_enabled = false;
-};
-
-module.exports.btc_activate_segwit = async function () {
+module.exports.btc_activate_segwit = async function() {
     return bitcoin_rpc_client().generate(432);
 };
 
-async function btc_balance (address) {
+async function btc_balance(address) {
     let btc_balance = await bitcoin_rpc_client().getReceivedByAddress(address);
     return parseFloat(btc_balance) * 100000000;
-};
+}
 
-module.exports.btc_balance = async function (address) {
+module.exports.btc_balance = async function(address) {
     return btc_balance(address);
 };
 
-module.exports.btc_import_address = async function (address) {
+module.exports.btc_import_address = async function(address) {
     return bitcoin_rpc_client().importAddress(address);
 };
 
 async function eth_balance(address) {
-    return web3.eth.getBalance(address).then(balance => new ethutil.BN(balance, 10));
+    return web3.eth
+        .getBalance(address)
+        .then(balance => new ethutil.BN(balance, 10));
 }
 
-module.exports.eth_balance = async function (address) {
+module.exports.eth_balance = async function(address) {
     return eth_balance(address);
 };
 
-module.exports.erc20_balance = async function (token_holder_address, contract_address) {
+module.exports.erc20_balance = async function(
+    token_holder_address,
+    contract_address
+) {
     const function_identifier = "70a08231";
 
     const padded_address = token_holder_address
-          .replace(/^0x/, "")
-          .padStart(64, "0");
+        .replace(/^0x/, "")
+        .padStart(64, "0");
     const payload = "0x" + function_identifier + padded_address;
 
     const tx = {
         from: token_holder_address,
         to: contract_address,
-        data: payload
+        data: payload,
     };
 
     let hex_balance = await web3.eth.call(tx);
     return web3.utils.toBN(hex_balance);
 };
 
-module.exports.log_eth_balance = async function(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s wei at the %s address %s", when, player, await eth_balance(address), address_type, address);
+module.exports.log_eth_balance = async function(
+    when,
+    player,
+    address,
+    address_type
+) {
+    logger.info(
+        "%s the swap, %s has %s wei at the %s address %s",
+        when,
+        player,
+        await eth_balance(address),
+        address_type,
+        address
+    );
 };
 
-module.exports.log_btc_balance = async function(when, player, address, address_type) {
-    logger.info("%s the swap, %s has %s satoshis at the %s address %s", when, player, await btc_balance(address), address_type, address);
+module.exports.log_btc_balance = async function(
+    when,
+    player,
+    address,
+    address_type
+) {
+    logger.info(
+        "%s the swap, %s has %s satoshis at the %s address %s",
+        when,
+        player,
+        await btc_balance(address),
+        address_type,
+        address
+    );
 };

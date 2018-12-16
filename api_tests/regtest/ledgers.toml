@@ -1,0 +1,14 @@
+[bitcoin]
+docker = "btc"
+rpc_host = "localhost"
+rpc_port = "18443"
+rpc_username = "bitcoin"
+rpc_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+up_time = "10000"
+down_time = "2000"
+
+[ethereum]
+docker = "eth"
+rpc_url = "http://localhost:8545"
+up_time = "10000"
+down_time = "15000"

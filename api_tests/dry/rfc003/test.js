@@ -26,7 +26,6 @@ const bob = test_lib.comit_conf("bob", {});
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
 describe("RFC003 HTTP API", () => {
-
     it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
         await chai
             .request(alice.comit_node_url())
@@ -58,39 +57,42 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Alice] Returns 400 swap-not-supported for an unsupported combination of parameters", async () => {
-        await chai.request(alice.comit_node_url())
-            .post('/swaps/rfc003')
+        await chai
+            .request(alice.comit_node_url())
+            .post("/swaps/rfc003")
             .send({
-                "alpha_ledger": {
-                    "name": "Thomas' wallet",
+                alpha_ledger: {
+                    name: "Thomas' wallet",
                 },
-                "beta_ledger": {
-                    "name": "Higher-Dimension" // This is the coffee place downstairs
+                beta_ledger: {
+                    name: "Higher-Dimension", // This is the coffee place downstairs
                 },
-                "alpha_asset": {
-                    "name": "AUD",
-                    "quantity": "3.5"
+                alpha_asset: {
+                    name: "AUD",
+                    quantity: "3.5",
                 },
-                "beta_asset": {
-                    "name": "Espresso",
-                    "double-shot": true
+                beta_asset: {
+                    name: "Espresso",
+                    "double-shot": true,
                 },
-                "alpha_ledger_refund_identity": "",
-                "beta_ledger_redeem_identity": "",
-                "alpha_ledger_lock_duration": 0
-            }).then((res) => {
+                alpha_ledger_refund_identity: "",
+                beta_ledger_redeem_identity: "",
+                alpha_ledger_lock_duration: 0,
+            })
+            .then(res => {
                 res.should.have.status(400);
                 res.body.title.should.equal("swap-not-supported");
             });
     });
 
-
     it("[Alice] Returns 400 bad request for malformed requests", async () => {
-        await chai.request(alice.comit_node_url())
-            .post('/swaps/rfc003')
+        await chai
+            .request(alice.comit_node_url())
+            .post("/swaps/rfc003")
             .send({
-                "garbage": true
-            }).then((res) => {
+                garbage: true,
+            })
+            .then(res => {
                 res.should.have.status(400);
                 res.body.title.should.equal("Bad Request");
             });
@@ -104,22 +106,22 @@ describe("RFC003 HTTP API", () => {
             .send({
                 alpha_ledger: {
                     name: alpha_ledger_name,
-                    network: alpha_ledger_network
+                    network: alpha_ledger_network,
                 },
                 beta_ledger: {
-                    name: beta_ledger_name
+                    name: beta_ledger_name,
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
-                    quantity: alpha_asset_quantity
+                    quantity: alpha_asset_quantity,
                 },
                 beta_asset: {
                     name: beta_asset_name,
-                    quantity: beta_asset_quantity
+                    quantity: beta_asset_quantity,
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: alpha_ledger_lock_duration
+                alpha_ledger_lock_duration: alpha_ledger_lock_duration,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -138,22 +140,22 @@ describe("RFC003 HTTP API", () => {
             .send({
                 alpha_ledger: {
                     name: alpha_ledger_name,
-                    network: alpha_ledger_network
+                    network: alpha_ledger_network,
                 },
                 beta_ledger: {
-                    name: beta_ledger_name
+                    name: beta_ledger_name,
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
-                    quantity: alpha_asset_quantity
+                    quantity: alpha_asset_quantity,
                 },
                 beta_asset: {
                     name: beta_asset_name,
-                    quantity: beta_asset_quantity
+                    quantity: beta_asset_quantity,
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: 144
+                alpha_ledger_lock_duration: 144,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -177,18 +179,16 @@ describe("RFC003 HTTP API", () => {
                 let swap = body.swap;
                 swap.should.be.a("object");
                 swap.alpha_ledger.name.should.equal(alpha_ledger_name);
-                swap.alpha_ledger.network.should.equal(
-                    alpha_ledger_network
-                );
+                swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
-                swap.alpha_asset.quantity.should.equal(
-                    alpha_asset_quantity
-                );
+                swap.alpha_asset.quantity.should.equal(alpha_asset_quantity);
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.alpha_lock_duration.type.should.equal("blocks");
-                swap.alpha_lock_duration.value.should.equal(alpha_ledger_lock_duration);
+                swap.alpha_lock_duration.value.should.equal(
+                    alpha_ledger_lock_duration
+                );
             });
     });
 
@@ -223,7 +223,6 @@ describe("RFC003 HTTP API", () => {
             swap.state.should.equal("Start");
         }
 
-
         let swap = swaps[0];
         let swap_link = swap._links.self;
         swap_link.should.be.a("object");
@@ -243,20 +242,18 @@ describe("RFC003 HTTP API", () => {
                 body.swap.should.be.a("object");
                 let swap = body.swap;
                 swap.alpha_ledger.name.should.equal(alpha_ledger_name);
-                swap.alpha_ledger.network.should.equal(
-                    alpha_ledger_network
-                );
+                swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
-                swap.alpha_asset.quantity.should.equal(
-                    alpha_asset_quantity
-                );
+                swap.alpha_asset.quantity.should.equal(alpha_asset_quantity);
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.alpha_lock_duration.type.should.equal("blocks");
-                swap.alpha_lock_duration.value.should.equal(alpha_ledger_lock_duration);
+                swap.alpha_lock_duration.value.should.equal(
+                    alpha_ledger_lock_duration
+                );
 
                 let action_links = body._links;
                 action_links.should.be.a("object");

@@ -20,6 +20,7 @@ function sleep(ms) {
 
 describe("Test Ledger Query Service API", () => {
     before(async function() {
+        this.timeout(5000);
         await test_lib.btc_activate_segwit();
         await wallet.fund_btc(5);
         await wallet.fund_eth(20);
@@ -43,7 +44,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/bitcoin/transactions")
                     .send({
-                        to_address: to_address
+                        to_address: to_address,
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -124,7 +125,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/bitcoin/blocks")
                     .send({
-                        min_height: min_height
+                        min_height: min_height,
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -182,7 +183,7 @@ describe("Test Ledger Query Service API", () => {
 
     describe("Ethereum", () => {
         describe("Transactions", () => {
-            before(async () =>  {
+            before(async () => {
                 await wallet.fund_eth(10);
             });
 
@@ -202,7 +203,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/ethereum/transactions")
                     .send({
-                        to_address: to_address
+                        to_address: to_address,
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -286,7 +287,7 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/ethereum/blocks")
                     .send({
-                        min_timestamp_secs: min_timestamp_secs
+                        min_timestamp_secs: min_timestamp_secs,
                     })
                     .then(res => {
                         res.should.have.status(201);

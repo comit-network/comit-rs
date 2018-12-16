@@ -10,6 +10,7 @@ description = "Format, build and run the Rust tests. No clippy nor end-to-end."
 workspace = false
 dependencies = [
      "format",
+     "js-format",
      "build",
      "test"
 ]
@@ -27,6 +28,7 @@ dependencies = [
 workspace = false
 dependencies = [
     "check-format",
+    "check-js-format",
     "clippy"
 ]
 
@@ -108,6 +110,29 @@ install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustf
 command = "cargo"
 args = ["fmt", "--", "--check"]
 
+[tasks.js-format]
+description = "Runs prettier to check appropriate JS code format."
+workspace = false
+script = [
+'''
+jsfiles=$(git diff --no-ext-diff --name-only --diff-filter=ACM "*.js" "*.jsx" | tr '\n' ' ')
+[ -z "$jsfiles" ] && exit 0
+
+echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier --write
+'''
+]
+
+[tasks.check-js-format]
+description = "Runs prettier to check appropriate JS code format."
+workspace = false
+script = [
+'''
+jsfiles=$(git diff --no-ext-diff --cached --name-only --diff-filter=ACM "*.js" "*.jsx" | tr '\n' ' ')
+[ -z "$jsfiles" ] && exit 0
+
+echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier -l
+'''
+]
 
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
@@ -193,14 +218,13 @@ dependencies = [
 
 [tasks.dry-tests]
 description = "Runs tests that don't require any external services"
-env = { "LOG_DIR" = "./dry/log" }
 workspace = false
 private = true
 script_runner = "bash"
 script = [
 '''
-cd api_tests;
-./dry/harness.sh ./dry/rfc003
+export ROOT=$(pwd);
+./api_tests/npm_wrapper.sh ./dry/rfc003
 '''
 ]
 
@@ -242,8 +266,7 @@ for GLOB_DIR in ${PARAMS}; do
     cd "$ROOT/api_tests/e2e/rfc003/"
     for DIR in ${GLOB_DIR}; do
         cd "$ROOT";
-        export LOG_DIR="./e2e/rfc003/${DIR}/log";
-        ./api_tests/e2e/comit-harness.sh ./api_tests/e2e/rfc003/${DIR}
+        ./api_tests/npm_wrapper.sh "./e2e/rfc003/${DIR}"
     done;
 done;
 '''
@@ -275,7 +298,8 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/ledger_query_service/harness.sh ./api_tests/ledger_query_service
+export ROOT=$(pwd);
+./api_tests/npm_wrapper.sh ./ledger_query_service/
 '''
 ]
 
