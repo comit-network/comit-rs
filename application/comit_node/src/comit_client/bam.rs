@@ -108,12 +108,7 @@ impl Client for BamClient {
                                 })
                                 .unwrap();
 
-                            match reason {
-                                None => SwapReject::Declined {
-                                    reason: SwapDeclineReason::Unspecified,
-                                },
-                                Some(reason) => SwapReject::Declined { reason },
-                            }
+                            SwapReject::Declined { reason }
                         }))
                     }
                     Status::SE(_) => {
