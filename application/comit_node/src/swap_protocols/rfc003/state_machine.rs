@@ -4,9 +4,7 @@ use crate::{
     comit_client::{self, SwapReject},
     swap_protocols::{
         asset::Asset,
-        rfc003::{
-            self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash,
-        },
+        rfc003::{self, events, ledger::Ledger, RedeemTransaction, Role, SaveState, SecretHash},
     },
 };
 use futures::{future::Either, Async};

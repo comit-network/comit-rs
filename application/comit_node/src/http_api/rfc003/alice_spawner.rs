@@ -8,9 +8,8 @@ use crate::{
         rfc003::{
             alice::SwapRequest,
             events::{LedgerEvents, LqsEvents, LqsEventsForErc20},
-            roles::{Alice, Initiation},
             state_store::{self, StateStore},
-            Ledger, SecretSource,
+            Alice, Initiation, Ledger, SecretSource,
         },
         SwapId,
     },

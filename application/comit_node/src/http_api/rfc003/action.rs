@@ -5,14 +5,12 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
         rfc003::{
-            actions::{
-                bob::{Accept, Decline},
-                ActionKind, Actions,
-            },
-            bitcoin, ethereum,
+            bitcoin,
+            bob::actions::{Accept, Decline},
+            ethereum,
             state_machine::StateMachineResponse,
             state_store::StateStore,
-            Ledger, SecretSource,
+            ActionKind, Actions, Alice, Bob, Ledger, SecretSource,
         },
         AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
     },

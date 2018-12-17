@@ -6,7 +6,7 @@ use crate::{
             self,
             events::{CommunicationEvents, ResponseFuture, StateMachineResponseFuture},
             ledger::Ledger,
-            roles::Alice,
+            Alice,
         },
     },
 };

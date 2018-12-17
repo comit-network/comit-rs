@@ -1,4 +1,4 @@
-use crate::swap_protocols::rfc003::{roles::Role, state_machine::SwapStates};
+use crate::swap_protocols::rfc003::{state_machine::SwapStates, Role};
 use futures::sync::mpsc;
 use std::sync::RwLock;
 

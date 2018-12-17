@@ -1,4 +1,4 @@
-use crate::swap_protocols::rfc003::{roles::Role, state_machine::SwapStates, SaveState};
+use crate::swap_protocols::rfc003::{state_machine::SwapStates, Role, SaveState};
 use std::{
     any::Any,
     collections::HashMap,
@@ -68,7 +68,7 @@ mod tests {
     use super::*;
     use crate::swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::{roles::test::Alisha, state_machine::Start, Secret},
+        rfc003::{role::test::Alisha, state_machine::Start, Secret},
     };
     use bitcoin_support::{BitcoinQuantity, Blocks};
     use ethereum_support::EtherQuantity;

@@ -10,23 +10,16 @@ use crate::{
         rfc003::{
             self,
             ledger::Ledger,
-            roles::Role,
             state_machine::{HtlcParams, StateMachineResponse},
-            FundTransaction, RedeemTransaction, RefundTransaction,
+            FundTransaction, RedeemTransaction, RefundTransaction, Role,
         },
     },
 };
 use tokio::{self, prelude::future::Either};
 
-mod alice;
-mod bob;
 mod lqs;
 
-pub use self::{
-    alice::AliceToBob,
-    bob::BobToAlice,
-    lqs::{LqsEvents, LqsEventsForErc20},
-};
+pub use self::lqs::{LqsEvents, LqsEventsForErc20};
 
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 

@@ -12,11 +12,8 @@ use crate::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            self,
-            actions::{ActionKind, Actions},
-            alice::SwapRequestIdentities,
-            state_store::StateStore,
-            Ledger, SecretSource,
+            self, alice::SwapRequestIdentities, state_store::StateStore, ActionKind, Actions,
+            Alice, Bob, Ledger, SecretSource,
         },
         AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
     },

@@ -5,7 +5,7 @@ use crate::{
         rfc003::{
             events::{CommunicationEvents, ResponseFuture},
             ledger::Ledger,
-            roles::Bob,
+            Bob,
         },
     },
 };

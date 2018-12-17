@@ -1,11 +1,10 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        actions::{ActionKind, Actions},
         bitcoin,
         ethereum::{self, Erc20Htlc},
-        roles::Alice,
         state_machine::*,
+        ActionKind, Actions, Alice,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};

@@ -5,7 +5,7 @@ use crate::{
         rfc003::{
             ethereum::Seconds,
             events::{self, LedgerEvents},
-            roles::test::{Alisha, Bobisha, FakeCommunicationEvents},
+            role::test::{Alisha, Bobisha, FakeCommunicationEvents},
             state_machine::*,
             Ledger, RedeemTransaction, Secret,
         },
