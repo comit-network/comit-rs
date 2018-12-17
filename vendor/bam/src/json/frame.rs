@@ -45,14 +45,14 @@ pub struct JsonFrameHandler {
 
 #[derive(Default, Debug)]
 pub struct JsonResponseSource {
-    awaiting_responses: HashMap<u32, Sender<json::Frame>>,
+    awaiting_responses: HashMap<u32, Sender<json::Response>>,
 }
 
-impl ResponseFrameSource<json::Frame> for JsonResponseSource {
+impl ResponseFrameSource<json::Response> for JsonResponseSource {
     fn on_response_frame(
         &mut self,
         frame_id: u32,
-    ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = json::Response, Error = ()> + Send> {
         let (sender, receiver) = oneshot::channel();
 
         self.awaiting_responses.insert(frame_id, sender);
@@ -66,7 +66,7 @@ impl ResponseFrameSource<json::Frame> for JsonResponseSource {
 }
 
 impl JsonResponseSource {
-    pub fn get_awaiting_response(&mut self, id: u32) -> Option<Sender<json::Frame>> {
+    pub fn get_awaiting_response(&mut self, id: u32) -> Option<Sender<json::Response>> {
         self.awaiting_responses.remove(&id)
     }
 }
@@ -91,7 +91,7 @@ impl From<HeaderErrors> for RequestError {
 impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandler {
     fn create(
         config: Config<json::Request, json::Response>,
-    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Frame>>>) {
+    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Response>>>) {
         let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
 
         let handler = JsonFrameHandler {
@@ -147,7 +147,7 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 
                 debug!("Dispatching response frame {:?} to stored handler.", frame);
 
-                sender.send(frame).unwrap();
+                sender.send(frame.into()).unwrap();
 
                 Ok(None)
             }

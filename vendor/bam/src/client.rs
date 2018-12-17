@@ -9,12 +9,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-type ResponseSource<Frame> = Arc<Mutex<dyn ResponseFrameSource<Frame>>>;
+type ResponseSource<Res> = Arc<Mutex<dyn ResponseFrameSource<Res>>>;
 
 #[derive(DebugStub)]
 pub struct Client<Frame, Req, Res> {
     #[debug_stub = "ResponseSource"]
-    response_source: ResponseSource<Frame>,
+    response_source: ResponseSource<Res>,
     next_id: u32,
     #[debug_stub = "Sender"]
     sender: UnboundedSender<Frame>,
@@ -28,11 +28,11 @@ pub enum Error<F> {
     Canceled,
 }
 
-impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static>
+impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static + Send>
     Client<Frame, Req, Res>
 {
     pub fn create(
-        response_source: Arc<Mutex<dyn ResponseFrameSource<Frame>>>,
+        response_source: Arc<Mutex<dyn ResponseFrameSource<Res>>>,
     ) -> (Self, impl Stream<Item = Frame, Error = ()>) {
         let (sender, receiver) = mpsc::unbounded();
 
@@ -59,7 +59,6 @@ impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 
             let request_frame = request.into_frame(frame_id);
             let response_future = response_source
                 .on_response_frame(frame_id)
-                .map(Res::from)
                 .map_err(|_| Error::Canceled);
 
             self.next_id += 1;
@@ -96,7 +95,7 @@ mod tests {
     use tokio::runtime::Runtime;
 
     struct StaticResponseFrameSource {
-        responses: HashMap<u32, json::Frame>,
+        responses: HashMap<u32, json::Response>,
     }
 
     impl StaticResponseFrameSource {
@@ -107,15 +106,15 @@ mod tests {
         }
 
         fn add_response(&mut self, id: u32, response_frame: json::Frame) {
-            self.responses.insert(id, response_frame);
+            self.responses.insert(id, response_frame.into());
         }
     }
 
-    impl ResponseFrameSource<json::Frame> for StaticResponseFrameSource {
+    impl ResponseFrameSource<json::Response> for StaticResponseFrameSource {
         fn on_response_frame(
             &mut self,
             frame_id: u32,
-        ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = json::Response, Error = ()> + Send> {
             let future = match self.responses.remove(&frame_id) {
                 Some(response) => future::ok(response),
                 None => future::err(()),
@@ -205,16 +204,14 @@ mod tests {
         when: Option<Instant>,
     }
 
-    impl ResponseFrameSource<json::Frame> for RememberInvocation {
+    impl ResponseFrameSource<json::Response> for RememberInvocation {
         fn on_response_frame(
             &mut self,
-            frame_id: u32,
-        ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
+            _frame_id: u32,
+        ) -> Box<dyn Future<Item = json::Response, Error = ()> + Send> {
             self.when = Some(Instant::now());
 
-            Box::new(future::ok(
-                json::Response::new(Status::OK(0)).into_frame(frame_id),
-            ))
+            Box::new(future::ok(json::Response::new(Status::OK(0))))
         }
     }
 

@@ -5,7 +5,7 @@ extern crate log;
 #[macro_use]
 pub mod common;
 
-use crate::common::{setup::start_server_with, *};
+use crate::common::{say_hello::HelloResponseHeader, setup::start_server_with, *};
 use bam::{json::*, *};
 use futures::*;
 use std::{collections::HashMap, time::Duration};
@@ -30,4 +30,22 @@ fn do_something_on_response() {
         .unwrap();
 
     assert_eq!(future.wait(), Ok(Response::new(Status::OK(0))));
+}
+
+#[test]
+fn response_with_header_deserializes() {
+    let response: Response =
+        serde_json::from_str::<Frame>(&include_json_line!("say_hello_to_world_response.json"))
+            .unwrap()
+            .into();
+
+    assert_eq!(
+        response
+            .get_header::<HelloResponseHeader>("HELLO")
+            .unwrap()
+            .unwrap(),
+        HelloResponseHeader {
+            value: "WORLD".into()
+        }
+    )
 }

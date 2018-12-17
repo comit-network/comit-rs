@@ -6,6 +6,11 @@ pub struct SayHelloToHeader {
     value: String,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Debug)]
+pub struct HelloResponseHeader {
+    pub value: String,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct SayHelloToTimesHeader {
     value: u32,

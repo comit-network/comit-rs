@@ -156,7 +156,9 @@ fn request_and_response_with_string_headers() {
     assert_that(&actual_response_from_bob)
         .is_ok()
         .is_some()
-        .is_equal_to(include_json_line!("say_hello_to_world_response.json"));
+        .is_equal_to(include_json_line!(
+            "say_hello_to_world_response_compact.json"
+        ));
 }
 
 #[test]
@@ -173,7 +175,9 @@ fn request_and_response_with_compact_string_headers() {
     assert_that(&actual_response_from_bob)
         .is_ok()
         .is_some()
-        .is_equal_to(include_json_line!("say_hello_to_world_response.json"));
+        .is_equal_to(include_json_line!(
+            "say_hello_to_world_response_compact.json"
+        ));
 }
 
 #[test]
