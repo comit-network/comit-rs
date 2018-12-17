@@ -147,7 +147,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
-                    quantity: alpha_asset_quantity,
+                    quantity: "100",
                 },
                 beta_asset: {
                     name: beta_asset_name,
@@ -155,7 +155,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: alpha_ledger_lock_duration
+                alpha_ledger_lock_duration: alpha_ledger_lock_duration,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -192,7 +192,7 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
-    it("[Alice] Shows the swaps in GET /swaps", async () => {
+    it("[Alice] Shows the swaps as Start in GET /swaps", async () => {
         await chai
             .request(alice.comit_node_url())
             .get("/swaps")
@@ -206,7 +206,10 @@ describe("RFC003 HTTP API", () => {
                     swap.protocol.should.equal("rfc003");
                     swap.state.should.equal("Start");
                     let links = swap._links;
-                    links.self.href.should.be.oneOf([alice_reasonable_swap_href, alice_stingy_swap_href]);
+                    links.self.href.should.be.oneOf([
+                        alice_reasonable_swap_href,
+                        alice_stingy_swap_href,
+                    ]);
                 }
             });
     });
@@ -263,9 +266,7 @@ describe("RFC003 HTTP API", () => {
                 swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
-                swap.alpha_asset.quantity.should.equal(
-                    "100"
-                );
+                swap.alpha_asset.quantity.should.equal("100");
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.beta_asset.name.should.equal(beta_asset_name);
@@ -292,7 +293,7 @@ describe("RFC003 HTTP API", () => {
 
     it("[Bob] Can execute a decline action providing a reason", async () => {
         let bob_response = {
-            reason: "BadRate"
+            reason: "BadRate",
         };
 
         let decline_res = await chai
@@ -304,13 +305,17 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(bob_stingy_swap_href);
+        let res = await chai
+            .request(bob.comit_node_url())
+            .get(bob_stingy_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Rejected");
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
-        let res = await chai.request(alice.comit_node_url()).get(alice_stingy_swap_href);
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get(alice_stingy_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Rejected");
     });
@@ -338,15 +343,18 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(bob_reasonable_swap_href);
+        let res = await chai
+            .request(bob.comit_node_url())
+            .get(bob_reasonable_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Rejected");
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
-        let res = await chai.request(alice.comit_node_url()).get(alice_reasonable_swap_href);
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get(alice_reasonable_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Rejected");
     });
-
 });
