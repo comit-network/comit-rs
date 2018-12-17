@@ -149,11 +149,7 @@ describe("RFC003: Bitcoin for Ether", () => {
     });
 
     it("[Alice] Should be in Start state after sending the swap request to Bob", async function() {
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "Start",
-        );
+        await alice.poll_comit_node_until(chai, alice_swap_href, "Start");
     });
 
     let bob_swap_href;
@@ -204,9 +200,7 @@ describe("RFC003: Bitcoin for Ether", () => {
     });
 
     it("[Bob] Should be in the Accepted State after accepting", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(bob_swap_href);
-        res.should.have.status(200);
-        res.body.state.should.equal("Accepted");
+        await bob.poll_comit_node_until(chai, bob_swap_href, "Accepted");
     });
 
     let alice_funding_href;
@@ -248,12 +242,7 @@ describe("RFC003: Bitcoin for Ether", () => {
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
         this.timeout(10000);
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "AlphaFunded",
-            true
-        );
+        await alice.poll_comit_node_until(chai, alice_swap_href, "AlphaFunded");
     });
 
     let bob_funding_href;

@@ -339,7 +339,11 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             response.with_resources("swaps", swaps);
             Ok(warp::reply::json(&response))
         }
-        Err(e) => Err(warp::reject::custom(HttpApiProblemStdError::new(e))),
+        Err(e) => {
+            // FIXME: Log all 500 errors with a warp filter. see #584
+            error!("returning error: {:?}", e);
+            Err(warp::reject::custom(HttpApiProblemStdError::new(e)))
+        }
     }
 }
 
