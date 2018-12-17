@@ -5,7 +5,8 @@ use comit_node::swap_protocols::rfc003::{
 };
 use ethereum_support::{
     web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionRequest, H256, U256,
+    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,
+    H256, U256,
 };
 use std::{
     ops::DerefMut,
@@ -128,6 +129,7 @@ impl ParityClient {
         let payload = format!("{}{}{}", function_identifier, address, amount);
 
         self.send_data(contract, Some(Bytes(hex::decode(payload).unwrap())))
+            .gas_used
     }
 
     pub fn token_balance_of(&self, contract: Address, address: Address) -> U256 {
@@ -160,7 +162,7 @@ impl ParityClient {
         self.client.eth().balance(address, None).wait().unwrap()
     }
 
-    pub fn send_data(&self, to: Address, data: Option<Bytes>) -> U256 {
+    pub fn send_data(&self, to: Address, data: Option<Bytes>) -> TransactionReceipt {
         let result_tx = self
             .client
             .personal()
@@ -190,7 +192,7 @@ impl ParityClient {
 
         debug!("Transaction Receipt: {:?}", receipt);
 
-        receipt.gas_used
+        receipt
     }
 
     pub fn deploy_htlc(&self, htlc: impl Htlc, value: U256) -> H256 {
