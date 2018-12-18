@@ -1,59 +1,38 @@
 use crate::{
-    bam_api::rfc003::swap_config,
-    swap_protocols::{rfc003, SwapId},
+    bam_api::rfc003::{bob_spawner::BobSpawner, swap_config},
+    swap_protocols::{metadata_store::MetadataStore, rfc003::state_store::StateStore, SwapId},
 };
 use bam::{connection::Connection, json};
-use futures::{
-    sync::{mpsc, oneshot},
-    Future, Stream,
-};
-use std::{io, net::SocketAddr};
+use futures::{Future, Stream};
+use std::{io, net::SocketAddr, sync::Arc};
 use tokio::{self, net::TcpListener};
 
-impl ComitServer {
-    pub fn new(
-        sender: mpsc::UnboundedSender<(
-            SwapId,
-            rfc003::bob::SwapRequestKind,
-            oneshot::Sender<rfc003::bob::SwapResponseKind>,
-        )>,
-    ) -> Self {
-        Self { sender }
-    }
+pub fn listen<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    addr: SocketAddr,
+    bob_spawner: Arc<BobSpawner<T, S>>,
+) -> impl Future<Item = (), Error = io::Error> {
+    info!("ComitServer listening at {:?}", addr);
+    let socket = TcpListener::bind(&addr).unwrap();
 
-    pub fn listen(self, addr: SocketAddr) -> impl Future<Item = (), Error = io::Error> {
-        info!("ComitServer listening at {:?}", addr);
-        let socket = TcpListener::bind(&addr).unwrap();
+    socket.incoming().for_each(move |connection| {
+        let peer_addr = connection.peer_addr();
+        let codec = json::JsonFrameCodec::default();
 
-        socket.incoming().for_each(move |connection| {
-            let peer_addr = connection.peer_addr();
-            let codec = json::JsonFrameCodec::default();
+        let config = swap_config(Arc::clone(&bob_spawner));
 
-            let config = swap_config(self.sender.clone());
+        let connection = Connection::new(config, codec, connection);
+        let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
 
-            let connection = Connection::new(config, codec, connection);
-            let (close_future, _client) = connection.start::<json::JsonFrameHandler>();
-
-            tokio::spawn(close_future.then(move |result| {
-                match result {
-                    Ok(()) => info!("Connection with {:?} closed", peer_addr),
-                    Err(e) => error!(
-                        "Unexpected error in connection with {:?}: {:?}",
-                        peer_addr, e
-                    ),
-                }
-                Ok(())
-            }));
+        tokio::spawn(close_future.then(move |result| {
+            match result {
+                Ok(()) => info!("Connection with {:?} closed", peer_addr),
+                Err(e) => error!(
+                    "Unexpected error in connection with {:?}: {:?}",
+                    peer_addr, e
+                ),
+            }
             Ok(())
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct ComitServer {
-    sender: mpsc::UnboundedSender<(
-        SwapId,
-        rfc003::bob::SwapRequestKind,
-        oneshot::Sender<rfc003::bob::SwapResponseKind>,
-    )>,
+        }));
+        Ok(())
+    })
 }

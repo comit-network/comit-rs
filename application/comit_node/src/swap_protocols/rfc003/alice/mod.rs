@@ -38,8 +38,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Alice<AL, BL, AA, BA> {
         comit_client_factory: Arc<dyn ClientFactory<C>>,
         comit_node_addr: SocketAddr,
         save_state: Arc<dyn SaveState<Self>>,
-    ) -> Box<dyn Future<Item = SwapOutcome<Alice<AL, BL, AA, BA>>, Error = rfc003::Error> + Send>
-    {
+    ) -> Box<dyn Future<Item = SwapOutcome<Self>, Error = rfc003::Error> + Send> {
         let start_state = Start {
             alpha_ledger: initiation.alpha_ledger,
             beta_ledger: initiation.beta_ledger,

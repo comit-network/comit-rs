@@ -1,25 +1,27 @@
 pub mod actions;
 mod communication_events;
-mod handler;
 mod swap_request;
 mod swap_response;
 
 pub use self::{
     communication_events::*,
-    handler::SwapRequestHandler,
     swap_request::{SwapRequest, SwapRequestKind},
     swap_response::SwapResponseKind,
 };
 
 use crate::{
     comit_client::SwapReject,
+    item_cache::ItemCache,
     swap_protocols::{
         asset::Asset,
         rfc003::{
+            self,
             bob::actions::{Accept, Decline},
-            events::ResponseFuture,
+            events::{LedgerEvents, ResponseFuture},
             ledger::Ledger,
-            state_machine::StateMachineResponse,
+            role::Initiation,
+            save_state::SaveState,
+            state_machine::{Context, Start, StateMachineResponse, Swap, SwapOutcome},
             Role, SecretHash,
         },
     },
@@ -50,6 +52,48 @@ pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Bob<AL, BL, AA, BA> {
+    pub fn new_state_machine(
+        initiation: Initiation<Self>,
+        alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
+        beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+        save_state: Arc<dyn SaveState<Self>>,
+    ) -> (
+        Box<dyn Future<Item = SwapOutcome<Self>, Error = rfc003::Error> + Send>,
+        Box<ResponseFuture<Self>>,
+    ) {
+        let (bob, response_future) = Self::create();
+
+        // We need to duplicate the future
+        let (response_for_state_machine, response_for_caller) =
+            ItemCache::from_future(response_future).duplicate();
+
+        let start_state = Start {
+            alpha_ledger: initiation.alpha_ledger,
+            beta_ledger: initiation.beta_ledger,
+            alpha_asset: initiation.alpha_asset,
+            beta_asset: initiation.beta_asset,
+            alpha_ledger_refund_identity: initiation.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: initiation.beta_ledger_redeem_identity,
+            alpha_ledger_lock_duration: initiation.alpha_ledger_lock_duration,
+            secret: initiation.secret,
+            role: bob,
+        };
+
+        save_state.save(start_state.clone().into());
+
+        let context = Context {
+            alpha_ledger_events,
+            beta_ledger_events,
+            communication_events: Box::new(BobToAlice::new(Box::new(response_for_state_machine))),
+            state_repo: save_state,
+        };
+
+        (
+            Box::new(Swap::start_in(start_state, context)),
+            Box::new(response_for_caller),
+        )
+    }
+
     pub fn create() -> (Self, Box<ResponseFuture<Self>>) {
         let (sender, receiver) = oneshot::channel();
         (
