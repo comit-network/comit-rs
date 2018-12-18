@@ -62,7 +62,7 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
     fn matches(
         &self,
         transaction: &BitcoinTransaction,
-    ) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
         match self {
             Self {
                 to_address,
@@ -153,7 +153,7 @@ impl Query<BitcoinBlock> for BitcoinBlockQuery {
     fn matches(
         &self,
         block: &BitcoinBlock,
-    ) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
         Box::new(futures::future::ok(match self.min_height {
             Some(height) => {
                 if height <= block.height {
@@ -365,7 +365,7 @@ mod tests {
     }
 
     fn exec_future<F: Fn(QueryMatchResult)>(
-        future: Box<Future<Item = QueryMatchResult, Error = ()> + Send>,
+        future: Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>,
         assert_callback: F,
     ) {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();

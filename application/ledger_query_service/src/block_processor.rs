@@ -24,7 +24,7 @@ pub trait Block: Debug {
 }
 
 pub trait Query<O>: Debug {
-    fn matches(&self, object: &O) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send>;
+    fn matches(&self, object: &O) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>;
     fn is_empty(&self) -> bool;
 }
 
@@ -124,7 +124,6 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
             let _ = query
                 .matches(block)
                 .map(|query_match_result| match query_match_result {
-                    // TODO use map here
                     QueryMatchResult::Yes { .. } => {
                         info!("Block {} matches Query-ID: {:?}", block_id, query_id);
                         Some((query_id, block_id))
@@ -184,7 +183,7 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
 
                 let process_query_future = query
                     .matches(transaction)
-                    .and_then(move |query_match_result| match query_match_result {
+                    .map(move |query_match_result| match query_match_result {
                         QueryMatchResult::Yes {
                             confirmations_needed: 0,
                         }
@@ -195,7 +194,7 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
                                 "Confirmed transaction {} matches Query-ID: {:?}",
                                 tx_id, query_id
                             );
-                            Ok(Some((query_id, tx_id)))
+                            Some((query_id, tx_id))
                         }
                         QueryMatchResult::Yes {
                             confirmations_needed,
@@ -211,16 +210,15 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
                             };
                             let mut pending_transactions = pending_transactions.lock().unwrap();
                             pending_transactions.push(pending_tx);
-                            Ok(None)
+                            None
                         }
-                        QueryMatchResult::No => Ok(None),
+                        QueryMatchResult::No => None,
                     })
-                    .and_then(move |matches| match matches {
+                    .map(move |matches| match matches {
                         Some((query_id, tx_id)) => {
                             result_repository.add_result(query_id, tx_id);
-                            Ok(())
                         }
-                        _ => Ok(()),
+                        _ => (),
                     });
                 tokio::spawn(process_query_future);
             })
@@ -265,7 +263,7 @@ mod tests {
         fn matches(
             &self,
             transaction: &GenericTransaction,
-        ) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
             if self.transaction_id == transaction.id {
                 Box::new(futures::future::ok(
                     QueryMatchResult::yes_with_confirmations(self.confirmations_needed),
@@ -288,7 +286,7 @@ mod tests {
         fn matches(
             &self,
             block: &GenericBlock,
-        ) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send> {
+        ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
             if self.min_timestamp_secs <= block.timestamp {
                 Box::new(futures::future::ok(QueryMatchResult::yes()))
             } else {
