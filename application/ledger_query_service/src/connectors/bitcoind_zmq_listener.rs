@@ -1,9 +1,6 @@
 use bitcoin_support::{serialize::deserialize, MinedBlock};
 use byteorder::{LittleEndian, ReadBytesExt};
-use futures::{
-    sync::mpsc::{self, UnboundedReceiver},
-    Stream,
-};
+use futures::sync::mpsc::{self, UnboundedReceiver};
 use std::{io::Cursor, thread};
 use zmq_rs::{self as zmq, Context, Socket};
 
@@ -29,7 +26,7 @@ impl BitcoindZmqListener {
             let result = Self::receive_block(&mut socket);
 
             if let Ok(Some(block)) = result {
-                let _ = state_sender.send(block);
+                let _ = state_sender.unbounded_send(block);
             }
         });
         Ok(state_receiver)

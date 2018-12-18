@@ -16,7 +16,7 @@ use ledger_query_service::{
     BitcoindZmqListener, BlockProcessor, DefaultBlockProcessor, EthereumWeb3BlockPoller,
     InMemoryQueryRepository, InMemoryQueryResultRepository, RouteFactory,
 };
-use std::{env::var, sync::Arc, thread};
+use std::{env::var, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 fn main() {
@@ -102,7 +102,7 @@ fn create_ethereum_routes(
 
     info!("Starting EthereumSimpleListener on {}", settings.node_url);
 
-    let transaction_processor = DefaultBlockProcessor::new(
+    let mut transaction_processor = DefaultBlockProcessor::new(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
@@ -115,16 +115,11 @@ fn create_ethereum_routes(
 
     let poller_client = Arc::clone(&web3_client);
 
-    thread::spawn(move || {
-        let web3_poller = EthereumWeb3BlockPoller::create(
-            poller_client,
-            settings.poll_interval_secs,
-            transaction_processor,
-        );
-        match web3_poller {
-            Ok(listener) => listener.start(),
-            Err(e) => error!("Failed to start EthereumSimpleListener! {:?}", e),
-        }
+    let web3_blocks = EthereumWeb3BlockPoller::create(poller_client, settings.poll_interval_secs)
+        .expect("Should return a Web3 block poller");
+    let _ = web3_blocks.for_each(move |block| {
+        transaction_processor.process(&block);
+        Ok(())
     });
 
     let ledger_name = "ethereum";
