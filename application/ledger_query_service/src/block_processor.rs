@@ -1,7 +1,4 @@
-use crate::{
-    query_repository::QueryRepository,
-    query_result_repository::{QueryResult, QueryResultRepository},
-};
+use crate::{query_repository::QueryRepository, query_result_repository::QueryResultRepository};
 use futures::{future::join_all, Future};
 use std::{
     fmt::Debug,
@@ -16,7 +13,7 @@ pub trait BlockProcessor<B> {
     fn process(
         &mut self,
         block: B,
-    ) -> Box<Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send>;
+    ) -> Box<dyn Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send>;
 }
 
 pub trait Transaction: Debug + 'static + Clone {
@@ -76,8 +73,6 @@ pub struct DefaultBlockProcessor<T, B, TQ, BQ> {
     block_queries: ArcQueryRepository<BQ>,
     #[debug_stub = "Results"]
     transaction_results: ArcQueryResultRepository<TQ>,
-    #[debug_stub = "Results"]
-    block_results: ArcQueryResultRepository<BQ>,
     pending_transactions: Arc<Mutex<Vec<PendingTransaction>>>,
     blockhashes: Vec<String>,
     tx_type: PhantomData<T>,
@@ -90,7 +85,7 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
     fn process(
         &mut self,
         block: B,
-    ) -> Box<Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send> {
         trace!("New block received: {:?}", block);
         // for now work on the assumption that there is one blockchain, but warn
         // every time that assumption doesn't hold, by comparing the previous
@@ -139,7 +134,7 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
     fn process_new_block(
         block_queries: ArcQueryRepository<BQ>,
         block: B,
-    ) -> Box<Future<Item = Vec<QueryMatch>, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = Vec<QueryMatch>, Error = ()> + Send> {
         trace!("Processing {:?}", block);
 
         Box::new(
@@ -193,7 +188,7 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
         transaction_queries: ArcQueryRepository<TQ>,
         pending_transactions: Arc<Mutex<Vec<PendingTransaction>>>,
         transaction: T,
-    ) -> Box<Future<Item = Vec<QueryMatch>, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = Vec<QueryMatch>, Error = ()> + Send> {
         trace!("Processing {:?}", transaction);
         Box::new(
             join_all(transaction_queries.all().map(move |(query_id, query)| {
@@ -256,13 +251,12 @@ impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
         transaction_query_repository: Arc<dyn QueryRepository<TQ>>,
         block_query_repository: Arc<dyn QueryRepository<BQ>>,
         transaction_query_result_repository: Arc<dyn QueryResultRepository<TQ>>,
-        block_query_result_repository: Arc<dyn QueryResultRepository<BQ>>,
+        _block_query_result_repository: Arc<dyn QueryResultRepository<BQ>>,
     ) -> Self {
         Self {
             transaction_queries: transaction_query_repository,
             block_queries: block_query_repository,
             transaction_results: transaction_query_result_repository,
-            block_results: block_query_result_repository,
             pending_transactions: Arc::new(Mutex::new(Vec::new())),
             blockhashes: Vec::new(),
             tx_type: PhantomData,
@@ -434,25 +428,11 @@ mod tests {
         let harness = Setup::new(1, 1, 1, 0, 0);
         let mut block_processor = harness.block_processor;
 
-        {
-            let block_query_result_repository = harness.block_query_result_repository.clone();
-            let transaction_query_result_repository =
-                harness.transaction_query_result_repository.clone();
-
-            block_processor
-                .process(harness.first_block)
-                .and_then(move |(block_results, transaction_results)| {
-                    for (id, block_id) in block_results {
-                        block_query_result_repository.add_result(id, block_id);
-                    }
-                    for (id, tx_id) in transaction_results {
-                        transaction_query_result_repository.add_result(id, tx_id);
-                    }
-                    Ok(())
-                })
-                .wait()
-                .unwrap();
-        }
+        process_results(
+            block_processor.process(harness.first_block),
+            harness.block_query_result_repository.clone(),
+            harness.transaction_query_result_repository.clone(),
+        );
 
         assert!(
             harness
@@ -470,25 +450,11 @@ mod tests {
         let harness = Setup::new(1, 1, 2, 0, 0);
         let mut block_processor = harness.block_processor;
 
-        {
-            let block_query_result_repository = harness.block_query_result_repository.clone();
-            let transaction_query_result_repository =
-                harness.transaction_query_result_repository.clone();
-
-            block_processor
-                .process(harness.first_block)
-                .and_then(move |(block_results, transaction_results)| {
-                    for (id, block_id) in block_results {
-                        block_query_result_repository.add_result(id, block_id);
-                    }
-                    for (id, tx_id) in transaction_results {
-                        transaction_query_result_repository.add_result(id, tx_id);
-                    }
-                    Ok(())
-                })
-                .wait()
-                .unwrap();
-        }
+        process_results(
+            block_processor.process(harness.first_block),
+            harness.block_query_result_repository.clone(),
+            harness.transaction_query_result_repository.clone(),
+        );
 
         // Transaction not yet confirmed
         assert!(
@@ -501,7 +467,12 @@ mod tests {
         );
 
         let empty_block = GenericBlock::default();
-        block_processor.process(empty_block);
+
+        process_results(
+            block_processor.process(empty_block),
+            harness.block_query_result_repository.clone(),
+            harness.transaction_query_result_repository.clone(),
+        );
 
         // Transaction now has enough confirmation
         assert!(
@@ -520,25 +491,11 @@ mod tests {
         let harness = Setup::new(1, 2, 1, 0, 0);
         let mut block_processor = harness.block_processor;
 
-        {
-            let block_query_result_repository = harness.block_query_result_repository.clone();
-            let transaction_query_result_repository =
-                harness.transaction_query_result_repository.clone();
-
-            block_processor
-                .process(harness.first_block)
-                .and_then(move |(block_results, transaction_results)| {
-                    for (id, block_id) in block_results {
-                        block_query_result_repository.add_result(id, block_id);
-                    }
-                    for (id, tx_id) in transaction_results {
-                        transaction_query_result_repository.add_result(id, tx_id);
-                    }
-                    Ok(())
-                })
-                .wait()
-                .unwrap();
-        }
+        process_results(
+            block_processor.process(harness.first_block),
+            harness.block_query_result_repository.clone(),
+            harness.transaction_query_result_repository.clone(),
+        );
 
         assert!(
             harness
@@ -555,25 +512,11 @@ mod tests {
         let harness = Setup::new(1, 2, 1, 5, 6);
         let mut block_processor = harness.block_processor;
 
-        {
-            let block_query_result_repository = harness.block_query_result_repository.clone();
-            let transaction_query_result_repository =
-                harness.transaction_query_result_repository.clone();
-
-            block_processor
-                .process(harness.first_block)
-                .and_then(move |(block_results, transaction_results)| {
-                    for (id, block_id) in block_results {
-                        block_query_result_repository.add_result(id, block_id);
-                    }
-                    for (id, tx_id) in transaction_results {
-                        transaction_query_result_repository.add_result(id, tx_id);
-                    }
-                    Ok(())
-                })
-                .wait()
-                .unwrap();
-        }
+        process_results(
+            block_processor.process(harness.first_block),
+            harness.block_query_result_repository.clone(),
+            harness.transaction_query_result_repository.clone(),
+        );
 
         assert!(
             harness
@@ -589,25 +532,11 @@ mod tests {
         let harness = Setup::new(1, 2, 1, 6, 5);
         let mut block_processor = harness.block_processor;
 
-        {
-            let block_query_result_repository = harness.block_query_result_repository.clone();
-            let transaction_query_result_repository =
-                harness.transaction_query_result_repository.clone();
-
-            block_processor
-                .process(harness.first_block)
-                .and_then(move |(block_results, transaction_results)| {
-                    for (id, block_id) in block_results {
-                        block_query_result_repository.add_result(id, block_id);
-                    }
-                    for (id, tx_id) in transaction_results {
-                        transaction_query_result_repository.add_result(id, tx_id);
-                    }
-                    Ok(())
-                })
-                .wait()
-                .unwrap();
-        }
+        process_results(
+            block_processor.process(harness.first_block),
+            harness.block_query_result_repository.clone(),
+            harness.transaction_query_result_repository.clone(),
+        );
 
         assert!(
             harness
@@ -616,5 +545,28 @@ mod tests {
                 .is_none(),
             "Query not moved to result repository after non-matching block arrived"
         );
+    }
+
+    fn process_results(
+        processing_future: Box<
+            dyn Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send,
+        >,
+        block_query_result_repository: Arc<InMemoryQueryResultRepository<GenericBlockQuery>>,
+        transaction_query_result_repository: Arc<
+            InMemoryQueryResultRepository<GenericTransactionQuery>,
+        >,
+    ) {
+        processing_future
+            .and_then(move |(block_results, transaction_results)| {
+                for (id, block_id) in block_results {
+                    block_query_result_repository.add_result(id, block_id);
+                }
+                for (id, tx_id) in transaction_results {
+                    transaction_query_result_repository.add_result(id, tx_id);
+                }
+                Ok(())
+            })
+            .wait()
+            .unwrap();
     }
 }

@@ -9,7 +9,7 @@ pub struct BitcoindZmqListener {}
 
 impl BitcoindZmqListener {
     pub fn create(endpoint: &str) -> Result<UnboundedReceiver<MinedBlock>, zmq::Error> {
-        let context = Context::new()?; // move this logic into start
+        let context = Context::new()?;
         let mut socket = context.socket(zmq::SUB)?;
 
         socket.set_subscribe(b"rawblock")?;

@@ -8,7 +8,7 @@ use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
 };
-use futures::{future::Future, stream::Stream};
+use futures::stream::Stream;
 use ledger_query_service::{
     bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},

@@ -5,7 +5,6 @@ use crate::web3::{
     types::{Block, BlockId, Transaction},
     Web3,
 };
-use futures::sync::mpsc::{self, UnboundedReceiver};
 use std::{sync::Arc, time::Duration};
 
 #[derive(DebugStub)]
@@ -15,7 +14,7 @@ impl EthereumWeb3BlockPoller {
     pub fn create(
         client: Arc<Web3<Http>>,
         polling_wait_time: Duration,
-    ) -> Result<Box<Stream<Item = Block<Transaction>, Error = ()> + Send>, web3::Error> {
+    ) -> Result<Box<dyn Stream<Item = Block<Transaction>, Error = ()> + Send>, web3::Error> {
         let filter = client.eth_filter();
         let filter = filter.create_blocks_filter().wait()?;
 
