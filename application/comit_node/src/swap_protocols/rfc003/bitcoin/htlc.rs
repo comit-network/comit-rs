@@ -132,6 +132,9 @@ fn create_htlc(
 ) -> Script {
     let script = Builder::new()
         .push_opcode(OP_IF)
+        .push_opcode(OP_SIZE)
+        .push_int(i64::from(Secret::LENGTH_U8))
+        .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_SHA256)
         .push_slice(secret_hash)
         .push_opcode(OP_EQUALVERIFY)

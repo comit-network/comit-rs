@@ -128,7 +128,9 @@ impl From<Secret> for SecretHash {
 }
 
 impl Secret {
+    // Both values need to stay the same!
     pub const LENGTH: usize = 32;
+    pub const LENGTH_U8: u8 = 32;
 
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
         let random_bytes = rng.gen_random_bytes(Self::LENGTH);
@@ -300,5 +302,10 @@ mod tests {
                 got: 31
             }
         );
+    }
+
+    #[test]
+    fn secret_length_is_consistent() {
+        assert_eq!(Secret::LENGTH, usize::from(Secret::LENGTH_U8));
     }
 }
