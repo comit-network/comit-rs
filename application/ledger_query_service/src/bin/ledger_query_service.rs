@@ -8,13 +8,13 @@ use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
 };
-use futures::stream::Stream;
+use futures::{future::Future, stream::Stream};
 use ledger_query_service::{
     bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
     settings::{self, Settings},
     BitcoindZmqListener, BlockProcessor, DefaultBlockProcessor, EthereumWeb3BlockPoller,
-    InMemoryQueryRepository, InMemoryQueryResultRepository, RouteFactory,
+    InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -62,12 +62,25 @@ fn create_bitcoin_routes(
         block_query_result_repository.clone(),
     );
 
-    let bitcoin_blocks = BitcoindZmqListener::create(settings.zmq_endpoint.as_str())
-        .expect("Should return a Bitcoind received for MinedBlocks");
-    let _ = bitcoin_blocks.for_each(move |block| {
-        transaction_processor.process(&block);
-        Ok(())
-    });
+    {
+        let transaction_query_result_repository = transaction_query_result_repository.clone();
+        let block_query_result_repository = block_query_result_repository.clone();
+
+        let bitcoin_blocks = BitcoindZmqListener::create(settings.zmq_endpoint.as_str())
+            .expect("Should return a Bitcoind received for MinedBlocks");
+        let bitcoin_processor = bitcoin_blocks
+            .and_then(move |block| transaction_processor.process(block))
+            .for_each(move |(block_results, transaction_results)| {
+                for (id, block_id) in block_results {
+                    block_query_result_repository.add_result(id, block_id);
+                }
+                for (id, tx_id) in transaction_results {
+                    transaction_query_result_repository.add_result(id, tx_id);
+                }
+                Ok(())
+            });
+        tokio::spawn(bitcoin_processor);
+    }
 
     let client = Arc::new(bitcoin_rpc_client);
 
@@ -115,12 +128,26 @@ fn create_ethereum_routes(
 
     let poller_client = Arc::clone(&web3_client);
 
-    let web3_blocks = EthereumWeb3BlockPoller::create(poller_client, settings.poll_interval_secs)
-        .expect("Should return a Web3 block poller");
-    let _ = web3_blocks.for_each(move |block| {
-        transaction_processor.process(&block);
-        Ok(())
-    });
+    {
+        let transaction_query_result_repository = transaction_query_result_repository.clone();
+        let block_query_result_repository = block_query_result_repository.clone();
+
+        let web3_blocks =
+            EthereumWeb3BlockPoller::create(poller_client, settings.poll_interval_secs)
+                .expect("Should return a Web3 block poller");
+        let web3_processor = web3_blocks
+            .and_then(move |block| transaction_processor.process(block))
+            .for_each(move |(block_results, transaction_results)| {
+                for (id, block_id) in block_results {
+                    block_query_result_repository.add_result(id, block_id);
+                }
+                for (id, tx_id) in transaction_results {
+                    transaction_query_result_repository.add_result(id, tx_id);
+                }
+                Ok(())
+            });
+        tokio::spawn(web3_processor);
+    }
 
     let ledger_name = "ethereum";
 

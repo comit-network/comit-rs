@@ -15,7 +15,7 @@ impl EthereumWeb3BlockPoller {
     pub fn create(
         client: Arc<Web3<Http>>,
         polling_wait_time: Duration,
-    ) -> Result<UnboundedReceiver<Block<Transaction>>, web3::Error> {
+    ) -> Result<Box<Stream<Item = Block<Transaction>, Error = ()> + Send>, web3::Error> {
         let filter = client.eth_filter();
         let filter = filter.create_blocks_filter().wait()?;
 
@@ -28,18 +28,13 @@ impl EthereumWeb3BlockPoller {
                 .expect("Could not get block height from web3 client")
         );
 
-        let (state_sender, state_receiver) = mpsc::unbounded();
-
-        let _ = filter
-            .stream(polling_wait_time)
-            .and_then(|block_hash| client.eth().block_with_txs(BlockId::from(block_hash)))
-            .filter(Option::is_some)
-            .map(Option::unwrap)
-            .for_each(|block| {
-                let _ = state_sender.unbounded_send(block);
-                Ok(())
-            });
-
-        Ok(state_receiver)
+        Ok(Box::new(
+            filter
+                .stream(polling_wait_time)
+                .and_then(move |block_hash| client.eth().block_with_txs(BlockId::from(block_hash)))
+                .filter(Option::is_some)
+                .map(Option::unwrap)
+                .map_err(|_| ()),
+        ))
     }
 }
