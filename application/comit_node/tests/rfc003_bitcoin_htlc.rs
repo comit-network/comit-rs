@@ -14,16 +14,6 @@ use spectral::prelude::*;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
-pub trait SecretTrait {
-    fn hash(&self) -> SecretHash;
-}
-
-impl SecretTrait for Secret {
-    fn hash(&self) -> SecretHash {
-        Secret::hash(self)
-    }
-}
-
 pub struct CustomSizeSecret(Vec<u8>);
 
 impl CustomSizeSecret {
@@ -41,10 +31,8 @@ impl CustomSizeSecret {
             prev_script: htlc.script().clone(),
         }
     }
-}
 
-impl SecretTrait for CustomSizeSecret {
-    fn hash(&self) -> SecretHash {
+    pub fn hash(&self) -> SecretHash {
         let mut sha = Sha256::new();
         sha.input(&self.0[..]);
 
@@ -63,9 +51,9 @@ impl FromStr for CustomSizeSecret {
     }
 }
 
-fn fund_htlc<S: SecretTrait>(
+fn fund_htlc(
     client: &BitcoinCoreClient,
-    secret: &S,
+    secret_hash: SecretHash,
 ) -> (
     TransactionId,
     rpc::TransactionOutput,
@@ -89,7 +77,7 @@ fn fund_htlc<S: SecretTrait>(
     let htlc = Htlc::new(
         redeem_pubkey_hash,
         refund_pubkey_hash,
-        secret.hash(),
+        secret_hash,
         sequence_lock,
     );
 
@@ -125,7 +113,7 @@ fn redeem_htlc_with_secret() {
     client.generate(432).unwrap().unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, &secret);
+    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
     assert!(
         htlc.can_be_unlocked_with(secret, keypair).is_ok(),
@@ -173,7 +161,7 @@ fn redeem_refund_htlc() {
     client.generate(432).unwrap().unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let (txid, vout, input_amount, htlc, nsequence, _, keypair) = fund_htlc(&client, &secret);
+    let (txid, vout, input_amount, htlc, nsequence, _, keypair) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
     let fee = BitcoinQuantity::from_satoshi(1000);
@@ -229,10 +217,10 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
     let client = tc_bitcoincore_client::new(&container);
     client.generate(432).unwrap().unwrap();
 
-    let secret = CustomSizeSecret::from_str("Grandma, Why have you such a big eyes?")?;
+    let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!")?;
     assert_eq!(secret.0.len(), 38);
 
-    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, &secret);
+    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
 
@@ -277,7 +265,7 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny")?;
     assert_eq!(secret.0.len(), 17);
 
-    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, &secret);
+    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
 

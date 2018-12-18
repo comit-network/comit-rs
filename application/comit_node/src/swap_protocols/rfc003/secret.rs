@@ -18,19 +18,6 @@ pub struct SecretHash([u8; Self::LENGTH]);
 impl SecretHash {
     pub const LENGTH: usize = 32;
 
-    pub fn from_vec(vec: &[u8]) -> Result<SecretHash, FromErr> {
-        if vec.len() != Self::LENGTH {
-            return Err(FromErr::InvalidLength {
-                expected: Self::LENGTH,
-                got: vec.len(),
-            });
-        }
-        let mut data = [0; Self::LENGTH];
-        let vec = &vec[..Self::LENGTH];
-        data.copy_from_slice(vec);
-        Ok(SecretHash(data))
-    }
-
     pub fn raw(&self) -> &[u8; Self::LENGTH] {
         &self.0
     }
@@ -102,7 +89,16 @@ impl FromStr for SecretHash {
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         let vec = hex::decode(s)?;
-        Self::from_vec(&vec)
+        if vec.len() != Self::LENGTH {
+            return Err(FromErr::InvalidLength {
+                expected: Self::LENGTH,
+                got: vec.len(),
+            });
+        }
+        let mut data = [0; Self::LENGTH];
+        let vec = &vec[..Self::LENGTH];
+        data.copy_from_slice(vec);
+        Ok(SecretHash(data))
     }
 }
 
