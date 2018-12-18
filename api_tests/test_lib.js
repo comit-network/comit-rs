@@ -276,7 +276,7 @@ class ComitConf {
         return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_comit_node_until(chai, location, state, generate_btc = false) {
+    poll_comit_node_until(chai, location, state) {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)
@@ -288,9 +288,6 @@ class ComitConf {
                     if (res.body.state === state) {
                         final_res(res.body);
                     } else {
-                        if (generate_btc) {
-                            bitcoin_rpc_client().generate(1);
-                        }
                         setTimeout(() => {
                             this.poll_comit_node_until(
                                 chai,

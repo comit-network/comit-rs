@@ -97,11 +97,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Alice] Should be in Start state after sending the swap request to Bob", async function() {
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "Start",
-        );
+        await alice.poll_comit_node_until(chai, alice_swap_href, "Start");
     });
 
     let bob_swap_href;
@@ -197,12 +193,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
         this.timeout(10000);
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "AlphaFunded",
-            true
-        );
+        await alice.poll_comit_node_until(chai, alice_swap_href, "AlphaFunded");
     });
 
     let bob_deploy_href;
@@ -420,8 +411,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
         await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
-            "BothRedeemed",
-            true
+            "BothRedeemed"
         );
     });
 
