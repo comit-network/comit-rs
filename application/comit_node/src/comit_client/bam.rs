@@ -1,8 +1,7 @@
 use crate::{
     bam_api::{self, header::ToBamHeader},
     comit_client::{
-        rfc003, Client, ClientFactory, ClientFactoryError, SwapDeclineReason, SwapReject,
-        SwapResponseError,
+        rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
     },
     swap_protocols::{self, asset::Asset, SwapProtocols},
 };
@@ -89,27 +88,10 @@ impl Client for BamClient {
                 Ok(response) => match response.status() {
                     Status::OK(_) => {
                         info!("{} accepted swap request: {:?}", socket_addr, response);
-                        match serde_json::from_value(response.get_body().clone()) {
+                        match serde_json::from_value(response.body().clone()) {
                             Ok(response) => Ok(Ok(response)),
                             Err(_e) => Err(SwapResponseError::InvalidResponse),
                         }
-                    }
-                    Status::SE(20) => {
-                        info!("{} declined swap request: {:?}", socket_addr, response);
-                        Ok(Err({
-                            let reason = response
-                                .get_header("REASON")
-                                .map_or(Ok(None), |x: Result<SwapDeclineReason, _>| x.map(Some))
-                                .map_err(|e| {
-                                    error!(
-                                        "Could not deserialize header in response {:?}: {}",
-                                        response, e,
-                                    )
-                                })
-                                .unwrap();
-
-                            SwapReject::Declined { reason }
-                        }))
                     }
                     Status::SE(_) => {
                         info!("{} rejected swap request: {:?}", socket_addr, response);

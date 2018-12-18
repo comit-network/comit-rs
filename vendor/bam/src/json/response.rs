@@ -2,7 +2,7 @@ use crate::{
     api::{self, IntoFrame},
     json::frame::Frame,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::Serialize;
 use serde_json::{self, Value as JsonValue};
 use std::collections::HashMap;
 
@@ -87,17 +87,8 @@ impl Response {
         }
     }
 
-    pub fn get_body(&self) -> &JsonValue {
+    pub fn body(&self) -> &JsonValue {
         &self.body
-    }
-
-    pub fn get_header<H: DeserializeOwned>(
-        &self,
-        key: &str,
-    ) -> Option<Result<H, serde_json::Error>> {
-        self.headers
-            .get(key)
-            .map(|header| H::deserialize(header.clone()))
     }
 }
 

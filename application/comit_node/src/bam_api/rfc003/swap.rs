@@ -102,10 +102,6 @@ fn to_bam_response<AL: Ledger, BL: Ledger>(
                 beta_ledger_lock_duration: response.beta_ledger_lock_duration,
             })
         }
-        Err(SwapReject::Declined { reason: None }) => Response::new(Status::SE(20)),
-        Err(SwapReject::Declined {
-            reason: Some(reason),
-        }) => Response::new(Status::SE(20)).with_header("REASON", reason),
         Err(_) => Response::new(Status::RE(0)),
     }
 }

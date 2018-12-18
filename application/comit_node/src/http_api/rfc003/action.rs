@@ -1,14 +1,10 @@
 use crate::{
-    comit_client::SwapDeclineReason,
     http_api::{problem, HttpApiProblemStdError},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
         rfc003::{
-            actions::{
-                bob::{Accept, Decline},
-                ActionKind, Actions,
-            },
+            actions::{bob::Accept, ActionKind, Actions},
             bitcoin, ethereum,
             roles::{Alice, Bob},
             state_machine::StateMachineResponse,
@@ -106,17 +102,6 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
     }
 }
 
-trait ExecuteDecline {
-    fn execute(&self, reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem>;
-}
-
-impl<AL: Ledger, BL: Ledger> ExecuteDecline for Decline<AL, BL> {
-    fn execute(&self, reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem> {
-        self.decline(reason)
-            .map_err(|_| problem::action_already_taken())
-    }
-}
-
 impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
     fn execute(
         &self,
@@ -124,13 +109,7 @@ impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
         _secret_source: &dyn SecretSource,
         _id: SwapId,
     ) -> Result<(), HttpApiProblem> {
-        unreachable!("FIXME: Alice will never return this action so we shouldn't have to deal with this case")
-    }
-}
-
-impl ExecuteDecline for () {
-    fn execute(&self, _reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem> {
-        unreachable!("FIXME: Alice will never return this action so we shouldn't have to deal with this case")
+        unreachable!("FIXIME: Alice will never return this action so we shouldn't have to deal with this case")
     }
 }
 
@@ -363,11 +342,6 @@ enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
     },
 }
 
-#[derive(Deserialize)]
-struct DeclineSwapRequestHttpBody {
-    reason: Option<SwapDeclineReason>,
-}
-
 #[allow(clippy::needless_pass_by_value)]
 pub fn post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
@@ -434,40 +408,9 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             })?
                     };
 
-                    ExecuteAccept::execute(&accept_action, accept_body, secret_source, id)
+                    accept_action.execute(accept_body, secret_source, id)
                 }),
-            PostAction::Decline => {
-                serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
-                    .map_err(|e| {
-                        error!(
-                            "Failed to deserialize body of decline response for swap {}: {:?}",
-                            id, e
-                        );
-                        problem::serde(&e)
-                    })
-                    .and_then(move |decline_body| {
-                        let state = state_store
-                            .get::<Role>(&id)?
-                            .ok_or_else(problem::state_store)?;
-
-                        let decline_action = {
-                            state
-                                .actions()
-                                .into_iter()
-                                .find_map(move |action| match action {
-                                    ActionKind::Decline(decline) => Some(Ok(decline)),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| {
-                                    Err(HttpApiProblem::with_title_and_type_from_status(404))
-                                })?
-                        };
-
-                        let reason = decline_body.reason;
-
-                        ExecuteDecline::execute(&decline_action, reason)
-                    })
-            }
+            PostAction::Decline => Err(problem::not_yet_implemented("Declining a swap")),
         })
     )
 }
