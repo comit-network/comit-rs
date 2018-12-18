@@ -1,5 +1,11 @@
 use crate::{query_repository::QueryRepository, query_result_repository::QueryResultRepository};
-use std::{fmt::Debug, marker::PhantomData, sync::Arc};
+use futures::Future;
+use std::{
+    fmt::Debug,
+    marker::PhantomData,
+    sync::{Arc, Mutex},
+};
+use tokio;
 
 pub trait BlockProcessor<B> {
     fn process(&mut self, block: &B);
@@ -18,7 +24,7 @@ pub trait Block: Debug {
 }
 
 pub trait Query<O>: Debug {
-    fn matches(&self, object: &O) -> QueryMatchResult;
+    fn matches(&self, object: &O) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send>;
     fn is_empty(&self) -> bool;
 }
 
@@ -64,7 +70,7 @@ pub struct DefaultBlockProcessor<T, B, TQ, BQ> {
     transaction_results: ArcQueryResultRepository<TQ>,
     #[debug_stub = "Results"]
     block_results: ArcQueryResultRepository<BQ>,
-    pending_transactions: Vec<PendingTransaction>,
+    pending_transactions: Arc<Mutex<Vec<PendingTransaction>>>,
     blockhashes: Vec<String>,
     tx_type: PhantomData<T>,
     block_type: PhantomData<B>,
@@ -108,31 +114,43 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
     fn process_new_block(&mut self, block: &B) {
         trace!("Processing {:?}", block);
 
-        let result_repository = &mut self.block_results;
-        self.block_queries
-            .all()
-            .filter_map(|(query_id, query)| {
-                trace!("Matching query {:#?} against block {:#?}", query, block);
+        self.block_queries.all().for_each(|(query_id, query)| {
+            trace!("Matching query {:#?} against block {:#?}", query, block);
 
-                let block_id = block.blockhash();
-                match query.matches(block) {
+            let result_repository = Arc::clone(&self.block_results);
+
+            let block_id = block.blockhash();
+
+            let _ = query
+                .matches(block)
+                .map(|query_match_result| match query_match_result {
+                    // TODO use map here
                     QueryMatchResult::Yes { .. } => {
                         info!("Block {} matches Query-ID: {:?}", block_id, query_id);
                         Some((query_id, block_id))
                     }
                     QueryMatchResult::No => None,
-                }
-            })
-            .for_each(|(query_id, block_id)| result_repository.add_result(query_id, block_id))
+                })
+                .map(move |matches| {
+                    match matches {
+                        Some((query_id, block_id)) => {
+                            result_repository.add_result(query_id, block_id);
+                        }
+                        _ => (),
+                    };
+                })
+                .wait();
+        })
     }
 
     fn update_pending_transactions(&mut self) {
         trace!("Updating pending matching transactions");
-        self.pending_transactions
+        let mut pending_transactions = self.pending_transactions.lock().unwrap();
+        pending_transactions
             .iter_mut()
             .for_each(|utx| utx.pending_confirmations -= 1);
 
-        self.pending_transactions.iter().for_each(|utx| {
+        pending_transactions.iter().for_each(|utx| {
             if utx.pending_confirmations == 0 {
                 let confirmed_tx_id = &utx.tx_id;
                 trace!(
@@ -144,57 +162,68 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
             }
         });
 
-        self.pending_transactions
-            .retain(|ref utx| utx.pending_confirmations > 0);
+        pending_transactions.retain(|ref utx| utx.pending_confirmations > 0);
     }
 
     fn process_new_transaction(&mut self, transaction: &T) {
         trace!("Processing {:?}", transaction);
 
-        let result_repository = &mut self.transaction_results;
-        let pending_transactions = &mut self.pending_transactions;
         self.transaction_queries
             .all()
-            .filter_map(|(query_id, query)| {
+            .for_each(|(query_id, query)| {
                 trace!(
                     "Matching query {:#?} against transaction {:#?}",
                     query,
                     transaction
                 );
 
+                let pending_transactions = Arc::clone(&self.pending_transactions);
+                let result_repository = Arc::clone(&self.transaction_results);
+
                 let tx_id = transaction.transaction_id();
-                match query.matches(transaction) {
-                    QueryMatchResult::Yes {
-                        confirmations_needed: 0,
-                    }
-                    | QueryMatchResult::Yes {
-                        confirmations_needed: 1,
-                    } => {
-                        info!(
-                            "Confirmed transaction {} matches Query-ID: {:?}",
-                            tx_id, query_id
-                        );
-                        Some((query_id, tx_id))
-                    }
-                    QueryMatchResult::Yes {
-                        confirmations_needed,
-                    } => {
-                        info!(
-                            "Unconfirmed transaction {} matches Query-ID: {:?}",
-                            tx_id, query_id
-                        );
-                        let pending_tx = PendingTransaction {
-                            matching_query_id: query_id,
-                            tx_id,
-                            pending_confirmations: confirmations_needed - 1,
-                        };
-                        pending_transactions.push(pending_tx);
-                        None
-                    }
-                    QueryMatchResult::No => None,
-                }
+
+                let process_query_future = query
+                    .matches(transaction)
+                    .and_then(move |query_match_result| match query_match_result {
+                        QueryMatchResult::Yes {
+                            confirmations_needed: 0,
+                        }
+                        | QueryMatchResult::Yes {
+                            confirmations_needed: 1,
+                        } => {
+                            info!(
+                                "Confirmed transaction {} matches Query-ID: {:?}",
+                                tx_id, query_id
+                            );
+                            Ok(Some((query_id, tx_id)))
+                        }
+                        QueryMatchResult::Yes {
+                            confirmations_needed,
+                        } => {
+                            info!(
+                                "Unconfirmed transaction {} matches Query-ID: {:?}",
+                                tx_id, query_id
+                            );
+                            let pending_tx = PendingTransaction {
+                                matching_query_id: query_id,
+                                tx_id,
+                                pending_confirmations: confirmations_needed - 1,
+                            };
+                            let mut pending_transactions = pending_transactions.lock().unwrap();
+                            pending_transactions.push(pending_tx);
+                            Ok(None)
+                        }
+                        QueryMatchResult::No => Ok(None),
+                    })
+                    .and_then(move |matches| match matches {
+                        Some((query_id, tx_id)) => {
+                            result_repository.add_result(query_id, tx_id);
+                            Ok(())
+                        }
+                        _ => Ok(()),
+                    });
+                tokio::spawn(process_query_future);
             })
-            .for_each(|(query_id, tx_id)| result_repository.add_result(query_id, tx_id))
     }
 }
 
@@ -210,7 +239,7 @@ impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
             block_queries: block_query_repository,
             transaction_results: transaction_query_result_repository,
             block_results: block_query_result_repository,
-            pending_transactions: Vec::new(),
+            pending_transactions: Arc::new(Mutex::new(Vec::new())),
             blockhashes: Vec::new(),
             tx_type: PhantomData,
             block_type: PhantomData,
@@ -233,11 +262,16 @@ mod tests {
     }
 
     impl Query<GenericTransaction> for GenericTransactionQuery {
-        fn matches(&self, transaction: &GenericTransaction) -> QueryMatchResult {
+        fn matches(
+            &self,
+            transaction: &GenericTransaction,
+        ) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send> {
             if self.transaction_id == transaction.id {
-                QueryMatchResult::yes_with_confirmations(self.confirmations_needed)
+                Box::new(futures::future::ok(
+                    QueryMatchResult::yes_with_confirmations(self.confirmations_needed),
+                ))
             } else {
-                QueryMatchResult::no()
+                Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
         fn is_empty(&self) -> bool {
@@ -251,11 +285,14 @@ mod tests {
     }
 
     impl Query<GenericBlock> for GenericBlockQuery {
-        fn matches(&self, block: &GenericBlock) -> QueryMatchResult {
+        fn matches(
+            &self,
+            block: &GenericBlock,
+        ) -> Box<Future<Item = QueryMatchResult, Error = ()> + Send> {
             if self.min_timestamp_secs <= block.timestamp {
-                QueryMatchResult::yes()
+                Box::new(futures::future::ok(QueryMatchResult::yes()))
             } else {
-                QueryMatchResult::no()
+                Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
 

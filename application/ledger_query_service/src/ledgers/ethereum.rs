@@ -73,14 +73,17 @@ impl ExpandResult for EthereumTransactionQuery {
             .collect();
 
         stream::futures_ordered(futures)
-            .filter_map(|item| item)
+            .filter_map(|item| item) // todo remove me?
             .collect()
             .wait()
     }
 }
 
 impl Query<EthereumTransaction> for EthereumTransactionQuery {
-    fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
+    fn matches(
+        &self,
+        transaction: &EthereumTransaction,
+    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
         match self {
             Self {
                 from_address: None,
@@ -88,7 +91,7 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
                 is_contract_creation: None,
                 transaction_data: None,
                 transaction_data_length: None,
-            } => QueryMatchResult::no(),
+            } => Box::new(futures::future::ok(QueryMatchResult::no())),
             Self {
                 from_address,
                 to_address,
@@ -120,9 +123,9 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
                 }
 
                 if result {
-                    QueryMatchResult::yes()
+                    Box::new(futures::future::ok(QueryMatchResult::yes()))
                 } else {
-                    QueryMatchResult::no()
+                    Box::new(futures::future::ok(QueryMatchResult::no()))
                 }
             }
         }
@@ -153,19 +156,22 @@ impl Block for EthereumBlock<EthereumTransaction> {
 }
 
 impl Query<EthereumBlock<EthereumTransaction>> for EthereumBlockQuery {
-    fn matches(&self, block: &EthereumBlock<EthereumTransaction>) -> QueryMatchResult {
+    fn matches(
+        &self,
+        block: &EthereumBlock<EthereumTransaction>,
+    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
         match self.min_timestamp_secs {
             Some(min_timestamp_secs) => {
                 let min_timestamp_secs = U256::from(min_timestamp_secs);
                 if min_timestamp_secs <= block.timestamp {
-                    QueryMatchResult::yes()
+                    Box::new(futures::future::ok(QueryMatchResult::yes()))
                 } else {
-                    QueryMatchResult::no()
+                    Box::new(futures::future::ok(QueryMatchResult::no()))
                 }
             }
             None => {
                 warn!("min_timestamp not set, nothing to compare");
-                QueryMatchResult::no()
+                Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
     }
@@ -232,8 +238,9 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction))
-            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        exec_future(query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        });
     }
 
     #[test]
@@ -260,7 +267,9 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
+        exec_future(query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::no());
+        });
     }
 
     #[test]
@@ -289,8 +298,9 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction))
-            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        exec_future(query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        });
     }
 
     #[test]
@@ -319,7 +329,9 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
+        exec_future(query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::no())
+        });
     }
 
     #[test]
@@ -348,7 +360,9 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
+        exec_future(query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::no())
+        });
     }
 
     #[test]
@@ -391,11 +405,17 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert_that(&query_data.matches(&transaction))
-            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
-        assert_that(&query_data_length.matches(&transaction))
-            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
-        assert_that(&refund_query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
+        exec_future(query_data.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
+        });
+
+        exec_future(query_data_length.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
+        });
+
+        exec_future(refund_query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::no())
+        });
     }
 
     #[test]
@@ -430,10 +450,13 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        assert_that(&query_data.matches(&transaction))
-            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
-        assert_that(&query_data_length.matches(&transaction))
-            .is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        exec_future(query_data.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
+        });
+
+        exec_future(query_data_length.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
+        });
     }
 
     #[test]
@@ -460,7 +483,19 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        assert_that(&query.matches(&transaction)).is_equal_to(QueryMatchResult::no());
+        exec_future(query.matches(&transaction), |result| {
+            assert_that(&result).is_equal_to(QueryMatchResult::no())
+        });
     }
 
+    fn exec_future<F: Fn(QueryMatchResult)>(
+        future: Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>,
+        assert_callback: F,
+    ) {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+
+        let result = runtime.block_on(future).map_err(|_| ()).unwrap();
+
+        assert_callback(result);
+    }
 }
