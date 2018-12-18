@@ -8,12 +8,13 @@ use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
 };
+use futures::stream::Stream;
 use ledger_query_service::{
     bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
     settings::{self, Settings},
-    BitcoindZmqListener, DefaultBlockProcessor, EthereumWeb3BlockPoller, InMemoryQueryRepository,
-    InMemoryQueryResultRepository, RouteFactory,
+    BitcoindZmqListener, BlockProcessor, DefaultBlockProcessor, EthereumWeb3BlockPoller,
+    InMemoryQueryRepository, InMemoryQueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc, thread};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -54,20 +55,18 @@ fn create_bitcoin_routes(
 
     info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
-    let transaction_processor = DefaultBlockProcessor::new(
+    let mut transaction_processor = DefaultBlockProcessor::new(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
         block_query_result_repository.clone(),
     );
-    thread::spawn(move || {
-        let bitcoind_zmq_listener =
-            BitcoindZmqListener::create(settings.zmq_endpoint.as_str(), transaction_processor);
 
-        match bitcoind_zmq_listener {
-            Ok(mut listener) => listener.start(),
-            Err(e) => error!("Failed to start BitcoinZmqListener! {:?}", e),
-        }
+    let bitcoin_blocks = BitcoindZmqListener::create(settings.zmq_endpoint.as_str())
+        .expect("Should return a Bitcoind received for MinedBlocks");
+    let _ = bitcoin_blocks.for_each(move |block| {
+        transaction_processor.process(&block);
+        Ok(())
     });
 
     let client = Arc::new(bitcoin_rpc_client);
@@ -112,9 +111,9 @@ fn create_ethereum_routes(
 
     let (event_loop, transport) =
         Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
-    let client = Arc::new(Web3::new(transport));
+    let web3_client = Arc::new(Web3::new(transport));
 
-    let poller_client = Arc::clone(&client);
+    let poller_client = Arc::clone(&web3_client);
 
     thread::spawn(move || {
         let web3_poller = EthereumWeb3BlockPoller::create(
@@ -133,7 +132,7 @@ fn create_ethereum_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
-        Some(Arc::clone(&client)),
+        Some(Arc::clone(&web3_client)),
         ledger_name,
     );
 

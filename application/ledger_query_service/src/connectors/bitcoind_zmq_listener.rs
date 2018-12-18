@@ -1,57 +1,48 @@
-use crate::block_processor::BlockProcessor;
 use bitcoin_support::{serialize::deserialize, MinedBlock};
 use byteorder::{LittleEndian, ReadBytesExt};
-use std::io::Cursor;
+use futures::{
+    sync::mpsc::{self, UnboundedReceiver},
+    Stream,
+};
+use std::{io::Cursor, thread};
 use zmq_rs::{self as zmq, Context, Socket};
 
 #[derive(DebugStub)]
-pub struct BitcoindZmqListener<P> {
-    #[debug_stub = "Context"]
-    _context: Context,
-    #[debug_stub = "Socket"]
-    socket: Socket,
-    #[debug_stub = "Processor"]
-    processor: P,
-}
+pub struct BitcoindZmqListener {}
 
-impl<P: BlockProcessor<MinedBlock>> BitcoindZmqListener<P> {
-    pub fn create(endpoint: &str, processor: P) -> Result<Self, zmq::Error> {
-        let context = Context::new()?;
+impl BitcoindZmqListener {
+    pub fn create(endpoint: &str) -> Result<UnboundedReceiver<MinedBlock>, zmq::Error> {
+        let context = Context::new()?; // move this logic into start
         let mut socket = context.socket(zmq::SUB)?;
 
         socket.set_subscribe(b"rawblock")?;
         socket.connect(endpoint)?;
 
-        Ok(BitcoindZmqListener {
-            _context: context,
-            socket,
-            processor,
-        })
-    }
-
-    pub fn start(&mut self) {
         info!(
             "Connecting to {} to subscribe to new Bitcoin blocks over ZeroMQ",
-            self.socket.get_last_endpoint().unwrap()
+            socket.get_last_endpoint().unwrap()
         );
 
-        loop {
-            let result = self.receive_block();
+        let (state_sender, state_receiver) = mpsc::unbounded();
+
+        thread::spawn(move || loop {
+            let result = Self::receive_block(&mut socket);
 
             if let Ok(Some(block)) = result {
-                self.processor.process(&block);
+                let _ = state_sender.send(block);
             }
-        }
+        });
+        Ok(state_receiver)
     }
 
-    fn receive_block(&mut self) -> Result<Option<MinedBlock>, zmq::Error> {
-        let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
+    fn receive_block(socket: &mut Socket) -> Result<Option<MinedBlock>, zmq::Error> {
+        let bytes = socket.recv_bytes(zmq::SNDMORE)?;
         let bytes: &[u8] = bytes.as_ref();
 
         match bytes {
             b"rawblock" => {
-                let bytes = self.socket.recv_bytes(zmq::SNDMORE)?;
-                let block_height = self.socket.recv_bytes(zmq::SNDMORE)?;
+                let bytes = socket.recv_bytes(zmq::SNDMORE)?;
+                let block_height = socket.recv_bytes(zmq::SNDMORE)?;
 
                 let mut block_height = Cursor::new(block_height);
                 let block_height = block_height.read_u32::<LittleEndian>();
