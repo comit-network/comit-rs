@@ -13,7 +13,6 @@ use crate::{
             self,
             actions::{ActionKind, Actions},
             alice::SwapRequestIdentities,
-            roles::{Alice, Bob},
             state_store::StateStore,
             Ledger, SecretSource,
         },
@@ -284,19 +283,18 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     let metadata = metadata_store
         .get(id)?
         .ok_or_else(problem::swap_not_found)?;
-    get_swap!(
+
+    with_swap_types!(
         &metadata,
-        state_store,
-        id,
-        state,
         (|| {
-            let state =
-                state.ok_or_else(|| HttpApiProblem::with_title_and_type_from_status(500))?;
+            trace!("Fetched metadata of swap with id {}: {:?}", id, metadata);
+            let state = state_store
+                .get::<Role>(id)?
+                .ok_or_else(problem::state_store)?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            let start_state = state
-                .start_state()
-                .ok_or_else(|| HttpApiProblem::with_title_and_type_from_status(500))?;
+            let start_state = state.start_state()?;
+
             let actions: Vec<ActionName> = state.actions().iter().map(ActionKind::name).collect();
             (Ok((
                 GetSwapResource {
@@ -353,12 +351,11 @@ fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 ) -> Result<Vec<HalResource>, HttpApiProblem> {
     let mut resources = vec![];
     for (id, metadata) in metadata_store.all()?.into_iter() {
-        get_swap!(
+        with_swap_types!(
             &metadata,
-            &state_store,
-            &id,
-            state,
             (|| -> Result<(), HttpApiProblem> {
+                let state = state_store.get::<Role>(&id)?;
+
                 match state {
                     Some(state) => {
                         let swap = EmbeddedSwapResource {

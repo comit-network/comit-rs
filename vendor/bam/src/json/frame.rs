@@ -1,8 +1,7 @@
 use crate::{
     api::{Error, FrameHandler, IntoFrame, ResponseFrameSource},
     config::Config,
-    json::{self, response::Response},
-    RequestError,
+    json, RequestError,
 };
 use futures::{
     future,
@@ -29,12 +28,6 @@ impl Frame {
     }
 }
 
-impl From<Frame> for Response {
-    fn from(f: Frame) -> Self {
-        serde_json::from_value(f.payload).unwrap()
-    }
-}
-
 #[derive(DebugStub)]
 pub struct JsonFrameHandler {
     next_expected_id: u32,
@@ -45,14 +38,14 @@ pub struct JsonFrameHandler {
 
 #[derive(Default, Debug)]
 pub struct JsonResponseSource {
-    awaiting_responses: HashMap<u32, Sender<json::Frame>>,
+    awaiting_responses: HashMap<u32, Sender<json::Response>>,
 }
 
-impl ResponseFrameSource<json::Frame> for JsonResponseSource {
+impl ResponseFrameSource<json::Response> for JsonResponseSource {
     fn on_response_frame(
         &mut self,
         frame_id: u32,
-    ) -> Box<dyn Future<Item = json::Frame, Error = ()> + Send> {
+    ) -> Box<dyn Future<Item = json::Response, Error = ()> + Send> {
         let (sender, receiver) = oneshot::channel();
 
         self.awaiting_responses.insert(frame_id, sender);
@@ -66,7 +59,7 @@ impl ResponseFrameSource<json::Frame> for JsonResponseSource {
 }
 
 impl JsonResponseSource {
-    pub fn get_awaiting_response(&mut self, id: u32) -> Option<Sender<json::Frame>> {
+    pub fn get_awaiting_response(&mut self, id: u32) -> Option<Sender<json::Response>> {
         self.awaiting_responses.remove(&id)
     }
 }
@@ -91,7 +84,7 @@ impl From<HeaderErrors> for RequestError {
 impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandler {
     fn create(
         config: Config<json::Request, json::Response>,
-    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Frame>>>) {
+    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Response>>>) {
         let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
 
         let handler = JsonFrameHandler {
@@ -147,7 +140,10 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 
                 debug!("Dispatching response frame {:?} to stored handler.", frame);
 
-                sender.send(frame).unwrap();
+                let response =
+                    serde_json::from_value(frame.payload).expect("should always deserialize");
+
+                sender.send(response).unwrap();
 
                 Ok(None)
             }
@@ -216,7 +212,7 @@ impl JsonFrameHandler {
                 // TODO make test that forces continue here
             }
 
-            let value = Self::normalize_compact_header(value);
+            let value = json::normalize_compact_header(value);
             let (key, must_understand) = Self::normalize_non_mandatory_header_key(key);
 
             if !known_headers.contains(key.as_str()) && must_understand {
@@ -254,13 +250,6 @@ impl JsonFrameHandler {
                 Ok(())
             }
             _ => Ok(()),
-        }
-    }
-
-    fn normalize_compact_header(value: JsonValue) -> JsonValue {
-        match value {
-            JsonValue::Object(_) => value,
-            _ => json!({ "value": value }),
         }
     }
 

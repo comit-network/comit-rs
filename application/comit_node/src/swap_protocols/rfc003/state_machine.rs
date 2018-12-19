@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)] // TODO: Figure out how to properly place this on the state_machine_future derive so that is is forwarded to the generated structs and impl
 
 use crate::{
-    comit_client,
+    comit_client::{self, SwapReject},
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -105,15 +105,28 @@ impl<R: Role> OngoingSwap<R> {
         }
     }
 }
-// TODO: Add a `Declined` outcome
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome<R: Role> {
-    Rejected { start: Start<R> },
-    AlphaRefunded { swap: OngoingSwap<R> },
-    BothRefunded { swap: OngoingSwap<R> },
-    BothRedeemed { swap: OngoingSwap<R> },
-    AlphaRedeemedBetaRefunded { swap: OngoingSwap<R> },
-    AlphaRefundedBetaRedeemed { swap: OngoingSwap<R> },
+    Rejected {
+        start: Start<R>,
+        rejection_type: SwapReject,
+    },
+    AlphaRefunded {
+        swap: OngoingSwap<R>,
+    },
+    BothRefunded {
+        swap: OngoingSwap<R>,
+    },
+    BothRedeemed {
+        swap: OngoingSwap<R>,
+    },
+    AlphaRedeemedBetaRefunded {
+        swap: OngoingSwap<R>,
+    },
+    AlphaRefundedBetaRedeemed {
+        swap: OngoingSwap<R>,
+    },
 }
 
 #[allow(missing_debug_implementations)]
@@ -237,9 +250,12 @@ impl<R: Role> PollSwap<R> for Swap<R> {
                     swap: OngoingSwap::new(state, swap_accepted),
                 }
             ),
-            Err(_) => transition_save!(
+            Err(rejection_type) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::Rejected { start: state })
+                Final(SwapOutcome::Rejected {
+                    start: state,
+                    rejection_type
+                })
             ),
         }
     }
@@ -548,11 +564,11 @@ impl<R: Role> SwapStates<R> {
         }
     }
 
-    pub fn start_state(&self) -> Option<Start<R>> {
+    pub fn start_state(&self) -> Result<Start<R>, Error> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start })) => {
-                Some(start.clone())
+            SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start, .. })) => {
+                Ok(start.clone())
             }
             SS::Accepted(Accepted { ref swap, .. })
             | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
@@ -567,20 +583,18 @@ impl<R: Role> SwapStates<R> {
             | SS::Final(Final(SwapOutcome::BothRefunded { ref swap }))
             | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
-                Some(Start {
-                    alpha_ledger: swap.alpha_ledger.clone(),
-                    beta_ledger: swap.beta_ledger.clone(),
-                    alpha_asset: swap.alpha_asset.clone(),
-                    beta_asset: swap.beta_asset.clone(),
-                    alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
-                    beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
-                    alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
-                    secret: swap.secret.clone(),
-                    role: swap.role.clone(),
-                })
-            }
-            SS::Error(_) => None,
+            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => Ok(Start {
+                alpha_ledger: swap.alpha_ledger.clone(),
+                beta_ledger: swap.beta_ledger.clone(),
+                alpha_asset: swap.alpha_asset.clone(),
+                beta_asset: swap.beta_asset.clone(),
+                alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
+                beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
+                alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
+                secret: swap.secret.clone(),
+                role: swap.role.clone(),
+            }),
+            SS::Error(ref e) => Err(e.clone()),
         }
     }
 

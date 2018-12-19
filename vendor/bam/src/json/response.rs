@@ -1,12 +1,15 @@
 use crate::{
     api::{self, IntoFrame},
-    json::frame::Frame,
+    json::{self, frame::Frame},
 };
-use serde::Serialize;
-use serde_json::{self, Value as JsonValue};
-use std::collections::HashMap;
+use serde::{
+    de::{self, Deserialize, DeserializeOwned, Deserializer, MapAccess, Visitor},
+    Serialize,
+};
+use serde_json::{self, Map, Value as JsonValue};
+use std::{collections::HashMap, fmt};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct Response {
     status: api::Status,
     #[serde(default)]
@@ -87,8 +90,17 @@ impl Response {
         }
     }
 
-    pub fn body(&self) -> &JsonValue {
+    pub fn get_body(&self) -> &JsonValue {
         &self.body
+    }
+
+    pub fn get_header<H: DeserializeOwned>(
+        &self,
+        key: &str,
+    ) -> Option<Result<H, serde_json::Error>> {
+        self.headers
+            .get(key)
+            .map(|header| H::deserialize(header.clone()))
     }
 }
 
@@ -99,5 +111,120 @@ impl IntoFrame<Frame> for Response {
         let payload = serde_json::to_value(self).unwrap();
 
         Frame::new("RESPONSE".into(), id, payload)
+    }
+}
+
+impl<'de> Deserialize<'de> for Response {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        enum Field {
+            Headers,
+            Status,
+            Body,
+        };
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Field, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                struct FieldVisitor;
+
+                impl<'de> Visitor<'de> for FieldVisitor {
+                    type Value = Field;
+
+                    fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                        formatter.write_str(
+                            "`status` or
+`headers` or `body`",
+                        )
+                    }
+
+                    fn visit_str<E>(self, value: &str) -> Result<Field, E>
+                    where
+                        E: de::Error,
+                    {
+                        match value {
+                            "headers" => Ok(Field::Headers),
+                            "status" => Ok(Field::Status),
+                            "body" => Ok(Field::Body),
+                            _ => Err(de::Error::unknown_field(value, FIELDS)),
+                        }
+                    }
+                }
+
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct ResponseVisitor;
+
+        impl<'de> Visitor<'de> for ResponseVisitor {
+            type Value = Response;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+                formatter.write_str("struct Response")
+            }
+
+            fn visit_map<V>(self, mut map: V) -> Result<Response, V::Error>
+            where
+                V: MapAccess<'de>,
+            {
+                let mut headers = None;
+                let mut status = None;
+                let mut body = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Status => {
+                            if status.is_some() {
+                                return Err(de::Error::duplicate_field("status"));
+                            }
+                            status = Some(map.next_value()?);
+                        }
+                        Field::Headers => {
+                            if headers.is_some() {
+                                return Err(de::Error::duplicate_field("headers"));
+                            }
+
+                            let _headers: Map<String, JsonValue> = map.next_value()?;
+                            let mut normalized_headers = HashMap::new();
+
+                            for (key, value) in _headers.into_iter() {
+                                let value = json::normalize_compact_header(value);
+
+                                normalized_headers.insert(key, value);
+                            }
+
+                            headers = Some(normalized_headers);
+                        }
+                        Field::Body => {
+                            if body.is_some() {
+                                return Err(de::Error::duplicate_field("body"));
+                            }
+                            body = Some(map.next_value()?);
+                        }
+                    }
+                }
+                let status = status.ok_or_else(|| de::Error::missing_field("status"))?;
+                let status = serde_json::from_value(status).map_err(de::Error::custom)?;
+                let headers = headers.unwrap_or_default();
+                let body = body.unwrap_or(JsonValue::Null);
+
+                let response = Response {
+                    status,
+                    headers,
+                    serialization_failure: false,
+                    body,
+                };
+                debug!("Map serialized as response: {:?}", response);
+
+                Ok(response)
+            }
+        }
+
+        const FIELDS: &[&str] = &["status", "headers", ""];
+        deserializer.deserialize_struct("Response", FIELDS, ResponseVisitor)
     }
 }

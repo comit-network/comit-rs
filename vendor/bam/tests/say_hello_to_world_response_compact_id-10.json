@@ -1,11 +1,9 @@
 {
   "type": "RESPONSE",
-  "id": 0,
+  "id": 10,
   "payload": {
     "headers": {
-      "HELLO": {
-        "value": "WORLD"
-      }
+      "HELLO": "WORLD"
     },
     "status": "OK00"
   }

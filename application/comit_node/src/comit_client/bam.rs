@@ -1,7 +1,8 @@
 use crate::{
     bam_api::{self, header::ToBamHeader},
     comit_client::{
-        rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+        rfc003, Client, ClientFactory, ClientFactoryError, SwapDeclineReason, SwapReject,
+        SwapResponseError,
     },
     swap_protocols::{self, asset::Asset, SwapProtocols},
 };
@@ -30,6 +31,11 @@ impl BamClient {
             bam_client: Arc::new(Mutex::new(bam_client)),
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Reason {
+    pub value: SwapDeclineReason,
 }
 
 impl Client for BamClient {
@@ -88,10 +94,28 @@ impl Client for BamClient {
                 Ok(response) => match response.status() {
                     Status::OK(_) => {
                         info!("{} accepted swap request: {:?}", socket_addr, response);
-                        match serde_json::from_value(response.body().clone()) {
+                        match serde_json::from_value(response.get_body().clone()) {
                             Ok(response) => Ok(Ok(response)),
                             Err(_e) => Err(SwapResponseError::InvalidResponse),
                         }
+                    }
+                    Status::SE(20) => {
+                        info!("{} declined swap request: {:?}", socket_addr, response);
+                        Ok(Err({
+                            let reason = response
+                                .get_header::<Reason>("REASON")
+                                .map_or(Ok(None), |x| x.map(Some))
+                                .map_err(|e| {
+                                    error!(
+                                        "Could not deserialize header in response {:?}: {}",
+                                        response, e,
+                                    );
+                                    SwapResponseError::InvalidResponse
+                                })?
+                                .map(|reason| reason.value);
+
+                            SwapReject::Declined { reason }
+                        }))
                     }
                     Status::SE(_) => {
                         info!("{} rejected swap request: {:?}", socket_addr, response);
