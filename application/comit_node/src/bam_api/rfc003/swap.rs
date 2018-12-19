@@ -1,11 +1,10 @@
 use crate::{
-    bam_api::{header::FromBamHeader, rfc003::bob_spawner::BobSpawner},
+    bam_api::header::FromBamHeader,
     comit_client::{self, rfc003::RequestBody, SwapReject},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        metadata_store::MetadataStore,
-        rfc003::{self, state_machine::StateMachineResponse, state_store::StateStore, Ledger},
+        rfc003::{self, bob::BobSpawner, state_machine::StateMachineResponse, Ledger},
         SwapId, SwapProtocols,
     },
 };
@@ -19,9 +18,7 @@ use ethereum_support::{Erc20Quantity, EtherQuantity};
 use futures::future::{self, Future};
 use std::sync::Arc;
 
-pub fn swap_config<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    bob_spawner: Arc<BobSpawner<T, S>>,
-) -> Config<Request, Response> {
+pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Response> {
     Config::default().on_request(
         "SWAP",
         &[

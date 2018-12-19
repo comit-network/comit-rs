@@ -1,15 +1,12 @@
-use crate::{
-    bam_api::rfc003::{bob_spawner::BobSpawner, swap_config},
-    swap_protocols::{metadata_store::MetadataStore, rfc003::state_store::StateStore, SwapId},
-};
+use crate::{bam_api::rfc003::swap_config, swap_protocols::rfc003::bob::BobSpawner};
 use bam::{connection::Connection, json};
 use futures::{Future, Stream};
 use std::{io, net::SocketAddr, sync::Arc};
 use tokio::{self, net::TcpListener};
 
-pub fn listen<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn listen<B: BobSpawner>(
     addr: SocketAddr,
-    bob_spawner: Arc<BobSpawner<T, S>>,
+    bob_spawner: Arc<B>,
 ) -> impl Future<Item = (), Error = io::Error> {
     info!("ComitServer listening at {:?}", addr);
     let socket = TcpListener::bind(&addr).unwrap();

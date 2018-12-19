@@ -1,19 +1,19 @@
 use crate::{
-    comit_client,
     http_api::{
         self,
         asset::{HttpAsset, ToHttpAsset},
         ledger::{HttpLedger, ToHttpLedger},
         lock_duration::{HttpLockDuration, ToHttpLockDuration},
         problem::{self, HttpApiProblemStdError},
-        rfc003::alice_spawner::AliceSpawner,
     },
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            self, alice::SwapRequestIdentities, state_store::StateStore, ActionKind, Actions,
-            Alice, Bob, Ledger, SecretSource,
+            self,
+            alice::{AliceSpawner, SwapRequestIdentities},
+            state_store::StateStore,
+            ActionKind, Actions, Alice, Bob, Ledger, SecretSource,
         },
         AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
     },
@@ -169,18 +169,14 @@ fn swap_path(id: SwapId) -> String {
 
 #[allow(clippy::needless_pass_by_value)]
 
-pub fn post_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client>(
+pub fn post_swap<A: AliceSpawner>(
+    alice_spawner: Arc<A>,
     secret_source: Arc<dyn SecretSource>,
-    alice_spawner: Arc<AliceSpawner<C>>,
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
     handle_post_swap(
-        secret_source.as_ref(),
-        metadata_store.as_ref(),
-        state_store.as_ref(),
         alice_spawner.as_ref(),
+        secret_source.as_ref(),
         request_body_kind,
     )
     .map(|swap_created| {
@@ -191,11 +187,9 @@ pub fn post_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_clien
     .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
 }
 
-fn handle_post_swap<C: comit_client::Client, T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn handle_post_swap<A: AliceSpawner>(
+    alice_spawner: &A,
     secret_source: &dyn SecretSource,
-    metadata_store: &T,
-    state_store: &S,
-    alice_spawner: &AliceSpawner<C>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
@@ -205,15 +199,11 @@ fn handle_post_swap<C: comit_client::Client, T: MetadataStore<SwapId>, S: StateS
             .spawn_alice(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
-                metadata_store,
-                state_store,
             )?,
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => alice_spawner
             .spawn_alice(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
-                metadata_store,
-                state_store,
             )?,
         SwapRequestBodyKind::UnsupportedCombination(body) => {
             error!(

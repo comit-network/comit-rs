@@ -19,12 +19,14 @@ mod save_state;
 mod secret;
 mod secret_source;
 
+mod create_ledger_events;
 #[cfg(test)]
 mod state_machine_test;
 
 pub use self::{
     alice::Alice,
     bob::Bob,
+    create_ledger_events::CreateLedgerEvents,
     error::Error,
     ledger::{ExtractSecret, FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
     role::*,

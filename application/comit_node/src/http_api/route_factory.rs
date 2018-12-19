@@ -1,26 +1,18 @@
 use crate::{
-    comit_client,
-    http_api::{
-        self,
-        rfc003::{action::GetActionQueryParams, alice_spawner::AliceSpawner},
-    },
+    http_api::{self, rfc003::action::GetActionQueryParams},
     seed::Seed,
     swap_protocols::{
-        rfc003::{state_store, SecretSource},
+        rfc003::{alice::AliceSpawner, state_store, SecretSource},
         MetadataStore, SwapId,
     },
 };
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-pub fn create<
-    T: MetadataStore<SwapId>,
-    S: state_store::StateStore<SwapId>,
-    C: comit_client::Client,
->(
+pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>, A: AliceSpawner>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    alice_spawner: Arc<AliceSpawner<C>>,
+    alice_spawner: Arc<A>,
     seed: Seed,
 ) -> BoxedFilter<(impl Reply,)> {
     let seed = Arc::new(seed);
@@ -35,10 +27,8 @@ pub fn create<
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
-        .and(rfc003_secret_gen.clone())
         .and(alice_spawner)
-        .and(metadata_store.clone())
-        .and(state_store.clone())
+        .and(rfc003_secret_gen.clone())
         .and(warp::body::json())
         .and_then(http_api::rfc003::swap::post_swap);
 

@@ -1,9 +1,11 @@
 pub mod actions;
 mod communication_events;
+mod spawner;
 mod swap_request;
 
 pub use self::{
     communication_events::*,
+    spawner::*,
     swap_request::{SwapRequest, SwapRequestIdentities},
 };
 

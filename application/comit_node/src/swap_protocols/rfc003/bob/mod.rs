@@ -1,13 +1,9 @@
 pub mod actions;
 mod communication_events;
+mod spawner;
 mod swap_request;
-mod swap_response;
 
-pub use self::{
-    communication_events::*,
-    swap_request::{SwapRequest, SwapRequestKind},
-    swap_response::SwapResponseKind,
-};
+pub use self::{communication_events::*, spawner::*, swap_request::SwapRequest};
 
 use crate::{
     comit_client::SwapReject,
@@ -15,13 +11,12 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         rfc003::{
-            self,
             bob::actions::{Accept, Decline},
             events::{LedgerEvents, ResponseFuture},
             ledger::Ledger,
             role::Initiation,
             save_state::SaveState,
-            state_machine::{Context, Start, StateMachineResponse, Swap, SwapOutcome},
+            state_machine::{Context, FutureSwapOutcome, Start, StateMachineResponse, Swap},
             Role, SecretHash,
         },
     },
@@ -52,15 +47,13 @@ pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Bob<AL, BL, AA, BA> {
+    #[allow(clippy::type_complexity)]
     pub fn new_state_machine(
         initiation: Initiation<Self>,
         alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
         beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
         save_state: Arc<dyn SaveState<Self>>,
-    ) -> (
-        Box<dyn Future<Item = SwapOutcome<Self>, Error = rfc003::Error> + Send>,
-        Box<ResponseFuture<Self>>,
-    ) {
+    ) -> (Box<FutureSwapOutcome<Self>>, Box<ResponseFuture<Self>>) {
         let (bob, response_future) = Self::create();
 
         // We need to duplicate the future
