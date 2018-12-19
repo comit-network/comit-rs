@@ -14,8 +14,8 @@ use ledger_query_service::{
     bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
     ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
     settings::{self, Settings},
-    BitcoindZmqListener, BlockProcessor, DefaultBlockProcessor, EthereumWeb3BlockPoller,
-    InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository, RouteFactory,
+    BlockProcessor, DefaultBlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
+    QueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
@@ -72,8 +72,9 @@ fn create_bitcoin_routes(
         let transaction_query_result_repository = transaction_query_result_repository.clone();
         let block_query_result_repository = block_query_result_repository.clone();
 
-        let bitcoin_blocks = BitcoindZmqListener::create(settings.zmq_endpoint.as_str())
-            .expect("Should return a Bitcoind received for MinedBlocks");
+        let bitcoin_blocks =
+            ledger_query_service::bitcoin_block_listener(settings.zmq_endpoint.as_str())
+                .expect("Should return a Bitcoind received for MinedBlocks");
         let bitcoin_processor = bitcoin_blocks
             .and_then(move |block| transaction_processor.process(block))
             .for_each(move |(block_results, transaction_results)| {
@@ -133,15 +134,15 @@ fn create_ethereum_routes(
         Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
     let web3_client = Arc::new(Web3::new(transport));
 
-    let poller_client = Arc::clone(&web3_client);
-
     {
         let transaction_query_result_repository = transaction_query_result_repository.clone();
         let block_query_result_repository = block_query_result_repository.clone();
 
-        let web3_blocks =
-            EthereumWeb3BlockPoller::create(poller_client, settings.poll_interval_secs)
-                .expect("Should return a Web3 block poller");
+        let web3_blocks = ledger_query_service::ethereum_block_listener(
+            web3_client.clone(),
+            settings.poll_interval_secs,
+        )
+        .expect("Should return a Web3 block poller");
         let web3_processor = web3_blocks
             .and_then(move |block| transaction_processor.process(block))
             .for_each(move |(block_results, transaction_results)| {
