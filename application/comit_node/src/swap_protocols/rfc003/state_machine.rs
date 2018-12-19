@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)] // TODO: Figure out how to properly place this on the state_machine_future derive so that is is forwarded to the generated structs and impl
 
 use crate::{
-    comit_client::{self, SwapReject},
+    comit_client,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -105,28 +105,15 @@ impl<R: Role> OngoingSwap<R> {
         }
     }
 }
-
+// TODO: Add a `Declined` outcome
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome<R: Role> {
-    Rejected {
-        start: Start<R>,
-        rejection_type: SwapReject,
-    },
-    AlphaRefunded {
-        swap: OngoingSwap<R>,
-    },
-    BothRefunded {
-        swap: OngoingSwap<R>,
-    },
-    BothRedeemed {
-        swap: OngoingSwap<R>,
-    },
-    AlphaRedeemedBetaRefunded {
-        swap: OngoingSwap<R>,
-    },
-    AlphaRefundedBetaRedeemed {
-        swap: OngoingSwap<R>,
-    },
+    Rejected { start: Start<R> },
+    AlphaRefunded { swap: OngoingSwap<R> },
+    BothRefunded { swap: OngoingSwap<R> },
+    BothRedeemed { swap: OngoingSwap<R> },
+    AlphaRedeemedBetaRefunded { swap: OngoingSwap<R> },
+    AlphaRefundedBetaRedeemed { swap: OngoingSwap<R> },
 }
 
 #[allow(missing_debug_implementations)]
@@ -250,12 +237,9 @@ impl<R: Role> PollSwap<R> for Swap<R> {
                     swap: OngoingSwap::new(state, swap_accepted),
                 }
             ),
-            Err(rejection_type) => transition_save!(
+            Err(_) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::Rejected {
-                    start: state,
-                    rejection_type
-                })
+                Final(SwapOutcome::Rejected { start: state })
             ),
         }
     }
@@ -567,7 +551,7 @@ impl<R: Role> SwapStates<R> {
     pub fn start_state(&self) -> Option<Start<R>> {
         use self::SwapStates as SS;
         match *self {
-            SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start, .. })) => {
+            SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start })) => {
                 Some(start.clone())
             }
             SS::Accepted(Accepted { ref swap, .. })
