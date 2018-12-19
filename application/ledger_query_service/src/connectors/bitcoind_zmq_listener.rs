@@ -23,7 +23,8 @@ impl BitcoindZmqListener {
         let (state_sender, state_receiver) = mpsc::unbounded();
 
         thread::spawn(move || {
-            let _context = context; // we need this to keep the context alive
+            // we need this to keep the context alive
+            let _context = context;
 
             loop {
                 let result = Self::receive_block(&mut socket);
