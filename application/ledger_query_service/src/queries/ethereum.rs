@@ -73,7 +73,7 @@ impl ExpandResult for EthereumTransactionQuery {
             .collect();
 
         stream::futures_ordered(futures)
-            .filter_map(|item| item) // todo remove me?
+            .filter_map(|item| item)
             .collect()
             .wait()
     }
