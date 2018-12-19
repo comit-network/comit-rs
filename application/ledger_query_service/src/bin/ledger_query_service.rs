@@ -4,6 +4,7 @@
 #[macro_use]
 extern crate log;
 
+use config::ConfigError;
 use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
@@ -20,11 +21,11 @@ use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-fn main() {
+fn main() -> Result<(), failure::Error> {
     let _ = pretty_env_logger::try_init();
 
-    let settings = load_settings();
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
+    let settings = load_settings()?;
+    let mut runtime = tokio::runtime::Runtime::new()?;
 
     info!("Starting up with {:#?}", settings);
 
@@ -38,6 +39,7 @@ fn main() {
     let routes = bitcoin_routes.or(ethereum_routes);
 
     warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
+    Ok(())
 }
 
 fn create_bitcoin_routes(
@@ -173,7 +175,7 @@ fn create_ethereum_routes(
     (transaction_routes.or(block_routes).boxed(), event_loop)
 }
 
-fn load_settings() -> Settings {
+fn load_settings() -> Result<Settings, ConfigError> {
     let config_path = match var("LEDGER_QUERY_SERVICE_CONFIG_PATH") {
         Ok(value) => value,
         Err(_) => "~/.config/ledger_query_service".into(),
@@ -181,6 +183,5 @@ fn load_settings() -> Settings {
     info!("Using settings located in {}", config_path);
     let default_config = format!("{}/{}", config_path.trim(), "default");
 
-    let settings = Settings::create(default_config);
-    settings.unwrap()
+    Settings::create(default_config)
 }
