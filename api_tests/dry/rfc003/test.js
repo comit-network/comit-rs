@@ -11,7 +11,8 @@ const alpha_ledger_network = "regtest";
 const beta_ledger_name = "Ethereum";
 
 const alpha_asset_name = "Bitcoin";
-const alpha_asset_quantity = "100000000";
+const alpha_asset_reasonable_quantity = "100000000";
+const alpha_asset_stingy_quantity = "100";
 
 const beta_asset_name = "Ether";
 const beta_asset_quantity = new BigNumber(
@@ -113,7 +114,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
-                    quantity: alpha_asset_quantity,
+                    quantity: alpha_asset_reasonable_quantity,
                 },
                 beta_asset: {
                     name: beta_asset_name,
@@ -147,7 +148,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
-                    quantity: "100",
+                    quantity: alpha_asset_stingy_quantity,
                 },
                 beta_asset: {
                     name: beta_asset_name,
@@ -182,7 +183,7 @@ describe("RFC003 HTTP API", () => {
                 swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
-                swap.alpha_asset.quantity.should.equal(alpha_asset_quantity);
+                swap.alpha_asset.quantity.should.equal(alpha_asset_reasonable_quantity);
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.alpha_lock_duration.type.should.equal("blocks");
@@ -240,7 +241,7 @@ describe("RFC003 HTTP API", () => {
         swap_2_href.should.be.a("string");
         let swap_2 = await chai.request(bob.comit_node_url()).get(swap_2_href);
 
-        if (swap_1.body.swap.alpha_asset.quantity == 100) {
+        if (swap_1.body.swap.alpha_asset.quantity == parseInt(alpha_asset_stingy_quantity)) {
             bob_stingy_swap_href = swap_1_href;
             bob_reasonable_swap_href = swap_2_href;
         } else {

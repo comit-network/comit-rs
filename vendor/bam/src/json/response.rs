@@ -209,7 +209,7 @@ impl<'de> Deserialize<'de> for Response {
                 }
                 let status = status.ok_or_else(|| de::Error::missing_field("status"))?;
                 let status = serde_json::from_value(status).map_err(de::Error::custom)?;
-                let headers = headers.unwrap_or(HashMap::new());
+                let headers = headers.unwrap_or_default();
                 let body = body.unwrap_or(JsonValue::Null);
 
                 let response = Response {
@@ -224,7 +224,7 @@ impl<'de> Deserialize<'de> for Response {
             }
         }
 
-        const FIELDS: &'static [&'static str] = &["status", "headers", ""];
+        const FIELDS: &[&str] = &["status", "headers", ""];
         deserializer.deserialize_struct("Response", FIELDS, ResponseVisitor)
     }
 }
