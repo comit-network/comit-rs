@@ -22,11 +22,15 @@ impl BitcoindZmqListener {
 
         let (state_sender, state_receiver) = mpsc::unbounded();
 
-        thread::spawn(move || loop {
-            let result = Self::receive_block(&mut socket);
+        thread::spawn(move || {
+            let _context = context; // we need this to keep the context alive
 
-            if let Ok(Some(block)) = result {
-                let _ = state_sender.unbounded_send(block);
+            loop {
+                let result = Self::receive_block(&mut socket);
+
+                if let Ok(Some(block)) = result {
+                    let _ = state_sender.unbounded_send(block);
+                }
             }
         });
         Ok(state_receiver)
@@ -64,7 +68,7 @@ impl BitcoindZmqListener {
                 }
             }
             _ => {
-                debug!("Unhandled message: {:?}", bytes);
+                error!("Unhandled message: {:?}", bytes);
                 Ok(None)
             }
         }

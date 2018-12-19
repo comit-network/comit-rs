@@ -17,27 +17,31 @@ use ledger_query_service::{
     InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc};
+use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 fn main() {
     let _ = pretty_env_logger::try_init();
 
     let settings = load_settings();
+    let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
     info!("Starting up with {:#?}", settings);
 
     let route_factory = RouteFactory::new(settings.http_api.external_url);
 
-    let bitcoin_routes = create_bitcoin_routes(&route_factory, settings.bitcoin);
+    let bitcoin_routes = create_bitcoin_routes(&mut runtime, &route_factory, settings.bitcoin);
 
     let (ethereum_routes, _event_loop_handle) =
-        create_ethereum_routes(&route_factory, settings.ethereum);
+        create_ethereum_routes(&mut runtime, &route_factory, settings.ethereum);
 
     let routes = bitcoin_routes.or(ethereum_routes);
+
     warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
 }
 
 fn create_bitcoin_routes(
+    runtime: &mut Runtime,
     route_factory: &RouteFactory,
     settings: settings::Bitcoin,
 ) -> BoxedFilter<(impl Reply,)> {
@@ -79,7 +83,7 @@ fn create_bitcoin_routes(
                 }
                 Ok(())
             });
-        tokio::spawn(bitcoin_processor);
+        runtime.spawn(bitcoin_processor);
     }
 
     let client = Arc::new(bitcoin_rpc_client);
@@ -104,6 +108,7 @@ fn create_bitcoin_routes(
 }
 
 fn create_ethereum_routes(
+    runtime: &mut Runtime,
     route_factory: &RouteFactory,
     settings: settings::Ethereum,
 ) -> (BoxedFilter<(impl Reply,)>, EventLoopHandle) {
@@ -146,7 +151,7 @@ fn create_ethereum_routes(
                 }
                 Ok(())
             });
-        tokio::spawn(web3_processor);
+        runtime.spawn(web3_processor);
     }
 
     let ledger_name = "ethereum";
