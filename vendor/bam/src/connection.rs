@@ -27,7 +27,7 @@ pub struct Connection<Req, Res, Codec, Socket> {
 impl<
         Frame: Debug + Send + 'static,
         Req: IntoFrame<Frame> + 'static,
-        Res: From<Frame> + Send + 'static,
+        Res: Send + 'static,
         CodecErr: From<io::Error> + Send + Debug + 'static,
         Codec: Encoder<Item = Frame, Error = CodecErr>
             + Decoder<Item = Frame, Error = CodecErr>

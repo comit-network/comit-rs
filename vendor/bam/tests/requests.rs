@@ -157,7 +157,7 @@ fn request_and_response_with_string_headers() {
         .is_ok()
         .is_some()
         .is_equal_to(include_json_line!(
-            "say_hello_to_world_response_compact.json"
+            "say_hello_to_world_response_compact_id-10.json"
         ));
 }
 
@@ -176,7 +176,7 @@ fn request_and_response_with_compact_string_headers() {
         .is_ok()
         .is_some()
         .is_equal_to(include_json_line!(
-            "say_hello_to_world_response_compact.json"
+            "say_hello_to_world_response_compact_id-10.json"
         ));
 }
 

@@ -2,11 +2,9 @@ pub mod bam;
 pub mod fake;
 pub mod rfc003;
 
-use futures::Future;
-use std::{io, net::SocketAddr, sync::Arc};
-
 use crate::swap_protocols::{self, asset::Asset};
-use std::{fmt::Debug, panic::RefUnwindSafe};
+use futures::Future;
+use std::{fmt::Debug, io, net::SocketAddr, panic::RefUnwindSafe, sync::Arc};
 
 pub trait Client: Send + Sync + 'static {
     fn send_swap_request<

@@ -564,11 +564,11 @@ impl<R: Role> SwapStates<R> {
         }
     }
 
-    pub fn start_state(&self) -> Option<Start<R>> {
+    pub fn start_state(&self) -> Result<Start<R>, Error> {
         use self::SwapStates as SS;
         match *self {
             SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start, .. })) => {
-                Some(start.clone())
+                Ok(start.clone())
             }
             SS::Accepted(Accepted { ref swap, .. })
             | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
@@ -583,20 +583,18 @@ impl<R: Role> SwapStates<R> {
             | SS::Final(Final(SwapOutcome::BothRefunded { ref swap }))
             | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
-                Some(Start {
-                    alpha_ledger: swap.alpha_ledger.clone(),
-                    beta_ledger: swap.beta_ledger.clone(),
-                    alpha_asset: swap.alpha_asset.clone(),
-                    beta_asset: swap.beta_asset.clone(),
-                    alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
-                    beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
-                    alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
-                    secret: swap.secret.clone(),
-                    role: swap.role.clone(),
-                })
-            }
-            SS::Error(_) => None,
+            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => Ok(Start {
+                alpha_ledger: swap.alpha_ledger.clone(),
+                beta_ledger: swap.beta_ledger.clone(),
+                alpha_asset: swap.alpha_asset.clone(),
+                beta_asset: swap.beta_asset.clone(),
+                alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
+                beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
+                alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
+                secret: swap.secret.clone(),
+                role: swap.role.clone(),
+            }),
+            SS::Error(ref e) => Err(e.clone()),
         }
     }
 

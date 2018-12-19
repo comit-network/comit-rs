@@ -1,4 +1,7 @@
-use crate::swap_protocols::{metadata_store, rfc003::state_store};
+use crate::swap_protocols::{
+    metadata_store,
+    rfc003::{self, state_store},
+};
 use http::StatusCode;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use std::{error::Error, fmt};
@@ -72,6 +75,13 @@ impl From<state_store::Error> for HttpApiProblem {
 impl From<metadata_store::Error> for HttpApiProblem {
     fn from(_e: metadata_store::Error) -> Self {
         HttpApiProblem::with_title_and_type_from_status(500).set_detail("Storage layer failure")
+    }
+}
+
+impl From<rfc003::state_machine::Error> for HttpApiProblem {
+    fn from(e: rfc003::state_machine::Error) -> Self {
+        error!("Protocol execution error: {:?}", e);
+        HttpApiProblem::new("protocol-execution-error").set_status(500)
     }
 }
 

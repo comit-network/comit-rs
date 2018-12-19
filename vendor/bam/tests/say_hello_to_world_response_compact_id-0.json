@@ -3,9 +3,7 @@
   "id": 0,
   "payload": {
     "headers": {
-      "HELLO": {
-        "value": "WORLD"
-      }
+      "HELLO": "WORLD"
     },
     "status": "OK00"
   }

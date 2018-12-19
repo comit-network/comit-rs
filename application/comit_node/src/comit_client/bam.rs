@@ -33,6 +33,11 @@ impl BamClient {
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Reason {
+    pub value: SwapDeclineReason,
+}
+
 impl Client for BamClient {
     fn send_swap_request<
         AL: swap_protocols::rfc003::Ledger,
@@ -98,15 +103,16 @@ impl Client for BamClient {
                         info!("{} declined swap request: {:?}", socket_addr, response);
                         Ok(Err({
                             let reason = response
-                                .get_header("REASON")
-                                .map_or(Ok(None), |x: Result<SwapDeclineReason, _>| x.map(Some))
+                                .get_header::<Reason>("REASON")
+                                .map_or(Ok(None), |x| x.map(Some))
                                 .map_err(|e| {
                                     error!(
                                         "Could not deserialize header in response {:?}: {}",
                                         response, e,
-                                    )
-                                })
-                                .unwrap();
+                                    );
+                                    SwapResponseError::InvalidResponse
+                                })?
+                                .map(|reason| reason.value);
 
                             SwapReject::Declined { reason }
                         }))

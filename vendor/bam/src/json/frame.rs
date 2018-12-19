@@ -1,8 +1,7 @@
 use crate::{
     api::{Error, FrameHandler, IntoFrame, ResponseFrameSource},
     config::Config,
-    json::{self, response::Response},
-    RequestError,
+    json, RequestError,
 };
 use futures::{
     future,
@@ -26,12 +25,6 @@ pub struct Frame {
 impl Frame {
     pub fn new(_type: String, id: u32, payload: JsonValue) -> Self {
         Self { _type, id, payload }
-    }
-}
-
-impl From<Frame> for Response {
-    fn from(f: Frame) -> Self {
-        serde_json::from_value(f.payload).unwrap()
     }
 }
 
@@ -147,7 +140,10 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 
                 debug!("Dispatching response frame {:?} to stored handler.", frame);
 
-                sender.send(frame.into()).unwrap();
+                let response =
+                    serde_json::from_value(frame.payload).expect("should always deserialize");
+
+                sender.send(response).unwrap();
 
                 Ok(None)
             }
@@ -216,7 +212,7 @@ impl JsonFrameHandler {
                 // TODO make test that forces continue here
             }
 
-            let value = Self::normalize_compact_header(value);
+            let value = json::normalize_compact_header(value);
             let (key, must_understand) = Self::normalize_non_mandatory_header_key(key);
 
             if !known_headers.contains(key.as_str()) && must_understand {
@@ -254,13 +250,6 @@ impl JsonFrameHandler {
                 Ok(())
             }
             _ => Ok(()),
-        }
-    }
-
-    fn normalize_compact_header(value: JsonValue) -> JsonValue {
-        match value {
-            JsonValue::Object(_) => value,
-            _ => json!({ "value": value }),
         }
     }
 

@@ -6,7 +6,7 @@ pub struct SayHelloToHeader {
     value: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Debug, Eq)]
 pub struct HelloResponseHeader {
     pub value: String,
 }

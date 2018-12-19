@@ -28,7 +28,7 @@ pub enum Error<F> {
     Canceled,
 }
 
-impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: From<Frame> + 'static + Send>
+impl<Frame: 'static + Send, Req: IntoFrame<Frame> + 'static, Res: 'static + Send>
     Client<Frame, Req, Res>
 {
     pub fn create(
@@ -105,8 +105,8 @@ mod tests {
             }
         }
 
-        fn add_response(&mut self, id: u32, response_frame: json::Frame) {
-            self.responses.insert(id, response_frame.into());
+        fn add_response(&mut self, id: u32, response: json::Response) {
+            self.responses.insert(id, response);
         }
     }
 
@@ -134,7 +134,7 @@ mod tests {
 
         {
             let mut response_source = response_source.lock().unwrap();
-            response_source.add_response(0, json::Response::new(Status::OK(0)).into_frame(0));
+            response_source.add_response(0, json::Response::new(Status::OK(0)));
         }
 
         let mut future = client.send_request(request);
@@ -164,8 +164,8 @@ mod tests {
 
         {
             let mut response_source = response_source.lock().unwrap();
-            response_source.add_response(0, json::Response::new(Status::OK(0)).into_frame(0));
-            response_source.add_response(1, json::Response::new(Status::SE(0)).into_frame(1));
+            response_source.add_response(0, json::Response::new(Status::OK(0)));
+            response_source.add_response(1, json::Response::new(Status::SE(0)));
         }
 
         {
