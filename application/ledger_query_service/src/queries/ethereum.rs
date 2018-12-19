@@ -238,9 +238,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        exec_future(query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
-        });
+        let result = exec_future(query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
     }
 
     #[test]
@@ -267,9 +266,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        exec_future(query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no());
-        });
+        let result = exec_future(query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -298,9 +296,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        exec_future(query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
-        });
+        let result = exec_future(query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
     }
 
     #[test]
@@ -329,9 +326,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        exec_future(query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no())
-        });
+        let result = exec_future(query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -360,9 +356,8 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        exec_future(query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no())
-        });
+        let result = exec_future(query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -405,17 +400,14 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
 
-        exec_future(query_data.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
-        });
+        let result = exec_future(query_data.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
 
-        exec_future(query_data_length.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
-        });
+        let result = exec_future(query_data_length.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
 
-        exec_future(refund_query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no())
-        });
+        let result = exec_future(refund_query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -450,13 +442,11 @@ mod tests {
             input: Bytes::from(vec![]),
         };
 
-        exec_future(query_data.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
-        });
+        let result = exec_future(query_data.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
 
-        exec_future(query_data_length.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
-        });
+        let result = exec_future(query_data_length.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
     }
 
     #[test]
@@ -482,20 +472,14 @@ mod tests {
             gas: U256::from(0),
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
-
-        exec_future(query.matches(&transaction), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no())
-        });
+        let result = exec_future(query.matches(&transaction));
+        assert_that(&result).is_equal_to(QueryMatchResult::no())
     }
 
-    fn exec_future<F: Fn(QueryMatchResult)>(
+    fn exec_future(
         future: Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>,
-        assert_callback: F,
-    ) {
+    ) -> QueryMatchResult {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
-
-        let result = runtime.block_on(future).map_err(|_| ()).unwrap();
-
-        assert_callback(result);
+        runtime.block_on(future).map_err(|_| ()).unwrap()
     }
 }

@@ -27,8 +27,7 @@ pub fn ethereum_block_listener(
         filter
             .stream(polling_wait_time)
             .and_then(move |block_hash| client.eth().block_with_txs(BlockId::from(block_hash)))
-            .filter(Option::is_some)
-            .map(Option::unwrap)
-            .map_err(|_| ()),
+            .filter_map(|item| item)
+            .map_err(|error| error!("Could not read block: {:?}", error)),
     ))
 }

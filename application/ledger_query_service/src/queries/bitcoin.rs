@@ -225,9 +225,8 @@ mod tests {
             min_height: Some(42),
         };
 
-        exec_future(query.matches(&block), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no());
-        });
+        let result = exec_future(query.matches(&block));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -253,9 +252,8 @@ mod tests {
             min_height: Some(42),
         };
 
-        exec_future(query.matches(&block), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes());
-        });
+        let result = exec_future(query.matches(&block));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -281,9 +279,8 @@ mod tests {
             min_height: Some(42),
         };
 
-        exec_future(query.matches(&block), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes());
-        });
+        let result = exec_future(query.matches(&block));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -297,9 +294,8 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        exec_future(query.matches(&tx), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes());
-        });
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -317,9 +313,8 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        exec_future(query.matches(&tx), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes());
-        });
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -335,9 +330,8 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        exec_future(query.matches(&tx), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::no());
-        });
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -359,20 +353,15 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        exec_future(query.matches(&tx), |result| {
-            assert_that(&result).is_equal_to(QueryMatchResult::yes());
-        });
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
-    fn exec_future<F: Fn(QueryMatchResult)>(
+    fn exec_future(
         future: Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>,
-        assert_callback: F,
-    ) {
+    ) -> QueryMatchResult {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
-
-        let result = runtime.block_on(future).map_err(|_| ()).unwrap();
-
-        assert_callback(result);
+        runtime.block_on(future).map_err(|_| ()).unwrap()
     }
 
 }
