@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display, hash::Hash, sync::Mutex};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Display},
+    hash::Hash,
+    sync::Mutex,
+};
 
 #[derive(Clone, Copy, Debug, Display)]
 pub enum RoleKind {
@@ -45,9 +50,13 @@ pub struct InMemoryMetadataStore<K: Hash + Eq> {
     metadata: Mutex<HashMap<K, Metadata>>,
 }
 
-impl<K: Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K> for InMemoryMetadataStore<K> {
+impl<K: Debug + Display + Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K>
+    for InMemoryMetadataStore<K>
+{
     fn get(&self, key: &K) -> Result<Option<Metadata>, Error> {
         let metadata = self.metadata.lock().unwrap();
+        trace!("Fetched metadata of swap with id {}: {:?}", key, metadata);
+
         Ok(metadata.get(&key).map(Clone::clone))
     }
 

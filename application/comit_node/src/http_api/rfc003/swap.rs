@@ -287,7 +287,6 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     with_swap_types!(
         &metadata,
         (|| {
-            trace!("Fetched metadata of swap with id {}: {:?}", id, metadata);
             let state = state_store
                 .get::<Role>(id)?
                 .ok_or_else(problem::state_store)?;

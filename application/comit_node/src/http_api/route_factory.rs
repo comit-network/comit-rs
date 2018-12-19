@@ -23,7 +23,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<dyn SecretSource>);
     let state_store = warp::any().map(move || state_store.clone());
     let sender = warp::any().map(move || sender.clone());
-    let empty_json_if_missing = warp::any().map(|| json!({}));
+    let empty_json_body = warp::any().map(|| json!({}));
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -56,7 +56,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .and(warp::path::param::<http_api::rfc003::action::PostAction>())
         .and(warp::post2())
         .and(warp::path::end())
-        .and(warp::body::json().or(empty_json_if_missing).unify())
+        .and(warp::body::json().or(empty_json_body).unify())
         .and_then(http_api::rfc003::action::post);
 
     let rfc003_get_action = rfc003
