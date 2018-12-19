@@ -44,22 +44,24 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
     fn get<R: Role>(&self, key: &K) -> Result<Option<SwapStates<R>>, Error> {
         let states = self.states.lock().unwrap();
         Ok(states.get(key).and_then(|state| {
-            let state = state
-                .downcast_ref::<Arc<RwLock<Option<SwapStates<R>>>>>()
-                .unwrap();
-            let state = state.read().unwrap();
-            state.clone()
+            match state.downcast_ref::<Arc<RwLock<Option<SwapStates<R>>>>>() {
+                Some(state) => state.read().unwrap().clone(),
+                None => {
+                    error!("Attempted to get state with wrong type");
+                    None
+                }
+            }
         }))
     }
 
     fn get_save_state<R: Role>(&self, key: &K) -> Result<Option<Arc<dyn SaveState<R>>>, Error> {
         let states = self.states.lock().unwrap();
-        Ok(states.get(key).map(|state| -> Arc<dyn SaveState<R>> {
-            let state = state
+        match states.get(key) {
+            Some(state) => Ok(state
                 .downcast_ref::<Arc<RwLock<Option<SwapStates<R>>>>>()
-                .unwrap();
-            state.clone()
-        }))
+                .map(|save_state| save_state.clone() as Arc<dyn SaveState<R>>)),
+            None => Ok(None),
+        }
     }
 }
 
