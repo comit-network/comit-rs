@@ -19,14 +19,14 @@ use futures::Future;
 use http_api_problem::HttpApiProblem;
 
 #[derive(Debug)]
-pub enum SpawnError {
+pub enum Error {
     Storage(state_store::Error),
     Metadata(metadata_store::Error),
 }
 
-impl From<SpawnError> for HttpApiProblem {
-    fn from(e: SpawnError) -> Self {
-        use self::SpawnError::*;
+impl From<Error> for HttpApiProblem {
+    fn from(e: Error) -> Self {
+        use self::Error::*;
         match e {
             Storage(e) => e.into(),
             Metadata(e) => e.into(),
@@ -40,7 +40,7 @@ pub trait BobSpawner: Send + Sync + 'static {
         &self,
         id: SwapId,
         swap_request: SwapRequest<AL, BL, AA, BA>,
-    ) -> Result<Box<ResponseFuture<Bob<AL, BL, AA, BA>>>, SpawnError>
+    ) -> Result<Box<ResponseFuture<Bob<AL, BL, AA, BA>>>, Error>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
         SwapRequest<AL, BL, AA, BA>: Into<Metadata>;
@@ -54,7 +54,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> B
         &self,
         id: SwapId,
         swap_request: SwapRequest<AL, BL, AA, BA>,
-    ) -> Result<Box<ResponseFuture<Bob<AL, BL, AA, BA>>>, SpawnError>
+    ) -> Result<Box<ResponseFuture<Bob<AL, BL, AA, BA>>>, Error>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
         SwapRequest<AL, BL, AA, BA>: Into<Metadata>,
@@ -62,10 +62,10 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> B
         let save_state = self
             .state_store
             .new_save_state(id)
-            .map_err(SpawnError::Storage)?;
+            .map_err(Error::Storage)?;
         self.metadata_store
             .insert(id, swap_request.clone())
-            .map_err(SpawnError::Metadata)?;
+            .map_err(Error::Metadata)?;
 
         let initiation = Initiation {
             alpha_asset: swap_request.alpha_asset,
