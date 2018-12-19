@@ -1,5 +1,8 @@
 # COMIT-rs
 
+[![Build Status](https://travis-ci.com/comit-network/comit-rs.svg?branch=master)](https://travis-ci.com/comit-network/comit-rs)
+[![Mergify Status](https://gh.mergify.io/badges/comit-network/comit-rs.png?style=small)](https://mergify.io)
+
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 
 
