@@ -4,7 +4,7 @@ pub mod rfc003;
 
 use crate::swap_protocols::{self, asset::Asset};
 use futures::Future;
-use std::{fmt::Debug, io, net::SocketAddr, panic::RefUnwindSafe, sync::Arc};
+use std::{fmt::Debug, io, net::SocketAddr, sync::Arc};
 
 pub trait Client: Send + Sync + 'static {
     fn send_swap_request<
@@ -23,7 +23,7 @@ pub trait Client: Send + Sync + 'static {
     >;
 }
 
-pub trait ClientFactory<C>: Send + Sync + RefUnwindSafe + Debug {
+pub trait ClientFactory<C>: Send + Sync + Debug {
     fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<Arc<C>, ClientFactoryError>;
 }
 
