@@ -44,7 +44,7 @@ where
     ) -> Box<dyn Stream<Item = <L as Ledger>::TxId, Error = S::Error> + Send + 'static> {
         let mut emitted_transactions = Vec::new();
 
-        let inner_self = self.clone();
+        let inner_self = Arc::clone(&self);
 
         Box::new(
             ticker
@@ -81,7 +81,7 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<dyn FetchFullQueryResults<L>> 
     ) -> Box<dyn Stream<Item = <L as Ledger>::Transaction, Error = S::Error> + Send + 'static> {
         let mut emitted_transactions = Vec::new();
 
-        let inner_self = self.clone();
+        let inner_self = Arc::clone(&self);
 
         Box::new(
             ticker
