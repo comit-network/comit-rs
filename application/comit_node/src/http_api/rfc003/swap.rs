@@ -13,7 +13,7 @@ use crate::{
             self,
             alice::{AliceSpawner, SwapRequestIdentities},
             state_store::StateStore,
-            ActionKind, Actions, Alice, Bob, Ledger, SecretSource,
+            Actions, Alice, Bob, Ledger, SecretSource,
         },
         AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
     },
@@ -287,7 +287,8 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 
             let start_state = state.start_state()?;
 
-            let actions: Vec<ActionName> = state.actions().iter().map(ActionKind::name).collect();
+            let actions: Vec<ActionName> =
+                state.actions().iter().map(|action| action.name()).collect();
             (Ok((
                 GetSwapResource {
                     state: state.name(),

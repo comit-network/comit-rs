@@ -3,7 +3,7 @@ mod communication_events;
 mod spawner;
 mod swap_request;
 
-pub use self::{communication_events::*, spawner::*, swap_request::SwapRequest};
+pub use self::{actions::*, communication_events::*, spawner::*, swap_request::SwapRequest};
 
 use crate::{
     comit_client::SwapReject,
