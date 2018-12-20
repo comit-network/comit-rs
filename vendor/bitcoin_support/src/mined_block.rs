@@ -1,7 +1,7 @@
 use bitcoin::Block;
 use std::convert::AsRef;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MinedBlock {
     block: Block,
     pub height: u32,

@@ -8,6 +8,7 @@ use bitcoin_support::{
     serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, OutPoint, SpendsFrom,
     SpendsFromWith, SpendsTo, SpendsWith, Transaction as BitcoinTransaction, TransactionId,
 };
+use futures::Future;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -58,7 +59,10 @@ fn default_confirmations() -> u32 {
 }
 
 impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
-    fn matches(&self, transaction: &BitcoinTransaction) -> QueryMatchResult {
+    fn matches(
+        &self,
+        transaction: &BitcoinTransaction,
+    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
         match self {
             Self {
                 to_address,
@@ -85,9 +89,11 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
                     };
 
                 if result {
-                    QueryMatchResult::yes_with_confirmations(*confirmations_needed)
+                    Box::new(futures::future::ok(
+                        QueryMatchResult::yes_with_confirmations(*confirmations_needed),
+                    ))
                 } else {
-                    QueryMatchResult::no()
+                    Box::new(futures::future::ok(QueryMatchResult::no()))
                 }
             }
         }
@@ -144,8 +150,11 @@ impl ExpandResult for BitcoinBlockQuery {
 }
 
 impl Query<BitcoinBlock> for BitcoinBlockQuery {
-    fn matches(&self, block: &BitcoinBlock) -> QueryMatchResult {
-        match self.min_height {
+    fn matches(
+        &self,
+        block: &BitcoinBlock,
+    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
+        Box::new(futures::future::ok(match self.min_height {
             Some(height) => {
                 if height <= block.height {
                     QueryMatchResult::yes()
@@ -157,7 +166,7 @@ impl Query<BitcoinBlock> for BitcoinBlockQuery {
                 warn!("min_height not set, nothing to compare");
                 QueryMatchResult::no()
             }
-        }
+        }))
     }
 
     fn is_empty(&self) -> bool {
@@ -216,7 +225,8 @@ mod tests {
             min_height: Some(42),
         };
 
-        assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::no());
+        let result = exec_future(query.matches(&block));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -242,7 +252,8 @@ mod tests {
             min_height: Some(42),
         };
 
-        assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::yes());
+        let result = exec_future(query.matches(&block));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -268,7 +279,8 @@ mod tests {
             min_height: Some(42),
         };
 
-        assert_that(&query.matches(&block)).is_equal_to(QueryMatchResult::yes());
+        let result = exec_future(query.matches(&block));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -282,7 +294,8 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        assert_that(&query.matches(&tx)).is_equal_to(QueryMatchResult::yes());
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -300,7 +313,8 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        assert_that(&query.matches(&tx)).is_equal_to(QueryMatchResult::yes());
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
     }
 
     #[test]
@@ -316,7 +330,8 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        assert_that(&query.matches(&tx)).is_equal_to(QueryMatchResult::no());
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::no());
     }
 
     #[test]
@@ -338,7 +353,15 @@ mod tests {
             confirmations_needed: 0,
         };
 
-        assert_that(&query.matches(&tx)).is_equal_to(QueryMatchResult::yes());
+        let result = exec_future(query.matches(&tx));
+        assert_that(&result).is_equal_to(QueryMatchResult::yes());
+    }
+
+    fn exec_future(
+        future: Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>,
+    ) -> QueryMatchResult {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        runtime.block_on(future).map_err(|_| ()).unwrap()
     }
 
 }
