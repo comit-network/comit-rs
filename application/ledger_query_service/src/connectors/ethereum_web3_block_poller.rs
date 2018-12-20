@@ -11,8 +11,7 @@ pub fn ethereum_block_listener(
     client: Arc<Web3<Http>>,
     polling_wait_time: Duration,
 ) -> Result<Box<dyn Stream<Item = Block<Transaction>, Error = ()> + Send>, web3::Error> {
-    let filter = client.eth_filter();
-    let filter = filter.create_blocks_filter().wait()?;
+    let filter = client.eth_filter().create_blocks_filter().wait()?;
 
     info!(
         "Starting listener for Ethereum from block {} waiting for new blocks.",

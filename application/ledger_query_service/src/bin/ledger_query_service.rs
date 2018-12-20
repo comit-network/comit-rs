@@ -65,7 +65,6 @@ fn create_bitcoin_routes(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
-        block_query_result_repository.clone(),
     );
 
     {
@@ -127,7 +126,6 @@ fn create_ethereum_routes(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
-        block_query_result_repository.clone(),
     );
 
     let (event_loop, transport) =

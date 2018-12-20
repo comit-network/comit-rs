@@ -104,27 +104,21 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
         self.blockhashes.push(block.blockhash());
         self.update_pending_transactions();
 
-        let block_futures = Self::process_new_block(self.block_queries.clone(), block.clone());
+        let block_results = Self::process_new_block(Arc::clone(&self.block_queries), &block);
+        let mut tx_result_vecs = vec![];
 
-        let transaction_queries = self.transaction_queries.clone();
-        let pending_transaction = self.pending_transactions.clone();
-        let txns: Vec<T> = block.transactions().iter().map(Clone::clone).collect();
-
-        let tx_results = join_all(txns.into_iter().map(move |tx| {
-            Self::process_new_transaction(
-                transaction_queries.clone(),
-                pending_transaction.clone(),
+        for tx in block.transactions() {
+            tx_result_vecs.push(Self::process_new_transaction(
+                Arc::clone(&self.transaction_queries),
+                Arc::clone(&self.pending_transactions),
                 tx,
-            )
-        }))
-        .map(|vec_vec_trnsaction_query_results| {
-            vec_vec_trnsaction_query_results
-                .into_iter()
-                .flatten()
-                .collect()
-        });
+            ))
+        }
 
-        Box::new(block_futures.join(tx_results))
+        let tx_results = join_all(tx_result_vecs)
+            .map(|tx_result_vec| tx_result_vec.into_iter().flatten().collect());
+
+        Box::new(block_results.join(tx_results))
     }
 }
 
@@ -133,30 +127,28 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
 {
     fn process_new_block(
         block_queries: ArcQueryRepository<BQ>,
-        block: B,
-    ) -> Box<dyn Future<Item = Vec<QueryMatch>, Error = ()> + Send> {
+        block: &B,
+    ) -> impl Future<Item = Vec<QueryMatch>, Error = ()> + Send {
         trace!("Processing {:?}", block);
+        let block_id = block.blockhash();
+        let mut query_match_futures = vec![];
 
-        Box::new(
-            join_all(block_queries.all().map(move |(query_id, query)| {
-                trace!("Matching query {:#?} against block {:#?}", query, block);
+        // We must collect the futures in a vector first to stop
+        // borrow checker freaking out
+        for (query_id, query) in block_queries.all() {
+            trace!("Matching query {:#?} against block {:#?}", query, block);
+            let block_id = block_id.clone();
+            let result_future = query.matches(block).map(move |result| match result {
+                QueryMatchResult::Yes { .. } => {
+                    info!("Block {} matches Query-ID: {:?}", block_id, query_id);
+                    Some((query_id, block_id))
+                }
+                QueryMatchResult::No => None,
+            });
+            query_match_futures.push(result_future);
+        }
 
-                let block_id = block.blockhash();
-
-                query
-                    .matches(&block)
-                    .map(move |query_match_result| match query_match_result {
-                        QueryMatchResult::Yes { .. } => {
-                            info!("Block {} matches Query-ID: {:?}", block_id, query_id);
-                            Some((query_id, block_id))
-                        }
-                        QueryMatchResult::No => None,
-                    })
-            }))
-            .map(|query_result_options| {
-                query_result_options.into_iter().filter_map(|x| x).collect()
-            }),
-        )
+        join_all(query_match_futures).map(|results| results.into_iter().filter_map(|x| x).collect())
     }
 
     fn update_pending_transactions(&mut self) {
@@ -184,22 +176,23 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
     fn process_new_transaction(
         transaction_queries: ArcQueryRepository<TQ>,
         pending_transactions: Arc<Mutex<Vec<PendingTransaction>>>,
-        transaction: T,
-    ) -> Box<dyn Future<Item = Vec<QueryMatch>, Error = ()> + Send> {
+        transaction: &T,
+    ) -> impl Future<Item = Vec<QueryMatch>, Error = ()> + Send {
         trace!("Processing {:?}", transaction);
-        Box::new(
-            join_all(transaction_queries.all().map(move |(query_id, query)| {
-                trace!(
-                    "Matching query {:#?} against transaction {:#?}",
-                    query,
-                    transaction
-                );
+        let mut result_futures = vec![];
 
-                let tx_id = transaction.transaction_id();
+        for (query_id, query) in transaction_queries.all() {
+            trace!(
+                "Matching query {:#?} against transaction {:#?}",
+                query,
+                transaction
+            );
 
-                let pending_transactions = pending_transactions.clone();
+            let tx_id = transaction.transaction_id();
+            let pending_transactions = Arc::clone(&pending_transactions);
 
-                query.matches(&transaction).map(
+            let result_future =
+                query.matches(transaction).map(
                     move |query_match_result| match query_match_result {
                         QueryMatchResult::Yes {
                             confirmations_needed: 0,
@@ -231,15 +224,11 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
                         }
                         QueryMatchResult::No => None,
                     },
-                )
-            }))
-            .map(|vec_query_result_options| {
-                vec_query_result_options
-                    .into_iter()
-                    .filter_map(|x| x)
-                    .collect()
-            }),
-        )
+                );
+            result_futures.push(result_future);
+        }
+
+        join_all(result_futures).map(|results| results.into_iter().filter_map(|x| x).collect())
     }
 }
 
@@ -248,7 +237,6 @@ impl<T, B, TQ, BQ> DefaultBlockProcessor<T, B, TQ, BQ> {
         transaction_query_repository: Arc<dyn QueryRepository<TQ>>,
         block_query_repository: Arc<dyn QueryRepository<BQ>>,
         transaction_query_result_repository: Arc<dyn QueryResultRepository<TQ>>,
-        _block_query_result_repository: Arc<dyn QueryResultRepository<BQ>>,
     ) -> Self {
         Self {
             transaction_queries: transaction_query_repository,
@@ -351,18 +339,13 @@ mod tests {
     }
 
     struct Setup {
-        transaction_query_result_repository:
-            Arc<InMemoryQueryResultRepository<GenericTransactionQuery>>,
-        block_query_result_repository: Arc<InMemoryQueryResultRepository<GenericBlockQuery>>,
         block_processor: DefaultBlockProcessor<
             GenericTransaction,
             GenericBlock,
             GenericTransactionQuery,
             GenericBlockQuery,
         >,
-        first_transaction_query_id: u32,
         first_block: GenericBlock,
-        first_block_query_id: u32,
     }
 
     impl Setup {
@@ -377,13 +360,11 @@ mod tests {
             let transaction_query_result_repository =
                 Arc::new(InMemoryQueryResultRepository::default());
             let block_query_repository = Arc::new(InMemoryQueryRepository::default());
-            let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
             let block_processor = DefaultBlockProcessor::new(
                 transaction_query_repository.clone(),
                 block_query_repository.clone(),
                 transaction_query_result_repository.clone(),
-                block_query_result_repository.clone(),
             );
 
             let first_transaction_query = GenericTransactionQuery {
@@ -391,7 +372,7 @@ mod tests {
                 confirmations_needed,
             };
 
-            let first_query_id = transaction_query_repository
+            transaction_query_repository
                 .save(first_transaction_query)
                 .unwrap();
 
@@ -401,8 +382,7 @@ mod tests {
                 min_timestamp_secs: query_timestamp,
             };
 
-            let first_block_query_id = block_query_repository.save(first_block_query).unwrap();
-
+            block_query_repository.save(first_block_query).unwrap();
             let first_block = GenericBlock {
                 id: 0,
                 parent_id: 0,
@@ -411,12 +391,8 @@ mod tests {
             };
 
             Self {
-                transaction_query_result_repository,
-                block_query_result_repository,
                 block_processor,
-                first_transaction_query_id: first_query_id,
                 first_block,
-                first_block_query_id,
             }
         }
     }
