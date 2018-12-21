@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-/// Represents the things you have have access to when starting execution of a
+/// Represents the things you have access to when starting execution of a
 /// protocol
 #[allow(missing_debug_implementations)]
 pub struct ProtocolDependencies<T, S, C> {

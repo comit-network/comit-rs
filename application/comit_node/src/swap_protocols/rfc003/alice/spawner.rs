@@ -34,7 +34,7 @@ impl From<Error> for HttpApiProblem {
 }
 
 pub trait AliceSpawner: Send + Sync + 'static {
-    fn spawn_alice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
         swap_request: SwapRequest<AL, BL, AA, BA>,
@@ -47,7 +47,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
 impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> AliceSpawner
     for ProtocolDependencies<T, S, C>
 {
-    fn spawn_alice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
         swap_request: SwapRequest<AL, BL, AA, BA>,

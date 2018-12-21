@@ -108,9 +108,10 @@ fn spawn_warp_instance<S: AliceSpawner>(
         settings.comit.secret_seed,
     );
 
-    let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
-
-    let server = warp::serve(routes).bind(http_socket_address);
+    let server = warp::serve(routes).bind(SocketAddr::new(
+        settings.http_api.address,
+        settings.http_api.port,
+    ));
 
     runtime.spawn(server);
 }

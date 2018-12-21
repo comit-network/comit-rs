@@ -16,28 +16,24 @@ pub trait Role: Send + Sync + Debug + Clone + 'static {
         + Debug
         + PartialEq
         + Into<<Self::AlphaLedger as swap_protocols::Ledger>::Identity>;
-
     type AlphaRefundHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
         + Into<<Self::AlphaLedger as swap_protocols::Ledger>::Identity>;
-
     type BetaRedeemHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
         + Into<<Self::BetaLedger as swap_protocols::Ledger>::Identity>;
-
     type BetaRefundHtlcIdentity: Send
         + Sync
         + Clone
         + Debug
         + PartialEq
         + Into<<Self::BetaLedger as swap_protocols::Ledger>::Identity>;
-
     type Secret: Send + Sync + Clone + Into<SecretHash> + Debug + PartialEq;
 }
 

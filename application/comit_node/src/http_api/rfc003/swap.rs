@@ -196,12 +196,12 @@ fn handle_post_swap<A: AliceSpawner>(
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => alice_spawner
-            .spawn_alice(
+            .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )?,
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => alice_spawner
-            .spawn_alice(
+            .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )?,

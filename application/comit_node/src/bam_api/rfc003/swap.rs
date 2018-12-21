@@ -39,7 +39,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Respon
                             &request,
                         )
                     {
-                        let response_future = match bob_spawner.spawn_bob(swap_id, swap_request) {
+                        let response_future = match bob_spawner.spawn(swap_id, swap_request) {
                             Ok(response_future) => response_future,
                             Err(e) => {
                                 error!("Unable to spawn Bob: {:?}", e);
@@ -62,7 +62,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Respon
                             &request,
                         )
                     {
-                        let response_future = match bob_spawner.spawn_bob(swap_id, swap_request) {
+                        let response_future = match bob_spawner.spawn(swap_id, swap_request) {
                             Ok(response_future) => response_future,
                             Err(e) => {
                                 error!("Unable to spawn Bob: {:?}", e);

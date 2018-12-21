@@ -36,7 +36,7 @@ impl From<Error> for HttpApiProblem {
 
 pub trait BobSpawner: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
-    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
         swap_request: SwapRequest<AL, BL, AA, BA>,
@@ -50,7 +50,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> B
     for ProtocolDependencies<T, S, C>
 {
     #[allow(clippy::type_complexity)]
-    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
         swap_request: SwapRequest<AL, BL, AA, BA>,
