@@ -5,6 +5,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - label!=work-in-progress
       - label!=blocked
+      - "body~=.*- [[]x[]] RTM.*"
     actions:
       merge:
         method: merge
@@ -17,3 +18,4 @@ pull_request_rules:
     actions:
       label:
         add: ["work-in-progress"]
+        remove: ["review"]
