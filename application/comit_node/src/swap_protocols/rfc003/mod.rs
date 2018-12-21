@@ -27,6 +27,6 @@ pub use self::{
     error::Error,
     ledger::{ExtractSecret, FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
     save_state::SaveState,
-    secret::{RandomnessSource, Secret, SecretFromErr, SecretHash},
+    secret::{FromErr, RandomnessSource, Secret, SecretHash},
     secret_source::*,
 };

@@ -45,7 +45,7 @@ impl Htlc {
         let script = create_htlc(
             &recipient_redeem_pubkey_hash,
             &sender_refund_pubkey_hash,
-            &secret_hash.0,
+            secret_hash.raw(),
             relative_timelock,
         );
 
@@ -132,6 +132,9 @@ fn create_htlc(
 ) -> Script {
     let script = Builder::new()
         .push_opcode(OP_IF)
+        .push_opcode(OP_SIZE)
+        .push_int(i64::from(Secret::LENGTH_U8))
+        .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_SHA256)
         .push_slice(secret_hash)
         .push_opcode(OP_EQUALVERIFY)
@@ -156,6 +159,7 @@ fn create_htlc(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     // Secret: 12345678901234567890123456789012
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
@@ -184,23 +188,19 @@ mod tests {
         let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
         let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
 
-        let secret_hash: Vec<u8> =
-            hex::decode("51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c")
-                .unwrap();
+        let secret_hash = "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c";
 
         let htlc = Htlc::new(
             recipient_pubkey_hash,
             sender_pubkey_hash,
-            SecretHash(secret_hash),
+            SecretHash::from_str(secret_hash).unwrap(),
             900,
         );
 
         assert_eq!(
             htlc.script.into_bytes(),
             hex::decode(
-                "63a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f2345\
-                 1af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f\
-                 567028403b27576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac"
+                "6382012088a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b27576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac"
             )
             .unwrap()
         );
@@ -216,22 +216,22 @@ mod tests {
         let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
         let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
 
-        let secret_hash: Vec<u8> =
-            hex::decode("51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c")
-                .unwrap();
+        let secret_hash = "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c";
 
         let htlc = Htlc::new(
             recipient_pubkey_hash,
             sender_pubkey_hash,
-            SecretHash(secret_hash),
+            SecretHash::from_str(secret_hash).unwrap(),
             900,
         );
 
         let address = htlc.compute_address(Network::Regtest);
 
+        println!("{}", address);
+
         assert_eq!(
             address.to_string(),
-            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0"
+            "bcrt1ql9a4vfcj36qzp5zf2vrul8c62jmksj88545xpcpgwy25mf87um7qwz35pj"
         );
         // I did a bitcoin-rpc validateaddress
         // -> witness_program returned = sha256 of htlc script

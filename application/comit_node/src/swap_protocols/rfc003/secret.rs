@@ -6,8 +6,22 @@ use std::{
     str::FromStr,
 };
 
+#[derive(PartialEq, Debug)]
+pub enum FromErr {
+    InvalidLength { expected: usize, got: usize },
+    FromHex(hex::FromHexError),
+}
+
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct SecretHash(pub Vec<u8>);
+pub struct SecretHash([u8; Self::LENGTH]);
+
+impl SecretHash {
+    pub const LENGTH: usize = 32;
+
+    pub fn raw(&self) -> &[u8; Self::LENGTH] {
+        &self.0
+    }
+}
 
 impl Debug for SecretHash {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -71,18 +85,34 @@ impl<'de> Deserialize<'de> for SecretHash {
 }
 
 impl FromStr for SecretHash {
-    type Err = hex::FromHexError;
+    type Err = FromErr;
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        hex::decode(s).map(SecretHash)
+        let vec = hex::decode(s)?;
+        if vec.len() != Self::LENGTH {
+            return Err(FromErr::InvalidLength {
+                expected: Self::LENGTH,
+                got: vec.len(),
+            });
+        }
+        let mut data = [0; Self::LENGTH];
+        let vec = &vec[..Self::LENGTH];
+        data.copy_from_slice(vec);
+        Ok(SecretHash(data))
+    }
+}
+
+impl From<[u8; Self::LENGTH]> for SecretHash {
+    fn from(hash: [u8; Self::LENGTH]) -> Self {
+        SecretHash(hash)
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Ord, Eq, Hash)]
-pub struct Secret([u8; Self::SECRET_LENGTH]);
+pub struct Secret([u8; Self::LENGTH]);
 
-impl From<[u8; Self::SECRET_LENGTH]> for Secret {
-    fn from(secret: [u8; Self::SECRET_LENGTH]) -> Self {
+impl From<[u8; Self::LENGTH]> for Secret {
+    fn from(secret: [u8; Self::LENGTH]) -> Self {
         Secret(secret)
     }
 }
@@ -94,24 +124,26 @@ impl From<Secret> for SecretHash {
 }
 
 impl Secret {
-    pub const SECRET_LENGTH: usize = 32;
+    // Both values need to stay the same!
+    pub const LENGTH: usize = 32;
+    pub const LENGTH_U8: u8 = 32;
 
     pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
-        let random_bytes = rng.gen_random_bytes(Self::SECRET_LENGTH);
-        let mut secret = [0; Self::SECRET_LENGTH];
+        let random_bytes = rng.gen_random_bytes(Self::LENGTH);
+        let mut secret = [0; Self::LENGTH];
         secret.copy_from_slice(&random_bytes[..]);
         Secret::from(secret)
     }
 
-    pub fn from_vec(vec: &[u8]) -> Result<Secret, SecretFromErr> {
-        if vec.len() != Self::SECRET_LENGTH {
-            return Err(SecretFromErr::InvalidLength {
-                expected: Self::SECRET_LENGTH,
+    pub fn from_vec(vec: &[u8]) -> Result<Secret, FromErr> {
+        if vec.len() != Self::LENGTH {
+            return Err(FromErr::InvalidLength {
+                expected: Self::LENGTH,
                 got: vec.len(),
             });
         }
-        let mut data = [0; Self::SECRET_LENGTH];
-        let vec = &vec[..Self::SECRET_LENGTH];
+        let mut data = [0; Self::LENGTH];
+        let vec = &vec[..Self::LENGTH];
         data.copy_from_slice(vec);
         Ok(Secret(data))
     }
@@ -120,12 +152,12 @@ impl Secret {
         let mut sha = Sha256::new();
         sha.input(&self.0);
 
-        let mut result: [u8; Self::SECRET_LENGTH] = [0; Self::SECRET_LENGTH];
+        let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
         sha.result(&mut result);
-        SecretHash(result.to_vec())
+        SecretHash::from(result)
     }
 
-    pub fn raw_secret(&self) -> &[u8; Self::SECRET_LENGTH] {
+    pub fn raw_secret(&self) -> &[u8; Self::LENGTH] {
         &self.0
     }
 }
@@ -136,20 +168,14 @@ impl fmt::LowerHex for Secret {
     }
 }
 
-#[derive(PartialEq, Debug)]
-pub enum SecretFromErr {
-    InvalidLength { expected: usize, got: usize },
-    FromHex(hex::FromHexError),
-}
-
-impl From<hex::FromHexError> for SecretFromErr {
+impl From<hex::FromHexError> for FromErr {
     fn from(err: hex::FromHexError) -> Self {
-        SecretFromErr::FromHex(err)
+        FromErr::FromHex(err)
     }
 }
 
 impl FromStr for Secret {
-    type Err = SecretFromErr;
+    type Err = FromErr;
 
     fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
         let vec = hex::decode(s)?;
@@ -267,10 +293,15 @@ mod tests {
 
         assert_eq!(
             result.unwrap_err(),
-            SecretFromErr::InvalidLength {
+            FromErr::InvalidLength {
                 expected: 32,
                 got: 31
             }
         );
+    }
+
+    #[test]
+    fn secret_length_is_consistent() {
+        assert_eq!(Secret::LENGTH, usize::from(Secret::LENGTH_U8));
     }
 }
