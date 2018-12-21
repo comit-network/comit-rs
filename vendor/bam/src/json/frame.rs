@@ -140,10 +140,13 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 
                 debug!("Dispatching response frame {:?} to stored handler.", frame);
 
-                let response =
-                    serde_json::from_value(frame.payload).expect("should always deserialize");
+                let response = serde_json::from_value(frame.payload);
 
-                sender.send(response).unwrap();
+                match response {
+                    Ok(response) => sender.send(response).unwrap(),
+                    // TODO: Decide what happens when response fails to deserialize
+                    Err(e) => info!("Failed to deserialize response: {:?}", e),
+                }
 
                 Ok(None)
             }
