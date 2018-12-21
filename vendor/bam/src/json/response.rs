@@ -136,10 +136,7 @@ impl<'de> Deserialize<'de> for Response {
                     type Value = Field;
 
                     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-                        formatter.write_str(
-                            "`status` or
-`headers` or `body`",
-                        )
+                        formatter.write_str("`status` or `headers` or `body`")
                     }
 
                     fn visit_str<E>(self, value: &str) -> Result<Field, E>
@@ -218,13 +215,13 @@ impl<'de> Deserialize<'de> for Response {
                     serialization_failure: false,
                     body,
                 };
-                debug!("Map serialized as response: {:?}", response);
+                debug!("Map deserialized as response: {:?}", response);
 
                 Ok(response)
             }
         }
 
-        const FIELDS: &[&str] = &["status", "headers", ""];
+        const FIELDS: &[&str] = &["headers", "status", "body"];
         deserializer.deserialize_struct("Response", FIELDS, ResponseVisitor)
     }
 }
