@@ -140,7 +140,7 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
             let block_id = block_id.clone();
             let result_future = query.matches(block).map(move |result| match result {
                 QueryMatchResult::Yes { .. } => {
-                    info!("Block {} matches Query-ID: {:?}", block_id, query_id);
+                    trace!("Block {} matches Query-ID: {:?}", block_id, query_id);
                     Some((query_id, block_id))
                 }
                 QueryMatchResult::No => None,
@@ -200,18 +200,20 @@ impl<T: Transaction, B: Block<Transaction = T>, TQ: Query<T> + 'static, BQ: Quer
                         | QueryMatchResult::Yes {
                             confirmations_needed: 1,
                         } => {
-                            info!(
+                            trace!(
                                 "Confirmed transaction {} matches Query-ID: {:?}",
-                                tx_id, query_id
+                                tx_id,
+                                query_id
                             );
                             Some((query_id, tx_id))
                         }
                         QueryMatchResult::Yes {
                             confirmations_needed,
                         } => {
-                            info!(
+                            trace!(
                                 "Unconfirmed transaction {} matches Query-ID: {:?}",
-                                tx_id, query_id
+                                tx_id,
+                                query_id
                             );
                             let pending_tx = PendingTransaction {
                                 matching_query_id: query_id,
