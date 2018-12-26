@@ -23,6 +23,9 @@ Contains crates specific to our application. Can depend on libraries located in 
 
 - Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
 - Install `cargo-make`: `cargo install cargo-make`
+- Install libzmq:
+  - Ubuntu/Debian: `apt install libzmq3-dev`
+  - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
 - Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
 - Install `docker` & `docker-compose`
 - Install `nvm`
