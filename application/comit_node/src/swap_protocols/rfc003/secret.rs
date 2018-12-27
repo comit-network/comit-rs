@@ -128,7 +128,8 @@ impl Secret {
     pub const LENGTH: usize = 32;
     pub const LENGTH_U8: u8 = 32;
 
-    pub fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
+    #[allow(dead_code)]
+    fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
         let random_bytes = rng.gen_random_bytes(Self::LENGTH);
         let mut secret = [0; Self::LENGTH];
         secret.copy_from_slice(&random_bytes[..]);
