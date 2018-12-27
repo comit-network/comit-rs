@@ -106,6 +106,30 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
     }
 }
 
+impl FromAcceptSwapRequestHttpBody<Ethereum, Bitcoin>
+    for StateMachineResponse<
+        ethereum_support::Address,
+        secp256k1_support::KeyPair,
+        bitcoin_support::Blocks,
+    >
+{
+    fn from_accept_swap_request_http_body(
+        body: AcceptSwapRequestHttpBody<Ethereum, Bitcoin>,
+        id: SwapId,
+        secret_source: &dyn SecretSource,
+    ) -> Result<Self, HttpApiProblem> {
+        match body {
+            AcceptSwapRequestHttpBody::OnlyRefund { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The refund identity for swaps where Bitcoin is the BetaLedger has to be provided on-demand, i.e. when the refund action is executed.")),
+            AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_redeem_identity")),
+            AcceptSwapRequestHttpBody::OnlyRedeem { alpha_ledger_redeem_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
+                alpha_ledger_redeem_identity,
+                beta_ledger_lock_duration,
+                beta_ledger_refund_identity: secret_source.new_secp256k1_refund(id),
+            }),
+        }
+    }
+}
+
 trait ExecuteDecline {
     fn execute(&self, reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem>;
 }

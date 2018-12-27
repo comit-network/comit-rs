@@ -37,6 +37,9 @@ pub enum SwapRequestBodyKind {
     BitcoinEthereumBitcoinQuantityErc20Quantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
     ),
+    EthereumBitcoinEtherQuantityBitcoinQuantity(
+        SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
+    ),
     // It is important that these two come last because untagged enums are tried in order
     UnsupportedCombination(Box<UnsupportedSwapRequestBody>),
     MalformedRequest(serde_json::Value),
@@ -106,6 +109,33 @@ impl FromSwapRequestBodyIdentities<Bitcoin, Ethereum>
             } => Ok(rfc003::alice::SwapRequestIdentities {
                 alpha_ledger_refund_identity: secret_source.new_secp256k1_refund(id),
                 beta_ledger_redeem_identity,
+            }),
+        }
+    }
+}
+
+impl FromSwapRequestBodyIdentities<Ethereum, Bitcoin>
+    for rfc003::alice::SwapRequestIdentities<Ethereum, Bitcoin>
+{
+    fn from_swap_request_body_identities(
+        identities: SwapRequestBodyIdentities<
+            ethereum_support::Address,
+            bitcoin_support::PubkeyHash,
+        >,
+        id: SwapId,
+        secret_source: &dyn SecretSource,
+    ) -> Result<Self, HttpApiProblem> {
+        match identities {
+            SwapRequestBodyIdentities::RefundAndRedeem { .. }
+            | SwapRequestBodyIdentities::OnlyRedeem { .. }
+            | SwapRequestBodyIdentities::None {} => {
+                Err(HttpApiProblem::with_title_and_type_from_status(400))
+            }
+            SwapRequestBodyIdentities::OnlyRefund {
+                alpha_ledger_refund_identity,
+            } => Ok(rfc003::alice::SwapRequestIdentities {
+                alpha_ledger_refund_identity,
+                beta_ledger_redeem_identity: secret_source.new_secp256k1_redeem(id),
             }),
         }
     }
@@ -201,6 +231,11 @@ fn handle_post_swap<A: AliceSpawner>(
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )?,
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => alice_spawner
+            .spawn(
+                id,
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
+            )?,
+        SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinQuantity(body) => alice_spawner
             .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
