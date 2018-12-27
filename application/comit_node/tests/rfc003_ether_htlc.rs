@@ -10,12 +10,15 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
+use crate::htlc_harness::{
+    ether_harness, CustomSizeSecret, EtherHarnessParams, HTLC_TIMEOUT, SECRET,
+};
 use ethereum_support::{Bytes, EtherQuantity, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
 
 const HTLC_GAS_COST: u64 = 10885000;
+const HTLC_GAS_COST_SHORT_SECRET: u64 = 10878600;
 // keccak256(Redeemed())
 const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
 // keccak256(Refunded())
@@ -166,4 +169,140 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let topic: H256 = REFUNDED_LOG_MSG.into();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
+}
+
+#[test]
+fn given_short_secret_left_padded_should_not_redeem() -> Result<(), failure::Error> {
+    let docker = Cli::default();
+
+    let secret = CustomSizeSecret(vec![
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8,
+    ]);
+
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::from(secret.hash()));
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+    assert_eq!(
+        client.eth_balance_of(alice),
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST_SHORT_SECRET)
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    client.send_data(
+        htlc,
+        Some(Bytes(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8])),
+    ); // will result in right padding and redemption should fail
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+    //    assert_eq!(
+    //        client.eth_balance_of(alice),
+    //        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+    //    );
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+    Ok(())
+}
+
+#[test]
+fn given_short_secret_right_padded_should_redeem() -> Result<(), failure::Error> {
+    let docker = Cli::default();
+    let secret = CustomSizeSecret(vec![
+        1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+    ]);
+
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::from(secret.hash()));
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(alice),
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST_SHORT_SECRET)
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    client.send_data(
+        htlc,
+        Some(Bytes(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8])),
+    );
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+    //    assert_eq!(
+    //        client.eth_balance_of(alice),
+    //        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+    //    );
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+    Ok(())
+}
+
+#[test]
+fn given_short_secret_not_padded_should_not_redeem() -> Result<(), failure::Error> {
+    let docker = Cli::default();
+    let secret = CustomSizeSecret(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8]);
+
+    let (alice, bob, htlc, client, _handle, _container) =
+        ether_harness(&docker, EtherHarnessParams::from(secret.hash()));
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(alice),
+        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST_SHORT_SECRET)
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    client.send_data(
+        htlc,
+        Some(Bytes(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8])),
+    ); // will result in right padded secret, hashing this is not equal than our
+       // generated secret above
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+    //    assert_eq!(
+    //        client.eth_balance_of(alice),
+    //        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
+    //    );
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+    Ok(())
 }
