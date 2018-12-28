@@ -128,14 +128,6 @@ impl Secret {
     pub const LENGTH: usize = 32;
     pub const LENGTH_U8: u8 = 32;
 
-    #[allow(dead_code)]
-    fn generate<T: RandomnessSource>(rng: &mut T) -> Secret {
-        let random_bytes = rng.gen_random_bytes(Self::LENGTH);
-        let mut secret = [0; Self::LENGTH];
-        secret.copy_from_slice(&random_bytes[..]);
-        Secret::from(secret)
-    }
-
     pub fn from_vec(vec: &[u8]) -> Result<Secret, FromErr> {
         if vec.len() != Self::LENGTH {
             return Err(FromErr::InvalidLength {
@@ -275,9 +267,8 @@ mod tests {
 
     #[test]
     fn round_trip_secret_serialization() {
-        let mut rng = rand::thread_rng();
-
-        let secret = Secret::generate(&mut rng);
+        let bytes = b"hello world, you are beautiful!!";
+        let secret = Secret::from(*bytes);
 
         let json_secret = serde_json::to_string(&secret).unwrap();
         let deser_secret = serde_json::from_str::<Secret>(json_secret.as_str()).unwrap();
