@@ -37,14 +37,14 @@ impl OngoingSwap<Bob<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> {
 
     pub fn redeem_action(
         &self,
-        beta_htlc_location: ethereum_support::Address,
+        alpha_htlc_location: ethereum_support::Address,
         secret: Secret,
     ) -> ethereum::SendTransaction {
         let data = Bytes::from(secret.raw_secret().to_vec());
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         ethereum::SendTransaction {
-            to: beta_htlc_location,
+            to: alpha_htlc_location,
             data,
             gas_limit,
             value: EtherQuantity::from_wei(U256::zero()),
