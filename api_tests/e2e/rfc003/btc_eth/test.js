@@ -282,7 +282,8 @@ describe("RFC003: Bitcoin for Ether", () => {
         );
         await bob.wallet.deploy_eth_contract(
             bob_funding_action.data,
-            new ethutil.BN(bob_funding_action.value, 10)
+            new ethutil.BN(bob_funding_action.value, 10),
+            bob_funding_action.gas_limit
         );
     });
 

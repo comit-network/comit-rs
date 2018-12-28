@@ -242,6 +242,7 @@ describe("RFC003: Ether for Bitcoin", () => {
         let result = await alice.wallet.deploy_eth_contract(
             alice_funding_action.data,
             alice_funding_action.value,
+            alice_funding_action.gas_limit
         );
     });
 
