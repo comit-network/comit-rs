@@ -46,6 +46,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Respon
                                 return Box::new(future::ok(Response::new(Status::RE(0))));
                             }
                         };
+
                         Box::new(response_future.then(move |result| match result {
                             Ok(response) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
                             Err(_) => {
