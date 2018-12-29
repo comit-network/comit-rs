@@ -1,15 +1,12 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        actions::{
-            bob::{Accept, Decline},
-            ActionKind, Actions,
-        },
         bitcoin,
+        bob::actions::{Accept, Decline},
         ethereum::{self, EtherHtlc, Htlc},
-        roles::Bob,
         secret::Secret,
         state_machine::*,
+        ActionKind, Actions, Bob,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -116,7 +113,7 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantit
 mod tests {
 
     use super::*;
-    use crate::swap_protocols::rfc003::{roles::test::Bobisha, Secret};
+    use crate::swap_protocols::rfc003::{role::test::Bobisha, Secret};
     use hex::FromHex;
 
     #[test]

@@ -4,12 +4,10 @@ use crate::{
     comit_client::{self, SwapReject},
     swap_protocols::{
         asset::Asset,
-        rfc003::{
-            self, events, ledger::Ledger, roles::Role, RedeemTransaction, SaveState, SecretHash,
-        },
+        rfc003::{self, events, ledger::Ledger, RedeemTransaction, Role, SaveState, SecretHash},
     },
 };
-use futures::{future::Either, Async};
+use futures::{future::Either, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 
@@ -128,6 +126,10 @@ pub enum SwapOutcome<R: Role> {
         swap: OngoingSwap<R>,
     },
 }
+
+#[allow(type_alias_bounds)]
+pub type FutureSwapOutcome<R: Role> =
+    dyn Future<Item = SwapOutcome<R>, Error = rfc003::Error> + Send;
 
 #[allow(missing_debug_implementations)]
 pub struct Context<R: Role> {

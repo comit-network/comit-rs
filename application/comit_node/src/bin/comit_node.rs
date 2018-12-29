@@ -5,24 +5,18 @@
 extern crate log;
 
 use comit_node::{
-    comit_client,
-    comit_server::ComitServer,
+    comit_client, comit_server,
     http_api::route_factory,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
-    seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{
-        rfc003::{self, state_store::InMemoryStateStore},
-        InMemoryMetadataStore, SwapId,
+        rfc003::{alice::AliceSpawner, bob::BobSpawner, state_store::InMemoryStateStore},
+        InMemoryMetadataStore, LedgerEventDependencies, ProtocolDependencies, SwapId,
     },
 };
 use ethereum_support::*;
-use futures::sync::{
-    mpsc::{self, UnboundedSender},
-    oneshot,
-};
-use std::{env::var, marker::PhantomData, net::SocketAddr, sync::Arc, time::Duration};
+use std::{env::var, net::SocketAddr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
 fn main() -> Result<(), failure::Error> {
@@ -32,44 +26,29 @@ fn main() -> Result<(), failure::Error> {
     // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
-    let seed = settings.comit.secret_seed;
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
-    let ledger_query_service_api_client = create_ledger_query_service_api_client(&settings);
-
-    let mut runtime = tokio::runtime::Runtime::new()?;
-
-    let sender = spawn_alice_swap_request_handler_for_rfc003(
+    let lqs_client = create_ledger_query_service_api_client(&settings);
+    let comit_client_factory = Arc::new(comit_client::bam::BamClientPool::default());
+    let dependencies = Arc::new(create_dependencies(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        seed,
-        Arc::clone(&ledger_query_service_api_client),
-        settings.ledger_query_service.bitcoin.poll_interval_secs,
-        settings.ledger_query_service.ethereum.poll_interval_secs,
-        &mut runtime,
-    );
+        Arc::clone(&lqs_client),
+        comit_client_factory.clone(),
+    ));
+
+    let mut runtime = tokio::runtime::Runtime::new()?;
 
     spawn_warp_instance(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        sender,
-        seed,
+        dependencies.clone(),
         &mut runtime,
     );
 
-    let sender = spawn_bob_swap_request_handler_for_rfc003(
-        Arc::clone(&metadata_store),
-        Arc::clone(&state_store),
-        Arc::clone(&ledger_query_service_api_client),
-        seed,
-        settings.ledger_query_service.bitcoin.poll_interval_secs,
-        settings.ledger_query_service.ethereum.poll_interval_secs,
-        &mut runtime,
-    );
-
-    spawn_comit_server(&settings, sender, &mut runtime);
+    spawn_comit_server(&settings, dependencies.clone(), &mut runtime);
 
     // Block the current thread.
     ::std::thread::park();
@@ -94,103 +73,59 @@ fn create_ledger_query_service_api_client(
     ))
 }
 
-fn spawn_warp_instance(
+fn create_dependencies<T, S, C>(
+    settings: &ComitNodeSettings,
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+    lqs_client: Arc<DefaultLedgerQueryServiceApiClient>,
+    comit_client_factory: Arc<dyn comit_client::ClientFactory<C>>,
+) -> ProtocolDependencies<T, S, C> {
+    ProtocolDependencies {
+        ledger_events: LedgerEventDependencies {
+            lqs_client,
+            lqs_bitcoin_poll_interval: settings.ledger_query_service.bitcoin.poll_interval_secs,
+            lqs_ethereum_poll_interval: settings.ledger_query_service.ethereum.poll_interval_secs,
+        },
+        metadata_store,
+        state_store,
+        comit_client_factory,
+        seed: settings.comit.secret_seed,
+        remote_comit_node: settings.comit.remote_comit_node_url,
+    }
+}
+
+fn spawn_warp_instance<S: AliceSpawner>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
-    sender: UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)>,
-    seed: Seed,
+    alice_spawner: Arc<S>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let routes = route_factory::create(metadata_store, state_store, sender, seed);
+    let routes = route_factory::create(
+        metadata_store,
+        state_store,
+        alice_spawner,
+        settings.comit.secret_seed,
+    );
 
-    let http_socket_address = SocketAddr::new(settings.http_api.address, settings.http_api.port);
-
-    let server = warp::serve(routes).bind(http_socket_address);
+    let server = warp::serve(routes).bind(SocketAddr::new(
+        settings.http_api.address,
+        settings.http_api.port,
+    ));
 
     runtime.spawn(server);
 }
 
-#[allow(clippy::too_many_arguments)]
-fn spawn_alice_swap_request_handler_for_rfc003(
+fn spawn_comit_server<B: BobSpawner>(
     settings: &ComitNodeSettings,
-    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
-    state_store: Arc<InMemoryStateStore<SwapId>>,
-    seed: Seed,
-    lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    bitcoin_poll_interval: Duration,
-    ethereum_poll_interval: Duration,
-    runtime: &mut tokio::runtime::Runtime,
-) -> UnboundedSender<(SwapId, rfc003::alice::SwapRequestKind)> {
-    let client_factory = Arc::new(comit_client::bam::BamClientPool::default());
-    let comit_node_addr = settings.comit.remote_comit_node_url;
-
-    let (sender, receiver) = mpsc::unbounded();
-
-    let alice_swap_request_handler = rfc003::alice::SwapRequestHandler {
-        receiver,
-        metadata_store,
-        seed,
-        state_store,
-        client_factory,
-        comit_node_addr,
-        bitcoin_poll_interval,
-        ethereum_poll_interval,
-        lqs_api_client,
-        phantom_data: PhantomData,
-    };
-
-    runtime.spawn(alice_swap_request_handler.start());
-
-    sender
-}
-
-#[allow(clippy::too_many_arguments)]
-fn spawn_bob_swap_request_handler_for_rfc003(
-    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
-    state_store: Arc<InMemoryStateStore<SwapId>>,
-    lqs_api_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    seed: Seed,
-    bitcoin_poll_interval: Duration,
-    ethereum_poll_interval: Duration,
-    runtime: &mut tokio::runtime::Runtime,
-) -> UnboundedSender<(
-    SwapId,
-    rfc003::bob::SwapRequestKind,
-    oneshot::Sender<rfc003::bob::SwapResponseKind>,
-)> {
-    let (sender, receiver) = mpsc::unbounded();
-
-    let bob_swap_request_handler = rfc003::bob::SwapRequestHandler {
-        receiver,
-        metadata_store,
-        state_store,
-        lqs_api_client,
-        seed,
-        bitcoin_poll_interval,
-        ethereum_poll_interval,
-    };
-
-    runtime.spawn(bob_swap_request_handler.start());
-
-    sender
-}
-
-fn spawn_comit_server(
-    settings: &ComitNodeSettings,
-    sender: UnboundedSender<(
-        SwapId,
-        rfc003::bob::SwapRequestKind,
-        oneshot::Sender<rfc003::bob::SwapResponseKind>,
-    )>,
-
+    bob_spawner: Arc<B>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
-    let server = ComitServer::new(sender);
-
-    runtime.spawn(server.listen(settings.comit.comit_listen).map_err(|e| {
-        error!("ComitServer shutdown: {:?}", e);
-    }));
+    runtime.spawn(
+        comit_server::listen(settings.comit.comit_listen, bob_spawner).map_err(|e| {
+            error!("ComitServer shutdown: {:?}", e);
+        }),
+    );
 }
 
 fn var_or_default(name: &str, default: String) -> String {

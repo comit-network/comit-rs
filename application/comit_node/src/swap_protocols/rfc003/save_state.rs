@@ -1,4 +1,4 @@
-use crate::swap_protocols::rfc003::{roles::Role, state_machine::SwapStates};
+use crate::swap_protocols::rfc003::{state_machine::SwapStates, Role};
 use futures::sync::mpsc;
 use std::sync::RwLock;
 
@@ -6,10 +6,10 @@ pub trait SaveState<R: Role>: Send + Sync {
     fn save(&self, state: SwapStates<R>);
 }
 
-impl<R: Role + Sync> SaveState<R> for RwLock<SwapStates<R>> {
+impl<R: Role + Sync> SaveState<R> for RwLock<Option<SwapStates<R>>> {
     fn save(&self, state: SwapStates<R>) {
         let _self = &mut *self.write().unwrap();
-        *_self = state;
+        *_self = Some(state);
     }
 }
 

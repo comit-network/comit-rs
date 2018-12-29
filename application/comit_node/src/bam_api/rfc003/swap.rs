@@ -4,7 +4,7 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{self, state_machine::StateMachineResponse, Ledger},
+        rfc003::{self, bob::BobSpawner, state_machine::StateMachineResponse, Ledger},
         SwapId, SwapProtocols,
     },
 };
@@ -13,18 +13,12 @@ use bam::{
     json::{Request, Response},
     Status,
 };
-use futures::{
-    future::Future,
-    sync::{mpsc, oneshot},
-};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::{Erc20Quantity, EtherQuantity};
+use futures::future::{self, Future};
+use std::sync::Arc;
 
-pub fn swap_config(
-    sender: mpsc::UnboundedSender<(
-        SwapId,
-        rfc003::bob::SwapRequestKind,
-        oneshot::Sender<rfc003::bob::SwapResponseKind>,
-    )>,
-) -> Config<Request, Response> {
+pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Response> {
     Config::default().on_request(
         "SWAP",
         &[
@@ -36,47 +30,59 @@ pub fn swap_config(
         ],
         move |request: Request| {
             let swap_protocol = header!(request.get_header("swap_protocol"));
-
             match SwapProtocols::from_bam_header(swap_protocol).unwrap() {
                 SwapProtocols::Rfc003 => {
                     let swap_id = SwapId::default();
-                    let (response_sender, response_receiver) = oneshot::channel();
 
-                    if let Ok(swap_request) = decode_request(&request) {
-                        let request_kind =
-                            rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityEtherQuantity(
-                                swap_request,
-                            );
-                        sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
+                    if let Ok(swap_request) =
+                        decode_request::<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>(
+                            &request,
+                        )
+                    {
+                        let response_future = match bob_spawner.spawn(swap_id, swap_request) {
+                            Ok(response_future) => response_future,
+                            Err(e) => {
+                                error!("Unable to spawn Bob: {:?}", e);
+                                return Box::new(future::ok(Response::new(Status::RE(0))));
+                            }
+                        };
 
-                        Box::new(response_receiver.then(move |result| {
-                            match result {
-                                Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
-                                Err(_) => {
-                                    warn!("Failed to receive from oneshot channel for swap {}", swap_id);
-                                    Ok(Response::new(Status::SE(0)))
-                                }
+                        Box::new(response_future.then(move |result| match result {
+                            Ok(response) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
+                            Err(_) => {
+                                warn!(
+                                    "Failed to receive from oneshot channel for swap {}",
+                                    swap_id
+                                );
+                                Ok(Response::new(Status::SE(0)))
                             }
                         }))
-                    } else if let Ok(swap_request) = decode_request(&request) {
-                        let request_kind =
-                            rfc003::bob::SwapRequestKind::BitcoinEthereumBitcoinQuantityErc20Quantity(
-                                swap_request,
-                            );
-                        sender.unbounded_send((swap_id, request_kind, response_sender)).unwrap();
+                    } else if let Ok(swap_request) =
+                        decode_request::<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>(
+                            &request,
+                        )
+                    {
+                        let response_future = match bob_spawner.spawn(swap_id, swap_request) {
+                            Ok(response_future) => response_future,
+                            Err(e) => {
+                                error!("Unable to spawn Bob: {:?}", e);
+                                return Box::new(future::ok(Response::new(Status::RE(0))));
+                            }
+                        };
 
-                        Box::new(response_receiver.then(move |result| {
-                            match result {
-                                Ok(rfc003::bob::SwapResponseKind::BitcoinEthereum(response)) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
-                                Err(_) => {
-                                    warn!("Failed to receive from oneshot channel for swap {}", swap_id);
-                                    Ok(Response::new(Status::SE(0)))
-                                }
+                        Box::new(response_future.then(move |result| match result {
+                            Ok(response) => Ok(to_bam_response::<Bitcoin, Ethereum>(response)),
+                            Err(_) => {
+                                warn!(
+                                    "Failed to receive from oneshot channel for swap {}",
+                                    swap_id
+                                );
+                                Ok(Response::new(Status::SE(0)))
                             }
                         }))
-                    }
-                    else {
-                        unimplemented!()
+                    } else {
+                        // TODO: Specify and implement response code
+                        Box::new(future::ok(Response::new(Status::SE(0))))
                     }
                 }
             }

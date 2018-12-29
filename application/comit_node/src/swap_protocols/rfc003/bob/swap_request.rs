@@ -41,13 +41,3 @@ impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> for Me
         }
     }
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum SwapRequestKind {
-    BitcoinEthereumBitcoinQuantityEtherQuantity(
-        SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
-    ),
-    BitcoinEthereumBitcoinQuantityErc20Quantity(
-        SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
-    ),
-}
