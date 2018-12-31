@@ -51,6 +51,7 @@ impl From<Hash160> for PubkeyHash {
     }
 }
 
+#[allow(clippy::fallible_impl_from)]
 impl From<Address> for PubkeyHash {
     fn from(address: Address) -> PubkeyHash {
         match address.payload {
