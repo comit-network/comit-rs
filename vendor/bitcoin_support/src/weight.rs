@@ -5,6 +5,7 @@ use bitcoin_quantity::BitcoinQuantity;
 #[derive(Debug, PartialEq)]
 pub struct Weight(u64);
 
+#[allow(clippy::cast_sign_loss)]
 impl Weight {
     pub fn to_virtual_bytes(&self) -> f64 {
         (self.0 as f64) / 4.0
