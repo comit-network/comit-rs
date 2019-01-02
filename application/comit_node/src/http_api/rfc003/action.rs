@@ -5,12 +5,15 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
         rfc003::{
-            bitcoin,
-            bob::actions::{Accept, Decline},
+            alice, bitcoin,
+            bob::{
+                self,
+                actions::{Accept, Decline},
+            },
             ethereum,
             state_machine::StateMachineResponse,
             state_store::StateStore,
-            ActionKind, Actions, Alice, Bob, Ledger, SecretSource,
+            Actions, Alice, Bob, Ledger, SecretSource,
         },
         AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
     },
@@ -111,23 +114,6 @@ impl<AL: Ledger, BL: Ledger> ExecuteDecline for Decline<AL, BL> {
     fn execute(&self, reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem> {
         self.decline(reason)
             .map_err(|_| problem::action_already_taken())
-    }
-}
-
-impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for () {
-    fn execute(
-        &self,
-        _body: AcceptSwapRequestHttpBody<AL, BL>,
-        _secret_source: &dyn SecretSource,
-        _id: SwapId,
-    ) -> Result<(), HttpApiProblem> {
-        unreachable!("FIXME: Alice will never return this action so we shouldn't have to deal with this case")
-    }
-}
-
-impl ExecuteDecline for () {
-    fn execute(&self, _reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem> {
-        unreachable!("FIXME: Alice will never return this action so we shouldn't have to deal with this case")
     }
 }
 
@@ -313,8 +299,8 @@ impl IntoResponseBody for () {
     }
 }
 
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponseBody
-    for ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
+impl<Deploy, Fund, Redeem, Refund> IntoResponseBody
+    for alice::ActionKind<Deploy, Fund, Redeem, Refund>
 where
     Deploy: IntoResponseBody,
     Fund: IntoResponseBody,
@@ -326,10 +312,31 @@ where
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match self {
-            ActionKind::Deploy(payload) => payload.into_response_body(query_params),
-            ActionKind::Fund(payload) => payload.into_response_body(query_params),
-            ActionKind::Redeem(payload) => payload.into_response_body(query_params),
-            ActionKind::Refund(payload) => payload.into_response_body(query_params),
+            alice::ActionKind::Deploy(payload) => payload.into_response_body(query_params),
+            alice::ActionKind::Fund(payload) => payload.into_response_body(query_params),
+            alice::ActionKind::Redeem(payload) => payload.into_response_body(query_params),
+            alice::ActionKind::Refund(payload) => payload.into_response_body(query_params),
+        }
+    }
+}
+
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponseBody
+    for bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
+where
+    Deploy: IntoResponseBody,
+    Fund: IntoResponseBody,
+    Redeem: IntoResponseBody,
+    Refund: IntoResponseBody,
+{
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        match self {
+            bob::ActionKind::Deploy(payload) => payload.into_response_body(query_params),
+            bob::ActionKind::Fund(payload) => payload.into_response_body(query_params),
+            bob::ActionKind::Redeem(payload) => payload.into_response_body(query_params),
+            bob::ActionKind::Refund(payload) => payload.into_response_body(query_params),
             _ => {
                 error!("IntoResponseBody is not implemented for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(500))
@@ -402,7 +409,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
 
-    with_swap_types!(
+    with_swap_types_bob!(
         &metadata,
         (|| match action {
             PostAction::Accept => serde_json::from_value::<AcceptSwapRequestHttpBody<AL, BL>>(body)
@@ -423,7 +430,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             .actions()
                             .into_iter()
                             .find_map(move |action| match action {
-                                ActionKind::Accept(accept) => Some(Ok(accept)),
+                                bob::ActionKind::Accept(accept) => Some(Ok(accept)),
                                 _ => None,
                             })
                             .unwrap_or_else(|| {
@@ -452,7 +459,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                                 .actions()
                                 .into_iter()
                                 .find_map(move |action| match action {
-                                    ActionKind::Decline(decline) => Some(Ok(decline)),
+                                    bob::ActionKind::Decline(decline) => Some(Ok(decline)),
                                     _ => None,
                                 })
                                 .unwrap_or_else(|| {
@@ -477,16 +484,34 @@ pub enum GetAction {
     Refund,
 }
 
-impl GetAction {
-    fn matches<Accept, Decline, Deploy, Fund, Redeem, Refund>(
+trait MatchesAction<A> {
+    fn matches(self, action: &A) -> bool;
+}
+
+impl<Deploy, Fund, Redeem, Refund> MatchesAction<alice::ActionKind<Deploy, Fund, Redeem, Refund>>
+    for GetAction
+{
+    fn matches(self, other: &alice::ActionKind<Deploy, Fund, Redeem, Refund>) -> bool {
+        match other {
+            alice::ActionKind::Deploy(_) => self == GetAction::Deploy,
+            alice::ActionKind::Fund(_) => self == GetAction::Fund,
+            alice::ActionKind::Redeem(_) => self == GetAction::Redeem,
+            alice::ActionKind::Refund(_) => self == GetAction::Refund,
+        }
+    }
+}
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
+    MatchesAction<bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>> for GetAction
+{
+    fn matches(
         self,
-        other: &ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>,
+        other: &bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>,
     ) -> bool {
         match other {
-            ActionKind::Deploy(_) => self == GetAction::Deploy,
-            ActionKind::Fund(_) => self == GetAction::Fund,
-            ActionKind::Redeem(_) => self == GetAction::Redeem,
-            ActionKind::Refund(_) => self == GetAction::Refund,
+            bob::ActionKind::Deploy(_) => self == GetAction::Deploy,
+            bob::ActionKind::Fund(_) => self == GetAction::Fund,
+            bob::ActionKind::Redeem(_) => self == GetAction::Redeem,
+            bob::ActionKind::Refund(_) => self == GetAction::Refund,
             _ => false,
         }
     }
