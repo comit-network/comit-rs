@@ -61,12 +61,12 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
 
     pub fn redeem_action(
         &self,
-        beta_htlc_location: OutPoint,
+        alpha_htlc_location: OutPoint,
         secret: Secret,
     ) -> bitcoin::SpendOutput {
         bitcoin::SpendOutput {
             output: PrimedInput::new(
-                beta_htlc_location,
+                alpha_htlc_location,
                 self.alpha_asset,
                 bitcoin::Htlc::from(self.alpha_htlc_params())
                     .unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
