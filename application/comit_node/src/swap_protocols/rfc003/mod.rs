@@ -1,7 +1,5 @@
 #[macro_use]
 mod transition_save;
-#[macro_use]
-mod match_request;
 
 pub mod alice;
 pub mod bitcoin;
