@@ -6,11 +6,12 @@ const ethutil = require("ethereumjs-util");
 const fs = require("fs");
 const should = chai.should();
 const test_lib = require("../test_lib.js");
+const lqs_conf = require("../ledger_query_service_conf.js");
 const Toml = require("toml");
 const Web3 = require("web3");
 
 const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
-const lqs = test_lib.ledger_query_service_conf("localhost", 8080);
+const lqs = lqs_conf.ledger_query_service_conf("localhost", 8080);
 const web3 = test_lib.web3();
 const wallet = test_lib.wallet_conf();
 
