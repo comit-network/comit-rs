@@ -12,7 +12,7 @@ pub mod parity_client;
 
 use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
-    htlc_harness::{erc20_harness, Erc20HarnessParams, HTLC_TIMEOUT, SECRET},
+    htlc_harness::{erc20_harness, CustomSizeSecret, Erc20HarnessParams, HTLC_TIMEOUT, SECRET},
 };
 use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
@@ -266,4 +266,43 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     assert_that(&topics).has_length(4);
     assert_that(&topics).does_not_contain(redeem_topic);
     assert_that(&topics).contains(refund_topic);
+}
+
+#[test]
+fn given_funded_erc20_htlc_when_redeemed_with_short_secret_then_tokens_are_transferred() {
+    let docker = Cli::default();
+    let secret = CustomSizeSecret(vec![
+        1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+    ]);
+
+    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
+        erc20_harness(&docker, Erc20HarnessParams::from(secret.hash()));
+
+    // fund erc20 htlc
+    client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
+        nonce,
+        gas_price,
+        gas_limit: U256::from(100_000),
+        to: Some(token),
+        value: U256::from(0),
+        data: Some(htlc.funding_tx_payload(htlc_address)),
+    });
+
+    assert_eq!(
+        client.token_balance_of(token, htlc_address),
+        U256::from(400)
+    );
+    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
+    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+
+    // Send correct secret to contract
+    client.send_data(
+        htlc_address,
+        Some(Bytes(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8])),
+    );
+
+    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
+    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
+    assert_eq!(client.token_balance_of(token, bob), U256::from(400));
 }
