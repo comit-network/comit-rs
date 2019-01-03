@@ -46,4 +46,4 @@ Contributions are welcome, please visit [CONTRIBUTING](CONTRIBUTING.md) for more
 
 ## License
 
-This project is licensed under the terms of the [GNU AFFERO GENERAL PUBLIC LICENSE v3](LICENSE.md).
+This project is licensed under the terms of the [GNU GENERAL PUBLIC LICENSE v3](LICENSE.md).
