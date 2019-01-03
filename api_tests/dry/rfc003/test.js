@@ -305,20 +305,12 @@ describe("RFC003 HTTP API", () => {
         decline_res.should.have.status(200);
     });
 
-    it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async () => {
-        let res = await chai
-            .request(bob.comit_node_url())
-            .get(bob_stingy_swap_href);
-        res.should.have.status(200);
-        res.body.state.should.equal("Rejected");
+    it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async function() {
+        await bob.poll_comit_node_until(chai, bob_stingy_swap_href, "Rejected");
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
-        let res = await chai
-            .request(alice.comit_node_url())
-            .get(alice_stingy_swap_href);
-        res.should.have.status(200);
-        res.body.state.should.equal("Rejected");
+        await alice.poll_comit_node_until(chai, alice_stingy_swap_href, "Rejected");
     });
 
     it("[Bob] Can execute a decline action, without providing a reason", async () => {
@@ -344,18 +336,10 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
-        let res = await chai
-            .request(bob.comit_node_url())
-            .get(bob_reasonable_swap_href);
-        res.should.have.status(200);
-        res.body.state.should.equal("Rejected");
+        await bob.poll_comit_node_until(chai, bob_reasonable_swap_href, "Rejected");        
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
-        let res = await chai
-            .request(alice.comit_node_url())
-            .get(alice_reasonable_swap_href);
-        res.should.have.status(200);
-        res.body.state.should.equal("Rejected");
+        await alice.poll_comit_node_until(chai, alice_reasonable_swap_href, "Rejected");
     });
 });
