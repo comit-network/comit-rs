@@ -584,10 +584,10 @@ fn handle_get<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     let metadata = metadata_store
         .get(id)?
         .ok_or_else(problem::swap_not_found)?;
+
     with_swap_types!(
         &metadata,
         (|| {
-            trace!("Fetched metadata of swap with id {}: {:?}", id, metadata);
             let state = state_store
                 .get::<Role>(id)?
                 .ok_or_else(problem::state_store)?;
