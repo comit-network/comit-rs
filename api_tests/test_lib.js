@@ -1,7 +1,6 @@
 const BitcoinRpcClient = require("bitcoin-core");
 const ethutil = require("ethereumjs-util");
 const EthereumTx = require("ethereumjs-tx");
-const Toml = require("toml");
 const fs = require("fs");
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
@@ -257,55 +256,6 @@ class WalletConf {
         return receipt;
     }
 }
-
-class ComitConf {
-    constructor(name, bitcoin_utxo) {
-        const node_config = global.harness.config.comit_node[name];
-        if (!node_config) {
-            throw new Error("comit_node." + name + " configuration is needed");
-        }
-        this.name = name;
-        this.host = node_config.host;
-        this.config = Toml.parse(
-            fs.readFileSync(node_config.config_dir + "/default.toml", "utf8")
-        );
-        this.wallet = new WalletConf(name);
-    }
-
-    comit_node_url() {
-        return "http://" + this.host + ":" + this.config.http_api.port;
-    }
-
-    poll_comit_node_until(chai, location, state) {
-        return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url())
-                .get(location)
-                .end((err, res) => {
-                    if (err) {
-                        return rej(err);
-                    }
-                    res.should.have.status(200);
-                    if (res.body.state === state) {
-                        final_res(res.body);
-                    } else {
-                        setTimeout(() => {
-                            this.poll_comit_node_until(
-                                chai,
-                                location,
-                                state
-                            ).then(result => {
-                                final_res(result);
-                            });
-                        }, 500);
-                    }
-                });
-        });
-    }
-}
-
-module.exports.comit_conf = (name, utxo) => {
-    return new ComitConf(name, utxo);
-};
 
 module.exports.wallet_conf = (eth_private_key, utxo) => {
     return new WalletConf(eth_private_key, utxo);

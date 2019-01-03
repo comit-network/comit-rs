@@ -1,5 +1,6 @@
 const chai = require("chai");
 const test_lib = require("../../test_lib.js");
+const comit_node = require("../../comit_node_conf.js");
 const should = chai.should();
 chai.use(require("chai-http"));
 const web3 = test_lib.web3();
@@ -21,8 +22,8 @@ const beta_asset_quantity = new BigNumber(
 
 const alpha_ledger_lock_duration = 144;
 
-const alice = test_lib.comit_conf("alice", {});
-const bob = test_lib.comit_conf("bob", {});
+const alice = comit_node.create("alice", {});
+const bob = comit_node.create("bob", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
