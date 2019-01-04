@@ -1,9 +1,11 @@
-const BitcoinRpcClient = require("bitcoin-core");
 const ethutil = require("ethereumjs-util");
 const EthereumTx = require("ethereumjs-tx");
 const fs = require("fs");
-const Web3 = require("web3");
+const bitcoin_rpc_client_conf = require("./bitcoin_rpc_client_conf.js");
 const bitcoin = require("bitcoinjs-lib");
+const web3_conf = require("./web3_conf.js");
+
+const web3 = web3_conf.create();
 
 const logger = global.harness.logger;
 module.exports.logger = function() {
@@ -18,27 +20,7 @@ async function sleep(time) {
 
 module.exports.sleep = sleep;
 
-let _bitcoin_rpc_client;
-
-function bitcoin_rpc_client() {
-    const btc_config = global.harness.ledgers_config.bitcoin;
-    if (!btc_config) {
-        throw new Error("ledger.bitcoin configuration is needed");
-    }
-    return (_bitcoin_rpc_client =
-        _bitcoin_rpc_client ||
-        new BitcoinRpcClient({
-            network: "regtest",
-            port: btc_config.rpc_port,
-            host: btc_config.rpc_host,
-            username: btc_config.rpc_username,
-            password: btc_config.rpc_password,
-        }));
-}
-
-module.exports.bitcoin_rpc_client = () => {
-    return bitcoin_rpc_client();
-};
+const bitcoin_rpc_client = bitcoin_rpc_client_conf.create_client();
 
 //FIXME: Remove this whenever this change:
 // https://github.com/bitcoinjs/bitcoinjs-lib/commit/44a98c0fa6487eaf81500427366787a953ff890d#diff-9e60abeb4e2333a5d2f02de53b4edfac
@@ -53,19 +35,6 @@ const regtest = {
     pubKeyHash: 0x6f,
     scriptHash: 0xc4,
     wif: 0xef,
-};
-
-let web3;
-
-module.exports.web3 = () => {
-    if (global.harness.ledgers_config.ethereum) {
-        const eth_config = global.harness.ledgers_config.ethereum;
-        return (web3 =
-            web3 ||
-            new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url)));
-    } else {
-        return new Web3();
-    }
 };
 
 let test_rng_counter = 0;
@@ -122,13 +91,11 @@ class WalletConf {
     }
 
     async fund_btc(btc_value) {
-        let txid = await bitcoin_rpc_client().sendToAddress(
+        let txid = await bitcoin_rpc_client.sendToAddress(
             this.btc_identity().address,
             btc_value
         );
-        let raw_transaction = await bitcoin_rpc_client().getRawTransaction(
-            txid
-        );
+        let raw_transaction = await bitcoin_rpc_client.getRawTransaction(txid);
         let transaction = bitcoin.Transaction.fromHex(raw_transaction);
         for (let [i, out] of transaction.outs.entries()) {
             if (out.script.equals(this.btc_identity().output)) {
@@ -142,6 +109,7 @@ class WalletConf {
     async fund_eth(eth_amount) {
         const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
         const parity_dev_password = "";
+        const web3 = web3_conf.create();
         const tx = {
             from: parity_dev_account,
             to: this.eth_address(),
@@ -166,11 +134,11 @@ class WalletConf {
         txb.addOutput(bitcoin.address.toOutputScript(to, regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
-        return bitcoin_rpc_client().sendRawTransaction(txb.build().toHex());
+        return bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
     }
 
     async send_raw_tx(hex) {
-        return bitcoin_rpc_client().sendRawTransaction(hex);
+        return bitcoin_rpc_client.sendRawTransaction(hex);
     }
 
     async send_eth_transaction_to(
@@ -285,15 +253,15 @@ module.exports.wallet_conf = (eth_private_key, utxo) => {
 }
 
 module.exports.btc_generate = async function(num = 1) {
-    return bitcoin_rpc_client().generate(num);
+    return bitcoin_rpc_client.generate(num);
 };
 
 module.exports.btc_activate_segwit = async function() {
-    return bitcoin_rpc_client().generate(432);
+    return bitcoin_rpc_client.generate(432);
 };
 
 async function btc_balance(address) {
-    let btc_balance = await bitcoin_rpc_client().getReceivedByAddress(address);
+    let btc_balance = await bitcoin_rpc_client.getReceivedByAddress(address);
     return parseFloat(btc_balance) * 100000000;
 }
 
@@ -302,7 +270,7 @@ module.exports.btc_balance = async function(address) {
 };
 
 module.exports.btc_import_address = async function(address) {
-    return bitcoin_rpc_client().importAddress(address);
+    return bitcoin_rpc_client.importAddress(address);
 };
 
 async function eth_balance(address) {

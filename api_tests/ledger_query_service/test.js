@@ -1,18 +1,14 @@
-const BigNumber = require("bignumber.js");
 const chai = require("chai");
 chai.use(require("chai-http"));
-const EthereumTx = require("ethereumjs-tx");
-const ethutil = require("ethereumjs-util");
-const fs = require("fs");
 const should = chai.should();
 const test_lib = require("../test_lib.js");
+const bitcoin_rpc_client_conf = require("../bitcoin_rpc_client_conf.js");
+const web3_conf = require("../web3_conf.js");
 const lqs_conf = require("../ledger_query_service_conf.js");
-const Toml = require("toml");
-const Web3 = require("web3");
 
-const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
-const lqs = lqs_conf.ledger_query_service_conf("localhost", 8080);
-const web3 = test_lib.web3();
+const bitcoin_rpc_client = bitcoin_rpc_client_conf.create_client();
+const lqs = lqs_conf.create("localhost", 8080);
+const web3 = web3_conf.create();
 const wallet = test_lib.wallet_conf();
 
 function sleep(ms) {

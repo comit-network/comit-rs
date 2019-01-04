@@ -33,6 +33,6 @@ class LedgerQueryServiceConf {
     }
 }
 
-module.exports.ledger_query_service_conf = (host, port) => {
+module.exports.create = (host, port) => {
     return new LedgerQueryServiceConf(host, port);
 };

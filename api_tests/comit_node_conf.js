@@ -2,7 +2,7 @@ const Toml = require("toml");
 const test_lib = require("./test_lib.js");
 const fs = require("fs");
 
-class ComitConf {
+class ComitNodeConf {
     constructor(name, bitcoin_utxo) {
         const node_config = global.harness.config.comit_node[name];
         if (!node_config) {
@@ -48,5 +48,5 @@ class ComitConf {
 }
 
 module.exports.create = (name, utxo) => {
-    return new ComitConf(name, utxo);
+    return new ComitNodeConf(name, utxo);
 };

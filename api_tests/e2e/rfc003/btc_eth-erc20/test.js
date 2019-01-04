@@ -1,22 +1,22 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
 const test_lib = require("../../../test_lib.js");
-const comit_node = require("../../../comit_node_conf.js");
+const web3_conf = require("../../../web3_conf.js");
+const comit_node_conf = require("../../../comit_node_conf.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
 
-const web3 = test_lib.web3();
+const web3 = web3_conf.create();
 const logger = test_lib.logger();
 
 const toby_wallet = test_lib.wallet_conf();
 
 const toby_initial_eth = "10";
-const alice_initial_eth = "0.1";
 const bob_initial_eth = "5";
 const bob_initial_erc20 = web3.utils.toWei("10000", "ether");
 
-const alice = comit_node.create("alice", {});
-const bob = comit_node.create("bob", {});
+const alice = comit_node_conf.create("alice", {});
+const bob = comit_node_conf.create("bob", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_final_address =

@@ -1,9 +1,9 @@
 const chai = require("chai");
-const test_lib = require("../../test_lib.js");
-const comit_node = require("../../comit_node_conf.js");
+const web3_conf = require("../../web3_conf.js");
+const comit_node_conf = require("../../comit_node_conf.js");
 const should = chai.should();
 chai.use(require("chai-http"));
-const web3 = test_lib.web3();
+const web3 = web3_conf.create();
 const BigNumber = require("bignumber.js");
 
 const alpha_ledger_name = "Bitcoin";
@@ -22,8 +22,8 @@ const beta_asset_quantity = new BigNumber(
 
 const alpha_ledger_lock_duration = 144;
 
-const alice = comit_node.create("alice", {});
-const bob = comit_node.create("bob", {});
+const alice = comit_node_conf.create("alice", {});
+const bob = comit_node_conf.create("bob", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
@@ -184,7 +184,9 @@ describe("RFC003 HTTP API", () => {
                 swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
-                swap.alpha_asset.quantity.should.equal(alpha_asset_reasonable_quantity);
+                swap.alpha_asset.quantity.should.equal(
+                    alpha_asset_reasonable_quantity
+                );
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.alpha_lock_duration.type.should.equal("blocks");
@@ -242,7 +244,10 @@ describe("RFC003 HTTP API", () => {
         swap_2_href.should.be.a("string");
         let swap_2 = await chai.request(bob.comit_node_url()).get(swap_2_href);
 
-        if (swap_1.body.swap.alpha_asset.quantity == parseInt(alpha_asset_stingy_quantity)) {
+        if (
+            swap_1.body.swap.alpha_asset.quantity ==
+            parseInt(alpha_asset_stingy_quantity)
+        ) {
             bob_stingy_swap_href = swap_1_href;
             bob_reasonable_swap_href = swap_2_href;
         } else {
@@ -311,7 +316,11 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
-        await alice.poll_comit_node_until(chai, alice_stingy_swap_href, "Rejected");
+        await alice.poll_comit_node_until(
+            chai,
+            alice_stingy_swap_href,
+            "Rejected"
+        );
     });
 
     it("[Bob] Can execute a decline action, without providing a reason", async () => {
@@ -337,10 +346,18 @@ describe("RFC003 HTTP API", () => {
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
-        await bob.poll_comit_node_until(chai, bob_reasonable_swap_href, "Rejected");        
+        await bob.poll_comit_node_until(
+            chai,
+            bob_reasonable_swap_href,
+            "Rejected"
+        );
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
-        await alice.poll_comit_node_until(chai, alice_reasonable_swap_href, "Rejected");
+        await alice.poll_comit_node_until(
+            chai,
+            alice_reasonable_swap_href,
+            "Rejected"
+        );
     });
 });

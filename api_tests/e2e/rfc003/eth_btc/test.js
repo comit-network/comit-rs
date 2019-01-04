@@ -1,18 +1,19 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
 const test_lib = require("../../../test_lib.js");
-const comit_node = require("../../../comit_node_conf.js");
+const web3_conf = require("../../../web3_conf.js");
+const comit_node_conf = require("../../../comit_node_conf.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
 
-const web3 = test_lib.web3();
+const web3 = web3_conf.create();
 const logger = test_lib.logger();
 
 const bob_initial_eth = "0.1";
 const alice_initial_eth = "11";
 
-const alice = comit_node.create("alice", {});
-const bob = comit_node.create("bob", {});
+const alice = comit_node_conf.create("alice", {});
+const bob = comit_node_conf.create("bob", {});
 
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
