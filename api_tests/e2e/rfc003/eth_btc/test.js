@@ -1,5 +1,6 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
+const balance_util = require("../../../balance_util.js");
 const test_lib = require("../../../test_lib.js");
 const web3_conf = require("../../../web3_conf.js");
 const comit_node_conf = require("../../../comit_node_conf.js");
@@ -36,38 +37,38 @@ describe("RFC003: Ether for Bitcoin", () => {
         await test_lib.btc_import_address(alice.wallet.btc_identity().address); // Watch only import
         await test_lib.btc_generate();
 
-        await test_lib.log_btc_balance(
+        await balance_util.log_btc_balance(
             "Before",
             "Alice",
             alice_final_address,
             "final"
         );
-        await test_lib.log_btc_balance(
+        await balance_util.log_btc_balance(
             "Before",
             "Alice",
             alice.wallet.btc_identity().address,
             "wallet"
         );
-        await test_lib.log_eth_balance(
+        await balance_util.log_eth_balance(
             "Before",
             "Alice",
             alice.wallet.eth_address(),
             "wallet"
         );
 
-        await test_lib.log_eth_balance(
+        await balance_util.log_eth_balance(
             "Before",
             "Bob",
             bob_final_address,
             "final"
         );
-        await test_lib.log_btc_balance(
+        await balance_util.log_btc_balance(
             "Before",
             "Bob",
             bob.wallet.btc_identity().address,
             "wallet"
         );
-        await test_lib.log_eth_balance(
+        await balance_util.log_eth_balance(
             "Before",
             "Bob",
             bob.wallet.eth_address(),
@@ -76,38 +77,38 @@ describe("RFC003: Ether for Bitcoin", () => {
     });
 
     after(async function() {
-        await test_lib.log_btc_balance(
+        await balance_util.log_btc_balance(
             "After",
             "Alice",
             alice_final_address,
             "final"
         );
-        await test_lib.log_btc_balance(
+        await balance_util.log_btc_balance(
             "After",
             "Alice",
             alice.wallet.btc_identity().address,
             "wallet"
         );
-        await test_lib.log_eth_balance(
+        await balance_util.log_eth_balance(
             "After",
             "Alice",
             alice.wallet.eth_address(),
             "wallet"
         );
 
-        await test_lib.log_eth_balance(
+        await balance_util.log_eth_balance(
             "After",
             "Bob",
             bob_final_address,
             "final"
         );
-        await test_lib.log_btc_balance(
+        await balance_util.log_btc_balance(
             "After",
             "Bob",
             bob.wallet.btc_identity().address,
             "wallet"
         );
-        await test_lib.log_eth_balance(
+        await balance_util.log_eth_balance(
             "After",
             "Bob",
             bob.wallet.eth_address(),
@@ -333,7 +334,7 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Alice] Can execute the redeem action", async function() {
         alice_redeem_action.should.include.all.keys("hex");
-        alice_btc_balance_before = await test_lib.btc_balance(
+        alice_btc_balance_before = await balance_util.btc_balance(
             alice_final_address
         );
         await alice.wallet.send_raw_tx(alice_redeem_action.hex);
@@ -350,7 +351,7 @@ describe("RFC003: Ether for Bitcoin", () => {
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_btc_balance_after = await test_lib.btc_balance(
+        let alice_btc_balance_after = await balance_util.btc_balance(
             alice_final_address
         );
 
@@ -395,7 +396,9 @@ describe("RFC003: Ether for Bitcoin", () => {
             "gas_limit",
             "value"
         );
-        bob_eth_balance_before = await test_lib.eth_balance(bob_final_address);
+        bob_eth_balance_before = await balance_util.eth_balance(
+            bob_final_address
+        );
         await bob.wallet.send_eth_transaction_to(
             bob_redeem_action.to,
             bob_redeem_action.data,
@@ -405,7 +408,7 @@ describe("RFC003: Ether for Bitcoin", () => {
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_eth_balance_after = await test_lib.eth_balance(
+        let bob_eth_balance_after = await balance_util.eth_balance(
             bob_final_address
         );
 

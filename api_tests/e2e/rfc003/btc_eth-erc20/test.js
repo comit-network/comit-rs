@@ -2,6 +2,7 @@ const chai = require("chai");
 chai.use(require("chai-http"));
 const test_lib = require("../../../test_lib.js");
 const web3_conf = require("../../../web3_conf.js");
+const balance_util = require("../../../balance_util.js");
 const comit_node_conf = require("../../../comit_node_conf.js");
 const wallet_conf = require("../../../wallet_conf.js");
 const should = chai.should();
@@ -55,7 +56,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
         receipt.status.should.equal(true);
 
-        let erc20_balance = await test_lib.erc20_balance(
+        let erc20_balance = await balance_util.erc20_balance(
             bob_wallet_address,
             token_contract_address
         );
@@ -331,7 +332,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
             "gas_limit",
             "value"
         );
-        alice_erc20_balance_before = await test_lib.erc20_balance(
+        alice_erc20_balance_before = await balance_util.erc20_balance(
             alice_final_address,
             token_contract_address
         );
@@ -353,7 +354,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_erc20_balance_after = await test_lib.erc20_balance(
+        let alice_erc20_balance_after = await balance_util.erc20_balance(
             alice_final_address,
             token_contract_address
         );
@@ -404,7 +405,9 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.should.include.all.keys("hex");
-        bob_btc_balance_before = await test_lib.btc_balance(bob_final_address);
+        bob_btc_balance_before = await balance_util.btc_balance(
+            bob_final_address
+        );
         await bob.wallet.send_raw_tx(bob_redeem_action.hex);
     });
 
@@ -423,7 +426,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_btc_balance_after = await test_lib.btc_balance(
+        let bob_btc_balance_after = await balance_util.btc_balance(
             bob_final_address
         );
         const bob_btc_balance_expected =
