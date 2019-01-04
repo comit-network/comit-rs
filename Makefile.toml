@@ -176,6 +176,8 @@ private = true
 script = [
 '''
 docker pull parity/parity:v1.11.11
+docker pull parity/parity:v2.1.3
+docker pull ethereum/solc:0.4.24
 docker pull coblox/bitcoin-core:0.17.0
 '''
 ]
