@@ -21,14 +21,17 @@ Contains crates specific to our application. Can depend on libraries located in 
 
 ## Setup build environment
 
-- Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
-- Install `cargo-make`: `cargo install cargo-make`
-- Install libzmq:
-  - Ubuntu/Debian: `apt install libzmq3-dev`
-  - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
-- Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
-- Install `docker` & `docker-compose`
-- Install `nvm`
+1. Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
+2. Install SSL libraries
+   - Ubuntu/Debian: `apt install libssl-dev`
+   - Mac ([Homebrew](https://brew.sh/)) `brew install openssl`
+3. Install libzmq:
+   - Ubuntu/Debian: `apt install libzmq3-dev`
+   - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
+4. Install `docker` & `docker-compose`
+5. Install `nvm`
+6. Install `cargo-make`: `cargo install cargo-make`
+7. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
 
 ## Testing
 
