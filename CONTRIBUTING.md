@@ -43,17 +43,18 @@ If you wish to directly contribute to the code, please make pull requests agains
 Refer to [GitHub documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature.
 You can also find more details in the [Open Source Guides](https://opensource.guide/how-to-contribute/#opening-a-pull-request).
 
-**Before** committing, always run [`cargo fmt`](https://github.com/rust-lang-nursery/rustfmt) or your change will be rejected by the CI.
+**Before** committing, always run `cargo make format` (or `cargo make js-format` for JavaScript) or your change will be rejected by the CI.
 
-To ensure you have made no breaking changes, run `cargo test --all`.
+To ensure you have not made any breaking changes, run `cargo make all`.
 
 When creating commits, please follow these commit guidelines: https://chris.beams.io/posts/git-commit/.
 
 Please be sure to double check your commit history and try to keep it clean, especially after integrating feedback.
 
-Finally, new code needs to be accompanied by **new tests**. Please use existing tests as example.
+New code needs to be accompanied by **new tests**. Please use existing tests as example.
 We are using Continuous Integration and having tests will not only ensure that your code is correct but also that no-one else is breaking it unintentionally.
 
+Finally, when reviewing Pull Requests we use [Dawehner`s emoji code review](https://dawehner.github.io/github,/code/review/2017/09/08/emoji-code-review.html).
 
 ## Public Key
 Public Key for [security@coblox.tech](mailto:security@coblox.tech)
