@@ -1,11 +1,12 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
 const balance_util = require("../../../balance_util.js");
+const bitcoin_rpc_client_conf = require("../../../bitcoin_rpc_client_conf.js");
+const comit_node_conf = require("../../../comit_node_conf.js");
+const ethutil = require("ethereumjs-util");
+const should = chai.should();
 const test_lib = require("../../../test_lib.js");
 const web3_conf = require("../../../web3_conf.js");
-const comit_node_conf = require("../../../comit_node_conf.js");
-const should = chai.should();
-const ethutil = require("ethereumjs-util");
 
 const web3 = web3_conf.create();
 const logger = test_lib.logger();
@@ -27,15 +28,15 @@ const beta_max_fee = 5000; // Max 5000 satoshis fee
 describe("RFC003: Ether for Bitcoin", () => {
     before(async function() {
         this.timeout(5000);
-        await test_lib.btc_activate_segwit();
+        await bitcoin_rpc_client_conf.btc_activate_segwit();
         await alice.wallet.fund_eth(alice_initial_eth);
         await alice.wallet.fund_btc(0.1);
         await bob.wallet.fund_eth(bob_initial_eth);
         await bob.wallet.fund_btc(10);
-        await test_lib.btc_import_address(alice_final_address); // Watch only import
-        await test_lib.btc_import_address(bob.wallet.btc_identity().address); // Watch only import
-        await test_lib.btc_import_address(alice.wallet.btc_identity().address); // Watch only import
-        await test_lib.btc_generate();
+        await bitcoin_rpc_client_conf.btc_import_address(alice_final_address); // Watch only import
+        await bitcoin_rpc_client_conf.btc_import_address(bob.wallet.btc_identity().address); // Watch only import
+        await bitcoin_rpc_client_conf.btc_import_address(alice.wallet.btc_identity().address); // Watch only import
+        await bitcoin_rpc_client_conf.btc_generate();
 
         await balance_util.log_btc_balance(
             "Before",
@@ -338,7 +339,7 @@ describe("RFC003: Ether for Bitcoin", () => {
             alice_final_address
         );
         await alice.wallet.send_raw_tx(alice_redeem_action.hex);
-        await test_lib.btc_generate();
+        await bitcoin_rpc_client_conf.btc_generate();
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {

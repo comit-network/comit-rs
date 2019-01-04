@@ -1,7 +1,6 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
 const should = chai.should();
-const test_lib = require("../test_lib.js");
 const bitcoin_rpc_client_conf = require("../bitcoin_rpc_client_conf.js");
 const web3_conf = require("../web3_conf.js");
 const wallet_conf = require("../wallet_conf.js");
@@ -19,7 +18,7 @@ function sleep(ms) {
 describe("Test Ledger Query Service API", () => {
     before(async function() {
         this.timeout(5000);
-        await test_lib.btc_activate_segwit();
+        await bitcoin_rpc_client_conf.btc_activate_segwit();
         await wallet.fund_btc(5);
         await wallet.fund_eth(20);
     });

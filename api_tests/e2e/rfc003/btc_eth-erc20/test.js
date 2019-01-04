@@ -1,12 +1,13 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
-const test_lib = require("../../../test_lib.js");
-const web3_conf = require("../../../web3_conf.js");
 const balance_util = require("../../../balance_util.js");
+const bitcoin_rpc_client_conf = require("../../../bitcoin_rpc_client_conf.js");
 const comit_node_conf = require("../../../comit_node_conf.js");
-const wallet_conf = require("../../../wallet_conf.js");
-const should = chai.should();
 const ethutil = require("ethereumjs-util");
+const should = chai.should();
+const test_lib = require("../../../test_lib.js");
+const wallet_conf = require("../../../wallet_conf.js");
+const web3_conf = require("../../../web3_conf.js");
 
 const web3 = web3_conf.create();
 const logger = test_lib.logger();
@@ -32,7 +33,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await test_lib.btc_activate_segwit();
+        await bitcoin_rpc_client_conf.btc_activate_segwit();
         await toby_wallet.fund_eth(toby_initial_eth);
         await bob.wallet.fund_eth(bob_initial_eth);
         await alice.wallet.fund_btc(10);
@@ -40,8 +41,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
         let receipt = await toby_wallet.deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
 
-        await test_lib.btc_import_address(bob_final_address); // Watch only import
-        await test_lib.btc_generate();
+        await bitcoin_rpc_client_conf.btc_import_address(bob_final_address); // Watch only import
+        await bitcoin_rpc_client_conf.btc_generate();
     });
 
     it(bob_initial_erc20 + " tokens were minted to Bob", async function() {

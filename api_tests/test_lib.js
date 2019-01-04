@@ -40,15 +40,3 @@ const bitcoin_rpc_client = bitcoin_rpc_client_conf.create_client();
         );
     };
 }
-
-module.exports.btc_generate = async function(num = 1) {
-    return bitcoin_rpc_client.generate(num);
-};
-
-module.exports.btc_activate_segwit = async function() {
-    return bitcoin_rpc_client.generate(432);
-};
-
-module.exports.btc_import_address = async function(address) {
-    return bitcoin_rpc_client.importAddress(address);
-};

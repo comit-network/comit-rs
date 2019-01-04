@@ -2,6 +2,7 @@ const execSync = require("child_process").execSync;
 const spawn = require("child_process").spawn;
 const Toml = require("toml");
 const fs = require("fs");
+const bitcoin_rpc_client_conf = require("./bitcoin_rpc_client_conf.js");
 
 // ************************ //
 // Setting global variables //
@@ -131,7 +132,7 @@ async function startDockerContainers(ledgers, ledgers_config) {
 
 async function generateBlock(ledgers) {
     if (ledgers && ledgers.includes("bitcoin")) {
-        await test_lib.btc_generate();
+        await bitcoin_rpc_client_conf.btc_generate();
     }
 }
 
