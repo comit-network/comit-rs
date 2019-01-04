@@ -3,13 +3,14 @@ chai.use(require("chai-http"));
 const test_lib = require("../../../test_lib.js");
 const web3_conf = require("../../../web3_conf.js");
 const comit_node_conf = require("../../../comit_node_conf.js");
+const wallet_conf = require("../../../wallet_conf.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
 
 const web3 = web3_conf.create();
 const logger = test_lib.logger();
 
-const toby_wallet = test_lib.wallet_conf();
+const toby_wallet = wallet_conf.create();
 
 const toby_initial_eth = "10";
 const bob_initial_eth = "5";

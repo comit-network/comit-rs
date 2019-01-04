@@ -4,12 +4,13 @@ const should = chai.should();
 const test_lib = require("../test_lib.js");
 const bitcoin_rpc_client_conf = require("../bitcoin_rpc_client_conf.js");
 const web3_conf = require("../web3_conf.js");
+const wallet_conf = require("../wallet_conf.js");
 const lqs_conf = require("../ledger_query_service_conf.js");
 
 const bitcoin_rpc_client = bitcoin_rpc_client_conf.create_client();
 const lqs = lqs_conf.create("localhost", 8080);
 const web3 = web3_conf.create();
-const wallet = test_lib.wallet_conf();
+const wallet = wallet_conf.create();
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

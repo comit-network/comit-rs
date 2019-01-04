@@ -1,5 +1,5 @@
 const Toml = require("toml");
-const test_lib = require("./test_lib.js");
+const wallet_conf = require("./wallet_conf.js");
 const fs = require("fs");
 
 class ComitNodeConf {
@@ -13,7 +13,7 @@ class ComitNodeConf {
         this.config = Toml.parse(
             fs.readFileSync(node_config.config_dir + "/default.toml", "utf8")
         );
-        this.wallet = test_lib.wallet_conf(name);
+        this.wallet = wallet_conf.create(name);
     }
 
     comit_node_url() {
