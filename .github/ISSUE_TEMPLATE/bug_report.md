@@ -23,7 +23,7 @@ A clear and concise description of what you expected to happen.
 **Environment (please complete the following information):**
  - OS: [e.g. MacOS 10.13.6]
  - Rust version [e.g. rustc 1.27.0-nightly (91db9dcf3 2018-05-04)]
- - CoBloX Version [e.g. git-commit id: 6cdb142f7202a0d6bb3edae4c5742ba8837bf61e]
+ - comit-rs Version [e.g. git-commit id: 6cdb142f7202a0d6bb3edae4c5742ba8837bf61e]
  
 **Logs, Screenshots**
 
