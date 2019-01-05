@@ -34,11 +34,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
     before(async function() {
         this.timeout(5000);
         await bitcoin_rpc_client_conf.btc_activate_segwit();
-        await toby_wallet.fund_eth(toby_initial_eth);
-        await bob.wallet.fund_eth(bob_initial_eth);
-        await alice.wallet.fund_btc(10);
-        await alice.wallet.fund_eth(1);
-        let receipt = await toby_wallet.deploy_erc20_token_contract();
+        await toby_wallet.eth().fund(toby_initial_eth);
+        await bob.wallet.eth().fund(bob_initial_eth);
+        await alice.wallet.btc().fund(10);
+        await alice.wallet.eth().fund(1);
+        let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
 
         await bitcoin_rpc_client_conf.btc_import_address(bob_final_address); // Watch only import
@@ -46,7 +46,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it(bob_initial_erc20 + " tokens were minted to Bob", async function() {
-        let bob_wallet_address = bob.wallet.eth_address();
+        let bob_wallet_address = bob.wallet.eth().address();
 
         let receipt = await test_lib.mint_erc20_tokens(
             toby_wallet,
@@ -133,7 +133,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Bob] Can execute the accept action", async () => {
         let bob_response = {
-            beta_ledger_refund_identity: bob.wallet.eth_address(),
+            beta_ledger_refund_identity: bob.wallet.eth().address(),
             alpha_ledger_redeem_identity: null,
             beta_ledger_lock_duration: 43200,
         };
@@ -189,10 +189,12 @@ describe("RFC003: Bitcoin for ERC20", () => {
     it("[Alice] Can execute the funding action", async () => {
         alice_funding_action.should.include.all.keys("address", "value");
 
-        await alice.wallet.send_btc_to_address(
-            alice_funding_action.address,
-            parseInt(alice_funding_action.value)
-        );
+        await alice.wallet
+            .btc()
+            .send_btc_to_address(
+                alice_funding_action.address,
+                parseInt(alice_funding_action.value)
+            );
     });
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
@@ -230,11 +232,13 @@ describe("RFC003: Bitcoin for ERC20", () => {
     it("[Bob] Can execute the deploy action", async () => {
         bob_deploy_action.should.include.all.keys("data", "gas_limit", "value");
         bob_deploy_action.value.should.equal("0");
-        await bob.wallet.deploy_eth_contract(
-            bob_deploy_action.data,
-            "0x0",
-            bob_deploy_action.gas_limit
-        );
+        await bob.wallet
+            .eth()
+            .deploy_contract(
+                bob_deploy_action.data,
+                "0x0",
+                bob_deploy_action.gas_limit
+            );
     });
 
     it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the funding action", async function() {
@@ -281,12 +285,9 @@ describe("RFC003: Bitcoin for ERC20", () => {
             "value"
         );
         let { to, data, gas_limit, value } = bob_fund_action;
-        let receipt = await bob.wallet.send_eth_transaction_to(
-            to,
-            data,
-            value,
-            gas_limit
-        );
+        let receipt = await bob.wallet
+            .eth()
+            .send_eth_transaction_to(to, data, value, gas_limit);
         receipt.status.should.equal(true);
     });
 
@@ -337,12 +338,14 @@ describe("RFC003: Bitcoin for ERC20", () => {
             alice_final_address,
             token_contract_address
         );
-        await alice.wallet.send_eth_transaction_to(
-            alice_redeem_action.to,
-            alice_redeem_action.data,
-            alice_redeem_action.value,
-            alice_redeem_action.gas_limit
-        );
+        await alice.wallet
+            .eth()
+            .send_eth_transaction_to(
+                alice_redeem_action.to,
+                alice_redeem_action.data,
+                alice_redeem_action.value,
+                alice_redeem_action.gas_limit
+            );
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {

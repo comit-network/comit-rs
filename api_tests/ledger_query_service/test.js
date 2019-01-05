@@ -19,8 +19,8 @@ describe("Test Ledger Query Service API", () => {
     before(async function() {
         this.timeout(5000);
         await bitcoin_rpc_client_conf.btc_activate_segwit();
-        await wallet.fund_btc(5);
-        await wallet.fund_eth(20);
+        await wallet.btc().fund(5);
+        await wallet.eth().fund(20);
     });
 
     describe("Bitcoin", () => {
@@ -65,6 +65,7 @@ describe("Test Ledger Query Service API", () => {
             it("LQS should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
                 this.slow(1000);
                 return wallet
+                    .btc()
                     .send_btc_to_address(to_address, 100000000)
                     .then(() => {
                         return bitcoin_rpc_client.generate(1).then(() => {
@@ -181,7 +182,7 @@ describe("Test Ledger Query Service API", () => {
     describe("Ethereum", () => {
         describe("Transactions", () => {
             before(async () => {
-                await wallet.fund_eth(10);
+                await wallet.eth().fund(10);
             });
 
             it("LQS should respond not found when getting a non-existent ethereum transaction query", async function() {
@@ -222,6 +223,7 @@ describe("Test Ledger Query Service API", () => {
 
             it("LQS should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function() {
                 return wallet
+                    .eth()
                     .send_eth_transaction_to(
                         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                         "",
@@ -244,6 +246,7 @@ describe("Test Ledger Query Service API", () => {
             it("LQS should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function() {
                 this.slow(2000);
                 return wallet
+                    .eth()
                     .send_eth_transaction_to(to_address, "", 5)
                     .then(() => {
                         return lqs
@@ -312,11 +315,13 @@ describe("Test Ledger Query Service API", () => {
                 this.slow(6000);
                 return sleep(3000)
                     .then(() => {
-                        return wallet.send_eth_transaction_to(
-                            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                            "",
-                            1
-                        );
+                        return wallet
+                            .eth()
+                            .send_eth_transaction_to(
+                                "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                                "",
+                                1
+                            );
                     })
                     .then(() => {
                         return lqs
