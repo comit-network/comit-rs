@@ -49,32 +49,6 @@ pub struct Initiation<R: Role> {
     pub secret: R::Secret,
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub enum ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund> {
-    Accept(Accept),
-    Decline(Decline),
-    Deploy(Deploy),
-    Fund(Fund),
-    Redeem(Redeem),
-    Refund(Refund),
-}
-
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
-    ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
-{
-    pub fn name(&self) -> String {
-        use self::ActionKind::*;
-        match *self {
-            Accept(_) => String::from("accept"),
-            Decline(_) => String::from("decline"),
-            Deploy(_) => String::from("deploy"),
-            Fund(_) => String::from("fund"),
-            Redeem(_) => String::from("redeem"),
-            Refund(_) => String::from("refund"),
-        }
-    }
-}
-
 pub trait Actions {
     type ActionKind;
 

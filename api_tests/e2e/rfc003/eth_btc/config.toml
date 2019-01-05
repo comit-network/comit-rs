@@ -1,0 +1,14 @@
+ledgers = ["bitcoin", "ethereum"]
+
+[comit_node.alice]
+host = "127.0.0.1"
+config_dir = "./regtest/alice/"
+
+[comit_node.bob]
+host = "127.0.0.1"
+config_dir = "./regtest/bob/"
+
+[ledger_query_service.main.env]
+LEDGER_QUERY_SERVICE_CONFIG_PATH = "./regtest/ledger_query_service"
+ETHEREUM_POLLING_TIME_SEC = "1"
+RUST_LOG = "warn,ledger_query_service=debug,warp=info"

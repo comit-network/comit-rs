@@ -31,13 +31,13 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 
     pub fn refund_action(
         &self,
-        alpha_htlc_location: ethereum_support::Address,
+        beta_htlc_location: ethereum_support::Address,
     ) -> ethereum::SendTransaction {
         let data = Bytes::default();
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         ethereum::SendTransaction {
-            to: alpha_htlc_location,
+            to: beta_htlc_location,
             data,
             gas_limit,
             value: EtherQuantity::zero(),
@@ -46,14 +46,14 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 
     pub fn redeem_action(
         &self,
-        beta_htlc_location: OutPoint,
+        alpha_htlc_location: OutPoint,
         secret: Secret,
     ) -> bitcoin::SpendOutput {
         let htlc: bitcoin::Htlc = self.alpha_htlc_params().into();
 
         bitcoin::SpendOutput {
             output: PrimedInput::new(
-                beta_htlc_location,
+                alpha_htlc_location,
                 self.alpha_asset,
                 htlc.unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
             ),
@@ -85,18 +85,13 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantit
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![bob::ActionKind::Refund(
-                swap.refund_action(*beta_htlc_location),
-            )],
-            SS::AlphaFundedBetaRefunded { .. } => vec![],
-            SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
+            })
+            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..
-            }) => vec![bob::ActionKind::Refund(
-                swap.refund_action(*beta_htlc_location),
-            )],
-            SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
+            })
+            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
                 ref beta_htlc_location,
                 ref swap,
                 ..
