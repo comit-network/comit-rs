@@ -180,6 +180,40 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             alice_deploy_action
         );
     });
+
+    it("[Alice] Can execute the deploy action", async () => {
+        alice_deploy_action.should.include.all.keys("data", "gas_limit", "value");
+        alice_deploy_action.value.should.equal("0");
+        await alice.wallet.deploy_eth_contract(
+            alice_deploy_action.data,
+            "0x0",
+            alice_deploy_action.gas_limit
+        );
+    });
+
+    it("[Bob] Should be in AlphaDeployed state after Alice executes the deploy action", async function() {
+        this.timeout(10000);
+        await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            "AlphaDeployed"
+        );
+    });
+
+    let alice_fund_href;
+
+    it("[Alice] Should be in AlphaDeployed state after executing the deploy action", async function() {
+        this.timeout(10000);
+        let swap = await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            "AlphaDeployed"
+        );
+        let links = swap._links;
+        links.should.have.property("fund");
+        alice_fund_href = links.fund.href;
+    });
+
 // TODO: Update below
     return;
     it("[Alice] Can execute the funding action", async () => {
