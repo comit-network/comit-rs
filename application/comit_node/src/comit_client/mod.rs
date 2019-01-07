@@ -27,6 +27,10 @@ pub trait ClientFactory<C>: Send + Sync + Debug {
     fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<Arc<C>, ClientFactoryError>;
 }
 
+pub trait ClientPool: Send + Sync + Debug + 'static {
+    fn connected_addrs(&self) -> Vec<SocketAddr>;
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SwapReject {
     Declined { reason: Option<SwapDeclineReason> },
