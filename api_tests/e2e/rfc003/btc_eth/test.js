@@ -32,13 +32,16 @@ describe("RFC003: Bitcoin for Ether", () => {
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.eth().fund(alice_initial_eth);
         await alice.wallet.btc().fund(10);
-        await bitcoin_rpc_client_conf.btc_import_address(bob_final_address); // Watch only import
+        // Watch only import
+        await bitcoin_rpc_client_conf.btc_import_address(bob_final_address);
+        // Watch only import
         await bitcoin_rpc_client_conf.btc_import_address(
             alice.wallet.btc().identity().address
-        ); // Watch only import
+        );
+        // Watch only import
         await bitcoin_rpc_client_conf.btc_import_address(
             bob.wallet.btc().identity().address
-        ); // Watch only import
+        );
         await bitcoin_rpc_client_conf.btc_generate();
 
         await balance_util.log_eth_balance(
