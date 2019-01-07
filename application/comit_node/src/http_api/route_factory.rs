@@ -1,4 +1,5 @@
 use crate::{
+    comit_client::ClientPool,
     http_api::{self, rfc003::action::GetActionQueryParams},
     seed::Seed,
     swap_protocols::{
@@ -9,11 +10,17 @@ use crate::{
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>, A: AliceSpawner>(
+pub fn create<
+    T: MetadataStore<SwapId>,
+    S: state_store::StateStore<SwapId>,
+    A: AliceSpawner,
+    C: ClientPool,
+>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     alice_spawner: Arc<A>,
     seed: Seed,
+    comit_client_pool: Arc<C>,
 ) -> BoxedFilter<(impl Reply,)> {
     let seed = Arc::new(seed);
     let path = warp::path(http_api::PATH);
@@ -23,6 +30,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>, A: A
     let state_store = warp::any().map(move || state_store.clone());
     let empty_json_body = warp::any().map(|| json!({}));
     let alice_spawner = warp::any().map(move || alice_spawner.clone());
+    let comit_client_pool = warp::any().map(move || comit_client_pool.clone());
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -68,11 +76,18 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>, A: A
         .and(warp::path::end())
         .and_then(http_api::rfc003::action::get);
 
+    let get_peers = warp::path("peers")
+        .and(comit_client_pool.clone())
+        .and(warp::get2())
+        .and(warp::path::end())
+        .and_then(http_api::peers);
+
     rfc003_get_swap
         .or(rfc003_post_swap)
         .or(rfc003_post_action)
         .or(rfc003_get_action)
         .or(get_swaps)
+        .or(get_peers)
         .with(warp::log("http"))
         .recover(http_api::unpack_problem)
         .boxed()

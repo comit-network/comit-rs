@@ -16,6 +16,10 @@ pub use self::problem::*;
 
 pub const PATH: &str = "swaps";
 
+use crate::comit_client::ClientPool;
+use std::{net::SocketAddr, sync::Arc};
+use warp::{self, Rejection, Reply};
+
 mod ledger_impls {
     use super::ledger::{Error, FromHttpLedger, HttpLedger, ToHttpLedger};
     use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
@@ -64,6 +68,19 @@ mod lock_duration_impls {
 
     impl_to_http_lock_duration!(Blocks);
     impl_to_http_lock_duration!(Seconds);
+}
+
+#[derive(Debug, Serialize)]
+struct GetPeers {
+    pub peers: Vec<SocketAddr>,
+}
+
+pub fn peers<C: ClientPool>(comit_client_pool: Arc<C>) -> Result<impl Reply, Rejection> {
+    let response = GetPeers {
+        peers: comit_client_pool.connected_addrs(),
+    };
+
+    Ok(warp::reply::json(&response))
 }
 
 #[cfg(test)]

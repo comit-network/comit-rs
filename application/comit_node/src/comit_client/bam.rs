@@ -1,8 +1,8 @@
 use crate::{
     bam_api::{self, header::ToBamHeader},
     comit_client::{
-        rfc003, Client, ClientFactory, ClientFactoryError, SwapDeclineReason, SwapReject,
-        SwapResponseError,
+        rfc003, Client, ClientFactory, ClientFactoryError, ClientPool, SwapDeclineReason,
+        SwapReject, SwapResponseError,
     },
     swap_protocols::{self, asset::Asset, SwapProtocols},
 };
@@ -202,5 +202,17 @@ impl ClientFactory<BamClient> for BamClientPool {
                 Ok(client.clone())
             }
         }
+    }
+}
+
+impl ClientPool for BamClientPool {
+    fn connected_addrs(&self) -> Vec<SocketAddr> {
+        let clients = self.clients.read().unwrap();
+
+        let mut keys = Vec::new();
+        for key in clients.keys() {
+            keys.push(key.clone());
+        }
+        keys
     }
 }
