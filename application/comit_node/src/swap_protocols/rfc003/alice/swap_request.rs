@@ -57,3 +57,15 @@ impl From<SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> for Me
         }
     }
 }
+
+impl From<SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> for Metadata {
+    fn from(_: SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>) -> Self {
+        Self {
+            alpha_ledger: LedgerKind::Ethereum,
+            beta_ledger: LedgerKind::Bitcoin,
+            alpha_asset: AssetKind::Erc20,
+            beta_asset: AssetKind::Bitcoin,
+            role: RoleKind::Alice,
+        }
+    }
+}
