@@ -214,15 +214,34 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         alice_fund_href = links.fund.href;
     });
 
-// TODO: Update below
-    return;
-    it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.should.include.all.keys("address", "value");
+    let alice_fund_action;
 
-        await alice.wallet.send_btc_to_address(
-            alice_funding_action.address,
-            parseInt(alice_funding_action.value)
+    it("[Alice] Can get the fund action from the ‘fund’ link", async () => {
+        let res = await chai.request(alice.comit_node_url()).get(alice_fund_href);
+        res.should.have.status(200);
+        alice_fund_action = res.body;
+
+        logger.info(
+            "Alice retrieved the following funding parameters",
+            alice_fund_action
         );
+    });
+
+    it("[Alice] Can execute the fund action", async () => {
+        alice_fund_action.should.include.all.keys(
+            "to",
+            "data",
+            "gas_limit",
+            "value"
+        );
+        let { to, data, gas_limit, value } = alice_fund_action;
+        let receipt = await alice.wallet.send_eth_transaction_to(
+            to,
+            data,
+            value,
+            gas_limit
+        );
+        receipt.status.should.equal(true);
     });
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
@@ -230,7 +249,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         await alice.poll_comit_node_until(chai, alice_swap_href, "AlphaFunded");
     });
 
-    let bob_deploy_href;
+    let bob_funding_href;
 
     it("[Bob] Should be in AlphaFunded state after Alice executes the funding action", async function() {
         this.timeout(10000);
@@ -240,95 +259,37 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             "AlphaFunded"
         );
         swap.should.have.property("_links");
-        swap._links.should.have.property("deploy");
-        bob_deploy_href = swap._links.deploy.href;
+        swap._links.should.have.property("fund");
+        bob_funding_href = swap._links.fund.href;
     });
 
-    let bob_deploy_action;
+    let bob_funding_action;
 
-    it("[Bob] Can get the deploy action from the ‘deploy’ link", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(bob_deploy_href);
+    it("[Bob] Can get the funding action from the ‘fund’ link", async () => {
+        let res = await chai
+            .request(bob.comit_node_url())
+            .get(bob_funding_href);
         res.should.have.status(200);
-        bob_deploy_action = res.body;
-
-        logger.info(
-            "Bob retrieved the following deployment parameters",
-            bob_deploy_action
-        );
-    });
-
-    it("[Bob] Can execute the deploy action", async () => {
-        bob_deploy_action.should.include.all.keys("data", "gas_limit", "value");
-        bob_deploy_action.value.should.equal("0");
-        await bob.wallet.deploy_eth_contract(
-            bob_deploy_action.data,
-            "0x0",
-            bob_deploy_action.gas_limit
-        );
-    });
-
-    it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the funding action", async function() {
-        this.timeout(10000);
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "AlphaFundedBetaDeployed"
-        );
-    });
-
-    let bob_fund_href;
-
-    it("[Bob] Should be in AlphaFundedBetaDeployed state after executing the funding action", async function() {
-        this.timeout(10000);
-        let swap = await bob.poll_comit_node_until(
-            chai,
-            bob_swap_href,
-            "AlphaFundedBetaDeployed"
-        );
-        let links = swap._links;
-        links.should.have.property("fund");
-        bob_fund_href = links.fund.href;
-    });
-
-    let bob_fund_action;
-
-    it("[Bob] Can get the fund action from the ‘fund’ link", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(bob_fund_href);
-        res.should.have.status(200);
-        bob_fund_action = res.body;
+        bob_funding_action = res.body;
 
         logger.info(
             "Bob retrieved the following funding parameters",
-            bob_fund_action
+            bob_funding_action
         );
     });
 
-    it("[Bob] Can execute the fund action", async () => {
-        bob_fund_action.should.include.all.keys(
-            "to",
-            "data",
-            "gas_limit",
-            "value"
+    it("[Bob] Can execute the funding action", async () => {
+        bob_funding_action.should.include.all.keys("address", "value");
+        await bob.wallet.send_btc_to_address(
+            bob_funding_action.address,
+            parseInt(bob_funding_action.value)
         );
-        let { to, data, gas_limit, value } = bob_fund_action;
-        let receipt = await bob.wallet.send_eth_transaction_to(
-            to,
-            data,
-            value,
-            gas_limit
-        );
-        receipt.status.should.equal(true);
-    });
-
-    it("[Bob] Should be in BothFunded state after executing the funding action", async function() {
-        this.timeout(100000000);
-        await bob.poll_comit_node_until(chai, bob_swap_href, "BothFunded");
     });
 
     let alice_redeem_href;
 
     it("[Alice] Should be in BothFunded state after Bob executes the funding action", async function() {
-        this.timeout(100000000);
+        this.timeout(10000);
         let swap = await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
@@ -338,6 +299,13 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         swap._links.should.have.property("redeem");
         alice_redeem_href = swap._links.redeem.href;
     });
+
+    it("[Bob] Should be in BothFunded state after executing the funding action", async function() {
+        this.timeout(10000);
+        await bob.poll_comit_node_until(chai, bob_swap_href, "BothFunded");
+    });
+
+    return;
 
     let alice_redeem_action;
 
