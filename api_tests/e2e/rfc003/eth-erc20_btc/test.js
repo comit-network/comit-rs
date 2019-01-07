@@ -355,8 +355,6 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         alice_btc_balance_after.should.be.at.least(alice_btc_balance_expected);
     });
 
-    return;
-
     let bob_redeem_href;
 
     it("[Bob] Should be in AlphaFundedBetaRedeemed state after Alice executes the redeem action", async function() {
@@ -376,12 +374,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     it("[Bob] Can get the redeem action from the ‘redeem’ link", async () => {
         let res = await chai
             .request(bob.comit_node_url())
-            .get(
-                bob_redeem_href +
-                    "?address=" +
-                    bob_final_address +
-                    "&fee_per_byte=20"
-            );
+            .get(bob_redeem_href);
         res.should.have.status(200);
         bob_redeem_action = res.body;
 
@@ -391,12 +384,25 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         );
     });
 
-    let bob_btc_balance_before;
+    let bob_erc20_balance_before;
 
     it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.should.include.all.keys("hex");
-        bob_btc_balance_before = await test_lib.btc_balance(bob_final_address);
-        await bob.wallet.send_raw_tx(bob_redeem_action.hex);
+        bob_redeem_action.should.include.all.keys(
+            "to",
+            "data",
+            "gas_limit",
+            "value"
+        );
+        bob_erc20_balance_before = await test_lib.erc20_balance(
+            bob_final_address,
+            token_contract_address
+        );
+        await bob.wallet.send_eth_transaction_to(
+            bob_redeem_action.to,
+            bob_redeem_action.data,
+            bob_redeem_action.value,
+            bob_redeem_action.gas_limit
+        );
     });
 
     it("[Alice] Should be in BothRedeemed state after Bob executes the redeem action", async function() {
@@ -414,11 +420,16 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_btc_balance_after = await test_lib.btc_balance(
-            bob_final_address
+        let bob_erc20_balance_after = await test_lib.erc20_balance(
+            bob_final_address,
+            token_contract_address
         );
-        const bob_btc_balance_expected =
-            bob_btc_balance_before + alpha_asset - alpha_max_fee;
-        bob_btc_balance_after.should.be.at.least(bob_btc_balance_expected);
+
+        let bob_erc20_balance_expected = bob_erc20_balance_before.add(
+            alpha_asset_amount
+        );
+        bob_erc20_balance_after
+            .toString()
+            .should.be.equal(bob_erc20_balance_expected.toString());
     });
 });
