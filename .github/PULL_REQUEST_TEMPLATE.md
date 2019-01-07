@@ -8,7 +8,7 @@ Please include a description of your change & check your PR against this list, t
 - [ ] The code is formatted using `cargo fmt`
 - [ ] The project and tests runs: `cargo make all`
 
-- [ ] You agree to the [Contributor License Agreement](../CONTRIBUTING.md)
+- [ ] You agree to the [Contributor License Agreement](../CONTRIBUTING.md#contributor-license-agreement)
 
 ---
 - [ ] RTM (Ready To Merge)
