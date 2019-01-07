@@ -153,31 +153,31 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         res.body.state.should.equal("Accepted");
     });
 
-    let alice_funding_href;
+    let alice_deploy_href;
 
-    it("[Alice] Can get the HTLC fund action", async () => {
+    it("[Alice] Can get the HTLC deploy action", async () => {
         let res = await chai
             .request(alice.comit_node_url())
             .get(alice_swap_href);
         res.should.have.status(200);
         res.body.state.should.equal("Accepted");
         let links = res.body._links;
-        links.should.have.property("fund");
-        alice_funding_href = links.fund.href;
+        links.should.have.property("deploy");
+        alice_deploy_href = links.deploy.href;
     });
 
-    let alice_funding_action;
+    let alice_deploy_action;
 
-    it("[Alice] Can get the funding action from the ‘fund’ link", async () => {
+    it("[Alice] Can get the deploy action from the ‘deploy’ link", async () => {
         let res = await chai
             .request(alice.comit_node_url())
-            .get(alice_funding_href);
+            .get(alice_deploy_href);
         res.should.have.status(200);
-        alice_funding_action = res.body;
+        alice_deploy_action = res.body;
 
         logger.info(
-            "Alice retrieved the following funding parameters",
-            alice_funding_action
+            "Alice retrieved the following deploy parameters",
+            alice_deploy_action
         );
     });
 // TODO: Update below
