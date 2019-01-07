@@ -6,7 +6,7 @@ Please include a description of your change & check your PR against this list, t
 - [ ] If it resolves a ticket, please add `Resolves #[Issue number]`
 - [ ] Commit messages are meaningful
 - [ ] The code is formatted using `cargo fmt`
-- [ ] The project compiles: `cargo make build`
+- [ ] The project and tests runs: `cargo make all`
 
 - [ ] You agree to the [Contributor License Agreement](../CONTRIBUTING.md)
 
