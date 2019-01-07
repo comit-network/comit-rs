@@ -17,8 +17,8 @@ const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 const bob_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 
-const alpha_asset = new ethutil.BN(web3.utils.toWei("10", "ether"), 10);
-const beta_asset = 100000000;
+const alpha_asset_amount = new ethutil.BN(web3.utils.toWei("10", "ether"), 10);
+const beta_asset_amount = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
 
 describe("RFC003: Ether for Bitcoin", () => {
@@ -130,11 +130,11 @@ describe("RFC003: Ether for Bitcoin", () => {
                 },
                 alpha_asset: {
                     name: "Ether",
-                    quantity: alpha_asset.toString(),
+                    quantity: alpha_asset_amount.toString(),
                 },
                 beta_asset: {
                     name: "Bitcoin",
-                    quantity: beta_asset.toString(),
+                    quantity: beta_asset_amount.toString(),
                 },
                 alpha_ledger_refund_identity: alice.wallet.eth_address(),
                 beta_ledger_redeem_identity: null,
@@ -353,7 +353,7 @@ describe("RFC003: Ether for Bitcoin", () => {
         );
 
         const alice_btc_balance_expected =
-            alice_btc_balance_before + beta_asset - beta_max_fee;
+            alice_btc_balance_before + beta_asset_amount - beta_max_fee;
         alice_btc_balance_after.should.be.at.least(alice_btc_balance_expected);
     });
 
@@ -407,7 +407,7 @@ describe("RFC003: Ether for Bitcoin", () => {
             bob_final_address
         );
 
-        let bob_eth_balance_expected = bob_eth_balance_before.add(alpha_asset);
+        let bob_eth_balance_expected = bob_eth_balance_before.add(alpha_asset_amount);
         bob_eth_balance_after
             .toString()
             .should.be.equal(bob_eth_balance_expected.toString());

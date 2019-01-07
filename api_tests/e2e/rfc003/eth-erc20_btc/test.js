@@ -305,14 +305,17 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         await bob.poll_comit_node_until(chai, bob_swap_href, "BothFunded");
     });
 
-    return;
-
     let alice_redeem_action;
 
     it("[Alice] Can get the redeem action from the ‘redeem’ link", async () => {
         let res = await chai
             .request(alice.comit_node_url())
-            .get(alice_redeem_href);
+            .get(
+                alice_redeem_href +
+                "?address=" +
+                alice_final_address +
+                "&fee_per_byte=20"
+            );
         res.should.have.status(200);
         alice_redeem_action = res.body;
 
@@ -322,25 +325,15 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         );
     });
 
-    let alice_erc20_balance_before;
+    let alice_btc_balance_before;
 
     it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.should.include.all.keys(
-            "to",
-            "data",
-            "gas_limit",
-            "value"
+        alice_redeem_action.should.include.all.keys("hex");
+        alice_btc_balance_before = await test_lib.btc_balance(
+            alice_final_address
         );
-        alice_erc20_balance_before = await test_lib.erc20_balance(
-            alice_final_address,
-            token_contract_address
-        );
-        await alice.wallet.send_eth_transaction_to(
-            alice_redeem_action.to,
-            alice_redeem_action.data,
-            alice_redeem_action.value,
-            alice_redeem_action.gas_limit
-        );
+        await alice.wallet.send_raw_tx(alice_redeem_action.hex);
+        await test_lib.btc_generate();
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
@@ -353,18 +346,16 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_erc20_balance_after = await test_lib.erc20_balance(
-            alice_final_address,
-            token_contract_address
+        let alice_btc_balance_after = await test_lib.btc_balance(
+            alice_final_address
         );
 
-        let alice_erc20_balance_expected = alice_erc20_balance_before.add(
-            beta_asset_amount
-        );
-        alice_erc20_balance_after
-            .toString()
-            .should.be.equal(alice_erc20_balance_expected.toString());
+        const alice_btc_balance_expected =
+            alice_btc_balance_before + beta_asset_amount - beta_max_fee;
+        alice_btc_balance_after.should.be.at.least(alice_btc_balance_expected);
     });
+
+    return;
 
     let bob_redeem_href;
 
