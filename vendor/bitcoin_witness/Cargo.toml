@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 bitcoin_support = { path = "../bitcoin_support" }
 secp256k1_support = { path = "../secp256k1_support" }
+failure = "0.1"
 
 [dev-dependencies]
 bitcoin_rpc_client = "0.4"

@@ -163,11 +163,11 @@ mod test {
     use std::str::FromStr;
 
     #[test]
-    fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() {
+    fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() -> Result<(), failure::Error> {
         let private_key =
-            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
         let keypair: KeyPair = private_key.secret_key().clone().into();
-        let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl").unwrap();
+        let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl")?;
         let txid = Sha256dHash::default();
 
         let primed_txn = PrimedTransaction {
@@ -194,5 +194,6 @@ mod test {
 
         assert_eq!(estimated_weight, actual_weight, "weight is correct");
         assert_eq!(fee, 4589, "actual fee paid is correct");
+        Ok(())
     }
 }
