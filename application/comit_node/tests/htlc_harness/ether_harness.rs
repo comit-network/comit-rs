@@ -25,17 +25,20 @@ pub struct EtherHarnessParams {
 
 impl Default for EtherHarnessParams {
     fn default() -> Self {
-        EtherHarnessParams::from(Secret::from_vec(SECRET).unwrap().hash())
+        Self {
+            alice_initial_ether: EtherQuantity::from_eth(1.0),
+            htlc_timeout: HTLC_TIMEOUT,
+            htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
+            htlc_eth_value: EtherQuantity::from_eth(0.4),
+        }
     }
 }
 
-impl From<SecretHash> for EtherHarnessParams {
-    fn from(secret_hash: SecretHash) -> Self {
+impl EtherHarnessParams {
+    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
         Self {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_eth_value: EtherQuantity::from_eth(0.4),
-            htlc_timeout: HTLC_TIMEOUT,
             htlc_secret_hash: secret_hash,
+            ..self
         }
     }
 }

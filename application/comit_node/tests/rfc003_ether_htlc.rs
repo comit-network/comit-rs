@@ -154,8 +154,10 @@ fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_tr
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
     ]);
 
-    let (_alice, bob, htlc, client, _handle, _container) =
-        ether_harness(&docker, EtherHarnessParams::from(secret.hash()));
+    let (_alice, bob, htlc, client, _handle, _container) = ether_harness(
+        &docker,
+        EtherHarnessParams::default().with_secret_hash(secret.hash()),
+    );
 
     assert_eq!(
         client.eth_balance_of(bob),

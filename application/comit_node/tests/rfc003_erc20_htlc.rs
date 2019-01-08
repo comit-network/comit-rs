@@ -276,8 +276,10 @@ fn given_funded_erc20_htlc_when_redeemed_with_short_secret_then_tokens_should_no
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
     ]);
 
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
-        erc20_harness(&docker, Erc20HarnessParams::from(secret.hash()));
+    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
+        &docker,
+        Erc20HarnessParams::default().with_secret_hash(secret.hash()),
+    );
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {

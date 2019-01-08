@@ -39,14 +39,11 @@ impl Default for Erc20HarnessParams {
     }
 }
 
-impl From<SecretHash> for Erc20HarnessParams {
-    fn from(secret_hash: SecretHash) -> Self {
+impl Erc20HarnessParams {
+    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
         Self {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_timeout: HTLC_TIMEOUT,
             htlc_secret_hash: secret_hash,
-            alice_initial_tokens: U256::from(1000),
-            htlc_token_value: U256::from(400),
+            ..self
         }
     }
 }
