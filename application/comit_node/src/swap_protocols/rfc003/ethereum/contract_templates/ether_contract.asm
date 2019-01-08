@@ -2,6 +2,15 @@
     // Placeholder for deployment timestamp
     0x50000005
 
+    // Load expect secret size
+    0x20
+
+    // Load received secret size
+    calldatasize
+
+    // Compare secret size
+    eq
+
     // Load secret into memory
     calldatacopy(0, 0, 32)
 
@@ -18,6 +27,9 @@
     eq
 
     // Combine `eq` result with `call` result
+    and
+
+    // Combine result above with `eq` for the datasize
     and
 
     // Jump to redeem if hashes match

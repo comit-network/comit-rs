@@ -5,7 +5,7 @@ use crate::{
 };
 use comit_node::swap_protocols::rfc003::{
     ethereum::{EtherHtlc, Seconds},
-    Secret,
+    Secret, SecretHash,
 };
 use ethereum_support::{
     web3::{transports::EventLoopHandle, types::Address},
@@ -19,7 +19,7 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct EtherHarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_timeout: Duration,
-    pub htlc_secret: [u8; 32],
+    pub htlc_secret_hash: SecretHash,
     pub htlc_eth_value: EtherQuantity,
 }
 
@@ -27,9 +27,18 @@ impl Default for EtherHarnessParams {
     fn default() -> Self {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_eth_value: EtherQuantity::from_eth(0.4),
             htlc_timeout: HTLC_TIMEOUT,
-            htlc_secret: SECRET.clone(),
+            htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
+            htlc_eth_value: EtherQuantity::from_eth(0.4),
+        }
+    }
+}
+
+impl EtherHarnessParams {
+    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
+        Self {
+            htlc_secret_hash: secret_hash,
+            ..self
         }
     }
 }
@@ -69,7 +78,7 @@ pub fn ether_harness<D: Docker>(
             Seconds::from(params.htlc_timeout),
             alice,
             bob,
-            Secret::from(params.htlc_secret).hash(),
+            params.htlc_secret_hash,
         ),
         params.htlc_eth_value.wei(),
     );

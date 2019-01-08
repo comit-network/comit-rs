@@ -10,12 +10,13 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::{ether_harness, EtherHarnessParams, HTLC_TIMEOUT, SECRET};
-use ethereum_support::{Bytes, EtherQuantity, H256, U256};
+use crate::htlc_harness::{
+    ether_harness, CustomSizeSecret, EtherHarnessParams, HTLC_TIMEOUT, SECRET,
+};
+use ethereum_support::{Bytes, EtherQuantity, H256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
 
-const HTLC_GAS_COST: u64 = 10885000;
 // keccak256(Redeemed())
 const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
 // keccak256(Refunded())
@@ -24,16 +25,12 @@ const REFUNDED_LOG_MSG: &str = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A2
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let docker = Cli::default();
-    let (alice, bob, htlc, client, _handle, _container) =
+    let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
 
     assert_eq!(
         client.eth_balance_of(bob),
         EtherQuantity::from_eth(0.0).wei()
-    );
-    assert_eq!(
-        client.eth_balance_of(alice),
-        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
 
     assert_eq!(
@@ -49,10 +46,6 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
         EtherQuantity::from_eth(0.4).wei()
     );
     assert_eq!(
-        client.eth_balance_of(alice),
-        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
-    );
-    assert_eq!(
         client.eth_balance_of(htlc),
         EtherQuantity::from_eth(0.0).wei()
     );
@@ -61,16 +54,12 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 #[test]
 fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     let docker = Cli::default();
-    let (alice, bob, htlc, client, _handle, _container) =
+    let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
 
     assert_eq!(
         client.eth_balance_of(bob),
         EtherQuantity::from_eth(0.0).wei()
-    );
-    assert_eq!(
-        client.eth_balance_of(alice),
-        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
@@ -85,10 +74,6 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     assert_eq!(
         client.eth_balance_of(bob),
         EtherQuantity::from_eth(0.0).wei()
-    );
-    assert_eq!(
-        client.eth_balance_of(alice),
-        EtherQuantity::from_eth(1.0).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
@@ -99,16 +84,12 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 #[test]
 fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
     let docker = Cli::default();
-    let (alice, bob, htlc, client, _handle, _container) =
+    let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
 
     assert_eq!(
         client.eth_balance_of(bob),
         EtherQuantity::from_eth(0.0).wei()
-    );
-    assert_eq!(
-        client.eth_balance_of(alice),
-        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
@@ -121,10 +102,6 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
     assert_eq!(
         client.eth_balance_of(bob),
         EtherQuantity::from_eth(0.0).wei()
-    );
-    assert_eq!(
-        client.eth_balance_of(alice),
-        EtherQuantity::from_eth(0.6).wei() - U256::from(HTLC_GAS_COST)
     );
     assert_eq!(
         client.eth_balance_of(htlc),
@@ -166,4 +143,45 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let topic: H256 = REFUNDED_LOG_MSG.into();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
+}
+
+#[test]
+fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_transferred(
+) -> Result<(), failure::Error> {
+    let docker = Cli::default();
+    let secret = CustomSizeSecret(vec![
+        1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+    ]);
+
+    let (_alice, bob, htlc, client, _handle, _container) = ether_harness(
+        &docker,
+        EtherHarnessParams::default().with_secret_hash(secret.hash()),
+    );
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    client.send_data(
+        htlc,
+        Some(Bytes(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8])),
+    );
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+    Ok(())
 }
