@@ -5,3 +5,7 @@ config_dir = "./regtest/alice/"
 [comit_node.bob]
 host = "127.0.0.1"
 config_dir = "./regtest/bob/"
+
+[comit_node.charlie]
+host = "127.0.0.1"
+config_dir = "./regtest/charlie/"

@@ -19,9 +19,6 @@ pub struct ComitNodeSettings {
 
 #[derive(Debug, Deserialize)]
 pub struct Comit {
-    #[serde(with = "serde::socket_addr")]
-    pub remote_comit_node_url: SocketAddr,
-    #[serde(with = "serde::socket_addr")]
     pub comit_listen: SocketAddr,
     pub secret_seed: Seed,
 }
