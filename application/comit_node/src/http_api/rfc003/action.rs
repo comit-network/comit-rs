@@ -213,6 +213,14 @@ impl IntoResponseBody for bitcoin::SpendOutput {
             } => match fee_per_byte.parse::<f64>() {
                 Ok(fee_per_byte) => {
                     let transaction = self.spend_to(address).sign_with_rate(fee_per_byte);
+                    let transaction = match transaction {
+                        Ok(transaction) => transaction,
+                        Err(e) => {
+                            error!("Could not sign Bitcoin transaction: {:?}", e);
+                            return Err(HttpApiProblem::with_title_and_type_from_status(500)
+                                .set_detail("Issue encountered when signing Bitcoin transaction"));
+                        }
+                    };
                     match serialize_hex(&transaction) {
                         Ok(hex) => {
                             Ok(ActionResponseBody::BroadcastSignedBitcoinTransaction { hex })
