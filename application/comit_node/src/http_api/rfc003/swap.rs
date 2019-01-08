@@ -31,11 +31,14 @@ pub const PROTOCOL_NAME: &str = "rfc003";
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SwapRequestBodyKind {
+    BitcoinEthereumBitcoinQuantityErc20Quantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    ),
     BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
-    BitcoinEthereumBitcoinQuantityErc20Quantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    EthereumBitcoinErc20QuantityBitcoinQuantity(
+        SwapRequestBody<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
     ),
     EthereumBitcoinEtherQuantityBitcoinQuantity(
         SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
@@ -225,17 +228,22 @@ fn handle_post_swap<A: AliceSpawner>(
     let id = SwapId::default();
 
     match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => alice_spawner
-            .spawn(
-                id,
-                rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
-            )?,
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => alice_spawner
             .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )?,
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => alice_spawner
+            .spawn(
+                id,
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
+            )?,
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinQuantity(body) => alice_spawner
+            .spawn(
+                id,
+                rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
+            )?,
+        SwapRequestBodyKind::EthereumBitcoinErc20QuantityBitcoinQuantity(body) => alice_spawner
             .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,

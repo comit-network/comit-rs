@@ -103,6 +103,29 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Respon
                                 Ok(Response::new(Status::SE(0)))
                             }
                         }))
+                    } else if let Ok(swap_request) =
+                        decode_request::<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>(
+                            &request,
+                        )
+                    {
+                        let response_future = match bob_spawner.spawn(swap_id, swap_request) {
+                            Ok(response_future) => response_future,
+                            Err(e) => {
+                                error!("Unable to spawn Bob: {:?}", e);
+                                return Box::new(future::ok(Response::new(Status::RE(0))));
+                            }
+                        };
+
+                        Box::new(response_future.then(move |result| match result {
+                            Ok(response) => Ok(to_bam_response::<Ethereum, Bitcoin>(response)),
+                            Err(_) => {
+                                warn!(
+                                    "Failed to receive from oneshot channel for swap {}",
+                                    swap_id
+                                );
+                                Ok(Response::new(Status::SE(0)))
+                            }
+                        }))
                     } else {
                         // TODO: Specify and implement response code
                         Box::new(future::ok(Response::new(Status::SE(0))))

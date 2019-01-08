@@ -25,7 +25,7 @@ const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 
-const alpha_asset = 100000000;
+const alpha_asset_amount = 100000000;
 const beta_asset_amount = new ethutil.BN(web3.utils.toWei("5000", "ether"), 10);
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
@@ -81,7 +81,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
                 },
                 alpha_asset: {
                     name: "Bitcoin",
-                    quantity: alpha_asset.toString(),
+                    quantity: alpha_asset_amount.toString(),
                 },
                 beta_asset: {
                     name: "ERC20",
@@ -241,7 +241,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
             );
     });
 
-    it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the funding action", async function() {
+    it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the deploy action", async function() {
         this.timeout(10000);
         await alice.poll_comit_node_until(
             chai,
@@ -252,7 +252,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     let bob_fund_href;
 
-    it("[Bob] Should be in AlphaFundedBetaDeployed state after executing the funding action", async function() {
+    it("[Bob] Should be in AlphaFundedBetaDeployed state after executing the deploy action", async function() {
         this.timeout(10000);
         let swap = await bob.poll_comit_node_until(
             chai,
@@ -434,7 +434,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
             bob_final_address
         );
         const bob_btc_balance_expected =
-            bob_btc_balance_before + alpha_asset - alpha_max_fee;
+            bob_btc_balance_before + alpha_asset_amount - alpha_max_fee;
         bob_btc_balance_after.should.be.at.least(bob_btc_balance_expected);
     });
 });

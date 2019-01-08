@@ -45,6 +45,7 @@ fn main() -> Result<(), failure::Error> {
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         dependencies.clone(),
+        Arc::clone(&comit_client_factory),
         &mut runtime,
     );
 
@@ -94,11 +95,12 @@ fn create_dependencies<T, S, C>(
     }
 }
 
-fn spawn_warp_instance<S: AliceSpawner>(
+fn spawn_warp_instance<S: AliceSpawner, C: comit_client::ClientPool>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
     state_store: Arc<InMemoryStateStore<SwapId>>,
     alice_spawner: Arc<S>,
+    comit_client_pool: Arc<C>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(
@@ -106,6 +108,7 @@ fn spawn_warp_instance<S: AliceSpawner>(
         state_store,
         alice_spawner,
         settings.comit.secret_seed,
+        comit_client_pool,
     );
 
     let server = warp::serve(routes).bind(SocketAddr::new(

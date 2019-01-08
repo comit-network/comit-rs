@@ -134,6 +134,21 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
+    it("[Alice] Should see Bob's IP in her list of peers after sending a swap request to him", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .get("/peers")
+            .then(res => {
+                res.should.have.status(200);
+                const bob_comit_listen_port = bob.config.comit.comit_listen.split(
+                    ":"
+                )[1];
+                const bob_comit_socket_addr =
+                    bob.host + ":" + bob_comit_listen_port;
+                res.body.peers.should.eql([bob_comit_socket_addr]);
+            });
+    });
+
     let alice_stingy_swap_href;
     it("[Alice] Should be able to make second swap request via HTTP api", async () => {
         await chai
