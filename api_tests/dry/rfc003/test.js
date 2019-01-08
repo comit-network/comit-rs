@@ -26,8 +26,10 @@ const bob = test_lib.comit_conf("bob", {});
 const charlie = test_lib.comit_conf("charlie", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const bob_comit_node_address = bob.host + ":" + bob.config.comit.comit_listen.split(":")[1];
-const charlie_comit_node_address = charlie.host + ":" + charlie.config.comit.comit_listen.split(":")[1];
+const bob_comit_node_address =
+    bob.config.comit.comit_listen;
+const charlie_comit_node_address =
+    charlie.config.comit.comit_listen;
 
 describe("RFC003 HTTP API", () => {
     it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
@@ -82,7 +84,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: "",
                 beta_ledger_redeem_identity: "",
                 alpha_ledger_lock_duration: 0,
-                peer_address: "0.0.0.0",
+                peer: "0.0.0.0",
             })
             .then(res => {
                 res.should.have.status(400);
@@ -127,7 +129,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: alpha_ledger_lock_duration,
-                peer_address: bob_comit_node_address
+                peer: bob_comit_node_address,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -172,7 +174,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: alpha_ledger_lock_duration,
-                peer_address: bob_comit_node_address
+                peer: bob_comit_node_address,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -219,17 +221,18 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(200);
                 let embedded = res.body._embedded;
                 embedded.should.be.a("object");
-                embedded.swaps.should.have.lengthOf(2);
                 let swaps = embedded.swaps;
-                for (swap of swaps) {
-                    swap.protocol.should.equal("rfc003");
-                    swap.state.should.equal("Start");
-                    let links = swap._links;
-                    links.self.href.should.be.oneOf([
-                        alice_reasonable_swap_href,
-                        alice_stingy_swap_href,
-                    ]);
-                }
+                let reasonable_swap_in_swaps = {
+                        _links: { self: { href: alice_reasonable_swap_href } },
+                        protocol: "rfc003",
+                        state: "Start",
+                };
+                let stingy_swap_in_swaps = {
+                    _links: { self: { href: alice_stingy_swap_href } },
+                    protocol: "rfc003",
+                    state: "Start",
+                };
+                swaps.should.have.deep.members([stingy_swap_in_swaps, reasonable_swap_in_swaps]);
             });
     });
 
@@ -400,7 +403,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: alpha_ledger_lock_duration,
-                peer_address: charlie_comit_node_address
+                peer: charlie_comit_node_address,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -438,14 +441,10 @@ describe("RFC003 HTTP API", () => {
             .get("/peers")
             .then(res => {
                 res.should.have.status(200);
-
-                let peers = res.body.peers;
-                for (peer of peers) {
-                    peer.should.be.oneOf([
-                        charlie_comit_node_address,
-                        bob_comit_node_address,
-                    ]);
-                }
+                res.body.peers.should.have.deep.members([
+                    charlie_comit_node_address,
+                    bob_comit_node_address,
+                ]);
             });
     });
 });
