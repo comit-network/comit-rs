@@ -59,6 +59,7 @@ impl From<Address> for PubkeyHash {
             // TODO: from/into should never fail. Remove this panic by
             // creating a PubkeyAddress type which is guaranteed to
             // have a PubkeyHash inside it.
+            // This is tracked in ticket https://github.com/comit-network/comit-rs/issues/629
             _ => panic!("Address {} isn't a pubkey address", address.to_string()),
         }
     }
