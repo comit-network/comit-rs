@@ -8,11 +8,11 @@ extern crate serde_derive;
 #[macro_use]
 extern crate log;
 
+mod bitcoin;
 mod block_processor;
-mod connectors;
+mod ethereum;
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;
-mod queries;
 mod query_repository;
 mod query_result_repository;
 pub mod route_factory;
@@ -20,11 +20,11 @@ mod routes;
 pub mod settings;
 
 pub use crate::{
+    bitcoin::{bitcoind_zmq_listener::*, queries::*},
     block_processor::*,
-    connectors::{bitcoind_zmq_listener::*, ethereum_web3_block_poller::*},
+    ethereum::{ethereum_web3_block_poller::*, queries::*},
     in_memory_query_repository::*,
     in_memory_query_result_repository::*,
-    queries::*,
     query_repository::*,
     query_result_repository::*,
     route_factory::*,

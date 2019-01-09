@@ -11,11 +11,10 @@ use ethereum_support::web3::{
 };
 use futures::stream::Stream;
 use ledger_query_service::{
-    bitcoin::{BitcoinBlockQuery, BitcoinTransactionQuery},
-    ethereum::{EthereumBlockQuery, EthereumTransactionQuery},
     settings::{self, Settings},
-    BlockProcessor, DefaultBlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository,
-    QueryResultRepository, RouteFactory,
+    BitcoinBlockQuery, BitcoinTransactionQuery, BlockProcessor, DefaultBlockProcessor,
+    EthereumBlockQuery, EthereumTransactionQuery, InMemoryQueryRepository,
+    InMemoryQueryResultRepository, QueryResultRepository, RouteFactory,
 };
 use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
