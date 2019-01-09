@@ -24,6 +24,7 @@ const bob = actor.create("bob");
 const charlie = actor.create("charlie");
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+const alice_comit_node_address = alice.config.comit.comit_listen;
 const bob_comit_node_address = bob.config.comit.comit_listen;
 const charlie_comit_node_address = charlie.config.comit.comit_listen;
 
@@ -101,6 +102,16 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
+    it("[Bob] Should have no peers before receiving a swap request from Alice", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .get("/peers")
+            .then(res => {
+                res.should.have.status(200);
+                res.body.peers.should.have.length(0);
+            });
+    });
+
     let alice_reasonable_swap_href;
     it("[Alice] Should be able to make first swap request via HTTP api", async () => {
         await chai
@@ -136,13 +147,23 @@ describe("RFC003 HTTP API", () => {
             });
     });
 
-    it("[Alice] Should see Bob's IP in her list of peers after sending a swap request to him", async () => {
+    it("[Alice] Should see Bob in her list of peers after sending a swap request to him", async () => {
         await chai
             .request(alice.comit_node_url())
             .get("/peers")
             .then(res => {
                 res.should.have.status(200);
                 res.body.peers.should.eql([bob_comit_node_address]);
+            });
+    });
+
+    it("[Bob] Should see a new peer in his list of peers after receiving a swap request from Alice", async () => {
+        await chai
+            .request(bob.comit_node_url())
+            .get("/peers")
+            .then(res => {
+                res.should.have.status(200);
+                res.body.peers.should.have.length(1);
             });
     });
 
@@ -178,6 +199,26 @@ describe("RFC003 HTTP API", () => {
                 swap_location = res.headers.location;
                 swap_location.should.be.a("string");
                 alice_stingy_swap_href = swap_location;
+            });
+    });
+
+    it("[Alice] Should still only see Bob in her list of peers after sending a second swap request to him", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .get("/peers")
+            .then(res => {
+                res.should.have.status(200);
+                res.body.peers.should.eql([bob_comit_node_address]);
+            });
+    });
+
+    it("[Bob] Should still only see one peer in his list of peers after receiving a second swap request from Alice", async () => {
+        await chai
+            .request(bob.comit_node_url())
+            .get("/peers")
+            .then(res => {
+                res.should.have.status(200);
+                res.body.peers.should.have.length(1);
             });
     });
 

@@ -25,6 +25,7 @@ pub trait Client: Send + Sync + 'static {
 
 pub trait ClientFactory<C>: Send + Sync + Debug {
     fn client_for(&self, comit_node_socket_addr: SocketAddr) -> Result<Arc<C>, ClientFactoryError>;
+    fn add_client(&self, comit_node_socket_addr: SocketAddr, client: Arc<C>);
 }
 
 pub trait ClientPool: Send + Sync + Debug + 'static {
