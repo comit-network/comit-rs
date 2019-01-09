@@ -90,6 +90,6 @@ impl ClientFactory<FakeClient> for FakeClientFactory {
         &self,
         _comit_node_socket_addr: SocketAddr,
     ) -> Result<Arc<FakeClient>, ClientFactoryError> {
-        Ok(self.fake_client.clone())
+        Ok(Arc::clone(&self.fake_client))
     }
 }

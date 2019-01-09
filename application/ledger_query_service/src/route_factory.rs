@@ -78,8 +78,8 @@ impl RouteFactory {
 
         let external_url = self.external_url.clone();
         let external_url = warp::any().map(move || external_url.clone());
-        let query_repository = warp::any().map(move || query_repository.clone());
-        let query_result_repository = warp::any().map(move || query_result_repository.clone());
+        let query_repository = warp::any().map(move || Arc::clone(&query_repository));
+        let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
         let client = warp::any().map(move || client.clone());
 
         let json_body = warp::body::json().and_then(routes::non_empty_query);

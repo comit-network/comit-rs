@@ -25,7 +25,13 @@ pub use bitcoin::{
 };
 use bitcoin_bech32;
 
-pub use crate::{blocks::*, mined_block::*, pubkey::*, transaction::*, weight::*};
+pub use crate::{
+    blocks::*,
+    mined_block::*,
+    pubkey::*,
+    transaction::*,
+    weight::{Error as WeightError, *},
+};
 pub use bitcoin_quantity::*;
 
 mod blocks;

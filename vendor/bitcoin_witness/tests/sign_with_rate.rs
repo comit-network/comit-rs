@@ -35,7 +35,7 @@ fn sign_with_rate() {
         locktime: 0,
     };
 
-    let redeem_tx = primed_tx.sign_with_rate(rate);
+    let redeem_tx = primed_tx.sign_with_rate(rate).unwrap();
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
 

@@ -10,7 +10,7 @@ impl Blocks {
         Blocks(num_blocks)
     }
 }
-
+#[allow(clippy::cast_possible_truncation)]
 impl From<Duration> for Blocks {
     fn from(duration: Duration) -> Self {
         let seconds = duration.as_secs();

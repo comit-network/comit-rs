@@ -79,7 +79,7 @@ git config core.hooksPath .githooks
 # Overridden because: we want to fail if there are warnings (-D warn)
 [tasks.clippy]
 workspace = false
-args = ["clippy", "--", "-D", "warnings"]
+args = ["clippy", "--", "-W", "clippy::cast_possible_truncation", "-W", "clippy::cast_sign_loss", "-W", "clippy::fallible_impl_from", "-W", "clippy::cast_precision_loss",  "-W", "clippy::cast_possible_wrap", "-W", "clippy::print_stdout", "-D", "warnings"]
 
 ################
 # Task aliases #
