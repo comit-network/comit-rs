@@ -36,8 +36,14 @@ Contains crates specific to our application. Can depend on libraries located in 
 ## Testing
 
 - `cargo make` runs the whole test suite including integration tests but not end-to-end.
-- `cargo make all` also runs the whole test suite, including end-to-end tests. 
-- `cargo make e2e` only runs end-to-end tests.
+- `cargo make all` also runs the whole test suite, including end-to-end tests.
+- `cargo make format` to format Rust code
+- `cargo make js-format` to format JavaScript code
+- `cargo make lqs` to run Ledger Query Service
+- `cargo make dry` to run COMIT node dry tests
+- `cargo make e2e` to run COMIT node end-to-end tests
+- `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob)
+
 
 ## Configuration
 

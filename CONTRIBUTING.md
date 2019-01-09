@@ -30,12 +30,20 @@ The public key can be found on [coblox.tech](https://coblox.tech/security_coblox
 
 Thank you for taking the time to make COMIT safer!
 
-
 ## Feature Requests
 
 To request a change on the way COMIT works, please head over to the [RFCs repository](https://github.com/comit-network/rfc) and checkout the [RFC contributing guidelines](https://github.com/comit-network/rfc/blob/master/CONTRIBUTING.md).
  
 For changes related to our implementation, please [create a feature request](/issues/new/choose) and follow the GitHub template.
+
+## Fixing an issue
+
+If you wish to pick up an existing issue and resolve it, please be aware of the following labels:
+- [Unlabelled](https://github.com/comit-network/comit-rs/issues?q=is%3Aopen+no%3Alabel): it has not yet been reviewed for design, please avoid
+- [`icebox`](https://github.com/comit-network/comit-rs/labels/icebox): it is not the right time to proceed with this issue, please do not pick it
+- [`groomed`](https://github.com/comit-network/comit-rs/labels/groomed): it has been discussed and should contain enough details to get started
+- [`sprint-backlog`](https://github.com/comit-network/comit-rs/labels/sprint-backlog): it will be picked up in our next sprint, you can get started only if it is **not** assigned
+- [`candidate-contribution`](https://github.com/comit-network/comit-rs/labels/candidate-contribution): it has been groomed to be used as part of our hiring process; [keen to join?](https://coblox.tech/#hiring)
 
 ## Pull Requests
 
