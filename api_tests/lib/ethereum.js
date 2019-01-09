@@ -2,17 +2,66 @@ const bitcoin = require("bitcoinjs-lib");
 const ethutil = require("ethereumjs-util");
 const EthereumTx = require("ethereumjs-tx");
 const fs = require("fs");
-const test_lib = require("./test_lib.js");
+const util = require("./util.js");
 const web3_conf = require("./web3_conf.js");
 
 const web3 = web3_conf.create();
-const logger = test_lib.logger();
+const logger = util.logger();
+
+async function eth_balance(address) {
+    return web3.eth
+        .getBalance(address)
+        .then(balance => new ethutil.BN(balance, 10));
+}
+
+module.exports.eth_balance = async function(address) {
+    return eth_balance(address);
+};
+
+module.exports.log_eth_balance = async function(
+    when,
+    player,
+    address,
+    address_type
+) {
+    util
+        .logger()
+        .info(
+            "%s the swap, %s has %s wei at the %s address %s",
+            when,
+            player,
+            await eth_balance(address),
+            address_type,
+            address
+        );
+};
+
+{
+    const function_identifier = "40c10f19";
+    module.exports.mint_erc20_tokens = (
+        owner_wallet,
+        contract_address,
+        to_address,
+        amount
+    ) => {
+        to_address = to_address.replace(/^0x/, "").padStart(64, "0");
+        amount = web3.utils
+            .numberToHex(amount)
+            .replace(/^0x/, "")
+            .padStart(64, "0");
+        const payload = "0x" + function_identifier + to_address + amount;
+
+        return owner_wallet
+            .eth()
+            .send_eth_transaction_to(contract_address, payload, "0x0");
+    };
+}
 
 const token_contract_deploy =
     "0x" +
     fs
         .readFileSync(
-            test_lib.project_root +
+            util.project_root +
                 "/application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
             "utf8"
         )
@@ -20,7 +69,7 @@ const token_contract_deploy =
 
 class EthereumWallet {
     constructor() {
-        this.keypair = bitcoin.ECPair.makeRandom({ rng: test_lib.test_rng });
+        this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this._address =
             "0x" +
             ethutil.privateToAddress(this.keypair.privateKey).toString("hex");

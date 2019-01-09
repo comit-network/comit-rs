@@ -1,3 +1,4 @@
+require("./util.js");
 const Web3 = require("web3");
 
 let web3;

@@ -1,9 +1,9 @@
 const Toml = require("toml");
-const wallet_conf = require("./wallet_conf.js");
+const wallet = require("./wallet.js");
 const fs = require("fs");
 
-class ComitNodeConf {
-    constructor(name, bitcoin_utxo) {
+class Actor {
+    constructor(name) {
         const node_config = global.harness.config.comit_node[name];
         if (!node_config) {
             throw new Error("comit_node." + name + " configuration is needed");
@@ -13,7 +13,7 @@ class ComitNodeConf {
         this.config = Toml.parse(
             fs.readFileSync(node_config.config_dir + "/default.toml", "utf8")
         );
-        this.wallet = wallet_conf.create(name);
+        this.wallet = wallet.create(name);
     }
 
     comit_node_url() {
@@ -47,6 +47,6 @@ class ComitNodeConf {
     }
 }
 
-module.exports.create = (name, utxo) => {
-    return new ComitNodeConf(name, utxo);
+module.exports.create = (name) => {
+    return new Actor(name);
 };

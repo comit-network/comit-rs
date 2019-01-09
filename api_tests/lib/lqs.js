@@ -1,4 +1,4 @@
-class LedgerQueryServiceConf {
+class LedgerQueryService {
     constructor(host, port) {
         this.host = host;
         this.port = port;
@@ -34,5 +34,5 @@ class LedgerQueryServiceConf {
 }
 
 module.exports.create = (host, port) => {
-    return new LedgerQueryServiceConf(host, port);
+    return new LedgerQueryService(host, port);
 };

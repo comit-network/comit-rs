@@ -1,6 +1,6 @@
 const chai = require("chai");
-const web3_conf = require("../../web3_conf.js");
-const comit_node_conf = require("../../comit_node_conf.js");
+const web3_conf = require("../../lib/web3_conf.js");
+const actor = require("../../lib/actor.js");
 const should = chai.should();
 chai.use(require("chai-http"));
 const web3 = web3_conf.create();
@@ -22,8 +22,8 @@ const beta_asset_quantity = new BigNumber(
 
 const alpha_ledger_lock_duration = 144;
 
-const alice = comit_node_conf.create("alice", {});
-const bob = comit_node_conf.create("bob", {});
+const alice = actor.create("alice", {});
+const bob = actor.create("bob", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 

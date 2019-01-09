@@ -1,20 +1,25 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
-const test_lib = require("../../../test_lib.js");
+const util = require("../../../lib/util.js");
+const wallet = require("../../../lib/wallet.js");
+const web3_conf = require("../../../lib/web3_conf.js");
+const bitcoin = require("../../../lib/bitcoin.js");
+const actor = require("../../../lib/actor.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
 
-const web3 = test_lib.web3();
-const logger = test_lib.logger();
+const web3 = web3_conf.create();
+const logger = util.logger();
+const bitcoin_rpc_client = bitcoin.create_client();
 
-const toby_wallet = test_lib.wallet_conf();
+const toby_wallet = wallet.create("toby");
 
 const toby_initial_eth = "10";
 const alice_initial_eth = "5";
 const alice_initial_erc20 = web3.utils.toWei("10000", "ether");
 
-const alice = test_lib.comit_conf("alice", {});
-const bob = test_lib.comit_conf("bob", {});
+const alice = actor.create("alice");
+const bob = actor.create("bob");
 
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
@@ -28,22 +33,22 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await test_lib.btc_activate_segwit();
-        await toby_wallet.fund_eth(toby_initial_eth);
-        await alice.wallet.fund_eth(alice_initial_eth);
-        await bob.wallet.fund_btc(10);
-        await bob.wallet.fund_eth(1);
+        await bitcoin.btc_activate_segwit();
+        await toby_wallet.eth().fund(toby_initial_eth);
+        await alice.wallet.eth().fund(alice_initial_eth);
+        await bob.wallet.btc().fund(10);
+        await bob.wallet.eth().fund(1);
         let receipt = await toby_wallet.deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
 
-        await test_lib.btc_import_address(alice_final_address); // Watch only import
-        await test_lib.btc_generate();
+        await bitcoin.btc_import_address(alice_final_address); // Watch only import
+        await bitcoin.btc_generate();
     });
 
     it(alice_initial_erc20 + " tokens were minted to Alice", async function() {
-        let alice_wallet_address = alice.wallet.eth_address();
+        let alice_wallet_address = alice.wallet.eth().address();
 
-        let receipt = await test_lib.mint_erc20_tokens(
+        let receipt = await ethereum.mint_erc20_tokens(
             toby_wallet,
             token_contract_address,
             alice_wallet_address,
@@ -52,7 +57,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
 
         receipt.status.should.equal(true);
 
-        let erc20_balance = await test_lib.erc20_balance(
+        let erc20_balance = await util.erc20_balance(
             alice_wallet_address,
             token_contract_address
         );
@@ -128,7 +133,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
 
     it("[Bob] Can execute the accept action", async () => {
         let bob_response = {
-            beta_ledger_refund_identity: bob.wallet.eth_address(),
+            beta_ledger_refund_identity: bob.wallet.eth().address(),
             alpha_ledger_redeem_identity: bob_final_address,
             beta_ledger_lock_duration: 288,
         };
@@ -329,11 +334,11 @@ describe("RFC003: ERC20 for Bitcoin", () => {
 
     it("[Alice] Can execute the redeem action", async function() {
         alice_redeem_action.should.include.all.keys("hex");
-        alice_btc_balance_before = await test_lib.btc_balance(
+        alice_btc_balance_before = await bitcoin.btc_balance(
             alice_final_address
         );
-        await alice.wallet.send_raw_tx(alice_redeem_action.hex);
-        await test_lib.btc_generate();
+        await bitcoin_rpc_client.sendRawTransaction(alice_redeem_action.hex);
+        await bitcoin.btc_generate();
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
@@ -346,7 +351,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_btc_balance_after = await test_lib.btc_balance(
+        let alice_btc_balance_after = await bitcoin.btc_balance(
             alice_final_address
         );
 
@@ -393,7 +398,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             "gas_limit",
             "value"
         );
-        bob_erc20_balance_before = await test_lib.erc20_balance(
+        bob_erc20_balance_before = await util.erc20_balance(
             bob_final_address,
             token_contract_address
         );
@@ -420,7 +425,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_erc20_balance_after = await test_lib.erc20_balance(
+        let bob_erc20_balance_after = await util.erc20_balance(
             bob_final_address,
             token_contract_address
         );
