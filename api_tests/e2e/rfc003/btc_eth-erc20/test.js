@@ -25,6 +25,7 @@ const bob = actor.create("bob", {});
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
+const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_amount = 100000000;
 const beta_asset_amount = new ethutil.BN(web3.utils.toWei("5000", "ether"), 10);
@@ -92,6 +93,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: 144,
+                peer: bob_comit_node_address,
             });
 
         res.should.have.status(201);

@@ -35,7 +35,7 @@ impl<K: Hash + Eq + Clone + Send + Sync + 'static> StateStore<K> for InMemorySta
         }
 
         let state = Arc::new(RwLock::new(None));
-        let value: Box<dyn Any + Send + Sync> = Box::new(state.clone());
+        let value: Box<dyn Any + Send + Sync> = Box::new(Arc::clone(&state));
         let _ = states.insert(key, value);
 
         Ok(state)

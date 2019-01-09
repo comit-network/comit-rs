@@ -80,7 +80,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> A
             self.ledger_events.create_ledger_events(),
             self.ledger_events.create_ledger_events(),
             Arc::clone(&self.comit_client_factory),
-            self.remote_comit_node,
+            swap_request.bob_socket_address,
             save_state,
         );
 

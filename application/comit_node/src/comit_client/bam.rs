@@ -190,7 +190,7 @@ impl ClientFactory<BamClient> for BamClientPool {
                 }));
                 let client = Arc::new(BamClient::new(comit_node_socket_addr, client));
                 let mut clients = self.clients.write().unwrap();
-                clients.insert(comit_node_socket_addr, client.clone());
+                clients.insert(comit_node_socket_addr, Arc::clone(&client));
                 debug!(
                     "Client for {} created by making a new connection",
                     comit_node_socket_addr
@@ -199,7 +199,7 @@ impl ClientFactory<BamClient> for BamClientPool {
             }
             Some(client) => {
                 debug!("Retrieved existing client for {}", comit_node_socket_addr);
-                Ok(client.clone())
+                Ok(Arc::clone(&client))
             }
         }
     }

@@ -5,7 +5,7 @@ use crate::{
 };
 use comit_node::swap_protocols::rfc003::{
     ethereum::{Erc20Htlc, Seconds},
-    Secret,
+    Secret, SecretHash,
 };
 use ethereum_support::{
     web3::{
@@ -22,7 +22,7 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct Erc20HarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_timeout: Duration,
-    pub htlc_secret: [u8; 32],
+    pub htlc_secret_hash: SecretHash,
     pub alice_initial_tokens: U256,
     pub htlc_token_value: U256,
 }
@@ -32,9 +32,18 @@ impl Default for Erc20HarnessParams {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_timeout: HTLC_TIMEOUT,
-            htlc_secret: SECRET.clone(),
+            htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
+        }
+    }
+}
+
+impl Erc20HarnessParams {
+    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
+        Self {
+            htlc_secret_hash: secret_hash,
+            ..self
         }
     }
 }
@@ -79,7 +88,7 @@ pub fn erc20_harness<D: Docker>(
         Seconds::from(params.htlc_timeout),
         alice,
         bob,
-        Secret::from(params.htlc_secret).hash(),
+        params.htlc_secret_hash,
         token_contract,
         params.htlc_token_value,
     );

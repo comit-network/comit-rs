@@ -1,9 +1,20 @@
 use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{
-    Address, BitcoinQuantity, OutPoint, Script, SigHashType, SighashComponents, Transaction, TxIn,
-    TxOut, Weight,
+    self, Address, BitcoinQuantity, OutPoint, Script, SigHashType, SighashComponents, Transaction,
+    TxIn, TxOut, Weight,
 };
 use secp256k1_support::{DerSerializableSignature, Message};
+
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    FeeTooHigh,
+}
+
+impl From<bitcoin_support::WeightError> for Error {
+    fn from(_error: bitcoin_support::WeightError) -> Error {
+        Error::FeeTooHigh
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrimedInput {
@@ -89,16 +100,16 @@ impl PrimedTransaction {
         }
     }
 
-    pub fn sign_with_rate(self, fee_per_byte: f64) -> Transaction {
+    pub fn sign_with_rate(self, fee_per_byte: f64) -> Result<Transaction, Error> {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight: Weight = transaction.get_weight().into();
-        let fee = weight.calculate_fee(fee_per_byte);
+        let fee = weight.calculate_fee(fee_per_byte)?;
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
         self._sign(&mut transaction);
-        transaction
+        Ok(transaction)
     }
 
     pub fn sign_with_fee(self, fee: BitcoinQuantity) -> Transaction {
@@ -152,11 +163,11 @@ mod test {
     use std::str::FromStr;
 
     #[test]
-    fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() {
+    fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() -> Result<(), failure::Error> {
         let private_key =
-            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
+            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
         let keypair: KeyPair = private_key.secret_key().clone().into();
-        let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl").unwrap();
+        let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl")?;
         let txid = Sha256dHash::default();
 
         let primed_txn = PrimedTransaction {
@@ -176,12 +187,13 @@ mod test {
         let rate = 42.0;
 
         let estimated_weight = primed_txn.estimate_weight();
-        let transaction = primed_txn.sign_with_rate(rate);
+        let transaction = primed_txn.sign_with_rate(rate).unwrap();
 
         let actual_weight: Weight = transaction.get_weight().into();
         let fee = total_input_value.satoshi() - transaction.output[0].value;
 
         assert_eq!(estimated_weight, actual_weight, "weight is correct");
         assert_eq!(fee, 4589, "actual fee paid is correct");
+        Ok(())
     }
 }

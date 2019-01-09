@@ -18,7 +18,7 @@ impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
 
         let location = OutPoint {
             txid: self.txid(),
-            vout: vout as u32,
+            vout,
         };
 
         let actual_value = BitcoinQuantity::from_satoshi(txout.value);

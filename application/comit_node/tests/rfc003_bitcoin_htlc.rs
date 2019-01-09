@@ -1,3 +1,16 @@
+#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
+#![deny(unsafe_code)]
+
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate lazy_static;
+
+pub mod ethereum_wallet;
+pub mod htlc_harness;
+pub mod parity_client;
+
+use crate::htlc_harness::CustomSizeSecret;
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
@@ -7,47 +20,25 @@ use bitcoin_witness::{
     PrimedInput, PrimedTransaction, UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
 };
 use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret, SecretHash};
-use crypto::{digest::Digest, sha2::Sha256};
-use hex::FromHexError;
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
-pub struct CustomSizeSecret(Vec<u8>);
-
 impl CustomSizeSecret {
-    pub fn unlock_with_secret(&self, htlc: &Htlc, keypair: KeyPair) -> UnlockParameters {
+    pub fn unlock_with_secret(self, htlc: &Htlc, keypair: KeyPair) -> UnlockParameters {
         let public_key = keypair.public_key();
         UnlockParameters {
             witness: vec![
                 Witness::Signature(keypair),
                 Witness::PublicKey(public_key),
-                Witness::Data(self.0.to_vec()),
+                Witness::Data(self.0),
                 Witness::Bool(true),
                 Witness::PrevScript,
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             prev_script: htlc.script().clone(),
         }
-    }
-
-    pub fn hash(&self) -> SecretHash {
-        let mut sha = Sha256::new();
-        sha.input(&self.0[..]);
-
-        let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
-        sha.result(&mut result);
-        SecretHash::from(result)
-    }
-}
-
-impl FromStr for CustomSizeSecret {
-    type Err = FromHexError;
-
-    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        let secret = s.as_bytes().to_vec();
-        Ok(CustomSizeSecret(secret))
     }
 }
 

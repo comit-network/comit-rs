@@ -227,8 +227,6 @@ mod tests {
 
         let address = htlc.compute_address(Network::Regtest);
 
-        println!("{}", address);
-
         assert_eq!(
             address.to_string(),
             "bcrt1ql9a4vfcj36qzp5zf2vrul8c62jmksj88545xpcpgwy25mf87um7qwz35pj"

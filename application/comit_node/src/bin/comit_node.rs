@@ -91,7 +91,6 @@ fn create_dependencies<T, S, C>(
         state_store,
         comit_client_factory,
         seed: settings.comit.secret_seed,
-        remote_comit_node: settings.comit.remote_comit_node_url,
     }
 }
 

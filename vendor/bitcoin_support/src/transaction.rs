@@ -73,16 +73,18 @@ fn any_unlock_script_matches(txin: &TxIn, unlock_script: &[Vec<u8>]) -> bool {
 }
 
 pub trait FindOutput {
-    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(usize, &TxOut)>;
+    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(u32, &TxOut)>;
 }
 
+#[allow(clippy::cast_possible_truncation)]
 impl FindOutput for Transaction {
-    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(usize, &TxOut)> {
+    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(u32, &TxOut)> {
         let to_address_script_pubkey = to_address.script_pubkey();
 
         self.output
             .iter()
             .enumerate()
+            .map(|(index, txout)| (index as u32, txout))
             .find(|(_, txout)| txout.script_pubkey == to_address_script_pubkey)
     }
 }

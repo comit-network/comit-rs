@@ -5,6 +5,7 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Quantity, EtherQuantity};
+use std::net::SocketAddr;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
@@ -14,6 +15,7 @@ pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
     pub beta_ledger: BL,
     pub alpha_ledger_lock_duration: AL::LockDuration,
     pub identities: SwapRequestIdentities<AL, BL>,
+    pub bob_socket_address: SocketAddr,
 }
 
 #[derive(Clone, Debug, PartialEq)]

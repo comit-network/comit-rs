@@ -89,7 +89,7 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 
         let handler = JsonFrameHandler {
             next_expected_id: 0,
-            response_source: response_source.clone(),
+            response_source: Arc::clone(&response_source),
             config,
         };
 
