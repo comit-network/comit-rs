@@ -23,8 +23,13 @@ const alpha_ledger_lock_duration = 144;
 
 const alice = test_lib.comit_conf("alice", {});
 const bob = test_lib.comit_conf("bob", {});
+const charlie = test_lib.comit_conf("charlie", {});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+const bob_comit_node_address =
+    bob.config.comit.comit_listen;
+const charlie_comit_node_address =
+    charlie.config.comit.comit_listen;
 
 describe("RFC003 HTTP API", () => {
     it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
@@ -79,6 +84,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: "",
                 beta_ledger_redeem_identity: "",
                 alpha_ledger_lock_duration: 0,
+                peer: "0.0.0.0",
             })
             .then(res => {
                 res.should.have.status(400);
@@ -123,6 +129,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: alpha_ledger_lock_duration,
+                peer: bob_comit_node_address,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -139,12 +146,7 @@ describe("RFC003 HTTP API", () => {
             .get("/peers")
             .then(res => {
                 res.should.have.status(200);
-                const bob_comit_listen_port = bob.config.comit.comit_listen.split(
-                    ":"
-                )[1];
-                const bob_comit_socket_addr =
-                    bob.host + ":" + bob_comit_listen_port;
-                res.body.peers.should.eql([bob_comit_socket_addr]);
+                res.body.peers.should.eql([bob_comit_node_address]);
             });
     });
 
@@ -172,6 +174,7 @@ describe("RFC003 HTTP API", () => {
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_ledger_lock_duration: alpha_ledger_lock_duration,
+                peer: bob_comit_node_address,
             })
             .then(res => {
                 res.error.should.equal(false);
@@ -218,17 +221,18 @@ describe("RFC003 HTTP API", () => {
                 res.should.have.status(200);
                 let embedded = res.body._embedded;
                 embedded.should.be.a("object");
-                embedded.swaps.should.have.lengthOf(2);
                 let swaps = embedded.swaps;
-                for (swap of swaps) {
-                    swap.protocol.should.equal("rfc003");
-                    swap.state.should.equal("Start");
-                    let links = swap._links;
-                    links.self.href.should.be.oneOf([
-                        alice_reasonable_swap_href,
-                        alice_stingy_swap_href,
-                    ]);
-                }
+                let reasonable_swap_in_swaps = {
+                        _links: { self: { href: alice_reasonable_swap_href } },
+                        protocol: "rfc003",
+                        state: "Start",
+                };
+                let stingy_swap_in_swaps = {
+                    _links: { self: { href: alice_stingy_swap_href } },
+                    protocol: "rfc003",
+                    state: "Start",
+                };
+                swaps.should.have.deep.members([stingy_swap_in_swaps, reasonable_swap_in_swaps]);
             });
     });
 
@@ -373,5 +377,74 @@ describe("RFC003 HTTP API", () => {
             alice_reasonable_swap_href,
             "Rejected"
         );
+    });
+
+    let alice_swap_with_charlie_href;
+    it("[Alice] Should be able to send a swap request to a different node via HTTP api", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .post("/swaps/rfc003")
+            .send({
+                alpha_ledger: {
+                    name: alpha_ledger_name,
+                    network: alpha_ledger_network,
+                },
+                beta_ledger: {
+                    name: beta_ledger_name,
+                },
+                alpha_asset: {
+                    name: alpha_asset_name,
+                    quantity: alpha_asset_reasonable_quantity,
+                },
+                beta_asset: {
+                    name: beta_asset_name,
+                    quantity: beta_asset_quantity,
+                },
+                alpha_ledger_refund_identity: null,
+                beta_ledger_redeem_identity: alice_final_address,
+                alpha_ledger_lock_duration: alpha_ledger_lock_duration,
+                peer: charlie_comit_node_address,
+            })
+            .then(res => {
+                res.error.should.equal(false);
+                res.should.have.status(201);
+                swap_location = res.headers.location;
+                swap_location.should.be.a("string");
+                alice_swap_with_charlie_href = swap_location;
+            });
+    });
+
+    it("[Alice] Should be in Start state after sending the swap request to Charlie", async function() {
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_with_charlie_href,
+            "Start"
+        );
+    });
+
+    it("[Charlie] Shows the Swap as Start in /swaps", async () => {
+        let res = await chai.request(charlie.comit_node_url()).get("/swaps");
+
+        let embedded = res.body._embedded;
+        let swap_embedded = embedded.swaps[0];
+        swap_embedded.protocol.should.equal("rfc003");
+        swap_embedded.state.should.equal("Start");
+        let swap_link = swap_embedded._links;
+        swap_link.should.be.a("object");
+        let swap_href = swap_link.self.href;
+        swap_href.should.be.a("string");
+    });
+
+    it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {
+        await chai
+            .request(alice.comit_node_url())
+            .get("/peers")
+            .then(res => {
+                res.should.have.status(200);
+                res.body.peers.should.have.deep.members([
+                    charlie_comit_node_address,
+                    bob_comit_node_address,
+                ]);
+            });
     });
 });

@@ -19,8 +19,12 @@ const bob = test_lib.comit_conf("bob", {});
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 const bob_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+const bob_comit_node_address = bob.config.comit.comit_listen;
 
-const alpha_asset_amount = new ethutil.BN(web3.utils.toWei("5000", "ether"), 10);
+const alpha_asset_amount = new ethutil.BN(
+    web3.utils.toWei("5000", "ether"),
+    10
+);
 const beta_asset_amount = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
 
@@ -86,6 +90,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
                 alpha_ledger_refund_identity: bob_final_address,
                 beta_ledger_redeem_identity: null,
                 alpha_ledger_lock_duration: 21600,
+                peer: bob_comit_node_address,
             });
 
         res.should.have.status(201);
@@ -182,7 +187,11 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     });
 
     it("[Alice] Can execute the deploy action", async () => {
-        alice_deploy_action.should.include.all.keys("data", "gas_limit", "value");
+        alice_deploy_action.should.include.all.keys(
+            "data",
+            "gas_limit",
+            "value"
+        );
         alice_deploy_action.value.should.equal("0");
         await alice.wallet.deploy_eth_contract(
             alice_deploy_action.data,
@@ -193,11 +202,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
 
     it("[Bob] Should be in AlphaDeployed state after Alice executes the deploy action", async function() {
         this.timeout(10000);
-        await bob.poll_comit_node_until(
-            chai,
-            bob_swap_href,
-            "AlphaDeployed"
-        );
+        await bob.poll_comit_node_until(chai, bob_swap_href, "AlphaDeployed");
     });
 
     let alice_fund_href;
@@ -217,7 +222,9 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     let alice_fund_action;
 
     it("[Alice] Can get the fund action from the ‘fund’ link", async () => {
-        let res = await chai.request(alice.comit_node_url()).get(alice_fund_href);
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get(alice_fund_href);
         res.should.have.status(200);
         alice_fund_action = res.body;
 
@@ -312,9 +319,9 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             .request(alice.comit_node_url())
             .get(
                 alice_redeem_href +
-                "?address=" +
-                alice_final_address +
-                "&fee_per_byte=20"
+                    "?address=" +
+                    alice_final_address +
+                    "&fee_per_byte=20"
             );
         res.should.have.status(200);
         alice_redeem_action = res.body;
@@ -372,9 +379,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     let bob_redeem_action;
 
     it("[Bob] Can get the redeem action from the ‘redeem’ link", async () => {
-        let res = await chai
-            .request(bob.comit_node_url())
-            .get(bob_redeem_href);
+        let res = await chai.request(bob.comit_node_url()).get(bob_redeem_href);
         res.should.have.status(200);
         bob_redeem_action = res.body;
 

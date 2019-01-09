@@ -16,6 +16,7 @@ const bob = test_lib.comit_conf("bob", {});
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 const bob_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
+const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_amount = new ethutil.BN(web3.utils.toWei("10", "ether"), 10);
 const beta_asset_amount = 100000000;
@@ -139,6 +140,7 @@ describe("RFC003: Ether for Bitcoin", () => {
                 alpha_ledger_refund_identity: alice.wallet.eth_address(),
                 beta_ledger_redeem_identity: null,
                 alpha_ledger_lock_duration: 144,
+                peer: bob_comit_node_address,
             })
             .then(res => {
                 res.should.have.status(201);
@@ -407,7 +409,9 @@ describe("RFC003: Ether for Bitcoin", () => {
             bob_final_address
         );
 
-        let bob_eth_balance_expected = bob_eth_balance_before.add(alpha_asset_amount);
+        let bob_eth_balance_expected = bob_eth_balance_before.add(
+            alpha_asset_amount
+        );
         bob_eth_balance_after
             .toString()
             .should.be.equal(bob_eth_balance_expected.toString());
