@@ -1,7 +1,8 @@
+use super::block_processor::{Block, Transaction};
 use crate::{
-    block_processor::{Block, Query, QueryMatchResult, Transaction},
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    Query, QueryMatchResult,
 };
 use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{

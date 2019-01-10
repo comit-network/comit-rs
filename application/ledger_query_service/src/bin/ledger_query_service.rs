@@ -11,10 +11,17 @@ use ethereum_support::web3::{
 };
 use futures::stream::Stream;
 use ledger_query_service::{
+    bitcoin::{
+        block_processor::DefaultBlockProcessor as BitcoinDefaultBlockProcessor,
+        queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
+    },
+    ethereum::{
+        block_processor::DefaultBlockProcessor as EthereumDefaultBlockProcessor,
+        queries::{EthereumBlockQuery, EthereumTransactionQuery},
+    },
     settings::{self, Settings},
-    BitcoinBlockQuery, BitcoinTransactionQuery, BlockProcessor, DefaultBlockProcessor,
-    EthereumBlockQuery, EthereumTransactionQuery, InMemoryQueryRepository,
-    InMemoryQueryResultRepository, QueryResultRepository, RouteFactory,
+    BlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository,
+    RouteFactory,
 };
 use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
@@ -60,7 +67,7 @@ fn create_bitcoin_routes(
 
     info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
-    let mut transaction_processor = DefaultBlockProcessor::new(
+    let mut transaction_processor = BitcoinDefaultBlockProcessor::new(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
@@ -71,8 +78,10 @@ fn create_bitcoin_routes(
         let block_query_result_repository = block_query_result_repository.clone();
 
         let bitcoin_blocks =
-            ledger_query_service::bitcoin_block_listener(settings.zmq_endpoint.as_str())
-                .expect("Should return a Bitcoind received for MinedBlocks");
+            ledger_query_service::bitcoin::bitcoind_zmq_listener::bitcoin_block_listener(
+                settings.zmq_endpoint.as_str(),
+            )
+            .expect("Should return a Bitcoind received for MinedBlocks");
         let bitcoin_processor = bitcoin_blocks
             .and_then(move |block| transaction_processor.process(block))
             .for_each(move |(block_results, transaction_results)| {
@@ -121,7 +130,7 @@ fn create_ethereum_routes(
 
     info!("Starting EthereumSimpleListener on {}", settings.node_url);
 
-    let mut transaction_processor = DefaultBlockProcessor::new(
+    let mut transaction_processor = EthereumDefaultBlockProcessor::new(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
@@ -135,11 +144,12 @@ fn create_ethereum_routes(
         let transaction_query_result_repository = transaction_query_result_repository.clone();
         let block_query_result_repository = block_query_result_repository.clone();
 
-        let web3_blocks = ledger_query_service::ethereum_block_listener(
-            web3_client.clone(),
-            settings.poll_interval_secs,
-        )
-        .expect("Should return a Web3 block poller");
+        let web3_blocks =
+            ledger_query_service::ethereum::ethereum_web3_block_poller::ethereum_block_listener(
+                web3_client.clone(),
+                settings.poll_interval_secs,
+            )
+            .expect("Should return a Web3 block poller");
         let web3_processor = web3_blocks
             .and_then(move |block| transaction_processor.process(block))
             .for_each(move |(block_results, transaction_results)| {

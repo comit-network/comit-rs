@@ -1,8 +1,8 @@
 use crate::{
-    block_processor::Query,
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
     route_factory::{ExpandResult, QueryParams, ShouldExpand},
+    Query,
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
