@@ -45,6 +45,7 @@ dependencies = [
 [tasks.post-ci-flow]
 workspace = false
 dependencies = [
+    "git-status-check",
     "stop-sccache",
     "clean-registry"
 ]
@@ -137,7 +138,7 @@ echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier -l
 [tasks.travis]
 workspace = false
 # Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
+env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true", "COMPILE_EVM" = "1" }
 run_task = "ci-flow"
 
 [tasks.clean-registry]
@@ -203,6 +204,24 @@ workspace = false
 private = true
 command = "sccache"
 args = ["--stop-server"]
+
+[tasks.git-status-check]
+# Ensure that when Travis compiled did not modified tracked files
+# This can be used to verify there are no dirty non-ignored files
+# But also that when compiling the EVM assembly contracts,
+# the hex result is in line with what is committed
+description = "Ensure the build did not modify git-tracked files"
+workspace = false
+private = true
+script = [
+'''
+changes=$(git status -s |wc -l)
+[ "$changes" -eq 0 ] && exit 0
+echo "ERROR: Files have been modified by the build"
+git status -s
+exit 1
+'''
+]
 
 #####################
 # Dry api Test flow #
