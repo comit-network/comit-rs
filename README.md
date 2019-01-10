@@ -46,7 +46,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 - `cargo make dry` to run COMIT node dry tests
 - `cargo make e2e` to run COMIT node end-to-end tests
 - `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob)
-
+- `cargo make rebuild-evm` to rebuild evm assembly contracts (only needed when changing them)
 
 ## Configuration
 

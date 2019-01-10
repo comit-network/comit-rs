@@ -1,5 +1,3 @@
-extern crate regex;
-
 use regex::Regex;
 use std::{
     env::var,
@@ -10,12 +8,20 @@ use std::{
 };
 
 fn main() -> std::io::Result<()> {
-    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm")?;
-    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm")?;
-    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm")?;
-    compile("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm")?;
-
-    Ok(())
+    match var("COMPILE_EVM").as_ref().map(|s| s.as_str()) {
+        Ok("1") => {
+            compile("./src/swap_protocols/rfc003/ethereum/contract_templates/ether_contract.asm")?;
+            compile(
+                "./src/swap_protocols/rfc003/ethereum/contract_templates/ether_deploy_header.asm",
+            )?;
+            compile("./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_contract.asm")?;
+            compile(
+                "./src/swap_protocols/rfc003/ethereum/contract_templates/erc20_deploy_header.asm",
+            )?;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
 }
 
 fn compile(file_path: &'static str) -> std::io::Result<()> {

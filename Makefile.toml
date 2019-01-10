@@ -134,6 +134,12 @@ echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier -l
 '''
 ]
 
+[tasks.travis]
+workspace = false
+# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
+env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
+run_task = "ci-flow"
+
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
 # This command removes everything that is older than 30 days, thus keeping only very recent libraries.
@@ -154,12 +160,6 @@ find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
     -mindepth 2 -type d -ctime 30 -exec rm -rf "{}" \;
 '''
 ]
-
-[tasks.travis]
-workspace = false
-# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
-run_task = "ci-flow"
 
 [tasks.clean-registry-mac]
 condition = { platforms = ["mac"] }
@@ -204,7 +204,6 @@ private = true
 command = "sccache"
 args = ["--stop-server"]
 
-
 #####################
 # Dry api Test flow #
 [tasks.dry-tests-flow]
@@ -230,6 +229,12 @@ export ROOT=$(pwd);
 
 [tasks.pre-dry-tests]
 alias = "pre-e2e-tests"
+
+[tasks.rebuild-evm]
+description = "Build all releases and re-compile EVM assembly code to hex"
+workspace = false
+env = { "COMPILE_EVM" = "1" }
+run_task = "build"
 
 #################
 # E2E Test flow #

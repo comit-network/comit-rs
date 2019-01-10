@@ -1,3 +1,4 @@
+// IF YOU CHANGE THIS FILE BE SURE TO BUILD WITH ENV VAR "COMPILE_EVM=1" or `cargo make rebuild-evm`
 {
     mstore(0, timestamp)
     mstore8(27, 0x63)

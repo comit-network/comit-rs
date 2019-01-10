@@ -1,3 +1,4 @@
+// IF YOU CHANGE THIS FILE BE SURE TO BUILD WITH ENV VAR "COMPILE_EVM=1" or `cargo make rebuild-evm`
 {
     // Placeholder for deployment timestamp
     0x50000005
