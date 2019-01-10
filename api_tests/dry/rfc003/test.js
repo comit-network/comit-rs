@@ -1,8 +1,8 @@
 const chai = require("chai");
-const test_lib = require("../../test_lib.js");
+const Web3 = require("web3");
+const actor = require("../../lib/actor.js");
 const should = chai.should();
 chai.use(require("chai-http"));
-const web3 = test_lib.web3();
 const BigNumber = require("bignumber.js");
 
 const alpha_ledger_name = "Bitcoin";
@@ -15,21 +15,17 @@ const alpha_asset_reasonable_quantity = "100000000";
 const alpha_asset_stingy_quantity = "100";
 
 const beta_asset_name = "Ether";
-const beta_asset_quantity = new BigNumber(
-    web3.utils.toWei("10", "ether")
-).toString();
+const beta_asset_quantity = Web3.utils.toWei("10", "ether");
 
 const alpha_ledger_lock_duration = 144;
 
-const alice = test_lib.comit_conf("alice", {});
-const bob = test_lib.comit_conf("bob", {});
-const charlie = test_lib.comit_conf("charlie", {});
+const alice = actor.create("alice");
+const bob = actor.create("bob");
+const charlie = actor.create("charlie");
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const bob_comit_node_address =
-    bob.config.comit.comit_listen;
-const charlie_comit_node_address =
-    charlie.config.comit.comit_listen;
+const bob_comit_node_address = bob.config.comit.comit_listen;
+const charlie_comit_node_address = charlie.config.comit.comit_listen;
 
 describe("RFC003 HTTP API", () => {
     it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
@@ -223,16 +219,19 @@ describe("RFC003 HTTP API", () => {
                 embedded.should.be.a("object");
                 let swaps = embedded.swaps;
                 let reasonable_swap_in_swaps = {
-                        _links: { self: { href: alice_reasonable_swap_href } },
-                        protocol: "rfc003",
-                        state: "Start",
+                    _links: { self: { href: alice_reasonable_swap_href } },
+                    protocol: "rfc003",
+                    state: "Start",
                 };
                 let stingy_swap_in_swaps = {
                     _links: { self: { href: alice_stingy_swap_href } },
                     protocol: "rfc003",
                     state: "Start",
                 };
-                swaps.should.have.deep.members([stingy_swap_in_swaps, reasonable_swap_in_swaps]);
+                swaps.should.have.deep.members([
+                    stingy_swap_in_swaps,
+                    reasonable_swap_in_swaps,
+                ]);
             });
     });
 
