@@ -1,3 +1,4 @@
+const bitcoin = require("./lib/bitcoin.js");
 const execSync = require("child_process").execSync;
 const spawn = require("child_process").spawn;
 const Toml = require("toml");
@@ -80,7 +81,7 @@ let ledger_down_time = 0;
 }
 
 // To be done once all global variables are set
-const test_lib = require("./test_lib.js");
+const util = require("./lib/util.js");
 
 // *********************************************** //
 // Clean-up docker containers and processes helper //
@@ -131,7 +132,7 @@ async function startDockerContainers(ledgers, ledgers_config) {
 
 async function generateBlock(ledgers) {
     if (ledgers && ledgers.includes("bitcoin")) {
-        await test_lib.btc_generate();
+        await bitcoin.btc_generate();
     }
 }
 
@@ -192,7 +193,7 @@ describe("🛠", async function() {
             );
             subprocesses.push(subprocess);
             logger.info("++ Docker containers started");
-            await test_lib.sleep(ledger_up_time);
+            await util.sleep(ledger_up_time);
         }
 
         if (config.ledger_query_service) {
@@ -219,7 +220,7 @@ describe("🛠", async function() {
             });
         }
 
-        await test_lib.sleep(2000);
+        await util.sleep(2000);
     });
 
     beforeEach(async function() {

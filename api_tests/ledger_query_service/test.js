@@ -1,18 +1,13 @@
-const BigNumber = require("bignumber.js");
 const chai = require("chai");
 chai.use(require("chai-http"));
-const EthereumTx = require("ethereumjs-tx");
-const ethutil = require("ethereumjs-util");
-const fs = require("fs");
 const should = chai.should();
-const test_lib = require("../test_lib.js");
-const Toml = require("toml");
-const Web3 = require("web3");
+const bitcoin = require("../lib/bitcoin.js");
+const wallet = require("../lib/wallet.js");
+const lqs_conf = require("../lib/lqs.js");
 
-const bitcoin_rpc_client = test_lib.bitcoin_rpc_client();
-const lqs = test_lib.ledger_query_service_conf("localhost", 8080);
-const web3 = test_lib.web3();
-const wallet = test_lib.wallet_conf();
+const bitcoin_rpc_client = bitcoin.create_client();
+const lqs = lqs_conf.create("localhost", 8080);
+const toby_wallet = wallet.create("toby");
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -21,9 +16,9 @@ function sleep(ms) {
 describe("Test Ledger Query Service API", () => {
     before(async function() {
         this.timeout(5000);
-        await test_lib.btc_activate_segwit();
-        await wallet.fund_btc(5);
-        await wallet.fund_eth(20);
+        await bitcoin.btc_activate_segwit();
+        await toby_wallet.btc().fund(5);
+        await toby_wallet.eth().fund(20);
     });
 
     describe("Bitcoin", () => {
@@ -67,7 +62,8 @@ describe("Test Ledger Query Service API", () => {
 
             it("LQS should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
                 this.slow(1000);
-                return wallet
+                return toby_wallet
+                    .btc()
                     .send_btc_to_address(to_address, 100000000)
                     .then(() => {
                         return bitcoin_rpc_client.generate(1).then(() => {
@@ -184,7 +180,7 @@ describe("Test Ledger Query Service API", () => {
     describe("Ethereum", () => {
         describe("Transactions", () => {
             before(async () => {
-                await wallet.fund_eth(10);
+                await toby_wallet.eth().fund(10);
             });
 
             it("LQS should respond not found when getting a non-existent ethereum transaction query", async function() {
@@ -224,7 +220,8 @@ describe("Test Ledger Query Service API", () => {
             });
 
             it("LQS should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function() {
-                return wallet
+                return toby_wallet
+                    .eth()
                     .send_eth_transaction_to(
                         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                         "",
@@ -246,7 +243,8 @@ describe("Test Ledger Query Service API", () => {
 
             it("LQS should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function() {
                 this.slow(2000);
-                return wallet
+                return toby_wallet
+                    .eth()
                     .send_eth_transaction_to(to_address, "", 5)
                     .then(() => {
                         return lqs
@@ -315,11 +313,13 @@ describe("Test Ledger Query Service API", () => {
                 this.slow(6000);
                 return sleep(3000)
                     .then(() => {
-                        return wallet.send_eth_transaction_to(
-                            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                            "",
-                            1
-                        );
+                        return toby_wallet
+                            .eth()
+                            .send_eth_transaction_to(
+                                "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                                "",
+                                1
+                            );
                     })
                     .then(() => {
                         return lqs
