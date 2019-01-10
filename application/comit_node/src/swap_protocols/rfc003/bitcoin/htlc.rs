@@ -79,7 +79,7 @@ impl Htlc {
         if *expected_secret_hash != got_secret_hash {
             return Err(UnlockingError::WrongSecret {
                 got: got_secret_hash,
-                expected: expected_secret_hash.clone(),
+                expected: *expected_secret_hash,
             });
         }
 
