@@ -14,7 +14,7 @@ pub struct EtherHtlc {
 
 impl EtherHtlc {
     const CONTRACT_CODE_TEMPLATE: &'static str =
-        include_str!("./contract_templates/out/ether_contract.asm.hex");
+        include_str!("./contract_templates/hex/ether_contract.asm.hex");
     const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
     const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
@@ -22,7 +22,7 @@ impl EtherHtlc {
         "1000000000000000000000000000000000000000000000000000000000000001";
 
     const DEPLOY_HEADER_TEMPLATE: &'static str =
-        include_str!("./contract_templates/out/ether_deploy_header.asm.hex");
+        include_str!("./contract_templates/hex/ether_deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
 

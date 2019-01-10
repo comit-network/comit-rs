@@ -57,7 +57,7 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
 
     let path = Path::new(file_path);
     let folder = path.parent().unwrap().to_str().unwrap();
-    let folder = format!("{}/out", folder);
+    let folder = format!("{}/hex", folder);
     let file_name = path.file_name().unwrap().to_str().unwrap();
 
     DirBuilder::new().recursive(true).create(&folder).unwrap();
