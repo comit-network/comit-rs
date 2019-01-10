@@ -47,6 +47,6 @@ class Actor {
     }
 }
 
-module.exports.create = (name) => {
+module.exports.create = name => {
     return new Actor(name);
 };
