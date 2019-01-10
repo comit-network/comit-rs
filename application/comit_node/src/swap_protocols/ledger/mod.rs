@@ -38,7 +38,6 @@ pub trait Ledger:
         + Eq
         + Hash
         + 'static
-        + From<Self::Address>
         + Serialize
         + DeserializeOwned;
     type Transaction: Debug
