@@ -12,7 +12,7 @@ pub enum FromErr {
     FromHex(hex::FromHexError),
 }
 
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SecretHash([u8; Self::LENGTH]);
 
 impl SecretHash {
@@ -31,7 +31,7 @@ impl Debug for SecretHash {
 
 impl<'a> From<&'a SecretHash> for SecretHash {
     fn from(s: &'a SecretHash) -> Self {
-        s.clone()
+        *s
     }
 }
 
