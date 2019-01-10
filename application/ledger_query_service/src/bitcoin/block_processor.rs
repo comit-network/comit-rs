@@ -1,6 +1,6 @@
 use crate::{
     query_repository::QueryRepository, query_result_repository::QueryResultRepository,
-    BlockProcessor, Query, QueryMatchResult,
+    BlockProcessor, NonEmpty, Query, QueryMatchResult,
 };
 use futures::{future::join_all, Future};
 use std::{
@@ -249,6 +249,8 @@ mod tests {
                 Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
+    }
+    impl NonEmpty for GenericTransactionQuery {
         fn is_empty(&self) -> bool {
             false
         }
@@ -270,7 +272,8 @@ mod tests {
                 Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
-
+    }
+    impl NonEmpty for GenericBlockQuery {
         fn is_empty(&self) -> bool {
             false
         }

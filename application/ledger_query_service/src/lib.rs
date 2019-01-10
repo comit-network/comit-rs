@@ -26,7 +26,8 @@ pub use ethereum_support::web3;
 use futures::Future;
 use std::fmt::Debug;
 
-type QueryMatch = (u32, String);
+type QueryId = u32;
+type QueryMatch = (QueryId, String);
 
 pub trait BlockProcessor<B> {
     fn process(
@@ -37,6 +38,9 @@ pub trait BlockProcessor<B> {
 
 pub trait Query<O>: Debug + 'static {
     fn matches(&self, object: &O) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>;
+}
+
+pub trait NonEmpty: Debug + 'static {
     fn is_empty(&self) -> bool;
 }
 

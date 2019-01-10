@@ -1,8 +1,7 @@
-use super::block_processor::{Block, Transaction};
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    Query, QueryMatchResult,
+    NonEmpty, Query, QueryMatchResult,
 };
 use ethereum_support::{
     web3::{
@@ -80,11 +79,8 @@ impl ExpandResult for EthereumTransactionQuery {
     }
 }
 
-impl Query<EthereumTransaction> for EthereumTransactionQuery {
-    fn matches(
-        &self,
-        transaction: &EthereumTransaction,
-    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
+impl EthereumTransactionQuery {
+    pub fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
         match self {
             Self {
                 from_address: None,
@@ -92,7 +88,7 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
                 is_contract_creation: None,
                 transaction_data: None,
                 transaction_data_length: None,
-            } => Box::new(futures::future::ok(QueryMatchResult::no())),
+            } => QueryMatchResult::no(),
             Self {
                 from_address,
                 to_address,
@@ -124,58 +120,41 @@ impl Query<EthereumTransaction> for EthereumTransactionQuery {
                 }
 
                 if result {
-                    Box::new(futures::future::ok(QueryMatchResult::yes()))
+                    QueryMatchResult::yes()
                 } else {
-                    Box::new(futures::future::ok(QueryMatchResult::no()))
+                    QueryMatchResult::no()
                 }
             }
         }
     }
+}
 
+impl NonEmpty for EthereumTransactionQuery {
     fn is_empty(&self) -> bool {
         self.from_address.is_none() && self.to_address.is_none() && self.transaction_data.is_none()
     }
 }
 
-impl Transaction for EthereumTransaction {
-    fn transaction_id(&self) -> String {
-        format!("{:?}", self.hash)
-    }
-}
-
-impl Block for EthereumBlock<EthereumTransaction> {
-    type Transaction = EthereumTransaction;
-    fn blockhash(&self) -> String {
-        format!("{:x}", self.hash.unwrap())
-    }
-    fn prev_blockhash(&self) -> String {
-        format!("{:x}", self.parent_hash)
-    }
-    fn transactions(&self) -> &[Self::Transaction] {
-        self.transactions.as_slice()
-    }
-}
-
-impl Query<EthereumBlock<EthereumTransaction>> for EthereumBlockQuery {
-    fn matches(
-        &self,
-        block: &EthereumBlock<EthereumTransaction>,
-    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
+impl EthereumBlockQuery {
+    pub fn matches(&self, block: &EthereumBlock<EthereumTransaction>) -> QueryMatchResult {
         match self.min_timestamp_secs {
             Some(min_timestamp_secs) => {
                 let min_timestamp_secs = U256::from(min_timestamp_secs);
                 if min_timestamp_secs <= block.timestamp {
-                    Box::new(futures::future::ok(QueryMatchResult::yes()))
+                    QueryMatchResult::yes()
                 } else {
-                    Box::new(futures::future::ok(QueryMatchResult::no()))
+                    QueryMatchResult::no()
                 }
             }
             None => {
                 warn!("min_timestamp not set, nothing to compare");
-                Box::new(futures::future::ok(QueryMatchResult::no()))
+                QueryMatchResult::no()
             }
         }
     }
+}
+
+impl NonEmpty for EthereumBlockQuery {
     fn is_empty(&self) -> bool {
         self.min_timestamp_secs.is_none()
     }

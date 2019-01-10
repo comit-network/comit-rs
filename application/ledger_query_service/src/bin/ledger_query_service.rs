@@ -16,7 +16,7 @@ use ledger_query_service::{
         queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
     },
     ethereum::{
-        block_processor::DefaultBlockProcessor as EthereumDefaultBlockProcessor,
+        block_processor::BlockProcessor as EthereumBlockProcessor,
         queries::{EthereumBlockQuery, EthereumTransactionQuery},
     },
     settings::{self, Settings},
@@ -130,7 +130,7 @@ fn create_ethereum_routes(
 
     info!("Starting EthereumSimpleListener on {}", settings.node_url);
 
-    let mut transaction_processor = EthereumDefaultBlockProcessor::new(
+    let transaction_processor = EthereumBlockProcessor::new(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
@@ -144,20 +144,26 @@ fn create_ethereum_routes(
         let transaction_query_result_repository = transaction_query_result_repository.clone();
         let block_query_result_repository = block_query_result_repository.clone();
 
-        let web3_blocks =
+        let blocks =
             ledger_query_service::ethereum::ethereum_web3_block_poller::ethereum_block_listener(
                 web3_client.clone(),
                 settings.poll_interval_secs,
             )
             .expect("Should return a Web3 block poller");
-        let web3_processor = web3_blocks
-            .and_then(move |block| transaction_processor.process(block))
-            .for_each(move |(block_results, transaction_results)| {
+        let block_query_repository = block_query_repository.clone();
+        let transaction_query_repository = transaction_query_repository.clone();
+
+        let web3_processor = blocks
+            .and_then(move |block| {
+                EthereumBlockProcessor::process(
+                    block_query_repository.clone(),
+                    transaction_query_repository.clone(),
+                    &block,
+                )
+            })
+            .for_each(move |(block_results, _transaction_results)| {
                 for (id, block_id) in block_results {
                     block_query_result_repository.add_result(id, block_id);
-                }
-                for (id, tx_id) in transaction_results {
-                    transaction_query_result_repository.add_result(id, tx_id);
                 }
                 Ok(())
             });
@@ -174,7 +180,7 @@ fn create_ethereum_routes(
     );
 
     let block_routes = route_factory.create(
-        block_query_repository,
+        block_query_repository.clone(),
         block_query_result_repository,
         None,
         ledger_name,
