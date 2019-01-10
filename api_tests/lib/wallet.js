@@ -1,8 +1,7 @@
-const util = require("./util.js");
 const bitcoin = require("./bitcoin.js");
 const ethereum = require("./ethereum.js");
 
-const logger = util.logger();
+const logger = global.harness.logger;
 
 class Wallet {
     constructor(owner) {

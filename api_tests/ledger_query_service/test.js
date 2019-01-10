@@ -2,13 +2,11 @@ const chai = require("chai");
 chai.use(require("chai-http"));
 const should = chai.should();
 const bitcoin = require("../lib/bitcoin.js");
-const web3_conf = require("../lib/web3_conf.js");
 const wallet = require("../lib/wallet.js");
 const lqs_conf = require("../lib/lqs.js");
 
 const bitcoin_rpc_client = bitcoin.create_client();
 const lqs = lqs_conf.create("localhost", 8080);
-const web3 = web3_conf.create();
 const toby_wallet = wallet.create("toby");
 
 function sleep(ms) {

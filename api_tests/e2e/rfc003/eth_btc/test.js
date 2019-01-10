@@ -2,28 +2,26 @@ const chai = require("chai");
 chai.use(require("chai-http"));
 const actor = require("../../../lib/actor.js");
 const bitcoin = require("../../../lib/bitcoin.js");
+const ethereum = require("../../../lib/ethereum.js");
 const ethutil = require("ethereumjs-util");
 const should = chai.should();
-const util = require("../../../lib/util.js");
-const web3_conf = require("../../../lib/web3_conf.js");
+const Web3 = require("web3");
+const logger = global.harness.logger;
 
-const web3 = web3_conf.create();
-const logger = util.logger();
-
-let bitcoin_rpc_client = bitcoin.create_client()
+let bitcoin_rpc_client = bitcoin.create_client();
 
 const bob_initial_eth = "0.1";
 const alice_initial_eth = "11";
 
-const alice = actor.create("alice", {});
-const bob = actor.create("bob", {});
+const alice = actor.create("alice");
+const bob = actor.create("bob");
 
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 const bob_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
-const alpha_asset_amount = new ethutil.BN(web3.utils.toWei("10", "ether"), 10);
+const alpha_asset_amount = BigInt(Web3.utils.toWei("10", "ether"));
 const beta_asset_amount = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
 
@@ -36,12 +34,8 @@ describe("RFC003: Ether for Bitcoin", () => {
         await bob.wallet.eth().fund(bob_initial_eth);
         await bob.wallet.btc().fund(10);
         await bitcoin.btc_import_address(alice_final_address); // Watch only import
-        await bitcoin.btc_import_address(
-            bob.wallet.btc().identity().address
-        ); // Watch only import
-        await bitcoin.btc_import_address(
-            alice.wallet.btc().identity().address
-        ); // Watch only import
+        await bitcoin.btc_import_address(bob.wallet.btc().identity().address); // Watch only import
+        await bitcoin.btc_import_address(alice.wallet.btc().identity().address); // Watch only import
         await bitcoin.btc_generate();
 
         await bitcoin.log_btc_balance(
@@ -408,9 +402,7 @@ describe("RFC003: Ether for Bitcoin", () => {
             "gas_limit",
             "value"
         );
-        bob_eth_balance_before = await ethereum.eth_balance(
-            bob_final_address
-        );
+        bob_eth_balance_before = await ethereum.eth_balance(bob_final_address);
         await bob.wallet
             .eth()
             .send_eth_transaction_to(
@@ -426,12 +418,11 @@ describe("RFC003: Ether for Bitcoin", () => {
             bob_final_address
         );
 
-        let bob_eth_balance_expected = bob_eth_balance_before.add(
-            alpha_asset_amount
-        );
+        let bob_eth_balance_expected =
+            bob_eth_balance_before + alpha_asset_amount;
         bob_eth_balance_after
             .toString()
-            .should.be.equal(bob_eth_balance_expected.toString());
+            .should.equal(bob_eth_balance_expected.toString());
     });
 
     it("[Alice] Should be in BothRedeemed state after Bob executes the redeem action", async function() {

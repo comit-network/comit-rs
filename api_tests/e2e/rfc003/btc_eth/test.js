@@ -2,14 +2,11 @@ const chai = require("chai");
 chai.use(require("chai-http"));
 const bitcoin = require("../../../lib/bitcoin.js");
 const ethereum = require("../../../lib/ethereum.js");
-const util = require("../../../lib/util.js");
-const web3_conf = require("../../../lib/web3_conf.js");
+const Web3 = require("web3");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
-
-const web3 = web3_conf.create();
-const logger = util.logger();
+const logger = global.harness.logger;
 
 const bitcoin_rpc_client = bitcoin.create_client();
 
@@ -25,7 +22,7 @@ const bob_final_address =
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset = 100000000;
-const beta_asset = new ethutil.BN(web3.utils.toWei("10", "ether"), 10);
+const beta_asset = BigInt(Web3.utils.toWei("10", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 describe("RFC003: Bitcoin for Ether", () => {
@@ -37,12 +34,8 @@ describe("RFC003: Bitcoin for Ether", () => {
         await alice.wallet.btc().fund(10);
         // Watch only import
         await bitcoin.btc_import_address(bob_final_address);
-        await bitcoin.btc_import_address(
-            alice.wallet.btc().identity().address
-        );
-        await bitcoin.btc_import_address(
-            bob.wallet.btc().identity().address
-        );
+        await bitcoin.btc_import_address(alice.wallet.btc().identity().address);
+        await bitcoin.btc_import_address(bob.wallet.btc().identity().address);
         await bitcoin.btc_generate();
 
         await ethereum.log_eth_balance(
@@ -374,9 +367,8 @@ describe("RFC003: Bitcoin for Ether", () => {
             alice_final_address
         );
 
-        let alice_eth_balance_expected = alice_eth_balance_before.add(
-            beta_asset
-        );
+        let alice_eth_balance_expected = alice_eth_balance_before + beta_asset;
+
         alice_eth_balance_after
             .toString()
             .should.be.equal(alice_eth_balance_expected.toString());
@@ -420,9 +412,7 @@ describe("RFC003: Bitcoin for Ether", () => {
 
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.should.include.all.keys("hex");
-        bob_btc_balance_before = await bitcoin.btc_balance(
-            bob_final_address
-        );
+        bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
         await bitcoin_rpc_client.sendRawTransaction(bob_redeem_action.hex);
         await bitcoin.btc_generate();
     });

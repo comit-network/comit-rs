@@ -1,8 +1,5 @@
 const bitcoin = require("bitcoinjs-lib");
 const BitcoinRpcClient = require("bitcoin-core");
-const web3_conf = require("./web3_conf.js");
-const web3 = web3_conf.create();
-
 const util = require("./util.js");
 
 //FIXME: Remove this whenever this change:
@@ -19,7 +16,6 @@ const regtest = {
     scriptHash: 0xc4,
     wif: 0xef,
 };
-
 
 let _bitcoin_rpc_client;
 
@@ -70,37 +66,14 @@ module.exports.log_btc_balance = async function(
     address,
     address_type
 ) {
-    util
-        .logger()
-        .info(
-            "%s the swap, %s has %s satoshis at the %s address %s",
-            when,
-            player,
-            await btc_balance(address),
-            address_type,
-            address
-        );
-};
-
-module.exports.erc20_balance = async function(
-    token_holder_address,
-    contract_address
-) {
-    const function_identifier = "70a08231";
-
-    const padded_address = token_holder_address
-        .replace(/^0x/, "")
-        .padStart(64, "0");
-    const payload = "0x" + function_identifier + padded_address;
-
-    const tx = {
-        from: token_holder_address,
-        to: contract_address,
-        data: payload,
-    };
-
-    let hex_balance = await web3.eth.call(tx);
-    return web3.utils.toBN(hex_balance);
+    global.harness.logger.info(
+        "%s the swap, %s has %s satoshis at the %s address %s",
+        when,
+        player,
+        await btc_balance(address),
+        address_type,
+        address
+    );
 };
 
 class BitcoinWallet {

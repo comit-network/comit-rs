@@ -2,16 +2,20 @@ const bitcoin = require("bitcoinjs-lib");
 const ethutil = require("ethereumjs-util");
 const EthereumTx = require("ethereumjs-tx");
 const fs = require("fs");
+const Web3 = require("web3");
 const util = require("./util.js");
-const web3_conf = require("./web3_conf.js");
+const logger = global.harness.logger;
+const eth_config = global.harness.ledgers_config.ethereum;
+const web3 = new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url));
 
-const web3 = web3_conf.create();
-const logger = util.logger();
+module.exports.web3 = web3;
+
+
 
 async function eth_balance(address) {
-    return web3.eth
-        .getBalance(address)
-        .then(balance => new ethutil.BN(balance, 10));
+    return web3.eth.getBalance(address).then(balance => {
+        return BigInt(balance);
+    });
 }
 
 module.exports.eth_balance = async function(address) {
@@ -24,16 +28,14 @@ module.exports.log_eth_balance = async function(
     address,
     address_type
 ) {
-    util
-        .logger()
-        .info(
-            "%s the swap, %s has %s wei at the %s address %s",
-            when,
-            player,
-            await eth_balance(address),
-            address_type,
-            address
-        );
+    logger.info(
+        "%s the swap, %s has %s wei at the %s address %s",
+        when,
+        player,
+        await eth_balance(address),
+        address_type,
+        address
+    );
 };
 
 {
@@ -46,7 +48,7 @@ module.exports.log_eth_balance = async function(
     ) => {
         to_address = to_address.replace(/^0x/, "").padStart(64, "0");
         amount = web3.utils
-            .numberToHex(amount)
+            .numberToHex(amount.toString())
             .replace(/^0x/, "")
             .padStart(64, "0");
         const payload = "0x" + function_identifier + to_address + amount;
@@ -61,7 +63,7 @@ const token_contract_deploy =
     "0x" +
     fs
         .readFileSync(
-            util.project_root +
+            global.harness.project_root +
                 "/application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
             "utf8"
         )
@@ -171,6 +173,27 @@ class EthereumWallet {
         return receipt;
     }
 }
+
+module.exports.erc20_balance = async function(
+    token_holder_address,
+    contract_address
+) {
+    const function_identifier = "70a08231";
+
+    const padded_address = token_holder_address
+        .replace(/^0x/, "")
+        .padStart(64, "0");
+    const payload = "0x" + function_identifier + padded_address;
+
+    const tx = {
+        from: token_holder_address,
+        to: contract_address,
+        data: payload,
+    };
+
+    let hex_balance = await web3.eth.call(tx);
+    return BigInt(web3.utils.toBN(hex_balance).toString());
+};
 
 module.exports.create = () => {
     return new EthereumWallet();
