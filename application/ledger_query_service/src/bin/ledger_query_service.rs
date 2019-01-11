@@ -161,9 +161,12 @@ fn create_ethereum_routes(
                     &block,
                 )
             })
-            .for_each(move |(block_results, _transaction_results)| {
+            .for_each(move |(block_results, transaction_results)| {
                 for (id, block_id) in block_results {
                     block_query_result_repository.add_result(id, block_id);
+                }
+                for (id, transaction_id) in transaction_results {
+                    transaction_query_result_repository.add_result(id, transaction_id);
                 }
                 Ok(())
             });
