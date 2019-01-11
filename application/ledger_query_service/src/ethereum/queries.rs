@@ -3,6 +3,7 @@ use crate::{
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
     NonEmpty, Query, QueryMatchResult,
 };
+use ethbloom::{Bloom, Input};
 use ethereum_support::{
     web3::{
         transports::Http,
@@ -24,6 +25,31 @@ pub struct EthereumTransactionQuery {
     is_contract_creation: Option<bool>,
     transaction_data: Option<Bytes>,
     transaction_data_length: Option<usize>,
+}
+
+pub struct EthereumTransactionBloomFilterQuery {
+    topics: Vec<H256>,
+    to_address: Option<Address>,
+}
+
+impl EthereumTransactionBloomFilterQuery {
+    pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
+        match self {
+            Self { topics, .. } if topics.is_empty() => false,
+            Self {
+                to_address: None, ..
+            } => false,
+            Self { topics, to_address } => {
+                let block_bloom = Bloom::from(block.logs_bloom);
+
+                topics
+                    .iter()
+                    .all(|topic| block_bloom.contains_input(Input::Raw(&topic)))
+            }
+        }
+    }
+
+    // pub fn matches_transaction_receipt(&self, transaction_receipt: )
 }
 
 impl QueryType for EthereumTransactionQuery {
@@ -184,6 +210,96 @@ impl ExpandResult for EthereumBlockQuery {
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::web3::types::{
+        Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256, U128, U256,
+    };
+    use spectral::prelude::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn bloom_filter_test() {
+        let to_address = Address::from("0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59");
+        let tx = Transaction {
+            hash: H256::from(0),
+            nonce: U256::from(0),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: H160::from(0),
+            to: Some(to_address),
+            value: U256::from(0),
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: Bytes::from(vec![]),
+        };
+        let bloom = H2048::from_str(
+            "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000040800000000000000000000000000000000000000000000000000000000000000010000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+        )
+        .unwrap();
+        let block = EthereumBlock {
+            hash: None,
+            parent_hash: H256::from(123),
+            uncles_hash: H256::from(123),
+            author: H160::from(7),
+            state_root: H256::from(123),
+            transactions_root: H256::from(123),
+            receipts_root: H256::from(123),
+            number: None,
+            gas_used: U256::from(0),
+            gas_limit: U256::from(0),
+            extra_data: Bytes::from(vec![]),
+            logs_bloom: bloom,
+            timestamp: U256::from(0),
+            difficulty: U256::from(0),
+            total_difficulty: U256::from(0),
+            seal_fields: vec![],
+            uncles: vec![],
+            transactions: vec![tx.clone()],
+            size: None,
+        };
+
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+
+        let query = EthereumTransactionBloomFilterQuery {
+            topics: vec![redeem_log_msg],
+            to_address: Some(to_address),
+        };
+
+        let log = Log {
+            address: 1.into(),
+            topics: vec![redeem_log_msg],
+            data: Bytes(vec![]),
+            block_hash: Some(2.into()),
+            block_number: Some(1.into()),
+            transaction_hash: Some(3.into()),
+            transaction_index: Some(0.into()),
+            log_index: Some(0.into()),
+            transaction_log_index: Some(0.into()),
+            log_type: None,
+            removed: Some(false),
+        };
+
+        let receipt = TransactionReceipt {
+            transaction_hash: H256::from(0),
+            transaction_index: U128::from(0),
+            block_hash: None,
+            block_number: None,
+            cumulative_gas_used: U256::from(0),
+            gas_used: U256::from(0),
+            contract_address: None,
+            logs: vec![log],
+            status: None,
+        };
+
+        assert_that!(query.matches_block(&block)).is_true()
+    }
+
 }
 
 // #[cfg(test)]
