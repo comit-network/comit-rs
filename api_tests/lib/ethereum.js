@@ -10,8 +10,6 @@ const web3 = new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url));
 
 module.exports.web3 = web3;
 
-
-
 async function eth_balance(address) {
     return web3.eth.getBalance(address).then(balance => {
         return BigInt(balance);

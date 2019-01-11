@@ -111,26 +111,20 @@ command = "cargo"
 args = ["fmt", "--", "--check"]
 
 [tasks.js-format]
-description = "Runs prettier to check appropriate JS code format."
+description = "Runs prettier to format JavaScript code."
 workspace = false
 script = [
 '''
-jsfiles=$(git diff --no-ext-diff --name-only --diff-filter=ACM "*.js" "*.jsx" | tr '\n' ' ')
-[ -z "$jsfiles" ] && exit 0
-
-echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier --write
+find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier --write
 '''
 ]
 
 [tasks.check-js-format]
-description = "Runs prettier to check appropriate JS code format."
+description = "Runs prettier to check appropriate JavaScript code format."
 workspace = false
 script = [
 '''
-jsfiles=$(git diff --no-ext-diff --cached --name-only --diff-filter=ACM "*.js" "*.jsx" | tr '\n' ' ')
-[ -z "$jsfiles" ] && exit 0
-
-echo "$jsfiles" | xargs ./api_tests/node_modules/.bin/prettier -l
+find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier -l
 '''
 ]
 
