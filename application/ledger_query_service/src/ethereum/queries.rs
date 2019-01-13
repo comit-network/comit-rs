@@ -1,7 +1,7 @@
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    NonEmpty, Query, QueryMatchResult,
+    NonEmpty, QueryMatchResult,
 };
 use ethbloom::{Bloom, Input};
 use ethereum_support::{
@@ -27,19 +27,16 @@ pub struct EthereumTransactionQuery {
     transaction_data_length: Option<usize>,
 }
 
+#[derive(Debug)]
 pub struct EthereumTransactionBloomFilterQuery {
     topics: Vec<H256>,
-    to_address: Option<Address>,
 }
 
 impl EthereumTransactionBloomFilterQuery {
     pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
         match self {
             Self { topics, .. } if topics.is_empty() => false,
-            Self {
-                to_address: None, ..
-            } => false,
-            Self { topics, to_address } => {
+            Self { topics } => {
                 let block_bloom = Bloom::from(block.logs_bloom);
 
                 topics
@@ -268,7 +265,6 @@ mod tests {
 
         let query = EthereumTransactionBloomFilterQuery {
             topics: vec![redeem_log_msg],
-            to_address: Some(to_address),
         };
 
         let log = Log {

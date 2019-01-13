@@ -2,7 +2,7 @@ use crate::{
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
     route_factory::{ExpandResult, QueryParams, ShouldExpand},
-    NonEmpty, Query,
+    NonEmpty,
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;

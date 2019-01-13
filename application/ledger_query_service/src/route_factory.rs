@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    routes, web3, NonEmpty, Query,
+    routes, web3, NonEmpty,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;

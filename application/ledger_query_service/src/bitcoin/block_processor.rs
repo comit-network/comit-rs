@@ -1,6 +1,6 @@
 use crate::{
     query_repository::QueryRepository, query_result_repository::QueryResultRepository,
-    BlockProcessor, NonEmpty, Query, QueryMatchResult,
+    BlockProcessor, Query, QueryMatchResult,
 };
 use futures::{future::join_all, Future};
 use std::{
@@ -226,7 +226,7 @@ mod tests {
     use super::*;
     use crate::{
         in_memory_query_repository::InMemoryQueryRepository,
-        in_memory_query_result_repository::InMemoryQueryResultRepository,
+        in_memory_query_result_repository::InMemoryQueryResultRepository, NonEmpty,
     };
     use spectral::prelude::*;
 

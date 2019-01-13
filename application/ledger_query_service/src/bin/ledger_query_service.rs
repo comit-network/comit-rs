@@ -16,7 +16,7 @@ use ledger_query_service::{
         queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
     },
     ethereum::{
-        block_processor::BlockProcessor as EthereumBlockProcessor,
+        block_processor::process as process_ethereum,
         queries::{EthereumBlockQuery, EthereumTransactionQuery},
     },
     settings::{self, Settings},
@@ -130,12 +130,6 @@ fn create_ethereum_routes(
 
     info!("Starting EthereumSimpleListener on {}", settings.node_url);
 
-    let transaction_processor = EthereumBlockProcessor::new(
-        transaction_query_repository.clone(),
-        block_query_repository.clone(),
-        transaction_query_result_repository.clone(),
-    );
-
     let (event_loop, transport) =
         Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
     let web3_client = Arc::new(Web3::new(transport));
@@ -155,7 +149,7 @@ fn create_ethereum_routes(
 
         let web3_processor = blocks
             .and_then(move |block| {
-                EthereumBlockProcessor::process(
+                process_ethereum(
                     block_query_repository.clone(),
                     transaction_query_repository.clone(),
                     &block,
