@@ -51,7 +51,7 @@ impl EthereumTransactionLogQuery {
     pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
         match self {
             Self { logs } if logs.is_empty() => false,
-            Self { logs } => logs.iter().all(|(topics)| {
+            Self { logs } => logs.iter().all(|topics| {
                 !topics.is_empty()
                     && transaction_receipt
                         .logs
