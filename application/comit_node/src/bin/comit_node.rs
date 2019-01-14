@@ -5,7 +5,8 @@
 extern crate log;
 
 use comit_node::{
-    comit_client, comit_server,
+    comit_client::{self, bam::BamClientPool},
+    comit_server,
     http_api::route_factory,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
@@ -49,7 +50,12 @@ fn main() -> Result<(), failure::Error> {
         &mut runtime,
     );
 
-    spawn_comit_server(&settings, dependencies.clone(), &mut runtime);
+    spawn_comit_server(
+        &settings,
+        dependencies.clone(),
+        Arc::clone(&comit_client_factory),
+        &mut runtime,
+    );
 
     // Block the current thread.
     ::std::thread::park();
@@ -121,12 +127,15 @@ fn spawn_warp_instance<S: AliceSpawner, C: comit_client::ClientPool>(
 fn spawn_comit_server<B: BobSpawner>(
     settings: &ComitNodeSettings,
     bob_spawner: Arc<B>,
+    client_factory: Arc<BamClientPool>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     runtime.spawn(
-        comit_server::listen(settings.comit.comit_listen, bob_spawner).map_err(|e| {
-            error!("ComitServer shutdown: {:?}", e);
-        }),
+        comit_server::listen(settings.comit.comit_listen, bob_spawner, client_factory).map_err(
+            |e| {
+                error!("ComitServer shutdown: {:?}", e);
+            },
+        ),
     );
 }
 

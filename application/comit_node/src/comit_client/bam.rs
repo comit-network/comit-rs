@@ -203,6 +203,12 @@ impl ClientFactory<BamClient> for BamClientPool {
             }
         }
     }
+    fn add_client(&self, comit_node_socket_addr: SocketAddr, client: Arc<BamClient>) {
+        debug!("Adding {:?} to list of peers", comit_node_socket_addr);
+        let mut clients = self.clients.write().unwrap();
+
+        clients.insert(comit_node_socket_addr, client);
+    }
 }
 
 impl ClientPool for BamClientPool {
