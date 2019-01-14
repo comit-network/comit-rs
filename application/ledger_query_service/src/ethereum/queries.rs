@@ -28,11 +28,11 @@ pub struct EthereumTransactionQuery {
 }
 
 #[derive(Debug)]
-pub struct EthereumTransactionLogFilterQuery {
+pub struct EthereumTransactionLogQuery {
     logs: Vec<Vec<H256>>,
 }
 
-impl EthereumTransactionLogFilterQuery {
+impl EthereumTransactionLogQuery {
     pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
         match self {
             Self { logs, .. } if logs.is_empty() => false,
@@ -271,29 +271,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn given_a_block_with_bloom_filter_should_match_query() {
-        let tx = transaction(Address::from("0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59"));
-        let block = ethereum_block(H2048::from_str(
-            "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000\
-            000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000\
-            000000000000000000000000000000000000000000040800000000000000000000000000000000000000000000000000\
-            00000000000001000000000400000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000",
-        )
-            .unwrap(), vec![tx.clone()]);
-
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-
-        let query = EthereumTransactionLogFilterQuery {
-            logs: vec![vec![redeem_log_msg]],
-        };
-
-        let log = Log {
+    fn log(topics: Vec<H256>) -> Log {
+        Log {
             address: 1.into(),
-            topics: vec![redeem_log_msg],
+            topics,
             data: Bytes(vec![]),
             block_hash: Some(2.into()),
             block_number: Some(1.into()),
@@ -303,9 +284,11 @@ mod tests {
             transaction_log_index: Some(0.into()),
             log_type: None,
             removed: Some(false),
-        };
+        }
+    }
 
-        let receipt = TransactionReceipt {
+    fn transaction_receipt(logs: Vec<Log>) -> TransactionReceipt {
+        TransactionReceipt {
             transaction_hash: H256::from(0),
             transaction_index: U128::from(0),
             block_hash: None,
@@ -313,62 +296,147 @@ mod tests {
             cumulative_gas_used: U256::from(0),
             gas_used: U256::from(0),
             contract_address: None,
-            logs: vec![log],
+            logs,
             status: None,
+        }
+    }
+
+    const  REDEEM_BLOOM : &str = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            00000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000\
+            000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000040800000000000000000000000000000000000000000000000000\
+            00000000000001000000000400000000000000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000000000";
+
+    const  EMPTY_BLOOM : &str =
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            0000000000000000000000000000";
+
+    #[test]
+    fn given_a_block_with_bloom_filter_should_match_query() {
+        let tx = transaction(Address::from("0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59"));
+        let block = ethereum_block(H2048::from_str(REDEEM_BLOOM).unwrap(), vec![tx.clone()]);
+
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+
+        let query = EthereumTransactionLogQuery {
+            logs: vec![vec![redeem_log_msg]],
         };
+
+        let log = log(vec![redeem_log_msg]);
+
+        let receipt = transaction_receipt(vec![log]);
 
         assert_that!(query.matches_block(&block)).is_true()
     }
 
     #[test]
-    fn given_a_block_without_bloom_filter_should_match_query() {
+    fn given_a_block_without_bloom_filter_should_not_match_query() {
         let tx = transaction(Address::from("0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59"));
-        let block = ethereum_block(H2048::from_str(
-            "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000",
-        )
-            .unwrap(), vec![tx.clone()]);
+        let block = ethereum_block(H2048::from_str(EMPTY_BLOOM).unwrap(), vec![tx.clone()]);
 
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query = EthereumTransactionLogFilterQuery {
+        let query = EthereumTransactionLogQuery {
             logs: vec![vec![redeem_log_msg]],
         };
 
-        let log = Log {
-            address: 1.into(),
-            topics: vec![redeem_log_msg],
-            data: Bytes(vec![]),
-            block_hash: Some(2.into()),
-            block_number: Some(1.into()),
-            transaction_hash: Some(3.into()),
-            transaction_index: Some(0.into()),
-            log_index: Some(0.into()),
-            transaction_log_index: Some(0.into()),
-            log_type: None,
-            removed: Some(false),
-        };
+        let log = log(vec![redeem_log_msg]);
 
-        let receipt = TransactionReceipt {
-            transaction_hash: H256::from(0),
-            transaction_index: U128::from(0),
-            block_hash: None,
-            block_number: None,
-            cumulative_gas_used: U256::from(0),
-            gas_used: U256::from(0),
-            contract_address: None,
-            logs: vec![log],
-            status: None,
-        };
+        let receipt = transaction_receipt(vec![log]);
 
         assert_that!(query.matches_block(&block)).is_false()
     }
 
+    #[test]
+    fn given_a_transaction_receipt_should_match_query() {
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+
+        let query = EthereumTransactionLogQuery {
+            logs: vec![vec![redeem_log_msg]],
+        };
+
+        let log = log(vec![redeem_log_msg]);
+
+        let receipt = transaction_receipt(vec![log]);
+
+        assert_that!(query.matches_transaction_receipt(receipt)).is_true()
+    }
+
+    #[test]
+    fn given_an_empty_transaction_receipt_should_not_match_query() {
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+
+        let query = EthereumTransactionLogQuery {
+            logs: vec![vec![redeem_log_msg]],
+        };
+
+        let receipt = transaction_receipt(vec![]);
+
+        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+    }
+
+    #[test]
+    fn given_a_transaction_receipt_should_not_match_empty_query() {
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+
+        let query1 = EthereumTransactionLogQuery { logs: vec![vec![]] };
+        let log1 = log(vec![redeem_log_msg]);
+        let receipt1 = transaction_receipt(vec![log1]);
+        assert_that!(query1.matches_transaction_receipt(receipt1)).is_false();
+
+        let query2 = EthereumTransactionLogQuery { logs: vec![] };
+        let log2 = log(vec![redeem_log_msg]);
+        let receipt2 = transaction_receipt(vec![log2]);
+        assert_that!(query2.matches_transaction_receipt(receipt2)).is_false()
+    }
+
+    #[test]
+    fn given_a_transaction_receipt_should_match_two_log_query() {
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+        let random_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
+
+        let query = EthereumTransactionLogQuery {
+            logs: vec![vec![redeem_log_msg], vec![random_log_msg]],
+        };
+
+        let log1 = log(vec![redeem_log_msg]);
+        let log2 = log(vec![random_log_msg]);
+
+        let receipt = transaction_receipt(vec![log1, log2]);
+
+        assert_that!(query.matches_transaction_receipt(receipt)).is_true()
+    }
+
+    #[test]
+    fn given_a_transaction_receipt_should_not_match_very_two_topic_query() {
+        let redeem_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
+        let random_log_msg =
+            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
+
+        let query = EthereumTransactionLogQuery {
+            logs: vec![vec![redeem_log_msg, random_log_msg]],
+        };
+
+        let log1 = log(vec![redeem_log_msg]);
+        let log2 = log(vec![random_log_msg]);
+
+        let receipt = transaction_receipt(vec![log1, log2]);
+
+        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+    }
 }
 
 // #[cfg(test)]
