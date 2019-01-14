@@ -27,7 +27,7 @@ pub struct EthereumTransactionQuery {
     transaction_data_length: Option<usize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EthereumTransactionLogQuery {
     logs: Vec<Vec<H256>>,
 }

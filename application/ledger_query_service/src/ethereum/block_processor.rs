@@ -1,5 +1,7 @@
 use crate::{
-    ethereum::queries::{EthereumBlockQuery, EthereumTransactionQuery},
+    ethereum::queries::{
+        EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery,
+    },
     query_repository::QueryRepository,
     web3::types::{Block, Transaction},
     QueryMatch, QueryMatchResult,
@@ -13,6 +15,7 @@ type TransactionQueryResults = Vec<QueryMatch>;
 
 pub fn process(
     block_queries: ArcQueryRepository<EthereumBlockQuery>,
+    transaction_log_queries: ArcQueryRepository<EthereumTransactionLogQuery>,
     transaction_queries: ArcQueryRepository<EthereumTransactionQuery>,
     block: &Block<Transaction>,
 ) -> Result<(BlockQueryResults, TransactionQueryResults), ()> {
@@ -27,6 +30,28 @@ pub fn process(
             process_transaction_queries(transaction_queries.clone(), transaction)
         })
         .flatten()
+        .collect();
+
+    trace!("Processing {:?}", block);
+    transaction_log_queries
+        .iter()
+        .filter_map(move |(query_id, query)| {
+            trace!("Matching query {:#?} against block {:#?}", query, block);
+
+            if query.matches_block(&block) {
+                trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
+
+                block.transactions.iter().map(|tx| {
+                    if query.matches_transaction_receipt(transaction_receipt) {
+                        trace!("Transaction {:?} matches Query-ID: {:?}", tx, query_id);
+
+                        Some((query_id, tx.hash))
+                    } else {
+                        None
+                    }
+                })
+            }
+        })
         .collect();
 
     Ok((block_query_results, transaction_query_results))

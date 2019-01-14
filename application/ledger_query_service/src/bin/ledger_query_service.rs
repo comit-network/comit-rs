@@ -17,7 +17,7 @@ use ledger_query_service::{
     },
     ethereum::{
         block_processor::process as process_ethereum,
-        queries::{EthereumBlockQuery, EthereumTransactionQuery},
+        queries::{EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery},
     },
     settings::{self, Settings},
     BlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository,
@@ -125,6 +125,8 @@ fn create_ethereum_routes(
     let transaction_query_repository =
         Arc::new(InMemoryQueryRepository::<EthereumTransactionQuery>::default());
     let block_query_repository = Arc::new(InMemoryQueryRepository::<EthereumBlockQuery>::default());
+    let transaction_log_query_repository =
+        Arc::new(InMemoryQueryRepository::<EthereumTransactionLogQuery>::default());
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
@@ -145,12 +147,14 @@ fn create_ethereum_routes(
             )
             .expect("Should return a Web3 block poller");
         let block_query_repository = block_query_repository.clone();
+        let transaction_log_query_repository = transaction_log_query_repository.clone();
         let transaction_query_repository = transaction_query_repository.clone();
 
         let web3_processor = blocks
             .and_then(move |block| {
                 process_ethereum(
                     block_query_repository.clone(),
+                    transaction_log_query_repository.clone(),
                     transaction_query_repository.clone(),
                     &block,
                 )
