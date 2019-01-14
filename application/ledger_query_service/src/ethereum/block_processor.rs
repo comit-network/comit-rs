@@ -23,7 +23,7 @@ pub fn process(
 
     let transaction_queries = transaction_queries.clone();
 
-    let transaction_query_results = block
+    let transaction_query_results: TransactionQueryResults = block
         .transactions
         .iter()
         .map(move |transaction| {
@@ -32,27 +32,8 @@ pub fn process(
         .flatten()
         .collect();
 
-    trace!("Processing {:?}", block);
-    transaction_log_queries
-        .iter()
-        .filter_map(move |(query_id, query)| {
-            trace!("Matching query {:#?} against block {:#?}", query, block);
-
-            if query.matches_block(&block) {
-                trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
-
-                block.transactions.iter().map(|tx| {
-                    if query.matches_transaction_receipt(transaction_receipt) {
-                        trace!("Transaction {:?} matches Query-ID: {:?}", tx, query_id);
-
-                        Some((query_id, tx.hash))
-                    } else {
-                        None
-                    }
-                })
-            }
-        })
-        .collect();
+    let transaction_log_query_results =
+        process_transaction_log_queries(transaction_log_queries, block);
 
     Ok((block_query_results, transaction_query_results))
 }
@@ -62,7 +43,6 @@ fn process_block_queries(
     block: &Block<Transaction>,
 ) -> BlockQueryResults {
     trace!("Processing {:?}", block);
-    let block_id = format!("{:x}", block.hash.unwrap()); // TODO should probably not unwrap here
 
     block_queries
         .clone()
@@ -72,6 +52,8 @@ fn process_block_queries(
 
             match query.matches(block) {
                 QueryMatchResult::Yes { .. } => {
+                    let block_id = format!("{:x}", block.hash.unwrap()); // TODO should probably not unwrap here
+
                     trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
                     Some((query_id, block_id.clone()))
                 }
@@ -88,7 +70,6 @@ fn process_transaction_queries(
     transaction: &Transaction,
 ) -> TransactionQueryResults {
     trace!("Processing {:?}", transaction);
-    let transaction_id = format!("{:x}", transaction.hash);
 
     transaction_queries
         .clone()
@@ -102,6 +83,8 @@ fn process_transaction_queries(
 
             match query.matches(transaction) {
                 QueryMatchResult::Yes { .. } => {
+                    let transaction_id = format!("{:x}", transaction.hash);
+
                     trace!(
                         "Transaction {:?} matches Query-ID: {:?}",
                         transaction_id,
@@ -113,4 +96,38 @@ fn process_transaction_queries(
             }
         })
         .collect()
+}
+
+fn process_transaction_log_queries(
+    transaction_log_queries: ArcQueryRepository<EthereumTransactionLogQuery>,
+    block: &Block<Transaction>,
+) -> TransactionQueryResults {
+    trace!("Processing {:?}", block);
+    let mut query_results = vec![];
+
+    for (query_id, query) in transaction_log_queries.all() {
+        trace!("Matching query {:#?} against block {:#?}", query, block);
+
+        if query.matches_block(&block) {
+            let block_id = format!("{:x}", block.hash.unwrap()); // TODO should probably not unwrap here
+            trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
+
+            for transaction in block.clone().transactions {
+                let transaction_receipt = unimplemented!();
+
+                if query.matches_transaction_receipt(transaction_receipt) {
+                    let transaction_id = format!("{:x}", transaction.hash);
+
+                    trace!(
+                        "Transaction {:?} matches Query-ID: {:?}",
+                        transaction_id,
+                        query_id
+                    );
+
+                    query_results.push((query_id, transaction_id));
+                }
+            }
+        }
+    }
+    query_results
 }
