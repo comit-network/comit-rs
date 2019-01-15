@@ -3,7 +3,6 @@
 
 #[macro_use]
 extern crate log;
-use directories;
 
 use comit_node::{
     comit_client::{self, bam::BamClientPool},
@@ -17,6 +16,7 @@ use comit_node::{
         InMemoryMetadataStore, LedgerEventDependencies, ProtocolDependencies, SwapId,
     },
 };
+use directories;
 use ethereum_support::*;
 use std::{env::var, net::SocketAddr, sync::Arc};
 
