@@ -410,7 +410,11 @@ describe("Test Ledger Query Service API", () => {
                     "0xa9059cbb0000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd90000000000000000000000000000000000000000000000000000000000000001";
                 return alice.wallet
                     .eth()
-                    .send_eth_transaction_to(token_contract_address, transfer_token_data, 0)
+                    .send_eth_transaction_to(
+                        token_contract_address,
+                        transfer_token_data,
+                        0
+                    )
                     .then(receipt => {
                         return lqs
                             .poll_until_matches(chai, location)
