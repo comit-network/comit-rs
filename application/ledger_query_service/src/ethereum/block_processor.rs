@@ -2,7 +2,10 @@ use crate::{
     ethereum::queries::{
         EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery,
     },
-    web3::types::{Block, Transaction},
+    web3::{
+        self,
+        types::{Block, Transaction},
+    },
     ArcQueryRepository, QueryMatch, QueryMatchResult,
 };
 use ethereum_support::web3::{transports::Http, Web3};
@@ -42,9 +45,18 @@ pub fn process(
         })
         .flatten()
         .collect();
+    let result = process_transaction_log_queries(transaction_log_queries, client, block);
 
-    let transaction_log_query_results =
-        process_transaction_log_queries(transaction_log_queries, client, block);
+    let transaction_log_query_results = match result {
+        Ok(result) => result,
+        Err(e) => {
+            error!(
+                "Could not execute transaction log queries on block {:?}: {:?}",
+                block, e
+            );
+            vec![]
+        }
+    };
 
     Ok((
         block_query_results,
@@ -118,16 +130,16 @@ fn process_transaction_log_queries(
     transaction_log_queries: ArcQueryRepository<EthereumTransactionLogQuery>,
     client: Arc<Web3<Http>>,
     block: &Block<Transaction>,
-) -> TransactionQueryResults {
+) -> Result<TransactionQueryResults, web3::Error> {
     trace!("Processing {:?}", block);
 
     let block_hash;
     match block.hash {
-        None => return vec![],
+        None => return Ok(vec![]),
         Some(hash) => block_hash = format!("{:x}", hash),
     }
 
-    transaction_log_queries
+    let futures = transaction_log_queries
         .all()
         .filter(|(_, query)| {
             trace!("Matching query {:#?} against block {:#?}", query, block);
@@ -135,31 +147,38 @@ fn process_transaction_log_queries(
         })
         .map(|(query_id, query)| {
             trace!("Query {:?} matches block {:?}", query_id, block_hash);
-            let futures: Vec<_> = block
-                .transactions
-                .iter()
-                .map(|transaction| client.eth().transaction_receipt(transaction.hash))
-                .collect();
 
-            stream::futures_ordered(futures)
-                .filter_map(|x| x)
-                .filter(|transaction_receipt| {
-                    query.matches_transaction_receipt(transaction_receipt.clone())
-                })
-                .map(|transaction_receipt| {
-                    let transaction_id = format!("{:x}", transaction_receipt.transaction_hash);
-                    trace!(
-                        "Transaction {:?} matches Query-ID: {:?}",
-                        transaction_id,
-                        query_id
-                    );
+            let client = client.clone();
 
-                    (query_id, transaction_id)
-                })
-                .collect()
-                .wait()
+            block.transactions.iter().map(move |transaction| {
+                let query = query.clone();
+
+                client
+                    .eth()
+                    .transaction_receipt(transaction.hash)
+                    .and_then(move |receipt| match receipt {
+                        Some(receipt) => {
+                            if query.matches_transaction_receipt(receipt.clone()) {
+                                let transaction_id = receipt.transaction_hash;
+                                trace!(
+                                    "Transaction {:?} matches Query-ID: {:?}",
+                                    transaction_id,
+                                    query_id
+                                );
+
+                                Ok(Some((query_id, format!("{:x}", transaction_id))))
+                            } else {
+                                Ok(None)
+                            }
+                        }
+                        None => Ok(None),
+                    })
+            })
         })
-        .flatten()
-        .flatten()
+        .flatten();
+
+    stream::futures_ordered(futures)
+        .filter_map(|x| x)
         .collect()
+        .wait()
 }
