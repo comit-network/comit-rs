@@ -3,7 +3,7 @@ use crate::{
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
     NonEmpty, QueryMatchResult,
 };
-use ethbloom::{Bloom, Input};
+use ethbloom::Input;
 use ethereum_support::{
     web3::{
         transports::Http,
@@ -36,15 +36,11 @@ impl EthereumTransactionLogQuery {
     pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
         match self {
             Self { logs, .. } if logs.is_empty() => false,
-            Self { logs } => {
-                let block_bloom = Bloom::from(block.logs_bloom);
-
-                logs.iter().all(|topics| {
-                    topics
-                        .iter()
-                        .all(|topic| block_bloom.contains_input(Input::Raw(&topic)))
-                })
-            }
+            Self { logs } => logs.iter().all(|topics| {
+                topics
+                    .iter()
+                    .all(|topic| block.logs_bloom.contains_input(Input::Raw(&topic)))
+            }),
         }
     }
 
@@ -328,10 +324,6 @@ mod tests {
             logs: vec![vec![redeem_log_msg]],
         };
 
-        let log = log(vec![redeem_log_msg]);
-
-        let receipt = transaction_receipt(vec![log]);
-
         assert_that!(query.matches_block(&block)).is_true()
     }
 
@@ -347,10 +339,6 @@ mod tests {
             logs: vec![vec![redeem_log_msg]],
         };
 
-        let log = log(vec![redeem_log_msg]);
-
-        let receipt = transaction_receipt(vec![log]);
-
         assert_that!(query.matches_block(&block)).is_false()
     }
 
@@ -364,7 +352,6 @@ mod tests {
         };
 
         let log = log(vec![redeem_log_msg]);
-
         let receipt = transaction_receipt(vec![log]);
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
