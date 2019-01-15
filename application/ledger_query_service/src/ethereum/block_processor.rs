@@ -2,9 +2,8 @@ use crate::{
     ethereum::queries::{
         EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery,
     },
-    query_repository::QueryRepository,
     web3::types::{Block, Transaction},
-    QueryMatch, QueryMatchResult,
+    ArcQueryRepository, QueryMatch, QueryMatchResult,
 };
 use ethereum_support::web3::{transports::Http, Web3};
 use futures::{
@@ -14,7 +13,6 @@ use futures::{
 use std::sync::Arc;
 use tokio;
 
-type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
 type BlockQueryResults = Vec<QueryMatch>;
 type TransactionQueryResults = Vec<QueryMatch>;
 type TransactionLogQueryResults = Vec<QueryMatch>;
@@ -36,7 +34,6 @@ pub fn process(
     let block_query_results = process_block_queries(block_queries, block);
 
     let transaction_queries = transaction_queries.clone();
-
     let transaction_query_results: TransactionQueryResults = block
         .transactions
         .iter()
@@ -62,18 +59,21 @@ fn process_block_queries(
 ) -> BlockQueryResults {
     trace!("Processing {:?}", block);
 
+    let block_hash;
+    match block.hash {
+        None => return vec![],
+        Some(hash) => block_hash = format!("{:x}", hash),
+    }
+
     block_queries
-        .clone()
         .all()
         .filter_map(|(query_id, query)| {
             trace!("Matching query {:#?} against block {:#?}", query, block);
 
             match query.matches(block) {
                 QueryMatchResult::Yes { .. } => {
-                    let block_id = format!("{:x}", block.hash.unwrap()); // TODO should probably not unwrap here
-
-                    trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
-                    Some((query_id, block_id.clone()))
+                    trace!("Query {:?} matches block {:?}", query_id, block_hash);
+                    Some((query_id, block_hash.clone()))
                 }
                 _ => None,
             }
@@ -81,13 +81,13 @@ fn process_block_queries(
         .collect()
 }
 
-// This function and the previous one are exactly the same, so we should
-// reintroduce a trait.
 fn process_transaction_queries(
     transaction_queries: ArcQueryRepository<EthereumTransactionQuery>,
     transaction: &Transaction,
 ) -> TransactionQueryResults {
     trace!("Processing {:?}", transaction);
+
+    let transaction_id = format!("{:x}", transaction.hash);
 
     transaction_queries
         .clone()
@@ -101,12 +101,10 @@ fn process_transaction_queries(
 
             match query.matches(transaction) {
                 QueryMatchResult::Yes { .. } => {
-                    let transaction_id = format!("{:x}", transaction.hash);
-
                     trace!(
-                        "Transaction {:?} matches Query-ID: {:?}",
-                        transaction_id,
-                        query_id
+                        "Query {:?} matches transaction {:?}",
+                        query_id,
+                        transaction_id
                     );
                     Some((query_id, transaction_id.clone()))
                 }
@@ -122,45 +120,46 @@ fn process_transaction_log_queries(
     block: &Block<Transaction>,
 ) -> TransactionQueryResults {
     trace!("Processing {:?}", block);
-    let mut combined_query_results = vec![];
 
-    for (query_id, query) in transaction_log_queries.all() {
-        trace!("Matching query {:#?} against block {:#?}", query, block);
+    let block_hash;
+    match block.hash {
+        None => return vec![],
+        Some(hash) => block_hash = format!("{:x}", hash),
+    }
 
-        if query.matches_block(&block) {
-            let block_id = format!("{:x}", block.hash.unwrap()); // TODO should probably not unwrap here
-            trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
+    transaction_log_queries
+        .all()
+        .filter(|(_, query)| {
+            trace!("Matching query {:#?} against block {:#?}", query, block);
+            query.matches_block(&block)
+        })
+        .map(|(query_id, query)| {
+            trace!("Query {:?} matches block {:?}", query_id, block_hash);
             let futures: Vec<_> = block
                 .transactions
                 .iter()
                 .map(|transaction| client.eth().transaction_receipt(transaction.hash))
                 .collect();
 
-            let query_results = stream::futures_ordered(futures)
-                .filter_map(|transaction_receipt| {
-                    transaction_receipt.map_or(None, {
-                        |transaction_receipt| {
-                            if query.matches_transaction_receipt(transaction_receipt.clone()) {
-                                let transaction_id =
-                                    format!("{:x}", transaction_receipt.transaction_hash);
-                                trace!(
-                                    "Transaction {:?} matches Query-ID: {:?}",
-                                    transaction_id,
-                                    query_id
-                                );
+            stream::futures_ordered(futures)
+                .filter_map(|x| x)
+                .filter(|transaction_receipt| {
+                    query.matches_transaction_receipt(transaction_receipt.clone())
+                })
+                .map(|transaction_receipt| {
+                    let transaction_id = format!("{:x}", transaction_receipt.transaction_hash);
+                    trace!(
+                        "Transaction {:?} matches Query-ID: {:?}",
+                        transaction_id,
+                        query_id
+                    );
 
-                                Some((query_id, transaction_id))
-                            } else {
-                                None
-                            }
-                        }
-                    })
+                    (query_id, transaction_id)
                 })
                 .collect()
-                .wait();
-
-            combined_query_results.append(&mut query_results.unwrap()); // TODO should definitely not unwrap here
-        }
-    }
-    combined_query_results
+                .wait()
+        })
+        .flatten()
+        .flatten()
+        .collect()
 }

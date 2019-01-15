@@ -62,9 +62,6 @@ pub struct PendingTransaction {
     pending_confirmations: u32,
 }
 
-type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
-type ArcQueryResultRepository<Q> = Arc<dyn QueryResultRepository<Q>>;
-
 #[derive(DebugStub)]
 pub struct DefaultBlockProcessor<T, B, TQ, BQ> {
     #[debug_stub = "Queries"]

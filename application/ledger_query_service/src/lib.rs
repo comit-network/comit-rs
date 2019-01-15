@@ -24,10 +24,12 @@ pub use crate::{
 };
 pub use ethereum_support::web3;
 use futures::Future;
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 type QueryId = u32;
 type QueryMatch = (QueryId, String);
+type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
+type ArcQueryResultRepository<Q> = Arc<dyn QueryResultRepository<Q>>;
 
 pub trait BlockProcessor<B> {
     fn process(

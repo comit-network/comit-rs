@@ -1,6 +1,6 @@
 use crate::{
     query_repository::QueryRepository, query_result_repository::QueryResultRepository,
-    BlockProcessor, Query, QueryMatchResult,
+    ArcQueryRepository, ArcQueryResultRepository, BlockProcessor, Query, QueryMatchResult,
 };
 use futures::{future::join_all, Future};
 use std::{
@@ -30,9 +30,6 @@ pub struct PendingTransaction {
     tx_id: String,
     pending_confirmations: u32,
 }
-
-type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
-type ArcQueryResultRepository<Q> = Arc<dyn QueryResultRepository<Q>>;
 
 #[derive(DebugStub)]
 pub struct DefaultBlockProcessor<T, B, TQ, BQ> {

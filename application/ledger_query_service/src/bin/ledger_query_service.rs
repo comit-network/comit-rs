@@ -16,7 +16,8 @@ use ledger_query_service::{
         queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
     },
     ethereum::{
-        block_processor::process as process_ethereum,
+        block_processor::process,
+        ethereum_web3_block_poller::ethereum_block_listener,
         queries::{EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery},
     },
     settings::{self, Settings},
@@ -132,7 +133,7 @@ fn create_ethereum_routes(
     let transaction_log_query_result_repository =
         Arc::new(InMemoryQueryResultRepository::default());
 
-    info!("Starting EthereumSimpleListener on {}", settings.node_url);
+    info!("Starting Ethereum Listener on {}", settings.node_url);
 
     let (event_loop, transport) =
         Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
@@ -144,20 +145,18 @@ fn create_ethereum_routes(
         let transaction_log_query_result_repository =
             transaction_log_query_result_repository.clone();
 
-        let blocks =
-            ledger_query_service::ethereum::ethereum_web3_block_poller::ethereum_block_listener(
-                web3_client.clone(),
-                settings.poll_interval_secs,
-            )
-            .expect("Should return a Web3 block poller");
         let block_query_repository = block_query_repository.clone();
         let transaction_log_query_repository = transaction_log_query_repository.clone();
         let transaction_query_repository = transaction_query_repository.clone();
+
         let web3_client = web3_client.clone();
+
+        let blocks = ethereum_block_listener(web3_client.clone(), settings.poll_interval_secs)
+            .expect("Should return a Web3 block poller");
 
         let web3_processor = blocks
             .and_then(move |block| {
-                process_ethereum(
+                process(
                     block_query_repository.clone(),
                     transaction_log_query_repository.clone(),
                     transaction_query_repository.clone(),
