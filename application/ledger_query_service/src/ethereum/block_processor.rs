@@ -127,23 +127,29 @@ fn process_transaction_log_queries(
                 .collect();
 
             let query_results = stream::futures_ordered(futures)
-                .filter_map(|transaction_receipt| match transaction_receipt {
-                    Some(transaction_receipt) => {
-                        if query.matches_transaction_receipt(transaction_receipt.clone()) {
-                            let transaction_id =
-                                format!("{:x}", transaction_receipt.transaction_hash);
+                .filter_map(|transaction_receipt| {
+                    transaction_receipt.map_or(None, {
+                        |transaction_receipt| {
+                            if query.matches_transaction_receipt(transaction_receipt.clone()) {
+                                let transaction_id =
+                                    format!("{:x}", transaction_receipt.transaction_hash);
+                                trace!(
+                                    "Transaction {:?} matches Query-ID: {:?}",
+                                    transaction_id,
+                                    query_id
+                                );
 
-                            Some((query_id, transaction_id))
-                        } else {
-                            None
+                                Some((query_id, transaction_id))
+                            } else {
+                                None
+                            }
                         }
-                    }
-                    None => None,
+                    })
                 })
                 .collect()
                 .wait();
 
-            combined_query_results.append(&mut query_results.unwrap()); // TODO should probably not unwrap here
+            combined_query_results.append(&mut query_results.unwrap()); // TODO should definitely not unwrap here
         }
     }
     combined_query_results
