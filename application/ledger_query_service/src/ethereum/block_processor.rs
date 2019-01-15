@@ -7,7 +7,10 @@ use crate::{
     QueryMatch, QueryMatchResult,
 };
 use ethereum_support::web3::{transports::Http, Web3};
-use futures::{future::Future, stream};
+use futures::{
+    future::Future,
+    stream::{self, Stream},
+};
 use std::sync::Arc;
 use tokio;
 
@@ -26,7 +29,7 @@ pub fn process(
 
     let transaction_queries = transaction_queries.clone();
 
-    let transaction_query_results: TransactionQueryResults = block
+    let mut transaction_query_results: TransactionQueryResults = block
         .transactions
         .iter()
         .map(move |transaction| {
@@ -35,8 +38,10 @@ pub fn process(
         .flatten()
         .collect();
 
-    let transaction_log_query_results =
+    let mut transaction_log_query_results =
         process_transaction_log_queries(transaction_log_queries, client, block);
+
+    transaction_query_results.append(&mut transaction_log_query_results);
 
     Ok((block_query_results, transaction_query_results))
 }
@@ -107,7 +112,7 @@ fn process_transaction_log_queries(
     block: &Block<Transaction>,
 ) -> TransactionQueryResults {
     trace!("Processing {:?}", block);
-    let mut query_results = vec![];
+    let mut combined_query_results = vec![];
 
     for (query_id, query) in transaction_log_queries.all() {
         trace!("Matching query {:#?} against block {:#?}", query, block);
@@ -115,13 +120,16 @@ fn process_transaction_log_queries(
         if query.matches_block(&block) {
             let block_id = format!("{:x}", block.hash.unwrap()); // TODO should probably not unwrap here
             trace!("Block {:?} matches Query-ID: {:?}", block_id, query_id);
-            let futures = block
+            let futures: Vec<_> = block
                 .transactions
                 .iter()
                 .map(|transaction| client.eth().transaction_receipt(transaction.hash))
+                .collect();
+
+            let query_results = stream::futures_ordered(futures)
                 .filter_map(|transaction_receipt| match transaction_receipt {
                     Some(transaction_receipt) => {
-                        if query.matches_transaction_receipt(transaction_receipt) {
+                        if query.matches_transaction_receipt(transaction_receipt.clone()) {
                             let transaction_id =
                                 format!("{:x}", transaction_receipt.transaction_hash);
 
@@ -130,23 +138,13 @@ fn process_transaction_log_queries(
                             None
                         }
                     }
-                    None => {
-                        trace!(
-                            "Could not retrieve transaction receipt for transaction {}",
-                            transaction_receipt.transaction_hash
-                        );
-                        None
-                    }
+                    None => None,
                 })
-                .collect();
+                .collect()
+                .wait();
 
-            query_results.append(
-                stream::futures_ordered(futures)
-                    .filter_map(|item| item)
-                    .collect()
-                    .wait(),
-            )
+            combined_query_results.append(&mut query_results.unwrap()); // TODO should probably not unwrap here
         }
     }
-    query_results
+    combined_query_results
 }

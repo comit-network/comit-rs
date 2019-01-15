@@ -149,6 +149,7 @@ fn create_ethereum_routes(
         let block_query_repository = block_query_repository.clone();
         let transaction_log_query_repository = transaction_log_query_repository.clone();
         let transaction_query_repository = transaction_query_repository.clone();
+        let web3_client = web3_client.clone();
 
         let web3_processor = blocks
             .and_then(move |block| {
@@ -156,6 +157,7 @@ fn create_ethereum_routes(
                     block_query_repository.clone(),
                     transaction_log_query_repository.clone(),
                     transaction_query_repository.clone(),
+                    web3_client.clone(),
                     &block,
                 )
             })
