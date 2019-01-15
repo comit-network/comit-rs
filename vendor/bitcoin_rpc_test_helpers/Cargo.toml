@@ -5,7 +5,7 @@ authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
-bitcoin_rpc_client = "0.4"
+bitcoin_rpc_client = "0.5"
 bitcoin_support = { path = "../bitcoin_support" }
-testcontainers = "0.3"
+testcontainers = "0.4"
 

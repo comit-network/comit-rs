@@ -15,4 +15,4 @@ members = [
 ]
 
 [replace]
-"bitcoin_rpc_client:0.4.0" = { git = "https://github.com/coblox/bitcoinrpc-rust-client", branch = "from-verboserawtx-to-bitcointx" }
+"bitcoin_rpc_client:0.5.0" = { git = "https://github.com/coblox/bitcoinrpc-rust-client", branch = "from-verboserawtx-to-bitcointx" }
