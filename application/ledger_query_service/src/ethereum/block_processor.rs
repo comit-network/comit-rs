@@ -17,6 +17,7 @@ use tokio;
 type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
 type BlockQueryResults = Vec<QueryMatch>;
 type TransactionQueryResults = Vec<QueryMatch>;
+type TransactionLogQueryResults = Vec<QueryMatch>;
 
 pub fn process(
     block_queries: ArcQueryRepository<EthereumBlockQuery>,
@@ -24,12 +25,19 @@ pub fn process(
     transaction_queries: ArcQueryRepository<EthereumTransactionQuery>,
     client: Arc<Web3<Http>>,
     block: &Block<Transaction>,
-) -> Result<(BlockQueryResults, TransactionQueryResults), ()> {
+) -> Result<
+    (
+        BlockQueryResults,
+        TransactionQueryResults,
+        TransactionLogQueryResults,
+    ),
+    (),
+> {
     let block_query_results = process_block_queries(block_queries, block);
 
     let transaction_queries = transaction_queries.clone();
 
-    let mut transaction_query_results: TransactionQueryResults = block
+    let transaction_query_results: TransactionQueryResults = block
         .transactions
         .iter()
         .map(move |transaction| {
@@ -38,12 +46,14 @@ pub fn process(
         .flatten()
         .collect();
 
-    let mut transaction_log_query_results =
+    let transaction_log_query_results =
         process_transaction_log_queries(transaction_log_queries, client, block);
 
-    transaction_query_results.append(&mut transaction_log_query_results);
-
-    Ok((block_query_results, transaction_query_results))
+    Ok((
+        block_query_results,
+        transaction_query_results,
+        transaction_log_query_results,
+    ))
 }
 
 fn process_block_queries(

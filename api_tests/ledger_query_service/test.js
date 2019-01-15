@@ -2,6 +2,8 @@ const chai = require("chai");
 chai.use(require("chai-http"));
 const should = chai.should();
 const bitcoin = require("../lib/bitcoin.js");
+const actor = require("../lib/actor.js");
+const ethereum = require("../lib/ethereum.js");
 const wallet = require("../lib/wallet.js");
 const lqs_conf = require("../lib/lqs.js");
 
@@ -9,16 +11,31 @@ const bitcoin_rpc_client = bitcoin.create_client();
 const lqs = lqs_conf.create("localhost", 8080);
 const toby_wallet = wallet.create("toby");
 
+const alice = actor.create("alice", {});
+const alice_wallet_address = alice.wallet.eth().address();
+
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 describe("Test Ledger Query Service API", () => {
+    let token_contract_address;
     before(async function() {
         this.timeout(5000);
         await bitcoin.btc_activate_segwit();
         await toby_wallet.btc().fund(5);
         await toby_wallet.eth().fund(20);
+        await alice.wallet.eth().fund(1);
+
+        let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
+        token_contract_address = receipt.contractAddress;
+
+        await ethereum.mint_erc20_tokens(
+            toby_wallet,
+            token_contract_address,
+            alice_wallet_address,
+            10
+        );
     });
 
     describe("Bitcoin", () => {
@@ -329,6 +346,84 @@ describe("Test Ledger Query Service API", () => {
                                     min_timestamp_secs
                                 );
                                 body.matches.should.lengthOf(1);
+                            });
+                    });
+            });
+
+            it("LQS should respond with no content when deleting an existing ethereum block query", async function() {
+                return chai
+                    .request(location)
+                    .delete("")
+                    .then(res => {
+                        res.should.have.status(204);
+                    });
+            });
+        });
+
+        describe("Bloom", () => {
+            it("LQS should respond not found when getting a non-existent ethereum bloom query", async function() {
+                return chai
+                    .request(lqs.url())
+                    .get("/queries/ethereum/bloom/1")
+                    .then(res => {
+                        res.should.have.status(404);
+                    });
+            });
+
+            // keccak('Transfer(address,address,uint256)')
+            const transfer_topic =
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+            let location;
+            it("LQS should respond with location when creating a valid bloom query", async function() {
+                this.timeout(1000);
+                return chai
+                    .request(lqs.url())
+                    .post("/queries/ethereum/bloom")
+                    .send({
+                        logs: [[transfer_topic]],
+                    })
+                    .then(res => {
+                        res.should.have.status(201);
+                        location = res.headers.location;
+                        location.should.be.a("string");
+                    });
+            });
+
+            it("LQS should respond with no match when querying an existing ethereum bloom query", async function() {
+                this.timeout(1000);
+                return chai
+                    .request(location)
+                    .get("")
+                    .then(res => {
+                        res.should.have.status(200);
+                        res.body.query.logs.should.deep.equal([
+                            [transfer_topic],
+                        ]);
+                        res.body.matches.should.be.empty;
+                    });
+            });
+
+            it("LQS should respond with bloom match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
+                this.slow(2000);
+
+                const transfer_token_data =
+                    "0xa9059cbb0000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd90000000000000000000000000000000000000000000000000000000000000001";
+                return alice.wallet
+                    .eth()
+                    .send_eth_transaction_to(token_contract_address, transfer_token_data, 0)
+                    .then(receipt => {
+                        return lqs
+                            .poll_until_matches(chai, location)
+                            .then(body => {
+                                body.query.logs.should.deep.equal([
+                                    [transfer_topic],
+                                ]);
+                                body.matches.should.have.lengthOf(1);
+                                let query_transaction_hash =
+                                    "0x" + body.matches[0];
+                                query_transaction_hash.should.equal(
+                                    receipt.transactionHash
+                                );
                             });
                     });
             });
