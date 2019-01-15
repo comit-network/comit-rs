@@ -156,8 +156,8 @@ fn process_transaction_log_queries(
                 client
                     .eth()
                     .transaction_receipt(transaction.hash)
-                    .and_then(move |receipt| match receipt {
-                        Some(receipt) => {
+                    .and_then(move |receipt| {
+                        receipt.map_or(Ok(None), |receipt| {
                             if query.matches_transaction_receipt(receipt.clone()) {
                                 let transaction_id = receipt.transaction_hash;
                                 trace!(
@@ -170,8 +170,7 @@ fn process_transaction_log_queries(
                             } else {
                                 Ok(None)
                             }
-                        }
-                        None => Ok(None),
+                        })
                     })
             })
         })
