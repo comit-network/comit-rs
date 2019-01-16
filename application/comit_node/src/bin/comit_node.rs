@@ -16,6 +16,7 @@ use comit_node::{
         InMemoryMetadataStore, LedgerEventDependencies, ProtocolDependencies, SwapId,
     },
 };
+use directories;
 use ethereum_support::*;
 use std::{env::var, net::SocketAddr, sync::Arc};
 
@@ -63,13 +64,23 @@ fn main() -> Result<(), failure::Error> {
 }
 
 fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
-    let comit_config_path = var_or_default("COMIT_NODE_CONFIG_PATH", "~/.config/comit_node".into());
-    let run_mode_config = var_or_default("RUN_MODE", "development".into());
-    let default_config = format!("{}/{}", comit_config_path.trim(), "default");
-    let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
-
-    let settings = ComitNodeSettings::create(default_config, run_mode_config)?;
-    Ok(settings)
+    match directories::UserDirs::new() {
+        None => Err(config::ConfigError::Message(
+            "Unable to determine user's home directory".to_string(),
+        )),
+        Some(dirs) => {
+            let default_config = std::path::Path::join(dirs.home_dir(), ".config/comit_node");
+            let comit_config_path = var_or_default(
+                "COMIT_NODE_CONFIG_PATH",
+                default_config.to_string_lossy().to_string(),
+            );
+            let run_mode_config = var_or_default("RUN_MODE", "development".into());
+            let default_config = format!("{}/{}", comit_config_path.trim(), "default");
+            let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
+            let settings = ComitNodeSettings::create(default_config, run_mode_config)?;
+            Ok(settings)
+        }
+    }
 }
 
 fn create_ledger_query_service_api_client(
