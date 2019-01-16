@@ -1,7 +1,6 @@
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    QueryMatchResult,
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -40,7 +39,7 @@ pub struct BlockQuery {
 }
 
 impl TransactionQuery {
-    pub fn matches(&self, transaction: &Transaction) -> QueryMatchResult {
+    pub fn matches(&self, transaction: &Transaction) -> bool {
         match self {
             Self {
                 from_address: None,
@@ -48,7 +47,7 @@ impl TransactionQuery {
                 is_contract_creation: None,
                 transaction_data: None,
                 transaction_data_length: None,
-            } => QueryMatchResult::no(),
+            } => false,
             Self {
                 from_address,
                 to_address,
@@ -79,11 +78,7 @@ impl TransactionQuery {
                     result = result && (transaction.input.0.len() == *transaction_data_length);
                 }
 
-                if result {
-                    QueryMatchResult::yes()
-                } else {
-                    QueryMatchResult::no()
-                }
+                result
             }
         }
     }
@@ -214,19 +209,19 @@ impl ExpandResult for LogQuery {
 }
 
 impl BlockQuery {
-    pub fn matches(&self, block: &Block<Transaction>) -> QueryMatchResult {
+    pub fn matches(&self, block: &Block<Transaction>) -> bool {
         match self.min_timestamp_secs {
             Some(min_timestamp_secs) => {
                 let min_timestamp_secs = U256::from(min_timestamp_secs);
                 if min_timestamp_secs <= block.timestamp {
-                    QueryMatchResult::yes()
+                    true
                 } else {
-                    QueryMatchResult::no()
+                    false
                 }
             }
             None => {
                 warn!("min_timestamp not set, nothing to compare");
-                QueryMatchResult::no()
+                false
             }
         }
     }
@@ -489,7 +484,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -517,7 +512,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -547,7 +542,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -577,7 +572,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -607,7 +602,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -651,13 +646,13 @@ mod tests {
         };
 
         let result = query_data.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
 
         let result = query_data_length.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
 
         let result = refund_query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -693,10 +688,10 @@ mod tests {
         };
 
         let result = query_data.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
 
         let result = query_data_length.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -723,7 +718,6 @@ mod tests {
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
         };
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no())
+        assert_that(&result).is_false()
     }
-
 }
