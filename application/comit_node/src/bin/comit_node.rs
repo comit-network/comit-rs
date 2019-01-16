@@ -66,7 +66,7 @@ fn main() -> Result<(), failure::Error> {
 fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
     match directories::UserDirs::new() {
         None => Err(config::ConfigError::Message(
-            "could not determine user's home directory".to_string(),
+            "Unable to determine user's home directory".to_string(),
         )),
         Some(dirs) => {
             let default_config = std::path::Path::join(dirs.home_dir(), ".config/comit_node");
