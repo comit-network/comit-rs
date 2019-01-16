@@ -172,8 +172,8 @@ dependencies = [
 
 [[package]]
 name = "bitcoin_rpc_client"
-version = "0.4.0"
-source = "git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx#5575a57cab2ddf1ca7b4bd21badb88fb56e32af3"
+version = "0.5.0"
+source = "git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx#a3db4d6d6fba6b8b0f1e1d185ad77dd9638e380f"
 dependencies = [
  "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -188,17 +188,17 @@ dependencies = [
 
 [[package]]
 name = "bitcoin_rpc_client"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-replace = "bitcoin_rpc_client 0.4.0 (git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx)"
+replace = "bitcoin_rpc_client 0.5.0 (git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx)"
 
 [[package]]
 name = "bitcoin_rpc_test_helpers"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
- "testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -222,7 +222,7 @@ dependencies = [
 name = "bitcoin_witness"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -231,7 +231,7 @@ dependencies = [
  "secp256k1_support 0.1.0",
  "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
- "testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -343,7 +343,7 @@ version = "0.1.0"
 dependencies = [
  "bam 0.1.0",
  "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
@@ -387,7 +387,7 @@ dependencies = [
  "state_machine_future 0.1.8 (git+https://github.com/coblox/state_machine_future.git)",
  "tc_bitcoincore_client 0.1.0",
  "tc_web3_client 0.1.0",
- "testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio-timer 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1125,7 +1125,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "ledger_query_service"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1147,7 +1147,7 @@ dependencies = [
  "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "warp 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2104,8 +2104,8 @@ dependencies = [
 name = "tc_bitcoincore_client"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -2122,7 +2122,7 @@ dependencies = [
 
 [[package]]
 name = "tc_coblox_bitcoincore"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2143,11 +2143,36 @@ dependencies = [
 ]
 
 [[package]]
-name = "tc_parity_parity"
-version = "0.2.1"
+name = "tc_dynamodb_local"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tc_elasticmq"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "tc_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tc_parity_parity"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "tc_redis"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
  "tc_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2163,7 +2188,7 @@ dependencies = [
 name = "tc_web3_client"
 version = "0.1.0"
 dependencies = [
- "testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "web3 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2200,13 +2225,16 @@ dependencies = [
 
 [[package]]
 name = "testcontainers"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "tc_cli_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_coblox_bitcoincore 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_coblox_bitcoincore 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_parity_parity 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_dynamodb_local 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_elasticmq 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_parity_parity 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_redis 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_trufflesuite_ganachecli 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2819,8 +2847,8 @@ dependencies = [
 "checksum bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)" = "804b37d4fcadce0ebf4cf87e0a60e71db95d5fac70d0c2cda8aae88a4d830d31"
 "checksum bitcoin-bech32 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f0a5cfe5abcb5040b36d4ea8acba95288fefebd7959b59475f2c4ec705974b4c"
 "checksum bitcoin_quantity 0.1.0 (git+https://github.com/coblox/bitcoin-quantity)" = "<none>"
-"checksum bitcoin_rpc_client 0.4.0 (git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx)" = "<none>"
-"checksum bitcoin_rpc_client 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3158229a8bc2971b27eb9eada829577a3708f26cb0616104f9009024c70e69c4"
+"checksum bitcoin_rpc_client 0.5.0 (git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx)" = "<none>"
+"checksum bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9a2d0c475b7be56319076a952a880f9c2c8f7ed04f76151e45552a1784c6da7"
 "checksum bitflags 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4efd02e230a02e18f92fc2735f44597385ed02ad8f831e7c1c1156ee5e1ab3a5"
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
 "checksum block-buffer 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a076c298b9ecdb530ed9d967e74a6027d6a7478924520acddcddc24c1c8ab3ab"
@@ -3027,14 +3055,17 @@ dependencies = [
 "checksum synom 0.11.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a393066ed9010ebaed60b9eafa373d4b1baac186dd7e008555b0f702b51945b6"
 "checksum synstructure 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "73687139bf99285483c96ac0add482c3776528beac1d97d444f6e91f203a2015"
 "checksum tc_cli_client 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "e430450441abd5a9bf7f778c66745a983b8de95686cf8a7f16d229310488f515"
-"checksum tc_coblox_bitcoincore 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "92f9d7b3a78bed10d3789cc626043c505aa7a4aa3916ab3f81843ebb1a29c169"
+"checksum tc_coblox_bitcoincore 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b32f9fa74f9a99d148bf8ca5f569b2be9fd829821c815685bde3c7339400dc2e"
 "checksum tc_core 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b89b3974cfb153e633820599447d45751bfc3b0563f8ba93cd77904191452967"
-"checksum tc_parity_parity 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "d67997fd6688c2fc81b5772fcb950b5abfd22ecfdff1e1844978e6419449ab3f"
+"checksum tc_dynamodb_local 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c815af1d0343aa709ae55f74dbb42528c50a5cfb189f2223c27b619fcbbc65c1"
+"checksum tc_elasticmq 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "89418fdddd01bb89a4c26b6e14da735a61466ae8123c831bcec63271f8547558"
+"checksum tc_parity_parity 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "220b7cd045d5848a9b7805e9b73a31f5fefd15e5ff3f973a68f00039c27413e3"
+"checksum tc_redis 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "83769e9bb6537b5150ff617a71fafec2dc0e832dbc065e44f187c40dc9bf31c6"
 "checksum tc_trufflesuite_ganachecli 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "596966ba82d0c2337824d1e383ca1691b6df06de5597f0ce9a8351f738181bd0"
 "checksum tempfile 3.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "55c1195ef8513f3273d55ff59fe5da6940287a0d7a98331254397f464833675b"
 "checksum termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "4096add70612622289f2fdcdbd5086dc81c1e2675e6ae58d6c4f62a16c6d7f2f"
 "checksum termion 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"
-"checksum testcontainers 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "daeed950990a60f8eacffefa091a782be1e3c402b060935f4c2dce65236f992d"
+"checksum testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e93776d508424ee410e00bf4a9f193cf3f25689e741569be376ed74d04021e5c"
 "checksum thread-id 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9539db560102d1cef46b8b78ce737ff0bb64e7e18d35b2a5688f7d097d0ff03"
 "checksum thread_local 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "8576dbbfcaef9641452d5cf0df9b0e7eeab7694956dd33bb61515fb8f18cfdd5"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"

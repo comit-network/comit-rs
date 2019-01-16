@@ -9,7 +9,7 @@ regex = "1"
 
 [dependencies]
 binary_macros = "0.6"
-bitcoin_rpc_client = "0.4"
+bitcoin_rpc_client = "0.5"
 chrono = "0.4"
 config = "0.9"
 debug_stub_derive = "0.3"
@@ -82,7 +82,7 @@ memsocket = "0.1"
 pretty_env_logger = "0.2"
 spectral = "0.6"
 tiny-keccak = "1.4"
-testcontainers = "0.3"
+testcontainers = "0.4"
 serde_urlencoded = "0.5.4"
 
 [dev-dependencies.key_gen]
