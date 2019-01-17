@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    routes, web3, NonEmpty,
+    routes, web3, IsEmpty,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
@@ -51,7 +51,7 @@ impl RouteFactory {
     }
 
     pub fn create<
-        Q: NonEmpty
+        Q: IsEmpty
             + QueryType
             + ExpandResult
             + ShouldExpand

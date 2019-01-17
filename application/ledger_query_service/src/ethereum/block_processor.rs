@@ -2,10 +2,7 @@ use crate::{
     ethereum::queries::{
         EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery,
     },
-    web3::{
-        self,
-        types::{Block, Transaction},
-    },
+    web3::types::{Block, Transaction},
     ArcQueryRepository, QueryMatch, QueryMatchResult,
 };
 use ethereum_support::web3::{transports::Http, Web3};
@@ -13,131 +10,82 @@ use futures::{
     future::Future,
     stream::{self, Stream},
 };
+use itertools::Itertools;
 use std::sync::Arc;
 use tokio;
 
-type BlockQueryResults = Vec<QueryMatch>;
-type TransactionQueryResults = Vec<QueryMatch>;
-type TransactionLogQueryResults = Vec<QueryMatch>;
-
-pub fn process(
+pub fn check_block_queries(
     block_queries: ArcQueryRepository<EthereumBlockQuery>,
-    transaction_log_queries: ArcQueryRepository<EthereumTransactionLogQuery>,
-    transaction_queries: ArcQueryRepository<EthereumTransactionQuery>,
-    client: Arc<Web3<Http>>,
-    block: &Block<Transaction>,
-) -> Result<
-    (
-        BlockQueryResults,
-        TransactionQueryResults,
-        TransactionLogQueryResults,
-    ),
-    (),
-> {
-    let block_query_results = process_block_queries(block_queries, block);
-
-    let transaction_queries = transaction_queries.clone();
-    let transaction_query_results: TransactionQueryResults = block
-        .transactions
-        .iter()
-        .map(move |transaction| {
-            process_transaction_queries(transaction_queries.clone(), transaction)
-        })
-        .flatten()
-        .collect();
-    let result = process_transaction_log_queries(transaction_log_queries, client, block);
-
-    let transaction_log_query_results = match result {
-        Ok(result) => result,
-        Err(e) => {
-            error!(
-                "Could not execute transaction log queries on block {:?}: {:?}",
-                block, e
-            );
-            vec![]
-        }
-    };
-
-    Ok((
-        block_query_results,
-        transaction_query_results,
-        transaction_log_query_results,
-    ))
-}
-
-fn process_block_queries(
-    block_queries: ArcQueryRepository<EthereumBlockQuery>,
-    block: &Block<Transaction>,
-) -> BlockQueryResults {
+    block: Block<Transaction>,
+) -> impl Iterator<Item = QueryMatch> {
     trace!("Processing {:?}", block);
 
-    let block_hash;
-    match block.hash {
-        None => return vec![],
-        Some(hash) => block_hash = format!("{:x}", hash),
-    }
+    let block_id = block.hash.map(|block_hash| format!("{:x}", block_hash));
 
     block_queries
         .all()
-        .filter_map(|(query_id, query)| {
+        .filter_map(move |(query_id, query)| {
+            block_id.clone().map(|block_id| (query_id, query, block_id))
+        })
+        .filter_map(move |(query_id, query, block_id)| {
             trace!("Matching query {:#?} against block {:#?}", query, block);
 
-            match query.matches(block) {
+            match query.matches(&block) {
                 QueryMatchResult::Yes { .. } => {
-                    trace!("Query {:?} matches block {:?}", query_id, block_hash);
-                    Some((query_id, block_hash.clone()))
+                    trace!("Query {:?} matches block {:?}", query_id, block_id);
+                    Some((query_id, block_id))
                 }
                 _ => None,
             }
         })
-        .collect()
 }
 
-fn process_transaction_queries(
+pub fn check_transaction_queries(
     transaction_queries: ArcQueryRepository<EthereumTransactionQuery>,
-    transaction: &Transaction,
-) -> TransactionQueryResults {
-    trace!("Processing {:?}", transaction);
+    block: Block<Transaction>,
+) -> impl Iterator<Item = QueryMatch> {
+    block
+        .transactions
+        .iter()
+        .map(|transaction| {
+            trace!("Processing {:?}", transaction);
 
-    let transaction_id = format!("{:x}", transaction.hash);
+            let transaction = transaction.clone();
+            let transaction_id = format!("{:x}", transaction.hash);
 
-    transaction_queries
-        .clone()
-        .all()
-        .filter_map(|(query_id, query)| {
-            trace!(
-                "Matching query {:#?} against transaction {:#?}",
-                query,
-                transaction
-            );
-
-            match query.matches(transaction) {
-                QueryMatchResult::Yes { .. } => {
+            transaction_queries
+                .all()
+                .filter_map(move |(query_id, query)| {
                     trace!(
-                        "Query {:?} matches transaction {:?}",
-                        query_id,
-                        transaction_id
+                        "Matching query {:#?} against transaction {:#?}",
+                        query,
+                        &transaction
                     );
-                    Some((query_id, transaction_id.clone()))
-                }
-                _ => None,
-            }
+
+                    match query.matches(&transaction) {
+                        QueryMatchResult::Yes { .. } => {
+                            trace!(
+                                "Query {:?} matches transaction {:?}",
+                                query_id,
+                                transaction_id
+                            );
+                            Some((query_id, transaction_id.clone()))
+                        }
+                        _ => None,
+                    }
+                })
         })
-        .collect()
+        .kmerge()
 }
 
-fn process_transaction_log_queries(
+pub fn check_transaction_log_queries(
     transaction_log_queries: ArcQueryRepository<EthereumTransactionLogQuery>,
     client: Arc<Web3<Http>>,
-    block: &Block<Transaction>,
-) -> Result<TransactionQueryResults, web3::Error> {
+    block: Block<Transaction>,
+) -> impl Stream<Item = QueryMatch, Error = ()> {
     trace!("Processing {:?}", block);
 
-    let block_hash;
-    match block.hash {
-        None => return Ok(vec![]),
-        Some(hash) => block_hash = format!("{:x}", hash),
-    }
+    let block_id = block.hash.map(|block_id| format!("{:x}", block_id));
 
     let futures = transaction_log_queries
         .all()
@@ -146,38 +94,34 @@ fn process_transaction_log_queries(
             query.matches_block(&block)
         })
         .map(|(query_id, query)| {
-            trace!("Query {:?} matches block {:?}", query_id, block_hash);
+            trace!("Query {:?} matches block {:?}", query_id, block_id);
 
-            let client = client.clone();
+            let client = Arc::clone(&client);
 
             block.transactions.iter().map(move |transaction| {
                 let query = query.clone();
 
-                client
-                    .eth()
-                    .transaction_receipt(transaction.hash)
-                    .and_then(move |receipt| {
-                        receipt.map_or(Ok(None), |receipt| {
-                            if query.matches_transaction_receipt(receipt.clone()) {
-                                let transaction_id = receipt.transaction_hash;
-                                trace!(
-                                    "Transaction {:?} matches Query-ID: {:?}",
-                                    transaction_id,
-                                    query_id
-                                );
+                client.eth().transaction_receipt(transaction.hash).then(
+                    move |result| match result {
+                        Ok(Some(ref receipt))
+                            if query.matches_transaction_receipt(receipt.clone()) =>
+                        {
+                            let transaction_id = receipt.transaction_hash;
+                            trace!(
+                                "Transaction {:?} matches Query-ID: {:?}",
+                                transaction_id,
+                                query_id
+                            );
 
-                                Ok(Some((query_id, format!("{:x}", transaction_id))))
-                            } else {
-                                Ok(None)
-                            }
-                        })
-                    })
+                            Ok(Some((query_id, format!("{:x}", transaction_id))))
+                        }
+
+                        _ => Ok(None),
+                    },
+                )
             })
         })
         .flatten();
 
-    stream::futures_ordered(futures)
-        .filter_map(|x| x)
-        .collect()
-        .wait()
+    stream::futures_ordered(futures).filter_map(|x| x)
 }

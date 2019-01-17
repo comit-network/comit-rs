@@ -42,7 +42,7 @@ pub trait Query<O>: Debug + 'static {
     fn matches(&self, object: &O) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>;
 }
 
-pub trait NonEmpty: Debug + 'static {
+pub trait IsEmpty: Debug + 'static {
     fn is_empty(&self) -> bool;
 }
 

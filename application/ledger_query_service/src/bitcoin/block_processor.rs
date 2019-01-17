@@ -223,7 +223,7 @@ mod tests {
     use super::*;
     use crate::{
         in_memory_query_repository::InMemoryQueryRepository,
-        in_memory_query_result_repository::InMemoryQueryResultRepository, NonEmpty,
+        in_memory_query_result_repository::InMemoryQueryResultRepository, IsEmpty,
     };
     use spectral::prelude::*;
 
@@ -247,7 +247,7 @@ mod tests {
             }
         }
     }
-    impl NonEmpty for GenericTransactionQuery {
+    impl IsEmpty for GenericTransactionQuery {
         fn is_empty(&self) -> bool {
             false
         }
@@ -270,7 +270,7 @@ mod tests {
             }
         }
     }
-    impl NonEmpty for GenericBlockQuery {
+    impl IsEmpty for GenericBlockQuery {
         fn is_empty(&self) -> bool {
             false
         }

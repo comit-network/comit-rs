@@ -12,11 +12,14 @@ use ethereum_support::web3::{
 use futures::stream::Stream;
 use ledger_query_service::{
     bitcoin::{
-        block_processor::DefaultBlockProcessor as BitcoinDefaultBlockProcessor,
+        block_processor::DefaultBlockProcessor as BitcoinBlockProcessor,
         queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
     },
     ethereum::{
-        block_processor::process,
+        block_processor::{
+            check_block_queries as check_ethereum_block_queries, check_transaction_log_queries,
+            check_transaction_queries as check_ethereum_transaction_queries,
+        },
         ethereum_web3_block_poller::ethereum_block_listener,
         queries::{EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery},
     },
@@ -68,7 +71,7 @@ fn create_bitcoin_routes(
 
     info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
-    let mut transaction_processor = BitcoinDefaultBlockProcessor::new(
+    let mut transaction_processor = BitcoinBlockProcessor::new(
         transaction_query_repository.clone(),
         block_query_repository.clone(),
         transaction_query_result_repository.clone(),
@@ -154,30 +157,35 @@ fn create_ethereum_routes(
         let blocks = ethereum_block_listener(web3_client.clone(), settings.poll_interval_secs)
             .expect("Should return a Web3 block poller");
 
-        let web3_processor = blocks
-            .and_then(move |block| {
-                process(
-                    block_query_repository.clone(),
-                    transaction_log_query_repository.clone(),
-                    transaction_query_repository.clone(),
-                    web3_client.clone(),
-                    &block,
-                )
-            })
-            .for_each(
-                move |(block_results, transaction_results, transaction_log_results)| {
-                    for (id, block_id) in block_results {
-                        block_query_result_repository.add_result(id, block_id);
-                    }
-                    for (id, transaction_id) in transaction_results {
-                        transaction_query_result_repository.add_result(id, transaction_id);
-                    }
-                    for (id, transaction_id) in transaction_log_results {
-                        transaction_log_query_result_repository.add_result(id, transaction_id);
-                    }
-                    Ok(())
+        let executor = runtime.executor();
+        let web3_processor = blocks.for_each(move |block| {
+            check_ethereum_block_queries(block_query_repository.clone(), block.clone()).for_each(
+                |(id, block_id)| {
+                    block_query_result_repository.add_result(id, block_id);
                 },
             );
+
+            check_ethereum_transaction_queries(transaction_query_repository.clone(), block.clone())
+                .for_each(|(id, transaction_id)| {
+                    transaction_query_result_repository.add_result(id, transaction_id);
+                });
+
+            let transaction_log_query_result_repository =
+                transaction_log_query_result_repository.clone();
+            let log_query_future = check_transaction_log_queries(
+                transaction_log_query_repository.clone(),
+                web3_client.clone(),
+                block,
+            )
+            .for_each(move |(id, transaction_id)| {
+                transaction_log_query_result_repository.add_result(id, transaction_id);
+                Ok(())
+            });
+
+            executor.spawn(log_query_future);
+            Ok(())
+        });
+
         runtime.spawn(web3_processor);
     }
 

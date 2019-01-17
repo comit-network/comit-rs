@@ -1,7 +1,7 @@
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    NonEmpty, QueryMatchResult,
+    IsEmpty, QueryMatchResult,
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -32,135 +32,9 @@ pub struct EthereumTransactionLogQuery {
     logs: Vec<Vec<H256>>,
 }
 
-impl EthereumTransactionLogQuery {
-    pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
-        match self {
-            Self { logs, .. } if logs.is_empty() => false,
-            Self { logs } => logs.iter().all(|topics| {
-                topics
-                    .iter()
-                    .all(|topic| block.logs_bloom.contains_input(Input::Raw(&topic)))
-            }),
-        }
-    }
-
-    pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
-        match self {
-            Self { logs } if logs.is_empty() => false,
-            Self { logs } => logs.iter().all(|topics| {
-                !topics.is_empty()
-                    && transaction_receipt
-                        .logs
-                        .iter()
-                        .any(|tx_log| topics.iter().all(|topic| tx_log.topics.contains(topic)))
-            }),
-        }
-    }
-}
-
-impl NonEmpty for EthereumTransactionLogQuery {
-    fn is_empty(&self) -> bool {
-        self.logs.is_empty() || self.logs.iter().all(|topic| topic.is_empty())
-    }
-}
-
-impl QueryType for EthereumTransactionLogQuery {
-    fn route() -> &'static str {
-        "bloom"
-    }
-}
-
-// TODO check if this is correct
-impl ShouldExpand for EthereumTransactionLogQuery {
-    fn should_expand(params: &QueryParams) -> bool {
-        params.expand_results
-    }
-}
-
-impl ExpandResult for EthereumTransactionLogQuery {
-    type Client = Web3<Http>;
-    type Item = EthereumTransaction;
-
-    fn expand_result(
-        result: &QueryResult,
-        client: Arc<Web3<Http>>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        let futures: Vec<_> = result
-            .0
-            .iter()
-            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
-                Ok(bytes) => Some(bytes),
-                Err(e) => {
-                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
-                    None
-                }
-            })
-            .map(|id| {
-                client
-                    .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
-                    .map_err(Error::Web3)
-            })
-            .collect();
-
-        stream::futures_ordered(futures)
-            .filter_map(|item| item)
-            .collect()
-            .wait()
-    }
-}
-
-impl QueryType for EthereumTransactionQuery {
-    fn route() -> &'static str {
-        "transactions"
-    }
-}
-
-impl ShouldExpand for EthereumTransactionQuery {
-    fn should_expand(params: &QueryParams) -> bool {
-        params.expand_results
-    }
-}
-
-fn clean_0x(s: &str) -> &str {
-    if s.starts_with("0x") {
-        &s[2..]
-    } else {
-        s
-    }
-}
-
-impl ExpandResult for EthereumTransactionQuery {
-    type Client = Web3<Http>;
-    type Item = EthereumTransaction;
-
-    fn expand_result(
-        result: &QueryResult,
-        client: Arc<Web3<Http>>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        let futures: Vec<_> = result
-            .0
-            .iter()
-            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
-                Ok(bytes) => Some(bytes),
-                Err(e) => {
-                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
-                    None
-                }
-            })
-            .map(|id| {
-                client
-                    .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
-                    .map_err(Error::Web3)
-            })
-            .collect();
-
-        stream::futures_ordered(futures)
-            .filter_map(|item| item)
-            .collect()
-            .wait()
-    }
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+pub struct EthereumBlockQuery {
+    pub min_timestamp_secs: Option<u64>,
 }
 
 impl EthereumTransactionQuery {
@@ -213,9 +87,139 @@ impl EthereumTransactionQuery {
     }
 }
 
-impl NonEmpty for EthereumTransactionQuery {
+impl QueryType for EthereumTransactionQuery {
+    fn route() -> &'static str {
+        "transactions"
+    }
+}
+
+impl ShouldExpand for EthereumTransactionQuery {
+    fn should_expand(params: &QueryParams) -> bool {
+        params.expand_results
+    }
+}
+
+impl ExpandResult for EthereumTransactionQuery {
+    type Client = Web3<Http>;
+    type Item = EthereumTransaction;
+
+    fn expand_result(
+        result: &QueryResult,
+        client: Arc<Web3<Http>>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        let futures: Vec<_> = result
+            .0
+            .iter()
+            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
+                Ok(bytes) => Some(bytes),
+                Err(e) => {
+                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
+                    None
+                }
+            })
+            .map(|id| {
+                client
+                    .eth()
+                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
+                    .map_err(Error::Web3)
+            })
+            .collect();
+
+        stream::futures_ordered(futures)
+            .filter_map(|item| item)
+            .collect()
+            .wait()
+    }
+}
+
+fn clean_0x(s: &str) -> &str {
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
+    }
+}
+
+impl IsEmpty for EthereumTransactionQuery {
     fn is_empty(&self) -> bool {
         self.from_address.is_none() && self.to_address.is_none() && self.transaction_data.is_none()
+    }
+}
+
+impl EthereumTransactionLogQuery {
+    pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
+        match self {
+            Self { logs, .. } if logs.is_empty() => false,
+            Self { logs } => logs.iter().all(|topics| {
+                topics
+                    .iter()
+                    .all(|topic| block.logs_bloom.contains_input(Input::Raw(&topic)))
+            }),
+        }
+    }
+
+    pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
+        match self {
+            Self { logs } if logs.is_empty() => false,
+            Self { logs } => logs.iter().all(|topics| {
+                !topics.is_empty()
+                    && transaction_receipt
+                        .logs
+                        .iter()
+                        .any(|tx_log| topics.iter().all(|topic| tx_log.topics.contains(topic)))
+            }),
+        }
+    }
+}
+
+impl QueryType for EthereumTransactionLogQuery {
+    fn route() -> &'static str {
+        "bloom"
+    }
+}
+
+impl ShouldExpand for EthereumTransactionLogQuery {
+    fn should_expand(params: &QueryParams) -> bool {
+        params.expand_results
+    }
+}
+
+impl ExpandResult for EthereumTransactionLogQuery {
+    type Client = Web3<Http>;
+    type Item = EthereumTransaction;
+
+    fn expand_result(
+        result: &QueryResult,
+        client: Arc<Web3<Http>>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        let futures: Vec<_> = result
+            .0
+            .iter()
+            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
+                Ok(bytes) => Some(bytes),
+                Err(e) => {
+                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
+                    None
+                }
+            })
+            .map(|id| {
+                client
+                    .eth()
+                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
+                    .map_err(Error::Web3)
+            })
+            .collect();
+
+        stream::futures_ordered(futures)
+            .filter_map(|item| item)
+            .collect()
+            .wait()
+    }
+}
+
+impl IsEmpty for EthereumTransactionLogQuery {
+    fn is_empty(&self) -> bool {
+        self.logs.is_empty() || self.logs.iter().all(|topic| topic.is_empty())
     }
 }
 
@@ -238,17 +242,6 @@ impl EthereumBlockQuery {
     }
 }
 
-impl NonEmpty for EthereumBlockQuery {
-    fn is_empty(&self) -> bool {
-        self.min_timestamp_secs.is_none()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct EthereumBlockQuery {
-    pub min_timestamp_secs: Option<u64>,
-}
-
 impl QueryType for EthereumBlockQuery {
     fn route() -> &'static str {
         "blocks"
@@ -267,6 +260,12 @@ impl ExpandResult for EthereumBlockQuery {
 
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
+    }
+}
+
+impl IsEmpty for EthereumBlockQuery {
+    fn is_empty(&self) -> bool {
+        self.min_timestamp_secs.is_none()
     }
 }
 
