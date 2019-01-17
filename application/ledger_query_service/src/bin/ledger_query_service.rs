@@ -9,12 +9,16 @@ use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
 };
-use futures::stream::Stream;
+use futures::{
+    future::{join_all, Future},
+    stream::Stream,
+};
 use ledger_query_service::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     settings::{self, Settings},
-    InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository, RouteFactory,
+    InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
+    RouteFactory,
 };
 use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
@@ -74,21 +78,36 @@ fn create_bitcoin_routes(
 
         let bitcoin_processor = blocks
             .and_then(move |block| {
-                bitcoin::process(
-                    block_query_repository.clone(),
-                    transaction_query_repository.clone(),
-                    block,
-                )
+                let block_query_results =
+                    bitcoin::check_block_queries(block_query_repository.clone(), block.clone());
+
+                let mut transaction_query_results = vec![];
+                for transaction in block.as_ref().txdata.as_slice() {
+                    transaction_query_results.push(bitcoin::check_transaction_queries(
+                        transaction_query_repository.clone(),
+                        transaction.clone(),
+                    ))
+                }
+                let transaction_query_results =
+                    join_all(transaction_query_results).map(|transaction_results_vec| {
+                        transaction_results_vec.into_iter().flatten().collect()
+                    });
+                (block_query_results, transaction_query_results)
             })
-            .for_each(move |(block_results, transaction_results)| {
-                for (id, block_id) in block_results {
-                    block_query_result_repository.add_result(id, block_id);
-                }
-                for (id, transaction_id) in transaction_results {
-                    transaction_query_result_repository.add_result(id, transaction_id);
-                }
-                Ok(())
-            });
+            .for_each(
+                move |(block_query_results, transaction_query_results): (
+                    Vec<QueryMatch>,
+                    Vec<QueryMatch>,
+                )| {
+                    for QueryMatch(id, block_id) in block_query_results {
+                        block_query_result_repository.add_result(id.0, block_id);
+                    }
+                    for QueryMatch(id, transaction_id) in transaction_query_results {
+                        transaction_query_result_repository.add_result(id.0, transaction_id);
+                    }
+                    Ok(())
+                },
+            );
         runtime.spawn(bitcoin_processor);
     }
 
@@ -150,8 +169,8 @@ fn create_ethereum_routes(
         let executor = runtime.executor();
         let web3_processor = blocks.for_each(move |block| {
             ethereum::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
-                |(id, block_id)| {
-                    block_query_result_repository.add_result(id, block_id);
+                |QueryMatch(id, block_id)| {
+                    block_query_result_repository.add_result(id.0, block_id);
                 },
             );
 
@@ -159,8 +178,8 @@ fn create_ethereum_routes(
                 transaction_query_repository.clone(),
                 block.clone(),
             )
-            .for_each(|(id, transaction_id)| {
-                transaction_query_result_repository.add_result(id, transaction_id);
+            .for_each(|QueryMatch(id, transaction_id)| {
+                transaction_query_result_repository.add_result(id.0, transaction_id);
             });
 
             let log_query_result_repository = log_query_result_repository.clone();
@@ -169,8 +188,8 @@ fn create_ethereum_routes(
                 web3_client.clone(),
                 block,
             )
-            .for_each(move |(id, transaction_id)| {
-                log_query_result_repository.add_result(id, transaction_id);
+            .for_each(move |QueryMatch(id, transaction_id)| {
+                log_query_result_repository.add_result(id.0, transaction_id);
                 Ok(())
             });
 

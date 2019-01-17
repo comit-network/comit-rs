@@ -119,13 +119,7 @@ impl ExpandResult for BlockQuery {
 impl BlockQuery {
     pub fn matches(&self, block: &Block) -> Box<dyn Future<Item = bool, Error = ()> + Send> {
         Box::new(futures::future::ok(match self.min_height {
-            Some(height) => {
-                if height <= block.height {
-                    true
-                } else {
-                    false
-                }
-            }
+            Some(height) => height <= block.height,
             None => {
                 warn!("min_height not set, nothing to compare");
                 false

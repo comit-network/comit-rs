@@ -213,11 +213,7 @@ impl BlockQuery {
         match self.min_timestamp_secs {
             Some(min_timestamp_secs) => {
                 let min_timestamp_secs = U256::from(min_timestamp_secs);
-                if min_timestamp_secs <= block.timestamp {
-                    true
-                } else {
-                    false
-                }
+                min_timestamp_secs <= block.timestamp
             }
             None => {
                 warn!("min_timestamp not set, nothing to compare");
