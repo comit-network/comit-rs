@@ -27,9 +27,11 @@ pub struct EthereumTransactionQuery {
     transaction_data_length: Option<usize>,
 }
 
+type Topics = Vec<H256>;
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EthereumTransactionLogQuery {
-    logs: Vec<Vec<H256>>,
+    topics: Vec<Topics>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -149,8 +151,8 @@ impl IsEmpty for EthereumTransactionQuery {
 impl EthereumTransactionLogQuery {
     pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
         match self {
-            Self { logs, .. } if logs.is_empty() => false,
-            Self { logs } => logs.iter().all(|topics| {
+            Self { topics, .. } if topics.is_empty() => false,
+            Self { topics } => topics.iter().all(|topics| {
                 topics
                     .iter()
                     .all(|topic| block.logs_bloom.contains_input(Input::Raw(&topic)))
@@ -160,8 +162,8 @@ impl EthereumTransactionLogQuery {
 
     pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
         match self {
-            Self { logs } if logs.is_empty() => false,
-            Self { logs } => logs.iter().all(|topics| {
+            Self { topics } if topics.is_empty() => false,
+            Self { topics } => topics.iter().all(|topics| {
                 !topics.is_empty()
                     && transaction_receipt
                         .logs
@@ -219,7 +221,7 @@ impl ExpandResult for EthereumTransactionLogQuery {
 
 impl IsEmpty for EthereumTransactionLogQuery {
     fn is_empty(&self) -> bool {
-        self.logs.is_empty() || self.logs.iter().all(|topic| topic.is_empty())
+        self.topics.is_empty() || self.topics.iter().all(|topic| topic.is_empty())
     }
 }
 
@@ -372,7 +374,7 @@ mod tests {
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
         let query = EthereumTransactionLogQuery {
-            logs: vec![vec![redeem_log_msg]],
+            topics: vec![vec![redeem_log_msg]],
         };
 
         assert_that!(query.matches_block(&block)).is_true()
@@ -387,7 +389,7 @@ mod tests {
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
         let query = EthereumTransactionLogQuery {
-            logs: vec![vec![redeem_log_msg]],
+            topics: vec![vec![redeem_log_msg]],
         };
 
         assert_that!(query.matches_block(&block)).is_false()
@@ -399,7 +401,7 @@ mod tests {
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
         let query = EthereumTransactionLogQuery {
-            logs: vec![vec![redeem_log_msg]],
+            topics: vec![vec![redeem_log_msg]],
         };
 
         let log = log(vec![redeem_log_msg]);
@@ -414,7 +416,7 @@ mod tests {
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
         let query = EthereumTransactionLogQuery {
-            logs: vec![vec![redeem_log_msg]],
+            topics: vec![vec![redeem_log_msg]],
         };
 
         let receipt = transaction_receipt(vec![]);
@@ -427,12 +429,14 @@ mod tests {
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query1 = EthereumTransactionLogQuery { logs: vec![vec![]] };
+        let query1 = EthereumTransactionLogQuery {
+            topics: vec![vec![]],
+        };
         let log1 = log(vec![redeem_log_msg]);
         let receipt1 = transaction_receipt(vec![log1]);
         assert_that!(query1.matches_transaction_receipt(receipt1)).is_false();
 
-        let query2 = EthereumTransactionLogQuery { logs: vec![] };
+        let query2 = EthereumTransactionLogQuery { topics: vec![] };
         let log2 = log(vec![redeem_log_msg]);
         let receipt2 = transaction_receipt(vec![log2]);
         assert_that!(query2.matches_transaction_receipt(receipt2)).is_false()
@@ -446,7 +450,7 @@ mod tests {
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
 
         let query = EthereumTransactionLogQuery {
-            logs: vec![vec![redeem_log_msg], vec![random_log_msg]],
+            topics: vec![vec![redeem_log_msg], vec![random_log_msg]],
         };
 
         let log1 = log(vec![redeem_log_msg]);
@@ -465,7 +469,7 @@ mod tests {
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
 
         let query = EthereumTransactionLogQuery {
-            logs: vec![vec![redeem_log_msg, random_log_msg]],
+            topics: vec![vec![redeem_log_msg, random_log_msg]],
         };
 
         let log1 = log(vec![redeem_log_msg]);
