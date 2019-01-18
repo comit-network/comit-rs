@@ -6,7 +6,7 @@ use crate::{
     },
     swap_protocols::rfc003::bob::BobSpawner,
 };
-use bam::{connection::Connection, json};
+use bam::{self, connection, json};
 use futures::{Future, Stream};
 use std::{io, net::SocketAddr, sync::Arc};
 use tokio::{self, net::TcpListener};
@@ -23,17 +23,18 @@ pub fn listen<B: BobSpawner>(
         let peer_addr = connection.peer_addr();
         let codec = json::JsonFrameCodec::default();
 
-        let config = swap_config(Arc::clone(&bob_spawner));
+        let (incoming_frames, response_source) =
+            json::JsonFrameHandler::create(swap_config(Arc::clone(&bob_spawner)));
+        let (client, outgoing_frames) = bam::client::Client::create(response_source);
 
-        let connection = Connection::new(config, codec, connection);
-        let (close_future, client) = connection.start::<json::JsonFrameHandler>();
+        let connection = connection::new(codec, connection, incoming_frames, outgoing_frames);
 
         if let Ok(addr) = peer_addr {
             let bam_client = Arc::new(BamClient::new(addr, client));
             bam_client_pool.add_client(addr, bam_client);
         }
 
-        tokio::spawn(close_future.then(move |result| {
+        tokio::spawn(connection.then(move |result| {
             match result {
                 Ok(()) => info!("Connection with {:?} closed", peer_addr),
                 Err(e) => error!(

@@ -1,7 +1,7 @@
 use bam::{
     client::Client,
     config::Config,
-    connection::{self, Connection},
+    connection,
     json::{self, Frame, JsonFrameCodec, JsonFrameHandler, Request, Response},
     shutdown_handle::ShutdownHandle,
 };
@@ -88,8 +88,15 @@ pub fn create(
 ) {
     let (alice, bob) = memsocket::unbounded();
 
-    let (bob_server, alice_client) =
-        Connection::new(config, JsonFrameCodec::default(), bob).start::<JsonFrameHandler>();
+    let (incoming_frames, response_source) = JsonFrameHandler::create(config);
+    let (alice_client, outgoing_frames) = Client::create(response_source);
+
+    let bob_server = connection::new(
+        JsonFrameCodec::default(),
+        bob,
+        incoming_frames,
+        outgoing_frames,
+    );
 
     let (read, write) = alice.split();
 

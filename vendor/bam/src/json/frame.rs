@@ -81,21 +81,7 @@ impl From<HeaderErrors> for RequestError {
     }
 }
 
-impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandler {
-    fn create(
-        config: Config<json::Request, json::Response>,
-    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Response>>>) {
-        let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
-
-        let handler = JsonFrameHandler {
-            next_expected_id: 0,
-            response_source: Arc::clone(&response_source),
-            config,
-        };
-
-        (handler, response_source)
-    }
-
+impl FrameHandler<json::Frame> for JsonFrameHandler {
     fn handle(
         &mut self,
         frame: json::Frame,
@@ -156,6 +142,20 @@ impl FrameHandler<json::Frame, json::Request, json::Response> for JsonFrameHandl
 }
 
 impl JsonFrameHandler {
+    pub fn create(
+        config: Config<json::Request, json::Response>,
+    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Response>>>) {
+        let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
+
+        let handler = JsonFrameHandler {
+            next_expected_id: 0,
+            response_source: Arc::clone(&response_source),
+            config,
+        };
+
+        (handler, response_source)
+    }
+
     fn dispatch_request(
         &mut self,
         _type: &JsonValue,

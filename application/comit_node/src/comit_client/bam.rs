@@ -6,7 +6,7 @@ use crate::{
     },
     swap_protocols::{self, asset::Asset, SwapProtocols},
 };
-use bam::{self, config::Config, connection::Connection, json, Status};
+use bam::{self, config::Config, connection, json, Status};
 use futures::Future;
 use std::{
     collections::HashMap,
@@ -178,11 +178,14 @@ impl ClientFactory<BamClient> for BamClientPool {
                 let socket = TcpStream::connect(&comit_node_socket_addr).wait()?;
                 info!("Connection to {} established", comit_node_socket_addr);
                 let codec = json::JsonFrameCodec::default();
-                let config = Config::<json::Request, json::Response>::default();
-                let connection = Connection::new(config, codec, socket);
-                let (connection_future, client) = connection.start::<json::JsonFrameHandler>();
+                let (incoming_frames, response_source) =
+                    json::JsonFrameHandler::create(
+                        Config::<json::Request, json::Response>::default(),
+                    );
+                let (client, outgoing_frames) = bam::client::Client::create(response_source);
+                let connection = connection::new(codec, socket, incoming_frames, outgoing_frames);
                 let socket_addr = comit_node_socket_addr;
-                tokio::spawn(connection_future.map_err(move |e| {
+                tokio::spawn(connection.map_err(move |e| {
                     error!(
                         "Connection to {:?} prematurely closed: {:?}",
                         socket_addr, e

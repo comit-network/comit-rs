@@ -31,11 +31,10 @@ impl RequestError {
     }
 }
 
-pub trait FrameHandler<Frame, Req, Res>
+pub trait FrameHandler<Frame>
 where
     Self: Sized,
 {
-    fn create(config: Config<Req, Res>) -> (Self, Arc<Mutex<dyn ResponseFrameSource<Res>>>);
     fn handle(
         &mut self,
         frame: Frame,
