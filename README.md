@@ -25,16 +25,31 @@ Contains crates specific to our application. Can depend on libraries located in 
 ## Setup build environment
 
 1. Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
-2. Install SSL libraries
-   - Ubuntu/Debian: `apt install libssl-dev`
-   - Mac ([Homebrew](https://brew.sh/)) `brew install openssl`
-3. Install libzmq:
+2. Install libzmq:
    - Ubuntu/Debian: `apt install libzmq3-dev`
    - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
-4. Install `docker` & `docker-compose`
-5. Install `nvm`
-6. Install `cargo-make`: `cargo install cargo-make`
-7. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
+3. Install SSL libraries
+   - Ubuntu/Debian: `apt install libssl-dev`
+   - Mac ([Homebrew](https://brew.sh/)) `brew install openssl`
+4. `solc` is currently needed to build (will be deprecated). 2 choices:
+   - Install `docker`
+   - OR install `solc`
+
+## Build & Run
+
+1. `cargo build` (do `export SOLC_BIN=/usr/bin/solc` if `solc` is installed locally)
+2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` to wherever the config file is located.
+3. `./target/release/comit_node`
+4. TODO: similar documentation for `ledger_query_service`
+
+
+## Setup testing/dev environment
+
+1. Install `docker` & `docker-compose`
+2. Install `nvm`, `npm` & `yarn`
+3. Install `cargo-make`: `cargo install cargo-make`
+4. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
+   
 
 ## Testing
 
@@ -48,9 +63,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 - `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob)
 
 
-## Configuration
 
-Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` to wherever the config file is located.  
 
 ## Contributing
 
