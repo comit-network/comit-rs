@@ -4,8 +4,6 @@ use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};
 
-pub type ConnectionLoop<E> = Box<dyn Future<Item = (), Error = ClosedReason<E>> + Send>;
-
 #[derive(Debug)]
 pub enum ClosedReason<C> {
     CodecError(C),
@@ -26,10 +24,10 @@ pub fn new<
     socket: Socket,
     mut incoming_frames: impl FrameHandler<Frame> + Send + 'static,
     outgoing_frames: impl Stream<Item = Frame, Error = ()> + Send + 'static,
-) -> ConnectionLoop<CodecErr> {
+) -> impl Future<Item = (), Error = ClosedReason<CodecErr>> + Send {
     let (sink, stream) = codec.framed(socket).split();
 
-    let connection_loop = stream
+    stream
         .map_err(ClosedReason::CodecError)
         .inspect(|frame| trace!("<--- Incoming {:?}", frame))
         .and_then(move |frame| {
@@ -59,7 +57,5 @@ pub fn new<
         .select(outgoing_frames.map_err(|_| ClosedReason::InternalError))
         .inspect(|frame| trace!("---> Outgoing {:?}", frame))
         .forward(sink.sink_map_err(ClosedReason::CodecError))
-        .map(|_| ());
-
-    Box::new(connection_loop)
+        .map(|_| ())
 }
