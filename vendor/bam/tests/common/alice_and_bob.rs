@@ -2,7 +2,7 @@ use bam::{
     client::Client,
     config::Config,
     connection,
-    json::{self, Frame, JsonFrameCodec, JsonFrameHandler, Request, Response},
+    json::{self, Frame, JsonFrameCodec, JsonFrameHandler, JsonResponseSource, Request, Response},
     shutdown_handle::ShutdownHandle,
 };
 use futures::{Future, Stream};
@@ -88,7 +88,8 @@ pub fn create(
 ) {
     let (alice, bob) = memsocket::unbounded();
 
-    let (incoming_frames, response_source) = JsonFrameHandler::create(config);
+    let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
+    let incoming_frames = JsonFrameHandler::create(config, Arc::clone(&response_source));
     let (alice_client, outgoing_frames) = Client::create(response_source);
 
     let bob_server = connection::new(

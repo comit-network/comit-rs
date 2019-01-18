@@ -144,16 +144,13 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
 impl JsonFrameHandler {
     pub fn create(
         config: Config<json::Request, json::Response>,
-    ) -> (Self, Arc<Mutex<dyn ResponseFrameSource<json::Response>>>) {
-        let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
-
-        let handler = JsonFrameHandler {
+        response_source: Arc<Mutex<JsonResponseSource>>,
+    ) -> Self {
+        Self {
             next_expected_id: 0,
-            response_source: Arc::clone(&response_source),
+            response_source,
             config,
-        };
-
-        (handler, response_source)
+        }
     }
 
     fn dispatch_request(

@@ -1,7 +1,10 @@
 use bam::{config::Config, connection, json::*, shutdown_handle, *};
 use futures::future::{self, Future};
 use spectral::prelude::*;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 struct Ping;
 
@@ -19,10 +22,13 @@ fn given_two_servers_both_can_ping_each_other() {
 
     let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-    let (alice_incoming_frames, response_source) =
-        JsonFrameHandler::create(Config::default().on_request("PING", &[], |_: Request| {
+    let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
+    let alice_incoming_frames = JsonFrameHandler::create(
+        Config::default().on_request("PING", &[], |_: Request| {
             Box::new(future::ok(Response::new(Status::OK(0))))
-        }));
+        }),
+        Arc::clone(&response_source),
+    );
 
     let (mut bob_client, bob_outgoing_frames) =
         bam::client::Client::<Frame, Request, Response>::create(response_source);
@@ -35,10 +41,13 @@ fn given_two_servers_both_can_ping_each_other() {
     );
     let (alice_server, _alice_shutdown_handle) = shutdown_handle::new(alice_server);
 
-    let (bob_incoming_frames, response_source) =
-        JsonFrameHandler::create(Config::default().on_request("PING", &[], |_: Request| {
+    let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
+    let bob_incoming_frames = JsonFrameHandler::create(
+        Config::default().on_request("PING", &[], |_: Request| {
             Box::new(future::ok(Response::new(Status::OK(0))))
-        }));
+        }),
+        Arc::clone(&response_source),
+    );
 
     let (mut alice_client, alice_outgoing_frames) =
         bam::client::Client::<Frame, Request, Response>::create(response_source);

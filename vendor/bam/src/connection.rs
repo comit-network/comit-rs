@@ -1,8 +1,4 @@
-use crate::{
-    api::{FrameHandler, IntoFrame},
-    client::Client,
-    config::Config,
-};
+use crate::api::FrameHandler;
 use futures::{Future, Sink, Stream};
 use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};

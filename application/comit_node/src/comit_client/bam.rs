@@ -178,10 +178,12 @@ impl ClientFactory<BamClient> for BamClientPool {
                 let socket = TcpStream::connect(&comit_node_socket_addr).wait()?;
                 info!("Connection to {} established", comit_node_socket_addr);
                 let codec = json::JsonFrameCodec::default();
-                let (incoming_frames, response_source) =
-                    json::JsonFrameHandler::create(
-                        Config::<json::Request, json::Response>::default(),
-                    );
+
+                let response_source = Arc::new(Mutex::new(json::JsonResponseSource::default()));
+                let incoming_frames = json::JsonFrameHandler::create(
+                    Config::<json::Request, json::Response>::default(),
+                    Arc::clone(&response_source),
+                );
                 let (client, outgoing_frames) = bam::client::Client::create(response_source);
                 let connection = connection::new(codec, socket, incoming_frames, outgoing_frames);
                 let socket_addr = comit_node_socket_addr;

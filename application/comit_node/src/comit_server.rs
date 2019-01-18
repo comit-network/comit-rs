@@ -8,7 +8,11 @@ use crate::{
 };
 use bam::{self, connection, json};
 use futures::{Future, Stream};
-use std::{io, net::SocketAddr, sync::Arc};
+use std::{
+    io,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 use tokio::{self, net::TcpListener};
 
 pub fn listen<B: BobSpawner>(
@@ -23,8 +27,11 @@ pub fn listen<B: BobSpawner>(
         let peer_addr = connection.peer_addr();
         let codec = json::JsonFrameCodec::default();
 
-        let (incoming_frames, response_source) =
-            json::JsonFrameHandler::create(swap_config(Arc::clone(&bob_spawner)));
+        let response_source = Arc::new(Mutex::new(json::JsonResponseSource::default()));
+        let incoming_frames = json::JsonFrameHandler::create(
+            swap_config(Arc::clone(&bob_spawner)),
+            Arc::clone(&response_source),
+        );
         let (client, outgoing_frames) = bam::client::Client::create(response_source);
 
         let connection = connection::new(codec, connection, incoming_frames, outgoing_frames);
