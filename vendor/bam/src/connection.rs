@@ -1,4 +1,4 @@
-use crate::api::FrameHandler;
+use crate::api::{self, FrameHandler};
 use futures::{Future, Sink, Stream};
 use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -8,7 +8,7 @@ use tokio_codec::{Decoder, Encoder};
 pub enum ClosedReason<C> {
     CodecError(C),
     InternalError,
-    InvalidFrame(crate::api::Error),
+    InvalidFrame(api::Error),
 }
 
 pub fn new<
