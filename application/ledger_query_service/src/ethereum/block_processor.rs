@@ -1,7 +1,5 @@
 use crate::{
-    ethereum::queries::{
-        EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery,
-    },
+    ethereum::{BlockQuery, LogQuery, TransactionQuery},
     web3::types::{Block, Transaction},
     ArcQueryRepository, QueryMatch, QueryMatchResult,
 };
@@ -15,7 +13,7 @@ use std::sync::Arc;
 use tokio;
 
 pub fn check_block_queries(
-    block_queries: ArcQueryRepository<EthereumBlockQuery>,
+    block_queries: ArcQueryRepository<BlockQuery>,
     block: Block<Transaction>,
 ) -> impl Iterator<Item = QueryMatch> {
     trace!("Processing {:?}", block);
@@ -41,7 +39,7 @@ pub fn check_block_queries(
 }
 
 pub fn check_transaction_queries(
-    transaction_queries: ArcQueryRepository<EthereumTransactionQuery>,
+    transaction_queries: ArcQueryRepository<TransactionQuery>,
     block: Block<Transaction>,
 ) -> impl Iterator<Item = QueryMatch> {
     block
@@ -78,8 +76,8 @@ pub fn check_transaction_queries(
         .kmerge()
 }
 
-pub fn check_transaction_log_queries(
-    transaction_log_queries: ArcQueryRepository<EthereumTransactionLogQuery>,
+pub fn check_log_queries(
+    log_queries: ArcQueryRepository<LogQuery>,
     client: Arc<Web3<Http>>,
     block: Block<Transaction>,
 ) -> impl Stream<Item = QueryMatch, Error = ()> {
@@ -87,7 +85,7 @@ pub fn check_transaction_log_queries(
 
     let block_id = block.hash.map(|block_id| format!("{:x}", block_id));
 
-    let futures = transaction_log_queries
+    let futures = log_queries
         .all()
         .filter(|(_, query)| {
             trace!("Matching query {:#?} against block {:#?}", query, block);
@@ -100,9 +98,11 @@ pub fn check_transaction_log_queries(
 
             block.transactions.iter().map(move |transaction| {
                 let query = query.clone();
-
-                client.eth().transaction_receipt(transaction.hash).then(
-                    move |result| match result {
+                let transaction_id = transaction.hash;
+                client
+                    .eth()
+                    .transaction_receipt(transaction_id)
+                    .then(move |result| match result {
                         Ok(Some(ref receipt))
                             if query.matches_transaction_receipt(receipt.clone()) =>
                         {
@@ -115,10 +115,15 @@ pub fn check_transaction_log_queries(
 
                             Ok(Some((query_id, format!("{:x}", transaction_id))))
                         }
-
+                        Err(e) => {
+                            error!(
+                                "Could not retrieve transaction receipt for {}: {}",
+                                transaction_id, e
+                            );
+                            Ok(None)
+                        }
                         _ => Ok(None),
-                    },
-                )
+                    })
             })
         })
         .flatten();

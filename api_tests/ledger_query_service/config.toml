@@ -1,9 +1,5 @@
 ledgers = ["bitcoin", "ethereum"]
 
-[comit_node.alice]
-host = "127.0.0.1"
-config_dir = "./regtest/alice/"
-
 [ledger_query_service.main.env]
 LEDGER_QUERY_SERVICE_CONFIG_PATH = "./regtest/ledger_query_service"
 ETHEREUM_POLLING_TIME_SEC = "1"

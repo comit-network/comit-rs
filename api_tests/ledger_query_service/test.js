@@ -11,8 +11,8 @@ const bitcoin_rpc_client = bitcoin.create_client();
 const lqs = lqs_conf.create("localhost", 8080);
 const toby_wallet = wallet.create("toby");
 
-const alice = actor.create("alice", {});
-const alice_wallet_address = alice.wallet.eth().address();
+const alice_wallet = wallet.create("alice");
+const alice_wallet_address = alice_wallet.eth().address();
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -25,7 +25,7 @@ describe("Test Ledger Query Service API", () => {
         await bitcoin.btc_activate_segwit();
         await toby_wallet.btc().fund(5);
         await toby_wallet.eth().fund(20);
-        await alice.wallet.eth().fund(1);
+        await alice_wallet.eth().fund(1);
 
         let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
@@ -360,11 +360,11 @@ describe("Test Ledger Query Service API", () => {
             });
         });
 
-        describe("Bloom", () => {
-            it("LQS should respond not found when getting a non-existent ethereum bloom query", async function() {
+        describe("Logs", () => {
+            it("LQS should respond not found when getting a non-existent ethereum transaction receipt query", async function() {
                 return chai
                     .request(lqs.url())
-                    .get("/queries/ethereum/bloom/1")
+                    .get("/queries/ethereum/logs/1")
                     .then(res => {
                         res.should.have.status(404);
                     });
@@ -374,13 +374,13 @@ describe("Test Ledger Query Service API", () => {
             const transfer_topic =
                 "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
             let location;
-            it("LQS should respond with location when creating a valid bloom query", async function() {
+            it("LQS should respond with location when creating a valid transaction receipt query", async function() {
                 this.timeout(1000);
                 return chai
                     .request(lqs.url())
-                    .post("/queries/ethereum/bloom")
+                    .post("/queries/ethereum/logs")
                     .send({
-                        logs: [[transfer_topic]],
+                        topics: [[transfer_topic]],
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -389,26 +389,26 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no match when querying an existing ethereum bloom query", async function() {
+            it("LQS should respond with no match when querying an existing ethereum transaction receipt query", async function() {
                 this.timeout(1000);
                 return chai
                     .request(location)
                     .get("")
                     .then(res => {
                         res.should.have.status(200);
-                        res.body.query.logs.should.deep.equal([
+                        res.body.query.topics.should.deep.equal([
                             [transfer_topic],
                         ]);
                         res.body.matches.should.be.empty;
                     });
             });
 
-            it("LQS should respond with bloom match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
+            it("LQS should respond with transaction receipt match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
                 this.slow(2000);
 
                 const transfer_token_data =
                     "0xa9059cbb0000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd90000000000000000000000000000000000000000000000000000000000000001";
-                return alice.wallet
+                return alice_wallet
                     .eth()
                     .send_eth_transaction_to(
                         token_contract_address,
@@ -419,7 +419,7 @@ describe("Test Ledger Query Service API", () => {
                         return lqs
                             .poll_until_matches(chai, location)
                             .then(body => {
-                                body.query.logs.should.deep.equal([
+                                body.query.topics.should.deep.equal([
                                     [transfer_topic],
                                 ]);
                                 body.matches.should.have.lengthOf(1);
@@ -432,7 +432,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no content when deleting an existing ethereum block query", async function() {
+            it("LQS should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
                 return chai
                     .request(location)
                     .delete("")

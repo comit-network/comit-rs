@@ -10,7 +10,7 @@ use ethereum_support::{
         types::{TransactionReceipt, H256, U256},
         Web3,
     },
-    Address, Block as EthereumBlock, Bytes, Transaction as EthereumTransaction, TransactionId,
+    Address, Block, Bytes, Transaction, TransactionId,
 };
 use futures::{
     future::Future,
@@ -19,7 +19,7 @@ use futures::{
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct EthereumTransactionQuery {
+pub struct TransactionQuery {
     from_address: Option<Address>,
     to_address: Option<Address>,
     is_contract_creation: Option<bool>,
@@ -30,17 +30,17 @@ pub struct EthereumTransactionQuery {
 type Topics = Vec<H256>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct EthereumTransactionLogQuery {
+pub struct LogQuery {
     topics: Vec<Topics>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct EthereumBlockQuery {
+pub struct BlockQuery {
     pub min_timestamp_secs: Option<u64>,
 }
 
-impl EthereumTransactionQuery {
-    pub fn matches(&self, transaction: &EthereumTransaction) -> QueryMatchResult {
+impl TransactionQuery {
+    pub fn matches(&self, transaction: &Transaction) -> QueryMatchResult {
         match self {
             Self {
                 from_address: None,
@@ -89,21 +89,21 @@ impl EthereumTransactionQuery {
     }
 }
 
-impl QueryType for EthereumTransactionQuery {
+impl QueryType for TransactionQuery {
     fn route() -> &'static str {
         "transactions"
     }
 }
 
-impl ShouldExpand for EthereumTransactionQuery {
+impl ShouldExpand for TransactionQuery {
     fn should_expand(params: &QueryParams) -> bool {
         params.expand_results
     }
 }
 
-impl ExpandResult for EthereumTransactionQuery {
+impl ExpandResult for TransactionQuery {
     type Client = Web3<Http>;
-    type Item = EthereumTransaction;
+    type Item = Transaction;
 
     fn expand_result(
         result: &QueryResult,
@@ -142,14 +142,14 @@ fn clean_0x(s: &str) -> &str {
     }
 }
 
-impl IsEmpty for EthereumTransactionQuery {
+impl IsEmpty for TransactionQuery {
     fn is_empty(&self) -> bool {
         self.from_address.is_none() && self.to_address.is_none() && self.transaction_data.is_none()
     }
 }
 
-impl EthereumTransactionLogQuery {
-    pub fn matches_block(&self, block: &EthereumBlock<EthereumTransaction>) -> bool {
+impl LogQuery {
+    pub fn matches_block(&self, block: &Block<Transaction>) -> bool {
         match self {
             Self { topics, .. } if topics.is_empty() => false,
             Self { topics } => topics.iter().all(|topics| {
@@ -174,21 +174,21 @@ impl EthereumTransactionLogQuery {
     }
 }
 
-impl QueryType for EthereumTransactionLogQuery {
+impl QueryType for LogQuery {
     fn route() -> &'static str {
-        "bloom"
+        "logs"
     }
 }
 
-impl ShouldExpand for EthereumTransactionLogQuery {
+impl ShouldExpand for LogQuery {
     fn should_expand(params: &QueryParams) -> bool {
         params.expand_results
     }
 }
 
-impl ExpandResult for EthereumTransactionLogQuery {
+impl ExpandResult for LogQuery {
     type Client = Web3<Http>;
-    type Item = EthereumTransaction;
+    type Item = TransactionReceipt;
 
     fn expand_result(
         result: &QueryResult,
@@ -207,7 +207,7 @@ impl ExpandResult for EthereumTransactionLogQuery {
             .map(|id| {
                 client
                     .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
+                    .transaction_receipt(H256::from_slice(id.as_ref()))
                     .map_err(Error::Web3)
             })
             .collect();
@@ -219,14 +219,14 @@ impl ExpandResult for EthereumTransactionLogQuery {
     }
 }
 
-impl IsEmpty for EthereumTransactionLogQuery {
+impl IsEmpty for LogQuery {
     fn is_empty(&self) -> bool {
         self.topics.is_empty() || self.topics.iter().all(|topic| topic.is_empty())
     }
 }
 
-impl EthereumBlockQuery {
-    pub fn matches(&self, block: &EthereumBlock<EthereumTransaction>) -> QueryMatchResult {
+impl BlockQuery {
+    pub fn matches(&self, block: &Block<Transaction>) -> QueryMatchResult {
         match self.min_timestamp_secs {
             Some(min_timestamp_secs) => {
                 let min_timestamp_secs = U256::from(min_timestamp_secs);
@@ -244,19 +244,19 @@ impl EthereumBlockQuery {
     }
 }
 
-impl QueryType for EthereumBlockQuery {
+impl QueryType for BlockQuery {
     fn route() -> &'static str {
         "blocks"
     }
 }
 
-impl ShouldExpand for EthereumBlockQuery {
+impl ShouldExpand for BlockQuery {
     fn should_expand(_: &QueryParams) -> bool {
         false
     }
 }
 
-impl ExpandResult for EthereumBlockQuery {
+impl ExpandResult for BlockQuery {
     type Client = ();
     type Item = ();
 
@@ -265,7 +265,7 @@ impl ExpandResult for EthereumBlockQuery {
     }
 }
 
-impl IsEmpty for EthereumBlockQuery {
+impl IsEmpty for BlockQuery {
     fn is_empty(&self) -> bool {
         self.min_timestamp_secs.is_none()
     }
@@ -373,7 +373,7 @@ mod tests {
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query = EthereumTransactionLogQuery {
+        let query = LogQuery {
             topics: vec![vec![redeem_log_msg]],
         };
 
@@ -388,7 +388,7 @@ mod tests {
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query = EthereumTransactionLogQuery {
+        let query = LogQuery {
             topics: vec![vec![redeem_log_msg]],
         };
 
@@ -400,7 +400,7 @@ mod tests {
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query = EthereumTransactionLogQuery {
+        let query = LogQuery {
             topics: vec![vec![redeem_log_msg]],
         };
 
@@ -415,7 +415,7 @@ mod tests {
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query = EthereumTransactionLogQuery {
+        let query = LogQuery {
             topics: vec![vec![redeem_log_msg]],
         };
 
@@ -429,14 +429,14 @@ mod tests {
         let redeem_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
 
-        let query1 = EthereumTransactionLogQuery {
+        let query1 = LogQuery {
             topics: vec![vec![]],
         };
         let log1 = log(vec![redeem_log_msg]);
         let receipt1 = transaction_receipt(vec![log1]);
         assert_that!(query1.matches_transaction_receipt(receipt1)).is_false();
 
-        let query2 = EthereumTransactionLogQuery { topics: vec![] };
+        let query2 = LogQuery { topics: vec![] };
         let log2 = log(vec![redeem_log_msg]);
         let receipt2 = transaction_receipt(vec![log2]);
         assert_that!(query2.matches_transaction_receipt(receipt2)).is_false()
@@ -449,7 +449,7 @@ mod tests {
         let random_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
 
-        let query = EthereumTransactionLogQuery {
+        let query = LogQuery {
             topics: vec![vec![redeem_log_msg], vec![random_log_msg]],
         };
 
@@ -468,7 +468,7 @@ mod tests {
         let random_log_msg =
             "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
 
-        let query = EthereumTransactionLogQuery {
+        let query = LogQuery {
             topics: vec![vec![redeem_log_msg, random_log_msg]],
         };
 
@@ -484,7 +484,7 @@ mod tests {
     fn given_query_from_address_contract_creation_transaction_matches() {
         let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumTransactionQuery {
+        let query = TransactionQuery {
             from_address: Some(from_address),
             to_address: None,
             is_contract_creation: Some(true),
@@ -512,7 +512,7 @@ mod tests {
 
     #[test]
     fn given_query_from_address_doesnt_match() {
-        let query = EthereumTransactionQuery {
+        let query = TransactionQuery {
             from_address: Some("a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap()),
             to_address: None,
             is_contract_creation: None,
@@ -542,7 +542,7 @@ mod tests {
     fn given_query_to_address_transaction_matches() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumTransactionQuery {
+        let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -572,7 +572,7 @@ mod tests {
     fn given_query_to_address_transaction_doesnt_match() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumTransactionQuery {
+        let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -602,7 +602,7 @@ mod tests {
     fn given_query_to_address_transaction_with_to_none_doesnt_match() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = EthereumTransactionQuery {
+        let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -630,7 +630,7 @@ mod tests {
 
     #[test]
     fn given_query_transaction_data_transaction_matches() {
-        let query_data = EthereumTransactionQuery {
+        let query_data = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -638,7 +638,7 @@ mod tests {
             transaction_data_length: None,
         };
 
-        let query_data_length = EthereumTransactionQuery {
+        let query_data_length = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -646,7 +646,7 @@ mod tests {
             transaction_data_length: Some(5),
         };
 
-        let refund_query = EthereumTransactionQuery {
+        let refund_query = TransactionQuery {
             from_address: None,
             to_address: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
             is_contract_creation: Some(false),
@@ -680,7 +680,7 @@ mod tests {
 
     #[test]
     fn given_query_transaction_data_is_empty_transaction_matches() {
-        let query_data = EthereumTransactionQuery {
+        let query_data = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -688,7 +688,7 @@ mod tests {
             transaction_data_length: None,
         };
 
-        let query_data_length = EthereumTransactionQuery {
+        let query_data_length = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     fn given_no_conditions_in_query_transaction_fails() {
-        let query = EthereumTransactionQuery {
+        let query = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,

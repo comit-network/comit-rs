@@ -15,14 +15,7 @@ use ledger_query_service::{
         block_processor::DefaultBlockProcessor as BitcoinBlockProcessor,
         queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
     },
-    ethereum::{
-        block_processor::{
-            check_block_queries as check_ethereum_block_queries, check_transaction_log_queries,
-            check_transaction_queries as check_ethereum_transaction_queries,
-        },
-        ethereum_web3_block_poller::ethereum_block_listener,
-        queries::{EthereumBlockQuery, EthereumTransactionLogQuery, EthereumTransactionQuery},
-    },
+    ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     settings::{self, Settings},
     BlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository,
     RouteFactory,
@@ -127,14 +120,13 @@ fn create_ethereum_routes(
     settings: settings::Ethereum,
 ) -> (BoxedFilter<(impl Reply,)>, EventLoopHandle) {
     let transaction_query_repository =
-        Arc::new(InMemoryQueryRepository::<EthereumTransactionQuery>::default());
-    let block_query_repository = Arc::new(InMemoryQueryRepository::<EthereumBlockQuery>::default());
-    let transaction_log_query_repository =
-        Arc::new(InMemoryQueryRepository::<EthereumTransactionLogQuery>::default());
+        Arc::new(InMemoryQueryRepository::<ethereum::TransactionQuery>::default());
+    let block_query_repository =
+        Arc::new(InMemoryQueryRepository::<ethereum::BlockQuery>::default());
+    let log_query_repository = Arc::new(InMemoryQueryRepository::<ethereum::LogQuery>::default());
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
-    let transaction_log_query_result_repository =
-        Arc::new(InMemoryQueryResultRepository::default());
+    let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
     info!("Starting Ethereum Listener on {}", settings.node_url);
 
@@ -145,11 +137,10 @@ fn create_ethereum_routes(
     {
         let transaction_query_result_repository = transaction_query_result_repository.clone();
         let block_query_result_repository = block_query_result_repository.clone();
-        let transaction_log_query_result_repository =
-            transaction_log_query_result_repository.clone();
+        let log_query_result_repository = log_query_result_repository.clone();
 
         let block_query_repository = block_query_repository.clone();
-        let transaction_log_query_repository = transaction_log_query_repository.clone();
+        let log_query_repository = log_query_repository.clone();
         let transaction_query_repository = transaction_query_repository.clone();
 
         let web3_client = web3_client.clone();
@@ -159,26 +150,28 @@ fn create_ethereum_routes(
 
         let executor = runtime.executor();
         let web3_processor = blocks.for_each(move |block| {
-            check_ethereum_block_queries(block_query_repository.clone(), block.clone()).for_each(
+            ethereum::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
                 |(id, block_id)| {
                     block_query_result_repository.add_result(id, block_id);
                 },
             );
 
-            check_ethereum_transaction_queries(transaction_query_repository.clone(), block.clone())
-                .for_each(|(id, transaction_id)| {
-                    transaction_query_result_repository.add_result(id, transaction_id);
-                });
+            ethereum::check_transaction_queries(
+                transaction_query_repository.clone(),
+                block.clone(),
+            )
+            .for_each(|(id, transaction_id)| {
+                transaction_query_result_repository.add_result(id, transaction_id);
+            });
 
-            let transaction_log_query_result_repository =
-                transaction_log_query_result_repository.clone();
-            let log_query_future = check_transaction_log_queries(
-                transaction_log_query_repository.clone(),
+            let log_query_result_repository = log_query_result_repository.clone();
+            let log_query_future = ethereum::check_log_queries(
+                log_query_repository.clone(),
                 web3_client.clone(),
                 block,
             )
             .for_each(move |(id, transaction_id)| {
-                transaction_log_query_result_repository.add_result(id, transaction_id);
+                log_query_result_repository.add_result(id, transaction_id);
                 Ok(())
             });
 
@@ -206,8 +199,8 @@ fn create_ethereum_routes(
     );
 
     let bloom_routes = route_factory.create(
-        transaction_log_query_repository,
-        transaction_log_query_result_repository,
+        log_query_repository,
+        log_query_result_repository,
         Some(Arc::clone(&web3_client)),
         ledger_name,
     );
