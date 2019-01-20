@@ -112,6 +112,7 @@ args = ["fmt", "--", "--check"]
 [tasks.js-format]
 description = "Runs prettier to format JavaScript code."
 workspace = false
+install_script = ["[[ -f ./api_tests/node_modules/.bin/prettier ]] || (cd ./api_tests; yarn install;)"]
 script = [
 '''
 find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier --write
@@ -121,6 +122,7 @@ find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modul
 [tasks.check-js-format]
 description = "Runs prettier to check appropriate JavaScript code format."
 workspace = false
+install_script = ["[[ -f ./api_tests/node_modules/.bin/prettier ]] || (cd ./api_tests; yarn install;)"]
 script = [
 '''
 find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier -l
