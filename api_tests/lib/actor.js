@@ -1,6 +1,10 @@
 const Toml = require("toml");
 const wallet = require("./wallet.js");
 const fs = require("fs");
+const bitcoin = require("./bitcoin.js");
+const ethutil = require("ethereumjs-util");
+
+const bitcoin_rpc_client = bitcoin.create_client();
 
 class Actor {
     constructor(name) {
@@ -44,6 +48,50 @@ class Actor {
                     }
                 });
         });
+    }
+
+    async do(action) {
+        switch (action.type) {
+            case "bitcoin-send-amount-to-address":
+                var { to, amount } = action.payload;
+
+                return this.wallet
+                    .btc()
+                    .send_btc_to_address(to, parseInt(amount));
+                break;
+            case "bitcoin-broadcast-signed-transaction":
+                var { hex } = action.payload;
+
+                return bitcoin_rpc_client.sendRawTransaction(hex);
+                break;
+            case "ethereum-deploy-contract":
+                var { data, amount, gas_limit } = action.payload;
+
+                return this.wallet
+                    .eth()
+                    .deploy_contract(data, new ethutil.BN(amount, 10));
+                break;
+            case "ethereum-invoke-contract":
+                var {
+                    contract_address,
+                    data,
+                    amount,
+                    gas_limit,
+                } = action.payload;
+
+                return this.wallet
+                    .eth()
+                    .send_eth_transaction_to(
+                        contract_address,
+                        data,
+                        amount,
+                        gas_limit
+                    );
+                break;
+            default:
+                return Error("Action type unsupported");
+                break;
+        }
     }
 }
 

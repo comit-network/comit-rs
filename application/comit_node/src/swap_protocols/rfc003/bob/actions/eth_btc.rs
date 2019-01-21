@@ -19,8 +19,8 @@ use ethereum_support::{Bytes, EtherQuantity, U256};
 impl OngoingSwap<Bob<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
         bitcoin::SendToAddress {
-            address: self.beta_htlc_params().compute_address(),
-            value: self.beta_asset,
+            to: self.beta_htlc_params().compute_address(),
+            amount: self.beta_asset,
         }
     }
 
@@ -47,7 +47,7 @@ impl OngoingSwap<Bob<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> {
             to: alpha_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::from_wei(U256::zero()),
+            amount: EtherQuantity::from_wei(U256::zero()),
         }
     }
 }

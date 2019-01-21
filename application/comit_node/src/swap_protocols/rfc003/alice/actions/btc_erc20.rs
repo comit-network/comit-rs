@@ -16,8 +16,8 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
         let htlc: bitcoin::Htlc = self.alpha_htlc_params().into();
 
         bitcoin::SendToAddress {
-            address: htlc.compute_address(self.alpha_ledger.network),
-            value: self.alpha_asset,
+            to: htlc.compute_address(self.alpha_ledger.network),
+            amount: self.alpha_asset,
         }
     }
 
@@ -43,7 +43,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
             to: beta_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
         }
     }
 }

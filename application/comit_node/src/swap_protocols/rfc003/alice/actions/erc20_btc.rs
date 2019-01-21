@@ -19,7 +19,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
 
         ethereum::ContractDeploy {
             data,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
             gas_limit,
         }
     }
@@ -35,7 +35,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: self.alpha_asset.token_contract(),
             data: htlc.funding_tx_payload(alpha_htlc_location),
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
         }
     }
 
@@ -50,7 +50,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: alpha_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
         }
     }
 

@@ -288,13 +288,8 @@ describe("RFC003: Ether for Bitcoin", () => {
     });
 
     it("[Bob] Can execute the funding action", async () => {
-        bob_funding_action.should.include.all.keys("address", "value");
-        await bob.wallet
-            .btc()
-            .send_btc_to_address(
-                bob_funding_action.address,
-                parseInt(bob_funding_action.value)
-            );
+        bob_funding_action.payload.should.include.all.keys("to", "amount");
+        await bob.do(bob_funding_action);
     });
 
     let alice_redeem_href;
@@ -339,11 +334,11 @@ describe("RFC003: Ether for Bitcoin", () => {
     let alice_btc_balance_before;
 
     it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.should.include.all.keys("hex");
+        alice_redeem_action.payload.should.include.all.keys("hex");
         alice_btc_balance_before = await bitcoin.btc_balance(
             alice_final_address
         );
-        await bitcoin_rpc_client.sendRawTransaction(alice_redeem_action.hex);
+        await alice.do(alice_redeem_action);
         await bitcoin.btc_generate();
     });
 
@@ -396,21 +391,14 @@ describe("RFC003: Ether for Bitcoin", () => {
     let bob_eth_balance_before;
 
     it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.should.include.all.keys(
-            "to",
+        bob_redeem_action.payload.should.include.all.keys(
+            "contract",
             "data",
-            "gas_limit",
-            "value"
+            "amount",
+            "gas_limit"
         );
         bob_eth_balance_before = await ethereum.eth_balance(bob_final_address);
-        await bob.wallet
-            .eth()
-            .send_eth_transaction_to(
-                bob_redeem_action.to,
-                bob_redeem_action.data,
-                bob_redeem_action.value,
-                bob_redeem_action.gas_limit
-            );
+        await bob.do(bob_redeem_action);
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {

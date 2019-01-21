@@ -24,7 +24,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
 
         ethereum::ContractDeploy {
             data,
-            value: self.beta_asset,
+            amount: self.beta_asset,
             gas_limit,
         }
     }
@@ -40,7 +40,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             to: beta_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
         }
     }
 

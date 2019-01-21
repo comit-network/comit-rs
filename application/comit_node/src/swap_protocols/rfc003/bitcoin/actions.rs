@@ -3,8 +3,8 @@ use bitcoin_witness::{PrimedInput, PrimedTransaction};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SendToAddress {
-    pub address: Address,
-    pub value: BitcoinQuantity,
+    pub to: Address,
+    pub amount: BitcoinQuantity,
 }
 
 #[derive(Debug, Clone, PartialEq)]
