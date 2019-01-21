@@ -27,11 +27,16 @@ pub struct TransactionQuery {
     transaction_data_length: Option<usize>,
 }
 
-type Topics = Vec<H256>;
+type Topic = H256;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct LogQuery {
-    topics: Vec<Topics>,
+    log_matchers: Vec<LogMatcher>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct LogMatcher {
+    address: Option<Address>,
+    topics: Vec<Topic>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -145,9 +150,10 @@ fn clean_0x(s: &str) -> &str {
 impl LogQuery {
     pub fn matches_block(&self, block: &Block<Transaction>) -> bool {
         match self {
-            Self { topics, .. } if topics.is_empty() => false,
-            Self { topics } => topics.iter().all(|topics| {
-                topics
+            Self { log_matchers } if log_matchers.is_empty() => false,
+            Self { log_matchers } => log_matchers.iter().all(|log_matcher| {
+                log_matcher
+                    .topics
                     .iter()
                     .all(|topic| block.logs_bloom.contains_input(Input::Raw(&topic)))
             }),
@@ -156,14 +162,22 @@ impl LogQuery {
 
     pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
         match self {
-            Self { topics } if topics.is_empty() => false,
-            Self { topics } => topics.iter().all(|topics| {
-                !topics.is_empty()
-                    && transaction_receipt
-                        .logs
-                        .iter()
-                        .any(|tx_log| topics.iter().all(|topic| tx_log.topics.contains(topic)))
-            }),
+            Self { log_matchers } if log_matchers.is_empty() => false,
+            Self { log_matchers } => {
+                return log_matchers.iter().all(|log_matcher| {
+                    let result = match log_matcher.address {
+                        Some(address) => transaction_receipt.logs.iter().any(|tx_log| {
+                            tx_log.address == address
+                                && log_matcher
+                                    .topics
+                                    .iter()
+                                    .all(|topic| tx_log.topics.contains(topic))
+                        }),
+                        None => false,
+                    };
+                    result
+                });
+            }
         }
     }
 }
@@ -302,9 +316,9 @@ mod tests {
         }
     }
 
-    fn log(topics: Vec<H256>) -> Log {
+    fn log(address: Address, topics: Vec<H256>) -> Log {
         Log {
-            address: 1.into(),
+            address,
             topics,
             data: Bytes(vec![]),
             block_hash: Some(2.into()),
@@ -347,16 +361,22 @@ mod tests {
             00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
             0000000000000000000000000000";
 
+    const CONTRACT_ADDRESS: &str = "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59";
+    const REDEEM_LOG_MSG: &str =
+        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+    const RANDOM_LOG_MSG: &str =
+        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412";
+
     #[test]
     fn given_a_block_with_bloom_filter_should_match_query() {
-        let tx = transaction(Address::from("0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59"));
+        let tx = transaction(CONTRACT_ADDRESS.into());
         let block = ethereum_block(H2048::from_str(REDEEM_BLOOM).unwrap(), vec![tx.clone()]);
 
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-
         let query = LogQuery {
-            topics: vec![vec![redeem_log_msg]],
+            log_matchers: vec![LogMatcher {
+                address: Some(CONTRACT_ADDRESS.into()),
+                topics: vec![REDEEM_LOG_MSG.into()],
+            }],
         };
 
         assert_that!(query.matches_block(&block)).is_true()
@@ -364,14 +384,14 @@ mod tests {
 
     #[test]
     fn given_a_block_without_bloom_filter_should_not_match_query() {
-        let tx = transaction(Address::from("0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59"));
+        let tx = transaction(CONTRACT_ADDRESS.into());
         let block = ethereum_block(H2048::from_str(EMPTY_BLOOM).unwrap(), vec![tx.clone()]);
 
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-
         let query = LogQuery {
-            topics: vec![vec![redeem_log_msg]],
+            log_matchers: vec![LogMatcher {
+                address: Some(CONTRACT_ADDRESS.into()),
+                topics: vec![REDEEM_LOG_MSG.into()],
+            }],
         };
 
         assert_that!(query.matches_block(&block)).is_false()
@@ -379,14 +399,14 @@ mod tests {
 
     #[test]
     fn given_a_transaction_receipt_should_match_query() {
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-
         let query = LogQuery {
-            topics: vec![vec![redeem_log_msg]],
+            log_matchers: vec![LogMatcher {
+                address: Some(CONTRACT_ADDRESS.into()),
+                topics: vec![REDEEM_LOG_MSG.into()],
+            }],
         };
 
-        let log = log(vec![redeem_log_msg]);
+        let log = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
         let receipt = transaction_receipt(vec![log]);
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
@@ -394,11 +414,11 @@ mod tests {
 
     #[test]
     fn given_an_empty_transaction_receipt_should_not_match_query() {
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-
         let query = LogQuery {
-            topics: vec![vec![redeem_log_msg]],
+            log_matchers: vec![LogMatcher {
+                address: Some(CONTRACT_ADDRESS.into()),
+                topics: vec![REDEEM_LOG_MSG.into()],
+            }],
         };
 
         let receipt = transaction_receipt(vec![]);
@@ -408,35 +428,43 @@ mod tests {
 
     #[test]
     fn given_a_transaction_receipt_should_not_match_empty_query() {
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-
         let query1 = LogQuery {
-            topics: vec![vec![]],
+            log_matchers: vec![LogMatcher {
+                address: None,
+                topics: vec![],
+            }],
         };
-        let log1 = log(vec![redeem_log_msg]);
+
+        let log1 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
         let receipt1 = transaction_receipt(vec![log1]);
         assert_that!(query1.matches_transaction_receipt(receipt1)).is_false();
 
-        let query2 = LogQuery { topics: vec![] };
-        let log2 = log(vec![redeem_log_msg]);
+        let query2 = LogQuery {
+            log_matchers: vec![],
+        };
+
+        let log2 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
         let receipt2 = transaction_receipt(vec![log2]);
         assert_that!(query2.matches_transaction_receipt(receipt2)).is_false()
     }
 
     #[test]
     fn given_a_transaction_receipt_should_match_two_log_query() {
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-        let random_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
-
         let query = LogQuery {
-            topics: vec![vec![redeem_log_msg], vec![random_log_msg]],
+            log_matchers: vec![
+                LogMatcher {
+                    address: Some(CONTRACT_ADDRESS.into()),
+                    topics: vec![REDEEM_LOG_MSG.into()],
+                },
+                LogMatcher {
+                    address: Some(CONTRACT_ADDRESS.into()),
+                    topics: vec![RANDOM_LOG_MSG.into()],
+                },
+            ],
         };
 
-        let log1 = log(vec![redeem_log_msg]);
-        let log2 = log(vec![random_log_msg]);
+        let log1 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let log2 = log(CONTRACT_ADDRESS.into(), vec![RANDOM_LOG_MSG.into()]);
 
         let receipt = transaction_receipt(vec![log1, log2]);
 
@@ -444,18 +472,16 @@ mod tests {
     }
 
     #[test]
-    fn given_a_transaction_receipt_should_not_match_very_two_topic_query() {
-        let redeem_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".into();
-        let random_log_msg =
-            "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412".into();
-
+    fn given_a_transaction_receipt_should_not_match_two_topic_query() {
         let query = LogQuery {
-            topics: vec![vec![redeem_log_msg, random_log_msg]],
+            log_matchers: vec![LogMatcher {
+                address: Some(CONTRACT_ADDRESS.into()),
+                topics: vec![REDEEM_LOG_MSG.into(), RANDOM_LOG_MSG.into()],
+            }],
         };
 
-        let log1 = log(vec![redeem_log_msg]);
-        let log2 = log(vec![random_log_msg]);
+        let log1 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let log2 = log(CONTRACT_ADDRESS.into(), vec![RANDOM_LOG_MSG.into()]);
 
         let receipt = transaction_receipt(vec![log1, log2]);
 
@@ -463,8 +489,39 @@ mod tests {
     }
 
     #[test]
+    fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
+        let query = LogQuery {
+            log_matchers: vec![LogMatcher {
+                address: Some(1.into()),
+                topics: vec![REDEEM_LOG_MSG.into()],
+            }],
+        };
+
+        let log = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let receipt = transaction_receipt(vec![log]);
+
+        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+    }
+
+    #[test]
+    fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
+        let query = LogQuery {
+            log_matchers: vec![LogMatcher {
+                address: Some(1.into()),
+                topics: vec![REDEEM_LOG_MSG.into()],
+            }],
+        };
+
+        let log = log(CONTRACT_ADDRESS.into(), vec![RANDOM_LOG_MSG.into()]);
+
+        let receipt = transaction_receipt(vec![log]);
+
+        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+    }
+
+    #[test]
     fn given_query_from_address_contract_creation_transaction_matches() {
-        let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
+        let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".into();
 
         let query = TransactionQuery {
             from_address: Some(from_address),
@@ -495,7 +552,7 @@ mod tests {
     #[test]
     fn given_query_from_address_doesnt_match() {
         let query = TransactionQuery {
-            from_address: Some("a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap()),
+            from_address: Some("a00f2cac7bad9285ecfd59e8860f5b2d8622e099".into()),
             to_address: None,
             is_contract_creation: None,
             transaction_data: None,

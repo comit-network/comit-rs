@@ -380,7 +380,10 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/ethereum/logs")
                     .send({
-                        topics: [[transfer_topic]],
+                        log_matchers: [{
+                            address: token_contract_address,
+                            topics: [transfer_topic],
+                        }],
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -396,8 +399,10 @@ describe("Test Ledger Query Service API", () => {
                     .get("")
                     .then(res => {
                         res.should.have.status(200);
-                        res.body.query.topics.should.deep.equal([
-                            [transfer_topic],
+                        res.body.query.log_matchers.should.have.length(1);
+                        res.body.query.log_matchers[0].address.toLowerCase().should.equal(token_contract_address.toLowerCase());
+                        res.body.query.log_matchers[0].topics.should.deep.equal([
+                            transfer_topic,
                         ]);
                         res.body.matches.should.be.empty;
                     });
@@ -419,8 +424,10 @@ describe("Test Ledger Query Service API", () => {
                         return lqs
                             .poll_until_matches(chai, location)
                             .then(body => {
-                                body.query.topics.should.deep.equal([
-                                    [transfer_topic],
+                                body.query.log_matchers.should.have.length(1);
+                                body.query.log_matchers[0].address.toLowerCase().should.equal(token_contract_address.toLowerCase());
+                                body.query.log_matchers[0].topics.should.deep.equal([
+                                    transfer_topic,
                                 ]);
                                 body.matches.should.have.lengthOf(1);
                                 let query_transaction_hash =
