@@ -9,10 +9,7 @@ use ethereum_support::web3::{
     transports::{EventLoopHandle, Http},
     Web3,
 };
-use futures::{
-    future::{join_all, Future},
-    stream::Stream,
-};
+use futures::stream::Stream;
 use ledger_query_service::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
@@ -76,38 +73,20 @@ fn create_bitcoin_routes(
         let blocks = bitcoin_block_listener(settings.zmq_endpoint.as_str())
             .expect("Should return a Bitcoind received for MinedBlocks");
 
-        let bitcoin_processor = blocks
-            .and_then(move |block| {
-                let block_query_results =
-                    bitcoin::check_block_queries(block_query_repository.clone(), block.clone());
-
-                let mut transaction_query_results = vec![];
-                for transaction in block.as_ref().txdata.as_slice() {
-                    transaction_query_results.push(bitcoin::check_transaction_queries(
-                        transaction_query_repository.clone(),
-                        transaction.clone(),
-                    ))
-                }
-                let transaction_query_results =
-                    join_all(transaction_query_results).map(|transaction_results_vec| {
-                        transaction_results_vec.into_iter().flatten().collect()
-                    });
-                (block_query_results, transaction_query_results)
-            })
-            .for_each(
-                move |(block_query_results, transaction_query_results): (
-                    Vec<QueryMatch>,
-                    Vec<QueryMatch>,
-                )| {
-                    for QueryMatch(id, block_id) in block_query_results {
-                        block_query_result_repository.add_result(id.0, block_id);
-                    }
-                    for QueryMatch(id, transaction_id) in transaction_query_results {
-                        transaction_query_result_repository.add_result(id.0, transaction_id);
-                    }
-                    Ok(())
+        let bitcoin_processor = blocks.for_each(move |block| {
+            bitcoin::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
+                |QueryMatch(id, block_id)| {
+                    block_query_result_repository.add_result(id.0, block_id);
                 },
             );
+
+            bitcoin::check_transaction_queries(transaction_query_repository.clone(), block.clone())
+                .for_each(|QueryMatch(id, block_id)| {
+                    transaction_query_result_repository.add_result(id.0, block_id);
+                });
+
+            Ok(())
+        });
         runtime.spawn(bitcoin_processor);
     }
 
@@ -204,7 +183,7 @@ fn create_ethereum_routes(
 
     let transaction_routes = route_factory.create(
         transaction_query_repository,
-        transaction_query_result_repository.clone(),
+        transaction_query_result_repository,
         Some(Arc::clone(&web3_client)),
         ledger_name,
     );

@@ -7,7 +7,6 @@ use bitcoin_support::{
     Address, MinedBlock as Block, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith,
     Transaction, TransactionId,
 };
-use futures::Future;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -52,10 +51,7 @@ impl ExpandResult for TransactionQuery {
 }
 
 impl TransactionQuery {
-    pub fn matches(
-        &self,
-        transaction: &Transaction,
-    ) -> Box<dyn Future<Item = bool, Error = ()> + Send> {
+    pub fn matches(&self, transaction: &Transaction) -> bool {
         match self {
             Self {
                 to_address,
@@ -80,11 +76,7 @@ impl TransactionQuery {
                         (..) => result,
                     };
 
-                if result {
-                    Box::new(futures::future::ok(true))
-                } else {
-                    Box::new(futures::future::ok(false))
-                }
+                result
             }
         }
     }
@@ -117,14 +109,14 @@ impl ExpandResult for BlockQuery {
 }
 
 impl BlockQuery {
-    pub fn matches(&self, block: &Block) -> Box<dyn Future<Item = bool, Error = ()> + Send> {
-        Box::new(futures::future::ok(match self.min_height {
-            Some(height) => height <= block.height,
-            None => {
+    pub fn matches(&self, block: &Block) -> bool {
+        self.min_height.map_or_else(
+            || {
                 warn!("min_height not set, nothing to compare");
                 false
-            }
-        }))
+            },
+            |height| height <= block.height,
+        )
     }
 }
 
@@ -178,7 +170,7 @@ mod tests {
             min_height: Some(42),
         };
 
-        let result = exec_future(query.matches(&block));
+        let result = query.matches(&block);
         assert_that(&result).is_false();
     }
 
@@ -205,7 +197,7 @@ mod tests {
             min_height: Some(42),
         };
 
-        let result = exec_future(query.matches(&block));
+        let result = query.matches(&block);
         assert_that(&result).is_true();
     }
 
@@ -232,7 +224,7 @@ mod tests {
             min_height: Some(42),
         };
 
-        let result = exec_future(query.matches(&block));
+        let result = query.matches(&block);
         assert_that(&result).is_true();
     }
 
@@ -246,7 +238,7 @@ mod tests {
             unlock_script: None,
         };
 
-        let result = exec_future(query.matches(&tx));
+        let result = query.matches(&tx);
         assert_that(&result).is_true();
     }
 
@@ -264,7 +256,7 @@ mod tests {
             unlock_script: Some(unlock_script),
         };
 
-        let result = exec_future(query.matches(&tx));
+        let result = query.matches(&tx);
         assert_that(&result).is_true();
     }
 
@@ -280,7 +272,7 @@ mod tests {
             unlock_script: Some(unlock_script),
         };
 
-        let result = exec_future(query.matches(&tx));
+        let result = query.matches(&tx);
         assert_that(&result).is_false();
     }
 
@@ -302,12 +294,7 @@ mod tests {
             unlock_script: Some(unlock_script),
         };
 
-        let result = exec_future(query.matches(&tx));
+        let result = query.matches(&tx);
         assert_that(&result).is_true();
-    }
-
-    fn exec_future(future: Box<dyn Future<Item = bool, Error = ()> + Send>) -> bool {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        runtime.block_on(future).map_err(|_| ()).unwrap()
     }
 }

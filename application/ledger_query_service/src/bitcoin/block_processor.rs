@@ -2,68 +2,73 @@ use crate::{
     bitcoin::queries::{BlockQuery, TransactionQuery},
     ArcQueryRepository, QueryMatch,
 };
-use bitcoin_support::{serialize::BitcoinHash, MinedBlock as Block, Transaction};
-use futures::{future::join_all, Future};
+use bitcoin_support::{serialize::BitcoinHash, MinedBlock as Block};
+use itertools::Itertools;
 use tokio;
 
 pub fn check_block_queries(
     block_queries: ArcQueryRepository<BlockQuery>,
     block: Block,
-) -> impl Future<Item = Vec<QueryMatch>, Error = ()> {
+) -> impl Iterator<Item = QueryMatch> {
     trace!("Processing {:?}", block);
-    let mut result_futures = vec![];
 
-    // We must collect the futures in a vector first to stop
-    // borrow checker freaking out
-    for (query_id, query) in block_queries.all() {
+    let block_id = block.as_ref().bitcoin_hash().to_string();
+
+    block_queries.all().filter_map(move |(query_id, query)| {
         trace!("Matching query {:#?} against block {:#?}", query, block);
+
         let block = block.clone();
-        let result_future = query.matches(&block).map(move |block_matches| {
-            if block_matches {
-                let block_id = block.as_ref().bitcoin_hash().to_string();
-                trace!("Query {:?} matches block {}", query_id, block_id);
-                Some(QueryMatch(query_id.into(), block_id))
-            } else {
-                None
-            }
-        });
 
-        result_futures.push(result_future);
-    }
+        if query.matches(&block) {
+            let block_id = block_id.clone();
 
-    join_all(result_futures).map(|results| results.into_iter().filter_map(|x| x).collect())
+            trace!("Query {:?} matches block {}", query_id, block_id);
+
+            Some(QueryMatch(query_id.into(), block_id))
+        } else {
+            None
+        }
+    })
 }
 
 pub fn check_transaction_queries(
     transaction_queries: ArcQueryRepository<TransactionQuery>,
-    transaction: Transaction,
-) -> impl Future<Item = Vec<QueryMatch>, Error = ()> + Send {
-    trace!("Processing {:?}", transaction);
-    let mut result_futures = vec![];
+    block: Block,
+) -> impl Iterator<Item = QueryMatch> {
+    block
+        .as_ref()
+        .txdata
+        .as_slice()
+        .iter()
+        .map(|transaction| {
+            trace!("Processing {:?}", transaction);
 
-    for (query_id, query) in transaction_queries.all() {
-        trace!(
-            "Matching query {:#?} against transaction {:#?}",
-            query,
-            transaction
-        );
-        let transaction = transaction.clone();
-        let result_future = query.matches(&transaction).map(move |transaction_matches| {
-            if transaction_matches {
-                let transaction_id = transaction.txid().to_string();
-                trace!(
-                    "Query {:?} matches transaction: {}",
-                    query_id,
-                    transaction_id
-                );
-                Some(QueryMatch(query_id.into(), transaction_id))
-            } else {
-                None
-            }
-        });
+            let transaction = transaction.clone();
+            let transaction_id = transaction.txid().to_string();
 
-        result_futures.push(result_future);
-    }
+            transaction_queries
+                .all()
+                .filter_map(move |(query_id, query)| {
+                    trace!(
+                        "Matching query {:#?} against transaction {:#?}",
+                        query,
+                        &transaction
+                    );
 
-    join_all(result_futures).map(|results| results.into_iter().filter_map(|x| x).collect())
+                    if query.matches(&transaction) {
+                        let transaction_id = transaction_id.clone();
+
+                        trace!(
+                            "Query {:?} matches transaction: {}",
+                            query_id,
+                            transaction_id
+                        );
+
+                        Some(QueryMatch(query_id.into(), transaction_id))
+                    } else {
+                        None
+                    }
+                })
+        })
+        .kmerge()
 }
