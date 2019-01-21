@@ -112,6 +112,7 @@ args = ["fmt", "--", "--check"]
 [tasks.js-format]
 description = "Runs prettier to format JavaScript code."
 workspace = false
+install_script = ["[[ -f ./api_tests/node_modules/.bin/prettier ]] || (cd ./api_tests; yarn install;)"]
 script = [
 '''
 find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier --write
@@ -121,6 +122,7 @@ find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modul
 [tasks.check-js-format]
 description = "Runs prettier to check appropriate JavaScript code format."
 workspace = false
+install_script = ["[[ -f ./api_tests/node_modules/.bin/prettier ]] || (cd ./api_tests; yarn install;)"]
 script = [
 '''
 find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier -l
@@ -170,7 +172,7 @@ find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
 description = "Setup & start sscache"
 workspace = false
 private = true
-install_script = ["which sccache || (unset RUSTC_WRAPPER; cargo install sccache)"]
+install_script = ["which sccache || (unset RUSTC_WRAPPER; cargo install --git https://github.com/mozilla/sccache.git --rev 9d30660a6f5a94bc7a8e4d2a125c8677b9e08129)"]
 env = { "SCCACHE_CACHE_SIZE" = "400M" }
 # Start sccache with limited cache size to avoid a constantly
 # growing caches (and thus continuously slower builds)
