@@ -1,7 +1,7 @@
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    IsEmpty, QueryMatchResult,
+    QueryMatchResult,
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -142,12 +142,6 @@ fn clean_0x(s: &str) -> &str {
     }
 }
 
-impl IsEmpty for TransactionQuery {
-    fn is_empty(&self) -> bool {
-        self.from_address.is_none() && self.to_address.is_none() && self.transaction_data.is_none()
-    }
-}
-
 impl LogQuery {
     pub fn matches_block(&self, block: &Block<Transaction>) -> bool {
         match self {
@@ -219,12 +213,6 @@ impl ExpandResult for LogQuery {
     }
 }
 
-impl IsEmpty for LogQuery {
-    fn is_empty(&self) -> bool {
-        self.topics.is_empty() || self.topics.iter().all(|topic| topic.is_empty())
-    }
-}
-
 impl BlockQuery {
     pub fn matches(&self, block: &Block<Transaction>) -> QueryMatchResult {
         match self.min_timestamp_secs {
@@ -262,12 +250,6 @@ impl ExpandResult for BlockQuery {
 
     fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
-    }
-}
-
-impl IsEmpty for BlockQuery {
-    fn is_empty(&self) -> bool {
-        self.min_timestamp_secs.is_none()
     }
 }
 

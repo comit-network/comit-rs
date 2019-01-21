@@ -2,7 +2,6 @@ use crate::{
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
     route_factory::{ExpandResult, QueryParams, ShouldExpand},
-    IsEmpty,
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
@@ -70,17 +69,6 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
         ));
     }
     Err(rejection)
-}
-
-pub fn non_empty_query<Q: IsEmpty>(query: Q) -> Result<Q, Rejection> {
-    if query.is_empty() {
-        error!("Rejected {:?} because it is an empty query", query);
-        Err(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: Error::EmptyQuery.into(),
-        }))
-    } else {
-        Ok(query)
-    }
 }
 
 #[allow(clippy::needless_pass_by_value)]

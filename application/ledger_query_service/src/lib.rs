@@ -42,10 +42,6 @@ pub trait Query<O>: Debug + 'static {
     fn matches(&self, object: &O) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>;
 }
 
-pub trait IsEmpty: Debug + 'static {
-    fn is_empty(&self) -> bool;
-}
-
 #[derive(Debug, PartialEq)]
 pub enum QueryMatchResult {
     Yes { confirmations_needed: u32 },

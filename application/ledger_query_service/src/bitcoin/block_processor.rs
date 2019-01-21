@@ -223,7 +223,7 @@ mod tests {
     use super::*;
     use crate::{
         in_memory_query_repository::InMemoryQueryRepository,
-        in_memory_query_result_repository::InMemoryQueryResultRepository, IsEmpty,
+        in_memory_query_result_repository::InMemoryQueryResultRepository,
     };
     use spectral::prelude::*;
 
@@ -247,11 +247,6 @@ mod tests {
             }
         }
     }
-    impl IsEmpty for GenericTransactionQuery {
-        fn is_empty(&self) -> bool {
-            false
-        }
-    }
 
     #[derive(Serialize, Deserialize, Clone, Default, Debug, Copy)]
     struct GenericBlockQuery {
@@ -268,11 +263,6 @@ mod tests {
             } else {
                 Box::new(futures::future::ok(QueryMatchResult::no()))
             }
-        }
-    }
-    impl IsEmpty for GenericBlockQuery {
-        fn is_empty(&self) -> bool {
-            false
         }
     }
 
