@@ -371,11 +371,11 @@ mod tests {
         }
     }
 
-    fn log(address: Address, topics: Vec<H256>) -> Log {
+    fn log(address: Address, topics: Vec<H256>, data: Bytes) -> Log {
         Log {
             address,
             topics,
-            data: Bytes(vec![]),
+            data,
             block_hash: Some(2.into()),
             block_number: Some(1.into()),
             transaction_hash: Some(3.into()),
@@ -464,7 +464,11 @@ mod tests {
             }],
         };
 
-        let log = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let log = log(
+            CONTRACT_ADDRESS.into(),
+            vec![REDEEM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
         let receipt = transaction_receipt(vec![log]);
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
@@ -495,7 +499,11 @@ mod tests {
             }],
         };
 
-        let log1 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let log1 = log(
+            CONTRACT_ADDRESS.into(),
+            vec![REDEEM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
         let receipt1 = transaction_receipt(vec![log1]);
         assert_that!(query1.matches_transaction_receipt(receipt1)).is_false();
 
@@ -503,7 +511,11 @@ mod tests {
             event_matchers: vec![],
         };
 
-        let log2 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let log2 = log(
+            CONTRACT_ADDRESS.into(),
+            vec![REDEEM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
         let receipt2 = transaction_receipt(vec![log2]);
         assert_that!(query2.matches_transaction_receipt(receipt2)).is_false()
     }
@@ -525,8 +537,16 @@ mod tests {
             ],
         };
 
-        let log1 = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
-        let log2 = log(CONTRACT_ADDRESS.into(), vec![RANDOM_LOG_MSG.into()]);
+        let log1 = log(
+            CONTRACT_ADDRESS.into(),
+            vec![REDEEM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
+        let log2 = log(
+            CONTRACT_ADDRESS.into(),
+            vec![RANDOM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
 
         let receipt = transaction_receipt(vec![log1, log2]);
 
@@ -543,7 +563,11 @@ mod tests {
             }],
         };
 
-        let log = log(CONTRACT_ADDRESS.into(), vec![REDEEM_LOG_MSG.into()]);
+        let log = log(
+            CONTRACT_ADDRESS.into(),
+            vec![REDEEM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
         let receipt = transaction_receipt(vec![log]);
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_false()
@@ -559,7 +583,11 @@ mod tests {
             }],
         };
 
-        let log = log(CONTRACT_ADDRESS.into(), vec![RANDOM_LOG_MSG.into()]);
+        let log = log(
+            CONTRACT_ADDRESS.into(),
+            vec![RANDOM_LOG_MSG.into()],
+            Bytes(vec![]),
+        );
 
         let receipt = transaction_receipt(vec![log]);
 
@@ -574,7 +602,7 @@ mod tests {
         let query = EventQuery {
             event_matchers: vec![EventMatcher {
                 address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
+                data: Some(Bytes::from(vec![1, 2, 3])),
                 topics: vec![
                     Some(REDEEM_LOG_MSG.into()),
                     Some(from_address.into()),
@@ -590,6 +618,7 @@ mod tests {
                 from_address.into(),
                 to_address.into(),
             ],
+            Bytes(vec![]),
         );
 
         let receipt = transaction_receipt(vec![log]);
@@ -598,14 +627,14 @@ mod tests {
     }
 
     #[test]
-    fn given_a_transfer_log_should_match_partial_transfer_query() {
+    fn given_a_transfer_log_should_match_partial_topics_query() {
         let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
         let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
 
         let query = EventQuery {
             event_matchers: vec![EventMatcher {
                 address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
+                data: Some(Bytes::from(vec![1, 2, 3])),
                 topics: vec![None, None, Some(to_address.into())],
             }],
         };
@@ -617,6 +646,7 @@ mod tests {
                 from_address.into(),
                 to_address.into(),
             ],
+            Bytes::from(vec![1, 2, 3]),
         );
 
         let receipt = transaction_receipt(vec![log]);
@@ -625,7 +655,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_transfer_log_should_not_match_shortquery() {
+    fn given_a_transfer_log_should_not_match_short_query() {
         let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
         let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
 
@@ -644,6 +674,7 @@ mod tests {
                 from_address.into(),
                 to_address.into(),
             ],
+            Bytes::from(vec![1, 2, 3]),
         );
 
         let receipt = transaction_receipt(vec![log]);
