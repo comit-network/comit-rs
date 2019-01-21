@@ -248,7 +248,7 @@ for GLOB_DIR in ${PARAMS}; do
     cd "$ROOT/api_tests/e2e/rfc003/"
     for DIR in ${GLOB_DIR}; do
         cd "$ROOT";
-        ./api_tests/npm_wrapper.sh "./e2e/rfc003/${DIR}"
+        [[ -d "./api_tests/e2e/rfc003/${DIR}" ]] && ./api_tests/npm_wrapper.sh "./e2e/rfc003/${DIR}"
     done;
 done;
 '''
