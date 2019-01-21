@@ -382,6 +382,7 @@ describe("Test Ledger Query Service API", () => {
                     .send({
                         log_matchers: [{
                             address: token_contract_address,
+                            data: null,
                             topics: [transfer_topic],
                         }],
                     })
