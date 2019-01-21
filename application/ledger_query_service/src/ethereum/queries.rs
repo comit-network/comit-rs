@@ -220,9 +220,9 @@ impl EventQuery {
                                 .iter()
                                 .enumerate()
                                 .for_each(|(index, tx_topic)| {
-                                    let topic = topics.get(index);
-                                    if let Some(Some(topic)) = topic {
-                                        result = result && (topic == tx_topic);
+                                    let topic = topics[index];
+                                    if let Some(topic) = topic {
+                                        result = result && (tx_topic == &topic);
                                     };
                                 });
                         } else {
@@ -618,7 +618,7 @@ mod tests {
                 from_address.into(),
                 to_address.into(),
             ],
-            Bytes(vec![]),
+            Bytes::from(vec![1, 2, 3]),
         );
 
         let receipt = transaction_receipt(vec![log]);
@@ -634,7 +634,7 @@ mod tests {
         let query = EventQuery {
             event_matchers: vec![EventMatcher {
                 address: Some(CONTRACT_ADDRESS.into()),
-                data: Some(Bytes::from(vec![1, 2, 3])),
+                data: None,
                 topics: vec![None, None, Some(to_address.into())],
             }],
         };
