@@ -1,4 +1,7 @@
-use crate::{query_repository::QueryRepository, query_result_repository::QueryResultRepository};
+use crate::{
+    query_repository::QueryRepository, query_result_repository::QueryResultRepository,
+    ArcQueryRepository, ArcQueryResultRepository, BlockProcessor, Query, QueryMatchResult,
+};
 use futures::{future::join_all, Future};
 use std::{
     fmt::Debug,
@@ -8,13 +11,6 @@ use std::{
 use tokio;
 
 type QueryMatch = (u32, String);
-
-pub trait BlockProcessor<B> {
-    fn process(
-        &mut self,
-        block: B,
-    ) -> Box<dyn Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send>;
-}
 
 pub trait Transaction: Debug + 'static + Clone {
     fn transaction_id(&self) -> String;
@@ -28,42 +24,12 @@ pub trait Block: Debug + 'static + Clone {
     fn transactions(&self) -> &[Self::Transaction];
 }
 
-pub trait Query<O>: Debug + 'static {
-    fn matches(&self, object: &O) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>;
-    fn is_empty(&self) -> bool;
-}
-
-#[derive(Debug, PartialEq)]
-pub enum QueryMatchResult {
-    Yes { confirmations_needed: u32 },
-    No,
-}
-
-impl QueryMatchResult {
-    pub fn yes() -> Self {
-        QueryMatchResult::Yes {
-            confirmations_needed: 0,
-        }
-    }
-    pub fn yes_with_confirmations(confirmations_needed: u32) -> Self {
-        QueryMatchResult::Yes {
-            confirmations_needed,
-        }
-    }
-    pub fn no() -> Self {
-        QueryMatchResult::No
-    }
-}
-
 #[derive(Debug)]
 pub struct PendingTransaction {
     matching_query_id: u32,
     tx_id: String,
     pending_confirmations: u32,
 }
-
-type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
-type ArcQueryResultRepository<Q> = Arc<dyn QueryResultRepository<Q>>;
 
 #[derive(DebugStub)]
 pub struct DefaultBlockProcessor<T, B, TQ, BQ> {
@@ -257,7 +223,7 @@ mod tests {
     use super::*;
     use crate::{
         in_memory_query_repository::InMemoryQueryRepository,
-        in_memory_query_result_repository::InMemoryQueryResultRepository,
+        in_memory_query_result_repository::InMemoryQueryResultRepository, IsEmpty,
     };
     use spectral::prelude::*;
 
@@ -280,6 +246,8 @@ mod tests {
                 Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
+    }
+    impl IsEmpty for GenericTransactionQuery {
         fn is_empty(&self) -> bool {
             false
         }
@@ -301,7 +269,8 @@ mod tests {
                 Box::new(futures::future::ok(QueryMatchResult::no()))
             }
         }
-
+    }
+    impl IsEmpty for GenericBlockQuery {
         fn is_empty(&self) -> bool {
             false
         }

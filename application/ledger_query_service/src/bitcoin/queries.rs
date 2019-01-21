@@ -1,7 +1,8 @@
+use super::block_processor::{Block, Transaction};
 use crate::{
-    block_processor::{Block, Query, QueryMatchResult, Transaction},
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    IsEmpty, Query, QueryMatchResult,
 };
 use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
@@ -98,6 +99,9 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
             }
         }
     }
+}
+
+impl IsEmpty for BitcoinTransactionQuery {
     fn is_empty(&self) -> bool {
         self.to_address.is_none() && self.from_outpoint.is_none() && self.unlock_script.is_none()
     }
@@ -168,7 +172,9 @@ impl Query<BitcoinBlock> for BitcoinBlockQuery {
             }
         }))
     }
+}
 
+impl IsEmpty for BitcoinBlockQuery {
     fn is_empty(&self) -> bool {
         self.min_height.is_none()
     }

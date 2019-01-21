@@ -1,8 +1,8 @@
 use crate::{
-    block_processor::Query,
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
     route_factory::{ExpandResult, QueryParams, ShouldExpand},
+    IsEmpty,
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
@@ -72,7 +72,7 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
     Err(rejection)
 }
 
-pub fn non_empty_query<O, Q: Query<O>>(query: Q) -> Result<Q, Rejection> {
+pub fn non_empty_query<Q: IsEmpty>(query: Q) -> Result<Q, Rejection> {
     if query.is_empty() {
         error!("Rejected {:?} because it is an empty query", query);
         Err(warp::reject::custom(HttpApiProblemStdError {
@@ -84,7 +84,7 @@ pub fn non_empty_query<O, Q: Query<O>>(query: Q) -> Result<Q, Rejection> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn create_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
+pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
     external_url: Url,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
@@ -110,8 +110,7 @@ pub fn create_query<O, Q: Query<O> + Send, QR: QueryRepository<Q>>(
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
-    O,
-    Q: Query<O> + Serialize + ShouldExpand + Send + ExpandResult,
+    Q: Serialize + ShouldExpand + Send + ExpandResult,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
 >(
@@ -163,12 +162,7 @@ pub fn retrieve_query<
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn delete_query<
-    O,
-    Q: Query<O> + Send,
-    QR: QueryRepository<Q>,
-    QRR: QueryResultRepository<Q>,
->(
+pub fn delete_query<Q: Send, QR: QueryRepository<Q>, QRR: QueryResultRepository<Q>>(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
     id: u32,
