@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    routes, web3, IsEmpty,
+    routes, web3,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::sync::Arc;
@@ -51,14 +51,7 @@ impl RouteFactory {
     }
 
     pub fn create<
-        Q: IsEmpty
-            + QueryType
-            + ExpandResult
-            + ShouldExpand
-            + DeserializeOwned
-            + Serialize
-            + Send
-            + 'static,
+        Q: QueryType + ExpandResult + ShouldExpand + DeserializeOwned + Serialize + Send + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
     >(
@@ -80,14 +73,12 @@ impl RouteFactory {
         let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
         let client = warp::any().map(move || client.clone());
 
-        let json_body = warp::body::json().and_then(routes::non_empty_query);
-
         let create = warp::post2()
             .and(external_url.clone())
             .and(query_repository.clone())
             .and(warp::any().map(move || ledger_name))
             .and(warp::any().map(move || route))
-            .and(json_body)
+            .and(warp::body::json())
             .and_then(routes::create_query);
 
         let retrieve = warp::get2()
