@@ -28,12 +28,11 @@ pub fn check_block_queries(
         .filter_map(move |(query_id, query, block_id)| {
             trace!("Matching query {:#?} against block {:#?}", query, block);
 
-            match query.matches(&block) {
-                QueryMatchResult::Yes { .. } => {
-                    trace!("Query {:?} matches block {:?}", query_id, block_id);
-                    Some((query_id, block_id))
-                }
-                _ => None,
+            if query.matches(&block) {
+                trace!("Query {:?} matches block {:?}", query_id, block_id);
+                Some((query_id, block_id))
+            } else {
+                None
             }
         })
 }
