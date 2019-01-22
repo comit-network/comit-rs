@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::Ledger;
+use crate::swap_protocols::ledger::{Ledger, Ledgers};
 use ethereum_support::{Address, EtherQuantity, Network, Transaction, H256};
 use secp256k1_support::PublicKey;
 
@@ -31,5 +31,11 @@ impl Ledger for Ethereum {
 
     fn address_for_identity(&self, address: Address) -> Address {
         address
+    }
+}
+
+impl From<Ethereum> for Ledgers {
+    fn from(ethereum: Ethereum) -> Self {
+        Ledgers::Ethereum(ethereum)
     }
 }

@@ -1,55 +1,95 @@
 use bam::{config::Config, json::*, *};
 use futures::future;
 
-pub fn config() -> Config<Request, Response> {
-    Config::default().on_request("PLACE-ORDER", &["PRODUCT-TYPE"], |request: Request| {
-        let product_type = header!(request.get_header("PRODUCT-TYPE"));
+pub fn config() -> Config<ValidatedIncomingRequest, Response> {
+    Config::default().on_request(
+        "PLACE-ORDER",
+        &["PRODUCT-TYPE"],
+        |mut request: ValidatedIncomingRequest| {
+            let product_type = header!(request
+                .take_header("PRODUCT-TYPE")
+                .map(ProductType::from_header));
 
-        let response = match product_type {
-            ProductType::Phone => {
-                let phone_spec = request.get_body::<PhoneSpec>().unwrap().unwrap();
-                let price = 420;
+            let response = match product_type {
+                ProductType::Phone => {
+                    let phone_spec = body!(request.take_body_as::<PhoneSpec>());
+                    let price = 420;
 
-                let price = if phone_spec.os == "iOS" {
-                    price * 2
-                } else {
-                    price
-                };
+                    let price = if phone_spec.os == "iOS" {
+                        price * 2
+                    } else {
+                        price
+                    };
 
-                Response::new(Status::OK(0)).with_body(price)
-            }
-            ProductType::RetroEncabulator => Response::new(Status::SE(00)),
-        };
+                    Response::new(Status::OK(0)).with_body(serde_json::to_value(price).unwrap())
+                }
+                _ => Response::new(Status::SE(00)),
+            };
 
-        Box::new(future::ok(response))
-    })
+            Box::new(future::ok(response))
+        },
+    )
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "value", content = "parameters")]
 pub enum ThingHeader {
-    #[serde(rename = "PHONE")]
     Phone {
         os: String,
         model: String,
         brand: String,
     },
-    #[serde(rename = "RETRO_ENCABULATOR")]
     RetroEncabulator,
+    Unknown {
+        name: String,
+    },
 }
 
-#[derive(Serialize, Deserialize)]
+pub enum ThingHeaderError {
+    MissingParameter(String),
+    Serde(serde_json::Error),
+}
+
+impl ThingHeader {
+    pub fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
+        Ok(match header.value::<String>()?.as_str() {
+            "PHONE" => ThingHeader::Phone {
+                os: header.take_parameter("os")?,
+                model: header.take_parameter("model")?,
+                brand: header.take_parameter("brand")?,
+            },
+            "RETRO_ENCABULATOR" => ThingHeader::RetroEncabulator,
+            other => ThingHeader::Unknown {
+                name: other.to_string(),
+            },
+        })
+    }
+}
+
 pub struct PriceHeader {
     pub value: u32,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "value")]
+impl PriceHeader {
+    pub fn to_header(&self) -> Result<Header, serde_json::Error> {
+        Ok(Header::with_value(self.value)?)
+    }
+}
+
 enum ProductType {
-    #[serde(rename = "PHONE")]
     Phone,
-    #[serde(rename = "RETRO ENCABULATOR")]
     RetroEncabulator,
+    Unknown { name: String },
+}
+
+impl ProductType {
+    pub fn from_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(match header.value::<String>()?.as_str() {
+            "PHONE" => ProductType::Phone,
+            "RETRO_ENCABULATOR" => ProductType::RetroEncabulator,
+            other => ProductType::Unknown {
+                name: other.to_string(),
+            },
+        })
+    }
 }
 
 #[derive(Deserialize)]

@@ -18,13 +18,12 @@ extern crate bam;
 #[macro_use]
 extern crate futures;
 #[macro_use]
-extern crate maplit;
-#[macro_use]
 extern crate frunk;
 #[macro_use]
 extern crate binary_macros;
 
 pub mod bam_api;
+pub mod bam_ext;
 pub mod comit_client;
 pub mod comit_server;
 pub mod http_api;

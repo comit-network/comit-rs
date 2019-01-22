@@ -1,6 +1,6 @@
 use crate::{
     comit_client::{
-        rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
+        self, rfc003, Client, ClientFactory, ClientFactoryError, SwapReject, SwapResponseError,
     },
     swap_protocols::{self, asset::Asset},
 };
@@ -48,11 +48,14 @@ impl Client for FakeClient {
     >(
         &self,
         _request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<
-        dyn Future<
-                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
-                Error = SwapResponseError,
-            > + Send,
+    ) -> Result<
+        Box<
+            dyn Future<
+                    Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
+                    Error = SwapResponseError,
+                > + Send,
+        >,
+        comit_client::Error,
     > {
         let type_id = TypeId::of::<rfc003::AcceptResponseBody<AL, BL>>();
         let (sender, receiver) = oneshot::channel::<Box<dyn Any + Send>>();
@@ -64,13 +67,15 @@ impl Client for FakeClient {
                 .insert(type_id, sender);
         }
 
-        Box::new(receiver.map_err(|_| unimplemented!()).map(|response| {
-            use std::borrow::Borrow;
-            let _any: &(dyn Any + Send) = response.borrow();
-            _any.downcast_ref::<Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>>()
-                .unwrap()
-                .to_owned()
-        }))
+        Ok(Box::new(receiver.map_err(|_| unimplemented!()).map(
+            |response| {
+                use std::borrow::Borrow;
+                let _any: &(dyn Any + Send) = response.borrow();
+                _any.downcast_ref::<Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>>()
+                    .unwrap()
+                    .to_owned()
+            },
+        )))
     }
 }
 

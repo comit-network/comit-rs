@@ -130,7 +130,7 @@ mod tests {
 
         let (mut client, mut receiver) = Client::create(response_source.clone());
 
-        let request = json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null);
+        let request = json::OutgoingRequest::new("FOO");
 
         {
             let mut response_source = response_source.lock().unwrap();
@@ -146,8 +146,7 @@ mod tests {
         assert_eq!(
             receiver.poll(),
             Ok(Async::Ready(Some(
-                json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null,)
-                    .into_frame(0)
+                json::OutgoingRequest::new("FOO").into_frame(0)
             )))
         );
     }
@@ -158,9 +157,9 @@ mod tests {
 
         let (mut client, mut receiver) = Client::create(response_source.clone());
 
-        let foo_request = json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null);
+        let foo_request = json::OutgoingRequest::new("FOO");
 
-        let bar_request = json::Request::new("BAR".into(), HashMap::new(), serde_json::Value::Null);
+        let bar_request = json::OutgoingRequest::new("BAR");
 
         {
             let mut response_source = response_source.lock().unwrap();
@@ -186,15 +185,13 @@ mod tests {
         assert_eq!(
             receiver.poll(),
             Ok(Async::Ready(Some(
-                json::Request::new("FOO".into(), HashMap::new(), serde_json::Value::Null)
-                    .into_frame(0)
+                json::OutgoingRequest::new("FOO").into_frame(0)
             )))
         );
         assert_eq!(
             receiver.poll(),
             Ok(Async::Ready(Some(
-                json::Request::new("BAR".into(), HashMap::new(), serde_json::Value::Null)
-                    .into_frame(1)
+                json::OutgoingRequest::new("BAR").into_frame(1)
             )))
         );
     }
@@ -219,16 +216,13 @@ mod tests {
     fn registers_response_before_sending_request() {
         let response_frame_source = Arc::new(Mutex::new(RememberInvocation::default()));
 
-        let (mut client, requests) = Client::<json::Frame, json::Request, json::Response>::create(
-            response_frame_source.clone(),
-        );
+        let (mut client, requests) =
+            Client::<json::Frame, json::OutgoingRequest, json::Response>::create(
+                response_frame_source.clone(),
+            );
 
         let next_request = requests.into_future().map(|_| Instant::now());
-        let response = client.send_request(json::Request::new(
-            String::from("BAR"),
-            HashMap::default(),
-            serde_json::Value::Null,
-        ));
+        let response = client.send_request(json::OutgoingRequest::new("BAR"));
 
         let combined = next_request.map_err(|_| ()).join(response.map_err(|_| ()));
 

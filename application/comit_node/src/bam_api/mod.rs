@@ -1,116 +1,138 @@
 use crate::{
-    bam_api::header::{Error, FromBamHeader, Header, ToBamHeader},
+    bam_ext::{FromBamHeader, ToBamHeader},
+    comit_client::SwapDeclineReason,
     swap_protocols::SwapProtocols,
 };
+use bam::json::Header;
 
-pub mod header;
 pub mod rfc003;
 
 mod ledger_impls {
     use crate::{
-        bam_api::header::{Error, FromBamHeader, Header, ToBamHeader},
-        swap_protocols::ledger::{Bitcoin, Ethereum},
+        bam_ext::{FromBamHeader, ToBamHeader},
+        swap_protocols::ledger::{Bitcoin, Ethereum, Ledgers},
     };
+    use bam::json::Header;
 
-    impl FromBamHeader for Bitcoin {
-        fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            header.has_value("Bitcoin")?;
-
-            Ok(Bitcoin::new(header.parameter("network")?))
+    impl FromBamHeader for Ledgers {
+        fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
+            Ok(match header.value::<String>()?.as_str() {
+                "Bitcoin" => Ledgers::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
+                "Ethereum" => Ledgers::Ethereum(Ethereum::new(header.take_parameter("network")?)),
+                other => Ledgers::Unknown {
+                    name: other.to_string(),
+                },
+            })
         }
     }
 
-    impl ToBamHeader for Bitcoin {
-        fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("Bitcoin").with_parameter("network", self.network)?)
-        }
-    }
-
-    impl FromBamHeader for Ethereum {
-        fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            header.has_value("Ethereum")?;
-
-            Ok(Ethereum::new(header.parameter("network")?))
-        }
-    }
-
-    impl ToBamHeader for Ethereum {
-        fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("Ethereum").with_parameter("network", self.network)?)
+    impl ToBamHeader for Ledgers {
+        fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+            Ok(match self {
+                Ledgers::Bitcoin(bitcoin) => {
+                    Header::with_str_value("Bitcoin").with_parameter("network", bitcoin.network)?
+                }
+                Ledgers::Ethereum(ethereum) => Header::with_str_value("Ethereum")
+                    .with_parameter("network", ethereum.network)?,
+                Ledgers::Unknown { name } => panic!(
+                    "make {} a supported ledger before you call to_bam_header on it",
+                    name
+                ),
+            })
         }
     }
 }
 
 mod asset_impls {
-    use crate::bam_api::header::{Error, FromBamHeader, Header, ToBamHeader};
-    use bitcoin_support::BitcoinQuantity;
-    use ethereum_support::{
-        web3::types::U256, Erc20Quantity, EtherQuantity, FromDecimalStr, ToBigInt,
+    use crate::{
+        bam_ext::{FromBamHeader, ToBamHeader},
+        swap_protocols::asset::Assets,
     };
+    use bam::json::Header;
+    use ethereum_support::{web3::types::U256, Erc20Quantity, FromDecimalStr, ToBigInt};
 
-    impl FromBamHeader for BitcoinQuantity {
-        fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            header.has_value("Bitcoin")?;
-
-            Ok(header.parameter("quantity")?)
+    impl FromBamHeader for Assets {
+        fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
+            Ok(match header.value::<String>()?.as_str() {
+                "Bitcoin" => Assets::Bitcoin(header.take_parameter("quantity")?),
+                "Ether" => Assets::Ether(header.take_parameter("quantity")?),
+                "ERC20" => Assets::Erc20(Erc20Quantity::new(
+                    header.take_parameter("address")?,
+                    U256::from_decimal_str(header.take_parameter::<String>("quantity")?.as_str())
+                        .unwrap(), /* FIXME: cannot return custom here because of type
+                                    * signature, need to make
+                                    * it serde_json::Error somehow */
+                )),
+                other => Assets::Unknown {
+                    name: other.to_string(),
+                },
+            })
         }
     }
 
-    impl ToBamHeader for BitcoinQuantity {
-        fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("Bitcoin").with_parameter("quantity", self)?)
-        }
-    }
-
-    impl FromBamHeader for EtherQuantity {
-        fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            header.has_value("Ether")?;
-
-            Ok(header.parameter("quantity")?)
-        }
-    }
-
-    impl ToBamHeader for EtherQuantity {
-        fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("Ether").with_parameter("quantity", self)?)
-        }
-    }
-
-    impl FromBamHeader for Erc20Quantity {
-        fn from_bam_header(mut header: Header) -> Result<Self, Error> {
-            header.has_value("ERC20")?;
-
-            let amount: String = header.parameter("quantity")?;
-
-            Ok(Erc20Quantity::new(
-                header.parameter("address")?,
-                U256::from_decimal_str(&amount).map_err(|_| Error::Parsing)?,
-            ))
-        }
-    }
-
-    impl ToBamHeader for Erc20Quantity {
-        fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("ERC20")
-                .with_parameter("address", self.token_contract())?
-                .with_parameter("quantity", format!("{}", self.quantity().to_bigint()))?)
+    impl ToBamHeader for Assets {
+        fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+            Ok(match self {
+                Assets::Bitcoin(bitcoin) => {
+                    Header::with_str_value("Bitcoin").with_parameter("quantity", bitcoin)?
+                }
+                Assets::Ether(ether) => {
+                    Header::with_str_value("Ether").with_parameter("quantity", ether)?
+                }
+                Assets::Erc20(erc20) => Header::with_str_value("ERC20")
+                    .with_parameter("address", erc20.token_contract())?
+                    .with_parameter("quantity", format!("{}", erc20.quantity().to_bigint()))?,
+                Assets::Unknown { name } => panic!(
+                    "make {} a supported asset before you call to_bam_header on it",
+                    name
+                ),
+            })
         }
     }
 }
 
 impl FromBamHeader for SwapProtocols {
-    fn from_bam_header(header: Header) -> Result<Self, Error> {
-        match header.value() {
-            "COMIT-RFC-003" => Ok(SwapProtocols::Rfc003),
-            _ => Err(Error::WrongValue),
-        }
+    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(match header.value::<String>()?.as_str() {
+            "COMIT-RFC-003" => SwapProtocols::Rfc003,
+            other => SwapProtocols::Unknown {
+                name: other.to_string(),
+            },
+        })
     }
 }
 
 impl ToBamHeader for SwapProtocols {
-    fn to_bam_header(&self) -> Result<Header, Error> {
+    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         match self {
-            SwapProtocols::Rfc003 => Ok(Header::with_value("COMIT-RFC-003")),
+            SwapProtocols::Rfc003 => Ok(Header::with_str_value("COMIT-RFC-003")),
+            SwapProtocols::Unknown { name } => panic!(
+                "make {} a supported protocol before you call to_bam_header on it",
+                name
+            ),
+        }
+    }
+}
+
+impl FromBamHeader for SwapDeclineReason {
+    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(match header.value::<String>()?.as_str() {
+            "bad-rate" => SwapDeclineReason::BadRate,
+            other => SwapDeclineReason::Unknown {
+                name: other.to_string(),
+            },
+        })
+    }
+}
+
+impl ToBamHeader for SwapDeclineReason {
+    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+        match self {
+            SwapDeclineReason::BadRate => Ok(Header::with_str_value("bad-rate")),
+            SwapDeclineReason::Unknown { name } => panic!(
+                "make {} a supported decline reason before you call to_bam_header on it",
+                name
+            ),
         }
     }
 }
@@ -118,17 +140,19 @@ impl ToBamHeader for SwapProtocols {
 #[cfg(test)]
 mod tests {
 
-    use crate::bam_api::header::{Error, Header, ToBamHeader};
     use ethereum_support::{Address, Erc20Quantity, U256};
 
+    use crate::{bam_ext::ToBamHeader, swap_protocols::asset::Assets};
+    use bam::json::Header;
+
     #[test]
-    fn erc20_quantity_to_bam_header() -> Result<(), Error> {
+    fn erc20_quantity_to_bam_header() -> Result<(), serde_json::Error> {
         let quantity = Erc20Quantity::new(Address::zero(), U256::from(100_000_000_000_000u64));
-        let header = quantity.to_bam_header()?;
+        let header = Assets::from(quantity).to_bam_header()?;
 
         assert_eq!(
             header,
-            Header::with_value("ERC20")
+            Header::with_str_value("ERC20")
                 .with_parameter("quantity", "100000000000000")?
                 .with_parameter("address", "0x0000000000000000000000000000000000000000")?
         );

@@ -1,10 +1,8 @@
 use crate::swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
-    metadata_store::{AssetKind, LedgerKind, Metadata, RoleKind},
+    asset::Asset,
+    metadata_store::{Metadata, RoleKind},
     rfc003::Ledger,
 };
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
 use std::net::SocketAddr;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -24,49 +22,13 @@ pub struct SwapRequestIdentities<AL: Ledger, BL: Ledger> {
     pub beta_ledger_redeem_identity: BL::HtlcIdentity,
 }
 
-impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> for Metadata {
-    fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>) -> Self {
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<SwapRequest<AL, BL, AA, BA>> for Metadata {
+    fn from(request: SwapRequest<AL, BL, AA, BA>) -> Self {
         Self {
-            alpha_ledger: LedgerKind::Bitcoin,
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Ether,
-            role: RoleKind::Alice,
-        }
-    }
-}
-
-impl From<SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> for Metadata {
-    fn from(_: SwapRequest<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>) -> Self {
-        Self {
-            alpha_ledger: LedgerKind::Bitcoin,
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Erc20,
-            role: RoleKind::Alice,
-        }
-    }
-}
-
-impl From<SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> for Metadata {
-    fn from(_: SwapRequest<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>) -> Self {
-        Self {
-            alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin,
-            alpha_asset: AssetKind::Ether,
-            beta_asset: AssetKind::Bitcoin,
-            role: RoleKind::Alice,
-        }
-    }
-}
-
-impl From<SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> for Metadata {
-    fn from(_: SwapRequest<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>) -> Self {
-        Self {
-            alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin,
-            alpha_asset: AssetKind::Erc20,
-            beta_asset: AssetKind::Bitcoin,
+            alpha_ledger: request.alpha_ledger.into(),
+            beta_ledger: request.beta_ledger.into(),
+            alpha_asset: request.alpha_asset.into(),
+            beta_asset: request.beta_asset.into(),
             role: RoleKind::Alice,
         }
     }

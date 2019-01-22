@@ -2,7 +2,10 @@ use bam::{
     client::Client,
     config::Config,
     connection,
-    json::{self, Frame, JsonFrameCodec, JsonFrameHandler, JsonResponseSource, Request, Response},
+    json::{
+        self, Frame, JsonFrameCodec, JsonFrameHandler, JsonResponseSource, OutgoingRequest,
+        Response, ValidatedIncomingRequest,
+    },
     shutdown_handle::ShutdownHandle,
 };
 use futures::{Future, Stream};
@@ -75,16 +78,16 @@ impl Alice {
 }
 
 pub struct Bob {
-    pub _alice: Client<Frame, Request, Response>,
+    pub _alice: Client<Frame, OutgoingRequest, Response>,
     pub _shutdown_handle: ShutdownHandle,
 }
 
 pub fn create(
-    config: Config<Request, Response>,
+    config: Config<ValidatedIncomingRequest, Response>,
 ) -> (
     Alice,
     impl Future<Item = (), Error = connection::ClosedReason<json::Error>>,
-    Client<Frame, Request, Response>,
+    Client<Frame, OutgoingRequest, Response>,
 ) {
     let (alice, bob) = memsocket::unbounded();
 

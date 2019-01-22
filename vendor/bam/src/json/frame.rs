@@ -1,7 +1,8 @@
 use crate::{
     api::{Error, FrameHandler, IntoFrame, ResponseFrameSource},
     config::Config,
-    json, RequestError,
+    json::{self, header::Header, request::UnvalidatedIncomingRequest},
+    RequestError,
 };
 use futures::{
     future,
@@ -10,7 +11,7 @@ use futures::{
 };
 use serde_json::{self, Value as JsonValue};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{Arc, Mutex},
 };
 
@@ -33,7 +34,7 @@ pub struct JsonFrameHandler {
     next_expected_id: u32,
     #[debug_stub = "ResponseSource"]
     response_source: Arc<Mutex<JsonResponseSource>>,
-    config: Config<json::Request, json::Response>,
+    config: Config<json::ValidatedIncomingRequest, json::Response>,
 }
 
 #[derive(Default, Debug)]
@@ -89,13 +90,10 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
     {
         match frame._type.as_str() {
             "REQUEST" => {
-                let mut payload = frame.payload;
+                let payload = frame.payload;
 
-                let (_type, headers, body) = (
-                    payload["type"].take(),
-                    payload["headers"].take(),
-                    payload["body"].take(),
-                );
+                let request: UnvalidatedIncomingRequest = serde_json::from_value(payload)
+                    .map_err(|e| Error::InvalidFieldFormat("".to_string()))?;
 
                 if frame.id < self.next_expected_id {
                     return Err(Error::OutOfOrderRequest);
@@ -106,7 +104,7 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
                 let frame_id = frame.id;
 
                 let response = self
-                    .dispatch_request(&_type, headers, body)
+                    .dispatch_request(request)
                     .then(|result| match result {
                         // TODO: Validate generated response here
                         // TODO check if header or body in response failed to serialize here
@@ -143,7 +141,7 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
 
 impl JsonFrameHandler {
     pub fn create(
-        config: Config<json::Request, json::Response>,
+        config: Config<json::ValidatedIncomingRequest, json::Response>,
         response_source: Arc<Mutex<JsonResponseSource>>,
     ) -> Self {
         Self {
@@ -155,114 +153,26 @@ impl JsonFrameHandler {
 
     fn dispatch_request(
         &mut self,
-        _type: &JsonValue,
-        headers: JsonValue,
-        body: JsonValue,
+        request: UnvalidatedIncomingRequest,
     ) -> Box<dyn Future<Item = json::Response, Error = RequestError> + Send + 'static> {
-        let _type = match _type.as_str() {
-            Some(_type) => _type,
-            None => {
-                return Box::new(future::err(RequestError::MalformedField(
-                    "type".to_string(),
-                )));
-            }
-        };
+        let _type = request.request_type().to_string();
 
-        let request_headers = match headers {
-            serde_json::Value::Object(map) => map,
-            serde_json::Value::Null => serde_json::Map::default(),
-            _ => {
-                return Box::new(future::err(RequestError::MalformedField(
-                    "headers".to_string(),
-                )));
-            }
-        };
-
-        let parsed_headers = match self
+        let validated_request = match self
             .config
-            .known_headers_for(_type)
-            .ok_or_else(|| RequestError::UnknownRequestType(_type.into()))
-            .and_then(|known_headers| {
-                Self::parse_headers(known_headers, request_headers).map_err(From::from)
-            }) {
-            Ok(parsed_headers) => parsed_headers,
+            .known_headers_for(_type.as_ref())
+            .ok_or_else(|| RequestError::UnknownRequestType(_type.clone()))
+            .and_then(move |known_headers| request.validate(known_headers).map_err(From::from))
+        {
+            Ok(validated_request) => validated_request,
             Err(e) => return Box::new(future::err(e)),
         };
 
-        let request = json::Request::new(_type.to_string(), parsed_headers, body);
-
-        let request_handler = match self.config.request_handler_for(_type) {
+        let request_handler = match self.config.request_handler_for(_type.as_ref()) {
             Some(request_handler) => request_handler,
-            None => return Box::new(future::err(RequestError::UnknownRequestType(_type.into()))),
+            None => return Box::new(future::err(RequestError::UnknownRequestType(_type))),
         };
 
-        Box::new(request_handler(request).map_err(|_| RequestError::HandlerError))
-    }
-
-    fn parse_headers(
-        known_headers: &HashSet<String>,
-        request_headers: serde_json::Map<String, JsonValue>,
-    ) -> Result<HashMap<String, JsonValue>, HeaderErrors> {
-        let mut parsed_headers = HashMap::new();
-        let mut header_errors = HeaderErrors::new();
-
-        for (key, value) in request_headers.into_iter() {
-            if let Err(e) = Self::validate_header(&value) {
-                header_errors.add_error(key.clone(), e)
-                // TODO make test that forces continue here
-            }
-
-            let value = json::normalize_compact_header(value);
-            let (key, must_understand) = Self::normalize_non_mandatory_header_key(key);
-
-            if !known_headers.contains(key.as_str()) && must_understand {
-                header_errors.add_error(key.clone(), HeaderErrorKind::UnknownMandatoryHeader)
-                // TODO test for continue
-            }
-
-            parsed_headers.insert(key, value);
-        }
-
-        if !header_errors.is_empty() {
-            return Err(header_errors);
-        }
-
-        Ok(parsed_headers)
-    }
-
-    // TODO: Replace with JSON schema validation
-    fn validate_header(header: &JsonValue) -> Result<(), HeaderErrorKind> {
-        match *header {
-            JsonValue::Null => Err(HeaderErrorKind::DecodingError),
-            JsonValue::Object(ref map) => {
-                if map.get("value").is_none() {
-                    return Err(HeaderErrorKind::DecodingError);
-                }
-
-                if map.len() == 2 && map.get("parameters").is_none() {
-                    return Err(HeaderErrorKind::DecodingError);
-                }
-
-                if map.len() > 2 {
-                    return Err(HeaderErrorKind::DecodingError);
-                }
-
-                Ok(())
-            }
-            _ => Ok(()),
-        }
-    }
-
-    fn normalize_non_mandatory_header_key(mut key: String) -> (String, bool) {
-        let non_mandatory = key.starts_with('_');
-
-        if non_mandatory {
-            key.remove(0);
-        }
-
-        let must_understand = !non_mandatory;
-
-        (key, must_understand)
+        Box::new(request_handler(validated_request).map_err(|_| RequestError::HandlerError))
     }
 
     fn response_from_error(error: RequestError) -> json::Response {
@@ -272,22 +182,23 @@ impl JsonFrameHandler {
         warn!("Failed to dispatch request to handler because: {:?}", error);
 
         match error {
-            RequestError::UnknownMandatoryHeaders(header_keys) => {
-                response.with_header("Unsupported-Headers", header_keys)
-            }
+            RequestError::UnknownMandatoryHeaders(header_keys) => response.with_header(
+                "Unsupported-Headers",
+                Header::with_value(header_keys)
+                    .expect("list of strings should serialize to serde_json::Value"),
+            ),
             _ => response,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum HeaderErrorKind {
+pub(crate) enum HeaderErrorKind {
     UnknownMandatoryHeader,
-    DecodingError,
 }
 
 #[derive(Debug, Clone)]
-struct HeaderError {
+pub(crate) struct HeaderError {
     key: String,
     kind: HeaderErrorKind,
 }
@@ -299,28 +210,28 @@ impl HeaderError {
 }
 
 #[derive(Debug, Clone)]
-struct HeaderErrors {
+pub(crate) struct HeaderErrors {
     errors: Vec<HeaderError>,
 }
 
 impl HeaderErrors {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         HeaderErrors { errors: vec![] }
     }
 
-    fn add_error(&mut self, key: String, kind: HeaderErrorKind) {
+    pub(crate) fn add_error(&mut self, key: String, kind: HeaderErrorKind) {
         self.errors.push(HeaderError { key, kind })
     }
 
-    fn all(&self) -> Vec<HeaderError> {
+    pub(crate) fn all(&self) -> Vec<HeaderError> {
         self.errors.clone()
     }
 
-    fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.errors.is_empty()
     }
 
-    fn get_error_of_kind(&self, kind: &HeaderErrorKind) -> Vec<&HeaderError> {
+    pub(crate) fn get_error_of_kind(&self, kind: &HeaderErrorKind) -> Vec<&HeaderError> {
         self.errors.iter().filter(|x| x.kind == *kind).collect()
     }
 }

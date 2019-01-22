@@ -16,7 +16,7 @@ use crate::{
             state_store::StateStore,
             Actions, Alice, Bob, Ledger, SecretSource,
         },
-        AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
+        Metadata, MetadataStore, RoleKind, SwapId,
     },
 };
 use bitcoin_support::{self, BitcoinQuantity};

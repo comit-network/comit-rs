@@ -5,10 +5,7 @@ mod bitcoin;
 mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
-use crate::{
-    bam_api::header::{FromBamHeader, ToBamHeader},
-    http_api::ledger::{FromHttpLedger, ToHttpLedger},
-};
+use crate::http_api::ledger::{FromHttpLedger, ToHttpLedger};
 use std::hash::Hash;
 
 pub trait Ledger:
@@ -23,8 +20,7 @@ pub trait Ledger:
     + Hash
     + FromHttpLedger
     + ToHttpLedger
-    + FromBamHeader
-    + ToBamHeader
+    + Into<Ledgers>
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;
@@ -50,4 +46,12 @@ pub trait Ledger:
         + 'static;
 
     fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
+}
+
+// FIXME: This might actually be the same as metadata_store::LedgerKind
+#[derive(Debug, Clone)]
+pub enum Ledgers {
+    Bitcoin(Bitcoin),
+    Ethereum(Ethereum),
+    Unknown { name: String },
 }
