@@ -34,3 +34,7 @@ pub use self::{
     secret::{FromErr, RandomnessSource, Secret, SecretHash},
     secret_source::*,
 };
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct Timestamp(pub u32);

@@ -17,7 +17,8 @@ const alpha_asset_stingy_quantity = "100";
 const beta_asset_name = "Ether";
 const beta_asset_quantity = Web3.utils.toWei("10", "ether");
 
-const alpha_ledger_lock_duration = 144;
+const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
+const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
 const alice = actor.create("alice");
 const bob = actor.create("bob");
@@ -80,7 +81,8 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_ledger_refund_identity: "",
                 beta_ledger_redeem_identity: "",
-                alpha_ledger_lock_duration: 0,
+                alpha_expiry: 123456789,
+                beta_expiry: 123456789,
                 peer: "0.0.0.0",
             })
             .then(res => {
@@ -135,7 +137,8 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: alpha_ledger_lock_duration,
+                alpha_expiry: alpha_expiry,
+                beta_expiry: beta_expiry,
                 peer: bob_comit_node_address,
             })
             .then(res => {
@@ -190,7 +193,8 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: alpha_ledger_lock_duration,
+                alpha_expiry: alpha_expiry,
+                beta_expiry: beta_expiry,
                 peer: bob_comit_node_address,
             })
             .then(res => {
@@ -243,10 +247,8 @@ describe("RFC003 HTTP API", () => {
                 );
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
-                swap.alpha_lock_duration.type.should.equal("blocks");
-                swap.alpha_lock_duration.value.should.equal(
-                    alpha_ledger_lock_duration
-                );
+                swap.alpha_expiry.should.equal(alpha_expiry);
+                swap.beta_expiry.should.equal(beta_expiry);
             });
     });
 
@@ -336,10 +338,8 @@ describe("RFC003 HTTP API", () => {
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
                 swap.beta_asset.name.should.equal(beta_asset_name);
                 swap.beta_asset.quantity.should.equal(beta_asset_quantity);
-                swap.alpha_lock_duration.type.should.equal("blocks");
-                swap.alpha_lock_duration.value.should.equal(
-                    alpha_ledger_lock_duration
-                );
+                swap.alpha_expiry.should.equal(alpha_expiry);
+                swap.beta_expiry.should.equal(beta_expiry);
 
                 let action_links = body._links;
                 action_links.should.be.a("object");
@@ -442,7 +442,8 @@ describe("RFC003 HTTP API", () => {
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: alpha_ledger_lock_duration,
+                alpha_expiry: alpha_expiry,
+                beta_expiry: beta_expiry,
                 peer: charlie_comit_node_address,
             })
             .then(res => {

@@ -3,10 +3,7 @@ use crate::{
     htlc_harness::{new_account, HTLC_TIMEOUT, SECRET},
     parity_client::ParityClient,
 };
-use comit_node::swap_protocols::rfc003::{
-    ethereum::{Erc20Htlc, Seconds},
-    Secret, SecretHash,
-};
+use comit_node::swap_protocols::rfc003::{ethereum::Erc20Htlc, Secret, SecretHash};
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -85,7 +82,7 @@ pub fn erc20_harness<D: Docker>(
     alice_client.mint_tokens(token_contract, params.alice_initial_tokens, alice);
 
     let erc20_htlc = Erc20Htlc::new(
-        Seconds::from(params.htlc_timeout),
+        params.htlc_timeout.into(),
         alice,
         bob,
         params.htlc_secret_hash,

@@ -16,8 +16,7 @@ use std::sync::Arc;
 #[allow(missing_debug_implementations)]
 pub struct AliceToBob<C, AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
-    response_future:
-        Option<Box<StateMachineResponseFuture<AL::Identity, BL::Identity, BL::LockDuration>>>,
+    response_future: Option<Box<StateMachineResponseFuture<AL::Identity, BL::Identity>>>,
     client: Arc<C>,
 }
 

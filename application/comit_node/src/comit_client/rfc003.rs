@@ -1,4 +1,4 @@
-use crate::swap_protocols::rfc003::{Ledger, SecretHash};
+use crate::swap_protocols::rfc003::{Ledger, SecretHash, Timestamp};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Request<AL: Ledger, BL: Ledger, AA, BA> {
@@ -8,7 +8,8 @@ pub struct Request<AL: Ledger, BL: Ledger, AA, BA> {
     pub beta_ledger: BL,
     pub alpha_ledger_refund_identity: AL::Identity,
     pub beta_ledger_redeem_identity: BL::Identity,
-    pub alpha_ledger_lock_duration: AL::LockDuration,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
 
@@ -16,13 +17,13 @@ pub struct Request<AL: Ledger, BL: Ledger, AA, BA> {
 pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
     pub beta_ledger_refund_identity: BL::Identity,
     pub alpha_ledger_redeem_identity: AL::Identity,
-    pub beta_ledger_lock_duration: BL::LockDuration,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
 pub struct RequestBody<AL: Ledger, BL: Ledger> {
     pub alpha_ledger_refund_identity: AL::Identity,
     pub beta_ledger_redeem_identity: BL::Identity,
-    pub alpha_ledger_lock_duration: AL::LockDuration,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }

@@ -32,7 +32,6 @@ fn sign_with_rate() {
             keypair.p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
-        locktime: 0,
     };
 
     let redeem_tx = primed_tx.sign_with_rate(rate).unwrap();

@@ -70,11 +70,10 @@ impl PrimedInput {
 }
 
 /// A transaction that's ready for signing
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PrimedTransaction {
     pub inputs: Vec<PrimedInput>,
     pub output_address: Address,
-    pub locktime: u32,
 }
 
 impl PrimedTransaction {
@@ -100,6 +99,15 @@ impl PrimedTransaction {
         }
     }
 
+    fn _set_locktime(self, transaction: &mut Transaction) {
+        transaction.lock_time = self
+            .inputs
+            .iter()
+            .map(|input| input.input_parameters.locktime as u32)
+            .max()
+            .unwrap_or(0);
+    }
+
     pub fn sign_with_rate(self, fee_per_byte: f64) -> Result<Transaction, Error> {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
@@ -107,6 +115,8 @@ impl PrimedTransaction {
         let fee = weight.calculate_fee(fee_per_byte)?;
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
+
+        self.clone()._set_locktime(&mut transaction);
 
         self._sign(&mut transaction);
         Ok(transaction)
@@ -116,6 +126,8 @@ impl PrimedTransaction {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
+
+        self.clone()._set_locktime(&mut transaction);
 
         self._sign(&mut transaction);
         transaction
@@ -137,7 +149,7 @@ impl PrimedTransaction {
 
         Transaction {
             version: 2,
-            lock_time: self.locktime,
+            lock_time: 0,
             input: self
                 .inputs
                 .iter()
@@ -180,7 +192,6 @@ mod test {
                 keypair.p2wpkh_unlock_parameters(),
             )],
             output_address: dst_addr,
-            locktime: 0,
         };
         let total_input_value = primed_txn.total_input_value();
 

@@ -40,6 +40,7 @@ impl EtherHtlc {
         };
 
         trace!("Created new HTLC for ethereum: {:#?}", htlc);
+        trace!("Refund timeout: {:?} seconds", refund_timeout);
 
         htlc
     }

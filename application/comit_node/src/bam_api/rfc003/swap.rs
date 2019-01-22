@@ -138,10 +138,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: Arc<B>) -> Config<Request, Respon
 
 #[allow(clippy::type_complexity)]
 fn to_bam_response<AL: Ledger, BL: Ledger>(
-    result: Result<
-        StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,
-        SwapReject,
-    >,
+    result: Result<StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>, SwapReject>,
 ) -> Response {
     match result {
         Ok(response) => {
@@ -151,7 +148,6 @@ fn to_bam_response<AL: Ledger, BL: Ledger>(
             > {
                 beta_ledger_refund_identity: response.beta_ledger_refund_identity.into(),
                 alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity.into(),
-                beta_ledger_lock_duration: response.beta_ledger_lock_duration,
             })
         }
         Err(SwapReject::Declined { reason: None }) => Response::new(Status::SE(20)),
@@ -201,7 +197,8 @@ fn decode_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         .map_err(|_| Error::Invalid)?,
         alpha_ledger_refund_identity: request_body.alpha_ledger_refund_identity,
         beta_ledger_redeem_identity: request_body.beta_ledger_redeem_identity,
-        alpha_ledger_lock_duration: request_body.alpha_ledger_lock_duration,
+        alpha_expiry: request_body.alpha_expiry,
+        beta_expiry: request_body.beta_expiry,
         secret_hash: request_body.secret_hash,
     })
 }

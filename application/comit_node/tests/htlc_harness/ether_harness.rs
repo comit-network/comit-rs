@@ -3,10 +3,7 @@ use crate::{
     htlc_harness::{new_account, HTLC_TIMEOUT, SECRET},
     parity_client::ParityClient,
 };
-use comit_node::swap_protocols::rfc003::{
-    ethereum::{EtherHtlc, Seconds},
-    Secret, SecretHash,
-};
+use comit_node::swap_protocols::rfc003::{ethereum::EtherHtlc, Secret, SecretHash};
 use ethereum_support::{
     web3::{transports::EventLoopHandle, types::Address},
     EtherQuantity,
@@ -75,7 +72,7 @@ pub fn ether_harness<D: Docker>(
 
     let tx_id = alice_client.deploy_htlc(
         EtherHtlc::new(
-            Seconds::from(params.htlc_timeout),
+            params.htlc_timeout.into(),
             alice,
             bob,
             params.htlc_secret_hash,

@@ -74,7 +74,8 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> B
             beta_ledger: swap_request.beta_ledger,
             beta_ledger_redeem_identity: swap_request.beta_ledger_redeem_identity,
             alpha_ledger_refund_identity: swap_request.alpha_ledger_refund_identity,
-            alpha_ledger_lock_duration: swap_request.alpha_ledger_lock_duration,
+            alpha_expiry: swap_request.alpha_expiry,
+            beta_expiry: swap_request.beta_expiry,
             secret: swap_request.secret_hash,
         };
 

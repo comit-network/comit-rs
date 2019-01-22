@@ -55,7 +55,8 @@ impl Client for BamClient {
     > {
         let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
         let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
-        let alpha_ledger_lock_duration = request.alpha_ledger_lock_duration;
+        let alpha_expiry = request.alpha_expiry;
+        let beta_expiry = request.beta_expiry;
         let secret_hash = request.secret_hash;
 
         let request = json::Request::new(
@@ -74,7 +75,8 @@ impl Client for BamClient {
             serde_json::to_value(rfc003::RequestBody::<AL, BL> {
                 alpha_ledger_refund_identity,
                 beta_ledger_redeem_identity,
-                alpha_ledger_lock_duration,
+                alpha_expiry,
+                beta_expiry,
                 secret_hash,
             })
             .expect("should not fail to serialize"),

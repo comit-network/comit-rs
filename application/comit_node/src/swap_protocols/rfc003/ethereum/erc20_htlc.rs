@@ -50,6 +50,7 @@ impl Erc20Htlc {
         };
 
         trace!("Created new ERC20 HTLC for ethereum: {:#?}", htlc);
+        trace!("Refund timeout: {:?} seconds", refund_timeout);
 
         htlc
     }

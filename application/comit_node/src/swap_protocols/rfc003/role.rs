@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     self,
     asset::Asset,
-    rfc003::{ledger::Ledger, SecretHash},
+    rfc003::{ledger::Ledger, SecretHash, Timestamp},
 };
 use std::fmt::Debug;
 
@@ -45,7 +45,8 @@ pub struct Initiation<R: Role> {
     pub beta_ledger: R::BetaLedger,
     pub alpha_asset: R::AlphaAsset,
     pub beta_asset: R::BetaAsset,
-    pub alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
     pub secret: R::Secret,
 }
 

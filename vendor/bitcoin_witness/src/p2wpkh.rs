@@ -33,6 +33,7 @@ impl UnlockP2wpkh for KeyPair {
                 Witness::PublicKey(self.public_key()),
             ],
             sequence: super::SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
+            locktime: 0,
             prev_script: generate_prev_script(self.public_key().into()),
         }
     }

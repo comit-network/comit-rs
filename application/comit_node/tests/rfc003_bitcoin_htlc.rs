@@ -19,10 +19,14 @@ use bitcoin_support::{
 use bitcoin_witness::{
     PrimedInput, PrimedTransaction, UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
 };
-use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret, SecretHash};
+use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret, SecretHash, Timestamp};
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
-use std::str::FromStr;
+use std::{
+    str::FromStr,
+    thread::sleep,
+    time::{Duration, SystemTime},
+};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 impl CustomSizeSecret {
@@ -36,6 +40,7 @@ impl CustomSizeSecret {
                 Witness::Bool(true),
                 Witness::PrevScript,
             ],
+            locktime: 0,
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             prev_script: htlc.script().clone(),
         }
@@ -50,7 +55,7 @@ fn fund_htlc(
     rpc::TransactionOutput,
     BitcoinQuantity,
     Htlc,
-    u32,
+    u64,
     KeyPair,
     KeyPair,
 ) {
@@ -62,14 +67,19 @@ fn fund_htlc(
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
     let refund_keypair: KeyPair = refund_privkey.secret_key().clone().into();
     let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().clone().into();
-    let sequence_lock = 10;
+    let current_timestamp = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("SystemTime::duration_since failed")
+        .as_secs() as u32;
+    let relative_timelock = 10;
+    let absolute_timelock = Timestamp(current_timestamp + relative_timelock);
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
     let htlc = Htlc::new(
         redeem_pubkey_hash,
         refund_pubkey_hash,
         secret_hash,
-        sequence_lock,
+        absolute_timelock,
     );
 
     let htlc_address = htlc.compute_address(Network::Regtest);
@@ -88,7 +98,7 @@ fn fund_htlc(
         vout.clone(),
         amount,
         htlc,
-        sequence_lock,
+        relative_timelock as u64,
         redeem_keypair,
         refund_keypair,
     )
@@ -122,7 +132,6 @@ fn redeem_htlc_with_secret() {
             htlc.unlock_with_secret(keypair, &secret),
         )],
         output_address: alice_addr.clone(),
-        locktime: 0,
     }
     .sign_with_fee(fee);
 
@@ -152,7 +161,8 @@ fn redeem_refund_htlc() {
     client.generate(432).unwrap().unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let (txid, vout, input_amount, htlc, nsequence, _, keypair) = fund_htlc(&client, secret.hash());
+    let (txid, vout, input_amount, htlc, relative_timelock, _, keypair) =
+        fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
     let fee = BitcoinQuantity::from_satoshi(1000);
@@ -164,30 +174,25 @@ fn redeem_refund_htlc() {
             htlc.unlock_after_timeout(keypair),
         )],
         output_address: alice_addr.clone(),
-        locktime: 0,
     }
     .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
-
     let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
-    let rpc_redeem_txid_error = client.send_raw_transaction(raw_redeem_tx.clone()).unwrap();
-
-    // It should fail because it's too early
-    assert!(rpc_redeem_txid_error.is_err());
-    let error = rpc_redeem_txid_error.unwrap_err();
-
-    assert_eq!(error.code, -26);
-    /// RPC_VERIFY_REJECTED = -26, !< Transaction or block was rejected by
-    /// network rules
-    assert!(error.message.contains("non-BIP68-final"));
-
-    client.generate(nsequence).unwrap().unwrap();
-
-    let _txn = client.get_raw_transaction_verbose(&txid).unwrap().unwrap();
-
     let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
+    client.generate(1).unwrap().unwrap();
+
+    assert!(
+        client
+            .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
+            .is_none(),
+        "utxo should not yet exist"
+    );
+
+    // Sleep for a bit longer than needed
+    let sleep_time = relative_timelock as f64 * 1.5;
+    sleep(Duration::from_secs(sleep_time as u64));
 
     client.generate(1).unwrap().unwrap();
 
@@ -224,7 +229,6 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
             secret.unlock_with_secret(&htlc, keypair),
         )],
         output_address: alice_addr.clone(),
-        locktime: 0,
     }
     .sign_with_fee(fee);
 
@@ -269,7 +273,6 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
             secret.unlock_with_secret(&htlc, keypair),
         )],
         output_address: alice_addr.clone(),
-        locktime: 0,
     }
     .sign_with_fee(fee);
 

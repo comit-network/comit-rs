@@ -38,7 +38,7 @@ impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
 
 #[allow(type_alias_bounds)]
 type Response<AL: Ledger, BL: Ledger> =
-    Result<StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>, SwapReject>;
+    Result<StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>, SwapReject>;
 
 #[derive(Debug, Clone)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
@@ -53,7 +53,7 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     }
     pub fn accept(
         &self,
-        response: StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,
+        response: StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>,
     ) -> Result<(), ()> {
         let mut sender = self.sender.lock().unwrap();
 

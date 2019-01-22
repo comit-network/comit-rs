@@ -29,6 +29,9 @@ const alpha_asset_amount = 100000000;
 const beta_asset_amount = BigInt(Web3.utils.toWei("5000", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
+const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
+const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+
 describe("RFC003: Bitcoin for ERC20", () => {
     let token_contract_address;
     before(async function() {
@@ -91,7 +94,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
                 },
                 alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
-                alpha_ledger_lock_duration: 144,
+                alpha_expiry: alpha_expiry,
+                beta_expiry: beta_expiry,
                 peer: bob_comit_node_address,
             });
 

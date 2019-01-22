@@ -113,9 +113,8 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantit
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::swap_protocols::rfc003::{role::test::Bobisha, Secret};
+    use crate::swap_protocols::rfc003::{role::test::Bobisha, Secret, Timestamp};
     use hex::FromHex;
 
     #[test]
@@ -133,7 +132,8 @@ mod tests {
             beta_ledger: Ethereum::default(),
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger_lock_duration: bitcoin_support::Blocks::from(144),
+            alpha_expiry: Timestamp(123456789),
+            beta_expiry: Timestamp(123456789),
             secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
             role: bobisha,
         });

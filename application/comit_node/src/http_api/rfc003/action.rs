@@ -53,8 +53,7 @@ trait ExecuteAccept<AL: Ledger, BL: Ledger> {
 
 impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for Accept<AL, BL>
 where
-    StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>:
-        FromAcceptSwapRequestHttpBody<AL, BL>,
+    StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>: FromAcceptSwapRequestHttpBody<AL, BL>,
 {
     fn execute(
         &self,
@@ -83,11 +82,7 @@ where
 }
 
 impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
-    for StateMachineResponse<
-        secp256k1_support::KeyPair,
-        ethereum_support::Address,
-        ethereum::Seconds,
-    >
+    for StateMachineResponse<secp256k1_support::KeyPair, ethereum_support::Address>
 {
     fn from_accept_swap_request_http_body(
         body: AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
@@ -97,9 +92,8 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
         match body {
             AcceptSwapRequestHttpBody::OnlyRedeem { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The redeem identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
             AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_refund_identity")),
-            AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
+            AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity } => Ok(StateMachineResponse {
                 beta_ledger_refund_identity,
-                beta_ledger_lock_duration,
                 alpha_ledger_redeem_identity: secret_source.new_secp256k1_redeem(id),
             }),
         }
@@ -107,11 +101,7 @@ impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
 }
 
 impl FromAcceptSwapRequestHttpBody<Ethereum, Bitcoin>
-    for StateMachineResponse<
-        ethereum_support::Address,
-        secp256k1_support::KeyPair,
-        bitcoin_support::Blocks,
-    >
+    for StateMachineResponse<ethereum_support::Address, secp256k1_support::KeyPair>
 {
     fn from_accept_swap_request_http_body(
         body: AcceptSwapRequestHttpBody<Ethereum, Bitcoin>,
@@ -121,9 +111,8 @@ impl FromAcceptSwapRequestHttpBody<Ethereum, Bitcoin>
         match body {
             AcceptSwapRequestHttpBody::OnlyRefund { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The refund identity for swaps where Bitcoin is the BetaLedger has to be provided on-demand, i.e. when the refund action is executed.")),
             AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_redeem_identity")),
-            AcceptSwapRequestHttpBody::OnlyRedeem { alpha_ledger_redeem_identity, beta_ledger_lock_duration } => Ok(StateMachineResponse {
+            AcceptSwapRequestHttpBody::OnlyRedeem { alpha_ledger_redeem_identity } => Ok(StateMachineResponse {
                 alpha_ledger_redeem_identity,
-                beta_ledger_lock_duration,
                 beta_ledger_refund_identity: secret_source.new_secp256k1_refund(id),
             }),
         }
@@ -384,19 +373,14 @@ enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
     RefundAndRedeem {
         alpha_ledger_redeem_identity: AL::Identity,
         beta_ledger_refund_identity: BL::Identity,
-        beta_ledger_lock_duration: BL::LockDuration,
     },
     OnlyRedeem {
         alpha_ledger_redeem_identity: AL::Identity,
-        beta_ledger_lock_duration: BL::LockDuration,
     },
     OnlyRefund {
         beta_ledger_refund_identity: BL::Identity,
-        beta_ledger_lock_duration: BL::LockDuration,
     },
-    None {
-        beta_ledger_lock_duration: BL::LockDuration,
-    },
+    None {},
 }
 
 #[derive(Deserialize)]
