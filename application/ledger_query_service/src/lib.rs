@@ -23,18 +23,14 @@ pub use crate::{
     query_result_repository::*, route_factory::*, routes::*,
 };
 pub use ethereum_support::web3;
-use std::{cmp::Ordering, fmt::Debug, sync::Arc};
+use std::{cmp::Ordering, sync::Arc};
 
-#[derive(PartialEq)]
+#[derive(PartialEq, PartialOrd)]
 pub struct QueryId(pub u32);
 #[derive(PartialEq)]
 pub struct QueryMatch(pub QueryId, pub String);
 
 type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
-
-pub trait IsEmpty: Debug + 'static {
-    fn is_empty(&self) -> bool;
-}
 
 impl From<u32> for QueryId {
     fn from(item: u32) -> Self {
@@ -44,6 +40,6 @@ impl From<u32> for QueryId {
 
 impl PartialOrd for QueryMatch {
     fn partial_cmp(&self, other: &QueryMatch) -> Option<Ordering> {
-        Some((self.0).0.cmp(&(other.0).0))
+        self.0.partial_cmp(&other.0)
     }
 }
