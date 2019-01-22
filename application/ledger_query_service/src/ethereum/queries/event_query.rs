@@ -61,66 +61,60 @@ struct EventMatcher {
 
 impl EventQuery {
     pub fn matches_block(&self, block: &Block<Transaction>) -> bool {
-        match self {
-            Self { event_matchers } => event_matchers.iter().all(|log_matcher| {
-                log_matcher.topics.iter().all(|topic| {
-                    topic.as_ref().map_or(true, |topic| {
-                        block.logs_bloom.contains_input(Input::Raw(&topic.0))
-                    })
+        self.event_matchers.iter().all(|log_matcher| {
+            log_matcher.topics.iter().all(|topic| {
+                topic.as_ref().map_or(true, |topic| {
+                    block.logs_bloom.contains_input(Input::Raw(&topic.0))
                 })
-            }),
-        }
+            })
+        })
     }
 
     pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
-        match self {
-            Self { event_matchers } => {
-                event_matchers
-                    .iter()
-                    .all(|event_matcher| match event_matcher {
-                        EventMatcher {
-                            address: None,
-                            data: None,
-                            topics,
-                        } if topics.is_empty() => false,
-                        EventMatcher {
-                            address,
-                            data,
-                            topics,
-                        } => {
-                            transaction_receipt.logs.iter().any(|tx_log| {
-                                let mut result = true;
+        self.event_matchers
+            .iter()
+            .all(|event_matcher| match event_matcher {
+                EventMatcher {
+                    address: None,
+                    data: None,
+                    topics,
+                } if topics.is_empty() => false,
+                EventMatcher {
+                    address,
+                    data,
+                    topics,
+                } => transaction_receipt.logs.iter().any(|tx_log| {
+                    let mut result = true;
 
-                                if address
-                                    .as_ref()
-                                    .map_or(false, |address| address != &tx_log.address)
-                                {
-                                    return false;
-                                }
+                    if address
+                        .as_ref()
+                        .map_or(false, |address| address != &tx_log.address)
+                    {
+                        return false;
+                    }
 
-                                if data.as_ref().map_or(false, |data| data != &tx_log.data) {
-                                    return false;
-                                }
+                    if data.as_ref().map_or(false, |data| data != &tx_log.data) {
+                        return false;
+                    }
 
-                                if tx_log.topics.len() == topics.len() {
-                                    tx_log.topics.iter().enumerate().for_each(
-                                        |(index, tx_topic)| {
-                                            let topic = &topics[index];
-                                            if let Some(topic) = topic {
-                                                result = result && (tx_topic == &topic.0);
-                                            };
-                                        },
-                                    );
-                                } else {
-                                    result = false
-                                }
+                    if tx_log.topics.len() == topics.len() {
+                        tx_log
+                            .topics
+                            .iter()
+                            .enumerate()
+                            .for_each(|(index, tx_topic)| {
+                                let topic = &topics[index];
+                                if let Some(topic) = topic {
+                                    result = result && (tx_topic == &topic.0);
+                                };
+                            });
+                    } else {
+                        result = false
+                    }
 
-                                result
-                            })
-                        }
-                    })
-            }
-        }
+                    result
+                }),
+            })
     }
 }
 
