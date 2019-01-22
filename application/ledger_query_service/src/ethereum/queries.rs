@@ -27,37 +27,40 @@ pub struct TransactionQuery {
     transaction_data_length: Option<usize>,
 }
 
-type Topic = H256;
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+struct Topic(H256);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EventQuery {
     event_matchers: Vec<EventMatcher>,
 }
 
-// Event Matcher work similar as web3 filters:
-// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
-// E.g. this EventMatcher would match this Log:
-// EventMatcher {
-// address: 0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59,
-// data: None,
-// topics: [
-// None,
-// Some(0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59),
-// None()
-// ],
-//
-// Log:
-// [ { address: '0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59',
-// data: '0x123',
-// ..
-// topics:
-// [ '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
-// '0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59',
-// '0x000000000000000000000000d51ecee7414c4445534f74208538683702cbb3e4' ],
-// },
-// .. ] //Other data omitted
-// }
-
+/// Event Matcher work similar as web3 filters:
+/// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
+/// E.g. this `EventMatcher` would match this `Log`:
+/// ```
+/// EventMatcher {
+/// address: 0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59,
+/// data: None,
+/// topics: [
+/// None,
+/// Some(0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59),
+/// None()
+/// ],
+/// ```
+/// ```
+/// Log:
+/// [ { address: '0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59',
+/// data: '0x123',
+/// ..
+/// topics:
+/// [ '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+/// '0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59',
+/// '0x000000000000000000000000d51ecee7414c4445534f74208538683702cbb3e4' ],
+/// },
+/// .. ] //Other data omitted
+/// }
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct EventMatcher {
     address: Option<Address>,
@@ -180,7 +183,7 @@ impl EventQuery {
             Self { event_matchers } => event_matchers.iter().all(|log_matcher| {
                 log_matcher.topics.iter().all(|topic| {
                     if let Some(topic) = topic {
-                        block.logs_bloom.contains_input(Input::Raw(&topic))
+                        block.logs_bloom.contains_input(Input::Raw(&topic.0))
                     } else {
                         false
                     }
@@ -220,9 +223,9 @@ impl EventQuery {
                                 if tx_log.topics.len() == topics.len() {
                                     tx_log.topics.iter().enumerate().for_each(
                                         |(index, tx_topic)| {
-                                            let topic = topics[index];
+                                            let topic = &topics[index];
                                             if let Some(topic) = topic {
-                                                result = result && (tx_topic == &topic);
+                                                result = result && (tx_topic == &topic.0);
                                             };
                                         },
                                     );
@@ -403,38 +406,66 @@ mod tests {
         }
     }
 
-    const  REDEEM_BLOOM : &str = "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000\
-            000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000\
-            000000000000000000000000000000000000000000040800000000000000000000000000000000000000000000000000\
-            00000000000001000000000400000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000";
+    const REDEEM_BLOOM: &str =
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+         000000000000000000000000000000000000000000000000000000000000000000000000000000000000100\
+         000000000000000000000000000000000000000000000000000000000000000800000000000000000000000\
+         000000000000000000000000000000000000000000000000000000000000000000000000408000000000000\
+         000000000000000000000000000000000000000000000000000100000000040000000000000000000000000\
+         00000000000000000000000000000000000000000000000000000000000000000000000000000";
 
-    const  EMPTY_BLOOM : &str =
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-            0000000000000000000000000000";
+    const EMPTY_BLOOM: &str =
+        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+         00000000000000000000000000000000000000000000000000000000000000000000000000000";
 
     const CONTRACT_ADDRESS: &str = "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59";
     const REDEEM_LOG_MSG: &str =
         "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
-    const RANDOM_LOG_MSG: &str =
-        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7412";
+    const UNKNOWN_LOG_MSG: &str =
+        "0x0000000000000000000000000000000000000000000000000000000000000001";
+
+    impl EventMatcher {
+        fn new() -> Self {
+            EventMatcher {
+                address: None,
+                data: None,
+                topics: vec![],
+            }
+        }
+
+        fn for_contract(mut self, address: Address) -> Self {
+            self.address = Some(address.into());
+            self
+        }
+
+        fn with_topics(mut self, topics: Vec<Option<Topic>>) -> Self {
+            self.topics = topics;
+            self
+        }
+
+        fn for_token_contract() -> Self {
+            Self::new().for_contract(CONTRACT_ADDRESS.into())
+        }
+        fn for_token_contract_with_transfer_topics() -> Self {
+            Self::new()
+                .for_contract(CONTRACT_ADDRESS.into())
+                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])
+        }
+    }
 
     #[test]
     fn given_a_block_with_bloom_filter_should_match_query() {
         let tx = transaction(CONTRACT_ADDRESS.into());
         let block = ethereum_block(H2048::from_str(REDEEM_BLOOM).unwrap(), vec![tx.clone()]);
 
+        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
-                topics: vec![Some(REDEEM_LOG_MSG.into())],
-            }],
+            event_matchers: vec![matcher],
         };
 
         assert_that!(query.matches_block(&block)).is_true()
@@ -445,12 +476,10 @@ mod tests {
         let tx = transaction(CONTRACT_ADDRESS.into());
         let block = ethereum_block(H2048::from_str(EMPTY_BLOOM).unwrap(), vec![tx.clone()]);
 
+        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
-                topics: vec![Some(REDEEM_LOG_MSG.into())],
-            }],
+            event_matchers: vec![matcher],
         };
 
         assert_that!(query.matches_block(&block)).is_false()
@@ -458,12 +487,10 @@ mod tests {
 
     #[test]
     fn given_a_transaction_receipt_should_match_query() {
+        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
-                topics: vec![Some(REDEEM_LOG_MSG.into())],
-            }],
+            event_matchers: vec![matcher],
         };
 
         let log = log(
@@ -478,12 +505,10 @@ mod tests {
 
     #[test]
     fn given_an_empty_transaction_receipt_should_not_match_query() {
+        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
-                topics: vec![Some(REDEEM_LOG_MSG.into())],
-            }],
+            event_matchers: vec![matcher],
         };
 
         let receipt = transaction_receipt(vec![]);
@@ -494,11 +519,7 @@ mod tests {
     #[test]
     fn given_a_transaction_receipt_should_not_match_empty_query() {
         let query1 = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: None,
-                data: None,
-                topics: vec![],
-            }],
+            event_matchers: vec![EventMatcher::new()],
         };
 
         let log1 = log(
@@ -526,16 +547,10 @@ mod tests {
     fn given_a_transaction_receipt_should_match_two_log_query() {
         let query = EventQuery {
             event_matchers: vec![
-                EventMatcher {
-                    address: Some(CONTRACT_ADDRESS.into()),
-                    data: None,
-                    topics: vec![Some(REDEEM_LOG_MSG.into())],
-                },
-                EventMatcher {
-                    address: Some(CONTRACT_ADDRESS.into()),
-                    data: None,
-                    topics: vec![Some(RANDOM_LOG_MSG.into())],
-                },
+                EventMatcher::for_token_contract_with_transfer_topics(),
+                EventMatcher::new()
+                    .for_contract(CONTRACT_ADDRESS.into())
+                    .with_topics(vec![Some(Topic(UNKNOWN_LOG_MSG.into()))]),
             ],
         };
 
@@ -546,7 +561,7 @@ mod tests {
         );
         let log2 = log(
             CONTRACT_ADDRESS.into(),
-            vec![RANDOM_LOG_MSG.into()],
+            vec![UNKNOWN_LOG_MSG.into()],
             Bytes(vec![]),
         );
 
@@ -558,11 +573,9 @@ mod tests {
     #[test]
     fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(1.into()),
-                data: None,
-                topics: vec![Some(REDEEM_LOG_MSG.into())],
-            }],
+            event_matchers: vec![EventMatcher::new()
+                .for_contract(1.into())
+                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
         };
 
         let log = log(
@@ -578,16 +591,14 @@ mod tests {
     #[test]
     fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(1.into()),
-                data: None,
-                topics: vec![Some(REDEEM_LOG_MSG.into())],
-            }],
+            event_matchers: vec![EventMatcher::new()
+                .for_contract(1.into())
+                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
         };
 
         let log = log(
             CONTRACT_ADDRESS.into(),
-            vec![RANDOM_LOG_MSG.into()],
+            vec![UNKNOWN_LOG_MSG.into()],
             Bytes(vec![]),
         );
 
@@ -606,9 +617,9 @@ mod tests {
                 address: Some(CONTRACT_ADDRESS.into()),
                 data: Some(Bytes::from(vec![1, 2, 3])),
                 topics: vec![
-                    Some(REDEEM_LOG_MSG.into()),
-                    Some(from_address.into()),
-                    Some(to_address.into()),
+                    Some(Topic(REDEEM_LOG_MSG.into())),
+                    Some(Topic(from_address.into())),
+                    Some(Topic(to_address.into())),
                 ],
             }],
         };
@@ -634,11 +645,9 @@ mod tests {
         let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
 
         let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
-                topics: vec![None, None, Some(to_address.into())],
-            }],
+            event_matchers: vec![EventMatcher::new()
+                .for_contract(CONTRACT_ADDRESS.into())
+                .with_topics(vec![None, None, Some(Topic(to_address.into()))])],
         };
 
         let log = log(
@@ -665,7 +674,7 @@ mod tests {
             event_matchers: vec![EventMatcher {
                 address: Some(CONTRACT_ADDRESS.into()),
                 data: None,
-                topics: vec![Some(to_address.into())],
+                topics: vec![Some(Topic(to_address.into()))],
             }],
         };
 
