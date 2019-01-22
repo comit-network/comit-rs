@@ -389,7 +389,8 @@ describe("Test Ledger Query Service API", () => {
                         event_matchers: [
                             {
                                 address: token_contract_address,
-                                data: "0x0000000000000000000000000000000000000000000000000000000000000001",
+                                data:
+                                    "0x0000000000000000000000000000000000000000000000000000000000000001",
                                 topics: [
                                     transfer_topic,
                                     from_address,
