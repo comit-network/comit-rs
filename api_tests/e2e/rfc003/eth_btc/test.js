@@ -127,6 +127,7 @@ describe("RFC003: Ether for Bitcoin", () => {
             .send({
                 alpha_ledger: {
                     name: "Ethereum",
+                    network: "regtest",
                 },
                 beta_ledger: {
                     name: "Bitcoin",
@@ -238,19 +239,13 @@ describe("RFC003: Ether for Bitcoin", () => {
     });
 
     it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.should.include.all.keys(
+        alice_funding_action.payload.should.include.all.keys(
             "data",
-            "value",
-            "gas_limit"
+            "amount",
+            "gas_limit",
+            "network"
         );
-
-        let result = await alice.wallet
-            .eth()
-            .deploy_contract(
-                alice_funding_action.data,
-                alice_funding_action.value,
-                alice_funding_action.gas_limit
-            );
+        let result = await alice.do(alice_funding_action);
     });
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
@@ -288,7 +283,11 @@ describe("RFC003: Ether for Bitcoin", () => {
     });
 
     it("[Bob] Can execute the funding action", async () => {
-        bob_funding_action.payload.should.include.all.keys("to", "amount");
+        bob_funding_action.payload.should.include.all.keys(
+            "to",
+            "amount",
+            "network"
+        );
         await bob.do(bob_funding_action);
     });
 
@@ -334,7 +333,7 @@ describe("RFC003: Ether for Bitcoin", () => {
     let alice_btc_balance_before;
 
     it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.payload.should.include.all.keys("hex");
+        alice_redeem_action.payload.should.include.all.keys("hex", "network");
         alice_btc_balance_before = await bitcoin.btc_balance(
             alice_final_address
         );
@@ -392,10 +391,11 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.payload.should.include.all.keys(
-            "contract",
+            "contract_address",
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         bob_eth_balance_before = await ethereum.eth_balance(bob_final_address);
         await bob.do(bob_redeem_action);

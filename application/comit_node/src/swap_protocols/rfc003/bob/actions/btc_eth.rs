@@ -26,6 +26,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             data,
             amount: self.beta_asset,
             gas_limit,
+            network: self.beta_ledger.network,
         }
     }
 
@@ -41,6 +42,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             data,
             gas_limit,
             amount: EtherQuantity::zero(),
+            network: self.beta_ledger.network,
         }
     }
 
@@ -57,6 +59,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
                 self.alpha_asset,
                 htlc.unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
             ),
+            network: self.alpha_ledger.network,
         }
     }
 }

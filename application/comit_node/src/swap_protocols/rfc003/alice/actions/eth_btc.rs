@@ -21,6 +21,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> {
             data,
             amount: self.alpha_asset,
             gas_limit,
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -36,6 +37,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> {
             data,
             gas_limit,
             amount: EtherQuantity::zero(),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -48,6 +50,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>> {
                 self.beta_asset,
                 htlc.unlock_with_secret(self.beta_ledger_redeem_identity, &self.secret),
             ),
+            network: self.beta_ledger.network,
         }
     }
 }

@@ -51,6 +51,11 @@ class Actor {
     }
 
     async do(action) {
+        let network = action.payload.network;
+        if (network != "regtest") {
+            return Error("Expected network regtest, found " + network);
+        }
+
         switch (action.type) {
             case "bitcoin-send-amount-to-address":
                 var { to, amount } = action.payload;

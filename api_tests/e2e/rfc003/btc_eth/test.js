@@ -131,6 +131,7 @@ describe("RFC003: Bitcoin for Ether", () => {
                 },
                 beta_ledger: {
                     name: "Ethereum",
+                    network: "regtest",
                 },
                 alpha_asset: {
                     name: "Bitcoin",
@@ -238,7 +239,11 @@ describe("RFC003: Bitcoin for Ether", () => {
     });
 
     it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.payload.should.include.all.keys("to", "amount");
+        alice_funding_action.payload.should.include.all.keys(
+            "to",
+            "amount",
+            "network"
+        );
         await alice.do(alice_funding_action);
     });
 
@@ -280,7 +285,8 @@ describe("RFC003: Bitcoin for Ether", () => {
         bob_funding_action.payload.should.include.all.keys(
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         await bob.do(bob_funding_action);
     });
@@ -326,7 +332,8 @@ describe("RFC003: Bitcoin for Ether", () => {
             "contract_address",
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         alice_eth_balance_before = await ethereum.eth_balance(
             alice_final_address
@@ -392,7 +399,7 @@ describe("RFC003: Bitcoin for Ether", () => {
     let bob_btc_balance_before;
 
     it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.payload.should.include.all.keys("hex");
+        bob_redeem_action.payload.should.include.all.keys("hex", "network");
         bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
 
         await bob.do(bob_redeem_action);

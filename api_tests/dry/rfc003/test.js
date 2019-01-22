@@ -9,6 +9,7 @@ const alpha_ledger_name = "Bitcoin";
 const alpha_ledger_network = "regtest";
 
 const beta_ledger_name = "Ethereum";
+const beta_ledger_network = "regtest";
 
 const alpha_asset_name = "Bitcoin";
 const alpha_asset_reasonable_quantity = "100000000";
@@ -124,6 +125,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 beta_ledger: {
                     name: beta_ledger_name,
+                    network: beta_ledger_network,
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
@@ -179,6 +181,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 beta_ledger: {
                     name: beta_ledger_name,
+                    network: beta_ledger_network,
                 },
                 alpha_asset: {
                     name: alpha_asset_name,
@@ -237,6 +240,7 @@ describe("RFC003 HTTP API", () => {
                 swap.alpha_ledger.name.should.equal(alpha_ledger_name);
                 swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
+                swap.beta_ledger.network.should.equal(beta_ledger_network);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
                 swap.alpha_asset.quantity.should.equal(
                     alpha_asset_reasonable_quantity
@@ -330,6 +334,7 @@ describe("RFC003 HTTP API", () => {
                 swap.alpha_ledger.name.should.equal(alpha_ledger_name);
                 swap.alpha_ledger.network.should.equal(alpha_ledger_network);
                 swap.beta_ledger.name.should.equal(beta_ledger_name);
+                swap.beta_ledger.network.should.equal(beta_ledger_network);
                 swap.alpha_asset.name.should.equal(alpha_asset_name);
                 swap.alpha_asset.quantity.should.equal("100");
                 swap.beta_asset.name.should.equal(beta_asset_name);
@@ -431,6 +436,7 @@ describe("RFC003 HTTP API", () => {
                 },
                 beta_ledger: {
                     name: beta_ledger_name,
+                    network: beta_ledger_network,
                 },
                 alpha_asset: {
                     name: alpha_asset_name,

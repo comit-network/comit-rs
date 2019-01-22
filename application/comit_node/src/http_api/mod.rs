@@ -25,7 +25,7 @@ mod ledger_impls {
     use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
 
     impl_http_ledger!(Bitcoin { network });
-    impl_http_ledger!(Ethereum);
+    impl_http_ledger!(Ethereum { network });
 
 }
 
@@ -90,8 +90,8 @@ mod tests {
         http_api::{asset::ToHttpAsset, ledger::ToHttpLedger},
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
-    use bitcoin_support::{BitcoinQuantity, Network};
-    use ethereum_support::{Address, Erc20Quantity, EtherQuantity, U256};
+    use bitcoin_support::{self, BitcoinQuantity};
+    use ethereum_support::{self, Address, Erc20Quantity, EtherQuantity, U256};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -123,10 +123,8 @@ mod tests {
 
     #[test]
     fn http_ledger_serializes_correctly_to_json() {
-        let bitcoin = Bitcoin {
-            network: Network::Regtest,
-        };
-        let ethereum = Ethereum {};
+        let bitcoin = Bitcoin::new(bitcoin_support::Network::Regtest);
+        let ethereum = Ethereum::new(ethereum_support::Network::Regtest);
 
         let bitcoin = bitcoin.to_http_ledger().unwrap();
         let ethereum = ethereum.to_http_ledger().unwrap();
@@ -138,7 +136,10 @@ mod tests {
             &bitcoin_serialized,
             r#"{"name":"Bitcoin","network":"regtest"}"#
         );
-        assert_eq!(&ethereum_serialized, r#"{"name":"Ethereum"}"#);
+        assert_eq!(
+            &ethereum_serialized,
+            r#"{"name":"Ethereum","network":"regtest"}"#
+        );
     }
 
 }

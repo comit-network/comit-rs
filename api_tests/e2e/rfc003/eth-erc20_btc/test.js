@@ -72,6 +72,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             .send({
                 alpha_ledger: {
                     name: "Ethereum",
+                    network: "regtest",
                 },
                 beta_ledger: {
                     name: "Bitcoin",
@@ -189,7 +190,8 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         alice_deploy_action.payload.should.include.all.keys(
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         alice_deploy_action.payload.amount.should.equal("0");
         await alice.do(alice_deploy_action);
@@ -234,7 +236,8 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             "contract_address",
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         let receipt = await alice.do(alice_fund_action);
         receipt.status.should.equal(true);
@@ -275,7 +278,11 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     });
 
     it("[Bob] Can execute the funding action", async () => {
-        bob_funding_action.payload.should.include.all.keys("to", "amount");
+        bob_funding_action.payload.should.include.all.keys(
+            "to",
+            "amount",
+            "network"
+        );
         await bob.do(bob_funding_action);
     });
 
@@ -321,7 +328,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     let alice_btc_balance_before;
 
     it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.payload.should.include.all.keys("hex");
+        alice_redeem_action.payload.should.include.all.keys("hex", "network");
         alice_btc_balance_before = await bitcoin.btc_balance(
             alice_final_address
         );
@@ -382,7 +389,8 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             "contract_address",
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         bob_erc20_balance_before = await ethereum.erc20_balance(
             bob_final_address,

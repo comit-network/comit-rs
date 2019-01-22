@@ -1,9 +1,25 @@
 use crate::swap_protocols::ledger::Ledger;
-use ethereum_support::{Address, EtherQuantity, Transaction, H256};
+use ethereum_support::{Address, EtherQuantity, Network, Transaction, H256};
 use secp256k1_support::PublicKey;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Default)]
-pub struct Ethereum {}
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Ethereum {
+    pub network: Network,
+}
+
+impl Ethereum {
+    pub fn new(network: Network) -> Self {
+        Ethereum { network }
+    }
+}
+
+impl Default for Ethereum {
+    fn default() -> Self {
+        Ethereum {
+            network: Network::Regtest,
+        }
+    }
+}
 
 impl Ledger for Ethereum {
     type Quantity = EtherQuantity;

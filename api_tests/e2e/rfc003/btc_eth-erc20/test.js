@@ -79,6 +79,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
                 },
                 beta_ledger: {
                     name: "Ethereum",
+                    network: "regtest",
                 },
                 alpha_asset: {
                     name: "Bitcoin",
@@ -189,7 +190,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.payload.should.include.all.keys("to", "amount");
+        alice_funding_action.payload.should.include.all.keys(
+            "to",
+            "amount",
+            "network"
+        );
         await alice.do(alice_funding_action);
     });
 
@@ -229,7 +234,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
         bob_deploy_action.payload.should.include.all.keys(
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         bob_deploy_action.payload.amount.should.equal("0");
         await bob.do(bob_deploy_action);
@@ -276,7 +282,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
             "contract_address",
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         let receipt = await bob.do(bob_fund_action);
         receipt.status.should.equal(true);
@@ -323,7 +330,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
             "contract_address",
             "data",
             "amount",
-            "gas_limit"
+            "gas_limit",
+            "network"
         );
         alice_erc20_balance_before = await ethereum.erc20_balance(
             alice_final_address,
@@ -391,7 +399,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let bob_btc_balance_before;
 
     it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.payload.should.include.all.keys("hex");
+        bob_redeem_action.payload.should.include.all.keys("hex", "network");
         bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
         await bob.do(bob_redeem_action);
     });

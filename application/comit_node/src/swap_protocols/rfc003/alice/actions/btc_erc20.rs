@@ -18,6 +18,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
         bitcoin::SendToAddress {
             to: htlc.compute_address(self.alpha_ledger.network),
             amount: self.alpha_asset,
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -29,6 +30,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
                 bitcoin::Htlc::from(self.alpha_htlc_params())
                     .unlock_after_timeout(self.alpha_ledger_refund_identity),
             ),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -44,6 +46,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
             data,
             gas_limit,
             amount: EtherQuantity::zero(),
+            network: self.beta_ledger.network,
         }
     }
 }
