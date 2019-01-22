@@ -24,6 +24,7 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
     let mut solc = match solc_bin {
         Ok(bin) => Command::new(bin)
             .arg("--assemble")
+            .arg("-")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()?,
