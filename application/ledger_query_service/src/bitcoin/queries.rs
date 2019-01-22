@@ -110,13 +110,8 @@ impl ExpandResult for BlockQuery {
 
 impl BlockQuery {
     pub fn matches(&self, block: &Block) -> bool {
-        self.min_height.map_or_else(
-            || {
-                warn!("min_height not set, nothing to compare");
-                false
-            },
-            |height| height <= block.height,
-        )
+        self.min_height
+            .map_or(true, |height| height <= block.height)
     }
 }
 
