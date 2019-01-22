@@ -192,47 +192,49 @@ impl EventQuery {
     pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
         match self {
             Self { event_matchers } if event_matchers.is_empty() => false,
-            Self { event_matchers } => event_matchers.iter().all(|event_matcher| {
-                return match event_matcher {
-                    EventMatcher {
-                        address: None,
-                        data: None,
-                        topics: topics,
-                    } if topics.is_empty() => false,
-                    EventMatcher {
-                        address: address,
-                        data: data,
-                        topics: topics,
-                    } => transaction_receipt.logs.iter().any(|tx_log| {
-                        let mut result = true;
+            Self { event_matchers } => {
+                event_matchers
+                    .iter()
+                    .all(|event_matcher| match event_matcher {
+                        EventMatcher {
+                            address: None,
+                            data: None,
+                            topics,
+                        } if topics.is_empty() => false,
+                        EventMatcher {
+                            address,
+                            data,
+                            topics,
+                        } => {
+                            transaction_receipt.logs.iter().any(|tx_log| {
+                                let mut result = true;
 
-                        if let Some(address) = address {
-                            result = result && (address == &tx_log.address);
+                                if let Some(address) = address {
+                                    result = result && (address == &tx_log.address);
+                                }
+
+                                if let Some(data) = data {
+                                    result = result && (data == &tx_log.data)
+                                }
+
+                                if tx_log.topics.len() == topics.len() {
+                                    tx_log.topics.iter().enumerate().for_each(
+                                        |(index, tx_topic)| {
+                                            let topic = topics[index];
+                                            if let Some(topic) = topic {
+                                                result = result && (tx_topic == &topic);
+                                            };
+                                        },
+                                    );
+                                } else {
+                                    result = false
+                                }
+
+                                result
+                            })
                         }
-
-                        if let Some(data) = data {
-                            result = result && (data == &tx_log.data)
-                        }
-
-                        if tx_log.topics.len() == topics.len() {
-                            tx_log
-                                .topics
-                                .iter()
-                                .enumerate()
-                                .for_each(|(index, tx_topic)| {
-                                    let topic = topics[index];
-                                    if let Some(topic) = topic {
-                                        result = result && (tx_topic == &topic);
-                                    };
-                                });
-                        } else {
-                            result = false
-                        }
-
-                        result
-                    }),
-                };
-            }),
+                    })
+            }
         }
     }
 }
