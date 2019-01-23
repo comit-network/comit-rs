@@ -83,6 +83,10 @@
       <sourceFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/benches" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/bam/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/bam/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/application/bitcoin_htlc/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node_client/target" />
@@ -100,6 +104,7 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/ganache_rust_web3/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/key_gen/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/lightning_rpc/target" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/noise_handshake/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/secp256k1_support/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/tc_bitcoincore_client/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/tc_web3_client/target" />

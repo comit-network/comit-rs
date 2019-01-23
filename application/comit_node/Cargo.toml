@@ -66,8 +66,7 @@ version = "0.5"
 path = "../../vendor/secp256k1_support"
 
 [dependencies.state_machine_future]
-branch = "master"
-git = "https://github.com/coblox/state_machine_future.git"
+version = "0.2"
 
 [dependencies.tc_bitcoincore_client]
 path = "../../vendor/tc_bitcoincore_client"
