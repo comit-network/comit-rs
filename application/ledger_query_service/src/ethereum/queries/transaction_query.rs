@@ -32,44 +32,29 @@ impl TransactionQuery {
                 transaction_data,
                 transaction_data_length,
             } => {
-                if from_address
-                    .as_ref()
-                    .map_or(false, |from_address| transaction.from != *from_address)
-                {
-                    return false;
+                let mut result = true;
+
+                if let Some(from_address) = from_address {
+                    result = result && (transaction.from == *from_address);
                 }
 
-                if to_address
-                    .as_ref()
-                    .map_or(false, |to_address| transaction.to != Some(*to_address))
-                {
-                    return false;
+                if let Some(to_address) = to_address {
+                    result = result && (transaction.to == Some(*to_address));
                 }
 
-                if is_contract_creation
-                    .as_ref()
-                    .map_or(false, |is_contract_creation| {
-                        *is_contract_creation != transaction.to.is_none()
-                    })
-                {
-                    return false;
+                if let Some(is_contract_creation) = is_contract_creation {
+                    // to_address is None for contract creations
+                    result = result && (*is_contract_creation == transaction.to.is_none());
                 }
 
-                if transaction_data.as_ref().map_or(false, |transaction_data| {
-                    transaction.input != *transaction_data
-                }) {
-                    return false;
+                if let Some(transaction_data) = transaction_data {
+                    result = result && (transaction.input == *transaction_data);
                 }
 
-                if transaction_data_length
-                    .as_ref()
-                    .map_or(false, |transaction_data_length| {
-                        transaction.input.0.len() != *transaction_data_length
-                    })
-                {
-                    return false;
+                if let Some(transaction_data_length) = transaction_data_length {
+                    result = result && (transaction.input.0.len() == *transaction_data_length);
                 }
-                true
+                result
             }
         }
     }
