@@ -1,6 +1,6 @@
 use crate::http_api::asset::{FromHttpAsset, ToHttpAsset};
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
+use ethereum_support::{Erc20Token, EtherQuantity};
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
@@ -23,14 +23,14 @@ pub trait Asset:
 
 impl Asset for BitcoinQuantity {}
 impl Asset for EtherQuantity {}
-impl Asset for Erc20Quantity {}
+impl Asset for Erc20Token {}
 
 // FIXME: This might be the same as metadata_store::AssetKind
 #[derive(Debug, Clone)]
 pub enum Assets {
     Bitcoin(BitcoinQuantity),
     Ether(EtherQuantity),
-    Erc20(Erc20Quantity),
+    Erc20(Erc20Token),
     Unknown { name: String },
 }
 
@@ -46,8 +46,8 @@ impl From<EtherQuantity> for Assets {
     }
 }
 
-impl From<Erc20Quantity> for Assets {
-    fn from(quantity: Erc20Quantity) -> Self {
+impl From<Erc20Token> for Assets {
+    fn from(quantity: Erc20Token) -> Self {
         Assets::Erc20(quantity)
     }
 }

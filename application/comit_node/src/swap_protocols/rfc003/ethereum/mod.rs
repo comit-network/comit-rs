@@ -2,7 +2,7 @@ use crate::swap_protocols::{
     ledger::Ethereum,
     rfc003::{state_machine::HtlcParams, Ledger},
 };
-use ethereum_support::{web3::types::Address, Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{web3::types::Address, Bytes, Erc20Token, EtherQuantity};
 use std::time::Duration;
 
 mod actions;
@@ -73,8 +73,8 @@ impl HtlcParams<Ethereum, EtherQuantity> {
     }
 }
 
-impl From<HtlcParams<Ethereum, Erc20Quantity>> for Erc20Htlc {
-    fn from(htlc_params: HtlcParams<Ethereum, Erc20Quantity>) -> Self {
+impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
+    fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
         Erc20Htlc::new(
             htlc_params.lock_duration,
             htlc_params.refund_identity,
@@ -86,7 +86,7 @@ impl From<HtlcParams<Ethereum, Erc20Quantity>> for Erc20Htlc {
     }
 }
 
-impl HtlcParams<Ethereum, Erc20Quantity> {
+impl HtlcParams<Ethereum, Erc20Token> {
     pub fn bytecode(&self) -> Bytes {
         Erc20Htlc::from(self.clone()).compile_to_hex().into()
     }

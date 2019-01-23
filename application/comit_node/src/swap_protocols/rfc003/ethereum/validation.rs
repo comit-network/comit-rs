@@ -6,7 +6,7 @@ use crate::swap_protocols::{
         state_machine::HtlcParams,
     },
 };
-use ethereum_support::{self, CalculateContractAddress, Erc20Quantity, EtherQuantity, Transaction};
+use ethereum_support::{self, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction};
 
 impl FindHtlcLocation<Ethereum, EtherQuantity> for Transaction {
     fn find_htlc_location(
@@ -29,11 +29,11 @@ impl FindHtlcLocation<Ethereum, EtherQuantity> for Transaction {
     }
 }
 
-impl FindHtlcLocation<Ethereum, Erc20Quantity> for Transaction {
+impl FindHtlcLocation<Ethereum, Erc20Token> for Transaction {
     fn find_htlc_location(
         &self,
-        htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
-    ) -> Result<ethereum_support::Address, Error<Erc20Quantity>> {
+        htlc_params: &HtlcParams<Ethereum, Erc20Token>,
+    ) -> Result<ethereum_support::Address, Error<Erc20Token>> {
         if self.to != None {
             return Err(Error::WrongTransaction);
         }

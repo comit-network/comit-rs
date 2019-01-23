@@ -19,7 +19,7 @@ use crate::{
     },
 };
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
-use ethereum_support::{self, Erc20Quantity, EtherQuantity};
+use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use warp::{self, Rejection, Reply};

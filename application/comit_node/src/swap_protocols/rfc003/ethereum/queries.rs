@@ -56,10 +56,10 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
 pub mod erc20 {
     use super::*;
     use crate::swap_protocols::rfc003::ethereum::TRANSFER_LOG_MSG;
-    use ethereum_support::Erc20Quantity;
+    use ethereum_support::Erc20Token;
 
     pub fn new_htlc_deployed_query(
-        htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_params: &HtlcParams<Ethereum, Erc20Token>,
     ) -> EthereumQuery {
         EthereumQuery::Transaction {
             from_address: None,
@@ -71,7 +71,7 @@ pub mod erc20 {
     }
 
     pub fn new_htlc_funded_query(
-        htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_params: &HtlcParams<Ethereum, Erc20Token>,
         htlc_location: &Address,
     ) -> EthereumQuery {
         EthereumQuery::Event {

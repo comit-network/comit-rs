@@ -9,9 +9,9 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
-impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
         let htlc: bitcoin::Htlc = self.alpha_htlc_params().into();
 
@@ -51,7 +51,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl Actions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl Actions for SwapStates<Alice<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
     type ActionKind = alice::ActionKind<
         (),
         bitcoin::SendToAddress,

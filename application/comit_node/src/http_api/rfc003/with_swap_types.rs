@@ -58,7 +58,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = BitcoinQuantity;
                 #[allow(dead_code)]
-                type BA = Erc20Quantity;
+                type BA = Erc20Token;
 
                 _match_role!(role, $fn)
             }
@@ -92,7 +92,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Bitcoin;
                 #[allow(dead_code)]
-                type AA = Erc20Quantity;
+                type AA = Erc20Token;
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
 
@@ -159,7 +159,7 @@ macro_rules! with_swap_types_bob {
                 #[allow(dead_code)]
                 type AA = BitcoinQuantity;
                 #[allow(dead_code)]
-                type BA = Erc20Quantity;
+                type BA = Erc20Token;
 
                 _match_role_bob!(role, $fn)
             }
@@ -193,7 +193,7 @@ macro_rules! with_swap_types_bob {
                 #[allow(dead_code)]
                 type BL = Bitcoin;
                 #[allow(dead_code)]
-                type AA = Erc20Quantity;
+                type AA = Erc20Token;
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
 

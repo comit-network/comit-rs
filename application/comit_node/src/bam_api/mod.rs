@@ -49,19 +49,16 @@ mod asset_impls {
         swap_protocols::asset::Assets,
     };
     use bam::json::Header;
-    use ethereum_support::{web3::types::U256, Erc20Quantity, FromDecimalStr, ToBigInt};
+    use ethereum_support::Erc20Token;
 
     impl FromBamHeader for Assets {
         fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
             Ok(match header.value::<String>()?.as_str() {
                 "Bitcoin" => Assets::Bitcoin(header.take_parameter("quantity")?),
                 "Ether" => Assets::Ether(header.take_parameter("quantity")?),
-                "ERC20" => Assets::Erc20(Erc20Quantity::new(
+                "ERC20" => Assets::Erc20(Erc20Token::new(
                     header.take_parameter("address")?,
-                    U256::from_decimal_str(header.take_parameter::<String>("quantity")?.as_str())
-                        .unwrap(), /* FIXME: cannot return custom here because of type
-                                    * signature, need to make
-                                    * it serde_json::Error somehow */
+                    header.take_parameter("quantity")?,
                 )),
                 other => Assets::Unknown {
                     name: other.to_string(),
@@ -81,7 +78,7 @@ mod asset_impls {
                 }
                 Assets::Erc20(erc20) => Header::with_str_value("ERC20")
                     .with_parameter("address", erc20.token_contract())?
-                    .with_parameter("quantity", format!("{}", erc20.quantity().to_bigint()))?,
+                    .with_parameter("quantity", erc20.quantity())?,
                 Assets::Unknown { name } => panic!(
                     "make {} a supported asset before you call to_bam_header on it",
                     name
@@ -140,14 +137,17 @@ impl ToBamHeader for SwapDeclineReason {
 #[cfg(test)]
 mod tests {
 
-    use ethereum_support::{Address, Erc20Quantity, U256};
+    use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
 
     use crate::{bam_ext::ToBamHeader, swap_protocols::asset::Assets};
     use bam::json::Header;
 
     #[test]
     fn erc20_quantity_to_bam_header() -> Result<(), serde_json::Error> {
-        let quantity = Erc20Quantity::new(Address::zero(), U256::from(100_000_000_000_000u64));
+        let quantity = Erc20Token::new(
+            Address::zero(),
+            Erc20Quantity(U256::from(100_000_000_000_000u64)),
+        );
         let header = Assets::from(quantity).to_bam_header()?;
 
         assert_eq!(
