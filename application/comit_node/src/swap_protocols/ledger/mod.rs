@@ -48,9 +48,10 @@ pub trait Ledger:
     fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Derivative)]
+#[derivative(Debug = "transparent")]
 pub enum LedgerKind {
     Bitcoin(Bitcoin),
     Ethereum(Ethereum),
-    Unknown { name: String },
+    Unknown(String),
 }

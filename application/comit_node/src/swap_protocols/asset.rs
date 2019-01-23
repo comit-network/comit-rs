@@ -25,12 +25,13 @@ impl Asset for BitcoinQuantity {}
 impl Asset for EtherQuantity {}
 impl Asset for Erc20Token {}
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Derivative)]
+#[derivative(Debug = "transparent")]
 pub enum AssetKind {
     Bitcoin(BitcoinQuantity),
     Ether(EtherQuantity),
     Erc20(Erc20Token),
-    Unknown { name: String },
+    Unknown(String),
 }
 
 impl From<BitcoinQuantity> for AssetKind {

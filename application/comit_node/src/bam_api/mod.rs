@@ -21,9 +21,7 @@ mod ledger_impls {
                 "Ethereum" => {
                     LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?))
                 }
-                other => LedgerKind::Unknown {
-                    name: other.to_string(),
-                },
+                other => LedgerKind::Unknown(other.to_string()),
             })
         }
     }
@@ -36,7 +34,7 @@ mod ledger_impls {
                 }
                 LedgerKind::Ethereum(ethereum) => Header::with_str_value("Ethereum")
                     .with_parameter("network", ethereum.network)?,
-                LedgerKind::Unknown { name } => panic!(
+                LedgerKind::Unknown(name) => panic!(
                     "make {} a supported ledger before you call to_bam_header on it",
                     name
                 ),
@@ -62,9 +60,7 @@ mod asset_impls {
                     header.take_parameter("address")?,
                     header.take_parameter("quantity")?,
                 )),
-                other => AssetKind::Unknown {
-                    name: other.to_string(),
-                },
+                other => AssetKind::Unknown(other.to_string()),
             })
         }
     }
@@ -81,7 +77,7 @@ mod asset_impls {
                 AssetKind::Erc20(erc20) => Header::with_str_value("ERC20")
                     .with_parameter("address", erc20.token_contract())?
                     .with_parameter("quantity", erc20.quantity())?,
-                AssetKind::Unknown { name } => panic!(
+                AssetKind::Unknown(name) => panic!(
                     "make {} a supported asset before you call to_bam_header on it",
                     name
                 ),
@@ -94,9 +90,7 @@ impl FromBamHeader for SwapProtocols {
     fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "COMIT-RFC-003" => SwapProtocols::Rfc003,
-            other => SwapProtocols::Unknown {
-                name: other.to_string(),
-            },
+            other => SwapProtocols::Unknown(other.to_string()),
         })
     }
 }
@@ -105,7 +99,7 @@ impl ToBamHeader for SwapProtocols {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         match self {
             SwapProtocols::Rfc003 => Ok(Header::with_str_value("COMIT-RFC-003")),
-            SwapProtocols::Unknown { name } => panic!(
+            SwapProtocols::Unknown(name) => panic!(
                 "make {} a supported protocol before you call to_bam_header on it",
                 name
             ),

@@ -14,7 +14,7 @@ pub use self::{
 #[derive(Debug)]
 pub enum SwapProtocols {
     Rfc003,
-    Unknown { name: String },
+    Unknown(String),
 }
 
 mod swap_id;

@@ -107,7 +107,12 @@ pub fn swap_config<B: BobSpawner>(
                             beta_asset,
                             body!(request.take_body_as()),
                         ),
-                        _ => unimplemented!(),
+                        (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
+                            warn!(
+                                "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
+                            );
+                            Box::new(future::ok(Response::new(Status::RE(21))))
+                        }
                     }
                 }
                 SwapProtocols::Unknown { .. } => unimplemented!(),

@@ -4,6 +4,8 @@
 #[macro_use]
 extern crate debug_stub_derive;
 #[macro_use]
+extern crate derivative;
+#[macro_use]
 extern crate enum_display_derive;
 #[macro_use]
 extern crate serde_derive;
