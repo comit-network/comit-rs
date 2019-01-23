@@ -1,7 +1,7 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{
-        rfc003, Client, ClientFactory, ClientFactoryError, ClientPool, Error, SwapDeclineReason,
+        rfc003, Client, ClientFactory, ClientFactoryError, ClientPool, SwapDeclineReason,
         SwapReject, SwapResponseError,
     },
     swap_protocols::{self, asset::Asset, SwapProtocols},
@@ -69,19 +69,14 @@ impl Client for BamClient {
     >(
         &self,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<
-        Box<
-            dyn Future<
-                    Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
-                    Error = SwapResponseError,
-                > + Send,
-        >,
-        Error,
+    ) -> Box<
+        dyn Future<
+                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
+                Error = SwapResponseError,
+            > + Send,
     > {
-        let request = Self::build_swap_request(request).map_err(|e| {
-            error!("failed to construct swap request because {:?}", e);
-            Error::MalformedRequest
-        })?;
+        let request = Self::build_swap_request(request)
+            .expect("constructing a bam::json::OutoingRequest should never fail!");
 
         debug!(
             "Making swap request to {}: {:?}",
@@ -141,7 +136,7 @@ impl Client for BamClient {
                 }
             });
 
-        Ok(Box::new(response))
+        Box::new(response)
     }
 }
 

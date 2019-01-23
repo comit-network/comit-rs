@@ -42,7 +42,6 @@ impl<C: comit_client::Client, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>
             Box::new(
                 client
                     .send_swap_request(request.clone())
-                    .unwrap() // FIXME: should properly handle error for malformed requset
                     .map_err(rfc003::Error::SwapResponse)
                     .map(|result| result.map(Into::into)),
             )

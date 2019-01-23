@@ -5,11 +5,6 @@ use crate::{
 use futures::Future;
 use std::{fmt::Debug, io, net::SocketAddr, sync::Arc};
 
-#[derive(Debug)]
-pub enum Error {
-    MalformedRequest,
-}
-
 pub trait Client: Send + Sync + 'static {
     fn send_swap_request<
         AL: swap_protocols::rfc003::Ledger,
@@ -19,14 +14,11 @@ pub trait Client: Send + Sync + 'static {
     >(
         &self,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<
-        Box<
-            dyn Future<
-                    Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
-                    Error = SwapResponseError,
-                > + Send,
-        >,
-        Error,
+    ) -> Box<
+        dyn Future<
+                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
+                Error = SwapResponseError,
+            > + Send,
     >;
 }
 
