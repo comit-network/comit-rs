@@ -2,8 +2,8 @@ use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{self, rfc003::RequestBody, SwapReject},
     swap_protocols::{
-        asset::{Asset, Assets},
-        ledger::Ledgers,
+        asset::{Asset, AssetKind},
+        ledger::LedgerKind,
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents, Ledger},
         LedgerEventDependencies, SwapId, SwapProtocols,
     },
@@ -38,23 +38,23 @@ pub fn swap_config<B: BobSpawner>(
 
                     let alpha_ledger = header!(request
                         .take_header("alpha_ledger")
-                        .map(Ledgers::from_bam_header));
+                        .map(LedgerKind::from_bam_header));
                     let beta_ledger = header!(request
                         .take_header("beta_ledger")
-                        .map(Ledgers::from_bam_header));
+                        .map(LedgerKind::from_bam_header));
                     let alpha_asset = header!(request
                         .take_header("alpha_asset")
-                        .map(Assets::from_bam_header));
+                        .map(AssetKind::from_bam_header));
                     let beta_asset = header!(request
                         .take_header("beta_asset")
-                        .map(Assets::from_bam_header));
+                        .map(AssetKind::from_bam_header));
 
                     match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
                         (
-                            Ledgers::Bitcoin(alpha_ledger),
-                            Ledgers::Ethereum(beta_ledger),
-                            Assets::Bitcoin(alpha_asset),
-                            Assets::Ether(beta_asset),
+                            LedgerKind::Bitcoin(alpha_ledger),
+                            LedgerKind::Ethereum(beta_ledger),
+                            AssetKind::Bitcoin(alpha_asset),
+                            AssetKind::Ether(beta_asset),
                         ) => handle_request(
                             Arc::clone(&bob_spawner),
                             swap_id,
@@ -65,10 +65,10 @@ pub fn swap_config<B: BobSpawner>(
                             body!(request.take_body_as()),
                         ),
                         (
-                            Ledgers::Ethereum(alpha_ledger),
-                            Ledgers::Bitcoin(beta_ledger),
-                            Assets::Ether(alpha_asset),
-                            Assets::Bitcoin(beta_asset),
+                            LedgerKind::Ethereum(alpha_ledger),
+                            LedgerKind::Bitcoin(beta_ledger),
+                            AssetKind::Ether(alpha_asset),
+                            AssetKind::Bitcoin(beta_asset),
                         ) => handle_request(
                             Arc::clone(&bob_spawner),
                             swap_id,
@@ -79,10 +79,10 @@ pub fn swap_config<B: BobSpawner>(
                             body!(request.take_body_as()),
                         ),
                         (
-                            Ledgers::Bitcoin(alpha_ledger),
-                            Ledgers::Ethereum(beta_ledger),
-                            Assets::Bitcoin(alpha_asset),
-                            Assets::Erc20(beta_asset),
+                            LedgerKind::Bitcoin(alpha_ledger),
+                            LedgerKind::Ethereum(beta_ledger),
+                            AssetKind::Bitcoin(alpha_asset),
+                            AssetKind::Erc20(beta_asset),
                         ) => handle_request(
                             Arc::clone(&bob_spawner),
                             swap_id,
@@ -93,10 +93,10 @@ pub fn swap_config<B: BobSpawner>(
                             body!(request.take_body_as()),
                         ),
                         (
-                            Ledgers::Ethereum(alpha_ledger),
-                            Ledgers::Bitcoin(beta_ledger),
-                            Assets::Erc20(alpha_asset),
-                            Assets::Bitcoin(beta_asset),
+                            LedgerKind::Ethereum(alpha_ledger),
+                            LedgerKind::Bitcoin(beta_ledger),
+                            AssetKind::Erc20(alpha_asset),
+                            AssetKind::Bitcoin(beta_asset),
                         ) => handle_request(
                             Arc::clone(&bob_spawner),
                             swap_id,

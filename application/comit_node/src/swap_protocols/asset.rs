@@ -17,7 +17,7 @@ pub trait Asset:
     + Hash
     + FromHttpAsset
     + ToHttpAsset
-    + Into<Assets>
+    + Into<AssetKind>
 {
 }
 
@@ -25,29 +25,28 @@ impl Asset for BitcoinQuantity {}
 impl Asset for EtherQuantity {}
 impl Asset for Erc20Token {}
 
-// FIXME: This might be the same as metadata_store::AssetKind
 #[derive(Debug, Clone)]
-pub enum Assets {
+pub enum AssetKind {
     Bitcoin(BitcoinQuantity),
     Ether(EtherQuantity),
     Erc20(Erc20Token),
     Unknown { name: String },
 }
 
-impl From<BitcoinQuantity> for Assets {
+impl From<BitcoinQuantity> for AssetKind {
     fn from(quantity: BitcoinQuantity) -> Self {
-        Assets::Bitcoin(quantity)
+        AssetKind::Bitcoin(quantity)
     }
 }
 
-impl From<EtherQuantity> for Assets {
+impl From<EtherQuantity> for AssetKind {
     fn from(quantity: EtherQuantity) -> Self {
-        Assets::Ether(quantity)
+        AssetKind::Ether(quantity)
     }
 }
 
-impl From<Erc20Token> for Assets {
+impl From<Erc20Token> for AssetKind {
     fn from(quantity: Erc20Token) -> Self {
-        Assets::Erc20(quantity)
+        AssetKind::Erc20(quantity)
     }
 }

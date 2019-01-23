@@ -20,7 +20,7 @@ pub trait Ledger:
     + Hash
     + FromHttpLedger
     + ToHttpLedger
-    + Into<Ledgers>
+    + Into<LedgerKind>
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;
     type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;
@@ -48,9 +48,8 @@ pub trait Ledger:
     fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }
 
-// FIXME: This might actually be the same as metadata_store::LedgerKind
 #[derive(Debug, Clone)]
-pub enum Ledgers {
+pub enum LedgerKind {
     Bitcoin(Bitcoin),
     Ethereum(Ethereum),
     Unknown { name: String },

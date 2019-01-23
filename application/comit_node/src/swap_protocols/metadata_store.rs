@@ -1,4 +1,4 @@
-use crate::swap_protocols::{asset::Assets, Ledgers};
+use crate::swap_protocols::{asset::AssetKind, LedgerKind};
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
@@ -14,10 +14,10 @@ pub enum RoleKind {
 
 #[derive(Clone, Debug)]
 pub struct Metadata {
-    pub alpha_ledger: Ledgers,
-    pub beta_ledger: Ledgers,
-    pub alpha_asset: Assets,
-    pub beta_asset: Assets,
+    pub alpha_ledger: LedgerKind,
+    pub beta_ledger: LedgerKind,
+    pub alpha_asset: AssetKind,
+    pub beta_asset: AssetKind,
     pub role: RoleKind,
 }
 

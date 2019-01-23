@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::{Ledger, Ledgers};
+use crate::swap_protocols::ledger::{Ledger, LedgerKind};
 use bitcoin_support::{
     Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
@@ -37,8 +37,8 @@ impl Ledger for Bitcoin {
     }
 }
 
-impl From<Bitcoin> for Ledgers {
+impl From<Bitcoin> for LedgerKind {
     fn from(bitcoin: Bitcoin) -> Self {
-        Ledgers::Bitcoin(bitcoin)
+        LedgerKind::Bitcoin(bitcoin)
     }
 }

@@ -21,7 +21,7 @@ where
     ) -> Result<L::HtlcLocation, Error<A>>;
 }
 
-// Not all assets are PartialOrd, that is why the bound is explicitly listed
+// Not all AssetKind are PartialOrd, that is why the bound is explicitly listed
 // here
 pub fn compare_assets<A: Asset + PartialOrd, L: Debug>(
     location: L,

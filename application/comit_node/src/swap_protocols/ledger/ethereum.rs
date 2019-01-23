@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::{Ledger, Ledgers};
+use crate::swap_protocols::ledger::{Ledger, LedgerKind};
 use ethereum_support::{Address, EtherQuantity, Network, Transaction, H256};
 use secp256k1_support::PublicKey;
 
@@ -34,8 +34,8 @@ impl Ledger for Ethereum {
     }
 }
 
-impl From<Ethereum> for Ledgers {
+impl From<Ethereum> for LedgerKind {
     fn from(ethereum: Ethereum) -> Self {
-        Ledgers::Ethereum(ethereum)
+        LedgerKind::Ethereum(ethereum)
     }
 }

@@ -7,7 +7,7 @@ pub mod metadata_store;
 
 pub use self::{
     dependencies::*,
-    ledger::{Ledger, Ledgers},
+    ledger::{Ledger, LedgerKind},
     metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore, RoleKind},
 };
 

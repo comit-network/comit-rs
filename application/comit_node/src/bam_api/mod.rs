@@ -10,31 +10,33 @@ pub mod rfc003;
 mod ledger_impls {
     use crate::{
         bam_ext::{FromBamHeader, ToBamHeader},
-        swap_protocols::ledger::{Bitcoin, Ethereum, Ledgers},
+        swap_protocols::ledger::{Bitcoin, Ethereum, LedgerKind},
     };
     use bam::json::Header;
 
-    impl FromBamHeader for Ledgers {
+    impl FromBamHeader for LedgerKind {
         fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
             Ok(match header.value::<String>()?.as_str() {
-                "Bitcoin" => Ledgers::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
-                "Ethereum" => Ledgers::Ethereum(Ethereum::new(header.take_parameter("network")?)),
-                other => Ledgers::Unknown {
+                "Bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
+                "Ethereum" => {
+                    LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?))
+                }
+                other => LedgerKind::Unknown {
                     name: other.to_string(),
                 },
             })
         }
     }
 
-    impl ToBamHeader for Ledgers {
+    impl ToBamHeader for LedgerKind {
         fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
             Ok(match self {
-                Ledgers::Bitcoin(bitcoin) => {
+                LedgerKind::Bitcoin(bitcoin) => {
                     Header::with_str_value("Bitcoin").with_parameter("network", bitcoin.network)?
                 }
-                Ledgers::Ethereum(ethereum) => Header::with_str_value("Ethereum")
+                LedgerKind::Ethereum(ethereum) => Header::with_str_value("Ethereum")
                     .with_parameter("network", ethereum.network)?,
-                Ledgers::Unknown { name } => panic!(
+                LedgerKind::Unknown { name } => panic!(
                     "make {} a supported ledger before you call to_bam_header on it",
                     name
                 ),
@@ -46,40 +48,40 @@ mod ledger_impls {
 mod asset_impls {
     use crate::{
         bam_ext::{FromBamHeader, ToBamHeader},
-        swap_protocols::asset::Assets,
+        swap_protocols::asset::AssetKind,
     };
     use bam::json::Header;
     use ethereum_support::Erc20Token;
 
-    impl FromBamHeader for Assets {
+    impl FromBamHeader for AssetKind {
         fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
             Ok(match header.value::<String>()?.as_str() {
-                "Bitcoin" => Assets::Bitcoin(header.take_parameter("quantity")?),
-                "Ether" => Assets::Ether(header.take_parameter("quantity")?),
-                "ERC20" => Assets::Erc20(Erc20Token::new(
+                "Bitcoin" => AssetKind::Bitcoin(header.take_parameter("quantity")?),
+                "Ether" => AssetKind::Ether(header.take_parameter("quantity")?),
+                "ERC20" => AssetKind::Erc20(Erc20Token::new(
                     header.take_parameter("address")?,
                     header.take_parameter("quantity")?,
                 )),
-                other => Assets::Unknown {
+                other => AssetKind::Unknown {
                     name: other.to_string(),
                 },
             })
         }
     }
 
-    impl ToBamHeader for Assets {
+    impl ToBamHeader for AssetKind {
         fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
             Ok(match self {
-                Assets::Bitcoin(bitcoin) => {
+                AssetKind::Bitcoin(bitcoin) => {
                     Header::with_str_value("Bitcoin").with_parameter("quantity", bitcoin)?
                 }
-                Assets::Ether(ether) => {
+                AssetKind::Ether(ether) => {
                     Header::with_str_value("Ether").with_parameter("quantity", ether)?
                 }
-                Assets::Erc20(erc20) => Header::with_str_value("ERC20")
+                AssetKind::Erc20(erc20) => Header::with_str_value("ERC20")
                     .with_parameter("address", erc20.token_contract())?
                     .with_parameter("quantity", erc20.quantity())?,
-                Assets::Unknown { name } => panic!(
+                AssetKind::Unknown { name } => panic!(
                     "make {} a supported asset before you call to_bam_header on it",
                     name
                 ),
@@ -139,7 +141,7 @@ mod tests {
 
     use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
 
-    use crate::{bam_ext::ToBamHeader, swap_protocols::asset::Assets};
+    use crate::{bam_ext::ToBamHeader, swap_protocols::asset::AssetKind};
     use bam::json::Header;
 
     #[test]
@@ -148,7 +150,7 @@ mod tests {
             Address::zero(),
             Erc20Quantity(U256::from(100_000_000_000_000u64)),
         );
-        let header = Assets::from(quantity).to_bam_header()?;
+        let header = AssetKind::from(quantity).to_bam_header()?;
 
         assert_eq!(
             header,
