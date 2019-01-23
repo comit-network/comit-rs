@@ -75,9 +75,7 @@ class Actor {
             case "ethereum-deploy-contract": {
                 let { data, amount, gas_limit } = action.payload;
 
-                return this.wallet
-                    .eth()
-                    .deploy_contract(data, new ethutil.BN(amount, 10));
+                return this.wallet.eth().deploy_contract(data, amount);
                 break;
             }
             case "ethereum-invoke-contract": {
