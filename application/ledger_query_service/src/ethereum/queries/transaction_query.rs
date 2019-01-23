@@ -1,7 +1,6 @@
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    QueryMatchResult,
 };
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
@@ -24,15 +23,8 @@ pub struct TransactionQuery {
 }
 
 impl TransactionQuery {
-    pub fn matches(&self, transaction: &Transaction) -> QueryMatchResult {
+    pub fn matches(&self, transaction: &Transaction) -> bool {
         match self {
-            Self {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: None,
-                transaction_data: None,
-                transaction_data_length: None,
-            } => QueryMatchResult::no(),
             Self {
                 from_address,
                 to_address,
@@ -40,34 +32,44 @@ impl TransactionQuery {
                 transaction_data,
                 transaction_data_length,
             } => {
-                let mut result = true;
-
-                if let Some(from_address) = from_address {
-                    result = result && (transaction.from == *from_address);
+                if from_address
+                    .as_ref()
+                    .map_or(false, |from_address| transaction.from != *from_address)
+                {
+                    return false;
                 }
 
-                if let Some(to_address) = to_address {
-                    result = result && (transaction.to == Some(*to_address));
+                if to_address
+                    .as_ref()
+                    .map_or(false, |to_address| transaction.to != Some(*to_address))
+                {
+                    return false;
                 }
 
-                if let Some(is_contract_creation) = is_contract_creation {
-                    // to_address is None for contract creations
-                    result = result && (*is_contract_creation == transaction.to.is_none());
+                if is_contract_creation
+                    .as_ref()
+                    .map_or(false, |is_contract_creation| {
+                        *is_contract_creation != transaction.to.is_none()
+                    })
+                {
+                    return false;
                 }
 
-                if let Some(transaction_data) = transaction_data {
-                    result = result && (transaction.input == *transaction_data);
+                if transaction_data.as_ref().map_or(false, |transaction_data| {
+                    transaction.input != *transaction_data
+                }) {
+                    return false;
                 }
 
-                if let Some(transaction_data_length) = transaction_data_length {
-                    result = result && (transaction.input.0.len() == *transaction_data_length);
+                if transaction_data_length
+                    .as_ref()
+                    .map_or(false, |transaction_data_length| {
+                        transaction.input.0.len() != *transaction_data_length
+                    })
+                {
+                    return false;
                 }
-
-                if result {
-                    QueryMatchResult::yes()
-                } else {
-                    QueryMatchResult::no()
-                }
+                true
             }
         }
     }
@@ -151,7 +153,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -179,7 +181,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -209,7 +211,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -239,7 +241,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -269,7 +271,7 @@ mod tests {
         };
 
         let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -313,79 +315,12 @@ mod tests {
         };
 
         let result = query_data.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
 
         let result = query_data_length.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
+        assert_that(&result).is_true();
 
         let result = refund_query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        assert_that(&result).is_false();
     }
-
-    #[test]
-    fn given_query_transaction_data_is_empty_transaction_matches() {
-        let query_data = TransactionQuery {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: Some(Bytes::from(vec![])),
-            transaction_data_length: None,
-        };
-
-        let query_data_length = TransactionQuery {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: Some(0),
-        };
-
-        let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
-            to: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
-        };
-
-        let result = query_data.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0));
-
-        let result = query_data_length.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::yes_with_confirmations(0))
-    }
-
-    #[test]
-    fn given_no_conditions_in_query_transaction_fails() {
-        let query = TransactionQuery {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-        };
-
-        let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
-            to: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![1, 2, 3, 4, 5]),
-        };
-        let result = query.matches(&transaction);
-        assert_that(&result).is_equal_to(QueryMatchResult::no())
-    }
-
 }

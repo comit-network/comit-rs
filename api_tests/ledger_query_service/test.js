@@ -72,7 +72,6 @@ describe("Test Ledger Query Service API", () => {
                     .then(res => {
                         res.should.have.status(200);
                         res.body.query.to_address.should.equal(to_address);
-                        res.body.query.confirmations_needed.should.equal(1);
                         res.body.matches.should.be.empty;
                     });
             });

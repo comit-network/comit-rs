@@ -1,7 +1,7 @@
 use crate::{
     ethereum::{BlockQuery, EventQuery, TransactionQuery},
     web3::types::{Block, Transaction},
-    ArcQueryRepository, QueryMatch, QueryMatchResult,
+    ArcQueryRepository, QueryMatch,
 };
 use ethereum_support::web3::{transports::Http, Web3};
 use futures::{
@@ -30,7 +30,7 @@ pub fn check_block_queries(
 
             if query.matches(&block) {
                 trace!("Query {:?} matches block {:?}", query_id, block_id);
-                Some((query_id, block_id))
+                Some(QueryMatch(query_id.into(), block_id.clone()))
             } else {
                 None
             }
@@ -59,16 +59,15 @@ pub fn check_transaction_queries(
                         &transaction
                     );
 
-                    match query.matches(&transaction) {
-                        QueryMatchResult::Yes { .. } => {
-                            trace!(
-                                "Query {:?} matches transaction {:?}",
-                                query_id,
-                                transaction_id
-                            );
-                            Some((query_id, transaction_id.clone()))
-                        }
-                        _ => None,
+                    if query.matches(&transaction) {
+                        trace!(
+                            "Query {:?} matches transaction {:?}",
+                            query_id,
+                            transaction_id
+                        );
+                        Some(QueryMatch(query_id.into(), transaction_id.clone()))
+                    } else {
+                        None
                     }
                 })
         })
@@ -84,7 +83,7 @@ pub fn check_log_queries(
 
     let block_id = block.hash.map(|block_id| format!("{:x}", block_id));
 
-    let futures = log_queries
+    let result_futures = log_queries
         .all()
         .filter(|(_, query)| {
             trace!("Matching query {:#?} against block {:#?}", query, block);
@@ -112,7 +111,10 @@ pub fn check_log_queries(
                                 query_id
                             );
 
-                            Ok(Some((query_id, format!("{:x}", transaction_id))))
+                            Ok(Some(QueryMatch(
+                                query_id.into(),
+                                format!("{:x}", transaction_id),
+                            )))
                         }
                         Err(e) => {
                             error!(
@@ -127,5 +129,5 @@ pub fn check_log_queries(
         })
         .flatten();
 
-    stream::futures_ordered(futures).filter_map(|x| x)
+    stream::futures_ordered(result_futures).filter_map(|x| x)
 }
