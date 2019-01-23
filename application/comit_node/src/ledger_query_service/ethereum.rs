@@ -1,5 +1,5 @@
 use crate::ledger_query_service::Query;
-use ethereum_support::web3::types::{Address, Bytes};
+use ethereum_support::web3::types::{Address, Bytes, H256};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
@@ -13,22 +13,31 @@ pub enum EthereumQuery {
         transaction_data_length: Option<usize>,
     },
     Block {
-        min_timestamp_secs: Option<u32>,
+        min_timestamp_secs: u32,
+    },
+    Event {
+        event_matchers: Vec<EventMatcher>,
     },
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
+pub struct EventMatcher {
+    pub address: Option<Address>,
+    pub data: Option<Bytes>,
+    pub topics: Vec<Option<Topic>>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
+pub struct Topic(pub H256);
 
 impl Query for EthereumQuery {}
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethereum_support::Address;
-    use std::str::FromStr;
 
     #[test]
     fn given_a_ethereum_transaction_query_with_toaddress_it_serializes_ok() {
-        let to_address =
-            Some(Address::from_str("8457037fcd80a8650c4692d7fcfc1d0a96b92867").unwrap());
+        let to_address = Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".into());
         let query = EthereumQuery::Transaction {
             from_address: None,
             to_address,
@@ -63,7 +72,7 @@ mod tests {
     #[test]
     fn given_a_ethereum_block_query_with_min_timestamp_it_serializes_ok() {
         let query = EthereumQuery::Block {
-            min_timestamp_secs: Some(10),
+            min_timestamp_secs: 10u32,
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(query, r#"{"min_timestamp_secs":10}"#)
@@ -80,5 +89,33 @@ mod tests {
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(query, r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":"0x68656c6c6f20776f726c6421","transaction_data_length":12}"#)
+    }
+
+    #[test]
+    fn events_query_without_data_serializes_correctly() {
+        let query = EthereumQuery::Event {
+            event_matchers: vec![EventMatcher {
+                address: None,
+                data: None,
+                topics: vec![],
+            }],
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(query, r#"{"address":null,"data":null,"topics":[]}"#)
+    }
+
+    #[test]
+    fn events_query_with_data_serializes_correctly() {
+        let query = EthereumQuery::Event {
+            event_matchers: vec![EventMatcher {
+                address: Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".into()),
+                data: Some(Bytes::from(vec![1])),
+                topics: vec![Some(Topic(
+                    "0x0000000000000000000000000000000000000000000000000000000000000001".into(),
+                ))],
+            }],
+        };
+        let query = serde_json::to_string(&query).unwrap();
+        assert_eq!(query, r#"{"address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","data":"0x01","topics":["0x0000000000000000000000000000000000000000000000000000000000000001"]}"#)
     }
 }

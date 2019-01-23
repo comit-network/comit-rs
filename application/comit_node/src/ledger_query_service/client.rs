@@ -17,6 +17,7 @@ pub struct DefaultLedgerQueryServiceApiClient {
     create_bitcoin_block_query_endpoint: Url,
     create_ethereum_transaction_query_endpoint: Url,
     create_ethereum_block_query_endpoint: Url,
+    create_ethereum_event_query_endpoint: Url,
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +40,9 @@ impl DefaultLedgerQueryServiceApiClient {
                 .expect("invalid url"),
             create_ethereum_block_query_endpoint: endpoint
                 .join("queries/ethereum/blocks")
+                .expect("invalid url"),
+            create_ethereum_event_query_endpoint: endpoint
+                .join("queries/ethereum/logs")
                 .expect("invalid url"),
         }
     }
@@ -140,7 +144,7 @@ impl DefaultLedgerQueryServiceApiClient {
             .and_then(|mut response| response.json::<QueryResponse<L::Transaction>>())
             .map_err(move |e| {
                 Error::FailedRequest(format!(
-                    "Failed to fetch results for {:?} because {:?}",
+                    "Failed to fetch full results for {:?} because {:?}",
                     url, e
                 ))
             })
@@ -214,6 +218,7 @@ impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient
                 self.create_ethereum_transaction_query_endpoint.clone()
             }
             EthereumQuery::Block { .. } => self.create_ethereum_block_query_endpoint.clone(),
+            EthereumQuery::Event { .. } => self.create_ethereum_event_query_endpoint.clone(),
         };
         self._create(endpoint, query)
     }

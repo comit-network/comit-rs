@@ -13,6 +13,10 @@ mod queries;
 mod validation;
 
 pub use self::{actions::*, erc20_htlc::*, ether_htlc::*, queries::*};
+pub const REDEEM_LOG_MSG: &str =
+    "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+pub const REFUND_LOG_MSG: &str =
+    "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ByteCode(pub String);
