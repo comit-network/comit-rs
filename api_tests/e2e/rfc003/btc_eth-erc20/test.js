@@ -79,6 +79,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
                 },
                 beta_ledger: {
                     name: "Ethereum",
+                    network: "regtest",
                 },
                 alpha_asset: {
                     name: "Bitcoin",
@@ -189,14 +190,12 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.should.include.all.keys("address", "value");
-
-        await alice.wallet
-            .btc()
-            .send_btc_to_address(
-                alice_funding_action.address,
-                parseInt(alice_funding_action.value)
-            );
+        alice_funding_action.payload.should.include.all.keys(
+            "to",
+            "amount",
+            "network"
+        );
+        await alice.do(alice_funding_action);
     });
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
@@ -232,15 +231,14 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Bob] Can execute the deploy action", async () => {
-        bob_deploy_action.should.include.all.keys("data", "gas_limit", "value");
-        bob_deploy_action.value.should.equal("0");
-        await bob.wallet
-            .eth()
-            .deploy_contract(
-                bob_deploy_action.data,
-                "0x0",
-                bob_deploy_action.gas_limit
-            );
+        bob_deploy_action.payload.should.include.all.keys(
+            "data",
+            "amount",
+            "gas_limit",
+            "network"
+        );
+        bob_deploy_action.payload.amount.should.equal("0");
+        await bob.do(bob_deploy_action);
     });
 
     it("[Alice] Should be in AlphaFundedBetaDeployed state after Bob executes the deploy action", async function() {
@@ -280,16 +278,14 @@ describe("RFC003: Bitcoin for ERC20", () => {
     });
 
     it("[Bob] Can execute the fund action", async () => {
-        bob_fund_action.should.include.all.keys(
-            "to",
+        bob_fund_action.payload.should.include.all.keys(
+            "contract_address",
             "data",
+            "amount",
             "gas_limit",
-            "value"
+            "network"
         );
-        let { to, data, gas_limit, value } = bob_fund_action;
-        let receipt = await bob.wallet
-            .eth()
-            .send_eth_transaction_to(to, data, value, gas_limit);
+        let receipt = await bob.do(bob_fund_action);
         receipt.status.should.equal(true);
     });
 
@@ -330,24 +326,18 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let alice_erc20_balance_before;
 
     it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.should.include.all.keys(
-            "to",
+        alice_redeem_action.payload.should.include.all.keys(
+            "contract_address",
             "data",
+            "amount",
             "gas_limit",
-            "value"
+            "network"
         );
         alice_erc20_balance_before = await ethereum.erc20_balance(
             alice_final_address,
             token_contract_address
         );
-        await alice.wallet
-            .eth()
-            .send_eth_transaction_to(
-                alice_redeem_action.to,
-                alice_redeem_action.data,
-                alice_redeem_action.value,
-                alice_redeem_action.gas_limit
-            );
+        await alice.do(alice_redeem_action);
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
@@ -409,9 +399,9 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let bob_btc_balance_before;
 
     it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.should.include.all.keys("hex");
+        bob_redeem_action.payload.should.include.all.keys("hex", "network");
         bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
-        await bitcoin_rpc_client.sendRawTransaction(bob_redeem_action.hex);
+        await bob.do(bob_redeem_action);
     });
 
     it("[Alice] Should be in BothRedeemed state after Bob executes the redeem action", async function() {

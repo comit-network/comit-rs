@@ -14,8 +14,9 @@ use ethereum_support::{Bytes, EtherQuantity, U256};
 impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
         bitcoin::SendToAddress {
-            address: self.alpha_htlc_params().compute_address(),
-            value: self.alpha_asset,
+            to: self.alpha_htlc_params().compute_address(),
+            amount: self.alpha_asset,
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -27,6 +28,7 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
                 bitcoin::Htlc::from(self.alpha_htlc_params())
                     .unlock_after_timeout(self.alpha_ledger_refund_identity),
             ),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -41,7 +43,8 @@ impl OngoingSwap<Alice<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
             to: beta_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::from_wei(U256::zero()),
+            amount: EtherQuantity::from_wei(U256::zero()),
+            network: self.beta_ledger.network,
         }
     }
 }

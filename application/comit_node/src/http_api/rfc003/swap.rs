@@ -432,7 +432,8 @@ mod tests {
                     "network": "regtest"
                 },
                 "beta_ledger": {
-                    "name": "Ethereum"
+                    "name": "Ethereum",
+                    "network": "regtest"
                 },
                 "alpha_asset": {
                     "name": "Bitcoin",
@@ -453,7 +454,7 @@ mod tests {
         assert_that(&body).is_ok_containing(SwapRequestBody {
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::regtest(),
+            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
             identities: SwapRequestBodyIdentities::OnlyRedeem {
@@ -473,7 +474,8 @@ mod tests {
                     "network": "regtest"
                 },
                 "beta_ledger": {
-                    "name": "Ethereum"
+                    "name": "Ethereum",
+                    "network": "regtest"
                 },
                 "alpha_asset": {
                     "name": "Bitcoin",
@@ -494,7 +496,7 @@ mod tests {
         assert_that(&body).is_ok_containing(SwapRequestBody {
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::regtest(),
+            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
             identities: SwapRequestBodyIdentities::OnlyRedeem {

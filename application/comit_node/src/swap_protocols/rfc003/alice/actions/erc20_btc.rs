@@ -19,8 +19,9 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
 
         ethereum::ContractDeploy {
             data,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
             gas_limit,
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -35,7 +36,8 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: self.alpha_asset.token_contract(),
             data: htlc.funding_tx_payload(alpha_htlc_location),
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -50,7 +52,8 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: alpha_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -63,6 +66,7 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
                 self.beta_asset,
                 htlc.unlock_with_secret(self.beta_ledger_redeem_identity, &self.secret),
             ),
+            network: self.beta_ledger.network,
         }
     }
 }

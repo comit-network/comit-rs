@@ -13,12 +13,6 @@ impl Bitcoin {
     pub fn new(network: Network) -> Self {
         Bitcoin { network }
     }
-
-    pub fn regtest() -> Self {
-        Bitcoin {
-            network: Network::Regtest,
-        }
-    }
 }
 
 // TODO: fix with #376

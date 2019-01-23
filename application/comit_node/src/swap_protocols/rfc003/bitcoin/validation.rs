@@ -39,7 +39,7 @@ mod tests {
     fn gen_htlc_params(bitcoin_amount: BitcoinQuantity) -> HtlcParams<Bitcoin, BitcoinQuantity> {
         HtlcParams {
             asset: bitcoin_amount,
-            ledger: Bitcoin::regtest(),
+            ledger: Bitcoin::default(),
             redeem_identity: bitcoin_support::PubkeyHash::from_hex(
                 "d38e554430c4035f2877a579a07a99886153f071",
             )

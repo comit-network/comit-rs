@@ -18,8 +18,9 @@ use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
 impl OngoingSwap<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
         bitcoin::SendToAddress {
-            address: self.beta_htlc_params().compute_address(),
-            value: self.beta_asset,
+            to: self.beta_htlc_params().compute_address(),
+            amount: self.beta_asset,
+            network: self.beta_ledger.network,
         }
     }
 
@@ -31,6 +32,7 @@ impl OngoingSwap<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
                 bitcoin::Htlc::from(self.beta_htlc_params())
                     .unlock_after_timeout(self.beta_ledger_refund_identity),
             ),
+            network: self.beta_ledger.network,
         }
     }
 
@@ -46,7 +48,8 @@ impl OngoingSwap<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: alpha_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.alpha_ledger.network,
         }
     }
 }

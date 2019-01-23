@@ -131,6 +131,7 @@ describe("RFC003: Bitcoin for Ether", () => {
                 },
                 beta_ledger: {
                     name: "Ethereum",
+                    network: "regtest",
                 },
                 alpha_asset: {
                     name: "Bitcoin",
@@ -238,14 +239,12 @@ describe("RFC003: Bitcoin for Ether", () => {
     });
 
     it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.should.include.all.keys("address", "value");
-
-        await alice.wallet
-            .btc()
-            .send_btc_to_address(
-                alice_funding_action.address,
-                parseInt(alice_funding_action.value)
-            );
+        alice_funding_action.payload.should.include.all.keys(
+            "to",
+            "amount",
+            "network"
+        );
+        await alice.do(alice_funding_action);
     });
 
     it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
@@ -283,18 +282,13 @@ describe("RFC003: Bitcoin for Ether", () => {
     });
 
     it("[Bob] Can execute the funding action", async () => {
-        bob_funding_action.should.include.all.keys(
+        bob_funding_action.payload.should.include.all.keys(
             "data",
+            "amount",
             "gas_limit",
-            "value"
+            "network"
         );
-        await bob.wallet
-            .eth()
-            .deploy_contract(
-                bob_funding_action.data,
-                new ethutil.BN(bob_funding_action.value, 10),
-                bob_funding_action.gas_limit
-            );
+        await bob.do(bob_funding_action);
     });
 
     let alice_redeem_href;
@@ -334,23 +328,17 @@ describe("RFC003: Bitcoin for Ether", () => {
     let alice_eth_balance_before;
 
     it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.should.include.all.keys(
-            "to",
+        alice_redeem_action.payload.should.include.all.keys(
+            "contract_address",
             "data",
+            "amount",
             "gas_limit",
-            "value"
+            "network"
         );
         alice_eth_balance_before = await ethereum.eth_balance(
             alice_final_address
         );
-        await alice.wallet
-            .eth()
-            .send_eth_transaction_to(
-                alice_redeem_action.to,
-                alice_redeem_action.data,
-                alice_redeem_action.value,
-                alice_redeem_action.gas_limit
-            );
+        await alice.do(alice_redeem_action);
     });
 
     it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
@@ -411,9 +399,10 @@ describe("RFC003: Bitcoin for Ether", () => {
     let bob_btc_balance_before;
 
     it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.should.include.all.keys("hex");
+        bob_redeem_action.payload.should.include.all.keys("hex", "network");
         bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
-        await bitcoin_rpc_client.sendRawTransaction(bob_redeem_action.hex);
+
+        await bob.do(bob_redeem_action);
         await bitcoin.btc_generate();
     });
 

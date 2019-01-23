@@ -16,9 +16,7 @@ mod ledger_impls {
         fn from_bam_header(mut header: Header) -> Result<Self, Error> {
             header.has_value("Bitcoin")?;
 
-            Ok(Bitcoin {
-                network: header.parameter("network")?,
-            })
+            Ok(Bitcoin::new(header.parameter("network")?))
         }
     }
 
@@ -29,16 +27,16 @@ mod ledger_impls {
     }
 
     impl FromBamHeader for Ethereum {
-        fn from_bam_header(header: Header) -> Result<Self, Error> {
+        fn from_bam_header(mut header: Header) -> Result<Self, Error> {
             header.has_value("Ethereum")?;
 
-            Ok(Ethereum {})
+            Ok(Ethereum::new(header.parameter("network")?))
         }
     }
 
     impl ToBamHeader for Ethereum {
         fn to_bam_header(&self) -> Result<Header, Error> {
-            Ok(Header::with_value("Ethereum"))
+            Ok(Header::with_value("Ethereum").with_parameter("network", self.network)?)
         }
     }
 }
