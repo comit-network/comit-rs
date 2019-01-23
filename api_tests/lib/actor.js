@@ -53,10 +53,11 @@ class Actor {
     async do(action) {
         let network = action.payload.network;
         if (network != "regtest") {
-            return Error("Expected network regtest, found " + network);
+            throw Error("Expected network regtest, found " + network);
         }
+        let type = action.type;
 
-        switch (action.type) {
+        switch (type) {
             case "bitcoin-send-amount-to-address": {
                 let { to, amount } = action.payload;
 
@@ -98,7 +99,7 @@ class Actor {
                 break;
             }
             default:
-                return Error("Action type unsupported");
+                throw Error("Action type " + type + " unsupported");
                 break;
         }
     }
