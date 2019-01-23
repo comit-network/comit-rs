@@ -48,6 +48,7 @@ pub fn swap_config<B: BobSpawner>(
                     let beta_asset = header!(request
                         .take_header("beta_asset")
                         .map(AssetKind::from_bam_header));
+                    let bob_spawner = Arc::clone(&bob_spawner);
 
                     match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
                         (
@@ -56,7 +57,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Bitcoin(alpha_asset),
                             AssetKind::Ether(beta_asset),
                         ) => handle_request(
-                            Arc::clone(&bob_spawner),
+                            bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -70,7 +71,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Ether(alpha_asset),
                             AssetKind::Bitcoin(beta_asset),
                         ) => handle_request(
-                            Arc::clone(&bob_spawner),
+                            bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -84,7 +85,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Bitcoin(alpha_asset),
                             AssetKind::Erc20(beta_asset),
                         ) => handle_request(
-                            Arc::clone(&bob_spawner),
+                            bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -98,7 +99,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Erc20(alpha_asset),
                             AssetKind::Bitcoin(beta_asset),
                         ) => handle_request(
-                            Arc::clone(&bob_spawner),
+                            bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
