@@ -372,6 +372,12 @@ describe("Test Ledger Query Service API", () => {
             // keccak('Transfer(address,address,uint256)')
             const transfer_topic =
                 "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+            const from_address =
+                "0x000000000000000000000000" +
+                alice_wallet_address.replace("0x", "");
+            const to_address =
+                "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
+
             let location;
             it("LQS should respond with location when creating a valid transaction receipt query", async function() {
                 this.timeout(1000);
@@ -379,7 +385,18 @@ describe("Test Ledger Query Service API", () => {
                     .request(lqs.url())
                     .post("/queries/ethereum/logs")
                     .send({
-                        topics: [[transfer_topic]],
+                        event_matchers: [
+                            {
+                                address: token_contract_address,
+                                data:
+                                    "0x0000000000000000000000000000000000000000000000000000000000000001",
+                                topics: [
+                                    transfer_topic,
+                                    from_address,
+                                    to_address,
+                                ],
+                            },
+                        ],
                     })
                     .then(res => {
                         res.should.have.status(201);
@@ -395,18 +412,26 @@ describe("Test Ledger Query Service API", () => {
                     .get("")
                     .then(res => {
                         res.should.have.status(200);
-                        res.body.query.topics.should.deep.equal([
-                            [transfer_topic],
-                        ]);
+                        res.body.query.event_matchers.should.have.length(1);
+                        res.body.query.event_matchers[0].address
+                            .toLowerCase()
+                            .should.equal(token_contract_address.toLowerCase());
+                        res.body.query.event_matchers[0].topics.every(topic => {
+                            [transfer_topic, from_address, to_address].includes(
+                                topic.toLowerCase()
+                            );
+                        });
                         res.body.matches.should.be.empty;
                     });
             });
 
             it("LQS should respond with transaction receipt match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
                 this.slow(2000);
-
+                this.timeout(20000);
                 const transfer_token_data =
-                    "0xa9059cbb0000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd90000000000000000000000000000000000000000000000000000000000000001";
+                    "0xa9059cbb" +
+                    to_address.replace("0x", "") +
+                    "0000000000000000000000000000000000000000000000000000000000000001";
                 return alice_wallet
                     .eth()
                     .send_eth_transaction_to(
@@ -418,9 +443,21 @@ describe("Test Ledger Query Service API", () => {
                         return lqs
                             .poll_until_matches(chai, location)
                             .then(body => {
-                                body.query.topics.should.deep.equal([
-                                    [transfer_topic],
-                                ]);
+                                body.query.event_matchers.should.have.length(1);
+                                body.query.event_matchers[0].address
+                                    .toLowerCase()
+                                    .should.equal(
+                                        token_contract_address.toLowerCase()
+                                    );
+                                body.query.event_matchers[0].topics.every(
+                                    topic => {
+                                        [
+                                            transfer_topic,
+                                            from_address,
+                                            to_address,
+                                        ].includes(topic.toLowerCase());
+                                    }
+                                );
                                 body.matches.should.have.lengthOf(1);
                                 let query_transaction_hash =
                                     "0x" + body.matches[0];

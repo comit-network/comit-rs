@@ -1,5 +1,5 @@
 use crate::{
-    ethereum::{BlockQuery, LogQuery, TransactionQuery},
+    ethereum::{BlockQuery, EventQuery, TransactionQuery},
     web3::types::{Block, Transaction},
     ArcQueryRepository, QueryMatch,
 };
@@ -75,7 +75,7 @@ pub fn check_transaction_queries(
 }
 
 pub fn check_log_queries(
-    log_queries: ArcQueryRepository<LogQuery>,
+    log_queries: ArcQueryRepository<EventQuery>,
     client: Arc<Web3<Http>>,
     block: Block<Transaction>,
 ) -> impl Stream<Item = QueryMatch, Error = ()> {

@@ -120,7 +120,7 @@ fn create_ethereum_routes(
         Arc::new(InMemoryQueryRepository::<ethereum::TransactionQuery>::default());
     let block_query_repository =
         Arc::new(InMemoryQueryRepository::<ethereum::BlockQuery>::default());
-    let log_query_repository = Arc::new(InMemoryQueryRepository::<ethereum::LogQuery>::default());
+    let log_query_repository = Arc::new(InMemoryQueryRepository::<ethereum::EventQuery>::default());
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());

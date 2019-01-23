@@ -4,5 +4,5 @@ pub mod queries;
 
 pub use self::{
     block_processor::{check_block_queries, check_log_queries, check_transaction_queries},
-    queries::{BlockQuery, LogQuery, TransactionQuery},
+    queries::{BlockQuery, EventQuery, TransactionQuery},
 };
