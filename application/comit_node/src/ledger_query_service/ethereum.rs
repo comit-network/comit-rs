@@ -101,7 +101,10 @@ mod tests {
             }],
         };
         let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"address":null,"data":null,"topics":[]}"#)
+        assert_eq!(
+            query,
+            r#"{"event_matchers":[{"address":null,"data":null,"topics":[]}]}"#
+        )
     }
 
     #[test]
@@ -116,6 +119,6 @@ mod tests {
             }],
         };
         let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","data":"0x01","topics":["0x0000000000000000000000000000000000000000000000000000000000000001"]}"#)
+        assert_eq!(query, r#"{"event_matchers":[{"address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","data":"0x01","topics":["0x0000000000000000000000000000000000000000000000000000000000000001"]}]}"#)
     }
 }

@@ -55,6 +55,7 @@ impl NewHtlcRedeemedQuery<Ethereum, EtherQuantity> for EthereumQuery {
 
 pub mod erc20 {
     use super::*;
+    use crate::swap_protocols::rfc003::ethereum::TRANSFER_LOG_MSG;
     use ethereum_support::Erc20Quantity;
 
     pub fn new_htlc_deployed_query(
@@ -73,12 +74,16 @@ pub mod erc20 {
         htlc_params: &HtlcParams<Ethereum, Erc20Quantity>,
         htlc_location: &Address,
     ) -> EthereumQuery {
-        EthereumQuery::Transaction {
-            from_address: None,
-            to_address: Some(htlc_params.asset.token_contract()),
-            is_contract_creation: None,
-            transaction_data: Some(htlc_params.funding_tx_payload(*htlc_location)),
-            transaction_data_length: None,
+        EthereumQuery::Event {
+            event_matchers: vec![EventMatcher {
+                address: Some(htlc_params.asset.token_contract()),
+                data: None,
+                topics: vec![
+                    Some(Topic(TRANSFER_LOG_MSG.into())),
+                    None,
+                    Some(Topic(htlc_location.into())),
+                ],
+            }],
         }
     }
 
