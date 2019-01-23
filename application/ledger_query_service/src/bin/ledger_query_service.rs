@@ -11,13 +11,10 @@ use ethereum_support::web3::{
 };
 use futures::stream::Stream;
 use ledger_query_service::{
-    bitcoin::{
-        block_processor::DefaultBlockProcessor as BitcoinBlockProcessor,
-        queries::{BitcoinBlockQuery, BitcoinTransactionQuery},
-    },
+    bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     settings::{self, Settings},
-    BlockProcessor, InMemoryQueryRepository, InMemoryQueryResultRepository, QueryResultRepository,
+    InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
     RouteFactory,
 };
 use std::{env::var, sync::Arc};
@@ -50,11 +47,13 @@ fn create_bitcoin_routes(
     route_factory: &RouteFactory,
     settings: settings::Bitcoin,
 ) -> BoxedFilter<(impl Reply,)> {
+    let block_query_repository =
+        Arc::new(InMemoryQueryRepository::<bitcoin::BlockQuery>::default());
     let transaction_query_repository =
-        Arc::new(InMemoryQueryRepository::<BitcoinTransactionQuery>::default());
-    let block_query_repository = Arc::new(InMemoryQueryRepository::<BitcoinBlockQuery>::default());
-    let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+        Arc::new(InMemoryQueryRepository::<bitcoin::TransactionQuery>::default());
+
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
+    let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
     let bitcoin_rpc_client = bitcoin_rpc_client::BitcoinCoreClient::new(
         settings.node_url.as_str(),
@@ -64,32 +63,30 @@ fn create_bitcoin_routes(
 
     info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
-    let mut transaction_processor = BitcoinBlockProcessor::new(
-        transaction_query_repository.clone(),
-        block_query_repository.clone(),
-        transaction_query_result_repository.clone(),
-    );
-
     {
-        let transaction_query_result_repository = transaction_query_result_repository.clone();
-        let block_query_result_repository = block_query_result_repository.clone();
+        let block_query_repository = Arc::clone(&block_query_repository);
+        let transaction_query_repository = Arc::clone(&transaction_query_repository);
 
-        let bitcoin_blocks =
-            ledger_query_service::bitcoin::bitcoind_zmq_listener::bitcoin_block_listener(
-                settings.zmq_endpoint.as_str(),
-            )
+        let block_query_result_repository = Arc::clone(&block_query_result_repository);
+        let transaction_query_result_repository = Arc::clone(&transaction_query_result_repository);
+
+        let blocks = bitcoin_block_listener(settings.zmq_endpoint.as_str())
             .expect("Should return a Bitcoind received for MinedBlocks");
-        let bitcoin_processor = bitcoin_blocks
-            .and_then(move |block| transaction_processor.process(block))
-            .for_each(move |(block_results, transaction_results)| {
-                for (id, block_id) in block_results {
-                    block_query_result_repository.add_result(id, block_id);
-                }
-                for (id, tx_id) in transaction_results {
-                    transaction_query_result_repository.add_result(id, tx_id);
-                }
-                Ok(())
-            });
+
+        let bitcoin_processor = blocks.for_each(move |block| {
+            bitcoin::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
+                |QueryMatch(id, block_id)| {
+                    block_query_result_repository.add_result(id.0, block_id);
+                },
+            );
+
+            bitcoin::check_transaction_queries(transaction_query_repository.clone(), block.clone())
+                .for_each(|QueryMatch(id, block_id)| {
+                    transaction_query_result_repository.add_result(id.0, block_id);
+                });
+
+            Ok(())
+        });
         runtime.spawn(bitcoin_processor);
     }
 
@@ -135,13 +132,13 @@ fn create_ethereum_routes(
     let web3_client = Arc::new(Web3::new(transport));
 
     {
-        let transaction_query_result_repository = transaction_query_result_repository.clone();
-        let block_query_result_repository = block_query_result_repository.clone();
-        let log_query_result_repository = log_query_result_repository.clone();
-
         let block_query_repository = block_query_repository.clone();
-        let log_query_repository = log_query_repository.clone();
         let transaction_query_repository = transaction_query_repository.clone();
+        let log_query_repository = log_query_repository.clone();
+
+        let block_query_result_repository = block_query_result_repository.clone();
+        let transaction_query_result_repository = transaction_query_result_repository.clone();
+        let log_query_result_repository = log_query_result_repository.clone();
 
         let web3_client = web3_client.clone();
 
@@ -151,8 +148,8 @@ fn create_ethereum_routes(
         let executor = runtime.executor();
         let web3_processor = blocks.for_each(move |block| {
             ethereum::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
-                |(id, block_id)| {
-                    block_query_result_repository.add_result(id, block_id);
+                |QueryMatch(id, block_id)| {
+                    block_query_result_repository.add_result(id.0, block_id);
                 },
             );
 
@@ -160,8 +157,8 @@ fn create_ethereum_routes(
                 transaction_query_repository.clone(),
                 block.clone(),
             )
-            .for_each(|(id, transaction_id)| {
-                transaction_query_result_repository.add_result(id, transaction_id);
+            .for_each(|QueryMatch(id, transaction_id)| {
+                transaction_query_result_repository.add_result(id.0, transaction_id);
             });
 
             let log_query_result_repository = log_query_result_repository.clone();
@@ -170,8 +167,8 @@ fn create_ethereum_routes(
                 web3_client.clone(),
                 block,
             )
-            .for_each(move |(id, transaction_id)| {
-                log_query_result_repository.add_result(id, transaction_id);
+            .for_each(move |QueryMatch(id, transaction_id)| {
+                log_query_result_repository.add_result(id.0, transaction_id);
                 Ok(())
             });
 
@@ -186,7 +183,7 @@ fn create_ethereum_routes(
 
     let transaction_routes = route_factory.create(
         transaction_query_repository,
-        transaction_query_result_repository.clone(),
+        transaction_query_result_repository,
         Some(Arc::clone(&web3_client)),
         ledger_name,
     );

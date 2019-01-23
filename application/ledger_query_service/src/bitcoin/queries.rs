@@ -1,47 +1,42 @@
-use super::block_processor::{Block, Transaction};
 use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
-    Query, QueryMatchResult,
 };
 use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
-    serialize::BitcoinHash, Address, MinedBlock as BitcoinBlock, OutPoint, SpendsFrom,
-    SpendsFromWith, SpendsTo, SpendsWith, Transaction as BitcoinTransaction, TransactionId,
+    Address, MinedBlock as Block, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith,
+    Transaction, TransactionId,
 };
-use futures::Future;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct BitcoinTransactionQuery {
+pub struct TransactionQuery {
     pub to_address: Option<Address>,
     pub from_outpoint: Option<OutPoint>,
     pub unlock_script: Option<Vec<Vec<u8>>>,
-    #[serde(default = "default_confirmations")]
-    confirmations_needed: u32,
 }
 
-impl QueryType for BitcoinTransactionQuery {
+impl QueryType for TransactionQuery {
     fn route() -> &'static str {
         "transactions"
     }
 }
 
-impl ShouldExpand for BitcoinTransactionQuery {
+impl ShouldExpand for TransactionQuery {
     fn should_expand(query_params: &QueryParams) -> bool {
         query_params.expand_results
     }
 }
 
-impl ExpandResult for BitcoinTransactionQuery {
+impl ExpandResult for TransactionQuery {
     type Client = BitcoinCoreClient;
-    type Item = BitcoinTransaction;
+    type Item = Transaction;
 
     fn expand_result(
         result: &QueryResult,
         client: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<BitcoinTransaction>, Error> {
-        let mut expanded_result: Vec<BitcoinTransaction> = Vec::new();
+    ) -> Result<Vec<Transaction>, Error> {
+        let mut expanded_result: Vec<Transaction> = Vec::new();
         for tx_id in result.clone().0 {
             let tx_id = TransactionId::from_hex(tx_id.as_str()).map_err(|_| Error::InvalidHex)?;
 
@@ -55,21 +50,13 @@ impl ExpandResult for BitcoinTransactionQuery {
     }
 }
 
-fn default_confirmations() -> u32 {
-    1
-}
-
-impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
-    fn matches(
-        &self,
-        transaction: &BitcoinTransaction,
-    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
+impl TransactionQuery {
+    pub fn matches(&self, transaction: &Transaction) -> bool {
         match self {
             Self {
                 to_address,
                 from_outpoint,
                 unlock_script,
-                confirmations_needed,
             } => {
                 let mut result = true;
 
@@ -89,56 +76,30 @@ impl Query<BitcoinTransaction> for BitcoinTransactionQuery {
                         (..) => result,
                     };
 
-                if result {
-                    Box::new(futures::future::ok(
-                        QueryMatchResult::yes_with_confirmations(*confirmations_needed),
-                    ))
-                } else {
-                    Box::new(futures::future::ok(QueryMatchResult::no()))
-                }
+                result
             }
         }
     }
 }
 
-impl Transaction for BitcoinTransaction {
-    fn transaction_id(&self) -> String {
-        self.txid().to_string()
-    }
-}
-
-impl Block for BitcoinBlock {
-    type Transaction = BitcoinTransaction;
-
-    fn blockhash(&self) -> String {
-        format!("{:x}", self.as_ref().header.bitcoin_hash())
-    }
-    fn prev_blockhash(&self) -> String {
-        format!("{:x}", self.as_ref().header.prev_blockhash)
-    }
-    fn transactions(&self) -> &[BitcoinTransaction] {
-        self.as_ref().txdata.as_slice()
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct BitcoinBlockQuery {
+pub struct BlockQuery {
     pub min_height: Option<u32>,
 }
 
-impl QueryType for BitcoinBlockQuery {
+impl QueryType for BlockQuery {
     fn route() -> &'static str {
         "blocks"
     }
 }
 
-impl ShouldExpand for BitcoinBlockQuery {
+impl ShouldExpand for BlockQuery {
     fn should_expand(_: &QueryParams) -> bool {
         false
     }
 }
 
-impl ExpandResult for BitcoinBlockQuery {
+impl ExpandResult for BlockQuery {
     type Client = ();
     type Item = ();
 
@@ -147,24 +108,10 @@ impl ExpandResult for BitcoinBlockQuery {
     }
 }
 
-impl Query<BitcoinBlock> for BitcoinBlockQuery {
-    fn matches(
-        &self,
-        block: &BitcoinBlock,
-    ) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send> {
-        Box::new(futures::future::ok(match self.min_height {
-            Some(height) => {
-                if height <= block.height {
-                    QueryMatchResult::yes()
-                } else {
-                    QueryMatchResult::no()
-                }
-            }
-            None => {
-                warn!("min_height not set, nothing to compare");
-                QueryMatchResult::no()
-            }
-        }))
+impl BlockQuery {
+    pub fn matches(&self, block: &Block) -> bool {
+        self.min_height
+            .map_or(true, |height| height <= block.height)
     }
 }
 
@@ -172,16 +119,15 @@ impl Query<BitcoinBlock> for BitcoinBlockQuery {
 mod tests {
     use super::*;
     use bitcoin_support::{
-        serialize::deserialize, Block, BlockHeader, MinedBlock, Sha256dHash,
-        Transaction as BitcoinTransaction,
+        serialize::deserialize, Block, BlockHeader, MinedBlock, Sha256dHash, Transaction,
     };
     use spectral::prelude::*;
 
     const WITNESS_TX: &'static str = "0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000";
 
-    fn parse_raw_tx(raw_tx: &str) -> BitcoinTransaction {
+    fn parse_raw_tx(raw_tx: &str) -> Transaction {
         let hex_tx = hex::decode(raw_tx).unwrap();
-        let tx: Result<BitcoinTransaction, _> = deserialize(&hex_tx);
+        let tx: Result<Transaction, _> = deserialize(&hex_tx);
         tx.unwrap()
     }
 
@@ -215,12 +161,12 @@ mod tests {
             40,
         );
 
-        let query = BitcoinBlockQuery {
+        let query = BlockQuery {
             min_height: Some(42),
         };
 
-        let result = exec_future(query.matches(&block));
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        let result = query.matches(&block);
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -242,12 +188,12 @@ mod tests {
             42,
         );
 
-        let query = BitcoinBlockQuery {
+        let query = BlockQuery {
             min_height: Some(42),
         };
 
-        let result = exec_future(query.matches(&block));
-        assert_that(&result).is_equal_to(QueryMatchResult::yes());
+        let result = query.matches(&block);
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -269,27 +215,26 @@ mod tests {
             45,
         );
 
-        let query = BitcoinBlockQuery {
+        let query = BlockQuery {
             min_height: Some(42),
         };
 
-        let result = exec_future(query.matches(&block));
-        assert_that(&result).is_equal_to(QueryMatchResult::yes());
+        let result = query.matches(&block);
+        assert_that(&result).is_true();
     }
 
     #[test]
     fn given_transaction_with_to_then_to_address_query_matches() {
         let tx = parse_raw_tx(WITNESS_TX);
 
-        let query = BitcoinTransactionQuery {
+        let query = TransactionQuery {
             to_address: Some("329XTScM6cJgu8VZvaqYWpfuxT1eQDSJkP".parse().unwrap()),
             from_outpoint: None,
             unlock_script: None,
-            confirmations_needed: 0,
         };
 
-        let result = exec_future(query.matches(&tx));
-        assert_that(&result).is_equal_to(QueryMatchResult::yes());
+        let result = query.matches(&tx);
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -300,15 +245,14 @@ mod tests {
             "01",
         ]);
 
-        let query = BitcoinTransactionQuery {
+        let query = TransactionQuery {
             to_address: None,
             from_outpoint: None,
             unlock_script: Some(unlock_script),
-            confirmations_needed: 0,
         };
 
-        let result = exec_future(query.matches(&tx));
-        assert_that(&result).is_equal_to(QueryMatchResult::yes());
+        let result = query.matches(&tx);
+        assert_that(&result).is_true();
     }
 
     #[test]
@@ -317,15 +261,14 @@ mod tests {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec!["102030405060708090", "00"]);
 
-        let query = BitcoinTransactionQuery {
+        let query = TransactionQuery {
             to_address: None,
             from_outpoint: None,
             unlock_script: Some(unlock_script),
-            confirmations_needed: 0,
         };
 
-        let result = exec_future(query.matches(&tx));
-        assert_that(&result).is_equal_to(QueryMatchResult::no());
+        let result = query.matches(&tx);
+        assert_that(&result).is_false();
     }
 
     #[test]
@@ -340,22 +283,13 @@ mod tests {
             1u32,
         );
 
-        let query = BitcoinTransactionQuery {
+        let query = TransactionQuery {
             to_address: None,
             from_outpoint: Some(outpoint),
             unlock_script: Some(unlock_script),
-            confirmations_needed: 0,
         };
 
-        let result = exec_future(query.matches(&tx));
-        assert_that(&result).is_equal_to(QueryMatchResult::yes());
+        let result = query.matches(&tx);
+        assert_that(&result).is_true();
     }
-
-    fn exec_future(
-        future: Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>,
-    ) -> QueryMatchResult {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        runtime.block_on(future).map_err(|_| ()).unwrap()
-    }
-
 }

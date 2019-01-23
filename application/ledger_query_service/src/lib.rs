@@ -23,43 +23,23 @@ pub use crate::{
     query_result_repository::*, route_factory::*, routes::*,
 };
 pub use ethereum_support::web3;
-use futures::Future;
-use std::{fmt::Debug, sync::Arc};
+use std::{cmp::Ordering, sync::Arc};
 
-type QueryId = u32;
-type QueryMatch = (QueryId, String);
+#[derive(PartialEq, PartialOrd)]
+pub struct QueryId(pub u32);
+#[derive(PartialEq)]
+pub struct QueryMatch(pub QueryId, pub String);
+
 type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
-type ArcQueryResultRepository<Q> = Arc<dyn QueryResultRepository<Q>>;
 
-pub trait BlockProcessor<B> {
-    fn process(
-        &mut self,
-        block: B,
-    ) -> Box<dyn Future<Item = (Vec<QueryMatch>, Vec<QueryMatch>), Error = ()> + Send>;
-}
-
-pub trait Query<O>: Debug + 'static {
-    fn matches(&self, object: &O) -> Box<dyn Future<Item = QueryMatchResult, Error = ()> + Send>;
-}
-
-#[derive(Debug, PartialEq)]
-pub enum QueryMatchResult {
-    Yes { confirmations_needed: u32 },
-    No,
-}
-
-impl QueryMatchResult {
-    pub fn yes() -> Self {
-        QueryMatchResult::Yes {
-            confirmations_needed: 0,
-        }
+impl From<u32> for QueryId {
+    fn from(item: u32) -> Self {
+        Self(item)
     }
-    pub fn yes_with_confirmations(confirmations_needed: u32) -> Self {
-        QueryMatchResult::Yes {
-            confirmations_needed,
-        }
-    }
-    pub fn no() -> Self {
-        QueryMatchResult::No
+}
+
+impl PartialOrd for QueryMatch {
+    fn partial_cmp(&self, other: &QueryMatch) -> Option<Ordering> {
+        self.0.partial_cmp(&other.0)
     }
 }
