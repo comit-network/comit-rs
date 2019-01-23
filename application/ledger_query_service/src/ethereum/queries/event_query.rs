@@ -84,8 +84,6 @@ impl EventQuery {
                     data,
                     topics,
                 } => transaction_receipt.logs.iter().any(|tx_log| {
-                    let mut result = true;
-
                     if address
                         .as_ref()
                         .map_or(false, |address| address != &tx_log.address)
@@ -98,21 +96,13 @@ impl EventQuery {
                     }
 
                     if tx_log.topics.len() == topics.len() {
-                        tx_log
-                            .topics
-                            .iter()
-                            .enumerate()
-                            .for_each(|(index, tx_topic)| {
-                                let topic = &topics[index];
-                                if let Some(topic) = topic {
-                                    result = result && (tx_topic == &topic.0);
-                                };
-                            });
+                        tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
+                            let topic = &topics[index];
+                            topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
+                        })
                     } else {
-                        result = false
+                        false
                     }
-
-                    result
                 }),
             })
     }
