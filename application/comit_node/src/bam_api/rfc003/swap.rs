@@ -115,7 +115,12 @@ pub fn swap_config<B: BobSpawner>(
                         }
                     }
                 }
-                SwapProtocols::Unknown { .. } => unimplemented!(),
+                SwapProtocols::Unknown(protocol) => {
+                    warn!(
+                        "the swap protocol {} is currently not supported", protocol
+                    );
+                    Box::new(future::ok(Response::new(Status::RE(21))))
+                },
             }
         },
     )
