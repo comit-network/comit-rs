@@ -164,7 +164,14 @@ where
                             .expect("body should always serialize into serde_json::Value"),
                     )
                 }
-                Ok(Err(SwapReject::Rejected)) => unimplemented!(),
+                // FIXME: the called code should not be able to produce a "Rejected" here
+                // Rejected is for cases were we can automatically determine that a given swap
+                // request cannot be processes. As soon as we can dispatch the
+                // request (and therefore these branches here are activated), the
+                // only valid negative outcome should be "Declined"
+                //
+                // As long as Alice and Bob use the same state machine, this is not possible though.
+                Ok(Err(SwapReject::Rejected)) => Response::new(Status::SE(21)),
                 Ok(Err(SwapReject::Declined { reason: None })) => Response::new(Status::SE(20)),
                 Ok(Err(SwapReject::Declined {
                     reason: Some(reason),
