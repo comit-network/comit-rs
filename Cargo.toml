@@ -12,6 +12,7 @@ members = [
     "vendor/secp256k1_support",
     "vendor/tc_bitcoincore_client",
     "vendor/tc_web3_client",
+    "vendor/noise_handshake"
 ]
 
 [replace]
