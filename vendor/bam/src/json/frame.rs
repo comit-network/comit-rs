@@ -1,5 +1,5 @@
 use crate::{
-    api::{Error, FrameHandler, IntoFrame, ResponseFrameSource},
+    api::{Error, FrameHandler, IntoFrame, ResponseFrameSource, Status},
     config::Config,
     json::{self, header::Header, request::UnvalidatedIncomingRequest},
     RequestError,
@@ -18,14 +18,18 @@ use std::{
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
     #[serde(rename = "type")]
-    _type: String,
+    frame_type: String,
     id: u32,
     payload: JsonValue,
 }
 
 impl Frame {
-    pub fn new(_type: String, id: u32, payload: JsonValue) -> Self {
-        Self { _type, id, payload }
+    pub fn new(frame_type: String, id: u32, payload: JsonValue) -> Self {
+        Self {
+            frame_type,
+            id,
+            payload,
+        }
     }
 }
 
@@ -88,12 +92,20 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
         frame: json::Frame,
     ) -> Result<Option<Box<dyn Future<Item = json::Frame, Error = ()> + Send + 'static>>, Error>
     {
-        match frame._type.as_str() {
+        match frame.frame_type.as_str() {
             "REQUEST" => {
-                let payload = frame.payload;
-
-                let request: UnvalidatedIncomingRequest = serde_json::from_value(payload)
-                    .map_err(|e| Error::InvalidFieldFormat("".to_string()))?;
+                let request = match serde_json::from_value(frame.payload) {
+                    Ok(request) => request,
+                    Err(e) => {
+                        warn!(
+                            "payload of REQUEST frame {} was malformed: {:?}",
+                            frame.id, e
+                        );
+                        return Ok(Some(Box::new(future::ok(
+                            json::Response::new(Status::SE(0)).into_frame(frame.id),
+                        ))));
+                    }
+                };
 
                 if frame.id < self.next_expected_id {
                     return Err(Error::OutOfOrderRequest);
@@ -106,8 +118,6 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
                 let response = self
                     .dispatch_request(request)
                     .then(|result| match result {
-                        // TODO: Validate generated response here
-                        // TODO check if header or body in response failed to serialize here
                         Ok(response) => Ok(response),
                         Err(e) => Ok(Self::response_from_error(e)),
                     })
@@ -134,7 +144,7 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
 
                 Ok(None)
             }
-            _ => Err(Error::UnknownFrameType(frame._type)),
+            _ => Err(Error::UnknownFrameType(frame.frame_type)),
         }
     }
 }

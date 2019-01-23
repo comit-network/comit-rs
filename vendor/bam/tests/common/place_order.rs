@@ -77,7 +77,7 @@ impl PriceHeader {
 enum ProductType {
     Phone,
     RetroEncabulator,
-    Unknown { name: String },
+    Unknown,
 }
 
 impl ProductType {
@@ -85,9 +85,7 @@ impl ProductType {
         Ok(match header.value::<String>()?.as_str() {
             "PHONE" => ProductType::Phone,
             "RETRO_ENCABULATOR" => ProductType::RetroEncabulator,
-            other => ProductType::Unknown {
-                name: other.to_string(),
-            },
+            _ => ProductType::Unknown,
         })
     }
 }

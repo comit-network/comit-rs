@@ -64,6 +64,48 @@ pub fn swap_config<B: BobSpawner>(
                             beta_asset,
                             body!(request.take_body_as()),
                         ),
+                        (
+                            Ledgers::Ethereum(alpha_ledger),
+                            Ledgers::Bitcoin(beta_ledger),
+                            Assets::Ether(alpha_asset),
+                            Assets::Bitcoin(beta_asset),
+                        ) => handle_request(
+                            Arc::clone(&bob_spawner),
+                            swap_id,
+                            alpha_ledger,
+                            beta_ledger,
+                            alpha_asset,
+                            beta_asset,
+                            body!(request.take_body_as()),
+                        ),
+                        (
+                            Ledgers::Bitcoin(alpha_ledger),
+                            Ledgers::Ethereum(beta_ledger),
+                            Assets::Bitcoin(alpha_asset),
+                            Assets::Erc20(beta_asset),
+                        ) => handle_request(
+                            Arc::clone(&bob_spawner),
+                            swap_id,
+                            alpha_ledger,
+                            beta_ledger,
+                            alpha_asset,
+                            beta_asset,
+                            body!(request.take_body_as()),
+                        ),
+                        (
+                            Ledgers::Ethereum(alpha_ledger),
+                            Ledgers::Bitcoin(beta_ledger),
+                            Assets::Erc20(alpha_asset),
+                            Assets::Bitcoin(beta_asset),
+                        ) => handle_request(
+                            Arc::clone(&bob_spawner),
+                            swap_id,
+                            alpha_ledger,
+                            beta_ledger,
+                            alpha_asset,
+                            beta_asset,
+                            body!(request.take_body_as()),
+                        ),
                         _ => unimplemented!(),
                     }
                 }
@@ -134,7 +176,7 @@ where
         })),
         Err(e) => {
             error!("Unable to spawn Bob: {:?}", e);
-            return Box::new(future::ok(Response::new(Status::RE(0))));
+            Box::new(future::ok(Response::new(Status::RE(0))))
         }
     }
 }
