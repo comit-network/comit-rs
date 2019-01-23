@@ -57,27 +57,30 @@ class Actor {
         }
 
         switch (action.type) {
-            case "bitcoin-send-amount-to-address":
-                var { to, amount } = action.payload;
+            case "bitcoin-send-amount-to-address": {
+                let { to, amount } = action.payload;
 
                 return this.wallet
                     .btc()
                     .send_btc_to_address(to, parseInt(amount));
                 break;
-            case "bitcoin-broadcast-signed-transaction":
-                var { hex } = action.payload;
+            }
+            case "bitcoin-broadcast-signed-transaction": {
+                let { hex } = action.payload;
 
                 return bitcoin_rpc_client.sendRawTransaction(hex);
                 break;
-            case "ethereum-deploy-contract":
-                var { data, amount, gas_limit } = action.payload;
+            }
+            case "ethereum-deploy-contract": {
+                let { data, amount, gas_limit } = action.payload;
 
                 return this.wallet
                     .eth()
                     .deploy_contract(data, new ethutil.BN(amount, 10));
                 break;
-            case "ethereum-invoke-contract":
-                var {
+            }
+            case "ethereum-invoke-contract": {
+                let {
                     contract_address,
                     data,
                     amount,
@@ -93,6 +96,7 @@ class Actor {
                         gas_limit
                     );
                 break;
+            }
             default:
                 return Error("Action type unsupported");
                 break;
