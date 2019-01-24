@@ -1,8 +1,11 @@
 use crate::{
     api::{Error, FrameHandler, IntoFrame, ResponseFrameSource, Status},
     config::Config,
-    json::{self, header::Header, request::UnvalidatedIncomingRequest},
-    RequestError,
+    json::{
+        self,
+        header::Header,
+        request::{UnknownMandatoryHeaders, UnvalidatedIncomingRequest, ValidatedIncomingRequest},
+    },
 };
 use futures::{
     future,
@@ -69,23 +72,6 @@ impl JsonResponseSource {
     }
 }
 
-impl From<HeaderErrors> for RequestError {
-    fn from(header_errors: HeaderErrors) -> Self {
-        let unknown_mandatory_headers =
-            header_errors.get_error_of_kind(&HeaderErrorKind::UnknownMandatoryHeader);
-        if !unknown_mandatory_headers.is_empty() {
-            RequestError::UnknownMandatoryHeaders(
-                unknown_mandatory_headers
-                    .iter()
-                    .map(|e| e.key.clone())
-                    .collect(),
-            )
-        } else {
-            header_errors.all()[0].clone().into_request_error()
-        }
-    }
-}
-
 impl FrameHandler<json::Frame> for JsonFrameHandler {
     fn handle(
         &mut self,
@@ -94,19 +80,6 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
     {
         match frame.frame_type.as_str() {
             "REQUEST" => {
-                let request = match serde_json::from_value(frame.payload) {
-                    Ok(request) => request,
-                    Err(e) => {
-                        warn!(
-                            "payload of REQUEST frame {} was malformed: {:?}",
-                            frame.id, e
-                        );
-                        return Ok(Some(Box::new(future::ok(
-                            json::Response::new(Status::SE(0)).into_frame(frame.id),
-                        ))));
-                    }
-                };
-
                 if frame.id < self.next_expected_id {
                     return Err(Error::OutOfOrderRequest);
                 }
@@ -115,15 +88,14 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
 
                 let frame_id = frame.id;
 
-                let response = self
-                    .dispatch_request(request)
-                    .then(|result| match result {
-                        Ok(response) => Ok(response),
-                        Err(e) => Ok(Self::response_from_error(e)),
-                    })
+                let response_future = serde_json::from_value(frame.payload)
+                    .map_err(malformed_request)
+                    .and_then(|request| self.validate_request(request))
+                    .and_then(|request| self.dispatch_request(request))
+                    .unwrap_or_else(|response| Box::new(future::ok(response)))
                     .and_then(move |response| Ok(response.into_frame(frame_id)));
 
-                Ok(Some(Box::new(response)))
+                Ok(Some(Box::new(response_future)))
             }
             "RESPONSE" => {
                 let mut response_source = self.response_source.lock().unwrap();
@@ -149,6 +121,26 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
     }
 }
 
+fn malformed_request(error: serde_json::Error) -> json::Response {
+    warn!("incoming request was malformed: {:?}", error);
+
+    json::Response::new(Status::SE(0))
+}
+
+fn unknown_request_type(request_type: &str) -> json::Response {
+    warn!("request type '{}' is unknown", request_type);
+
+    json::Response::new(Status::SE(2))
+}
+
+fn unknown_mandatory_headers(unknown_headers: UnknownMandatoryHeaders) -> json::Response {
+    json::Response::new(Status::SE(1)).with_header(
+        "Unsupported-Headers",
+        Header::with_value(unknown_headers)
+            .expect("list of strings should serialize to serde_json::Value"),
+    )
+}
+
 impl JsonFrameHandler {
     pub fn create(
         config: Config<json::ValidatedIncomingRequest, json::Response>,
@@ -161,87 +153,27 @@ impl JsonFrameHandler {
         }
     }
 
+    fn validate_request(
+        &self,
+        request: UnvalidatedIncomingRequest,
+    ) -> Result<ValidatedIncomingRequest, json::Response> {
+        self.config
+            .known_headers_for(request.request_type())
+            .ok_or_else(|| unknown_request_type(request.request_type()))
+            .and_then(|known_headers| {
+                request
+                    .ensure_no_unknown_mandatory_headers(known_headers)
+                    .map_err(unknown_mandatory_headers)
+            })
+    }
+
     fn dispatch_request(
         &mut self,
-        request: UnvalidatedIncomingRequest,
-    ) -> Box<dyn Future<Item = json::Response, Error = RequestError> + Send + 'static> {
-        let _type = request.request_type().to_string();
-
-        let validated_request = match self
-            .config
-            .known_headers_for(_type.as_ref())
-            .ok_or_else(|| RequestError::UnknownRequestType(_type.clone()))
-            .and_then(move |known_headers| request.validate(known_headers).map_err(From::from))
-        {
-            Ok(validated_request) => validated_request,
-            Err(e) => return Box::new(future::err(e)),
-        };
-
-        let request_handler = match self.config.request_handler_for(_type.as_ref()) {
-            Some(request_handler) => request_handler,
-            None => return Box::new(future::err(RequestError::UnknownRequestType(_type))),
-        };
-
-        Box::new(request_handler(validated_request).map_err(|_| RequestError::HandlerError))
-    }
-
-    fn response_from_error(error: RequestError) -> json::Response {
-        let status = error.status();
-        let response = json::Response::new(status);
-
-        warn!("Failed to dispatch request to handler because: {:?}", error);
-
-        match error {
-            RequestError::UnknownMandatoryHeaders(header_keys) => response.with_header(
-                "Unsupported-Headers",
-                Header::with_value(header_keys)
-                    .expect("list of strings should serialize to serde_json::Value"),
-            ),
-            _ => response,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum HeaderErrorKind {
-    UnknownMandatoryHeader,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct HeaderError {
-    key: String,
-    kind: HeaderErrorKind,
-}
-
-impl HeaderError {
-    fn into_request_error(self) -> RequestError {
-        RequestError::MalformedHeader(self.key)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct HeaderErrors {
-    errors: Vec<HeaderError>,
-}
-
-impl HeaderErrors {
-    pub(crate) fn new() -> Self {
-        HeaderErrors { errors: vec![] }
-    }
-
-    pub(crate) fn add_error(&mut self, key: String, kind: HeaderErrorKind) {
-        self.errors.push(HeaderError { key, kind })
-    }
-
-    pub(crate) fn all(&self) -> Vec<HeaderError> {
-        self.errors.clone()
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.errors.is_empty()
-    }
-
-    pub(crate) fn get_error_of_kind(&self, kind: &HeaderErrorKind) -> Vec<&HeaderError> {
-        self.errors.iter().filter(|x| x.kind == *kind).collect()
+        request: ValidatedIncomingRequest,
+    ) -> Result<Box<dyn Future<Item = json::Response, Error = ()> + Send>, json::Response> {
+        self.config
+            .request_handler_for(request.request_type())
+            .ok_or_else(|| unknown_request_type(request.request_type()))
+            .and_then(|request_handler| Ok(request_handler(request)))
     }
 }

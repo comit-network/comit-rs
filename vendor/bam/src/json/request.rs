@@ -2,7 +2,6 @@ use crate::{
     api::IntoFrame,
     json::{
         self,
-        frame::{HeaderErrorKind, HeaderErrors},
         header::{Header, Headers},
     },
 };
@@ -29,6 +28,10 @@ pub struct OutgoingRequest {
 }
 
 impl ValidatedIncomingRequest {
+    pub fn request_type(&self) -> &str {
+        self.inner.request_type.as_str()
+    }
+
     pub fn header(&self, key: &str) -> Option<&Header> {
         self.inner.headers.get(key)
     }
@@ -76,23 +79,27 @@ impl UnvalidatedIncomingRequest {
         self.inner.request_type.as_str()
     }
 
-    pub(crate) fn validate(
+    pub(crate) fn ensure_no_unknown_mandatory_headers(
         self,
         known_headers: &HashSet<String>,
-    ) -> Result<ValidatedIncomingRequest, HeaderErrors> {
-        let (parsed_headers, errors) = self.inner.headers.into_iter().fold(
-            (Headers::default(), HeaderErrors::new()),
-            |(parsed_headers, mut errors), (key, header)| {
+    ) -> Result<ValidatedIncomingRequest, UnknownMandatoryHeaders> {
+        let (parsed_headers, unknown_mandatory_headers) = self.inner.headers.into_iter().fold(
+            (Headers::default(), UnknownMandatoryHeaders::default()),
+            |(parsed_headers, mut unknown_headers), (key, header)| {
                 if !known_headers.contains(&key.value) && key.must_understand {
-                    errors.add_error(key.value.clone(), HeaderErrorKind::UnknownMandatoryHeader)
-                }
+                    unknown_headers.add(key.value.clone());
 
-                (parsed_headers.with_header(&key.value, header), errors)
+                    (parsed_headers, unknown_headers)
+                } else {
+                    let parsed_headers = parsed_headers.with_header(&key.value, header);
+
+                    (parsed_headers, unknown_headers)
+                }
             },
         );
 
-        if !errors.is_empty() {
-            return Err(errors);
+        if !unknown_mandatory_headers.is_empty() {
+            return Err(unknown_mandatory_headers);
         }
 
         Ok(ValidatedIncomingRequest {
@@ -102,6 +109,19 @@ impl UnvalidatedIncomingRequest {
                 body: self.inner.body,
             },
         })
+    }
+}
+
+#[derive(Default, Debug, Serialize)]
+pub struct UnknownMandatoryHeaders(HashSet<String>);
+
+impl UnknownMandatoryHeaders {
+    pub fn add(&mut self, header_key: String) {
+        self.0.insert(header_key);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
