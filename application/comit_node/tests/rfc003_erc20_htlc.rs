@@ -199,7 +199,7 @@ fn given_not_enough_tokens_when_redeemed_token_balances_dont_change() {
 }
 
 #[test]
-fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
+fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
     let docker = Cli::default();
     let (_alice, _bob, htlc_address, htlc, token, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
@@ -223,6 +223,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
 
     // Should contain 2 logs: 1 for token transfer 1 for redeeming the htlc
     assert_that(&transaction_receipt.logs.len()).is_equal_to(2);
+    assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(SECRET.to_vec()));
 
     let redeem_topic: H256 = REDEEMED_LOG_MSG.into();
     let refund_topic: H256 = REFUNDED_LOG_MSG.into();
@@ -266,6 +267,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let refund_topic: H256 = REFUNDED_LOG_MSG.into();
 
     let topics: Vec<H256> = transaction_receipt
+        .clone()
         .logs
         .into_iter()
         .flat_map(|s| s.topics)
@@ -273,6 +275,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     assert_that(&topics).has_length(4);
     assert_that(&topics).does_not_contain(redeem_topic);
     assert_that(&topics).contains(refund_topic);
+    assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(vec![]));
 }
 
 #[test]

@@ -116,7 +116,7 @@ fn given_htlc_and_refund_before_expiry_nothing_happens() {
 }
 
 #[test]
-fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
+fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
     let docker = Cli::default();
     let (_alice, _bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
@@ -132,6 +132,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
     let topic: H256 = REDEEMED_LOG_MSG.into();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
+    assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(SECRET.to_vec()));
 }
 
 #[test]
@@ -149,6 +150,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let topic: H256 = REFUNDED_LOG_MSG.into();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
+    assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(vec![]));
 }
 
 #[test]
