@@ -40,18 +40,14 @@ impl Erc20Htlc {
         token_contract_address: Address,
         amount: U256,
     ) -> Self {
-        let htlc = Erc20Htlc {
+        Self {
             refund_timeout,
             refund_address,
             redeem_address,
             secret_hash,
             token_contract_address,
             amount,
-        };
-
-        trace!("Created new ERC20 HTLC for ethereum: {:#?}", htlc);
-
-        htlc
+        }
     }
 
     /// Constructs the payload for funding an `Erc20` HTLC located at the given
@@ -112,8 +108,6 @@ impl Htlc for Erc20Htlc {
                 &token_contract_address,
             );
 
-        trace!("Final contract code: {}", &contract_code);
-
         let code_length = contract_code.len() / 2; // In hex, each byte is two chars
 
         let code_length_as_hex = format!("{:0>4x}", code_length);
@@ -129,12 +123,7 @@ impl Htlc for Erc20Htlc {
             )
             .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
-        trace!("Final contract code: {}", &contract_code);
-        trace!("Deploy header: {}", &deploy_header);
-
         let deployable_contract = deploy_header + &contract_code;
-
-        trace!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
     }
