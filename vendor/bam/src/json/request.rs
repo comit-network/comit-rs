@@ -79,7 +79,7 @@ impl UnvalidatedIncomingRequest {
         self.inner.request_type.as_str()
     }
 
-    pub(crate) fn ensure_no_unknown_mandatory_headers(
+    pub fn ensure_no_unknown_mandatory_headers(
         self,
         known_headers: &HashSet<String>,
     ) -> Result<ValidatedIncomingRequest, UnknownMandatoryHeaders> {
