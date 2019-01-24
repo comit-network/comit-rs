@@ -40,7 +40,7 @@ pub enum SwapReject {
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)] // FIXME: This shouldn't implement Deserialize directly
 pub enum SwapDeclineReason {
     BadRate,
-    Unknown { name: String },
+    Unknown(String),
 }
 
 #[derive(Clone, Debug, PartialEq)]

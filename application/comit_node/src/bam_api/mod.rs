@@ -9,6 +9,7 @@ use crate::{
 };
 use bam::json::Header;
 use ethereum_support::Erc20Token;
+use std::fmt;
 
 pub mod rfc003;
 
@@ -22,6 +23,10 @@ impl FromBamHeader for LedgerKind {
     }
 }
 
+fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
+    serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
+}
+
 impl ToBamHeader for LedgerKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
@@ -31,10 +36,7 @@ impl ToBamHeader for LedgerKind {
             LedgerKind::Ethereum(ethereum) => {
                 Header::with_str_value("Ethereum").with_parameter("network", ethereum.network)?
             }
-            LedgerKind::Unknown(name) => panic!(
-                "make {} a supported ledger before you call to_bam_header on it",
-                name
-            ),
+            unknown @ LedgerKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
 }
@@ -52,10 +54,7 @@ impl ToBamHeader for SwapProtocols {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         match self {
             SwapProtocols::Rfc003 => Ok(Header::with_str_value("COMIT-RFC-003")),
-            SwapProtocols::Unknown(name) => panic!(
-                "make {} a supported protocol before you call to_bam_header on it",
-                name
-            ),
+            unknown @ SwapProtocols::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         }
     }
 }
@@ -86,10 +85,7 @@ impl ToBamHeader for AssetKind {
             AssetKind::Erc20(erc20) => Header::with_str_value("ERC20")
                 .with_parameter("address", erc20.token_contract())?
                 .with_parameter("quantity", erc20.quantity())?,
-            AssetKind::Unknown(name) => panic!(
-                "make {} a supported asset before you call to_bam_header on it",
-                name
-            ),
+            unknown @ AssetKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
 }
@@ -98,9 +94,7 @@ impl FromBamHeader for SwapDeclineReason {
     fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "bad-rate" => SwapDeclineReason::BadRate,
-            other => SwapDeclineReason::Unknown {
-                name: other.to_string(),
-            },
+            other => SwapDeclineReason::Unknown(other.to_string()),
         })
     }
 }
@@ -109,10 +103,7 @@ impl ToBamHeader for SwapDeclineReason {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         match self {
             SwapDeclineReason::BadRate => Ok(Header::with_str_value("bad-rate")),
-            SwapDeclineReason::Unknown { name } => panic!(
-                "make {} a supported decline reason before you call to_bam_header on it",
-                name
-            ),
+            unknown @ SwapDeclineReason::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         }
     }
 }
@@ -122,8 +113,12 @@ mod tests {
 
     use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
 
-    use crate::{bam_ext::ToBamHeader, swap_protocols::asset::AssetKind};
+    use crate::{
+        bam_ext::ToBamHeader,
+        swap_protocols::{asset::AssetKind, LedgerKind},
+    };
     use bam::json::Header;
+    use spectral::prelude::*;
 
     #[test]
     fn erc20_quantity_to_bam_header() -> Result<(), serde_json::Error> {
@@ -143,4 +138,12 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn serializing_unknown_ledgerkind_doesnt_panic() {
+        let ledger_kind = LedgerKind::Unknown("USD".to_string());
+
+        let header = ledger_kind.to_bam_header();
+
+        assert_that(header).is_err();
+    }
 }
