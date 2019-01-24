@@ -86,7 +86,7 @@ impl UnvalidatedIncomingRequest {
         let (parsed_headers, unknown_mandatory_headers) = self.inner.headers.into_iter().fold(
             (Headers::default(), UnknownMandatoryHeaders::default()),
             |(parsed_headers, mut unknown_headers), (key, header)| {
-                if !known_headers.contains(&key.value) && key.must_understand {
+                if key.must_understand && !known_headers.contains(&key.value) {
                     unknown_headers.add(key.value.clone());
 
                     (parsed_headers, unknown_headers)
