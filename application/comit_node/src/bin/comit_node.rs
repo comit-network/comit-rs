@@ -25,7 +25,6 @@ fn main() -> Result<(), failure::Error> {
     logging::set_up_logging();
     let settings = load_settings()?;
 
-    // TODO: Maybe not print settings because of private keys?
     info!("Starting up with {:#?}", settings);
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
