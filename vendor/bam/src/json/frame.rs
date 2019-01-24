@@ -92,7 +92,7 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
                     .map_err(malformed_request)
                     .and_then(|request| self.validate_request(request))
                     .and_then(|request| self.dispatch_request(request))
-                    .unwrap_or_else(|response| Box::new(future::ok(response)))
+                    .unwrap_or_else(|error_response| Box::new(future::ok(error_response)))
                     .and_then(move |response| Ok(response.into_frame(frame_id)));
 
                 Ok(Some(Box::new(response_future)))
