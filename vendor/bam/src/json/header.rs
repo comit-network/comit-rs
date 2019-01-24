@@ -74,8 +74,11 @@ impl Header {
 
     /// Returns the parameter with the provided key converted into the type `P`.
     ///
-    /// If the parameter doesn't exist, `Null` is passed to the conversion
-    /// (which will very likely fail). TODO: Is this a good idea? :D
+    /// If the parameter doesn't exist, `Null` is passed to the conversion. This
+    /// is equivalent to the parameter actually being present in the JSON but
+    /// the `value` being null. This allows to change the otherwise cumbersome
+    /// return type of `Option<Result<P, serde_json::Error>>` to `Result<P,
+    /// serde_json::Error>`. The caller has to handle conversion errors anyway.
     pub fn take_parameter<P: DeserializeOwned>(
         &mut self,
         key: &'static str,
@@ -86,6 +89,18 @@ impl Header {
             .unwrap_or(serde_json::Value::Null);
 
         serde_json::from_value(parameter)
+    }
+
+    /// Returns the parameter with the provided key converted into the type `P`
+    /// or `P::default()` if the parameter is not present.
+    pub fn take_parameter_or_default<P: DeserializeOwned + Default>(
+        &mut self,
+        key: &'static str,
+    ) -> Result<P, serde_json::Error> {
+        self.inner
+            .take_parameter(key)
+            .map(serde_json::from_value)
+            .unwrap_or_else(|| Ok(P::default()))
     }
 
     pub fn with_json_value(value: serde_json::Value) -> Header {
