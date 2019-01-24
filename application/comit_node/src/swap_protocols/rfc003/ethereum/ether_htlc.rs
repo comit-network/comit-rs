@@ -32,16 +32,12 @@ impl EtherHtlc {
         redeem_address: Address,
         secret_hash: SecretHash,
     ) -> Self {
-        let htlc = EtherHtlc {
+        Self {
             refund_timeout,
             refund_address,
             redeem_address,
             secret_hash,
-        };
-
-        trace!("Created new HTLC for ethereum: {:#?}", htlc);
-
-        htlc
+        }
     }
 
     pub fn deployment_gas_limit(&self) -> U256 {
@@ -86,12 +82,7 @@ impl Htlc for EtherHtlc {
             )
             .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
-        trace!("Final contract code: {}", &contract_code);
-        trace!("Deploy header: {}", &deploy_header);
-
         let deployable_contract = deploy_header + &contract_code;
-
-        trace!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
     }
