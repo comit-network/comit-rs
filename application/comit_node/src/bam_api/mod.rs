@@ -13,6 +13,10 @@ use std::fmt;
 
 pub mod rfc003;
 
+fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
+    serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
+}
+
 impl FromBamHeader for LedgerKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
@@ -21,10 +25,6 @@ impl FromBamHeader for LedgerKind {
             other => LedgerKind::Unknown(other.to_string()),
         })
     }
-}
-
-fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
-    serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
 }
 
 impl ToBamHeader for LedgerKind {
@@ -52,10 +52,10 @@ impl FromBamHeader for SwapProtocols {
 
 impl ToBamHeader for SwapProtocols {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
-        match self {
-            SwapProtocols::Rfc003 => Ok(Header::with_str_value("COMIT-RFC-003")),
+        Ok(match self {
+            SwapProtocols::Rfc003 => Header::with_str_value("COMIT-RFC-003"),
             unknown @ SwapProtocols::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
-        }
+        })
     }
 }
 
@@ -101,10 +101,10 @@ impl FromBamHeader for SwapDeclineReason {
 
 impl ToBamHeader for SwapDeclineReason {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
-        match self {
-            SwapDeclineReason::BadRate => Ok(Header::with_str_value("bad-rate")),
+        Ok(match self {
+            SwapDeclineReason::BadRate => Header::with_str_value("bad-rate"),
             unknown @ SwapDeclineReason::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
-        }
+        })
     }
 }
 
