@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
+use ethereum_support::{Erc20Token, EtherQuantity};
 use std::sync::Arc;
 
 pub trait CreateLedgerEvents<L: Ledger, A: Asset> {
@@ -39,8 +39,8 @@ impl CreateLedgerEvents<Ethereum, EtherQuantity> for LedgerEventDependencies {
     }
 }
 
-impl CreateLedgerEvents<Ethereum, Erc20Quantity> for LedgerEventDependencies {
-    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, Erc20Quantity>> {
+impl CreateLedgerEvents<Ethereum, Erc20Token> for LedgerEventDependencies {
+    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, Erc20Token>> {
         Box::new(LqsEventsForErc20::new(
             QueryIdCache::wrap(Arc::clone(&self.lqs_client)),
             FirstMatch::new(

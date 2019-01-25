@@ -6,14 +6,38 @@ pub struct SayHelloToHeader {
     value: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Debug, Eq)]
+impl SayHelloToHeader {
+    pub fn from_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(SayHelloToHeader {
+            value: header.value()?,
+        })
+    }
+}
+
+#[derive(PartialEq, Debug, Eq)]
 pub struct HelloResponseHeader {
     pub value: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl HelloResponseHeader {
+    pub fn from_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(HelloResponseHeader {
+            value: header.value()?,
+        })
+    }
+}
+
+#[derive(Debug)]
 struct SayHelloToTimesHeader {
-    value: u32,
+    value: u64,
+}
+
+impl SayHelloToTimesHeader {
+    pub fn from_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(SayHelloToTimesHeader {
+            value: header.value()?,
+        })
+    }
 }
 
 impl Default for SayHelloToTimesHeader {
@@ -22,20 +46,27 @@ impl Default for SayHelloToTimesHeader {
     }
 }
 
-pub fn config() -> Config<Request, Response> {
-    Config::default().on_request("SAY_HELLO", &["TO"], |request: Request| {
-        let to = header!(request.get_header::<SayHelloToHeader>("TO"));
-        let times = try_header!(request.get_header::<SayHelloToTimesHeader>("TIMES"));
+pub fn config() -> Config<ValidatedIncomingRequest, Response> {
+    Config::default().on_request(
+        "SAY_HELLO",
+        &["TO"],
+        |mut request: ValidatedIncomingRequest| {
+            let to = header!(request.take_header("TO").map(SayHelloToHeader::from_header));
+            let times = try_header!(request
+                .take_header("TIMES")
+                .map(SayHelloToTimesHeader::from_header));
 
-        let response: Vec<&str> = (0..times.value)
-            .into_iter()
-            .map(|_| to.value.as_str())
-            .collect();
+            let response: Vec<&str> = (0..times.value)
+                .into_iter()
+                .map(|_| to.value.as_str())
+                .collect();
 
-        let response = response.join("");
+            let response = response.join("");
 
-        Box::new(future::ok(
-            Response::new(Status::OK(0)).with_header("HELLO", response),
-        ))
-    })
+            Box::new(future::ok(Response::new(Status::OK(0)).with_header(
+                "HELLO",
+                Header::with_json_value(serde_json::to_value(response).unwrap()),
+            )))
+        },
+    )
 }

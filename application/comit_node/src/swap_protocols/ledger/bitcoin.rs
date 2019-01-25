@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::Ledger;
+use crate::swap_protocols::ledger::{Ledger, LedgerKind};
 use bitcoin_support::{
     Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
@@ -34,5 +34,11 @@ impl Ledger for Bitcoin {
 
     fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
         pubkeyhash.into_p2wpkh_address(self.network)
+    }
+}
+
+impl From<Bitcoin> for LedgerKind {
+    fn from(bitcoin: Bitcoin) -> Self {
+        LedgerKind::Bitcoin(bitcoin)
     }
 }

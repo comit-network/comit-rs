@@ -15,11 +15,11 @@ use crate::{
             state_store::StateStore,
             Actions, Alice, Bob, Ledger, SecretSource,
         },
-        AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
+        MetadataStore, RoleKind, SwapId,
     },
 };
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
-use ethereum_support::{self, Erc20Quantity, EtherQuantity};
+use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use warp::{self, Rejection, Reply};
@@ -458,7 +458,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     action: PostAction,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
-    use crate::swap_protocols::{AssetKind, LedgerKind, Metadata, RoleKind};
+    use crate::swap_protocols::{Metadata, RoleKind};
     trace!("accept action requested on {:?}", id);
     let metadata = metadata_store
         .get(&id)?

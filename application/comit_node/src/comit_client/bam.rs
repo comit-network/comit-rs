@@ -1,5 +1,5 @@
 use crate::{
-    bam_api::{self, header::ToBamHeader},
+    bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{
         rfc003, Client, ClientFactory, ClientFactoryError, ClientPool, SwapDeclineReason,
         SwapReject, SwapResponseError,
@@ -18,24 +18,46 @@ use tokio::{self, net::TcpStream};
 #[derive(Debug)]
 pub struct BamClient {
     comit_node_socket_addr: SocketAddr,
-    bam_client: Arc<Mutex<bam::client::Client<json::Frame, json::Request, json::Response>>>,
+    bam_client: Arc<Mutex<bam::client::Client<json::Frame, json::OutgoingRequest, json::Response>>>,
 }
 
 impl BamClient {
     pub fn new(
         comit_node_socket_addr: SocketAddr,
-        bam_client: bam::client::Client<json::Frame, json::Request, json::Response>,
+        bam_client: bam::client::Client<json::Frame, json::OutgoingRequest, json::Response>,
     ) -> Self {
         BamClient {
             comit_node_socket_addr,
             bam_client: Arc::new(Mutex::new(bam_client)),
         }
     }
-}
 
-#[derive(Debug, Deserialize)]
-pub struct Reason {
-    pub value: SwapDeclineReason,
+    fn build_swap_request<
+        AL: swap_protocols::rfc003::Ledger,
+        BL: swap_protocols::rfc003::Ledger,
+        AA: Asset,
+        BA: Asset,
+    >(
+        request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Result<json::OutgoingRequest, serde_json::Error> {
+        let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
+        let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
+        let alpha_ledger_lock_duration = request.alpha_ledger_lock_duration;
+        let secret_hash = request.secret_hash;
+
+        Ok(json::OutgoingRequest::new("SWAP")
+            .with_header("alpha_ledger", request.alpha_ledger.into().to_bam_header()?)
+            .with_header("beta_ledger", request.beta_ledger.into().to_bam_header()?)
+            .with_header("alpha_asset", request.alpha_asset.into().to_bam_header()?)
+            .with_header("beta_asset", request.beta_asset.into().to_bam_header()?)
+            .with_header("swap_protocol", SwapProtocols::Rfc003.to_bam_header()?)
+            .with_body(serde_json::to_value(rfc003::RequestBody::<AL, BL> {
+                alpha_ledger_refund_identity,
+                beta_ledger_redeem_identity,
+                alpha_ledger_lock_duration,
+                secret_hash,
+            })?))
+    }
 }
 
 impl Client for BamClient {
@@ -53,32 +75,8 @@ impl Client for BamClient {
                 Error = SwapResponseError,
             > + Send,
     > {
-        let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
-        let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
-        let alpha_ledger_lock_duration = request.alpha_ledger_lock_duration;
-        let secret_hash = request.secret_hash;
-
-        let request = json::Request::new(
-            "SWAP".into(),
-            convert_args!(
-                keys = String::from,
-                values = to_json_value,
-                hashmap!(
-                    "alpha_ledger" => request.alpha_ledger.to_bam_header(),
-                    "beta_ledger" => request.beta_ledger.to_bam_header(),
-                    "alpha_asset" => request.alpha_asset.to_bam_header(),
-                    "beta_asset" => request.beta_asset.to_bam_header(),
-                    "swap_protocol" => SwapProtocols::Rfc003.to_bam_header(),
-                )
-            ),
-            serde_json::to_value(rfc003::RequestBody::<AL, BL> {
-                alpha_ledger_refund_identity,
-                beta_ledger_redeem_identity,
-                alpha_ledger_lock_duration,
-                secret_hash,
-            })
-            .expect("should not fail to serialize"),
-        );
+        let request = Self::build_swap_request(request)
+            .expect("constructing a bam::json::OutoingRequest should never fail!");
 
         debug!(
             "Making swap request to {}: {:?}",
@@ -91,10 +89,10 @@ impl Client for BamClient {
         let response = bam_client
             .send_request(request)
             .then(move |result| match result {
-                Ok(response) => match response.status() {
+                Ok(mut response) => match response.status() {
                     Status::OK(_) => {
                         info!("{} accepted swap request: {:?}", socket_addr, response);
-                        match serde_json::from_value(response.get_body().clone()) {
+                        match serde_json::from_value(response.body().clone()) {
                             Ok(response) => Ok(Ok(response)),
                             Err(_e) => Err(SwapResponseError::InvalidResponse),
                         }
@@ -103,7 +101,8 @@ impl Client for BamClient {
                         info!("{} declined swap request: {:?}", socket_addr, response);
                         Ok(Err({
                             let reason = response
-                                .get_header::<Reason>("REASON")
+                                .take_header("REASON")
+                                .map(SwapDeclineReason::from_bam_header)
                                 .map_or(Ok(None), |x| x.map(Some))
                                 .map_err(|e| {
                                     error!(
@@ -111,8 +110,7 @@ impl Client for BamClient {
                                         response, e,
                                     );
                                     SwapResponseError::InvalidResponse
-                                })?
-                                .map(|reason| reason.value);
+                                })?;
 
                             SwapReject::Declined { reason }
                         }))
@@ -140,14 +138,6 @@ impl Client for BamClient {
 
         Box::new(response)
     }
-}
-
-fn to_json_value(
-    bam_header: Result<bam_api::header::Header, bam_api::header::Error>,
-) -> serde_json::Value {
-    let header = bam_header.expect("converting to bam-header must not fail");
-
-    serde_json::to_value(header).expect("converting bam-header to json must not fail")
 }
 
 #[derive(Default, Debug)]
@@ -181,7 +171,7 @@ impl ClientFactory<BamClient> for BamClientPool {
 
                 let response_source = Arc::new(Mutex::new(json::JsonResponseSource::default()));
                 let incoming_frames = json::JsonFrameHandler::create(
-                    Config::<json::Request, json::Response>::default(),
+                    Config::<json::ValidatedIncomingRequest, json::Response>::default(),
                     Arc::clone(&response_source),
                 );
                 let (client, outgoing_frames) = bam::client::Client::create(response_source);

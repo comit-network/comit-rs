@@ -1,14 +1,10 @@
-use crate::{
-    bam_api::header::{FromBamHeader, ToBamHeader},
-    http_api::asset::{FromHttpAsset, ToHttpAsset},
-};
+use crate::http_api::asset::{FromHttpAsset, ToHttpAsset};
 use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Quantity, EtherQuantity};
+use ethereum_support::{Erc20Token, EtherQuantity};
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
 };
-
 pub trait Asset:
     Clone
     + Debug
@@ -21,11 +17,37 @@ pub trait Asset:
     + Hash
     + FromHttpAsset
     + ToHttpAsset
-    + FromBamHeader
-    + ToBamHeader
+    + Into<AssetKind>
 {
 }
 
 impl Asset for BitcoinQuantity {}
 impl Asset for EtherQuantity {}
-impl Asset for Erc20Quantity {}
+impl Asset for Erc20Token {}
+
+#[derive(Clone, Derivative)]
+#[derivative(Debug = "transparent")]
+pub enum AssetKind {
+    Bitcoin(BitcoinQuantity),
+    Ether(EtherQuantity),
+    Erc20(Erc20Token),
+    Unknown(String),
+}
+
+impl From<BitcoinQuantity> for AssetKind {
+    fn from(quantity: BitcoinQuantity) -> Self {
+        AssetKind::Bitcoin(quantity)
+    }
+}
+
+impl From<EtherQuantity> for AssetKind {
+    fn from(quantity: EtherQuantity) -> Self {
+        AssetKind::Ether(quantity)
+    }
+}
+
+impl From<Erc20Token> for AssetKind {
+    fn from(quantity: Erc20Token) -> Self {
+        AssetKind::Erc20(quantity)
+    }
+}

@@ -1,16 +1,13 @@
 use bam::{config::Config, connection, json::*, shutdown_handle, *};
 use futures::future::{self, Future};
 use spectral::prelude::*;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
+use std::sync::{Arc, Mutex};
 
 struct Ping;
 
-impl From<Ping> for Request {
+impl From<Ping> for OutgoingRequest {
     fn from(_p: Ping) -> Self {
-        Request::new("PING".into(), HashMap::new(), serde_json::Value::Null)
+        OutgoingRequest::new("PING")
     }
 }
 
@@ -24,14 +21,14 @@ fn given_two_servers_both_can_ping_each_other() {
 
     let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
     let alice_incoming_frames = JsonFrameHandler::create(
-        Config::default().on_request("PING", &[], |_: Request| {
+        Config::default().on_request("PING", &[], |_: ValidatedIncomingRequest| {
             Box::new(future::ok(Response::new(Status::OK(0))))
         }),
         Arc::clone(&response_source),
     );
 
     let (mut bob_client, bob_outgoing_frames) =
-        bam::client::Client::<Frame, Request, Response>::create(response_source);
+        bam::client::Client::<Frame, OutgoingRequest, Response>::create(response_source);
 
     let alice_server = connection::new(
         JsonFrameCodec::default(),
@@ -43,14 +40,14 @@ fn given_two_servers_both_can_ping_each_other() {
 
     let response_source = Arc::new(Mutex::new(JsonResponseSource::default()));
     let bob_incoming_frames = JsonFrameHandler::create(
-        Config::default().on_request("PING", &[], |_: Request| {
+        Config::default().on_request("PING", &[], |_: ValidatedIncomingRequest| {
             Box::new(future::ok(Response::new(Status::OK(0))))
         }),
         Arc::clone(&response_source),
     );
 
     let (mut alice_client, alice_outgoing_frames) =
-        bam::client::Client::<Frame, Request, Response>::create(response_source);
+        bam::client::Client::<Frame, OutgoingRequest, Response>::create(response_source);
 
     let bob_server = connection::new(
         JsonFrameCodec::default(),

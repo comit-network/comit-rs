@@ -14,9 +14,9 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
-impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
     pub fn deploy_action(&self) -> ethereum::ContractDeploy {
         let htlc = Erc20Htlc::from(self.beta_htlc_params());
         let data = htlc.compile_to_hex().into();
@@ -79,7 +79,7 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
     }
 }
 
-impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
     type ActionKind = bob::ActionKind<
         Accept<Bitcoin, Ethereum>,
         Decline<Bitcoin, Ethereum>,

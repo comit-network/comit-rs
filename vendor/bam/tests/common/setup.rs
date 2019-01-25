@@ -8,7 +8,9 @@ use bam::{
 use futures::Future;
 use tokio::runtime::Runtime;
 
-pub fn start_server_with(config: Config<Request, Response>) -> (Runtime, Alice, Bob) {
+pub fn start_server_with(
+    config: Config<ValidatedIncomingRequest, Response>,
+) -> (Runtime, Alice, Bob) {
     let _ = pretty_env_logger::try_init();
     let mut runtime = Runtime::new().unwrap();
 
@@ -25,7 +27,7 @@ pub fn start_server_with(config: Config<Request, Response>) -> (Runtime, Alice, 
 }
 
 pub fn create_server_with(
-    config: Config<Request, Response>,
+    config: Config<ValidatedIncomingRequest, Response>,
 ) -> (
     Alice,
     impl Future<Item = (), Error = connection::ClosedReason<json::Error>>,

@@ -13,9 +13,9 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
-impl OngoingSwap<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
+impl OngoingSwap<Bob<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity>> {
     pub fn fund_action(&self) -> bitcoin::SendToAddress {
         bitcoin::SendToAddress {
             to: self.beta_htlc_params().compute_address(),
@@ -54,7 +54,7 @@ impl OngoingSwap<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
     }
 }
 
-impl Actions for SwapStates<Bob<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
+impl Actions for SwapStates<Bob<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity>> {
     type ActionKind = bob::ActionKind<
         Accept<Ethereum, Bitcoin>,
         Decline<Ethereum, Bitcoin>,
