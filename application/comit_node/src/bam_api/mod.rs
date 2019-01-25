@@ -144,6 +144,6 @@ mod tests {
 
         let header = ledger_kind.to_bam_header();
 
-        assert_that(header).is_err();
+        assert_that(&header).is_err();
     }
 }
