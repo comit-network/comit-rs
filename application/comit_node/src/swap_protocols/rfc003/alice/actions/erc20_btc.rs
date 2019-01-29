@@ -9,9 +9,9 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
-impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
+impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity>> {
     pub fn deploy_action(&self) -> ethereum::ContractDeploy {
         let htlc = Erc20Htlc::from(self.alpha_htlc_params());
         let data = htlc.compile_to_hex().into();
@@ -19,8 +19,9 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
 
         ethereum::ContractDeploy {
             data,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
             gas_limit,
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -35,7 +36,8 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: self.alpha_asset.token_contract(),
             data: htlc.funding_tx_payload(alpha_htlc_location),
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -50,7 +52,8 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
             to: alpha_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.alpha_ledger.network,
         }
     }
 
@@ -63,11 +66,12 @@ impl OngoingSwap<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
                 self.beta_asset,
                 htlc.unlock_with_secret(self.beta_ledger_redeem_identity, &self.secret),
             ),
+            network: self.beta_ledger.network,
         }
     }
 }
 
-impl Actions for SwapStates<Alice<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>> {
+impl Actions for SwapStates<Alice<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity>> {
     type ActionKind = alice::ActionKind<
         ethereum::ContractDeploy,
         ethereum::SendTransaction,

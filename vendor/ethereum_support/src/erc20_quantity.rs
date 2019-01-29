@@ -1,38 +1,52 @@
-use crate::{u256_ext::ToBigDecimal, web3::types::Address, U256};
+use crate::{
+    u256_ext::{FromDecimalStr, ToBigInt},
+    U256,
+};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct Erc20Quantity {
-    token_contract: Address,
-    quantity: U256,
-}
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Erc20Quantity(pub U256);
 
 impl fmt::Display for Erc20Quantity {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.quantity.to_bigdec(0))
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0.to_bigint())
     }
 }
 
-impl Erc20Quantity {
-    pub fn new(token_contract: Address, quantity: U256) -> Self {
-        Erc20Quantity {
-            token_contract,
-            quantity,
+impl<'de> Deserialize<'de> for Erc20Quantity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'vde> de::Visitor<'vde> for Visitor {
+            type Value = Erc20Quantity;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+                formatter.write_str("A string representing a wei quantity")
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Erc20Quantity, E>
+            where
+                E: de::Error,
+            {
+                U256::from_decimal_str(v)
+                    .map(Erc20Quantity)
+                    .map_err(E::custom)
+            }
         }
-    }
 
-    pub fn token_contract(&self) -> Address {
-        self.token_contract
-    }
-
-    pub fn quantity(&self) -> U256 {
-        self.quantity
+        deserializer.deserialize_str(Visitor)
     }
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Erc20Token {
-    pub symbol: String,
-    pub decimals: u16,
-    pub address: Address,
+impl Serialize for Erc20Quantity {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(format!("{}", self).as_str())
+    }
 }

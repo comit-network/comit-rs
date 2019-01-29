@@ -9,7 +9,7 @@ use ethereum_support::{
         transports::EventLoopHandle,
         types::{Address, U256},
     },
-    EtherQuantity,
+    Erc20Quantity, EtherQuantity,
 };
 use std::{
     sync::Arc,
@@ -99,7 +99,7 @@ pub fn erc20_harness<D: Docker>(
         bob,
         params.htlc_secret_hash,
         token_contract,
-        params.htlc_token_value,
+        Erc20Quantity(params.htlc_token_value),
     );
 
     let tx_id = alice_client.deploy_htlc(erc20_htlc.clone(), U256::from(0));

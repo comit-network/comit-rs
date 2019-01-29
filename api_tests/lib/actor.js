@@ -1,6 +1,10 @@
 const Toml = require("toml");
 const wallet = require("./wallet.js");
 const fs = require("fs");
+const bitcoin = require("./bitcoin.js");
+const ethutil = require("ethereumjs-util");
+
+const bitcoin_rpc_client = bitcoin.create_client();
 
 class Actor {
     constructor(name) {
@@ -44,6 +48,58 @@ class Actor {
                     }
                 });
         });
+    }
+
+    async do(action) {
+        let network = action.payload.network;
+        if (network != "regtest") {
+            throw Error("Expected network regtest, found " + network);
+        }
+        let type = action.type;
+
+        switch (type) {
+            case "bitcoin-send-amount-to-address": {
+                let { to, amount } = action.payload;
+
+                return this.wallet
+                    .btc()
+                    .send_btc_to_address(to, parseInt(amount));
+                break;
+            }
+            case "bitcoin-broadcast-signed-transaction": {
+                let { hex } = action.payload;
+
+                return bitcoin_rpc_client.sendRawTransaction(hex);
+                break;
+            }
+            case "ethereum-deploy-contract": {
+                let { data, amount, gas_limit } = action.payload;
+
+                return this.wallet.eth().deploy_contract(data, amount);
+                break;
+            }
+            case "ethereum-invoke-contract": {
+                let {
+                    contract_address,
+                    data,
+                    amount,
+                    gas_limit,
+                } = action.payload;
+
+                return this.wallet
+                    .eth()
+                    .send_eth_transaction_to(
+                        contract_address,
+                        data,
+                        amount,
+                        gas_limit
+                    );
+                break;
+            }
+            default:
+                throw Error("Action type " + type + " unsupported");
+                break;
+        }
     }
 }
 

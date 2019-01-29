@@ -8,27 +8,6 @@ pub enum Error {
     OutOfOrderRequest,
 }
 
-#[derive(Debug, PartialEq)]
-pub enum RequestError {
-    UnknownRequestType(String),
-    UnknownMandatoryHeaders(Vec<String>),
-    MalformedHeader(String),
-    MalformedField(String),
-    HandlerError,
-}
-
-impl RequestError {
-    pub fn status(&self) -> Status {
-        match *self {
-            RequestError::UnknownRequestType(_) => Status::SE(2),
-            RequestError::UnknownMandatoryHeaders(_) => Status::SE(1),
-            RequestError::MalformedHeader(_) => Status::SE(0),
-            RequestError::MalformedField(_) => Status::SE(0),
-            RequestError::HandlerError => Status::SE(0),
-        }
-    }
-}
-
 pub trait FrameHandler<Frame>
 where
     Self: Sized,

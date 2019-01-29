@@ -15,11 +15,11 @@ use crate::{
             state_store::StateStore,
             Actions, Alice, Bob, Ledger, SecretSource, Timestamp,
         },
-        AssetKind, LedgerKind, Metadata, MetadataStore, RoleKind, SwapId,
+        Metadata, MetadataStore, RoleKind, SwapId,
     },
 };
 use bitcoin_support::{self, BitcoinQuantity};
-use ethereum_support::{self, Erc20Quantity, EtherQuantity};
+use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
@@ -31,14 +31,14 @@ pub const PROTOCOL_NAME: &str = "rfc003";
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinQuantityErc20Quantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>,
+    BitcoinEthereumBitcoinQuantityErc20Token(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>,
     ),
     BitcoinEthereumBitcoinQuantityEtherQuantity(
         SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
     ),
-    EthereumBitcoinErc20QuantityBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, Erc20Quantity, BitcoinQuantity>,
+    EthereumBitcoinErc20TokenBitcoinQuantity(
+        SwapRequestBody<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity>,
     ),
     EthereumBitcoinEtherQuantityBitcoinQuantity(
         SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
@@ -234,7 +234,7 @@ fn handle_post_swap<A: AliceSpawner>(
     let id = SwapId::default();
 
     match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Quantity(body) => alice_spawner
+        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Token(body) => alice_spawner
             .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
@@ -249,7 +249,7 @@ fn handle_post_swap<A: AliceSpawner>(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
             )?,
-        SwapRequestBodyKind::EthereumBitcoinErc20QuantityBitcoinQuantity(body) => alice_spawner
+        SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinQuantity(body) => alice_spawner
             .spawn(
                 id,
                 rfc003::alice::SwapRequest::from_swap_request_body(body, id, secret_source)?,
@@ -428,7 +428,8 @@ mod tests {
                     "network": "regtest"
                 },
                 "beta_ledger": {
-                    "name": "Ethereum"
+                    "name": "Ethereum",
+                    "network": "regtest"
                 },
                 "alpha_asset": {
                     "name": "Bitcoin",
@@ -450,7 +451,7 @@ mod tests {
         assert_that(&body).is_ok_containing(SwapRequestBody {
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::regtest(),
+            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_expiry: Timestamp(123456789),
             beta_expiry: Timestamp(123456789),
@@ -471,7 +472,8 @@ mod tests {
                     "network": "regtest"
                 },
                 "beta_ledger": {
-                    "name": "Ethereum"
+                    "name": "Ethereum",
+                    "network": "regtest"
                 },
                 "alpha_asset": {
                     "name": "Bitcoin",
@@ -493,7 +495,7 @@ mod tests {
         assert_that(&body).is_ok_containing(SwapRequestBody {
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::regtest(),
+            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_expiry: Timestamp(123456789),
             beta_expiry: Timestamp(123456789),

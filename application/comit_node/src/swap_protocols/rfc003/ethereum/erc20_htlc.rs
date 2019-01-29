@@ -2,7 +2,7 @@ use crate::swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc},
     SecretHash, Timestamp,
 };
-use ethereum_support::{web3::types::Bytes, Address, U256};
+use ethereum_support::{web3::types::Bytes, Address, Erc20Quantity, U256};
 
 #[derive(Debug, Clone)]
 pub struct Erc20Htlc {
@@ -11,7 +11,7 @@ pub struct Erc20Htlc {
     redeem_address: Address,
     secret_hash: SecretHash,
     token_contract_address: Address,
-    amount: U256,
+    amount: Erc20Quantity,
 }
 
 impl Erc20Htlc {
@@ -38,9 +38,9 @@ impl Erc20Htlc {
         redeem_address: Address,
         secret_hash: SecretHash,
         token_contract_address: Address,
-        amount: U256,
+        amount: Erc20Quantity,
     ) -> Self {
-        let htlc = Erc20Htlc {
+        let htlc = Self {
             refund_timestamp,
             refund_address,
             redeem_address,
@@ -60,7 +60,7 @@ impl Erc20Htlc {
     pub fn funding_tx_payload(&self, htlc_contract_address: Address) -> Bytes {
         let transfer_fn_abi = base16!("A9059CBB");
         let htlc_contract_address = <[u8; 20]>::from(htlc_contract_address);
-        let amount = <[u8; 32]>::from(self.amount);
+        let amount = <[u8; 32]>::from(self.amount.0);
 
         let mut data = [0u8; 4 + 32 + 32];
         data[..4].copy_from_slice(transfer_fn_abi);
@@ -99,7 +99,7 @@ impl Htlc for Erc20Htlc {
         let secret_hash = format!("{:x}", self.secret_hash);
 
         let token_contract_address = format!("{:x}", self.token_contract_address);
-        let amount = format!("{:0>64}", format!("{:x}", self.amount));
+        let amount = format!("{:0>64}", format!("{:x}", self.amount.0));
 
         let contract_code = Self::CONTRACT_CODE_TEMPLATE
             .to_string()
@@ -112,8 +112,6 @@ impl Htlc for Erc20Htlc {
                 Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
                 &token_contract_address,
             );
-
-        trace!("Final contract code: {}", &contract_code);
 
         let code_length = contract_code.len() / 2; // In hex, each byte is two chars
 
@@ -130,12 +128,7 @@ impl Htlc for Erc20Htlc {
             )
             .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
-        trace!("Final contract code: {}", &contract_code);
-        trace!("Deploy header: {}", &deploy_header);
-
         let deployable_contract = deploy_header + &contract_code;
-
-        trace!("Deployable contract: {}", &deployable_contract);
 
         ByteCode(deployable_contract)
     }
@@ -158,7 +151,7 @@ mod tests {
             )
             .unwrap(),
             Address::new(),
-            U256::from(100),
+            Erc20Quantity(U256::from(100)),
         );
         let htlc_hex = htlc.compile_to_hex();
         assert_eq!(
@@ -179,7 +172,7 @@ mod tests {
             )
             .unwrap(),
             Address::new(),
-            U256::from(100),
+            Erc20Quantity(U256::from(100)),
         );
 
         let htlc_hex = htlc.funding_tx_payload(Address::from(*base16!(

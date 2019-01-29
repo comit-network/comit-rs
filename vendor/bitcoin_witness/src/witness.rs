@@ -22,6 +22,6 @@ pub enum Witness {
 pub struct UnlockParameters {
     pub witness: Vec<Witness>,
     pub sequence: u32,
-    pub locktime: i64,
+    pub locktime: u32,
     pub prev_script: Script,
 }

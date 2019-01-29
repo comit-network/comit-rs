@@ -6,7 +6,7 @@ use ethbloom::Input;
 use ethereum_support::{
     web3::{
         transports::Http,
-        types::{TransactionReceipt, H256},
+        types::{TransactionId, TransactionReceipt, H256},
         Web3,
     },
     Address, Block, Bytes, Transaction,
@@ -122,8 +122,12 @@ impl ShouldExpand for EventQuery {
 
 impl ExpandResult for EventQuery {
     type Client = Web3<Http>;
-    type Item = TransactionReceipt;
+    type Item = Transaction;
 
+    // TODO: return TransactionReceipt and not Transaction.
+    // Temporarily return the transaction and not the transaction receipt as the
+    // secret is currently only available in the transaction call data but not
+    // in the receipt. This needs to be fixed with https://github.com/comit-network/comit-rs/issues/638
     fn expand_result(
         result: &QueryResult,
         client: Arc<Web3<Http>>,
@@ -141,7 +145,7 @@ impl ExpandResult for EventQuery {
             .map(|id| {
                 client
                     .eth()
-                    .transaction_receipt(H256::from_slice(id.as_ref()))
+                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
                     .map_err(Error::Web3)
             })
             .collect();

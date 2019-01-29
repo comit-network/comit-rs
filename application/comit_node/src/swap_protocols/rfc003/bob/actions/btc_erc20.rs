@@ -14,9 +14,9 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, Erc20Quantity, EtherQuantity};
+use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
-impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
     pub fn deploy_action(&self) -> ethereum::ContractDeploy {
         let htlc = Erc20Htlc::from(self.beta_htlc_params());
         let data = htlc.compile_to_hex().into();
@@ -24,8 +24,9 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
 
         ethereum::ContractDeploy {
             data,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
             gas_limit,
+            network: self.beta_ledger.network,
         }
     }
 
@@ -40,7 +41,8 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
             to: beta_htlc_location,
             data,
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.beta_ledger.network,
         }
     }
 
@@ -55,7 +57,8 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
             to: self.beta_asset.token_contract(),
             data: htlc.funding_tx_payload(beta_htlc_location),
             gas_limit,
-            value: EtherQuantity::zero(),
+            amount: EtherQuantity::zero(),
+            network: self.beta_ledger.network,
         }
     }
 
@@ -71,11 +74,12 @@ impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
                 bitcoin::Htlc::from(self.alpha_htlc_params())
                     .unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
             ),
+            network: self.alpha_ledger.network,
         }
     }
 }
 
-impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Quantity>> {
+impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
     type ActionKind = bob::ActionKind<
         Accept<Bitcoin, Ethereum>,
         Decline<Bitcoin, Ethereum>,

@@ -13,6 +13,7 @@ bitcoin_rpc_client = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
 config = "0.9"
 debug_stub_derive = "0.3"
+derivative = "1"
 directories = "1.0"
 either = "1.5"
 enum-display-derive = "0.1"

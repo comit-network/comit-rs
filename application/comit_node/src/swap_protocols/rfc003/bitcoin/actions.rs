@@ -1,17 +1,18 @@
-use bitcoin_support::{Address, BitcoinQuantity};
+use bitcoin_support::{Address, BitcoinQuantity, Network};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SendToAddress {
-    pub address: Address,
-    pub value: BitcoinQuantity,
+    pub to: Address,
+    pub amount: BitcoinQuantity,
+    pub network: Network,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpendOutput {
     // Remember: One man's input is another man's output!
-    // TODO: decide whether we want to serialize this directly
     pub output: PrimedInput,
+    pub network: Network,
 }
 
 impl SpendOutput {

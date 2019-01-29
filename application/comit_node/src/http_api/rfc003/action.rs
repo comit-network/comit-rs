@@ -15,11 +15,11 @@ use crate::{
             state_store::StateStore,
             Actions, Alice, Bob, Ledger, SecretSource,
         },
-        AssetKind, LedgerKind, MetadataStore, RoleKind, SwapId,
+        MetadataStore, RoleKind, SwapId,
     },
 };
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
-use ethereum_support::{self, Erc20Quantity, EtherQuantity};
+use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use warp::{self, Rejection, Reply};
@@ -141,20 +141,30 @@ pub enum GetActionQueryParams {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[serde(untagged)]
+#[serde(rename_all = "kebab-case")]
+#[serde(tag = "type", content = "payload")]
 pub enum ActionResponseBody {
-    SendToBitcoinAddress {
-        address: bitcoin_support::Address,
-        value: BitcoinQuantity,
+    BitcoinSendAmountToAddress {
+        to: bitcoin_support::Address,
+        amount: BitcoinQuantity,
+        network: bitcoin_support::Network,
     },
-    BroadcastSignedBitcoinTransaction {
+    BitcoinBroadcastSignedTransaction {
         hex: String,
+        network: bitcoin_support::Network,
     },
-    SendEthereumTransaction {
-        to: Option<ethereum_support::Address>,
+    EthereumDeployContract {
         data: ethereum_support::Bytes,
-        value: EtherQuantity,
+        amount: EtherQuantity,
         gas_limit: ethereum_support::U256,
+        network: ethereum_support::Network,
+    },
+    EthereumInvokeContract {
+        contract_address: ethereum_support::Address,
+        data: ethereum_support::Bytes,
+        amount: EtherQuantity,
+        gas_limit: ethereum_support::U256,
+        network: ethereum_support::Network,
     },
 }
 
@@ -172,8 +182,16 @@ impl IntoResponseBody for bitcoin::SendToAddress {
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
             GetActionQueryParams::None {} => {
-                let bitcoin::SendToAddress { address, value } = self.clone();
-                Ok(ActionResponseBody::SendToBitcoinAddress { address, value })
+                let bitcoin::SendToAddress {
+                    to,
+                    amount,
+                    network,
+                } = self.clone();
+                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
+                    to,
+                    amount,
+                    network,
+                })
             }
             _ => {
                 error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
@@ -201,6 +219,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                 fee_per_byte,
             } => match fee_per_byte.parse::<f64>() {
                 Ok(fee_per_byte) => {
+                    let network = self.network;
                     let transaction = self.spend_to(address).sign_with_rate(fee_per_byte);
                     let transaction = match transaction {
                         Ok(transaction) => transaction,
@@ -211,9 +230,10 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         }
                     };
                     match serialize_hex(&transaction) {
-                        Ok(hex) => {
-                            Ok(ActionResponseBody::BroadcastSignedBitcoinTransaction { hex })
-                        }
+                        Ok(hex) => Ok(ActionResponseBody::BitcoinBroadcastSignedTransaction {
+                            hex,
+                            network,
+                        }),
                         Err(e) => {
                             error!("Could not serialized signed Bitcoin transaction: {:?}", e);
                             Err(
@@ -264,15 +284,16 @@ impl IntoResponseBody for ethereum::ContractDeploy {
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         let ethereum::ContractDeploy {
             data,
-            value,
+            amount,
             gas_limit,
+            network,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::SendEthereumTransaction {
-                to: None,
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumDeployContract {
                 data,
-                value,
+                amount,
                 gas_limit,
+                network,
             }),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::ContractDeploy action type. Expected: None.");
@@ -291,15 +312,17 @@ impl IntoResponseBody for ethereum::SendTransaction {
         let ethereum::SendTransaction {
             to,
             data,
-            value,
+            amount,
             gas_limit,
+            network,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::SendEthereumTransaction {
-                to: Some(to),
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumInvokeContract {
+                contract_address: to,
                 data,
-                value,
+                amount,
                 gas_limit,
+                network,
             }),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");
@@ -419,7 +442,7 @@ pub fn handle_post<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     action: PostAction,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
-    use crate::swap_protocols::{AssetKind, LedgerKind, Metadata, RoleKind};
+    use crate::swap_protocols::{Metadata, RoleKind};
     trace!("accept action requested on {:?}", id);
     let metadata = metadata_store
         .get(&id)?

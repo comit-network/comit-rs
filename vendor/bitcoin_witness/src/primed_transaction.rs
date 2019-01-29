@@ -103,7 +103,7 @@ impl PrimedTransaction {
         transaction.lock_time = self
             .inputs
             .iter()
-            .map(|input| input.input_parameters.locktime as u32)
+            .map(|input| input.input_parameters.locktime)
             .max()
             .unwrap_or(0);
     }

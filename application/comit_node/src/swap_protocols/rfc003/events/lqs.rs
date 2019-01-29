@@ -18,7 +18,7 @@ use crate::{
         },
     },
 };
-use ethereum_support::Erc20Quantity;
+use ethereum_support::Erc20Token;
 use futures::{
     future::{self, Either},
     Future,
@@ -178,10 +178,10 @@ impl LqsEventsForErc20 {
     }
 }
 
-impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
+impl LedgerEvents<Ethereum, Erc20Token> for LqsEventsForErc20 {
     fn htlc_deployed(
         &mut self,
-        htlc_params: HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_params: HtlcParams<Ethereum, Erc20Token>,
     ) -> &mut Deployed<Ethereum> {
         let query = erc20::new_htlc_deployed_query(&htlc_params);
         self.lqs_events.htlc_deployed(htlc_params, query)
@@ -189,7 +189,7 @@ impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
 
     fn htlc_funded(
         &mut self,
-        htlc_params: HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_params: HtlcParams<Ethereum, Erc20Token>,
         htlc_location: &<Ethereum as Ledger>::HtlcLocation,
     ) -> &mut Funded<Ethereum> {
         let query = erc20::new_htlc_funded_query(&htlc_params, htlc_location);
@@ -212,7 +212,7 @@ impl LedgerEvents<Ethereum, Erc20Quantity> for LqsEventsForErc20 {
 
     fn htlc_redeemed_or_refunded(
         &mut self,
-        htlc_params: HtlcParams<Ethereum, Erc20Quantity>,
+        htlc_params: HtlcParams<Ethereum, Erc20Token>,
         htlc_location: &<Ethereum as Ledger>::HtlcLocation,
     ) -> &mut RedeemedOrRefunded<Ethereum> {
         let refunded_query = erc20::new_htlc_refunded_query(htlc_location);

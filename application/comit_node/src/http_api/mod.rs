@@ -25,37 +25,33 @@ mod ledger_impls {
     use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
 
     impl_http_ledger!(Bitcoin { network });
-    impl_http_ledger!(Ethereum);
+    impl_http_ledger!(Ethereum { network });
 
 }
 
 mod asset_impls {
     use super::asset::{Error, FromHttpAsset, HttpAsset, ToHttpAsset};
     use bitcoin_support::BitcoinQuantity;
-    use ethereum_support::{
-        web3::types::U256, Erc20Quantity, EtherQuantity, FromDecimalStr, ToBigDecimal,
-    };
+    use ethereum_support::{Erc20Token, EtherQuantity};
 
     impl_http_quantity_asset!(BitcoinQuantity, Bitcoin);
     impl_http_quantity_asset!(EtherQuantity, Ether);
 
-    impl FromHttpAsset for Erc20Quantity {
+    impl FromHttpAsset for Erc20Token {
         fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
             asset.is_asset("ERC20")?;
 
-            let amount: String = asset.parameter("quantity")?;
-
-            Ok(Erc20Quantity::new(
+            Ok(Erc20Token::new(
                 asset.parameter("token_contract")?,
-                U256::from_decimal_str(&amount).map_err(|_| Error::Parsing)?,
+                asset.parameter("quantity")?,
             ))
         }
     }
 
-    impl ToHttpAsset for Erc20Quantity {
+    impl ToHttpAsset for Erc20Token {
         fn to_http_asset(&self) -> Result<HttpAsset, Error> {
             Ok(HttpAsset::with_asset("ERC20")
-                .with_parameter("quantity", format!("{}", self.quantity().to_bigdec(0)))?
+                .with_parameter("quantity", self.quantity())?
                 .with_parameter("token_contract", self.token_contract())?)
         }
     }
@@ -90,16 +86,16 @@ mod tests {
         http_api::{asset::ToHttpAsset, ledger::ToHttpLedger},
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
-    use bitcoin_support::{BitcoinQuantity, Network};
-    use ethereum_support::{Address, Erc20Quantity, EtherQuantity, U256};
+    use bitcoin_support::{self, BitcoinQuantity};
+    use ethereum_support::{self, Address, Erc20Quantity, Erc20Token, EtherQuantity, U256};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
         let bitcoin = BitcoinQuantity::from_bitcoin(1.0);
         let ether = EtherQuantity::from_eth(1.0);
-        let pay = Erc20Quantity::new(
+        let pay = Erc20Token::new(
             Address::from("0xB97048628DB6B661D4C2aA833e95Dbe1A905B280"),
-            U256::from(100_000_000_000u64),
+            Erc20Quantity(U256::from(100_000_000_000u64)),
         );
 
         let bitcoin = bitcoin.to_http_asset().unwrap();
@@ -123,10 +119,8 @@ mod tests {
 
     #[test]
     fn http_ledger_serializes_correctly_to_json() {
-        let bitcoin = Bitcoin {
-            network: Network::Regtest,
-        };
-        let ethereum = Ethereum {};
+        let bitcoin = Bitcoin::new(bitcoin_support::Network::Regtest);
+        let ethereum = Ethereum::new(ethereum_support::Network::Regtest);
 
         let bitcoin = bitcoin.to_http_ledger().unwrap();
         let ethereum = ethereum.to_http_ledger().unwrap();
@@ -138,7 +132,10 @@ mod tests {
             &bitcoin_serialized,
             r#"{"name":"Bitcoin","network":"regtest"}"#
         );
-        assert_eq!(&ethereum_serialized, r#"{"name":"Ethereum"}"#);
+        assert_eq!(
+            &ethereum_serialized,
+            r#"{"name":"Ethereum","network":"regtest"}"#
+        );
     }
 
 }

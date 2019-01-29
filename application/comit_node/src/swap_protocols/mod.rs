@@ -7,15 +7,14 @@ pub mod metadata_store;
 
 pub use self::{
     dependencies::*,
-    ledger::Ledger,
-    metadata_store::{
-        AssetKind, InMemoryMetadataStore, LedgerKind, Metadata, MetadataStore, RoleKind,
-    },
+    ledger::{Ledger, LedgerKind},
+    metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore, RoleKind},
 };
 
 #[derive(Debug)]
 pub enum SwapProtocols {
     Rfc003,
+    Unknown(String),
 }
 
 mod swap_id;

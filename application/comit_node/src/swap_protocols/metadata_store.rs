@@ -1,3 +1,4 @@
+use crate::swap_protocols::{asset::AssetKind, LedgerKind};
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
@@ -11,20 +12,7 @@ pub enum RoleKind {
     Bob,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
-pub enum LedgerKind {
-    Bitcoin,
-    Ethereum,
-}
-
-#[derive(Clone, Copy, Debug, Display)]
-pub enum AssetKind {
-    Bitcoin,
-    Ether,
-    Erc20,
-}
-
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Metadata {
     pub alpha_ledger: LedgerKind,
     pub beta_ledger: LedgerKind,
@@ -75,7 +63,7 @@ impl<K: Debug + Display + Hash + Eq + Clone + Send + Sync + 'static> MetadataSto
 
         Ok(metadata
             .iter()
-            .map(|(key, value)| (key.clone(), *value))
+            .map(|(key, value)| (key.clone(), value.clone()))
             .collect())
     }
 }

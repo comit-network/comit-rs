@@ -123,7 +123,7 @@ impl Htlc {
                 Witness::PrevScript,
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
-            locktime: i64::from(self.absolute_timelock.0),
+            locktime: self.absolute_timelock.0,
             prev_script: self.script.clone(),
         }
     }
@@ -135,7 +135,7 @@ fn create_htlc(
     secret_hash: &[u8],
     refund_timestamp: Timestamp,
 ) -> Script {
-    let script = Builder::new()
+    Builder::new()
         .push_opcode(OP_IF)
         .push_opcode(OP_SIZE)
         .push_int(i64::from(Secret::LENGTH_U8))
@@ -156,9 +156,7 @@ fn create_htlc(
         .push_opcode(OP_ENDIF)
         .push_opcode(OP_EQUALVERIFY)
         .push_opcode(OP_CHECKSIG)
-        .into_script();
-    trace!("BTC HTLC: {}", script);
-    script
+        .into_script()
 }
 
 #[cfg(test)]
