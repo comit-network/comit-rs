@@ -123,7 +123,7 @@ impl Htlc {
                 Witness::PrevScript,
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
-            locktime: self.absolute_timelock.0 as i64,
+            locktime: i64::from(self.absolute_timelock.0),
             prev_script: self.script.clone(),
         }
     }
@@ -147,7 +147,7 @@ fn create_htlc(
         .push_opcode(OP_HASH160)
         .push_slice(recipient_pubkey_hash.as_ref())
         .push_opcode(OP_ELSE)
-        .push_int(refund_timestamp.0 as i64)
+        .push_int(i64::from(refund_timestamp.0))
         .push_opcode(OP_CLTV)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)
