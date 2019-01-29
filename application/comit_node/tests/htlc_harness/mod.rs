@@ -3,7 +3,7 @@ use crypto::{digest::Digest, sha2::Sha256};
 use ethereum_support::{web3::types::Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
 use secp256k1_support::KeyPair;
-use std::{str::FromStr, time::Duration};
+use std::str::FromStr;
 
 mod erc20_harness;
 mod ether_harness;
@@ -21,7 +21,6 @@ pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
 }
 
 pub const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
-pub const HTLC_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug)]
 pub struct CustomSizeSecret(pub Vec<u8>);

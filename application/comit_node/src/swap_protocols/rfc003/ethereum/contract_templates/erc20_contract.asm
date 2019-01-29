@@ -1,8 +1,5 @@
 {
-    // Placeholder for deployment timestamp
-    0x50000005
-
-    // Load expect secret size
+    // Placeholder for correct secret size
     0x20
 
     // Load received secret size
@@ -38,13 +35,10 @@
 
     timestamp
 
-    // Subtract current timestamp from deployment timestamp (pushed to stack as first instruction of this contract)
-    sub
+    // Placeholder for refund timestamp 
+    0x50000005
 
-    // Placeholder for relative expiry time
-    0x20000002
-
-    // Compare relative expiry timestamp with result of subtraction
+    // Compare refund timestamp with current timestamp
     lt
 
     // Jump to refund if time is expired

@@ -10,9 +10,7 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::{
-    ether_harness, CustomSizeSecret, EtherHarnessParams, HTLC_TIMEOUT, SECRET,
-};
+use crate::htlc_harness::{ether_harness, CustomSizeSecret, EtherHarnessParams, SECRET};
 use ethereum_support::{Bytes, EtherQuantity, H256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
@@ -52,10 +50,11 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 }
 
 #[test]
-fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
+fn given_deployed_htlc_when_refunded_after_expiry_time_then_money_is_refunded() {
     let docker = Cli::default();
+    let harness_params = EtherHarnessParams::default();
     let (_alice, bob, htlc, client, _handle, _container) =
-        ether_harness(&docker, EtherHarnessParams::default());
+        ether_harness(&docker, harness_params.clone());
 
     assert_eq!(
         client.eth_balance_of(bob),
@@ -67,8 +66,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
     );
 
     // Wait for the contract to expire
-    ::std::thread::sleep(HTLC_TIMEOUT);
-    ::std::thread::sleep(HTLC_TIMEOUT);
+    ::std::thread::sleep(harness_params.relative_timelock);
     client.send_data(htlc, None);
 
     assert_eq!(
@@ -82,7 +80,7 @@ fn given_deployed_htlc_when_refunded_after_timeout_then_money_is_refunded() {
 }
 
 #[test]
-fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
+fn given_deployed_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_then_nothing_happens() {
     let docker = Cli::default();
     let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
@@ -96,7 +94,7 @@ fn given_deployed_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothin
         EtherQuantity::from_eth(0.4).wei()
     );
 
-    // Wait for the contract to expire
+    // Don't wait for the timeout and don't send a secret
     client.send_data(htlc, None);
 
     assert_eq!(
@@ -131,12 +129,12 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
 #[test]
 fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let docker = Cli::default();
+    let harness_params = EtherHarnessParams::default();
     let (_alice, _bob, htlc, client, _handle, _container) =
-        ether_harness(&docker, EtherHarnessParams::default());
+        ether_harness(&docker, harness_params.clone());
 
-    // Wait for the contract to expire
-    ::std::thread::sleep(HTLC_TIMEOUT);
-    ::std::thread::sleep(HTLC_TIMEOUT);
+    // Wait for the timelock to expire
+    ::std::thread::sleep(harness_params.relative_timelock);
     let transaction_receipt = client.send_data(htlc, None);
 
     assert_that(&transaction_receipt.logs).has_length(1);

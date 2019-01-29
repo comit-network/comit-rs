@@ -30,12 +30,6 @@ pub trait Htlc {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Seconds(pub u64);
 
-impl From<u32> for Seconds {
-    fn from(item: u32) -> Self {
-        Seconds(item as u64)
-    }
-}
-
 impl From<Duration> for Seconds {
     fn from(duration: Duration) -> Self {
         Seconds(duration.as_secs())
@@ -57,8 +51,7 @@ impl Ledger for Ethereum {
 impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
     fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
         EtherHtlc::new(
-            // TODO: Ether HTLC should accept timestamps, not Seconds
-            htlc_params.expiry.0.into(),
+            htlc_params.expiry,
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
             htlc_params.secret_hash,
@@ -75,8 +68,7 @@ impl HtlcParams<Ethereum, EtherQuantity> {
 impl From<HtlcParams<Ethereum, Erc20Quantity>> for Erc20Htlc {
     fn from(htlc_params: HtlcParams<Ethereum, Erc20Quantity>) -> Self {
         Erc20Htlc::new(
-            // TODO: ERC20 HTLC should accept timestamps, not Seconds
-            htlc_params.expiry.0.into(),
+            htlc_params.expiry,
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
             htlc_params.secret_hash,

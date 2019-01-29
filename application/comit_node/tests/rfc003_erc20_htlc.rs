@@ -12,7 +12,7 @@ pub mod parity_client;
 
 use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
-    htlc_harness::{erc20_harness, CustomSizeSecret, Erc20HarnessParams, HTLC_TIMEOUT, SECRET},
+    htlc_harness::{erc20_harness, CustomSizeSecret, Erc20HarnessParams, SECRET},
 };
 use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
@@ -91,10 +91,11 @@ fn given_funded_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred
 }
 
 #[test]
-fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunded() {
+fn given_deployed_erc20_htlc_when_refunded_after_expiry_time_then_tokens_are_refunded() {
     let docker = Cli::default();
+    let harness_params = Erc20HarnessParams::default();
     let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
-        erc20_harness(&docker, Erc20HarnessParams::default());
+        erc20_harness(&docker, harness_params.clone());
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
@@ -114,8 +115,7 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
     assert_eq!(client.token_balance_of(token, alice), U256::from(600));
 
     // Wait for the contract to expire
-    ::std::thread::sleep(HTLC_TIMEOUT);
-    ::std::thread::sleep(HTLC_TIMEOUT);
+    ::std::thread::sleep(harness_params.relative_timelock);
     client.send_data(htlc_address, None);
 
     assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
@@ -124,7 +124,8 @@ fn given_deployed_erc20_htlc_when_refunded_after_timeout_then_tokens_are_refunde
 }
 
 #[test]
-fn given_deployed_erc20_htlc_when_timeout_not_yet_reached_and_wrong_secret_then_nothing_happens() {
+fn given_deployed_erc20_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_then_nothing_happens(
+) {
     let docker = Cli::default();
     let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
@@ -233,8 +234,9 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg() {
 #[test]
 fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let docker = Cli::default();
+    let harness_params = Erc20HarnessParams::default();
     let (_alice, _bob, htlc_address, htlc, token, client, _handle, _container) =
-        erc20_harness(&docker, Erc20HarnessParams::default());
+        erc20_harness(&docker, harness_params.clone());
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
@@ -247,8 +249,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     });
 
     // Wait for the contract to expire
-    ::std::thread::sleep(HTLC_TIMEOUT);
-    ::std::thread::sleep(HTLC_TIMEOUT);
+    ::std::thread::sleep(harness_params.relative_timelock);
     // Send correct secret to contract
     let transaction_receipt = client.send_data(htlc_address, None);
 

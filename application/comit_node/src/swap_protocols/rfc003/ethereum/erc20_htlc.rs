@@ -1,12 +1,12 @@
 use crate::swap_protocols::rfc003::{
-    ethereum::{ByteCode, Htlc, Seconds},
-    SecretHash,
+    ethereum::{ByteCode, Htlc},
+    SecretHash, Timestamp,
 };
 use ethereum_support::{web3::types::Bytes, Address, U256};
 
 #[derive(Debug, Clone)]
 pub struct Erc20Htlc {
-    refund_timeout: Seconds,
+    refund_timestamp: Timestamp,
     refund_address: Address,
     redeem_address: Address,
     secret_hash: SecretHash,
@@ -19,7 +19,7 @@ impl Erc20Htlc {
         include_str!("./contract_templates/out/erc20_contract.asm.hex");
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
-    const REFUND_TIMEOUT_PLACEHOLDER: &'static str = "20000002";
+    const REFUND_TIMESTAMP_PLACEHOLDER: &'static str = "50000005";
     const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const AMOUNT_PLACEHOLDER: &'static str =
@@ -33,7 +33,7 @@ impl Erc20Htlc {
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
 
     pub fn new(
-        refund_timeout: Seconds,
+        refund_timestamp: Timestamp,
         refund_address: Address,
         redeem_address: Address,
         secret_hash: SecretHash,
@@ -41,7 +41,7 @@ impl Erc20Htlc {
         amount: U256,
     ) -> Self {
         let htlc = Erc20Htlc {
-            refund_timeout,
+            refund_timestamp,
             refund_address,
             redeem_address,
             secret_hash,
@@ -50,7 +50,7 @@ impl Erc20Htlc {
         };
 
         trace!("Created new ERC20 HTLC for ethereum: {:#?}", htlc);
-        trace!("Refund timeout: {:?} seconds", refund_timeout);
+        trace!("Refund timestamp: {:?}", refund_timestamp);
 
         htlc
     }
@@ -93,7 +93,7 @@ impl Erc20Htlc {
 
 impl Htlc for Erc20Htlc {
     fn compile_to_hex(&self) -> ByteCode {
-        let refund_timeout = format!("{:0>8x}", self.refund_timeout.0);
+        let refund_timestamp = format!("{:x}", self.refund_timestamp.0);
         let redeem_address = format!("{:x}", self.redeem_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
@@ -103,7 +103,7 @@ impl Htlc for Erc20Htlc {
 
         let contract_code = Self::CONTRACT_CODE_TEMPLATE
             .to_string()
-            .replace(Self::REFUND_TIMEOUT_PLACEHOLDER, &refund_timeout)
+            .replace(Self::REFUND_TIMESTAMP_PLACEHOLDER, &refund_timestamp)
             .replace(Self::REDEEM_ADDRESS_PLACEHOLDER, &redeem_address)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash)
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() {
         let htlc = Erc20Htlc::new(
-            Seconds(100),
+            Timestamp(1548718334),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn computes_funding_tx_payload_correctly() {
         let htlc = Erc20Htlc::new(
-            Seconds(100),
+            Timestamp(1548718334),
             Address::new(),
             Address::new(),
             SecretHash::from_str(

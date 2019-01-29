@@ -1,9 +1,9 @@
 use crate::{
     ethereum_wallet::InMemoryWallet,
-    htlc_harness::{new_account, HTLC_TIMEOUT, SECRET},
+    htlc_harness::{new_account, SECRET},
     parity_client::ParityClient,
 };
-use comit_node::swap_protocols::rfc003::{ethereum::Erc20Htlc, Secret, SecretHash};
+use comit_node::swap_protocols::rfc003::{ethereum::Erc20Htlc, Secret, SecretHash, Timestamp};
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -11,14 +11,18 @@ use ethereum_support::{
     },
     EtherQuantity,
 };
-use std::{sync::Arc, time::Duration};
+use std::{
+    sync::Arc,
+    time::{Duration, SystemTime},
+};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Erc20HarnessParams {
     pub alice_initial_ether: EtherQuantity,
-    pub htlc_timeout: Duration,
+    pub htlc_refund_timestamp: Timestamp,
+    pub relative_timelock: Duration,
     pub htlc_secret_hash: SecretHash,
     pub alice_initial_tokens: U256,
     pub htlc_token_value: U256,
@@ -26,9 +30,17 @@ pub struct Erc20HarnessParams {
 
 impl Default for Erc20HarnessParams {
     fn default() -> Self {
+        let current_timestamp = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime::duration_since failed")
+            .as_secs() as u32;
+        let relative_timelock = 10;
+        let htlc_refund_timestamp = Timestamp(current_timestamp + relative_timelock);
+
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_timeout: HTLC_TIMEOUT,
+            htlc_refund_timestamp,
+            relative_timelock: Duration::from_secs(relative_timelock as u64),
             htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
@@ -82,7 +94,7 @@ pub fn erc20_harness<D: Docker>(
     alice_client.mint_tokens(token_contract, params.alice_initial_tokens, alice);
 
     let erc20_htlc = Erc20Htlc::new(
-        params.htlc_timeout.into(),
+        params.htlc_refund_timestamp,
         alice,
         bob,
         params.htlc_secret_hash,
