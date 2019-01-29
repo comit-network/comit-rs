@@ -83,7 +83,7 @@ impl<R: Role> OngoingSwap<R> {
             ledger: self.alpha_ledger.clone(),
             redeem_identity: self.alpha_ledger_redeem_identity.clone().into(),
             refund_identity: self.alpha_ledger_refund_identity.clone().into(),
-            expiry: self.alpha_expiry.clone(),
+            expiry: self.alpha_expiry,
             secret_hash: self.secret.clone().into(),
         }
     }
@@ -94,7 +94,7 @@ impl<R: Role> OngoingSwap<R> {
             ledger: self.beta_ledger.clone(),
             redeem_identity: self.beta_ledger_redeem_identity.clone().into(),
             refund_identity: self.beta_ledger_refund_identity.clone().into(),
-            expiry: self.beta_expiry.clone(),
+            expiry: self.beta_expiry,
             secret_hash: self.secret.clone().into(),
         }
     }
@@ -231,8 +231,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             beta_ledger: state.beta_ledger.clone(),
             alpha_ledger_refund_identity: state.alpha_ledger_refund_identity.clone().into(),
             beta_ledger_redeem_identity: state.beta_ledger_redeem_identity.clone().into(),
-            alpha_expiry: state.alpha_expiry.clone(),
-            beta_expiry: state.beta_expiry.clone(),
+            alpha_expiry: state.alpha_expiry,
+            beta_expiry: state.beta_expiry,
             secret_hash: state.secret.clone().into(),
         };
 
@@ -590,8 +590,8 @@ impl<R: Role> SwapStates<R> {
                 beta_asset: swap.beta_asset.clone(),
                 alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
                 beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
-                alpha_expiry: swap.alpha_expiry.clone(),
-                beta_expiry: swap.beta_expiry.clone(),
+                alpha_expiry: swap.alpha_expiry,
+                beta_expiry: swap.beta_expiry,
                 secret: swap.secret.clone(),
                 role: swap.role.clone(),
             }),
@@ -616,7 +616,7 @@ impl<R: Role> SwapStates<R> {
             | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
-                Some(swap.beta_expiry.clone())
+                Some(swap.beta_expiry)
             }
             SS::Start(ref start) => Some(start.beta_expiry),
             SS::Final(_) | SS::Error(_) => None,
