@@ -31,7 +31,7 @@ impl Default for EtherHarnessParams {
             .expect("SystemTime::duration_since failed")
             .as_secs() as u32;
         let relative_timelock = 10;
-        let htlc_refund_timestamp = Timestamp(current_timestamp + relative_timelock);
+        let htlc_refund_timestamp = Timestamp::from(current_timestamp + relative_timelock);
 
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),

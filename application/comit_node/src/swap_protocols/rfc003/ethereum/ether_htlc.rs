@@ -55,7 +55,7 @@ impl EtherHtlc {
 
 impl Htlc for EtherHtlc {
     fn compile_to_hex(&self) -> ByteCode {
-        let refund_timestamp = format!("{:x}", self.refund_timestamp.0);
+        let refund_timestamp = format!("{:x}", u32::from(self.refund_timestamp));
         let redeem_address = format!("{:x}", self.redeem_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() {
         let htlc = EtherHtlc::new(
-            Timestamp(1548718334),
+            Timestamp::from(1548718334),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn given_input_data_when_compiled_should_no_longer_contain_placeholders() {
         let htlc = EtherHtlc::new(
-            Timestamp(1548718334),
+            Timestamp::from(1548718334),
             Address::new(),
             Address::new(),
             SecretHash::from_str(

@@ -48,7 +48,7 @@ mod tests {
                 "d38e554430c4035f2877a579a07a99886153f072",
             )
             .unwrap(),
-            expiry: Timestamp(123456789),
+            expiry: Timestamp::from(123456789),
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").into(),
         }
     }

@@ -18,6 +18,7 @@ mod role;
 mod save_state;
 mod secret;
 mod secret_source;
+mod timestamp;
 
 mod create_ledger_events;
 #[cfg(test)]
@@ -33,8 +34,5 @@ pub use self::{
     save_state::SaveState,
     secret::{FromErr, RandomnessSource, Secret, SecretHash},
     secret_source::*,
+    timestamp::Timestamp,
 };
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
-#[serde(transparent)]
-pub struct Timestamp(pub u32);

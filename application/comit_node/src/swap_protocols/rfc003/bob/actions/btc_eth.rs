@@ -135,8 +135,8 @@ mod tests {
             beta_ledger: Ethereum::default(),
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_expiry: Timestamp(123456789),
-            beta_expiry: Timestamp(123456789),
+            alpha_expiry: Timestamp::from(123456789),
+            beta_expiry: Timestamp::from(123456789),
             secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
             role: bobisha,
         });

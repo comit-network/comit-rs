@@ -72,7 +72,7 @@ fn fund_htlc(
         .expect("SystemTime::duration_since failed")
         .as_secs() as u32;
     let relative_timelock = 10;
-    let absolute_timelock = Timestamp(current_timestamp + relative_timelock);
+    let absolute_timelock = Timestamp::from(current_timestamp + relative_timelock);
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
     let htlc = Htlc::new(
