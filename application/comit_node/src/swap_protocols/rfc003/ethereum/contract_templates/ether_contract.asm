@@ -1,6 +1,6 @@
 {
-    // Placeholder for correct secret size
-    0x20
+    // Load expected secret size
+    32
 
     // Load received secret size
     calldatasize
