@@ -138,7 +138,7 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() {
         let htlc = Erc20Htlc::new(
-            Timestamp::from(1548718334),
+            Timestamp::from(3000000),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn computes_funding_tx_payload_correctly() {
         let htlc = Erc20Htlc::new(
-            Timestamp::from(1548718334),
+            Timestamp::from(2000000000),
             Address::new(),
             Address::new(),
             SecretHash::from_str(

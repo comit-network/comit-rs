@@ -441,8 +441,8 @@ mod tests {
                 },
                 "alpha_ledger_refund_identity": null,
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_expiry": 123456789,
-                "beta_expiry": 123456789,
+                "alpha_expiry": 2000000000,
+                "beta_expiry": 2000000000,
                 "peer": "127.0.0.1:8002"
             }"#;
 
@@ -453,8 +453,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(123456789),
-            beta_expiry: Timestamp::from(123456789),
+            alpha_expiry: Timestamp::from(2000000000),
+            beta_expiry: Timestamp::from(2000000000),
             identities: SwapRequestBodyIdentities::OnlyRedeem {
                 beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
@@ -485,8 +485,8 @@ mod tests {
                 },
                 "alpha_ledger_refund_identity": null,
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_expiry": 123456789,
-                "beta_expiry": 123456789,
+                "alpha_expiry": 2000000000,
+                "beta_expiry": 2000000000,
                 "peer": "127.0.0.1"
             }"#;
 
@@ -497,8 +497,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(123456789),
-            beta_expiry: Timestamp::from(123456789),
+            alpha_expiry: Timestamp::from(2000000000),
+            beta_expiry: Timestamp::from(2000000000),
             identities: SwapRequestBodyIdentities::OnlyRedeem {
                 beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",

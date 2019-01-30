@@ -96,7 +96,7 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() {
         let htlc = EtherHtlc::new(
-            Timestamp::from(1548718334),
+            Timestamp::from(3000000),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn given_input_data_when_compiled_should_no_longer_contain_placeholders() {
         let htlc = EtherHtlc::new(
-            Timestamp::from(1548718334),
+            Timestamp::from(2000000000),
             Address::new(),
             Address::new(),
             SecretHash::from_str(
