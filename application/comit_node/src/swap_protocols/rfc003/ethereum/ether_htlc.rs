@@ -15,7 +15,7 @@ pub struct EtherHtlc {
 impl EtherHtlc {
     const CONTRACT_CODE_TEMPLATE: &'static str =
         include_str!("./contract_templates/out/ether_contract.asm.hex");
-    const REFUND_TIMESTAMP_PLACEHOLDER: &'static str = "50000005";
+    const REFUND_TIMESTAMP_PLACEHOLDER: &'static str = "20000002";
     const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =

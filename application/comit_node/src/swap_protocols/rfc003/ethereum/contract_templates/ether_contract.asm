@@ -36,7 +36,7 @@
     timestamp
 
     // Placeholder for refund timestamp
-    0x50000005
+    0x20000002
 
     // Compare refund timestamp with current timestamp
     lt
