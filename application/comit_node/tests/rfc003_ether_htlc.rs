@@ -80,7 +80,7 @@ fn given_deployed_htlc_when_refunded_after_expiry_time_then_money_is_refunded() 
 }
 
 #[test]
-fn given_deployed_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_then_nothing_happens() {
+fn given_htlc_and_refund_before_expiry_nothing_happens() {
     let docker = Cli::default();
     let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
