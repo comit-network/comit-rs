@@ -38,7 +38,7 @@ impl Htlc {
         sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
         absolute_timelock: Timestamp,
-    ) -> Htlc {
+    ) -> Self {
         let recipient_redeem_pubkey_hash = recipient_redeem_pubkey_hash.into();
         let sender_refund_pubkey_hash = sender_refund_pubkey_hash.into();
         let script = create_htlc(
@@ -48,17 +48,13 @@ impl Htlc {
             absolute_timelock,
         );
 
-        let htlc = Htlc {
+        Self {
             recipient_redeem_pubkey_hash,
             sender_refund_pubkey_hash,
             secret_hash,
             absolute_timelock,
             script,
-        };
-
-        trace!("Created new Bitcoin HTLC: {:#?}", htlc);
-
-        htlc
+        }
     }
 
     pub fn script(&self) -> &Script {

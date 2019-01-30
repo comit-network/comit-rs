@@ -32,17 +32,12 @@ impl EtherHtlc {
         redeem_address: Address,
         secret_hash: SecretHash,
     ) -> Self {
-        let htlc = Self {
+        Self {
             refund_timestamp,
             refund_address,
             redeem_address,
             secret_hash,
-        };
-
-        trace!("Created new HTLC for ethereum: {:#?}", htlc);
-        trace!("Refund timestamp: {:?}", refund_timestamp);
-
-        htlc
+        }
     }
 
     pub fn deployment_gas_limit(&self) -> U256 {

@@ -40,19 +40,14 @@ impl Erc20Htlc {
         token_contract_address: Address,
         amount: Erc20Quantity,
     ) -> Self {
-        let htlc = Self {
+        Self {
             refund_timestamp,
             refund_address,
             redeem_address,
             secret_hash,
             token_contract_address,
             amount,
-        };
-
-        trace!("Created new ERC20 HTLC for ethereum: {:#?}", htlc);
-        trace!("Refund timestamp: {:?}", refund_timestamp);
-
-        htlc
+        }
     }
 
     /// Constructs the payload for funding an `Erc20` HTLC located at the given
