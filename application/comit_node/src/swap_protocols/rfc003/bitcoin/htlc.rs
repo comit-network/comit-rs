@@ -25,7 +25,7 @@ pub struct Htlc {
     recipient_redeem_pubkey_hash: PubkeyHash,
     sender_refund_pubkey_hash: PubkeyHash,
     secret_hash: SecretHash,
-    absolute_timelock: Timestamp,
+    refund_timestamp: Timestamp,
     script: Script,
 }
 
@@ -37,7 +37,7 @@ impl Htlc {
         recipient_redeem_pubkey_hash: RecipientRedeemPubkeyHash,
         sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
-        absolute_timelock: Timestamp,
+        refund_timestamp: Timestamp,
     ) -> Self {
         let recipient_redeem_pubkey_hash = recipient_redeem_pubkey_hash.into();
         let sender_refund_pubkey_hash = sender_refund_pubkey_hash.into();
@@ -45,14 +45,14 @@ impl Htlc {
             &recipient_redeem_pubkey_hash,
             &sender_refund_pubkey_hash,
             secret_hash.raw(),
-            absolute_timelock,
+            refund_timestamp,
         );
 
         Self {
             recipient_redeem_pubkey_hash,
             sender_refund_pubkey_hash,
             secret_hash,
-            absolute_timelock,
+            refund_timestamp,
             script,
         }
     }
@@ -119,7 +119,7 @@ impl Htlc {
                 Witness::PrevScript,
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
-            locktime: self.absolute_timelock.into(),
+            locktime: self.refund_timestamp.into(),
             prev_script: self.script.clone(),
         }
     }
