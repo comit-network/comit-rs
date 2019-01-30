@@ -142,7 +142,6 @@ describe("RFC003: Bitcoin for ERC20", () => {
         let bob_response = {
             beta_ledger_refund_identity: bob.wallet.eth().address(),
             alpha_ledger_redeem_identity: null,
-            beta_ledger_lock_duration: 43200,
         };
 
         logger.info(
