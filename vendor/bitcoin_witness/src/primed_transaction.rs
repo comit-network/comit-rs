@@ -99,13 +99,11 @@ impl PrimedTransaction {
         }
     }
 
-    fn _set_locktime(self, transaction: &mut Transaction) {
-        transaction.lock_time = self
-            .inputs
+    fn max_locktime(&self) -> Option<u32> {
+        self.inputs
             .iter()
             .map(|input| input.input_parameters.locktime)
             .max()
-            .unwrap_or(0);
     }
 
     pub fn sign_with_rate(self, fee_per_byte: f64) -> Result<Transaction, Error> {
@@ -116,7 +114,7 @@ impl PrimedTransaction {
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
-        self.clone()._set_locktime(&mut transaction);
+        transaction.lock_time = self.max_locktime().unwrap_or(0);
 
         self._sign(&mut transaction);
         Ok(transaction)
@@ -127,7 +125,7 @@ impl PrimedTransaction {
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
-        self.clone()._set_locktime(&mut transaction);
+        transaction.lock_time = self.max_locktime().unwrap_or(0);
 
         self._sign(&mut transaction);
         transaction
