@@ -11,7 +11,7 @@ use ethereum_support::{
     },
     Erc20Quantity, EtherQuantity,
 };
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -42,13 +42,6 @@ impl Erc20HarnessParams {
             htlc_secret_hash: secret_hash,
             ..self
         }
-    }
-
-    pub fn sleep_until(timestamp: Timestamp) {
-        let duration = timestamp.diff(Timestamp::now());
-        let buffer = 2;
-
-        ::std::thread::sleep(Duration::from_secs((duration + buffer).into()));
     }
 }
 

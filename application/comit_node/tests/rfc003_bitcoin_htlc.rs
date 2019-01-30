@@ -22,11 +22,7 @@ use bitcoin_witness::{
 use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret, SecretHash, Timestamp};
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
-use std::{
-    str::FromStr,
-    thread::sleep,
-    time::{Duration, SystemTime},
-};
+use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 impl CustomSizeSecret {
@@ -55,7 +51,7 @@ fn fund_htlc(
     rpc::TransactionOutput,
     BitcoinQuantity,
     Htlc,
-    u64,
+    Timestamp,
     KeyPair,
     KeyPair,
 ) {
@@ -67,19 +63,14 @@ fn fund_htlc(
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
     let refund_keypair: KeyPair = refund_privkey.secret_key().clone().into();
     let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().clone().into();
-    let current_timestamp = SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .expect("SystemTime::duration_since failed")
-        .as_secs() as u32;
-    let relative_timelock = 10;
-    let absolute_timelock = Timestamp::from(current_timestamp + relative_timelock);
+    let refund_timestamp = Timestamp::now().plus(10);
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
     let htlc = Htlc::new(
         redeem_pubkey_hash,
         refund_pubkey_hash,
         secret_hash,
-        absolute_timelock,
+        refund_timestamp,
     );
 
     let htlc_address = htlc.compute_address(Network::Regtest);
@@ -98,7 +89,7 @@ fn fund_htlc(
         vout.clone(),
         amount,
         htlc,
-        relative_timelock as u64,
+        refund_timestamp,
         redeem_keypair,
         refund_keypair,
     )
@@ -161,7 +152,7 @@ fn redeem_refund_htlc() {
     client.generate(432).unwrap().unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let (txid, vout, input_amount, htlc, relative_timelock, _, keypair) =
+    let (txid, vout, input_amount, htlc, refund_timestamp, _, keypair) =
         fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
@@ -191,8 +182,7 @@ fn redeem_refund_htlc() {
     );
 
     // Sleep for a bit longer than needed
-    let sleep_time = relative_timelock as f64 * 1.5;
-    sleep(Duration::from_secs(sleep_time as u64));
+    Timestamp::sleep_until(refund_timestamp);
 
     client.generate(1).unwrap().unwrap();
 
