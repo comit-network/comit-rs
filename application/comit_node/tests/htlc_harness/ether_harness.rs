@@ -25,16 +25,9 @@ pub struct EtherHarnessParams {
 
 impl Default for EtherHarnessParams {
     fn default() -> Self {
-        let current_time = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime::duration_since failed")
-            .as_secs() as u32;
-        let offset = 10;
-        let htlc_refund_timestamp = Timestamp::from(current_time + offset);
-
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_refund_timestamp,
+            htlc_refund_timestamp: Timestamp::after(10),
             htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
             htlc_eth_value: EtherQuantity::from_eth(0.4),
         }

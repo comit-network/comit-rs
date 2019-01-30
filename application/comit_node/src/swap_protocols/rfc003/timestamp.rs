@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
@@ -25,5 +25,20 @@ impl From<Timestamp> for Duration {
 impl From<Timestamp> for i64 {
     fn from(item: Timestamp) -> Self {
         i64::from(item.0)
+    }
+}
+
+impl Timestamp {
+    pub fn after(seconds: u32) -> Self {
+        let now = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime::duration_since failed")
+            .as_secs() as u32;
+
+        (now + seconds).into()
+    }
+
+    pub fn now() -> Self {
+        Timestamp::after(0)
     }
 }
