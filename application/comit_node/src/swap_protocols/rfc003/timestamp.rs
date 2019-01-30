@@ -8,6 +8,8 @@ use std::{
 pub struct Timestamp(u32);
 
 impl Timestamp {
+    // This will work for the next 20 years
+    #[allow(clippy::cast_possible_truncation)]
     pub fn now() -> Self {
         Timestamp(
             SystemTime::now()
