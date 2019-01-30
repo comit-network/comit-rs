@@ -88,7 +88,7 @@ impl Erc20Htlc {
 
 impl Htlc for Erc20Htlc {
     fn compile_to_hex(&self) -> ByteCode {
-        let refund_timestamp = format!("{:x}", u32::from(self.refund_timestamp));
+        let refund_timestamp = format!("{:0>8x}", u32::from(self.refund_timestamp));
         let redeem_address = format!("{:x}", self.redeem_address);
         let refund_address = format!("{:x}", self.refund_address);
         let secret_hash = format!("{:x}", self.secret_hash);
