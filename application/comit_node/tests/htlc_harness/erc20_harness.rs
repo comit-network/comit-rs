@@ -11,10 +11,7 @@ use ethereum_support::{
     },
     Erc20Quantity, EtherQuantity,
 };
-use std::{
-    sync::Arc,
-    time::{Duration, SystemTime},
-};
+use std::{sync::Arc, time::Duration};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -31,7 +28,7 @@ impl Default for Erc20HarnessParams {
     fn default() -> Self {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_refund_timestamp: Timestamp::after(10),
+            htlc_refund_timestamp: Timestamp::now().plus(10),
             htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
@@ -48,12 +45,9 @@ impl Erc20HarnessParams {
     }
 
     pub fn sleep_until(timestamp: Timestamp) {
-        let current_time = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("SystemTime::duration_since failed");
-        let duration = Duration::from(timestamp) - current_time;
+        let duration = timestamp.diff(Timestamp::now());
 
-        ::std::thread::sleep(duration);
+        ::std::thread::sleep(Duration::from_secs(duration.into()));
     }
 }
 
