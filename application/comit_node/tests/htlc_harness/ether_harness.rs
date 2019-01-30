@@ -19,24 +19,22 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct EtherHarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_refund_timestamp: Timestamp,
-    pub relative_timelock: Duration,
     pub htlc_secret_hash: SecretHash,
     pub htlc_eth_value: EtherQuantity,
 }
 
 impl Default for EtherHarnessParams {
     fn default() -> Self {
-        let current_timestamp = SystemTime::now()
+        let current_time = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
             .expect("SystemTime::duration_since failed")
             .as_secs() as u32;
-        let relative_timelock = 10;
-        let htlc_refund_timestamp = Timestamp::from(current_timestamp + relative_timelock);
+        let offset = 10;
+        let htlc_refund_timestamp = Timestamp::from(current_time + offset);
 
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_refund_timestamp,
-            relative_timelock: Duration::from_secs(relative_timelock as u64),
             htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
             htlc_eth_value: EtherQuantity::from_eth(0.4),
         }
@@ -49,6 +47,15 @@ impl EtherHarnessParams {
             htlc_secret_hash: secret_hash,
             ..self
         }
+    }
+
+    pub fn sleep_until(timestamp: Timestamp) {
+        let current_time = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("SystemTime::duration_since failed");
+        let duration = Duration::from(timestamp) - current_time;
+
+        ::std::thread::sleep(duration);
     }
 }
 

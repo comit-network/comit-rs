@@ -66,7 +66,7 @@ fn given_deployed_htlc_when_refunded_after_expiry_time_then_money_is_refunded() 
     );
 
     // Wait for the contract to expire
-    ::std::thread::sleep(harness_params.relative_timelock);
+    EtherHarnessParams::sleep_until(harness_params.htlc_refund_timestamp);
     client.send_data(htlc, None);
 
     assert_eq!(
@@ -134,7 +134,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
         ether_harness(&docker, harness_params.clone());
 
     // Wait for the timelock to expire
-    ::std::thread::sleep(harness_params.relative_timelock);
+    EtherHarnessParams::sleep_until(harness_params.htlc_refund_timestamp);
     let transaction_receipt = client.send_data(htlc, None);
 
     assert_that(&transaction_receipt.logs).has_length(1);
