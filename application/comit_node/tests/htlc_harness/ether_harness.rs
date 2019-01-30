@@ -41,8 +41,9 @@ impl EtherHarnessParams {
 
     pub fn sleep_until(timestamp: Timestamp) {
         let duration = timestamp.diff(Timestamp::now());
+        let buffer = 2;
 
-        ::std::thread::sleep(Duration::from_secs(duration.into()));
+        ::std::thread::sleep(Duration::from_secs((duration + buffer).into()));
     }
 }
 
