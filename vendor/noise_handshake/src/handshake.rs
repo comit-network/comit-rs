@@ -4,17 +4,15 @@ use tokio::io::{AsyncRead, AsyncWrite};
 
 const NOISE_MAX_SIZE: usize = 65535;
 
-#[derive(DebugStub)]
+#[allow(missing_debug_implementations)]
 pub enum Step {
     Read {
-        #[debug_stub = "encrypted buffer"]
         enc_buffer: [u8; NOISE_MAX_SIZE],
         len: usize,
     },
     Write {
-        #[debug_stub = "buffer"]
         buffer: [u8; NOISE_MAX_SIZE],
-        remaining_bytes: usize,
+        written_bytes: usize,
         len: usize,
     },
 }
@@ -30,7 +28,7 @@ impl Step {
     fn write() -> Self {
         Step::Write {
             buffer: [0u8; NOISE_MAX_SIZE],
-            remaining_bytes: 0,
+            written_bytes: 0,
             len: 0,
         }
     }
@@ -64,11 +62,20 @@ impl InitHandshake for Session {
     }
 }
 
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct NoiseHandshake<IO: AsyncRead + AsyncWrite> {
     next: Step,
     noise: Option<Session>,
     io: Option<IO>,
+}
+
+impl<IO: AsyncRead + AsyncWrite> NoiseHandshake<IO> {
+    fn wrap_up(&mut self) -> (Session, IO) {
+        let noise = self.noise.take().expect("We know it's a Some");
+        let noise = noise.into_transport_mode().unwrap();
+        let io = self.io.take().expect("We know it's a Some");
+        (noise, io)
+    }
 }
 
 impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
@@ -79,63 +86,38 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         match self {
             Self {
-                noise: Some(noise),
-                io: Some(_),
-                ..
-            } if noise.is_handshake_finished() => {
-                let noise = self.noise.take().expect("We know it's a Some");
-                let noise = noise.into_transport_mode().unwrap();
-                let io = self.io.take().expect("We know it's a Some");
-                Ok(Async::Ready((noise, io)))
+                noise: Some(ref mut noise),
+                io: Some(ref _io),
+                next:
+                    Step::Write {
+                        ref mut buffer,
+                        ref mut len,
+                        ..
+                    },
+            } if *len == 0 => {
+                *len = noise.write_message(&[], buffer).unwrap();
+                self.poll()
             }
             Self {
                 noise: Some(ref mut noise),
                 io: Some(ref mut io),
                 next:
                     Step::Write {
-                        mut buffer,
-                        mut remaining_bytes,
-                        mut len,
-                    },
-            } if remaining_bytes == 0 => {
-                len = noise.write_message(&[], &mut buffer).unwrap();
-
-                let mut num_bytes_written = 0;
-                while num_bytes_written < len {
-                    num_bytes_written = try_ready!(io.poll_write(&buffer[num_bytes_written..len]));
-                    #[allow(unused_assignments)]
-                    // remaining_bytes is a mut from the matching pattern
-                    // hence this assignment modify self. If at the next loop try_ready! returns
-                    // then the value stored in remaining_bytes will be read 2
-                    // lines above
-                    remaining_bytes = len - num_bytes_written;
-                }
-                self.next = Step::read();
-                self.poll()
-            }
-            Self {
-                noise: Some(ref mut _noise),
-                io: Some(ref mut io),
-                next:
-                    Step::Write {
                         buffer,
-                        mut remaining_bytes,
+                        ref mut written_bytes,
                         len,
                     },
                 ..
             } => {
-                let mut num_bytes_written = *len - remaining_bytes;
-                while num_bytes_written < *len {
-                    num_bytes_written = try_ready!(io.poll_write(&buffer[num_bytes_written..*len]));
-                    #[allow(unused_assignments)]
-                    // remaining_bytes is a mut from the matching pattern
-                    // hence this assignment modify self. If at the next loop try_ready! returns
-                    // then the value stored in remaining_bytes will be read 2
-                    // lines above
-                    remaining_bytes = *len - num_bytes_written;
+                while written_bytes < len {
+                    *written_bytes = try_ready!(io.poll_write(&buffer[*written_bytes..*len]));
                 }
-                self.next = Step::read();
-                self.poll()
+                if noise.is_handshake_finished() {
+                    Ok(Async::Ready(self.wrap_up()))
+                } else {
+                    self.next = Step::read();
+                    self.poll()
+                }
             }
             Self {
                 noise: Some(ref mut noise),
@@ -143,20 +125,23 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                 next:
                     Step::Read {
                         mut enc_buffer,
-                        mut len,
+                        ref mut len,
                     },
             } => {
                 let mut dec_buffer = [0u8; NOISE_MAX_SIZE];
 
-                loop {
-                    len = try_ready!(io.poll_read(&mut enc_buffer[len..]));
-                    match noise.read_message(&enc_buffer[..len], &mut dec_buffer) {
-                        Ok(_) => break,
+                *len += try_ready!(io.poll_read(&mut enc_buffer[*len..]));
+                if *len > 0 {
+                    match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
+                        Ok(_) => self.next = Step::write(),
                         Err(e) => debug!("Error decoding message: {:?}", e),
                     };
                 }
-                self.next = Step::write();
-                self.poll()
+                if noise.is_handshake_finished() {
+                    Ok(Async::Ready(self.wrap_up()))
+                } else {
+                    self.poll()
+                }
             }
             Self { noise: None, .. } => {
                 panic!("Future is already resolved!");
