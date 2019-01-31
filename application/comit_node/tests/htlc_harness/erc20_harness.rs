@@ -1,12 +1,9 @@
 use crate::{
     ethereum_wallet::InMemoryWallet,
-    htlc_harness::{new_account, HTLC_TIMEOUT, SECRET},
+    htlc_harness::{new_account, SECRET},
     parity_client::ParityClient,
 };
-use comit_node::swap_protocols::rfc003::{
-    ethereum::{Erc20Htlc, Seconds},
-    Secret, SecretHash,
-};
+use comit_node::swap_protocols::rfc003::{ethereum::Erc20Htlc, Secret, SecretHash, Timestamp};
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -14,14 +11,14 @@ use ethereum_support::{
     },
     Erc20Quantity, EtherQuantity,
 };
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Erc20HarnessParams {
     pub alice_initial_ether: EtherQuantity,
-    pub htlc_timeout: Duration,
+    pub htlc_refund_timestamp: Timestamp,
     pub htlc_secret_hash: SecretHash,
     pub alice_initial_tokens: U256,
     pub htlc_token_value: U256,
@@ -31,7 +28,7 @@ impl Default for Erc20HarnessParams {
     fn default() -> Self {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
-            htlc_timeout: HTLC_TIMEOUT,
+            htlc_refund_timestamp: Timestamp::now().plus(10),
             htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
@@ -85,7 +82,7 @@ pub fn erc20_harness<D: Docker>(
     alice_client.mint_tokens(token_contract, params.alice_initial_tokens, alice);
 
     let erc20_htlc = Erc20Htlc::new(
-        Seconds::from(params.htlc_timeout),
+        params.htlc_refund_timestamp,
         alice,
         bob,
         params.htlc_secret_hash,

@@ -1,9 +1,9 @@
-use comit_node::swap_protocols::rfc003::SecretHash;
+use comit_node::swap_protocols::rfc003::{SecretHash, Timestamp};
 use crypto::{digest::Digest, sha2::Sha256};
 use ethereum_support::{web3::types::Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
 use secp256k1_support::KeyPair;
-use std::{str::FromStr, time::Duration};
+use std::{str::FromStr, thread::sleep, time::Duration};
 
 mod erc20_harness;
 mod ether_harness;
@@ -21,7 +21,6 @@ pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
 }
 
 pub const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
-pub const HTLC_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug)]
 pub struct CustomSizeSecret(pub Vec<u8>);
@@ -44,4 +43,15 @@ impl FromStr for CustomSizeSecret {
         let secret = s.as_bytes().to_vec();
         Ok(CustomSizeSecret(secret))
     }
+}
+
+fn diff(first: Timestamp, second: Timestamp) -> u32 {
+    u32::from(first).checked_sub(u32::from(second)).unwrap_or(0)
+}
+
+pub fn sleep_until(timestamp: Timestamp) {
+    let duration = diff(timestamp, Timestamp::now());
+    let buffer = 2;
+
+    sleep(Duration::from_secs((duration + buffer).into()));
 }

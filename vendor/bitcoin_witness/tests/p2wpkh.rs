@@ -33,7 +33,6 @@ fn redeem_single_p2wpkh() {
             keypair.p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
-        locktime: 0,
     }
     .sign_with_fee(fee);
 
@@ -101,7 +100,6 @@ fn redeem_two_p2wpkh() {
             ),
         ],
         output_address: alice_addr.clone(),
-        locktime: 0,
     }
     .sign_with_fee(fee);
 

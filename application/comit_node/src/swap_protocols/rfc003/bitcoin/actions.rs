@@ -19,7 +19,6 @@ impl SpendOutput {
     pub fn spend_to(self, to_address: Address) -> PrimedTransaction {
         PrimedTransaction {
             inputs: vec![self.output],
-            locktime: 0,
             output_address: to_address,
         }
     }

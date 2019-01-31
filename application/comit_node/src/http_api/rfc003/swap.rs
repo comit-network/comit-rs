@@ -3,7 +3,6 @@ use crate::{
         self,
         asset::{HttpAsset, ToHttpAsset},
         ledger::{HttpLedger, ToHttpLedger},
-        lock_duration::{HttpLockDuration, ToHttpLockDuration},
         problem::{self, HttpApiProblemStdError},
         rfc003::socket_addr,
     },
@@ -14,7 +13,7 @@ use crate::{
             self,
             alice::{AliceSpawner, SwapRequestIdentities},
             state_store::StateStore,
-            Actions, Alice, Bob, Ledger, SecretSource,
+            Actions, Alice, Bob, Ledger, SecretSource, Timestamp,
         },
         Metadata, MetadataStore, RoleKind, SwapId,
     },
@@ -59,7 +58,8 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     alpha_ledger: AL,
     #[serde(with = "http_api::ledger::serde")]
     beta_ledger: BL,
-    alpha_ledger_lock_duration: AL::LockDuration,
+    alpha_expiry: Timestamp,
+    beta_expiry: Timestamp,
     #[serde(flatten)]
     identities: SwapRequestBodyIdentities<AL::Identity, BL::Identity>,
     #[serde(with = "socket_addr")]
@@ -173,7 +173,8 @@ where
             beta_asset: body.beta_asset,
             alpha_ledger: body.alpha_ledger,
             beta_ledger: body.beta_ledger,
-            alpha_ledger_lock_duration: body.alpha_ledger_lock_duration,
+            alpha_expiry: body.alpha_expiry,
+            beta_expiry: body.beta_expiry,
             identities: SwapRequestIdentities::from_swap_request_body_identities(
                 body.identities,
                 id,
@@ -192,7 +193,8 @@ pub struct UnsupportedSwapRequestBody {
     beta_ledger: HttpLedger,
     alpha_ledger_refund_identity: Option<String>,
     beta_ledger_redeem_identity: Option<String>,
-    alpha_ledger_lock_duration: i64,
+    alpha_expiry: Timestamp,
+    beta_expiry: Timestamp,
 }
 
 #[derive(Serialize, Debug)]
@@ -279,9 +281,8 @@ pub struct SwapDescription {
     beta_ledger: HttpLedger,
     alpha_asset: HttpAsset,
     beta_asset: HttpAsset,
-    alpha_lock_duration: HttpLockDuration,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    beta_lock_duration: Option<HttpLockDuration>,
+    alpha_expiry: Timestamp,
+    beta_expiry: Timestamp,
 }
 
 #[derive(Debug, Serialize)]
@@ -344,13 +345,8 @@ fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                         beta_ledger: start_state.beta_ledger.to_http_ledger().unwrap(),
                         alpha_asset: start_state.alpha_asset.to_http_asset().unwrap(),
                         beta_asset: start_state.beta_asset.to_http_asset().unwrap(),
-                        alpha_lock_duration: start_state
-                            .alpha_ledger_lock_duration
-                            .to_http_lock_duration()
-                            .unwrap(),
-                        beta_lock_duration: state
-                            .beta_ledger_lock_duration()
-                            .map(|lock| lock.to_http_lock_duration().unwrap()),
+                        alpha_expiry: start_state.alpha_expiry,
+                        beta_expiry: start_state.beta_expiry,
                     },
                     role: format!("{}", metadata.role),
                 },
@@ -445,7 +441,8 @@ mod tests {
                 },
                 "alpha_ledger_refund_identity": null,
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_ledger_lock_duration": 144,
+                "alpha_expiry": 2000000000,
+                "beta_expiry": 2000000000,
                 "peer": "127.0.0.1:8002"
             }"#;
 
@@ -456,7 +453,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
+            alpha_expiry: Timestamp::from(2000000000),
+            beta_expiry: Timestamp::from(2000000000),
             identities: SwapRequestBodyIdentities::OnlyRedeem {
                 beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
@@ -487,7 +485,8 @@ mod tests {
                 },
                 "alpha_ledger_refund_identity": null,
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_ledger_lock_duration": 144,
+                "alpha_expiry": 2000000000,
+                "beta_expiry": 2000000000,
                 "peer": "127.0.0.1"
             }"#;
 
@@ -498,7 +497,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_ledger_lock_duration: bitcoin_support::Blocks::new(144),
+            alpha_expiry: Timestamp::from(2000000000),
+            beta_expiry: Timestamp::from(2000000000),
             identities: SwapRequestBodyIdentities::OnlyRedeem {
                 beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",

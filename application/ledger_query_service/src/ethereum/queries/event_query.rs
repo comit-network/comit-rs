@@ -29,7 +29,7 @@ pub struct EventQuery {
 /// Event Matcher work similar as web3 filters:
 /// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
 /// E.g. this `EventMatcher` would match this `Log`:
-/// ```
+/// ```rust, ignore
 /// EventMatcher {
 /// address: 0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59,
 /// data: None,
@@ -39,7 +39,7 @@ pub struct EventQuery {
 /// None()
 /// ],
 /// ```
-/// ```
+/// ```rust, ignore
 /// Log:
 /// [ { address: '0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59',
 /// data: '0x123',

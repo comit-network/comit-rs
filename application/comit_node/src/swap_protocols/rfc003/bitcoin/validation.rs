@@ -31,8 +31,8 @@ impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
 #[cfg(test)]
 mod tests {
     use super::{Error as ValidationError, *};
-    use crate::swap_protocols::rfc003::{state_machine::*, Secret};
-    use bitcoin_support::{self, BitcoinQuantity, Blocks, Transaction, TxOut};
+    use crate::swap_protocols::rfc003::{state_machine::*, Secret, Timestamp};
+    use bitcoin_support::{self, BitcoinQuantity, Transaction, TxOut};
     use hex::FromHex;
     use spectral::prelude::*;
 
@@ -48,7 +48,7 @@ mod tests {
                 "d38e554430c4035f2877a579a07a99886153f072",
             )
             .unwrap(),
-            lock_duration: Blocks::from(144),
+            expiry: Timestamp::from(2000000000),
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").into(),
         }
     }

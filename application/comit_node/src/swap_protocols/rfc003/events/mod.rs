@@ -23,15 +23,12 @@ pub use self::lqs::{LqsEvents, LqsEventsForErc20};
 
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
-pub type StateMachineResponseFuture<ALSI, BLRI, BLLD> =
-    Future<Result<StateMachineResponse<ALSI, BLRI, BLLD>, SwapReject>>;
+pub type StateMachineResponseFuture<ALSI, BLRI> =
+    Future<Result<StateMachineResponse<ALSI, BLRI>, SwapReject>>;
 
 #[allow(type_alias_bounds)]
-pub type ResponseFuture<R: Role> = StateMachineResponseFuture<
-    R::AlphaRedeemHtlcIdentity,
-    R::BetaRefundHtlcIdentity,
-    <R::BetaLedger as Ledger>::LockDuration,
->;
+pub type ResponseFuture<R: Role> =
+    StateMachineResponseFuture<R::AlphaRedeemHtlcIdentity, R::BetaRefundHtlcIdentity>;
 
 pub type Deployed<L: Ledger> = Future<L::HtlcLocation>;
 pub type Funded<L: Ledger> = Future<Option<FundTransaction<L>>>;

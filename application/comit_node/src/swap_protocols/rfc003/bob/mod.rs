@@ -36,10 +36,7 @@ pub struct Bob<AL: Ledger, BL: Ledger, AA, BA> {
         Mutex<
             Option<
                 oneshot::Sender<
-                    Result<
-                        StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity, BL::LockDuration>,
-                        SwapReject,
-                    >,
+                    Result<StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>, SwapReject>,
                 >,
             >,
         >,
@@ -67,7 +64,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Bob<AL, BL, AA, BA> {
             beta_asset: initiation.beta_asset,
             alpha_ledger_refund_identity: initiation.alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: initiation.beta_ledger_redeem_identity,
-            alpha_ledger_lock_duration: initiation.alpha_ledger_lock_duration,
+            alpha_expiry: initiation.alpha_expiry,
+            beta_expiry: initiation.beta_expiry,
             secret: initiation.secret,
             role: bob,
         };

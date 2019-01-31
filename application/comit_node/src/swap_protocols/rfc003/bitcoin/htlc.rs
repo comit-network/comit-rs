@@ -1,6 +1,6 @@
-use crate::swap_protocols::rfc003::{Secret, SecretHash};
+use crate::swap_protocols::rfc003::{Secret, SecretHash, Timestamp};
 use bitcoin_support::{
-    opcodes::All::{OP_NOP3 as OP_CHECKSEQUENCEVERIFY, *},
+    opcodes::{All::*, OP_CLTV},
     script::Builder,
     Address, Network, PubkeyHash, Script,
 };
@@ -25,7 +25,7 @@ pub struct Htlc {
     recipient_redeem_pubkey_hash: PubkeyHash,
     sender_refund_pubkey_hash: PubkeyHash,
     secret_hash: SecretHash,
-    relative_timelock: u32,
+    refund_timestamp: Timestamp,
     script: Script,
 }
 
@@ -37,23 +37,22 @@ impl Htlc {
         recipient_redeem_pubkey_hash: RecipientRedeemPubkeyHash,
         sender_refund_pubkey_hash: SenderRefundPubkeyHash,
         secret_hash: SecretHash,
-        // TODO: use bitcoin_support::Blocks type
-        relative_timelock: u32,
-    ) -> Htlc {
+        refund_timestamp: Timestamp,
+    ) -> Self {
         let recipient_redeem_pubkey_hash = recipient_redeem_pubkey_hash.into();
         let sender_refund_pubkey_hash = sender_refund_pubkey_hash.into();
         let script = create_htlc(
             &recipient_redeem_pubkey_hash,
             &sender_refund_pubkey_hash,
             secret_hash.raw(),
-            relative_timelock,
+            refund_timestamp,
         );
 
-        Htlc {
+        Self {
             recipient_redeem_pubkey_hash,
             sender_refund_pubkey_hash,
             secret_hash,
-            relative_timelock,
+            refund_timestamp,
             script,
         }
     }
@@ -105,6 +104,7 @@ impl Htlc {
                 Witness::PrevScript,
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
+            locktime: 0,
             prev_script: self.script.clone(),
         }
     }
@@ -118,7 +118,8 @@ impl Htlc {
                 Witness::Bool(false),
                 Witness::PrevScript,
             ],
-            sequence: self.relative_timelock,
+            sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
+            locktime: self.refund_timestamp.into(),
             prev_script: self.script.clone(),
         }
     }
@@ -128,7 +129,7 @@ fn create_htlc(
     recipient_pubkey_hash: &PubkeyHash,
     sender_pubkey_hash: &PubkeyHash,
     secret_hash: &[u8],
-    redeem_block_height: u32,
+    refund_timestamp: Timestamp,
 ) -> Script {
     Builder::new()
         .push_opcode(OP_IF)
@@ -142,8 +143,8 @@ fn create_htlc(
         .push_opcode(OP_HASH160)
         .push_slice(recipient_pubkey_hash.as_ref())
         .push_opcode(OP_ELSE)
-        .push_int(i64::from(redeem_block_height))
-        .push_opcode(OP_CHECKSEQUENCEVERIFY)
+        .push_int(refund_timestamp.into())
+        .push_opcode(OP_CLTV)
         .push_opcode(OP_DROP)
         .push_opcode(OP_DUP)
         .push_opcode(OP_HASH160)
@@ -177,7 +178,7 @@ mod tests {
     // 82badc8d1175d1c7ecfceb67a6b8d24fa51718beb594002c7cd9ca1da706b4ef
 
     #[test]
-    fn given_a_vec_u8_pubkey_hash_return_htlc_redeem_script() {
+    fn htlc_produces_correct_bytecode_and_computes_to_right_address() {
         let recipient_pubkey_hash: Vec<u8> =
             hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let sender_pubkey_hash: Vec<u8> =
@@ -192,45 +193,22 @@ mod tests {
             recipient_pubkey_hash,
             sender_pubkey_hash,
             SecretHash::from_str(secret_hash).unwrap(),
-            900,
+            Timestamp::from(123456789),
         );
 
         assert_eq!(
-            htlc.script.into_bytes(),
+            htlc.clone().script.into_bytes(),
             hex::decode(
-                "6382012088a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f567028403b27576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac"
+                "6382012088a82051a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c8876a914c021f17be99c6adfbcba5d38ee0d292c0399d2f5670415cd5b07b17576a9141925a274ac004373bb5429553bdb55c40e57b1246888ac"
             )
             .unwrap()
-        );
-    }
-
-    #[test]
-    fn given_an_htlc_redeem_script_return_p2wsh() {
-        let recipient_pubkey_hash: Vec<u8> =
-            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
-        let sender_pubkey_hash: Vec<u8> =
-            hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
-
-        let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
-        let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
-
-        let secret_hash = "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c";
-
-        let htlc = Htlc::new(
-            recipient_pubkey_hash,
-            sender_pubkey_hash,
-            SecretHash::from_str(secret_hash).unwrap(),
-            900,
         );
 
         let address = htlc.compute_address(Network::Regtest);
 
         assert_eq!(
             address.to_string(),
-            "bcrt1ql9a4vfcj36qzp5zf2vrul8c62jmksj88545xpcpgwy25mf87um7qwz35pj"
+            "bcrt1qc45uezve8vj8nds7ws0da8vfkpanqfxecem3xl7wcs3cdne0358q9zx9qg"
         );
-        // I did a bitcoin-rpc validateaddress
-        // -> witness_program returned = sha256 of htlc script
-        // Hence I guess it's correct!
     }
 }

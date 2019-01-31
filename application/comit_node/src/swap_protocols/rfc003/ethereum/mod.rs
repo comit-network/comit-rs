@@ -59,7 +59,7 @@ impl Ledger for Ethereum {
 impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
     fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
         EtherHtlc::new(
-            htlc_params.lock_duration,
+            htlc_params.expiry,
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
             htlc_params.secret_hash,
@@ -76,7 +76,7 @@ impl HtlcParams<Ethereum, EtherQuantity> {
 impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
     fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
         Erc20Htlc::new(
-            htlc_params.lock_duration,
+            htlc_params.expiry,
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
             htlc_params.secret_hash,

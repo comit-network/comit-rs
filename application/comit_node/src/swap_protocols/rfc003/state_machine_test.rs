@@ -3,15 +3,14 @@ use crate::{
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            ethereum::Seconds,
             events::{self, LedgerEvents},
             role::test::{Alisha, Bobisha, FakeCommunicationEvents},
             state_machine::*,
-            Ledger, RedeemTransaction, Secret,
+            Ledger, RedeemTransaction, Secret, Timestamp,
         },
     },
 };
-use bitcoin_support::{BitcoinQuantity, Blocks, OutPoint, Sha256dHash};
+use bitcoin_support::{BitcoinQuantity, OutPoint, Sha256dHash};
 use ethereum_support::EtherQuantity;
 use futures::{
     future::{self, Either},
@@ -93,7 +92,8 @@ fn gen_start_state() -> Start<Alisha> {
         beta_ledger: Ethereum::default(),
         alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
         beta_asset: EtherQuantity::from_eth(10.0),
-        alpha_ledger_lock_duration: Blocks::from(144),
+        alpha_expiry: Timestamp::from(2000000000),
+        beta_expiry: Timestamp::from(2000000000),
         secret: Secret::from(*b"hello world, you are beautiful!!"),
         role: Alisha::default(),
     }
@@ -175,7 +175,6 @@ fn alpha_refunded() {
             "d38e554430c4035f2877a579a07a99886153f071",
         )
         .unwrap(),
-        beta_ledger_lock_duration: Seconds(42),
     };
 
     let start = gen_start_state();
@@ -247,7 +246,8 @@ fn bob_transition_alpha_refunded() {
         beta_ledger: Ethereum::default(),
         alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
         beta_asset: EtherQuantity::from_eth(10.0),
-        alpha_ledger_lock_duration: Blocks::from(144),
+        alpha_expiry: Timestamp::from(2000000000),
+        beta_expiry: Timestamp::from(2000000000),
         secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
         role: bobisha,
     };
@@ -262,7 +262,6 @@ fn bob_transition_alpha_refunded() {
             "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
         )
         .unwrap(),
-        beta_ledger_lock_duration: Seconds(42),
     };
 
     let (state_machine, states) = init!(

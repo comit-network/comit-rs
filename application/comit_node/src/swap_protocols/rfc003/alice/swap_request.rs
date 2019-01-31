@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     asset::Asset,
     metadata_store::{Metadata, RoleKind},
-    rfc003::Ledger,
+    rfc003::{Ledger, Timestamp},
 };
 use std::net::SocketAddr;
 
@@ -11,7 +11,8 @@ pub struct SwapRequest<AL: Ledger, BL: Ledger, AA, BA> {
     pub beta_asset: BA,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
-    pub alpha_ledger_lock_duration: AL::LockDuration,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
     pub identities: SwapRequestIdentities<AL, BL>,
     pub bob_socket_address: SocketAddr,
 }

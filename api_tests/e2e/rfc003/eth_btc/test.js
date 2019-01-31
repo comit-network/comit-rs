@@ -25,6 +25,9 @@ const alpha_asset_amount = BigInt(Web3.utils.toWei("10", "ether"));
 const beta_asset_amount = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
 
+const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
+const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+
 describe("RFC003: Ether for Bitcoin", () => {
     before(async function() {
         this.timeout(5000);
@@ -143,7 +146,8 @@ describe("RFC003: Ether for Bitcoin", () => {
                 },
                 alpha_ledger_refund_identity: alice.wallet.eth().address(),
                 beta_ledger_redeem_identity: null,
-                alpha_ledger_lock_duration: 144,
+                alpha_expiry: alpha_expiry,
+                beta_expiry: beta_expiry,
                 peer: bob_comit_node_address,
             })
             .then(res => {
@@ -189,7 +193,6 @@ describe("RFC003: Ether for Bitcoin", () => {
         let bob_response = {
             beta_ledger_refund_identity: null,
             alpha_ledger_redeem_identity: bob_final_address,
-            beta_ledger_lock_duration: 43200,
         };
 
         logger.info(

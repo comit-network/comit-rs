@@ -4,7 +4,9 @@ use crate::{
     comit_client::{self, SwapReject},
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, events, ledger::Ledger, RedeemTransaction, Role, SaveState, SecretHash},
+        rfc003::{
+            self, events, ledger::Ledger, RedeemTransaction, Role, SaveState, SecretHash, Timestamp,
+        },
     },
 };
 use futures::{future::Either, Async, Future};
@@ -12,20 +14,18 @@ use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
-pub struct StateMachineResponse<ALSI, BLRI, BLLD> {
+pub struct StateMachineResponse<ALSI, BLRI> {
     pub alpha_ledger_redeem_identity: ALSI,
     pub beta_ledger_refund_identity: BLRI,
-    pub beta_ledger_lock_duration: BLLD,
 }
 
 impl<AL: Ledger, BL: Ledger> From<comit_client::rfc003::AcceptResponseBody<AL, BL>>
-    for StateMachineResponse<AL::Identity, BL::Identity, BL::LockDuration>
+    for StateMachineResponse<AL::Identity, BL::Identity>
 {
     fn from(accept_response: comit_client::rfc003::AcceptResponseBody<AL, BL>) -> Self {
         Self {
             alpha_ledger_redeem_identity: accept_response.alpha_ledger_redeem_identity,
             beta_ledger_refund_identity: accept_response.beta_ledger_refund_identity,
-            beta_ledger_lock_duration: accept_response.beta_ledger_lock_duration,
         }
     }
 }
@@ -36,7 +36,7 @@ pub struct HtlcParams<L: Ledger, A: Asset> {
     pub ledger: L,
     pub redeem_identity: L::Identity,
     pub refund_identity: L::Identity,
-    pub lock_duration: L::LockDuration,
+    pub expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
 
@@ -50,8 +50,8 @@ pub struct OngoingSwap<R: Role> {
     pub alpha_ledger_refund_identity: R::AlphaRefundHtlcIdentity,
     pub beta_ledger_redeem_identity: R::BetaRedeemHtlcIdentity,
     pub beta_ledger_refund_identity: R::BetaRefundHtlcIdentity,
-    pub alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
-    pub beta_ledger_lock_duration: <R::BetaLedger as Ledger>::LockDuration,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
     pub secret: R::Secret,
     pub role: R,
 }
@@ -59,11 +59,7 @@ pub struct OngoingSwap<R: Role> {
 impl<R: Role> OngoingSwap<R> {
     pub fn new(
         start: Start<R>,
-        response: StateMachineResponse<
-            R::AlphaRedeemHtlcIdentity,
-            R::BetaRefundHtlcIdentity,
-            <R::BetaLedger as Ledger>::LockDuration,
-        >,
+        response: StateMachineResponse<R::AlphaRedeemHtlcIdentity, R::BetaRefundHtlcIdentity>,
     ) -> Self {
         OngoingSwap {
             alpha_ledger: start.alpha_ledger,
@@ -74,8 +70,8 @@ impl<R: Role> OngoingSwap<R> {
             alpha_ledger_refund_identity: start.alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: start.beta_ledger_redeem_identity,
             beta_ledger_refund_identity: response.beta_ledger_refund_identity,
-            alpha_ledger_lock_duration: start.alpha_ledger_lock_duration,
-            beta_ledger_lock_duration: response.beta_ledger_lock_duration,
+            alpha_expiry: start.alpha_expiry,
+            beta_expiry: start.beta_expiry,
             secret: start.secret,
             role: start.role,
         }
@@ -87,7 +83,7 @@ impl<R: Role> OngoingSwap<R> {
             ledger: self.alpha_ledger.clone(),
             redeem_identity: self.alpha_ledger_redeem_identity.clone().into(),
             refund_identity: self.alpha_ledger_refund_identity.clone().into(),
-            lock_duration: self.alpha_ledger_lock_duration.clone(),
+            expiry: self.alpha_expiry,
             secret_hash: self.secret.clone().into(),
         }
     }
@@ -98,7 +94,7 @@ impl<R: Role> OngoingSwap<R> {
             ledger: self.beta_ledger.clone(),
             redeem_identity: self.beta_ledger_redeem_identity.clone().into(),
             refund_identity: self.beta_ledger_refund_identity.clone().into(),
-            lock_duration: self.beta_ledger_lock_duration.clone(),
+            expiry: self.beta_expiry,
             secret_hash: self.secret.clone().into(),
         }
     }
@@ -151,7 +147,8 @@ pub enum Swap<R: Role> {
         beta_ledger: R::BetaLedger,
         alpha_asset: R::AlphaAsset,
         beta_asset: R::BetaAsset,
-        alpha_ledger_lock_duration: <R::AlphaLedger as Ledger>::LockDuration,
+        alpha_expiry: Timestamp,
+        beta_expiry: Timestamp,
         secret: R::Secret,
         role: R,
     },
@@ -234,7 +231,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             beta_ledger: state.beta_ledger.clone(),
             alpha_ledger_refund_identity: state.alpha_ledger_refund_identity.clone().into(),
             beta_ledger_redeem_identity: state.beta_ledger_redeem_identity.clone().into(),
-            alpha_ledger_lock_duration: state.alpha_ledger_lock_duration.clone(),
+            alpha_expiry: state.alpha_expiry,
+            beta_expiry: state.beta_expiry,
             secret_hash: state.secret.clone().into(),
         };
 
@@ -592,7 +590,8 @@ impl<R: Role> SwapStates<R> {
                 beta_asset: swap.beta_asset.clone(),
                 alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
                 beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
-                alpha_ledger_lock_duration: swap.alpha_ledger_lock_duration.clone(),
+                alpha_expiry: swap.alpha_expiry,
+                beta_expiry: swap.beta_expiry,
                 secret: swap.secret.clone(),
                 role: swap.role.clone(),
             }),
@@ -600,7 +599,7 @@ impl<R: Role> SwapStates<R> {
         }
     }
 
-    pub fn beta_ledger_lock_duration(&self) -> Option<<R::BetaLedger as Ledger>::LockDuration> {
+    pub fn beta_expiry(&self) -> Option<Timestamp> {
         use self::SwapStates as SS;
         match *self {
             SS::Accepted(Accepted { ref swap, .. })
@@ -617,9 +616,10 @@ impl<R: Role> SwapStates<R> {
             | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
             | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
-                Some(swap.beta_ledger_lock_duration.clone())
+                Some(swap.beta_expiry)
             }
-            SS::Start(_) | SS::Final(_) | SS::Error(_) => None,
+            SS::Start(ref start) => Some(start.beta_expiry),
+            SS::Final(_) | SS::Error(_) => None,
         }
     }
 }

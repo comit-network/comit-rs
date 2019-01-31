@@ -147,7 +147,8 @@ where
             beta_ledger,
             alpha_ledger_refund_identity: body.alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: body.beta_ledger_redeem_identity,
-            alpha_ledger_lock_duration: body.alpha_ledger_lock_duration,
+            alpha_expiry: body.alpha_expiry,
+            beta_expiry: body.beta_expiry,
             secret_hash: body.secret_hash,
         },
     ) {
@@ -157,7 +158,6 @@ where
                     let body = comit_client::rfc003::AcceptResponseBody::<AL, BL> {
                         beta_ledger_refund_identity: response.beta_ledger_refund_identity.into(),
                         alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity.into(),
-                        beta_ledger_lock_duration: response.beta_ledger_lock_duration,
                     };
                     Response::new(Status::OK(20)).with_body(
                         serde_json::to_value(body)

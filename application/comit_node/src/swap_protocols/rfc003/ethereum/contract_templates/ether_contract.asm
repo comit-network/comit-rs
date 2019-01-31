@@ -1,15 +1,27 @@
 {
-    // Placeholder for deployment timestamp
-    0x50000005
+    // Load received secret size
+    calldatasize
 
-    // Load expect secret size
-    0x20
+    // Check if secret is zero length
+    iszero
+
+    // If secret is zero length, jump to branch that checks if expiry time has been reached
+    check_expiry
+    jumpi
+
+    // Load expected secret size
+    32
 
     // Load received secret size
     calldatasize
 
     // Compare secret size
     eq
+    iszero
+
+    // If passed secret is wrong size, jump to exit contract
+    exit
+    jumpi
 
     // Load secret into memory
     calldatacopy(0, 0, 32)
@@ -29,29 +41,29 @@
     // Combine `eq` result with `call` result
     and
 
-    // Combine result above with `eq` for the datasize
-    and
-
     // Jump to redeem if hashes match
     redeem
     jumpi
 
+    // Exit if hashes don't match
+    return(0, 0)
+
+check_expiry:
+    // Timestamp of the current block in seconds since the epoch
     timestamp
 
-    // Subtract current timestamp from deployment timestamp (pushed to stack as first instruction of this contract)
-    sub
-
-    // Placeholder for relative expiry time
+    // Placeholder for refund timestamp
     0x20000002
 
-    // Compare relative expiry timestamp with result of subtraction
+    // Compare refund timestamp with current timestamp
     lt
 
     // Jump to refund if time is expired
     refund
     jumpi
 
-    // Don't do anything if we get here (e.g. secret didn't match and time didn't expire)
+exit:
+    // Exit
     return(0, 0)
 
 redeem:
