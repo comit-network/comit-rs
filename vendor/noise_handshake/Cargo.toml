@@ -4,7 +4,6 @@ edition = "2018"
 name = "noise_handshake"
 version = "0.1.0"
 [dependencies]
-debug_stub_derive = "0.3"
 futures = "0.1"
 log = "0.4"
 snow = "0.4"
