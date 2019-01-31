@@ -128,8 +128,13 @@ fn given_deployed_erc20_htlc_when_refunded_after_expiry_time_then_tokens_are_ref
 fn given_deployed_erc20_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_then_nothing_happens(
 ) {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
-        erc20_harness(&docker, Erc20HarnessParams::default());
+    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
+        &docker,
+        Erc20HarnessParams {
+            htlc_refund_timestamp: Timestamp::now().plus(1000000),
+            ..Default::default()
+        },
+    );
 
     // fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
