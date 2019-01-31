@@ -5,4 +5,6 @@
 #[macro_use]
 extern crate log;
 
-pub mod handshake;
+mod handshake;
+
+pub use crate::handshake::*;
