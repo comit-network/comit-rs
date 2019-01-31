@@ -72,7 +72,9 @@ pub struct NoiseHandshake<IO: AsyncRead + AsyncWrite> {
 impl<IO: AsyncRead + AsyncWrite> NoiseHandshake<IO> {
     fn wrap_up(&mut self) -> (Session, IO) {
         let noise = self.noise.take().expect("We know it's a Some");
-        let noise = noise.into_transport_mode().unwrap();
+        let noise = noise
+            .into_transport_mode()
+            .expect("Cannot go into transport mode despite handshake being finished");
         let io = self.io.take().expect("We know it's a Some");
         (noise, io)
     }
@@ -80,7 +82,6 @@ impl<IO: AsyncRead + AsyncWrite> NoiseHandshake<IO> {
 
 impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
     type Item = (Session, IO);
-    // TODO: probably a custom error when removing unwraps
     type Error = std::io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
@@ -95,7 +96,9 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                         ..
                     },
             } if *len == 0 => {
-                *len = noise.write_message(&[], buffer).unwrap();
+                *len = noise
+                    .write_message(&[], buffer)
+                    .expect("Cannot encode the message");
                 self.poll()
             }
             Self {
