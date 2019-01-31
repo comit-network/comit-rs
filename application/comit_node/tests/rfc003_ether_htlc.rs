@@ -145,8 +145,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
 }
 
 #[test]
-fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_transferred(
-) -> Result<(), failure::Error> {
+fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_transferred() {
     let docker = Cli::default();
     let secret = CustomSizeSecret(vec![
         1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
@@ -182,5 +181,83 @@ fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_tr
         client.eth_balance_of(htlc),
         EtherQuantity::from_eth(0.4).wei()
     );
-    Ok(())
+}
+
+#[test]
+fn given_correct_zero_secret_htlc_should_redeem() {
+    let docker = Cli::default();
+    let secret_vec = vec![
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+    ];
+    let secret = CustomSizeSecret(secret_vec.clone());
+
+    let (_alice, bob, htlc, client, _handle, _container) = ether_harness(
+        &docker,
+        EtherHarnessParams::default().with_secret_hash(secret.hash()),
+    );
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    client.send_data(htlc, Some(Bytes(secret_vec)));
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+}
+
+#[test]
+fn given_short_zero_secret_htlc_should_not_redeem() {
+    let docker = Cli::default();
+    let secret = CustomSizeSecret(vec![
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+    ]);
+
+    let (_alice, bob, htlc, client, _handle, _container) = ether_harness(
+        &docker,
+        EtherHarnessParams::default().with_secret_hash(secret.hash()),
+    );
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
+
+    client.send_data(
+        htlc,
+        Some(Bytes(vec![
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+        ])),
+    );
+
+    assert_eq!(
+        client.eth_balance_of(bob),
+        EtherQuantity::from_eth(0.0).wei()
+    );
+
+    assert_eq!(
+        client.eth_balance_of(htlc),
+        EtherQuantity::from_eth(0.4).wei()
+    );
 }
