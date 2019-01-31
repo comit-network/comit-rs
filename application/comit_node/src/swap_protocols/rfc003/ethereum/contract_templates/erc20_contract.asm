@@ -1,4 +1,14 @@
 {
+    // Load received secret size
+    calldatasize
+
+    // Check if secret is zero length
+    iszero
+
+    // If secret is zero length, jump to branch that checks if expiry time has been reached
+    check_expiry
+    jumpi
+
     // Load expected secret size
     32
 
@@ -7,6 +17,11 @@
 
     // Compare secret size
     eq
+    iszero
+
+    // If passed secret is wrong size, jump to exit contract
+    exit
+    jumpi
 
     // Load secret into memory
     calldatacopy(0, 0, 32)
@@ -26,13 +41,15 @@
     // Combine `eq` result with `call` result
     and
 
-    // Combine result above with `eq` for the datasize
-    and
-
     // Jump to redeem if hashes match
     redeem
     jumpi
 
+    // Exit if hashes don't match
+    return(0, 0)
+
+check_expiry:
+    // Timestamp of the current block in seconds since the epoch
     timestamp
 
     // Placeholder for refund timestamp 
@@ -45,7 +62,8 @@
     refund
     jumpi
 
-    // Don't do anything if we get here (e.g. secret didn't match and time didn't expire)
+exit:
+    // Exit
     return(0, 0)
 
 /*
