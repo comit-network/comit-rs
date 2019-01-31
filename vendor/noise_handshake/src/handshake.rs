@@ -205,10 +205,12 @@ mod tests {
     fn handshake() -> Result<(), std::io::Error> {
         let (hs_init, hs_resp) = setup();
 
-        let mut runtime = tokio::runtime::Runtime::new()?;
+        let mut runtime = tokio::runtime::Builder::new()
+            .core_threads(2)
+            .build()
+            .unwrap();
 
         let hs_init = hs_init.map_err(|_| ());
-        //        let hs_resp = hs_resp.map_err(|_| ());
 
         runtime.spawn(hs_init.and_then(|(noise, _io)| match noise {
             Session::Transport(_) => Ok(()),
