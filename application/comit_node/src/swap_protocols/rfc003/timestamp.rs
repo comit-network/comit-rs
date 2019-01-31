@@ -20,7 +20,7 @@ impl Timestamp {
     }
 
     pub fn plus(self, seconds: u32) -> Self {
-        Self(self.0 + seconds)
+        Self(self.0.checked_add(seconds).unwrap_or(std::u32::MAX))
     }
 
     pub fn sleep_until(timestamp: Timestamp) {
