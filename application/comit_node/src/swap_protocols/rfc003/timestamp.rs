@@ -1,7 +1,4 @@
-use std::{
-    thread::sleep,
-    time::{Duration, SystemTime},
-};
+use std::time::SystemTime;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
@@ -21,17 +18,6 @@ impl Timestamp {
 
     pub fn plus(self, seconds: u32) -> Self {
         Self(self.0.checked_add(seconds).unwrap_or(std::u32::MAX))
-    }
-
-    pub fn sleep_until(timestamp: Timestamp) {
-        let duration = timestamp.diff(Timestamp::now());
-        let buffer = 2;
-
-        sleep(Duration::from_secs((duration + buffer).into()));
-    }
-
-    fn diff(self, other: Timestamp) -> u32 {
-        self.0.checked_sub(other.0).unwrap_or(0)
     }
 }
 

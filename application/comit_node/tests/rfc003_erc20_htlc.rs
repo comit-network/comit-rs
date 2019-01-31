@@ -12,7 +12,7 @@ pub mod parity_client;
 
 use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
-    htlc_harness::{erc20_harness, CustomSizeSecret, Erc20HarnessParams, SECRET},
+    htlc_harness::{erc20_harness, sleep_until, CustomSizeSecret, Erc20HarnessParams, SECRET},
 };
 use comit_node::swap_protocols::rfc003::Timestamp;
 use ethereum_support::{Bytes, H256, U256};
@@ -116,7 +116,7 @@ fn given_deployed_erc20_htlc_when_refunded_after_expiry_time_then_tokens_are_ref
     assert_eq!(client.token_balance_of(token, alice), U256::from(600));
 
     // Wait for the contract to expire
-    Timestamp::sleep_until(harness_params.htlc_refund_timestamp);
+    sleep_until(harness_params.htlc_refund_timestamp);
     client.send_data(htlc_address, None);
 
     assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
@@ -255,7 +255,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     });
 
     // Wait for the contract to expire
-    Timestamp::sleep_until(harness_params.htlc_refund_timestamp);
+    sleep_until(harness_params.htlc_refund_timestamp);
     // Send correct secret to contract
     let transaction_receipt = client.send_data(htlc_address, None);
 

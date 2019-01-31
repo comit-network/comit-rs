@@ -10,7 +10,9 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::{ether_harness, CustomSizeSecret, EtherHarnessParams, SECRET};
+use crate::htlc_harness::{
+    ether_harness, sleep_until, CustomSizeSecret, EtherHarnessParams, SECRET,
+};
 use comit_node::swap_protocols::rfc003::Timestamp;
 use ethereum_support::{Bytes, EtherQuantity, H256};
 use spectral::prelude::*;
@@ -67,7 +69,7 @@ fn given_deployed_htlc_when_refunded_after_expiry_time_then_money_is_refunded() 
     );
 
     // Wait for the contract to expire
-    Timestamp::sleep_until(harness_params.htlc_refund_timestamp);
+    sleep_until(harness_params.htlc_refund_timestamp);
     client.send_data(htlc, None);
 
     assert_eq!(
@@ -140,7 +142,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
         ether_harness(&docker, harness_params.clone());
 
     // Wait for the timelock to expire
-    Timestamp::sleep_until(harness_params.htlc_refund_timestamp);
+    sleep_until(harness_params.htlc_refund_timestamp);
     let transaction_receipt = client.send_data(htlc, None);
 
     assert_that(&transaction_receipt.logs).has_length(1);

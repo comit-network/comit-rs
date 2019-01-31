@@ -10,7 +10,7 @@ pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::CustomSizeSecret;
+use crate::htlc_harness::{sleep_until, CustomSizeSecret};
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
@@ -181,8 +181,7 @@ fn redeem_refund_htlc() {
         "utxo should not yet exist"
     );
 
-    // Sleep for a bit longer than needed
-    Timestamp::sleep_until(refund_timestamp);
+    sleep_until(refund_timestamp);
 
     client.generate(1).unwrap().unwrap();
 
