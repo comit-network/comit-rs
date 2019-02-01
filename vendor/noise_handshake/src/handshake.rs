@@ -25,11 +25,13 @@ impl Step {
         }
     }
 
-    fn write() -> Self {
+    fn write(noise: &mut Session) -> Self {
+        let mut buffer = [0u8; NOISE_MAX_SIZE];
+        let len = noise.write_message(&[], &mut buffer).unwrap();
         Step::Write {
-            buffer: [0u8; NOISE_MAX_SIZE],
+            buffer,
             written_bytes: 0,
-            len: 0,
+            len,
         }
     }
 }
@@ -41,14 +43,14 @@ pub trait Handshake {
 }
 
 impl Handshake for Session {
-    fn handshake<IO>(self, io: IO) -> NoiseHandshake<IO>
+    fn handshake<IO>(mut self, io: IO) -> NoiseHandshake<IO>
     where
         IO: AsyncRead + AsyncWrite,
     {
         match self {
             Session::Handshake(ref handshake_state) => NoiseHandshake {
                 next: if handshake_state.is_initiator() {
-                    Step::write()
+                    Step::write(&mut self)
                 } else {
                     Step::read()
                 },
@@ -88,21 +90,6 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
         match self {
             Self {
                 noise: Some(ref mut noise),
-                io: Some(ref _io),
-                next:
-                    Step::Write {
-                        ref mut buffer,
-                        ref mut len,
-                        ..
-                    },
-            } if *len == 0 => {
-                *len = noise
-                    .write_message(&[], buffer)
-                    .expect("Cannot encode the message");
-                self.poll()
-            }
-            Self {
-                noise: Some(ref mut noise),
                 io: Some(ref mut io),
                 next:
                     Step::Write {
@@ -134,16 +121,22 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                 let mut dec_buffer = [0u8; NOISE_MAX_SIZE];
 
                 *len += try_ready!(io.poll_read(&mut enc_buffer[*len..]));
-                if *len > 0 {
-                    match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
-                        Ok(_) => self.next = Step::write(),
-                        Err(e) => debug!("Error decoding message: {:?}", e),
-                    };
-                }
-                if noise.is_handshake_finished() {
-                    Ok(Async::Ready(self.wrap_up()))
-                } else {
-                    self.poll()
+
+                match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
+                    Ok(_) => {
+                        if !noise.is_handshake_finished() {
+                            self.next = Step::write(noise);
+                            self.poll()
+                        } else {
+                            Ok(Async::Ready(self.wrap_up()))
+                        }
+                    }
+                    Err(_e) => {
+                        trace!(
+                            "Re-polling because a single poll_read didn't have the whole message"
+                        );
+                        self.poll()
+                    }
                 }
             }
             Self { noise: None, .. } | Self { io: None, .. } => {
