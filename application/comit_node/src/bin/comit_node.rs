@@ -5,14 +5,15 @@
 extern crate log;
 
 use comit_node::{
-    comit_client::{self, bam::BamClientPool},
     comit_server,
+    connection_pool::ConnectionPool,
     http_api::route_factory,
     ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
     settings::ComitNodeSettings,
     swap_protocols::{
-        rfc003::{alice::AliceSpawner, bob::BobSpawner, state_store::InMemoryStateStore},
+        metadata_store::MetadataStore,
+        rfc003::state_store::{InMemoryStateStore, StateStore},
         InMemoryMetadataStore, LedgerEventDependencies, ProtocolDependencies, SwapId,
     },
 };
@@ -30,14 +31,14 @@ fn main() -> Result<(), failure::Error> {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let lqs_client = create_ledger_query_service_api_client(&settings);
-    let comit_client_factory = Arc::new(comit_client::bam::BamClientPool::default());
-    let dependencies = Arc::new(create_dependencies(
+    let connection_pool = Arc::new(ConnectionPool::default());
+    let dependencies = create_dependencies(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         Arc::clone(&lqs_client),
-        comit_client_factory.clone(),
-    ));
+        Arc::clone(&connection_pool),
+    );
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
@@ -46,16 +47,11 @@ fn main() -> Result<(), failure::Error> {
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         dependencies.clone(),
-        Arc::clone(&comit_client_factory),
+        Arc::clone(&connection_pool),
         &mut runtime,
     );
 
-    spawn_comit_server(
-        &settings,
-        dependencies.clone(),
-        Arc::clone(&comit_client_factory),
-        &mut runtime,
-    );
+    spawn_comit_server(&settings, dependencies.clone(), &mut runtime);
 
     // Block the current thread.
     ::std::thread::park();
@@ -90,13 +86,13 @@ fn create_ledger_query_service_api_client(
     ))
 }
 
-fn create_dependencies<T, S, C>(
+fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     lqs_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    comit_client_factory: Arc<dyn comit_client::ClientFactory<C>>,
-) -> ProtocolDependencies<T, S, C> {
+    connection_pool: Arc<ConnectionPool>,
+) -> ProtocolDependencies<T, S> {
     ProtocolDependencies {
         ledger_events: LedgerEventDependencies {
             lqs_client,
@@ -105,47 +101,45 @@ fn create_dependencies<T, S, C>(
         },
         metadata_store,
         state_store,
-        comit_client_factory,
+        connection_pool,
         seed: settings.comit.secret_seed,
     }
 }
 
-fn spawn_warp_instance<S: AliceSpawner, C: comit_client::ClientPool>(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     settings: &ComitNodeSettings,
-    metadata_store: Arc<InMemoryMetadataStore<SwapId>>,
-    state_store: Arc<InMemoryStateStore<SwapId>>,
-    alice_spawner: Arc<S>,
-    comit_client_pool: Arc<C>,
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+    protocol_dependencies: ProtocolDependencies<T, S>,
+    connection_pool: Arc<ConnectionPool>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(
         metadata_store,
         state_store,
-        alice_spawner,
+        protocol_dependencies,
         settings.comit.secret_seed,
-        comit_client_pool,
+        connection_pool,
     );
 
-    let server = warp::serve(routes).bind(SocketAddr::new(
-        settings.http_api.address,
-        settings.http_api.port,
-    ));
+    let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
+
+    info!("Starting HTTP server on {:?}", listen_addr);
+
+    let server = warp::serve(routes).bind(listen_addr);
 
     runtime.spawn(server);
 }
 
-fn spawn_comit_server<B: BobSpawner>(
+fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     settings: &ComitNodeSettings,
-    bob_spawner: Arc<B>,
-    client_factory: Arc<BamClientPool>,
+    protocol_dependencies: ProtocolDependencies<T, S>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     runtime.spawn(
-        comit_server::listen(settings.comit.comit_listen, bob_spawner, client_factory).map_err(
-            |e| {
-                error!("ComitServer shutdown: {:?}", e);
-            },
-        ),
+        comit_server::listen(settings.comit.comit_listen, protocol_dependencies).map_err(|e| {
+            error!("ComitServer shutdown: {:?}", e);
+        }),
     );
 }
 

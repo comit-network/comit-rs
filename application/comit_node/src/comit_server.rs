@@ -1,56 +1,22 @@
-use crate::{
-    bam_api::rfc003::swap_config,
-    comit_client::{
-        bam::{BamClient, BamClientPool},
-        ClientFactory,
-    },
-    swap_protocols::rfc003::bob::BobSpawner,
+use crate::swap_protocols::{
+    metadata_store::MetadataStore, rfc003::state_store::StateStore, ProtocolDependencies, SwapId,
 };
-use bam::{self, connection, json};
+use bam;
 use futures::{Future, Stream};
-use std::{
-    io,
-    net::SocketAddr,
-    sync::{Arc, Mutex},
-};
+use std::{io, net::SocketAddr};
 use tokio::{self, net::TcpListener};
 
-pub fn listen<B: BobSpawner>(
+pub fn listen<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     addr: SocketAddr,
-    bob_spawner: Arc<B>,
-    bam_client_pool: Arc<BamClientPool>,
+    protocol_dependencies: ProtocolDependencies<T, S>,
 ) -> impl Future<Item = (), Error = io::Error> {
     info!("ComitServer listening at {:?}", addr);
     let socket = TcpListener::bind(&addr).unwrap();
 
-    socket.incoming().for_each(move |connection| {
-        let peer_addr = connection.peer_addr();
-        let codec = json::JsonFrameCodec::default();
-
-        let response_source = Arc::new(Mutex::new(json::JsonResponseSource::default()));
-        let incoming_frames = json::JsonFrameHandler::create(
-            swap_config(Arc::clone(&bob_spawner)),
-            Arc::clone(&response_source),
-        );
-        let (client, outgoing_frames) = bam::client::Client::create(response_source);
-
-        let connection = connection::new(codec, connection, incoming_frames, outgoing_frames);
-
-        if let Ok(addr) = peer_addr {
-            let bam_client = Arc::new(BamClient::new(addr, client));
-            bam_client_pool.add_client(addr, bam_client);
-        }
-
-        tokio::spawn(connection.then(move |result| {
-            match result {
-                Ok(()) => info!("Connection with {:?} closed", peer_addr),
-                Err(e) => error!(
-                    "Unexpected error in connection with {:?}: {:?}",
-                    peer_addr, e
-                ),
-            }
-            Ok(())
-        }));
+    socket.incoming().for_each(move |socket| {
+        protocol_dependencies
+            .connection_pool
+            .new_incoming_socket(socket, protocol_dependencies.clone());
         Ok(())
     })
 }

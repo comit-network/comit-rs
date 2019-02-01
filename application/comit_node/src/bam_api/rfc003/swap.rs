@@ -14,11 +14,8 @@ use bam::{
     Status,
 };
 use futures::future::{self, Future};
-use std::sync::Arc;
 
-pub fn swap_config<B: BobSpawner>(
-    bob_spawner: Arc<B>,
-) -> Config<ValidatedIncomingRequest, Response> {
+pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingRequest, Response> {
     Config::default().on_request(
         "SWAP",
         &[
@@ -48,7 +45,6 @@ pub fn swap_config<B: BobSpawner>(
                     let beta_asset = header!(request
                         .take_header("beta_asset")
                         .map(AssetKind::from_bam_header));
-                    let bob_spawner = Arc::clone(&bob_spawner);
 
                     match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
                         (
@@ -57,7 +53,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Bitcoin(alpha_asset),
                             AssetKind::Ether(beta_asset),
                         ) => handle_request(
-                            bob_spawner,
+                            &bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -71,7 +67,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Ether(alpha_asset),
                             AssetKind::Bitcoin(beta_asset),
                         ) => handle_request(
-                            bob_spawner,
+                            &bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -85,7 +81,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Bitcoin(alpha_asset),
                             AssetKind::Erc20(beta_asset),
                         ) => handle_request(
-                            bob_spawner,
+                            &bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -99,7 +95,7 @@ pub fn swap_config<B: BobSpawner>(
                             AssetKind::Erc20(alpha_asset),
                             AssetKind::Bitcoin(beta_asset),
                         ) => handle_request(
-                            bob_spawner,
+                            &bob_spawner,
                             swap_id,
                             alpha_ledger,
                             beta_ledger,
@@ -127,7 +123,7 @@ pub fn swap_config<B: BobSpawner>(
 }
 
 fn handle_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
-    bob_spawner: Arc<B>,
+    bob_spawner: &B,
     swap_id: SwapId,
     alpha_ledger: AL,
     beta_ledger: BL,

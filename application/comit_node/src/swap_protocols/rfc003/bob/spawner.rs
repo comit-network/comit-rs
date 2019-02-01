@@ -1,18 +1,15 @@
-use crate::{
-    comit_client,
-    swap_protocols::{
-        asset::Asset,
-        dependencies::{LedgerEventDependencies, ProtocolDependencies},
-        metadata_store::{self, Metadata, MetadataStore},
-        rfc003::{
-            bob::SwapRequest,
-            create_ledger_events::CreateLedgerEvents,
-            events::ResponseFuture,
-            state_store::{self, StateStore},
-            Bob, Initiation, Ledger,
-        },
-        SwapId,
+use crate::swap_protocols::{
+    asset::Asset,
+    dependencies::{LedgerEventDependencies, ProtocolDependencies},
+    metadata_store::{self, Metadata, MetadataStore},
+    rfc003::{
+        bob::SwapRequest,
+        create_ledger_events::CreateLedgerEvents,
+        events::ResponseFuture,
+        state_store::{self, StateStore},
+        Bob, Initiation, Ledger,
     },
+    SwapId,
 };
 
 use futures::Future;
@@ -46,9 +43,7 @@ pub trait BobSpawner: Send + Sync + 'static {
         SwapRequest<AL, BL, AA, BA>: Into<Metadata>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> BobSpawner
-    for ProtocolDependencies<T, S, C>
-{
+impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> BobSpawner for ProtocolDependencies<T, S> {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,

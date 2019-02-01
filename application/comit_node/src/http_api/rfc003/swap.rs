@@ -209,21 +209,18 @@ fn swap_path(id: SwapId) -> String {
 #[allow(clippy::needless_pass_by_value)]
 
 pub fn post_swap<A: AliceSpawner>(
-    alice_spawner: Arc<A>,
+    alice_spawner: A,
     secret_source: Arc<dyn SecretSource>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(
-        alice_spawner.as_ref(),
-        secret_source.as_ref(),
-        request_body_kind,
-    )
-    .map(|swap_created| {
-        let body = warp::reply::json(&swap_created);
-        let response = warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
-        warp::reply::with_status(response, warp::http::StatusCode::CREATED)
-    })
-    .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
+    handle_post_swap(&alice_spawner, secret_source.as_ref(), request_body_kind)
+        .map(|swap_created| {
+            let body = warp::reply::json(&swap_created);
+            let response =
+                warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
+            warp::reply::with_status(response, warp::http::StatusCode::CREATED)
+        })
+        .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
 }
 
 fn handle_post_swap<A: AliceSpawner>(
