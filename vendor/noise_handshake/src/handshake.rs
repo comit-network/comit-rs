@@ -1,5 +1,5 @@
 use futures::*;
-use snow::Session::{self, Handshake};
+use snow::Session;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 const NOISE_MAX_SIZE: usize = 65535;
@@ -34,19 +34,19 @@ impl Step {
     }
 }
 
-pub trait InitHandshake {
-    fn init_hand_shake<IO>(self, io: IO) -> NoiseHandshake<IO>
+pub trait Handshake {
+    fn handshake<IO>(self, io: IO) -> NoiseHandshake<IO>
     where
         IO: AsyncRead + AsyncWrite;
 }
 
-impl InitHandshake for Session {
-    fn init_hand_shake<IO>(self, io: IO) -> NoiseHandshake<IO>
+impl Handshake for Session {
+    fn handshake<IO>(self, io: IO) -> NoiseHandshake<IO>
     where
         IO: AsyncRead + AsyncWrite,
     {
         match self {
-            Handshake(ref handshake_state) => NoiseHandshake {
+            Session::Handshake(ref handshake_state) => NoiseHandshake {
                 next: if handshake_state.is_initiator() {
                     Step::write()
                 } else {
@@ -179,9 +179,9 @@ mod tests {
 
         let (socket_init, socket_resp) = memsocket::unbounded();
 
-        let handshake_init = noise_init.init_hand_shake(socket_init);
+        let handshake_init = noise_init.handshake(socket_init);
 
-        let handshake_resp = noise_resp.init_hand_shake(socket_resp);
+        let handshake_resp = noise_resp.handshake(socket_resp);
 
         (handshake_init, handshake_resp)
     }
@@ -190,10 +190,7 @@ mod tests {
     fn handshake() -> Result<(), std::io::Error> {
         let (hs_init, hs_resp) = setup();
 
-        let mut runtime = tokio::runtime::Builder::new()
-            .core_threads(2)
-            .build()
-            .unwrap();
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
         let hs_init = hs_init.map_err(|_| ());
 
