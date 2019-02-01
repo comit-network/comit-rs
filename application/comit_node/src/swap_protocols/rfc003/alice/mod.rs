@@ -11,7 +11,8 @@ pub use self::{
 };
 
 use crate::{
-    comit_client::{self, ClientFactory},
+    comit_client,
+    node_id::NodeId,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -25,8 +26,8 @@ use crate::{
         },
     },
 };
-use futures::{future, Future};
-use std::{marker::PhantomData, net::SocketAddr, sync::Arc};
+use futures::Future;
+use std::{marker::PhantomData, sync::Arc};
 
 #[derive(Clone, Debug)]
 pub struct Alice<AL, BL, AA, BA> {
@@ -38,8 +39,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Alice<AL, BL, AA, BA> {
         initiation: Initiation<Self>,
         alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
         beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
-        comit_client_factory: Arc<dyn ClientFactory<C>>,
-        comit_node_addr: SocketAddr,
+        comit_client: C,
+        bob_id: NodeId,
         save_state: Arc<dyn SaveState<Self>>,
     ) -> Box<dyn Future<Item = SwapOutcome<Self>, Error = rfc003::Error> + Send> {
         let start_state = Start {
@@ -55,18 +56,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Alice<AL, BL, AA, BA> {
             role: Alice::default(),
         };
         save_state.save(start_state.clone().into());
-        let comit_client = match comit_client_factory.client_for(comit_node_addr) {
-            Ok(comit_client) => comit_client,
-            // This mess will go away with #319
-            Err(e) => {
-                return Box::new(future::err(rfc003::Error::Internal(format!("{:?}", e))));
-            }
-        };
 
         let context = Context {
             alpha_ledger_events,
             beta_ledger_events,
-            communication_events: Box::new(AliceToBob::new(Arc::clone(&comit_client))),
+            communication_events: Box::new(AliceToBob::new(comit_client, bob_id)),
             state_repo: save_state,
         };
 

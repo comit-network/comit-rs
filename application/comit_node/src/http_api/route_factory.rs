@@ -1,26 +1,21 @@
 use crate::{
-    comit_client::ClientPool,
+    connection_pool::ConnectionPool,
     http_api::{self, rfc003::action::GetActionQueryParams},
     seed::Seed,
     swap_protocols::{
-        rfc003::{alice::AliceSpawner, state_store, SecretSource},
-        MetadataStore, SwapId,
+        rfc003::{state_store, SecretSource},
+        MetadataStore, ProtocolDependencies, SwapId,
     },
 };
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-pub fn create<
-    T: MetadataStore<SwapId>,
-    S: state_store::StateStore<SwapId>,
-    A: AliceSpawner,
-    C: ClientPool,
->(
+pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    alice_spawner: Arc<A>,
+    protocol_dependencies: ProtocolDependencies<T, S>,
     seed: Seed,
-    comit_client_pool: Arc<C>,
+    comit_connection_pool: Arc<ConnectionPool>,
 ) -> BoxedFilter<(impl Reply,)> {
     let seed = Arc::new(seed);
     let path = warp::path(http_api::PATH);
@@ -29,13 +24,13 @@ pub fn create<
     let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<dyn SecretSource>);
     let state_store = warp::any().map(move || state_store.clone());
     let empty_json_body = warp::any().map(|| json!({}));
-    let alice_spawner = warp::any().map(move || alice_spawner.clone());
-    let comit_client_pool = warp::any().map(move || comit_client_pool.clone());
+    let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
+    let comit_connection_pool = warp::any().map(move || comit_connection_pool.clone());
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
-        .and(alice_spawner)
+        .and(protocol_dependencies.clone())
         .and(rfc003_secret_gen.clone())
         .and(warp::body::json())
         .and_then(http_api::rfc003::swap::post_swap);
@@ -77,7 +72,7 @@ pub fn create<
         .and_then(http_api::rfc003::action::get);
 
     let get_peers = warp::path("peers")
-        .and(comit_client_pool.clone())
+        .and(comit_connection_pool.clone())
         .and(warp::get2())
         .and(warp::path::end())
         .and_then(http_api::peers);

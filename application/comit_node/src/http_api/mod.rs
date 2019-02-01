@@ -16,7 +16,7 @@ pub use self::problem::*;
 
 pub const PATH: &str = "swaps";
 
-use crate::comit_client::ClientPool;
+use crate::connection_pool::ConnectionPool;
 use std::{net::SocketAddr, sync::Arc};
 use warp::{self, Rejection, Reply};
 
@@ -71,9 +71,9 @@ struct GetPeers {
     pub peers: Vec<SocketAddr>,
 }
 
-pub fn peers<C: ClientPool>(comit_client_pool: Arc<C>) -> Result<impl Reply, Rejection> {
+pub fn peers(connection_pool: Arc<ConnectionPool>) -> Result<impl Reply, Rejection> {
     let response = GetPeers {
-        peers: comit_client_pool.connected_addrs(),
+        peers: connection_pool.connected_addrs(),
     };
 
     Ok(warp::reply::json(&response))

@@ -1,21 +1,17 @@
-use crate::{
-    comit_client,
-    swap_protocols::{
-        asset::Asset,
-        dependencies::{LedgerEventDependencies, ProtocolDependencies},
-        metadata_store::{self, Metadata, MetadataStore},
-        rfc003::{
-            alice::SwapRequest,
-            state_store::{self, StateStore},
-            Alice, CreateLedgerEvents, Initiation, Ledger, SecretSource,
-        },
-        SwapId,
+use crate::swap_protocols::{
+    asset::Asset,
+    dependencies::{LedgerEventDependencies, ProtocolDependencies},
+    metadata_store::{self, Metadata, MetadataStore},
+    rfc003::{
+        alice::SwapRequest,
+        state_store::{self, StateStore},
+        Alice, CreateLedgerEvents, Initiation, Ledger, SecretSource,
     },
+    SwapId,
 };
 
 use futures::Future;
 use http_api_problem::HttpApiProblem;
-use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum Error {
@@ -44,9 +40,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
         SwapRequest<AL, BL, AA, BA>: Into<Metadata>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> AliceSpawner
-    for ProtocolDependencies<T, S, C>
-{
+impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> AliceSpawner for ProtocolDependencies<T, S> {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
@@ -76,17 +70,20 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>, C: comit_client::Client> A
             secret: self.seed.new_secret(id),
         };
 
-        let state_machine_future = Alice::<AL, BL, AA, BA>::new_state_machine(
-            initiation,
-            self.ledger_events.create_ledger_events(),
-            self.ledger_events.create_ledger_events(),
-            Arc::clone(&self.comit_client_factory),
-            swap_request.bob_socket_address,
-            save_state,
-        );
+        let swap_execution = {
+            let ledger_events = self.ledger_events.clone();
+            Alice::<AL, BL, AA, BA>::new_state_machine(
+                initiation,
+                ledger_events.create_ledger_events(),
+                ledger_events.create_ledger_events(),
+                self.clone(),
+                swap_request.bob_socket_address,
+                save_state,
+            )
+        };
 
         tokio::spawn(
-            state_machine_future
+            swap_execution
                 .map(move |outcome| {
                     info!("Swap {} finished with {:?}", id, outcome);
                 })
