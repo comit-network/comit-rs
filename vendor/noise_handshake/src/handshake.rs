@@ -88,7 +88,7 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
         match self {
             Self {
                 noise: Some(ref mut noise),
-                io: Some(_),
+                io: Some(ref _io),
                 next:
                     Step::Write {
                         ref mut buffer,
