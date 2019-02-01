@@ -27,7 +27,9 @@ impl Step {
 
     fn write(noise: &mut Session) -> Self {
         let mut buffer = [0u8; NOISE_MAX_SIZE];
-        let len = noise.write_message(&[], &mut buffer).unwrap();
+        let len = noise
+            .write_message(&[], &mut buffer)
+            .expect("Cannot encode the message");
         Step::Write {
             buffer,
             written_bytes: 0,
