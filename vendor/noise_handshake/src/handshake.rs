@@ -88,7 +88,7 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
         match self {
             Self {
                 noise: Some(ref mut noise),
-                io: Some(ref _io),
+                io: Some(_),
                 next:
                     Step::Write {
                         ref mut buffer,
@@ -146,10 +146,7 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                     self.poll()
                 }
             }
-            Self { noise: None, .. } => {
-                panic!("Future is already resolved!");
-            }
-            Self { io: None, .. } => {
+            Self { noise: None, .. } | Self { io: None, .. } => {
                 panic!("Future is already resolved!");
             }
         }
