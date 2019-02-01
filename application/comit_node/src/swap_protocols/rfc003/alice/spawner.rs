@@ -1,17 +1,21 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    dependencies::{LedgerEventDependencies, ProtocolDependencies},
-    metadata_store::{self, Metadata, MetadataStore},
-    rfc003::{
-        alice::SwapRequest,
-        state_store::{self, StateStore},
-        Alice, CreateLedgerEvents, Initiation, Ledger, SecretSource,
+use crate::{
+    node_id::NodeId,
+    swap_protocols::{
+        asset::Asset,
+        dependencies::{LedgerEventDependencies, ProtocolDependencies},
+        metadata_store::{self, Metadata, MetadataStore, RoleKind},
+        rfc003::{
+            alice,
+            messages::ToRequest,
+            state_store::{self, StateStore},
+            CreateLedgerEvents, Ledger,
+        },
+        SwapId,
     },
-    SwapId,
 };
-
-use futures::Future;
+use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum Error {
@@ -33,54 +37,60 @@ pub trait AliceSpawner: Send + Sync + 'static {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
-        swap_request: SwapRequest<AL, BL, AA, BA>,
+        bob_id: NodeId,
+        swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
     ) -> Result<(), Error>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        SwapRequest<AL, BL, AA, BA>: Into<Metadata>;
+        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> AliceSpawner for ProtocolDependencies<T, S> {
+impl<T: MetadataStore<SwapId>, S: StateStore> AliceSpawner for ProtocolDependencies<T, S> {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
-        swap_request: SwapRequest<AL, BL, AA, BA>,
+        bob_id: NodeId,
+        partial_swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
     ) -> Result<(), Error>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        SwapRequest<AL, BL, AA, BA>: Into<Metadata>,
     {
-        let save_state = self
-            .state_store
-            .new_save_state(id)
-            .map_err(Error::Storage)?;
+        let swap_seed = Arc::new(self.seed.swap_seed(id));
+
+        let swap_request = partial_swap_request.to_request(swap_seed.as_ref());
+        let alice = alice::State::new(swap_request.clone(), swap_seed);
+
         self.metadata_store
-            .insert(id, swap_request.clone())
+            .insert(
+                id,
+                Metadata {
+                    alpha_ledger: swap_request.alpha_ledger.into(),
+                    beta_ledger: swap_request.beta_ledger.into(),
+                    alpha_asset: swap_request.alpha_asset.into(),
+                    beta_asset: swap_request.beta_asset.into(),
+                    role: RoleKind::Alice,
+                },
+            )
             .map_err(Error::Metadata)?;
 
-        let initiation = Initiation {
-            alpha_asset: swap_request.alpha_asset,
-            beta_asset: swap_request.beta_asset,
-            alpha_ledger: swap_request.alpha_ledger,
-            beta_ledger: swap_request.beta_ledger,
-            beta_ledger_redeem_identity: swap_request.identities.beta_ledger_redeem_identity,
-            alpha_ledger_refund_identity: swap_request.identities.alpha_ledger_refund_identity,
-            alpha_expiry: swap_request.alpha_expiry,
-            beta_expiry: swap_request.beta_expiry,
-            secret: self.seed.new_secret(id),
-        };
+        let (sender, receiver) = mpsc::unbounded();
 
         let swap_execution = {
             let ledger_events = self.ledger_events.clone();
-            Alice::<AL, BL, AA, BA>::new_state_machine(
-                initiation,
+            alice.new_state_machine(
                 ledger_events.create_ledger_events(),
                 ledger_events.create_ledger_events(),
                 self.clone(),
-                swap_request.bob_socket_address,
-                save_state,
+                bob_id,
+                Arc::new(sender),
             )
         };
+
+        let state_store = Arc::clone(&self.state_store);
+        state_store.insert(id, alice);
+        tokio::spawn(receiver.for_each(move |update| {
+            state_store.update::<alice::State<AL, BL, AA, BA>>(id, update);
+            Ok(())
+        }));
 
         tokio::spawn(
             swap_execution

@@ -4,13 +4,9 @@ use crate::{
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            bob::{
-                self,
-                actions::{Accept, Decline},
-            },
-            state_machine::StateMachineResponse,
+            messages::{AcceptResponseBody, ToAcceptResponseBody},
             state_store::StateStore,
-            Actions, Bob, Ledger, SecretSource,
+            Actions, Ledger, SecretSource,
         },
         MetadataStore, SwapId,
     },
@@ -20,20 +16,10 @@ use ethereum_support::{self, Erc20Token};
 use http_api_problem::HttpApiProblem;
 use std::str::FromStr;
 
-trait ExecuteAccept<AL: Ledger, BL: Ledger> {
-    fn execute(
-        &self,
-        body: AcceptSwapRequestHttpBody<AL, BL>,
-        secret_source: &dyn SecretSource,
-        id: SwapId,
-    ) -> Result<(), HttpApiProblem>;
-}
-
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: &S,
-    secret_source: &dyn SecretSource,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -47,7 +33,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     with_swap_types_bob!(
         &metadata,
         (|| match action {
-            PostAction::Accept => serde_json::from_value::<AcceptSwapRequestHttpBody<AL, BL>>(body)
+            PostAction::Accept => serde_json::from_value::<BobAcceptBody>(body)
                 .map_err(|e| {
                     error!(
                         "Failed to deserialize body of accept response for swap {}: {:?}",
@@ -57,7 +43,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                 })
                 .and_then(|accept_body| {
                     let state = state_store
-                        .get::<Role>(&id)?
+                        .get::<ROLE>(id)?
                         .ok_or_else(problem::state_store)?;
 
                     let accept_action = {
@@ -73,7 +59,9 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                             })?
                     };
 
-                    ExecuteAccept::execute(&accept_action, accept_body, secret_source, id)
+                    accept_action
+                        .accept(accept_body)
+                        .map_err(|_| problem::action_already_taken())
                 }),
             PostAction::Decline => {
                 serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
@@ -86,7 +74,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                     })
                     .and_then(move |decline_body| {
                         let state = state_store
-                            .get::<Role>(&id)?
+                            .get::<ROLE>(id)?
                             .ok_or_else(problem::state_store)?;
 
                         let decline_action = {
@@ -104,107 +92,29 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 
                         let reason = decline_body.reason;
 
-                        ExecuteDecline::execute(&decline_action, reason)
+                        decline_action
+                            .decline(reason)
+                            .map_err(|_| problem::action_already_taken())
                     })
             }
         })
     )
 }
 
-impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for Accept<AL, BL>
-where
-    StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>: FromAcceptSwapRequestHttpBody<AL, BL>,
-{
-    fn execute(
-        &self,
-        body: AcceptSwapRequestHttpBody<AL, BL>,
-        secret_source: &dyn SecretSource,
-        id: SwapId,
-    ) -> Result<(), HttpApiProblem> {
-        self.accept(StateMachineResponse::from_accept_swap_request_http_body(
-            body,
-            id,
-            secret_source,
-        )?)
-        .map_err(|_| problem::action_already_taken())
-    }
+#[derive(Clone, Copy, Debug)]
+pub enum PostAction {
+    Accept,
+    Decline,
 }
 
-trait ExecuteDecline {
-    fn execute(&self, reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem>;
+#[derive(Deserialize, Clone, Debug)]
+struct OnlyRedeem<L: Ledger> {
+    pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl<AL: Ledger, BL: Ledger> ExecuteDecline for Decline<AL, BL> {
-    fn execute(&self, reason: Option<SwapDeclineReason>) -> Result<(), HttpApiProblem> {
-        self.decline(reason)
-            .map_err(|_| problem::action_already_taken())
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(untagged)]
-#[allow(dead_code)] // TODO: Remove once we have ledgers where we use all the combinations
-enum AcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger> {
-    RefundAndRedeem {
-        alpha_ledger_redeem_identity: AL::Identity,
-        beta_ledger_refund_identity: BL::Identity,
-    },
-    OnlyRedeem {
-        alpha_ledger_redeem_identity: AL::Identity,
-    },
-    OnlyRefund {
-        beta_ledger_refund_identity: BL::Identity,
-    },
-    None {},
-}
-
-trait FromAcceptSwapRequestHttpBody<AL: Ledger, BL: Ledger>
-where
-    Self: Sized,
-{
-    fn from_accept_swap_request_http_body(
-        body: AcceptSwapRequestHttpBody<AL, BL>,
-        id: SwapId,
-        secret_source: &dyn SecretSource,
-    ) -> Result<Self, HttpApiProblem>;
-}
-
-impl FromAcceptSwapRequestHttpBody<Bitcoin, Ethereum>
-    for StateMachineResponse<secp256k1_support::KeyPair, ethereum_support::Address>
-{
-    fn from_accept_swap_request_http_body(
-        body: AcceptSwapRequestHttpBody<Bitcoin, Ethereum>,
-        id: SwapId,
-        secret_source: &dyn SecretSource,
-    ) -> Result<Self, HttpApiProblem> {
-        match body {
-            AcceptSwapRequestHttpBody::OnlyRedeem { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The redeem identity for swaps where Bitcoin is the AlphaLedger has to be provided on-demand, i.e. when the redeem action is executed.")),
-            AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_refund_identity")),
-            AcceptSwapRequestHttpBody::OnlyRefund { beta_ledger_refund_identity } => Ok(StateMachineResponse {
-                beta_ledger_refund_identity,
-                alpha_ledger_redeem_identity: secret_source.new_secp256k1_redeem(id),
-            }),
-        }
-    }
-}
-
-impl FromAcceptSwapRequestHttpBody<Ethereum, Bitcoin>
-    for StateMachineResponse<ethereum_support::Address, secp256k1_support::KeyPair>
-{
-    fn from_accept_swap_request_http_body(
-        body: AcceptSwapRequestHttpBody<Ethereum, Bitcoin>,
-        id: SwapId,
-        secret_source: &dyn SecretSource,
-    ) -> Result<Self, HttpApiProblem> {
-        match body {
-            AcceptSwapRequestHttpBody::OnlyRefund { .. } | AcceptSwapRequestHttpBody::RefundAndRedeem { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("The refund identity for swaps where Bitcoin is the BetaLedger has to be provided on-demand, i.e. when the refund action is executed.")),
-            AcceptSwapRequestHttpBody::None { .. } => Err(HttpApiProblem::with_title_and_type_from_status(400).set_detail("Missing beta_ledger_redeem_identity")),
-            AcceptSwapRequestHttpBody::OnlyRedeem { alpha_ledger_redeem_identity } => Ok(StateMachineResponse {
-                alpha_ledger_redeem_identity,
-                beta_ledger_refund_identity: secret_source.new_secp256k1_refund(id),
-            }),
-        }
-    }
+#[derive(Deserialize, Clone, Debug)]
+struct OnlyRefund<L: Ledger> {
+    pub beta_ledger_refund_identity: L::Identity,
 }
 
 #[derive(Deserialize)]
@@ -212,10 +122,28 @@ struct DeclineSwapRequestHttpBody {
     reason: Option<SwapDeclineReason>,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum PostAction {
-    Accept,
-    Decline,
+impl ToAcceptResponseBody<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
+    fn to_accept_response_body(
+        &self,
+        secret_source: &dyn SecretSource,
+    ) -> AcceptResponseBody<Bitcoin, Ethereum> {
+        AcceptResponseBody {
+            beta_ledger_refund_identity: self.beta_ledger_refund_identity,
+            alpha_ledger_redeem_identity: secret_source.secp256k1_redeem().into(),
+        }
+    }
+}
+
+impl ToAcceptResponseBody<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
+    fn to_accept_response_body(
+        &self,
+        secret_source: &dyn SecretSource,
+    ) -> AcceptResponseBody<Ethereum, Bitcoin> {
+        AcceptResponseBody {
+            alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
+            beta_ledger_refund_identity: secret_source.secp256k1_refund().into(),
+        }
+    }
 }
 
 impl FromStr for PostAction {

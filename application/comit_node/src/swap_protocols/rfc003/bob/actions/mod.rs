@@ -5,10 +5,11 @@ mod eth_btc;
 
 use crate::{
     comit_client::{SwapDeclineReason, SwapReject},
-    swap_protocols::rfc003::{state_machine::StateMachineResponse, Ledger},
+    swap_protocols::rfc003::{
+        bob::ResponseSender, messages::ToAcceptResponseBody, secret_source::SecretSource, Ledger,
+    },
 };
-use futures::sync::oneshot;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund> {
@@ -36,31 +37,31 @@ impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
     }
 }
 
-#[allow(type_alias_bounds)]
-type Response<AL: Ledger, BL: Ledger> =
-    Result<StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>, SwapReject>;
-
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[allow(missing_debug_implementations)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
-    sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>,
+    sender: ResponseSender<AL, BL>,
+    secret_source: Arc<dyn SecretSource>,
 }
 
 impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     #[allow(clippy::type_complexity)]
-    pub fn new(sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>) -> Self {
-        Self { sender }
+    pub fn new(sender: ResponseSender<AL, BL>, secret_source: Arc<dyn SecretSource>) -> Self {
+        Self {
+            sender,
+            secret_source,
+        }
     }
-    pub fn accept(
-        &self,
-        response: StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>,
-    ) -> Result<(), ()> {
+    pub fn accept<P: ToAcceptResponseBody<AL, BL>>(&self, partial_response: P) -> Result<(), ()> {
         let mut sender = self.sender.lock().unwrap();
 
         match sender.take() {
             Some(sender) => {
                 sender
-                    .send(Ok(response))
+                    .send(Ok(
+                        partial_response.to_accept_response_body(self.secret_source.as_ref())
+                    ))
                     .expect("Action shouldn't outlive BobToAlice");
                 Ok(())
             }
@@ -69,15 +70,16 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[allow(missing_debug_implementations)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
-    sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>,
+    sender: ResponseSender<AL, BL>,
 }
 
 impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
     #[allow(clippy::type_complexity)]
-    pub fn new(sender: Arc<Mutex<Option<oneshot::Sender<Response<AL, BL>>>>>) -> Self {
+    pub fn new(sender: ResponseSender<AL, BL>) -> Self {
         Self { sender }
     }
     pub fn decline(&self, reason: Option<SwapDeclineReason>) -> Result<(), ()> {

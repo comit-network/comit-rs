@@ -5,9 +5,8 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            events::{CommunicationEvents, ResponseFuture, StateMachineResponseFuture},
+            events::{CommunicationEvents, ResponseFuture},
             ledger::Ledger,
-            Alice,
         },
     },
 };
@@ -15,7 +14,7 @@ use futures::Future;
 #[allow(missing_debug_implementations)]
 pub struct AliceToBob<C, AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
-    response_future: Option<Box<StateMachineResponseFuture<AL::Identity, BL::Identity>>>,
+    response_future: Option<Box<ResponseFuture<AL, BL>>>,
     client: C,
     bob_id: NodeId,
 }
@@ -31,12 +30,12 @@ impl<C, AL: Ledger, BL: Ledger> AliceToBob<C, AL, BL> {
 }
 
 impl<C: comit_client::Client, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>
-    CommunicationEvents<Alice<AL, BL, AA, BA>> for AliceToBob<C, AL, BL>
+    CommunicationEvents<AL, BL, AA, BA> for AliceToBob<C, AL, BL>
 {
     fn request_responded(
         &mut self,
-        request: &comit_client::rfc003::Request<AL, BL, AA, BA>,
-    ) -> &mut ResponseFuture<Alice<AL, BL, AA, BA>> {
+        request: &rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> &mut ResponseFuture<AL, BL> {
         let bob_id = self.bob_id;
         let (client, response_future) = (&self.client, &mut self.response_future);
         response_future.get_or_insert_with(|| {

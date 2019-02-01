@@ -27,6 +27,7 @@ pub trait Ledger:
     type Pubkey: Clone + Debug + Send + Sync + 'static;
     type Address: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + 'static;
     type Identity: Clone
+        + Copy
         + Debug
         + Send
         + Sync

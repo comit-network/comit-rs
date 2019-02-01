@@ -53,7 +53,6 @@ it("[Alice] Should be able to send a swap request to Bob", async () => {
                 name: beta_asset_name,
                 quantity: beta_asset_bob_quantity,
             },
-            alpha_ledger_refund_identity: null,
             beta_ledger_redeem_identity: alice_final_address,
             alpha_expiry: alpha_expiry,
             beta_expiry: beta_expiry,
@@ -86,7 +85,6 @@ it("[Alice] Should be able to send a swap request to Charlie", async () => {
                 name: beta_asset_name,
                 quantity: beta_asset_charlie_quantity,
             },
-            alpha_ledger_refund_identity: null,
             beta_ledger_redeem_identity: alice_final_address,
             alpha_expiry: alpha_expiry,
             beta_expiry: beta_expiry,
@@ -101,21 +99,23 @@ it("[Alice] Should be able to send a swap request to Charlie", async () => {
         });
 });
 
-it("[Alice] Should be in Start state after sending the swap request to Charlie", async function() {
+it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
     await alice.poll_comit_node_until(
         chai,
         alice_swap_with_charlie_href,
-        "Start"
+        state =>
+            state.outcome == "IN_PROGRESS" &&
+            state.communication.current_state == "SENT"
     );
 });
 
-it("[Charlie] Shows the Swap as Start in /swaps", async () => {
+it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
     let res = await chai.request(charlie.comit_node_url()).get("/swaps");
 
     let embedded = res.body._embedded;
     let swap_embedded = embedded.swaps[0];
     swap_embedded.protocol.should.equal("rfc003");
-    swap_embedded.state.should.equal("Start");
+    swap_embedded.state.should.equal("IN_PROGRESS");
     let swap_link = swap_embedded._links;
     swap_link.should.be.a("object");
     let swap_href = swap_link.self.href;

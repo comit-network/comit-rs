@@ -1,10 +1,11 @@
 use crate::{
     comit_client::SwapReject,
     swap_protocols::{
+        asset::Asset,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            events::{self, LedgerEvents},
-            role::test::{Alisha, Bobisha, FakeCommunicationEvents},
+            self,
+            events::{self, CommunicationEvents, LedgerEvents, ResponseFuture},
             state_machine::*,
             Ledger, RedeemTransaction, Secret, Timestamp,
         },
@@ -19,6 +20,22 @@ use futures::{
 };
 use hex::FromHex;
 use std::{str::FromStr, sync::Arc};
+
+#[allow(missing_debug_implementations)]
+pub struct FakeCommunicationEvents<AL: Ledger, BL: Ledger> {
+    pub response: Option<Box<ResponseFuture<AL, BL>>>,
+}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> CommunicationEvents<AL, BL, AA, BA>
+    for FakeCommunicationEvents<AL, BL>
+{
+    fn request_responded(
+        &mut self,
+        _request: &rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> &mut ResponseFuture<AL, BL> {
+        self.response.as_mut().unwrap()
+    }
+}
 
 #[derive(Default)]
 struct FakeLedgerEvents<L: Ledger> {
@@ -77,13 +94,18 @@ impl LedgerEvents<Ethereum, EtherQuantity> for FakeLedgerEvents<Ethereum> {
     }
 }
 
-fn gen_start_state() -> Start<Alisha> {
-    Start {
+fn gen_start_state() -> (
+    Start<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
+    Secret,
+) {
+    let secret = Secret::from(*b"hello world, you are beautiful!!");
+    let start = Start {
         alpha_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                 .unwrap(),
         )
-        .unwrap(),
+        .unwrap()
+        .into(),
         beta_ledger_redeem_identity: ethereum_support::Address::from_str(
             "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
         )
@@ -94,13 +116,14 @@ fn gen_start_state() -> Start<Alisha> {
         beta_asset: EtherQuantity::from_eth(10.0),
         alpha_expiry: Timestamp::from(2000000000),
         beta_expiry: Timestamp::from(2000000000),
-        secret: Secret::from(*b"hello world, you are beautiful!!"),
-        role: Alisha::default(),
-    }
+        secret_hash: secret.hash(),
+    };
+
+    (start, secret)
 }
 
 macro_rules! init {
-    ($role:ty, $response_event:expr, $state:expr, $alpha_events:expr, $beta_events:expr) => {{
+    ($response_event:expr, $state:expr, $alpha_events:expr, $beta_events:expr) => {{
         let (state_sender, state_receiver) = mpsc::unbounded();
         let context = Context {
             alpha_ledger_events: Box::new($alpha_events),
@@ -108,7 +131,7 @@ macro_rules! init {
             state_repo: Arc::new(state_sender),
             communication_events: Box::new($response_event),
         };
-        let state: SwapStates<$role> = $state;
+        let state: SwapStates<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> = $state;
         let final_state_future = Swap::start_in(state, context);
         (final_state_future, state_receiver.map_err(|_| ()))
     }};
@@ -145,11 +168,10 @@ macro_rules! run_state_machine {
 
 #[test]
 fn when_swap_is_rejected_go_to_final_reject() {
-    let start = gen_start_state();
+    let (start, _) = gen_start_state();
 
     let (state_machine, states) = init!(
-        Alisha,
-        FakeCommunicationEvents::<Alisha> {
+        FakeCommunicationEvents::<Bitcoin, Ethereum> {
             response: Some(Box::new(future::ok(Err(SwapReject::Rejected)))),
         },
         start.clone().into(),
@@ -166,7 +188,7 @@ fn when_swap_is_rejected_go_to_final_reject() {
 
 #[test]
 fn alpha_refunded() {
-    let bob_response = StateMachineResponse {
+    let bob_response = rfc003::messages::AcceptResponseBody {
         beta_ledger_refund_identity: ethereum_support::Address::from_str(
             "71b9f69dcabb340a3fe229c3f94f1662ad85e5e8",
         )
@@ -177,11 +199,10 @@ fn alpha_refunded() {
         .unwrap(),
     };
 
-    let start = gen_start_state();
+    let (start, secret) = gen_start_state();
 
     let (state_machine, states) = init!(
-        Alisha,
-        FakeCommunicationEvents::<Alisha> {
+        FakeCommunicationEvents::<Bitcoin, Ethereum> {
             response: Some(Box::new(future::ok(Ok(bob_response.clone())))),
         },
         start.clone().into(),
@@ -198,7 +219,7 @@ fn alpha_refunded() {
                     input: vec![],
                     output: vec![],
                 },
-                secret: start.secret,
+                secret,
             })))),
             ..Default::default()
         },
@@ -232,7 +253,6 @@ fn alpha_refunded() {
 
 #[test]
 fn bob_transition_alpha_refunded() {
-    let (bobisha, _) = Bobisha::create();
     let start = Start {
         alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
             "d38e554430c4035f2877a579a07a99886153f071",
@@ -248,16 +268,16 @@ fn bob_transition_alpha_refunded() {
         beta_asset: EtherQuantity::from_eth(10.0),
         alpha_expiry: Timestamp::from(2000000000),
         beta_expiry: Timestamp::from(2000000000),
-        secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
-        role: bobisha,
+        secret_hash: Secret::from(*b"hello world, you are beautiful!!").hash(),
     };
 
-    let response = StateMachineResponse {
+    let response = rfc003::messages::AcceptResponseBody {
         alpha_ledger_redeem_identity: secp256k1_support::KeyPair::from_secret_key_slice(
             &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                 .unwrap(),
         )
-        .unwrap(),
+        .unwrap()
+        .into(),
         beta_ledger_refund_identity: ethereum_support::Address::from_str(
             "8457037fcd80a8650c4692d7fcfc1d0a96b92867",
         )
@@ -265,8 +285,7 @@ fn bob_transition_alpha_refunded() {
     };
 
     let (state_machine, states) = init!(
-        Bobisha,
-        FakeCommunicationEvents::<Bobisha> {
+        FakeCommunicationEvents::<Bitcoin, Ethereum> {
             response: Some(Box::new(future::ok(Ok(response.clone()))))
         },
         start.clone().into(),

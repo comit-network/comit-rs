@@ -1,19 +1,19 @@
 use crate::swap_protocols::{
     asset::Asset,
     dependencies::{LedgerEventDependencies, ProtocolDependencies},
-    metadata_store::{self, Metadata, MetadataStore},
+    metadata_store::{self, Metadata, MetadataStore, RoleKind},
     rfc003::{
-        bob::SwapRequest,
+        self, bob,
         create_ledger_events::CreateLedgerEvents,
         events::ResponseFuture,
         state_store::{self, StateStore},
-        Bob, Initiation, Ledger,
+        Ledger,
     },
     SwapId,
 };
-
-use futures::Future;
+use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub enum Error {
@@ -36,50 +36,56 @@ pub trait BobSpawner: Send + Sync + 'static {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
-        swap_request: SwapRequest<AL, BL, AA, BA>,
-    ) -> Result<Box<ResponseFuture<Bob<AL, BL, AA, BA>>>, Error>
+        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> Result<Box<ResponseFuture<AL, BL>>, Error>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        SwapRequest<AL, BL, AA, BA>: Into<Metadata>;
+        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> BobSpawner for ProtocolDependencies<T, S> {
+impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner for ProtocolDependencies<T, S> {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
-        swap_request: SwapRequest<AL, BL, AA, BA>,
-    ) -> Result<Box<ResponseFuture<Bob<AL, BL, AA, BA>>>, Error>
+        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> Result<Box<ResponseFuture<AL, BL>>, Error>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        SwapRequest<AL, BL, AA, BA>: Into<Metadata>,
     {
-        let save_state = self
-            .state_store
-            .new_save_state(id)
-            .map_err(Error::Storage)?;
+        let swap_seed = Arc::new(self.seed.swap_seed(id));
+        let bob = bob::State::new(swap_request.clone(), swap_seed);
+
+        let response_future = bob
+            .response_future()
+            .expect("This is always Some when Bob is created");
+
         self.metadata_store
-            .insert(id, swap_request.clone())
+            .insert(
+                id,
+                Metadata {
+                    alpha_ledger: swap_request.alpha_ledger.into(),
+                    beta_ledger: swap_request.beta_ledger.into(),
+                    alpha_asset: swap_request.alpha_asset.into(),
+                    beta_asset: swap_request.beta_asset.into(),
+                    role: RoleKind::Bob,
+                },
+            )
             .map_err(Error::Metadata)?;
 
-        let initiation = Initiation {
-            alpha_asset: swap_request.alpha_asset,
-            beta_asset: swap_request.beta_asset,
-            alpha_ledger: swap_request.alpha_ledger,
-            beta_ledger: swap_request.beta_ledger,
-            beta_ledger_redeem_identity: swap_request.beta_ledger_redeem_identity,
-            alpha_ledger_refund_identity: swap_request.alpha_ledger_refund_identity,
-            alpha_expiry: swap_request.alpha_expiry,
-            beta_expiry: swap_request.beta_expiry,
-            secret: swap_request.secret_hash,
-        };
+        let (sender, receiver) = mpsc::unbounded();
 
-        let (state_machine_future, response_future) = Bob::new_state_machine(
-            initiation,
+        let state_machine_future = bob.new_state_machine(
             self.ledger_events.create_ledger_events(),
             self.ledger_events.create_ledger_events(),
-            save_state,
+            Arc::new(sender),
         );
+
+        let state_store = Arc::clone(&self.state_store);
+        state_store.insert(id, bob);
+        tokio::spawn(receiver.for_each(move |update| {
+            state_store.update::<bob::State<AL, BL, AA, BA>>(id, update);
+            Ok(())
+        }));
 
         tokio::spawn(
             state_machine_future

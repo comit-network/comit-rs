@@ -1,11 +1,7 @@
 use crate::{
     connection_pool::ConnectionPool,
     http_api::{self, rfc003::routes::GetActionQueryParams},
-    seed::Seed,
-    swap_protocols::{
-        rfc003::{state_store, SecretSource},
-        MetadataStore, ProtocolDependencies, SwapId,
-    },
+    swap_protocols::{rfc003::state_store, MetadataStore, ProtocolDependencies, SwapId},
 };
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -15,18 +11,15 @@ pub fn swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, RFC003, id)
 }
 
-pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
+pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: ProtocolDependencies<T, S>,
-    seed: Seed,
     comit_connection_pool: Arc<ConnectionPool>,
 ) -> BoxedFilter<(impl Reply,)> {
-    let seed = Arc::new(seed);
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(RFC003));
     let metadata_store = warp::any().map(move || metadata_store.clone());
-    let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<dyn SecretSource>);
     let state_store = warp::any().map(move || state_store.clone());
     let empty_json_body = warp::any().map(|| json!({}));
     let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
@@ -36,7 +29,6 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .and(warp::path::end())
         .and(warp::post2())
         .and(protocol_dependencies.clone())
-        .and(rfc003_secret_gen.clone())
         .and(warp::body::json())
         .and_then(http_api::rfc003::routes::post_swap);
 
@@ -58,7 +50,6 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     let rfc003_post_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
-        .and(rfc003_secret_gen.clone())
         .and(warp::path::param::<SwapId>())
         .and(warp::path::param::<http_api::rfc003::routes::PostAction>())
         .and(warp::post2())

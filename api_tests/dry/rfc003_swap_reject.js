@@ -3,6 +3,7 @@ const Web3 = require("web3");
 const actor = require("../lib/actor.js");
 const should = chai.should();
 chai.use(require("chai-http"));
+const util = require("../lib/util.js");
 
 const alpha_ledger_name = "Bitcoin";
 const alpha_ledger_network = "regtest";
@@ -48,7 +49,6 @@ it("[Alice] Should be able to make first swap request via HTTP api", async () =>
                 name: beta_asset_name,
                 quantity: beta_asset_quantity,
             },
-            alpha_ledger_refund_identity: null,
             beta_ledger_redeem_identity: alice_final_address,
             alpha_expiry: alpha_expiry,
             beta_expiry: beta_expiry,
@@ -64,6 +64,7 @@ it("[Alice] Should be able to make first swap request via HTTP api", async () =>
 });
 
 it("[Alice] Should see Bob in her list of peers after sending a swap request to him", async () => {
+    await util.sleep(1000);
     await chai
         .request(alice.comit_node_url())
         .get("/peers")
@@ -105,7 +106,6 @@ it("[Alice] Should be able to make second swap request via HTTP api", async () =
                 name: beta_asset_name,
                 quantity: beta_asset_quantity,
             },
-            alpha_ledger_refund_identity: null,
             beta_ledger_redeem_identity: alice_final_address,
             alpha_expiry: alpha_expiry,
             beta_expiry: beta_expiry,
@@ -149,25 +149,16 @@ it("[Alice] Is able to GET the swap after POSTing it", async () => {
 
             let body = res.body;
             body.role.should.equal("Alice");
-            body.state.should.equal("Start");
+            body.state.outcome.should.equal("IN_PROGRESS");
             let swap = body.swap;
             swap.should.be.a("object");
-            swap.alpha_ledger.name.should.equal(alpha_ledger_name);
-            swap.alpha_ledger.network.should.equal(alpha_ledger_network);
-            swap.beta_ledger.name.should.equal(beta_ledger_name);
-            swap.beta_ledger.network.should.equal(beta_ledger_network);
-            swap.alpha_asset.name.should.equal(alpha_asset_name);
             swap.alpha_asset.quantity.should.equal(
                 alpha_asset_reasonable_quantity
             );
-            swap.beta_asset.name.should.equal(beta_asset_name);
-            swap.beta_asset.quantity.should.equal(beta_asset_quantity);
-            swap.alpha_expiry.should.equal(alpha_expiry);
-            swap.beta_expiry.should.equal(beta_expiry);
         });
 });
 
-it("[Alice] Shows the swaps as Start in GET /swaps", async () => {
+it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
     await chai
         .request(alice.comit_node_url())
         .get("/swaps")
@@ -179,12 +170,12 @@ it("[Alice] Shows the swaps as Start in GET /swaps", async () => {
             let reasonable_swap_in_swaps = {
                 _links: { self: { href: alice_reasonable_swap_href } },
                 protocol: "rfc003",
-                state: "Start",
+                state: "IN_PROGRESS",
             };
             let stingy_swap_in_swaps = {
                 _links: { self: { href: alice_stingy_swap_href } },
                 protocol: "rfc003",
-                state: "Start",
+                state: "IN_PROGRESS",
             };
             swaps.should.have.deep.members([
                 stingy_swap_in_swaps,
@@ -204,7 +195,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
 
     for (let swap of swaps) {
         swap.protocol.should.equal("rfc003");
-        swap.state.should.equal("Start");
+        swap.state.should.equal("IN_PROGRESS");
     }
 
     let swap_1_link = swaps[0]._links.self;
@@ -241,21 +232,8 @@ it("[Bob] Has the accept and decline actions when GETing the swap", async () => 
             res.should.have.status(200);
 
             let body = res.body;
-            body.state.should.equal("Start");
+            body.state.outcome.should.equal("IN_PROGRESS");
             body.swap.should.be.a("object");
-            let swap = body.swap;
-            swap.alpha_ledger.name.should.equal(alpha_ledger_name);
-            swap.alpha_ledger.network.should.equal(alpha_ledger_network);
-            swap.beta_ledger.name.should.equal(beta_ledger_name);
-            swap.beta_ledger.network.should.equal(beta_ledger_network);
-            swap.alpha_asset.name.should.equal(alpha_asset_name);
-            swap.alpha_asset.quantity.should.equal("100");
-            swap.beta_asset.name.should.equal(beta_asset_name);
-            swap.beta_asset.quantity.should.equal(beta_asset_quantity);
-            swap.beta_asset.name.should.equal(beta_asset_name);
-            swap.beta_asset.quantity.should.equal(beta_asset_quantity);
-            swap.alpha_expiry.should.equal(alpha_expiry);
-            swap.beta_expiry.should.equal(beta_expiry);
 
             let action_links = body._links;
             action_links.should.be.a("object");
@@ -284,11 +262,19 @@ it("[Bob] Can execute a decline action providing a reason", async () => {
 });
 
 it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async function() {
-    await bob.poll_comit_node_until(chai, bob_stingy_swap_href, "Rejected");
+    await bob.poll_comit_node_until(
+        chai,
+        bob_stingy_swap_href,
+        state => state.communication.current_state == "REJECTED"
+    );
 });
 
 it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
-    await alice.poll_comit_node_until(chai, alice_stingy_swap_href, "Rejected");
+    await alice.poll_comit_node_until(
+        chai,
+        alice_stingy_swap_href,
+        state => state.communication.current_state == "REJECTED"
+    );
 });
 
 it("[Bob] Can execute a decline action, without providing a reason", async () => {
@@ -314,13 +300,17 @@ it("[Bob] Can execute a decline action, without providing a reason", async () =>
 });
 
 it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
-    await bob.poll_comit_node_until(chai, bob_reasonable_swap_href, "Rejected");
+    await bob.poll_comit_node_until(
+        chai,
+        bob_reasonable_swap_href,
+        state => state.communication.current_state == "REJECTED"
+    );
 });
 
 it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
     await alice.poll_comit_node_until(
         chai,
         alice_reasonable_swap_href,
-        "Rejected"
+        state => state.communication.current_state == "REJECTED"
     );
 });

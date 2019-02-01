@@ -20,8 +20,6 @@ extern crate bam;
 #[macro_use]
 extern crate futures;
 #[macro_use]
-extern crate frunk;
-#[macro_use]
 extern crate binary_macros;
 
 pub mod bam_api;

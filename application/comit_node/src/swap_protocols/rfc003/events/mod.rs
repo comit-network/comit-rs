@@ -3,15 +3,13 @@
 #![allow(type_alias_bounds)]
 
 use crate::{
-    comit_client::{self, SwapReject},
+    comit_client::SwapReject,
     ledger_query_service::Query,
     swap_protocols::{
         asset::Asset,
         rfc003::{
-            self,
-            ledger::Ledger,
-            state_machine::{HtlcParams, StateMachineResponse},
-            FundTransaction, RedeemTransaction, RefundTransaction, Role,
+            self, ledger::Ledger, messages::AcceptResponseBody, state_machine::HtlcParams,
+            FundTransaction, RedeemTransaction, RefundTransaction,
         },
     },
 };
@@ -23,12 +21,8 @@ pub use self::lqs::{LqsEvents, LqsEventsForErc20};
 
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
-pub type StateMachineResponseFuture<ALSI, BLRI> =
-    Future<Result<StateMachineResponse<ALSI, BLRI>, SwapReject>>;
-
 #[allow(type_alias_bounds)]
-pub type ResponseFuture<R: Role> =
-    StateMachineResponseFuture<R::AlphaRedeemHtlcIdentity, R::BetaRefundHtlcIdentity>;
+pub type ResponseFuture<AL, BL> = Future<Result<AcceptResponseBody<AL, BL>, SwapReject>>;
 
 pub type Deployed<L: Ledger> = Future<L::HtlcLocation>;
 pub type Funded<L: Ledger> = Future<Option<FundTransaction<L>>>;
@@ -54,16 +48,11 @@ pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
     ) -> &mut RedeemedOrRefunded<L>;
 }
 
-pub trait CommunicationEvents<R: Role>: Send {
+pub trait CommunicationEvents<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>: Send {
     fn request_responded(
         &mut self,
-        request: &comit_client::rfc003::Request<
-            R::AlphaLedger,
-            R::BetaLedger,
-            R::AlphaAsset,
-            R::BetaAsset,
-        >,
-    ) -> &mut ResponseFuture<R>;
+        request: &rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> &mut ResponseFuture<AL, BL>;
 }
 
 pub trait NewHtlcDeployedQuery<L: Ledger, A: Asset>: Send + Sync
