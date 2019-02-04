@@ -186,7 +186,10 @@ mod tests {
     fn handshake() -> Result<(), std::io::Error> {
         let (hs_init, hs_resp) = setup();
 
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let mut runtime = tokio::runtime::Builder::new()
+            .core_threads(2)
+            .build()
+            .unwrap();
 
         let hs_init = hs_init.map_err(|_| ());
 
