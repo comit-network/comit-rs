@@ -1,3 +1,4 @@
+use crate::settings::ComitNodeSettings;
 use fern::{
     colors::{Color, ColoredLevelConfig},
     Dispatch, FormatCallback,
@@ -14,19 +15,14 @@ pub fn set_context<S: ToString>(input: &S) {
     });
 }
 
-pub fn set_up_logging() {
+pub fn set_up_logging(settings: &ComitNodeSettings) {
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
-        // TODO: get level from config file once implemented with #136
-        .level(LevelFilter::Debug)
-        .level_for("comit_node", LevelFilter::Trace)
-        .level_for("bam", LevelFilter::Trace)
-        .level_for("comit_node::ledger_query_service", LevelFilter::Info)
+        .level(settings.log_level)
         .level_for("tokio_core::reactor", LevelFilter::Info)
         .level_for("tokio_reactor", LevelFilter::Info)
         .level_for("hyper", LevelFilter::Info)
         .level_for("warp", LevelFilter::Info)
-        // output to stdout
         .chain(stdout())
         .apply()
         .unwrap();

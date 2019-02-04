@@ -23,8 +23,8 @@ use std::{env::var, net::SocketAddr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
 fn main() -> Result<(), failure::Error> {
-    logging::set_up_logging();
     let settings = load_settings()?;
+    logging::set_up_logging(&settings);
 
     info!("Starting up with {:#?}", settings);
 

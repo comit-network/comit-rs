@@ -1,3 +1,4 @@
 # This is should not be used in production
+log_level="debug"
 [bitcoin]
 transient_root_key="tprv8ZgxMBicQKsPcsbCVeqqF1KVdH7gwDJbxbzpCxDUsoXHdb6SnTPYxdwSAKhBzPJuE3CA2JAD79JGohP7F6x3TeXehf4rrMdLAD7cbwaWJ1f"
