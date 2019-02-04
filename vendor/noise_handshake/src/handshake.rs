@@ -51,6 +51,11 @@ impl Handshake for Session {
     {
         match self {
             Session::Handshake(ref handshake_state) => NoiseHandshake {
+                name: if handshake_state.is_initiator() {
+                    String::from("Initiator")
+                } else {
+                    String::from("Responder")
+                },
                 next: if handshake_state.is_initiator() {
                     Step::write(&mut self)
                 } else {
@@ -68,6 +73,7 @@ impl Handshake for Session {
 
 #[allow(missing_debug_implementations)]
 pub struct NoiseHandshake<IO: AsyncRead + AsyncWrite> {
+    name: String,
     next: Step,
     noise: Option<Session>,
     io: Option<IO>,
@@ -89,8 +95,11 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
     type Error = std::io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        let msg = format!("[{}] Polling", self.name);
+        dbg!(msg);
         match self {
             Self {
+                name,
                 noise: Some(ref mut noise),
                 io: Some(ref mut io),
                 next:
@@ -101,18 +110,38 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                     },
                 ..
             } => {
+                let msg = format!(
+                    "[{}] Writing some bytes. written_bytes: {}, total_bytes: {}",
+                    name, *written_bytes, *total_bytes
+                );
+                dbg!(msg);
                 while written_bytes < total_bytes {
+                    let msg = format!(
+                        "[{}] (loop start) Writing some bytes. written_bytes: {}, total_bytes: {}",
+                        name, *written_bytes, *total_bytes
+                    );
+                    dbg!(msg);
                     *written_bytes =
                         try_ready!(io.poll_write(&to_write[*written_bytes..*total_bytes]));
+                    let msg = format!(
+                        "[{}] (loop end) Writing some bytes. written_bytes: {}, total_bytes: {}",
+                        name, *written_bytes, *total_bytes
+                    );
+                    dbg!(msg);
                 }
                 if noise.is_handshake_finished() {
+                    let msg = format!("[{}] Finito! (write)", name);
+                    dbg!(msg);
                     Ok(Async::Ready(self.wrap_up()))
                 } else {
+                    let msg = format!("[{}] Reading next", name);
+                    dbg!(msg);
                     self.next = Step::read();
                     self.poll()
                 }
             }
             Self {
+                name,
                 noise: Some(ref mut noise),
                 io: Some(ref mut io),
                 next:
@@ -122,19 +151,31 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                     },
             } => {
                 let mut dec_buffer = [0u8; NOISE_MAX_SIZE];
+                let msg = format!("[{}] Reading", name);
 
+                dbg!(msg);
                 *len += try_ready!(io.poll_read(&mut enc_buffer[*len..]));
+                let msg = format!("[{}] Decoding", name);
 
+                dbg!(msg);
                 match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
                     Ok(_) => {
-                        if !noise.is_handshake_finished() {
+                        let msg = format!("[{}] Decoding successful", name);
+                        dbg!(msg);
+                        if noise.is_handshake_finished() {
+                            let msg = format!("[{}] Finito! (read)", name);
+                            dbg!(msg);
+                            Ok(Async::Ready(self.wrap_up()))
+                        } else {
+                            let msg = format!("[{}] Writing next", name);
+                            dbg!(msg);
                             self.next = Step::write(noise);
                             self.poll()
-                        } else {
-                            Ok(Async::Ready(self.wrap_up()))
                         }
                     }
                     Err(_e) => {
+                        let msg = format!("[{}] Re-polling because could not decode", name);
+                        dbg!(msg);
                         trace!(
                             "Re-polling because a single poll_read didn't have the whole message"
                         );
