@@ -1,8 +1,9 @@
 mod serde;
 
 use crate::seed::Seed;
-use ::serde::Deserialize;
 use config::{Config, ConfigError, File};
+use log::LevelFilter;
+
 use std::{
     ffi::OsStr,
     net::{IpAddr, SocketAddr},
@@ -15,6 +16,12 @@ pub struct ComitNodeSettings {
     pub comit: Comit,
     pub http_api: HttpApi,
     pub ledger_query_service: LedgerQueryService,
+    #[serde(with = "serde::log_level", default = "default_log")]
+    pub log_level: LevelFilter,
+}
+
+fn default_log() -> LevelFilter {
+    LevelFilter::Debug
 }
 
 #[derive(Debug, Deserialize)]
