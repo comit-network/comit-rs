@@ -11,9 +11,9 @@ pub enum Step {
         len: usize,
     },
     Write {
-        buffer: [u8; NOISE_MAX_SIZE],
+        to_write: [u8; NOISE_MAX_SIZE],
         written_bytes: usize,
-        len: usize,
+        total_bytes: usize,
     },
 }
 
@@ -29,11 +29,11 @@ impl Step {
         let mut buffer = [0u8; NOISE_MAX_SIZE];
         let len = noise
             .write_message(&[], &mut buffer)
-            .expect("Cannot encode the message");
+            .expect("A zero-length message cannot be too long");
         Step::Write {
-            buffer,
+            to_write: buffer,
             written_bytes: 0,
-            len,
+            total_bytes: len,
         }
     }
 }
@@ -78,7 +78,7 @@ impl<IO: AsyncRead + AsyncWrite> NoiseHandshake<IO> {
         let noise = self.noise.take().expect("We know it's a Some");
         let noise = noise
             .into_transport_mode()
-            .expect("Cannot go into transport mode despite handshake being finished");
+            .expect("Should not fail as handshake is finished");
         let io = self.io.take().expect("We know it's a Some");
         (noise, io)
     }
@@ -95,14 +95,15 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                 io: Some(ref mut io),
                 next:
                     Step::Write {
-                        buffer,
+                        to_write,
                         ref mut written_bytes,
-                        len,
+                        total_bytes,
                     },
                 ..
             } => {
-                while written_bytes < len {
-                    *written_bytes = try_ready!(io.poll_write(&buffer[*written_bytes..*len]));
+                while written_bytes < total_bytes {
+                    *written_bytes =
+                        try_ready!(io.poll_write(&to_write[*written_bytes..*total_bytes]));
                 }
                 if noise.is_handshake_finished() {
                     Ok(Async::Ready(self.wrap_up()))
