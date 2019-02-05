@@ -3,11 +3,13 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 name = "noise_handshake"
 version = "0.1.0"
+
 [dependencies]
 futures = "0.1"
 log = "0.4"
 snow = "0.4"
 tokio = "0.1"
+chrono = "0.4"
 
 [dev-dependencies]
 memsocket = "0.1"

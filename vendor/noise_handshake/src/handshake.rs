@@ -1,3 +1,4 @@
+use chrono::prelude::*;
 use futures::*;
 use snow::Session;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -95,7 +96,7 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
     type Error = std::io::Error;
 
     fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
-        let msg = format!("[{}] Polling", self.name);
+        let msg = format!("{} [{}] Polling", Utc::now(), self.name);
         dbg!(msg);
         match self {
             Self {
@@ -111,30 +112,34 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                 ..
             } => {
                 let msg = format!(
-                    "[{}] Writing some bytes. written_bytes: {}, total_bytes: {}",
-                    name, *written_bytes, *total_bytes
+                    "{} [{}] Writing some bytes. written_bytes: {}, total_bytes: {}",
+                    Utc::now(),
+                    name,
+                    *written_bytes,
+                    *total_bytes
                 );
                 dbg!(msg);
                 while written_bytes < total_bytes {
                     let msg = format!(
-                        "[{}] (loop start) Writing some bytes. written_bytes: {}, total_bytes: {}",
-                        name, *written_bytes, *total_bytes
+                        "{} [{}] (loop start) Writing some bytes. written_bytes: {}, total_bytes: {}",
+                        Utc::now(),name, *written_bytes, *total_bytes
                     );
                     dbg!(msg);
                     *written_bytes =
                         try_ready!(io.poll_write(&to_write[*written_bytes..*total_bytes]));
-                    let msg = format!(
-                        "[{}] (loop end) Writing some bytes. written_bytes: {}, total_bytes: {}",
-                        name, *written_bytes, *total_bytes
+                    let msg =
+                        format!(
+                        "{} [{}] (loop end) Writing some bytes. written_bytes: {}, total_bytes: {}",
+                        Utc::now(),name, *written_bytes, *total_bytes
                     );
                     dbg!(msg);
                 }
                 if noise.is_handshake_finished() {
-                    let msg = format!("[{}] Finito! (write)", name);
+                    let msg = format!("{} [{}] Finito! (write)", Utc::now(), name);
                     dbg!(msg);
                     Ok(Async::Ready(self.wrap_up()))
                 } else {
-                    let msg = format!("[{}] Reading next", name);
+                    let msg = format!("{} [{}] Reading next", Utc::now(), name);
                     dbg!(msg);
                     self.next = Step::read();
                     self.poll()
@@ -151,30 +156,40 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                     },
             } => {
                 let mut dec_buffer = [0u8; NOISE_MAX_SIZE];
-                let msg = format!("[{}] Reading", name);
+                let msg = format!(
+                    "{} [{}] Reading, {} bytes read so far",
+                    Utc::now(),
+                    name,
+                    *len
+                );
 
                 dbg!(msg);
                 *len += try_ready!(io.poll_read(&mut enc_buffer[*len..]));
-                let msg = format!("[{}] Decoding", name);
+                let msg = format!("{} [{}] Decoding {} bytes", Utc::now(), name, *len);
 
                 dbg!(msg);
                 match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
                     Ok(_) => {
-                        let msg = format!("[{}] Decoding successful", name);
+                        let msg = format!("{} [{}] Decoding successful", Utc::now(), name);
                         dbg!(msg);
                         if noise.is_handshake_finished() {
-                            let msg = format!("[{}] Finito! (read)", name);
+                            let msg = format!("{} [{}] Finito! (read)", Utc::now(), name);
                             dbg!(msg);
                             Ok(Async::Ready(self.wrap_up()))
                         } else {
-                            let msg = format!("[{}] Writing next", name);
+                            let msg = format!("{} [{}] Writing next", Utc::now(), name);
                             dbg!(msg);
                             self.next = Step::write(noise);
                             self.poll()
                         }
                     }
-                    Err(_e) => {
-                        let msg = format!("[{}] Re-polling because could not decode", name);
+                    Err(e) => {
+                        let msg = format!(
+                            "{} [{}] Re-polling because could not decode: {:?}",
+                            Utc::now(),
+                            name,
+                            e
+                        );
                         dbg!(msg);
                         trace!(
                             "Re-polling because a single poll_read didn't have the whole message"
