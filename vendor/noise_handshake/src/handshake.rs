@@ -215,11 +215,13 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
 mod tests {
 
     use super::*;
+    use futures::future::poll_fn;
     use std::thread;
+    use tokio::net::{TcpListener, TcpStream};
 
     fn setup() -> (
-        NoiseHandshake<memsocket::UnboundedSocket>,
-        NoiseHandshake<memsocket::UnboundedSocket>,
+        impl Future<Item = (Session, TcpStream), Error = std::io::Error>,
+        impl Future<Item = (Session, TcpStream), Error = std::io::Error>,
     ) {
         let builder_resp = snow::Builder::new("Noise_XK_25519_ChaChaPoly_BLAKE2s".parse().unwrap());
         let static_keypair_resp = builder_resp.generate_keypair().unwrap();
@@ -236,11 +238,19 @@ mod tests {
             .build_initiator()
             .unwrap();
 
-        let (socket_init, socket_resp) = memsocket::unbounded();
+        let addr = "127.0.0.1:0".parse().unwrap();
 
-        let handshake_init = noise_init.handshake(socket_init);
+        let mut listener = TcpListener::bind(&addr).expect("unable to bind TCP Listener");
+        let addr = listener.local_addr().expect("Did not bind?");
+        dbg!(addr);
 
-        let handshake_resp = noise_resp.handshake(socket_resp);
+        let listener_future = poll_fn(move || listener.poll_accept());
+
+        let handshake_resp =
+            listener_future.and_then(move |(socket, _)| noise_resp.handshake(socket));
+
+        let handshake_init =
+            TcpStream::connect(&addr).and_then(move |socket| noise_init.handshake(socket));
 
         (handshake_init, handshake_resp)
     }
