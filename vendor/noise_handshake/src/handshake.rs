@@ -4,6 +4,9 @@ use snow::Session;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 const NOISE_MAX_SIZE: usize = 65535;
+// Hack: the snow library panics if trying to decode a buffer smaller than 48
+// bytes.
+const MIN_HANDSHAKE_SIZE: usize = 48;
 
 #[allow(missing_debug_implementations)]
 pub enum Step {
@@ -166,35 +169,38 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
                 dbg!(msg);
                 *len += try_ready!(io.poll_read(&mut enc_buffer[*len..]));
                 let msg = format!("{} [{}] Decoding {} bytes", Utc::now(), name, *len);
-
                 dbg!(msg);
-                match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
-                    Ok(_) => {
-                        let msg = format!("{} [{}] Decoding successful", Utc::now(), name);
-                        dbg!(msg);
-                        if noise.is_handshake_finished() {
-                            let msg = format!("{} [{}] Finito! (read)", Utc::now(), name);
+                if *len < MIN_HANDSHAKE_SIZE {
+                    self.poll()
+                } else {
+                    match noise.read_message(&enc_buffer[..*len], &mut dec_buffer) {
+                        Ok(_) => {
+                            let msg = format!("{} [{}] Decoding successful", Utc::now(), name);
                             dbg!(msg);
-                            Ok(Async::Ready(self.wrap_up()))
-                        } else {
-                            let msg = format!("{} [{}] Writing next", Utc::now(), name);
+                            if noise.is_handshake_finished() {
+                                let msg = format!("{} [{}] Finito! (read)", Utc::now(), name);
+                                dbg!(msg);
+                                Ok(Async::Ready(self.wrap_up()))
+                            } else {
+                                let msg = format!("{} [{}] Writing next", Utc::now(), name);
+                                dbg!(msg);
+                                self.next = Step::write(noise);
+                                self.poll()
+                            }
+                        }
+                        Err(e) => {
+                            let msg = format!(
+                                "{} [{}] Re-polling because could not decode: {:?}",
+                                Utc::now(),
+                                name,
+                                e
+                            );
                             dbg!(msg);
-                            self.next = Step::write(noise);
+                            trace!(
+                                "Re-polling because a single poll_read didn't have the whole message"
+                            );
                             self.poll()
                         }
-                    }
-                    Err(e) => {
-                        let msg = format!(
-                            "{} [{}] Re-polling because could not decode: {:?}",
-                            Utc::now(),
-                            name,
-                            e
-                        );
-                        dbg!(msg);
-                        trace!(
-                            "Re-polling because a single poll_read didn't have the whole message"
-                        );
-                        self.poll()
                     }
                 }
             }
