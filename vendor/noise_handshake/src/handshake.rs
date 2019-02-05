@@ -194,6 +194,7 @@ impl<IO: AsyncRead + AsyncWrite> Future for NoiseHandshake<IO> {
 mod tests {
 
     use super::*;
+    use std::thread;
 
     fn setup() -> (
         NoiseHandshake<memsocket::UnboundedSocket>,
@@ -227,28 +228,34 @@ mod tests {
     fn handshake() -> Result<(), std::io::Error> {
         let (hs_init, hs_resp) = setup();
 
-        let mut runtime = tokio::runtime::Builder::new()
-            .core_threads(2)
-            .build()
-            .unwrap();
+        let (sender_init, receiver_init) = futures::sync::oneshot::channel();
 
-        let hs_init = hs_init.map_err(|_| ());
+        thread::spawn(move || {
+            let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-        runtime.spawn(hs_init.and_then(|(noise, _io)| match noise {
-            Session::Transport(_) => Ok(()),
-            _ => panic!("Initiator session is expected to be in transport mode"),
-        }));
+            let result = runtime.block_on(hs_init).map(|(session, _)| session);
+            sender_init.send(result).unwrap();
+        });
 
-        let result = runtime
-            .block_on_all(hs_resp.and_then(|(noise, _io)| match noise {
-                Session::Transport(_) => Ok(true),
-                _ => Ok(false),
-            }))
-            .unwrap();
+        let (sender_resp, receiver_resp) = futures::sync::oneshot::channel();
 
-        assert!(result);
+        thread::spawn(move || {
+            let mut runtime = tokio::runtime::Runtime::new().unwrap();
 
-        Ok(())
+            let result = runtime.block_on(hs_resp).map(|(session, _)| session);
+            sender_resp.send(result).unwrap();
+        });
+
+        let receivers = receiver_init.join(receiver_resp);
+
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+
+        let result = runtime.block_on(receivers).unwrap();
+
+        match result {
+            (Ok(Session::Transport(_)), Ok(Session::Transport(_))) => Ok(()),
+            err => panic!("Sessions not in expected state: {:?}", err),
+        }
     }
 
 }
