@@ -44,8 +44,12 @@ impl<'a> SignedTransaction<'a> {
 
 impl<'a> Encodable for SignedTransaction<'a> {
     fn rlp_append(&self, stream: &mut RlpStream) {
-        let r = &self.signature.0[0..32];
-        let s = &self.signature.0[32..64];
+        // For some reason Ethereum thinks that the (r,s) of a ECDSA
+        // signature should be encoded as integers which means they
+        // cannot start with 0x00 and be a valid RLP encoding. So we
+        // wrap them in U256s so they RLP encode correctly. 🤦
+        let r = U256::from(&self.signature.0[0..32]);
+        let s = U256::from(&self.signature.0[32..64]);
 
         stream
             .append_internal(self.unsigned_transaction)
