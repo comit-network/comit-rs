@@ -5,7 +5,10 @@ use crate::{
         ledger::HttpLedger,
         problem::HttpApiProblemStdError,
         rfc003::{
-            handlers::{handle_get_swap, handle_get_swaps, handle_post_swap},
+            handlers::{
+                handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
+                handle_post_swap,
+            },
             socket_addr,
         },
     },
@@ -21,7 +24,7 @@ use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, str::FromStr, sync::Arc};
 use warp::{Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";
@@ -165,6 +168,83 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         }
         Err(e) => Err(warp::reject::custom(HttpApiProblemStdError::from(e))),
     }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PostAction {
+    Accept,
+    Decline,
+}
+
+impl FromStr for PostAction {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        match s {
+            "accept" => Ok(PostAction::Accept),
+            "decline" => Ok(PostAction::Decline),
+            _ => Err(()),
+        }
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+    secret_source: Arc<dyn SecretSource>,
+    id: SwapId,
+    action: PostAction,
+    body: serde_json::Value,
+) -> Result<impl Reply, Rejection> {
+    handle_post_action(
+        metadata_store.as_ref(),
+        state_store.as_ref(),
+        secret_source.as_ref(),
+        id,
+        action,
+        body,
+    )
+    .map(|_| warp::reply())
+    .map_err(HttpApiProblemStdError::from)
+    .map_err(warp::reject::custom)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GetAction {
+    Fund,
+    Deploy,
+    Redeem,
+    Refund,
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum GetActionQueryParams {
+    BitcoinAddressAndFee {
+        address: bitcoin_support::Address,
+        fee_per_byte: String,
+    },
+    None {},
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+    id: SwapId,
+    action: GetAction,
+    query_params: GetActionQueryParams,
+) -> Result<impl Reply, Rejection> {
+    handle_get_action(
+        metadata_store.as_ref(),
+        state_store,
+        &id,
+        action,
+        &query_params,
+    )
+    .map_err(HttpApiProblemStdError::from)
+    .map_err(warp::reject::custom)
 }
 
 #[cfg(test)]

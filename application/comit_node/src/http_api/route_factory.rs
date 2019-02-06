@@ -1,6 +1,6 @@
 use crate::{
     connection_pool::ConnectionPool,
-    http_api::{self, rfc003::action::GetActionQueryParams},
+    http_api::{self, rfc003::routes::GetActionQueryParams},
     seed::Seed,
     swap_protocols::{
         rfc003::{state_store, SecretSource},
@@ -55,21 +55,21 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
         .and(state_store.clone())
         .and(rfc003_secret_gen.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::rfc003::action::PostAction>())
+        .and(warp::path::param::<http_api::rfc003::routes::PostAction>())
         .and(warp::post2())
         .and(warp::path::end())
         .and(warp::body::json().or(empty_json_body).unify())
-        .and_then(http_api::rfc003::action::post);
+        .and_then(http_api::rfc003::routes::post_action);
 
     let rfc003_get_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::rfc003::action::GetAction>())
+        .and(warp::path::param::<http_api::rfc003::routes::GetAction>())
         .and(warp::query::<GetActionQueryParams>())
         .and(warp::get2())
         .and(warp::path::end())
-        .and_then(http_api::rfc003::action::get);
+        .and_then(http_api::rfc003::routes::get_action);
 
     let get_peers = warp::path("peers")
         .and(comit_connection_pool.clone())
