@@ -1,118 +1,27 @@
+pub use crate::http_api::rfc003::handlers::{GetAction, GetActionQueryParams, PostAction};
 use crate::{
     http_api::{
         self,
-        asset::HttpAsset,
-        ledger::HttpLedger,
         problem::HttpApiProblemStdError,
-        rfc003::{
-            handlers::{
-                handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
-                handle_post_swap,
-            },
-            socket_addr,
+        rfc003::handlers::{
+            handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
+            handle_post_swap, ActionName, GetSwapResource, SwapRequestBodyKind,
         },
     },
     swap_protocols::{
-        asset::Asset,
-        ledger::{Bitcoin, Ethereum},
-        rfc003::{alice::AliceSpawner, state_store::StateStore, Ledger, SecretSource, Timestamp},
+        rfc003::{alice::AliceSpawner, state_store::StateStore, SecretSource},
         MetadataStore, SwapId,
     },
 };
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
 use hyper::header;
 use rustic_hal::HalResource;
-use std::{net::SocketAddr, str::FromStr, sync::Arc};
+use std::sync::Arc;
 use warp::{Rejection, Reply};
 
 pub const PROTOCOL_NAME: &str = "rfc003";
 pub fn swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id)
-}
-
-#[derive(Debug, Serialize)]
-pub struct SwapDescription {
-    pub alpha_ledger: HttpLedger,
-    pub beta_ledger: HttpLedger,
-    pub alpha_asset: HttpAsset,
-    pub beta_asset: HttpAsset,
-    pub alpha_expiry: Timestamp,
-    pub beta_expiry: Timestamp,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GetSwapResource {
-    pub swap: SwapDescription,
-    pub role: String,
-    pub state: String,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum SwapRequestBodyIdentities<AI, BI> {
-    RefundAndRedeem {
-        alpha_ledger_refund_identity: AI,
-        beta_ledger_redeem_identity: BI,
-    },
-    OnlyRedeem {
-        beta_ledger_redeem_identity: BI,
-    },
-    OnlyRefund {
-        alpha_ledger_refund_identity: AI,
-    },
-    None {},
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    #[serde(with = "http_api::asset::serde")]
-    pub alpha_asset: AA,
-    #[serde(with = "http_api::asset::serde")]
-    pub beta_asset: BA,
-    #[serde(with = "http_api::ledger::serde")]
-    pub alpha_ledger: AL,
-    #[serde(with = "http_api::ledger::serde")]
-    pub beta_ledger: BL,
-    pub alpha_expiry: Timestamp,
-    pub beta_expiry: Timestamp,
-    #[serde(flatten)]
-    pub identities: SwapRequestBodyIdentities<AL::Identity, BL::Identity>,
-    #[serde(with = "socket_addr")]
-    pub peer: SocketAddr,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct UnsupportedSwapRequestBody {
-    pub alpha_asset: HttpAsset,
-    pub beta_asset: HttpAsset,
-    pub alpha_ledger: HttpLedger,
-    pub beta_ledger: HttpLedger,
-    pub alpha_ledger_refund_identity: Option<String>,
-    pub beta_ledger_redeem_identity: Option<String>,
-    pub alpha_expiry: Timestamp,
-    pub beta_expiry: Timestamp,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinQuantityErc20Token(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>,
-    ),
-    BitcoinEthereumBitcoinQuantityEtherQuantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>,
-    ),
-    EthereumBitcoinErc20TokenBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity>,
-    ),
-    EthereumBitcoinEtherQuantityBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>,
-    ),
-    // It is important that these two come last because untagged enums are tried in order
-    UnsupportedCombination(Box<UnsupportedSwapRequestBody>),
-    MalformedRequest(serde_json::Value),
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -130,8 +39,6 @@ pub fn post_swap<A: AliceSpawner>(
         })
         .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
 }
-
-pub type ActionName = String;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
@@ -170,24 +77,6 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     }
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum PostAction {
-    Accept,
-    Decline,
-}
-
-impl FromStr for PostAction {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        match s {
-            "accept" => Ok(PostAction::Accept),
-            "decline" => Ok(PostAction::Decline),
-            _ => Err(()),
-        }
-    }
-}
-
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
@@ -210,24 +99,6 @@ pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     .map_err(warp::reject::custom)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GetAction {
-    Fund,
-    Deploy,
-    Redeem,
-    Refund,
-}
-
-#[derive(Clone, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum GetActionQueryParams {
-    BitcoinAddressAndFee {
-        address: bitcoin_support::Address,
-        fee_per_byte: String,
-    },
-    None {},
-}
-
 #[allow(clippy::needless_pass_by_value)]
 pub fn get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
@@ -245,101 +116,4 @@ pub fn get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     )
     .map_err(HttpApiProblemStdError::from)
     .map_err(warp::reject::custom)
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use spectral::prelude::*;
-    use std::net::{IpAddr, Ipv4Addr};
-
-    #[test]
-    fn can_deserialize_swap_request_body_with_port() {
-        let body = r#"{
-                "alpha_ledger": {
-                    "name": "Bitcoin",
-                    "network": "regtest"
-                },
-                "beta_ledger": {
-                    "name": "Ethereum",
-                    "network": "regtest"
-                },
-                "alpha_asset": {
-                    "name": "Bitcoin",
-                    "quantity": "100000000"
-                },
-                "beta_asset": {
-                    "name": "Ether",
-                    "quantity": "10000000000000000000"
-                },
-                "alpha_ledger_refund_identity": null,
-                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_expiry": 2000000000,
-                "beta_expiry": 2000000000,
-                "peer": "127.0.0.1:8002"
-            }"#;
-
-        let body = serde_json::from_str(body);
-
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
-            identities: SwapRequestBodyIdentities::OnlyRedeem {
-                beta_ledger_redeem_identity: ethereum_support::Address::from(
-                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                ),
-            },
-            peer: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8002),
-        })
-    }
-
-    #[test]
-    fn can_deserialize_swap_request_body_without_port() {
-        let body = r#"{
-                "alpha_ledger": {
-                    "name": "Bitcoin",
-                    "network": "regtest"
-                },
-                "beta_ledger": {
-                    "name": "Ethereum",
-                    "network": "regtest"
-                },
-                "alpha_asset": {
-                    "name": "Bitcoin",
-                    "quantity": "100000000"
-                },
-                "beta_asset": {
-                    "name": "Ether",
-                    "quantity": "10000000000000000000"
-                },
-                "alpha_ledger_refund_identity": null,
-                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_expiry": 2000000000,
-                "beta_expiry": 2000000000,
-                "peer": "127.0.0.1"
-            }"#;
-
-        let body = serde_json::from_str(body);
-
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
-            identities: SwapRequestBodyIdentities::OnlyRedeem {
-                beta_ledger_redeem_identity: ethereum_support::Address::from(
-                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                ),
-            },
-            peer: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9939),
-        })
-    }
-
 }

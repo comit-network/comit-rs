@@ -1,8 +1,5 @@
 use crate::{
-    http_api::{
-        problem,
-        rfc003::routes::{GetAction, GetActionQueryParams},
-    },
+    http_api::problem,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
@@ -355,6 +352,24 @@ where
             }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GetAction {
+    Fund,
+    Deploy,
+    Redeem,
+    Refund,
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum GetActionQueryParams {
+    BitcoinAddressAndFee {
+        address: bitcoin_support::Address,
+        fee_per_byte: String,
+    },
+    None {},
 }
 
 #[cfg(test)]

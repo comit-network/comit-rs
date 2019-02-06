@@ -1,6 +1,6 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::{problem, rfc003::routes::PostAction},
+    http_api::problem,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
@@ -18,6 +18,7 @@ use crate::{
 use bitcoin_support;
 use ethereum_support::{self, Erc20Token};
 use http_api_problem::HttpApiProblem;
+use std::str::FromStr;
 
 trait ExecuteAccept<AL: Ledger, BL: Ledger> {
     fn execute(
@@ -209,4 +210,22 @@ impl FromAcceptSwapRequestHttpBody<Ethereum, Bitcoin>
 #[derive(Deserialize)]
 struct DeclineSwapRequestHttpBody {
     reason: Option<SwapDeclineReason>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum PostAction {
+    Accept,
+    Decline,
+}
+
+impl FromStr for PostAction {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        match s {
+            "accept" => Ok(PostAction::Accept),
+            "decline" => Ok(PostAction::Decline),
+            _ => Err(()),
+        }
+    }
 }

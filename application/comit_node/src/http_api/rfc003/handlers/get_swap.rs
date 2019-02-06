@@ -1,14 +1,13 @@
 use crate::{
     http_api::{
-        asset::ToHttpAsset,
-        ledger::ToHttpLedger,
+        asset::{HttpAsset, ToHttpAsset},
+        ledger::{HttpLedger, ToHttpLedger},
         problem,
-        rfc003::routes::{ActionName, GetSwapResource, SwapDescription},
     },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::RoleKind,
-        rfc003::{state_store::StateStore, Actions, Alice, Bob},
+        rfc003::{state_store::StateStore, Actions, Alice, Bob, Timestamp},
         Metadata, MetadataStore, SwapId,
     },
 };
@@ -54,4 +53,23 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
             )))
         })
     )
+}
+
+pub type ActionName = String;
+
+#[derive(Debug, Serialize)]
+pub struct SwapDescription {
+    alpha_ledger: HttpLedger,
+    beta_ledger: HttpLedger,
+    alpha_asset: HttpAsset,
+    beta_asset: HttpAsset,
+    alpha_expiry: Timestamp,
+    beta_expiry: Timestamp,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetSwapResource {
+    swap: SwapDescription,
+    role: String,
+    state: String,
 }
