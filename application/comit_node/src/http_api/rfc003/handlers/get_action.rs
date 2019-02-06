@@ -16,6 +16,51 @@ use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use warp::{self, Reply};
 
+pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    metadata_store: &T,
+    state_store: Arc<S>,
+    id: &SwapId,
+    action: GetAction,
+    query_params: &GetActionQueryParams,
+) -> Result<impl Reply, HttpApiProblem> {
+    let metadata = metadata_store
+        .get(id)?
+        .ok_or_else(problem::swap_not_found)?;
+
+    with_swap_types!(
+        &metadata,
+        (|| {
+            let state = state_store
+                .get::<Role>(id)?
+                .ok_or_else(problem::state_store)?;
+            trace!("Retrieved state for {}: {:?}", id, state);
+
+            state
+                .actions()
+                .iter()
+                .find_map(|state_action| {
+                    if action.matches(state_action) {
+                        Some(
+                            state_action
+                                .clone()
+                                .into_response_body(query_params.clone())
+                                .map(|body| {
+                                    trace!("Swap {}: Returning {:?} for {:?}", id, body, action);
+                                    warp::reply::json(&body)
+                                }),
+                        )
+                    } else {
+                        None
+                    }
+                })
+                .unwrap_or_else(|| {
+                    Err(HttpApiProblem::with_title_and_type_from_status(400)
+                        .set_detail("Requested action is not supported for this swap"))
+                })
+        })
+    )
+}
+
 trait MatchesAction<A> {
     fn matches(self, action: &A) -> bool;
 }
@@ -310,51 +355,6 @@ where
             }
         }
     }
-}
-
-pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    metadata_store: &T,
-    state_store: Arc<S>,
-    id: &SwapId,
-    action: GetAction,
-    query_params: &GetActionQueryParams,
-) -> Result<impl Reply, HttpApiProblem> {
-    let metadata = metadata_store
-        .get(id)?
-        .ok_or_else(problem::swap_not_found)?;
-
-    with_swap_types!(
-        &metadata,
-        (|| {
-            let state = state_store
-                .get::<Role>(id)?
-                .ok_or_else(problem::state_store)?;
-            trace!("Retrieved state for {}: {:?}", id, state);
-
-            state
-                .actions()
-                .iter()
-                .find_map(|state_action| {
-                    if action.matches(state_action) {
-                        Some(
-                            state_action
-                                .clone()
-                                .into_response_body(query_params.clone())
-                                .map(|body| {
-                                    trace!("Swap {}: Returning {:?} for {:?}", id, body, action);
-                                    warp::reply::json(&body)
-                                }),
-                        )
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or_else(|| {
-                    Err(HttpApiProblem::with_title_and_type_from_status(400)
-                        .set_detail("Requested action is not supported for this swap"))
-                })
-        })
-    )
 }
 
 #[cfg(test)]

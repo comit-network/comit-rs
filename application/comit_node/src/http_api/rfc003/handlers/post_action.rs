@@ -28,6 +28,88 @@ trait ExecuteAccept<AL: Ledger, BL: Ledger> {
     ) -> Result<(), HttpApiProblem>;
 }
 
+#[allow(clippy::unit_arg, clippy::let_unit_value)]
+pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+    metadata_store: &T,
+    state_store: &S,
+    secret_source: &dyn SecretSource,
+    id: SwapId,
+    action: PostAction,
+    body: serde_json::Value,
+) -> Result<(), HttpApiProblem> {
+    use crate::swap_protocols::{Metadata, RoleKind};
+    trace!("accept action requested on {:?}", id);
+    let metadata = metadata_store
+        .get(&id)?
+        .ok_or_else(problem::swap_not_found)?;
+
+    with_swap_types_bob!(
+        &metadata,
+        (|| match action {
+            PostAction::Accept => serde_json::from_value::<AcceptSwapRequestHttpBody<AL, BL>>(body)
+                .map_err(|e| {
+                    error!(
+                        "Failed to deserialize body of accept response for swap {}: {:?}",
+                        id, e
+                    );
+                    problem::serde(&e)
+                })
+                .and_then(|accept_body| {
+                    let state = state_store
+                        .get::<Role>(&id)?
+                        .ok_or_else(problem::state_store)?;
+
+                    let accept_action = {
+                        state
+                            .actions()
+                            .into_iter()
+                            .find_map(move |action| match action {
+                                bob::ActionKind::Accept(accept) => Some(Ok(accept)),
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| {
+                                Err(HttpApiProblem::with_title_and_type_from_status(404))
+                            })?
+                    };
+
+                    ExecuteAccept::execute(&accept_action, accept_body, secret_source, id)
+                }),
+            PostAction::Decline => {
+                serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
+                    .map_err(|e| {
+                        error!(
+                            "Failed to deserialize body of decline response for swap {}: {:?}",
+                            id, e
+                        );
+                        problem::serde(&e)
+                    })
+                    .and_then(move |decline_body| {
+                        let state = state_store
+                            .get::<Role>(&id)?
+                            .ok_or_else(problem::state_store)?;
+
+                        let decline_action = {
+                            state
+                                .actions()
+                                .into_iter()
+                                .find_map(move |action| match action {
+                                    bob::ActionKind::Decline(decline) => Some(Ok(decline)),
+                                    _ => None,
+                                })
+                                .unwrap_or_else(|| {
+                                    Err(HttpApiProblem::with_title_and_type_from_status(404))
+                                })?
+                        };
+
+                        let reason = decline_body.reason;
+
+                        ExecuteDecline::execute(&decline_action, reason)
+                    })
+            }
+        })
+    )
+}
+
 impl<AL: Ledger, BL: Ledger> ExecuteAccept<AL, BL> for Accept<AL, BL>
 where
     StateMachineResponse<AL::HtlcIdentity, BL::HtlcIdentity>: FromAcceptSwapRequestHttpBody<AL, BL>,
@@ -127,86 +209,4 @@ impl FromAcceptSwapRequestHttpBody<Ethereum, Bitcoin>
 #[derive(Deserialize)]
 struct DeclineSwapRequestHttpBody {
     reason: Option<SwapDeclineReason>,
-}
-
-#[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
-    metadata_store: &T,
-    state_store: &S,
-    secret_source: &dyn SecretSource,
-    id: SwapId,
-    action: PostAction,
-    body: serde_json::Value,
-) -> Result<(), HttpApiProblem> {
-    use crate::swap_protocols::{Metadata, RoleKind};
-    trace!("accept action requested on {:?}", id);
-    let metadata = metadata_store
-        .get(&id)?
-        .ok_or_else(problem::swap_not_found)?;
-
-    with_swap_types_bob!(
-        &metadata,
-        (|| match action {
-            PostAction::Accept => serde_json::from_value::<AcceptSwapRequestHttpBody<AL, BL>>(body)
-                .map_err(|e| {
-                    error!(
-                        "Failed to deserialize body of accept response for swap {}: {:?}",
-                        id, e
-                    );
-                    problem::serde(&e)
-                })
-                .and_then(|accept_body| {
-                    let state = state_store
-                        .get::<Role>(&id)?
-                        .ok_or_else(problem::state_store)?;
-
-                    let accept_action = {
-                        state
-                            .actions()
-                            .into_iter()
-                            .find_map(move |action| match action {
-                                bob::ActionKind::Accept(accept) => Some(Ok(accept)),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| {
-                                Err(HttpApiProblem::with_title_and_type_from_status(404))
-                            })?
-                    };
-
-                    ExecuteAccept::execute(&accept_action, accept_body, secret_source, id)
-                }),
-            PostAction::Decline => {
-                serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
-                    .map_err(|e| {
-                        error!(
-                            "Failed to deserialize body of decline response for swap {}: {:?}",
-                            id, e
-                        );
-                        problem::serde(&e)
-                    })
-                    .and_then(move |decline_body| {
-                        let state = state_store
-                            .get::<Role>(&id)?
-                            .ok_or_else(problem::state_store)?;
-
-                        let decline_action = {
-                            state
-                                .actions()
-                                .into_iter()
-                                .find_map(move |action| match action {
-                                    bob::ActionKind::Decline(decline) => Some(Ok(decline)),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| {
-                                    Err(HttpApiProblem::with_title_and_type_from_status(404))
-                                })?
-                        };
-
-                        let reason = decline_body.reason;
-
-                        ExecuteDecline::execute(&decline_action, reason)
-                    })
-            }
-        })
-    )
 }

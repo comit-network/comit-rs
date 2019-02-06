@@ -1,8 +1,11 @@
-use crate::swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
-    metadata_store::RoleKind,
-    rfc003::{state_store::StateStore, Alice, Bob},
-    Metadata, MetadataStore, SwapId,
+use crate::{
+    http_api::rfc003::routes::{swap_path, PROTOCOL_NAME},
+    swap_protocols::{
+        ledger::{Bitcoin, Ethereum},
+        metadata_store::RoleKind,
+        rfc003::{state_store::StateStore, Alice, Bob},
+        Metadata, MetadataStore, SwapId,
+    },
 };
 use ethereum_support::Erc20Token;
 use http_api_problem::HttpApiProblem;
@@ -13,8 +16,6 @@ pub struct EmbeddedSwapResource {
     state: String,
     protocol: String,
 }
-
-use crate::http_api::rfc003::routes::{swap_path, PROTOCOL_NAME};
 
 pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: &T,
