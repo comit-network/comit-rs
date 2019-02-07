@@ -55,7 +55,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     )
 }
 
-pub type ActionName = String;
+type ActionName = String;
 
 #[derive(Debug, Serialize)]
 pub struct SwapDescription {

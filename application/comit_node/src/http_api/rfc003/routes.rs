@@ -5,7 +5,7 @@ use crate::{
         problem::HttpApiProblemStdError,
         rfc003::handlers::{
             handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
-            handle_post_swap, ActionName, GetSwapResource, SwapRequestBodyKind,
+            handle_post_swap, SwapRequestBodyKind,
         },
     },
     swap_protocols::{
@@ -24,6 +24,10 @@ pub fn swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id)
 }
 
+fn into_rejection(problem: HttpApiProblem) -> Rejection {
+    warp::reject::custom(HttpApiProblemStdError::from(problem))
+}
+
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
     alice_spawner: A,
@@ -37,7 +41,7 @@ pub fn post_swap<A: AliceSpawner>(
                 warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
             warp::reply::with_status(response, warp::http::StatusCode::CREATED)
         })
-        .map_err(|problem| warp::reject::custom(HttpApiProblemStdError::from(problem)))
+        .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -46,20 +50,16 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     state_store: Arc<S>,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    let result: Result<(GetSwapResource, Vec<ActionName>), HttpApiProblem> =
-        handle_get_swap(&metadata_store, &state_store, &id);
-
-    match result {
-        Ok((swap_resource, actions)) => {
+    handle_get_swap(&metadata_store, &state_store, &id)
+        .map(|(swap_resource, actions)| {
             let mut response = HalResource::new(swap_resource);
             for action in actions {
                 let route = format!("{}/{}", swap_path(id), action);
                 response.with_link(action, route);
             }
             Ok(warp::reply::json(&response))
-        }
-        Err(e) => Err(warp::reject::custom(HttpApiProblemStdError::from(e))),
-    }
+        })
+        .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -67,14 +67,13 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
 ) -> Result<impl Reply, Rejection> {
-    match handle_get_swaps(metadata_store.as_ref(), state_store.as_ref()) {
-        Ok(swaps) => {
+    handle_get_swaps(metadata_store.as_ref(), state_store.as_ref())
+        .map(|swaps| {
             let mut response = HalResource::new("");
             response.with_resources("swaps", swaps);
             Ok(warp::reply::json(&response))
-        }
-        Err(e) => Err(warp::reject::custom(HttpApiProblemStdError::from(e))),
-    }
+        })
+        .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -95,8 +94,7 @@ pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         body,
     )
     .map(|_| warp::reply())
-    .map_err(HttpApiProblemStdError::from)
-    .map_err(warp::reject::custom)
+    .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -114,6 +112,5 @@ pub fn get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         action,
         &query_params,
     )
-    .map_err(HttpApiProblemStdError::from)
-    .map_err(warp::reject::custom)
+    .map_err(into_rejection)
 }
