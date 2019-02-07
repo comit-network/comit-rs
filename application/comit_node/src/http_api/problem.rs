@@ -43,7 +43,6 @@ pub fn unsupported() -> HttpApiProblem {
 }
 
 pub fn serde(e: &serde_json::Error) -> HttpApiProblem {
-    // TODO (fixme): Use error to give more detail to the user
     error!("Failed to deserialize body: {:?}", e);
     HttpApiProblem::new("invalid-body")
         .set_status(400)
