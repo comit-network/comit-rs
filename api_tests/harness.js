@@ -182,6 +182,7 @@ async function startLedgerQueryService(name, lqs_config) {
 
 function run_tests(file) {
     describe("🏃" + file, async function() {
+        let block_interval;
         let subprocesses = [];
         before(async function() {
             this.timeout(ledger_up_time + 4000);
@@ -221,17 +222,17 @@ function run_tests(file) {
                 });
             }
 
-            await util.sleep(2000);
-        });
+            block_interval = setInterval(() => {
+                generateBlock(config.ledgers, ledgers_config);
+            }, 3000);
 
-        beforeEach(async function() {
-            // FIXME: using setInterval to create a block every X seconds made the test harness hang (even after stopping the interval) so we just create a block before every test for now.
-            await generateBlock(config.ledgers, ledgers_config);
+            await util.sleep(2000);
         });
 
         require(file);
 
         after(async function() {
+            clearInterval(block_interval);
             this.timeout(ledger_down_time);
             await cleanUp(subprocesses);
         });
@@ -242,6 +243,6 @@ let items = fs.readdirSync(test_dir);
 
 for (let item of items) {
     if (item.endsWith(".js")) {
-        run_tests(test_dir + item);
+        run_tests(test_dir + "/" + item);
     }
 }
