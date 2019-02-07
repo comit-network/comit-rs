@@ -21,7 +21,6 @@ pub struct DefaultLedgerQueryServiceApiClient {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct QueryResponse<T> {
     matches: Vec<T>,
 }
