@@ -17,15 +17,11 @@ pub fn set_up_logging(settings: &ComitNodeSettings) {
 }
 
 fn formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
-    let line = match record.line() {
-        Some(line) => format!(":{}", line),
-        None => "".to_string(),
-    };
-
-    let path = match record.file() {
-        Some(file) => file.to_string(),
-        None => record.target().to_string(),
-    };
+    let line = record
+        .line()
+        .map(|line| format!(":{}", line))
+        .unwrap_or_else(String::new);
+    let path = record.file().unwrap_or_else(|| record.target());
 
     out.finish(format_args!(
         "[{date}][{level}][{path}{line}] {message}",
