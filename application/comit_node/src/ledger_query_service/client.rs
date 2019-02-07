@@ -21,6 +21,7 @@ pub struct DefaultLedgerQueryServiceApiClient {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct QueryResponse<T> {
     matches: Vec<T>,
 }
@@ -258,7 +259,8 @@ mod test {
 
     #[test]
     fn json_deserialize() {
-        let json = r#"{"query":{"to_address":"bcrt1qtfd0gvmdhx2uz267a8a3rpm4v55t8nuzgka2f5xzm4e06tg2d2dqxugdz7","confirmations_needed":1},"matches":["b29cb185d467b3a5faeb7a3f312175e336dbfcc8e9fecc8ad86e9106031315c2"]}"#;
+        let json =
+            r#"{"matches":["b29cb185d467b3a5faeb7a3f312175e336dbfcc8e9fecc8ad86e9106031315c2"]}"#;
 
         let _: QueryResponse<TransactionId> = serde_json::from_str(json).unwrap();
     }
