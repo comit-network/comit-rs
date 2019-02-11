@@ -1,5 +1,5 @@
 use crate::{
-    http_api::rfc003::routes::{swap_path, PROTOCOL_NAME},
+    http_api::route_factory::{swap_path, RFC003},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::RoleKind,
@@ -32,7 +32,7 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
                     Some(state) => {
                         let swap = EmbeddedSwapResource {
                             state: state.name(),
-                            protocol: PROTOCOL_NAME.into(),
+                            protocol: RFC003.into(),
                         };
 
                         let mut hal_resource = HalResource::new(swap);

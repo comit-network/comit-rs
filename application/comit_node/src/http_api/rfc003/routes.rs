@@ -1,12 +1,12 @@
 pub use crate::http_api::rfc003::handlers::{GetAction, GetActionQueryParams, PostAction};
 use crate::{
     http_api::{
-        self,
         problem::HttpApiProblemStdError,
         rfc003::handlers::{
             handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
             handle_post_swap, SwapRequestBodyKind,
         },
+        route_factory::swap_path,
     },
     swap_protocols::{
         rfc003::{alice::AliceSpawner, state_store::StateStore, SecretSource},
@@ -18,11 +18,6 @@ use hyper::header;
 use rustic_hal::HalResource;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
-
-pub const PROTOCOL_NAME: &str = "rfc003";
-pub fn swap_path(id: SwapId) -> String {
-    format!("/{}/{}/{}", http_api::PATH, PROTOCOL_NAME, id)
-}
 
 fn into_rejection(problem: HttpApiProblem) -> Rejection {
     warp::reject::custom(HttpApiProblemStdError::from(problem))

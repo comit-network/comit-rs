@@ -10,6 +10,11 @@ use crate::{
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
+pub const RFC003: &str = "rfc003";
+pub fn swap_path(id: SwapId) -> String {
+    format!("/{}/{}/{}", http_api::PATH, RFC003, id)
+}
+
 pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -19,7 +24,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore<SwapId>>(
 ) -> BoxedFilter<(impl Reply,)> {
     let seed = Arc::new(seed);
     let path = warp::path(http_api::PATH);
-    let rfc003 = path.and(warp::path(http_api::rfc003::routes::PROTOCOL_NAME));
+    let rfc003 = path.and(warp::path(RFC003));
     let metadata_store = warp::any().map(move || metadata_store.clone());
     let rfc003_secret_gen = warp::any().map(move || seed.clone() as Arc<dyn SecretSource>);
     let state_store = warp::any().map(move || state_store.clone());
