@@ -205,7 +205,7 @@ script_runner = "bash"
 script = [
 '''
 export ROOT=$(pwd);
-./api_tests/npm_wrapper.sh ./dry/rfc003
+./api_tests/npm_wrapper.sh ./dry/
 '''
 ]
 

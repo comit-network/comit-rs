@@ -180,60 +180,69 @@ async function startLedgerQueryService(name, lqs_config) {
 // Start services, run test, shutdown //
 // ********************************** //
 
-describe("🛠", async function() {
-    let subprocesses = [];
-    before(async function() {
-        this.timeout(ledger_up_time + 4000);
+function run_tests(file) {
+    describe("🏃" + file, async function() {
+        let block_interval;
+        let subprocesses = [];
+        before(async function() {
+            this.timeout(ledger_up_time + 4000);
 
-        if (config.ledgers) {
-            logger.info("++ Starting docker container(s)");
-            const subprocess = await startDockerContainers(
-                config.ledgers,
-                ledgers_config
-            );
-            subprocesses.push(subprocess);
-            logger.info("++ Docker containers started");
-            await util.sleep(ledger_up_time);
-        }
-
-        if (config.ledger_query_service) {
-            logger.info("++ Starting Ledger Query Service node(s)");
-            Object.keys(config.ledger_query_service).forEach(async function(
-                name
-            ) {
-                const subprocess = await startLedgerQueryService(
-                    name,
-                    config.ledger_query_service[name]
+            if (config.ledgers) {
+                logger.info("++ Starting docker container(s)");
+                const subprocess = await startDockerContainers(
+                    config.ledgers,
+                    ledgers_config
                 );
                 subprocesses.push(subprocess);
-            });
-        }
+                logger.info("++ Docker containers started");
+                await util.sleep(ledger_up_time);
+            }
 
-        if (config.comit_node) {
-            logger.info("++ Starting COMIT node(s)");
-            Object.keys(config.comit_node).forEach(async function(name) {
-                const subprocess = await startComitNode(
-                    name,
-                    config.comit_node[name]
-                );
-                subprocesses.push(subprocess);
-            });
-        }
+            if (config.ledger_query_service) {
+                logger.info("++ Starting Ledger Query Service node(s)");
+                Object.keys(config.ledger_query_service).forEach(async function(
+                    name
+                ) {
+                    const subprocess = await startLedgerQueryService(
+                        name,
+                        config.ledger_query_service[name]
+                    );
+                    subprocesses.push(subprocess);
+                });
+            }
 
-        await util.sleep(2000);
+            if (config.comit_node) {
+                logger.info("++ Starting COMIT node(s)");
+                Object.keys(config.comit_node).forEach(async function(name) {
+                    const subprocess = await startComitNode(
+                        name,
+                        config.comit_node[name]
+                    );
+                    subprocesses.push(subprocess);
+                });
+            }
+
+            block_interval = setInterval(() => {
+                generateBlock(config.ledgers, ledgers_config);
+            }, 3000);
+
+            await util.sleep(2000);
+        });
+
+        require(file);
+
+        after(async function() {
+            clearInterval(block_interval);
+            this.timeout(ledger_down_time);
+            await cleanUp(subprocesses);
+        });
     });
+}
 
-    beforeEach(async function() {
-        // FIXME: using setInterval to create a block every X seconds made the test harness hang (even after stopping the interval) so we just create a block before every test for now.
-        await generateBlock(config.ledgers, ledgers_config);
-    });
+let items = fs.readdirSync(test_dir);
 
-    describe("👟", async function() {
-        require(test_dir + "/test.js");
-    });
-
-    after(async function() {
-        this.timeout(ledger_down_time);
-        await cleanUp(subprocesses);
-    });
-});
+for (let item of items) {
+    if (item.endsWith(".js")) {
+        run_tests(test_dir + "/" + item);
+    }
+}
