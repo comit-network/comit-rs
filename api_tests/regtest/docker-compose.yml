@@ -22,3 +22,23 @@ services:
       - "18443:18443"
       - "28332:28332"
       - "28333:28333"
+
+  # TODO: Probably have omnicore and btc on same network
+  omnicore:
+    image: dancju/omnicored:0.3.1
+    command:
+      omnicored
+      -txindex
+      -regtest
+      -server
+      -printtoconsole
+      -rpcbind=0.0.0.0:19443
+      -rpcauth=omnicore:cb77f0957de88ff388cf817ddbc7273$$9eaa166ace0d94a29c6eceb831a42458e93faeb79f895a7ee4ce03f4343f8f55
+      -rpcallowip=0.0.0.0/0
+      -debug=1
+      -zmqpubrawblock=tcp://*:29332
+      -zmqpubrawtx=tcp://*:29333
+    ports:
+      - "19443:19443"
+      - "29332:29332"
+      - "29333:29333"

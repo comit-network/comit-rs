@@ -17,15 +17,15 @@ const regtest = {
     wif: 0xef,
 };
 
-let _bitcoin_rpc_client;
+let _rpc_client;
 
 function create_bitcoin_rpc_client() {
     const btc_config = global.harness.ledgers_config.bitcoin;
     if (!btc_config) {
         throw new Error("ledger.bitcoin configuration is needed");
     }
-    return (_bitcoin_rpc_client =
-        _bitcoin_rpc_client ||
+    return (_rpc_client =
+        _rpc_client ||
         new BitcoinRpcClient({
             network: "regtest",
             port: btc_config.rpc_port,
@@ -52,7 +52,7 @@ module.exports.btc_import_address = async function(address) {
 };
 
 async function btc_balance(address) {
-    let btc_balance = await _bitcoin_rpc_client.getReceivedByAddress(address);
+    let btc_balance = await _rpc_client.getReceivedByAddress(address);
     return parseFloat(btc_balance) * 100000000;
 }
 
@@ -80,7 +80,7 @@ class BitcoinWallet {
     constructor() {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this.bitcoin_utxos = [];
-        this._identity = bitcoin.payments.p2wpkh({
+        this._identity = bitcoin.payments.p2pkh({
             pubkey: this.keypair.publicKey,
             network: regtest,
         });
@@ -90,12 +90,12 @@ class BitcoinWallet {
         return this._identity;
     }
 
-    async fund(btc_value) {
-        let txid = await _bitcoin_rpc_client.sendToAddress(
+    async fund(btc_value, rpcClient = _rpc_client) {
+        let txid = await rpcClient.sendToAddress(
             this.identity().address,
             btc_value
         );
-        let raw_transaction = await _bitcoin_rpc_client.getRawTransaction(txid);
+        let raw_transaction = await rpcClient.getRawTransaction(txid);
         let transaction = bitcoin.Transaction.fromHex(raw_transaction);
         for (let [i, out] of transaction.outs.entries()) {
             if (out.script.equals(this.identity().output)) {
@@ -109,7 +109,7 @@ class BitcoinWallet {
     async send_btc_to_address(to, value) {
         const txb = new bitcoin.TransactionBuilder();
         const utxo = this.bitcoin_utxos.shift();
-        const to_address = bitcoin.address.fromBech32(to);
+        const to_address = to;
         const input_amount = utxo.value;
         const key_pair = this.keypair;
         const fee = 2500;
@@ -120,10 +120,12 @@ class BitcoinWallet {
         txb.addOutput(bitcoin.address.toOutputScript(to, regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
-        return _bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
+        return _rpc_client.sendRawTransaction(txb.build().toHex());
     }
 }
 
 module.exports.create_wallet = () => {
     return new BitcoinWallet();
 };
+
+module.exports.BitcoinWallet = BitcoinWallet;

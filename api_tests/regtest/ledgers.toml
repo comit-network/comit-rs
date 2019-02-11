@@ -12,3 +12,12 @@ docker = "eth"
 rpc_url = "http://localhost:8545"
 up_time = "10000"
 down_time = "15000"
+
+[omnilayer]
+docker = "omnicore"
+rpc_host = "localhost"
+rpc_port = "19443"
+rpc_username = "omnicore"
+rpc_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
+up_time = "10000"
+down_time = "2000"

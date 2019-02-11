@@ -18,7 +18,7 @@ const bob = actor.create("bob", {});
 
 const alice_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_final_address =
-    "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
+    "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cA";
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset = 100000000;
@@ -242,6 +242,7 @@ describe("RFC003: Bitcoin for Ether", () => {
     });
 
     it("[Alice] Can execute the funding action", async () => {
+        console.log(alice_funding_action);
         alice_funding_action.payload.should.include.all.keys(
             "to",
             "amount",

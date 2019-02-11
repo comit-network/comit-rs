@@ -62,7 +62,7 @@ impl Htlc {
     }
 
     pub fn compute_address(&self, network: Network) -> Address {
-        Address::p2wsh(&self.script, network)
+        Address::p2shwsh(&self.script, network)
     }
 
     pub fn can_be_unlocked_with(
