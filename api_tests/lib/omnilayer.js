@@ -91,6 +91,17 @@ class OmniWallet extends BitcoinWallet {
         await this.fund(value, _rpc_client);
     }
 
+    async sendIssuanceManaged() {
+
+        const utxo = this.bitcoin_utxos.shift();
+        const address = this.identity().address;
+        console.log("Address:", address);
+        return await create_omni_rpc_client().command([{
+            "method": "omni_sendissuancemanaged",
+            "parameters": [address, 2, 1, 0, "Money", "Gonna make you rich", "Regtest USDT", "", "Better swap those tokens"],
+        }]);
+    }
+
     async createPayloadIssuanceManaged() {
         const txb = new bitcoin.TransactionBuilder();
         const utxo = this.bitcoin_utxos.shift();
@@ -106,10 +117,36 @@ class OmniWallet extends BitcoinWallet {
             "parameters": [2, 1, 0, "Money", "Gonna make you rich", "Regtest USDT", "", "Better swap those tokens"],
         }]);
 
-        const buffer = Buffer.from(payload);
+        const OMNI_HEADER = "6f6d6e69";
+
+        const payload_with_header = OMNI_HEADER + payload[0];
+
+        // const omnirawtx = await create_omni_rpc_client().command([{
+        //     "method": "omni_createrawtx_opreturn",
+        //     "parameters": [ txb.buildIncomplete().toHex(), payload[0]],
+        // }]);
+        //
+        // console.log("omnirawtx:" + omnirawtx[0]);
+        //
+        // const omnitx = await create_omni_rpc_client().command([{
+        //     "method": "decoderawtransaction",
+        //     "parameters": omnirawtx,
+        // }]);
+        //
+        // console.log("omnitx:", JSON.stringify(omnitx[0]));
+
+
+        const buffer = Buffer.from(payload_with_header, "hex");
 
         const embed = bitcoin.payments.embed({ data: [buffer] });
         txb.addOutput(embed.output, 500);
+
+        const tx = await create_omni_rpc_client().command([{
+            "method": "omni_decodetransaction",
+            "parameters": [ txb.buildIncomplete().toHex()],
+        }]);
+
+        console.log("tx: ", JSON.stringify(tx[0]));
 
         txb.sign(0, key_pair, null, null, input_amount);
 

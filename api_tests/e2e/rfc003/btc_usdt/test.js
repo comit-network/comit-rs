@@ -26,10 +26,12 @@ describe("RFC003: Bitcoin for USD Tether (Omnilayer)", () => {
         this.timeout(50000);
         //await omnilayer.activate_segwit();
         await alice.wallet.omni().omniFund(1);
+        await omnilayer.omni_generate();
     });
 
     it("Create RegtestOmniCoin", async function() {
       const res = await alice.wallet.omni().createPayloadIssuanceManaged();
       console.log(res);
+      await omnilayer.omni_generate();
     });
 });
