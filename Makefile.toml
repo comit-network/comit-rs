@@ -26,7 +26,7 @@ dependencies = [
 [tasks.pre-build]
 workspace = false
 dependencies = [
-    "check-format",
+    "check-rs-format",
     "check-js-format",
     "clippy"
 ]
@@ -102,7 +102,7 @@ alias = "lqs-tests-flow"
 ################
 # Custom tasks #
 
-[tasks.check-format]
+[tasks.check-rs-format]
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
 install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustfmt-preview", binary = "rustfmt", test_arg = "--help" }
