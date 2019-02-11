@@ -18,8 +18,7 @@ const alice_initial_erc20 = Web3.utils.toWei("10000", "ether");
 const alice = actor.create("alice");
 const bob = actor.create("bob");
 
-const alice_final_address =
-    "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cAx";
+const alice_final_address = "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cAx";
 const bob_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_comit_node_address = bob.config.comit.comit_listen;
 const alpha_asset_amount = BigInt(Web3.utils.toWei("5000", "ether"));

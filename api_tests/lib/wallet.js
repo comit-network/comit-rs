@@ -32,7 +32,7 @@ class Wallet {
     }
 
     omni() {
-        return this._omni_wallet
+        return this._omni_wallet;
     }
 }
 
