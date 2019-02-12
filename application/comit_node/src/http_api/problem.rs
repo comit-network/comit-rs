@@ -12,14 +12,6 @@ pub struct HttpApiProblemStdError {
     inner: HttpApiProblem,
 }
 
-impl HttpApiProblemStdError {
-    pub fn new<P: Into<HttpApiProblem>>(inner: P) -> Self {
-        Self {
-            inner: inner.into(),
-        }
-    }
-}
-
 impl From<HttpApiProblem> for HttpApiProblemStdError {
     fn from(problem: HttpApiProblem) -> Self {
         Self { inner: problem }
@@ -50,14 +42,15 @@ pub fn unsupported() -> HttpApiProblem {
     HttpApiProblem::new("swap-not-supported").set_status(400)
 }
 
-pub fn serde(_e: &serde_json::Error) -> HttpApiProblem {
-    // FIXME: Use error to give more detail to the user
+pub fn serde(e: &serde_json::Error) -> HttpApiProblem {
+    error!("Failed to deserialize body: {:?}", e);
     HttpApiProblem::new("invalid-body")
         .set_status(400)
         .set_detail("Failed to deserialize given body.")
 }
 
 pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
+    error!("{} not yet implemented", feature);
     HttpApiProblem::with_title_and_type_from_status(500)
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
@@ -67,14 +60,16 @@ pub fn action_already_taken() -> HttpApiProblem {
 }
 
 impl From<state_store::Error> for HttpApiProblem {
-    fn from(_e: state_store::Error) -> Self {
-        HttpApiProblem::with_title_and_type_from_status(500).set_detail("Storage layer failure")
+    fn from(e: state_store::Error) -> Self {
+        error!("Storage layer failure: {:?}", e);
+        HttpApiProblem::with_title_and_type_from_status(500)
     }
 }
 
 impl From<metadata_store::Error> for HttpApiProblem {
-    fn from(_e: metadata_store::Error) -> Self {
-        HttpApiProblem::with_title_and_type_from_status(500).set_detail("Storage layer failure")
+    fn from(e: metadata_store::Error) -> Self {
+        error!("Storage layer failure: {:?}", e);
+        HttpApiProblem::with_title_and_type_from_status(500)
     }
 }
 

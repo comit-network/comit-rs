@@ -1,19 +1,7 @@
 use crate::settings::ComitNodeSettings;
-use fern::{
-    colors::{Color, ColoredLevelConfig},
-    Dispatch, FormatCallback,
-};
+use fern::{Dispatch, FormatCallback};
 use log::{LevelFilter, Record};
-use std::{cell::RefCell, fmt::Arguments, io::stdout};
-
-#[allow(dead_code)]
-thread_local!(static LOG_CONTEXT: RefCell<Option<String>> = RefCell::new(None) );
-
-pub fn set_context<S: ToString>(input: &S) {
-    LOG_CONTEXT.with(|context| {
-        *context.borrow_mut() = Some(input.to_string());
-    });
-}
+use std::{fmt::Arguments, io::stdout};
 
 pub fn set_up_logging(settings: &ComitNodeSettings) {
     Dispatch::new()
@@ -29,27 +17,18 @@ pub fn set_up_logging(settings: &ComitNodeSettings) {
 }
 
 fn formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
-    // configure colors for the whole line
-    let colors_line = ColoredLevelConfig::default()
-        .info(Color::Green)
-        .debug(Color::Blue)
-        .trace(Color::Cyan);
+    let line = record
+        .line()
+        .map(|line| format!(":{}", line))
+        .unwrap_or_else(String::new);
+    let path = record.file().unwrap_or_else(|| record.target());
 
-    LOG_CONTEXT.with(|context| {
-        let context = {
-            match *context.borrow() {
-                Some(ref context) => format!("[{}] ", context),
-                None => "".to_string(),
-            }
-        };
-
-        out.finish(format_args!(
-            "[{date}][{target}][{level}] {context}{message}",
-            date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
-            target = record.target(),
-            level = colors_line.color(record.level()),
-            context = context,
-            message = message,
-        ))
-    });
+    out.finish(format_args!(
+        "[{date}][{level}][{path}{line}] {message}",
+        date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+        path = path,
+        line = line,
+        level = record.level(),
+        message = message,
+    ))
 }
