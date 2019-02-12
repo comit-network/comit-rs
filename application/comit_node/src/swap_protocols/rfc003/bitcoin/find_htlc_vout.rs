@@ -1,36 +1,37 @@
 use crate::swap_protocols::{
     ledger::Bitcoin,
-    rfc003::{
-        find_htlc_location::{compare_assets, Error, FindHtlcLocation},
-        state_machine::HtlcParams,
-    },
+    rfc003::{self, state_machine::HtlcParams},
 };
 use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint, Transaction};
 
-impl FindHtlcLocation<Bitcoin, BitcoinQuantity> for Transaction {
-    fn find_htlc_location(
-        &self,
-        htlc_params: &HtlcParams<Bitcoin, BitcoinQuantity>,
-    ) -> Result<OutPoint, Error<BitcoinQuantity>> {
-        let address = htlc_params.compute_address();
+pub fn find_htlc_vout(
+    tx: &Transaction,
+    htlc_params: &HtlcParams<Bitcoin, BitcoinQuantity>,
+) -> Result<OutPoint, rfc003::Error> {
+    let address = htlc_params.compute_address();
 
-        let (vout, txout) = self.find_output(&address).ok_or(Error::WrongTransaction)?;
+    let (vout, txout) = tx.find_output(&address).ok_or_else(|| {
+        rfc003::Error::Internal(
+            "Query returned Bitcoin transaction that didn't match the requested address".into(),
+        )
+    })?;
 
-        let location = OutPoint {
-            txid: self.txid(),
+    let actual_value = BitcoinQuantity::from_satoshi(txout.value);
+    let required_value = htlc_params.asset;
+
+    if actual_value < required_value {
+        Err(rfc003::Error::InsufficientFunding)
+    } else {
+        Ok(OutPoint {
+            txid: tx.txid(),
             vout,
-        };
-
-        let actual_value = BitcoinQuantity::from_satoshi(txout.value);
-        let required_value = htlc_params.asset;
-
-        compare_assets(location, actual_value, required_value)
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Error as ValidationError, *};
+    use super::*;
     use crate::swap_protocols::rfc003::{state_machine::*, Secret, Timestamp};
     use bitcoin_support::{self, BitcoinQuantity, Transaction, TxOut};
     use hex::FromHex;
@@ -71,11 +72,9 @@ mod tests {
             output: vec![transaction_output],
         };
 
-        let bitcoin_transaction: Transaction = transaction.into();
+        let result = find_htlc_vout(&transaction, &htlc_params);
 
-        let result = bitcoin_transaction.clone().find_htlc_location(&htlc_params);
-
-        let txid = bitcoin_transaction.txid();
+        let txid = transaction.txid();
         let expected_outpoint = OutPoint { txid, vout: 0 };
 
         assert_that(&result).is_ok_containing(expected_outpoint)
@@ -84,6 +83,7 @@ mod tests {
     #[test]
     fn transaction_does_not_contain_output() {
         let bitcoin_amount = BitcoinQuantity::from_bitcoin(1.0);
+        let htlc_params = gen_htlc_params(bitcoin_amount);
         let transaction = Transaction {
             version: 1,
             lock_time: 42,
@@ -91,9 +91,9 @@ mod tests {
             output: vec![],
         };
 
-        let result = transaction.find_htlc_location(&gen_htlc_params(bitcoin_amount));
+        let result = find_htlc_vout(&transaction, &htlc_params);
 
-        assert_that(&result).is_err_containing(ValidationError::WrongTransaction)
+        assert_that(&result).is_err();
     }
 
     #[test]
@@ -117,12 +117,9 @@ mod tests {
             output: vec![transaction_output],
         };
 
-        let result = transaction.find_htlc_location(&htlc_params);
+        let result = find_htlc_vout(&transaction, &htlc_params);
 
-        let expected_error = ValidationError::UnexpectedAsset {
-            found: provided_bitcoin_amount,
-            expected: bitcoin_amount,
-        };
+        let expected_error = rfc003::Error::InsufficientFunding;
 
         assert_that(&result).is_err_containing(expected_error)
     }

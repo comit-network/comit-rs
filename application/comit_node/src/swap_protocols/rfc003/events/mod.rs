@@ -4,7 +4,6 @@
 
 use crate::{
     comit_client::{self, SwapReject},
-    ledger_query_service::Query,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -17,9 +16,9 @@ use crate::{
 };
 use tokio::{self, prelude::future::Either};
 
-mod lqs;
+mod ledger_event_futures;
 
-pub use self::lqs::{LqsEvents, LqsEventsForErc20};
+pub use self::ledger_event_futures::*;
 
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
@@ -66,36 +65,16 @@ pub trait CommunicationEvents<R: Role>: Send {
     ) -> &mut ResponseFuture<R>;
 }
 
-pub trait NewHtlcDeployedQuery<L: Ledger, A: Asset>: Send + Sync
-where
-    Self: Query,
-{
-    fn new_htlc_deployed_query(htlc_params: &HtlcParams<L, A>) -> Self;
-}
-
-pub trait NewHtlcFundedQuery<L: Ledger, A: Asset>: Send + Sync
-where
-    Self: Query,
-{
-    fn new_htlc_funded_query(htlc_params: &HtlcParams<L, A>) -> Self;
-}
-
-pub trait NewHtlcRedeemedQuery<L: Ledger, A: Asset>: Send + Sync
-where
-    Self: Query,
-{
-    fn new_htlc_redeemed_query(
-        htlc_params: &HtlcParams<L, A>,
+pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + 'static {
+    fn htlc_deployed(&self, htlc_params: HtlcParams<L, A>) -> Box<Deployed<L>>;
+    fn htlc_funded(
+        &self,
+        htlc_params: HtlcParams<L, A>,
         htlc_location: &L::HtlcLocation,
-    ) -> Self;
-}
-
-pub trait NewHtlcRefundedQuery<L: Ledger, A: Asset>: Send + Sync
-where
-    Self: Query,
-{
-    fn new_htlc_refunded_query(
-        htlc_params: &HtlcParams<L, A>,
+    ) -> Box<Funded<L>>;
+    fn htlc_redeemed_or_refunded(
+        &self,
+        htlc_params: HtlcParams<L, A>,
         htlc_location: &L::HtlcLocation,
-    ) -> Self;
+    ) -> Box<RedeemedOrRefunded<L>>;
 }

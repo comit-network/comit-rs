@@ -7,14 +7,14 @@ use secp256k1_support::KeyPair;
 
 mod actions;
 mod extract_secret;
+mod find_htlc_vout;
 mod htlc;
-mod queries;
-mod validation;
+mod htlc_events;
 
 pub use self::{
     actions::*,
     htlc::{Htlc, UnlockingError},
-    queries::*,
+    htlc_events::*,
 };
 
 impl Ledger for Bitcoin {

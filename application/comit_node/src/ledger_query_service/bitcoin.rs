@@ -1,4 +1,9 @@
-use crate::ledger_query_service::Query;
+use crate::{
+    ledger_query_service::{Error, Query, QueryId},
+    swap_protocols::ledger::Bitcoin,
+};
+use bitcoin_support::{Transaction, TransactionId};
+use futures::Future;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
@@ -15,6 +20,27 @@ pub enum BitcoinQuery {
 }
 
 impl Query for BitcoinQuery {}
+
+pub trait QueryBitcoin {
+    fn create(
+        &self,
+        query: BitcoinQuery,
+    ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send>;
+
+    fn delete(&self, query: &QueryId<Bitcoin>) -> Box<dyn Future<Item = (), Error = Error> + Send>;
+    fn txid_results(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<dyn Future<Item = Vec<TransactionId>, Error = Error> + Send>;
+    fn transaction_results(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<dyn Future<Item = Vec<Transaction>, Error = Error> + Send>;
+    fn transaction_first_result(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<dyn Future<Item = Transaction, Error = Error> + Send>;
+}
 
 #[cfg(test)]
 mod tests {

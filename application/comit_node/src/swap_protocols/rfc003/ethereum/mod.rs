@@ -9,10 +9,9 @@ mod actions;
 mod erc20_htlc;
 mod ether_htlc;
 mod extract_secret;
-mod queries;
-mod validation;
+mod htlc_events;
 
-pub use self::{actions::*, erc20_htlc::*, ether_htlc::*, queries::*};
+pub use self::{actions::*, erc20_htlc::*, ether_htlc::*, htlc_events::*};
 
 // keccak256(Redeemed())
 const REDEEM_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";

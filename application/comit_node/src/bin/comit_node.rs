@@ -8,13 +8,13 @@ use comit_node::{
     comit_server,
     connection_pool::ConnectionPool,
     http_api::route_factory,
-    ledger_query_service::DefaultLedgerQueryServiceApiClient,
+    ledger_query_service::{LqsHttpClient, QueryBitcoin, QueryEthereum},
     logging,
     settings::ComitNodeSettings,
     swap_protocols::{
         metadata_store::MetadataStore,
         rfc003::state_store::{InMemoryStateStore, StateStore},
-        InMemoryMetadataStore, LedgerEventDependencies, ProtocolDependencies, SwapId,
+        InMemoryMetadataStore, ProtocolDependencies, SwapId,
     },
 };
 use directories;
@@ -36,7 +36,7 @@ fn main() -> Result<(), failure::Error> {
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        Arc::clone(&lqs_client),
+        lqs_client.clone(),
         Arc::clone(&connection_pool),
     );
 
@@ -78,27 +78,27 @@ fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
     }
 }
 
-fn create_ledger_query_service_api_client(
-    settings: &ComitNodeSettings,
-) -> Arc<DefaultLedgerQueryServiceApiClient> {
-    Arc::new(DefaultLedgerQueryServiceApiClient::new(
+fn create_ledger_query_service_api_client(settings: &ComitNodeSettings) -> LqsHttpClient {
+    LqsHttpClient::new(
         &settings.ledger_query_service.url,
-    ))
+        settings.ledger_query_service.bitcoin.poll_interval_secs,
+        settings.ledger_query_service.ethereum.poll_interval_secs,
+    )
 }
 
-fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn create_dependencies<
+    T: MetadataStore<SwapId>,
+    S: StateStore<SwapId>,
+    Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static,
+>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    lqs_client: Arc<DefaultLedgerQueryServiceApiClient>,
+    querier: Q,
     connection_pool: Arc<ConnectionPool>,
 ) -> ProtocolDependencies<T, S> {
     ProtocolDependencies {
-        ledger_events: LedgerEventDependencies {
-            lqs_client,
-            lqs_bitcoin_poll_interval: settings.ledger_query_service.bitcoin.poll_interval_secs,
-            lqs_ethereum_poll_interval: settings.ledger_query_service.ethereum.poll_interval_secs,
-        },
+        ledger_events: querier.into(),
         metadata_store,
         state_store,
         connection_pool,

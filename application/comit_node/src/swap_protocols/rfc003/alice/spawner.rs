@@ -71,11 +71,10 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> AliceSpawner for ProtocolD
         };
 
         let swap_execution = {
-            let ledger_events = self.ledger_events.clone();
             Alice::<AL, BL, AA, BA>::new_state_machine(
                 initiation,
-                ledger_events.create_ledger_events(),
-                ledger_events.create_ledger_events(),
+                self.ledger_events.create_ledger_events(),
+                self.ledger_events.create_ledger_events(),
                 self.clone(),
                 swap_request.bob_socket_address,
                 save_state,

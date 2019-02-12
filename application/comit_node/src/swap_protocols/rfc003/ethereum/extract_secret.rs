@@ -1,29 +1,24 @@
-use crate::swap_protocols::rfc003::{
-    secret::{Secret, SecretHash},
-    ExtractSecret,
-};
+use crate::swap_protocols::rfc003::secret::{Secret, SecretHash};
 use ethereum_support::Transaction;
 
-impl ExtractSecret for Transaction {
-    fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret> {
-        let data = &self.input.0;
-        info!(
-            "Attempting to extract secret for {:?} from transaction {:?}",
-            secret_hash, self.hash
-        );
-        match Secret::from_vec(&data) {
-            Ok(secret) if secret.hash() == *secret_hash => Some(secret),
-            Ok(_) => {
-                error!(
-                    "Input ({:?}) in transaction {:?} is NOT the pre-image to {:?}",
-                    data, self.hash, secret_hash
-                );
-                None
-            }
-            Err(e) => {
-                error!("Failed to create secret from {:?}: {:?}", data, e);
-                None
-            }
+pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
+    let data = &transaction.input.0;
+    info!(
+        "Attempting to extract secret for {:?} from transaction {:?}",
+        secret_hash, transaction.hash
+    );
+    match Secret::from_vec(&data) {
+        Ok(secret) if secret.hash() == *secret_hash => Some(secret),
+        Ok(_) => {
+            error!(
+                "Input ({:?}) in transaction {:?} is NOT the pre-image to {:?}",
+                data, transaction.hash, secret_hash
+            );
+            None
+        }
+        Err(e) => {
+            error!("Failed to create secret from {:?}: {:?}", data, e);
+            None
         }
     }
 }
@@ -57,7 +52,7 @@ mod test {
         let secret = Secret::from(*b"This is our favourite passphrase");
         let transaction = setup(&secret);
 
-        assert_that!(transaction.extract_secret(&secret.hash()))
+        assert_that!(extract_secret(&transaction, &secret.hash()))
             .is_some()
             .is_equal_to(&secret);
     }
@@ -72,6 +67,6 @@ mod test {
              bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
         )
         .unwrap();
-        assert_that!(transaction.extract_secret(&secret_hash)).is_none();
+        assert_that!(extract_secret(&transaction, &secret_hash)).is_none();
     }
 }

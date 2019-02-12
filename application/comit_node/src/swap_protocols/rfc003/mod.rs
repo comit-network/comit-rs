@@ -6,7 +6,6 @@ pub mod bitcoin;
 pub mod bob;
 pub mod ethereum;
 pub mod events;
-pub mod find_htlc_location;
 
 pub mod state_machine;
 pub mod state_store;
@@ -29,7 +28,7 @@ pub use self::{
     bob::Bob,
     create_ledger_events::CreateLedgerEvents,
     error::Error,
-    ledger::{ExtractSecret, FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
+    ledger::{FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
     role::*,
     save_state::SaveState,
     secret::{FromErr, RandomnessSource, Secret, SecretHash},

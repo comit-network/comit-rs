@@ -1,8 +1,9 @@
 use crate::{
-    connection_pool::ConnectionPool, ledger_query_service::DefaultLedgerQueryServiceApiClient,
+    connection_pool::ConnectionPool,
+    ledger_query_service::{QueryBitcoin, QueryEthereum},
     seed::Seed,
 };
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 mod client_impl;
 
@@ -29,9 +30,19 @@ impl<T, S> Clone for ProtocolDependencies<T, S> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[allow(missing_debug_implementations)]
+#[derive(Clone)]
 pub struct LedgerEventDependencies {
-    pub lqs_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    pub lqs_bitcoin_poll_interval: Duration,
-    pub lqs_ethereum_poll_interval: Duration,
+    pub query_bitcoin: Arc<dyn QueryBitcoin + Send + Sync + 'static>,
+    pub query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
+}
+
+impl<Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static> From<Q> for LedgerEventDependencies {
+    fn from(querier: Q) -> Self {
+        let queries = Arc::new(querier);
+        LedgerEventDependencies {
+            query_bitcoin: queries.clone(),
+            query_ethereum: queries.clone(),
+        }
+    }
 }

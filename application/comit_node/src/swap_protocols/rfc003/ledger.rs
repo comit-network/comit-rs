@@ -1,7 +1,4 @@
-use crate::swap_protocols::{
-    self,
-    rfc003::secret::{Secret, SecretHash},
-};
+use crate::swap_protocols::{self, rfc003::secret::Secret};
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, hash::Hash};
 
@@ -23,10 +20,6 @@ pub trait Ledger: swap_protocols::Ledger {
         + PartialEq
         + Debug
         + Into<<Self as swap_protocols::ledger::Ledger>::Identity>;
-}
-
-pub trait ExtractSecret {
-    fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret>;
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
