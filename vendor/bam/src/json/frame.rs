@@ -104,14 +104,22 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
                     .get_awaiting_response(frame.id)
                     .ok_or(Error::UnexpectedResponse)?;
 
-                debug!("Dispatching response frame {:?} to stored handler.", frame);
+                debug!(
+                    "attempting to deserialize payload '{:?}' of frame {} as RESPONSE",
+                    frame.payload, frame.id
+                );
 
                 let response = serde_json::from_value(frame.payload);
 
                 match response {
-                    Ok(response) => sender.send(response).unwrap(),
-                    // TODO: Decide what happens when response fails to deserialize
-                    Err(e) => info!("Failed to deserialize response: {:?}", e),
+                    Ok(response) => {
+                        debug!("dispatching {:?} to stored handler", response);
+                        sender.send(response).unwrap()
+                    }
+                    Err(e) => error!(
+                        "payload of frame {} is not a well-formed RESPONSE: {:?}",
+                        frame.id, e
+                    ),
                 }
 
                 Ok(None)
