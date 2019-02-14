@@ -3,10 +3,6 @@ chai.use(require("chai-http"));
 const omnilayer = require("../../../lib/omnilayer.js");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
-const logger = global.harness.logger;
-const bitcoin = require("bitcoinjs-lib");
-
-const omni_rpc_client = omnilayer.create_client();
 
 const alice = actor.create("alice", {});
 const bob = actor.create("bob", {});
@@ -16,25 +12,25 @@ const bob_final_address = "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cA";
 const alpha_asset = 3;
 const beta_asset = 4200;
 
-describe("RFC003: Bitcoin for USD Tether (Omnilayer)", () => {
+describe("RFC003: Bitcoin for Reg Test Omni Token (USD Tether style)", () => {
     before(async function() {
         this.timeout(50000);
-        await omnilayer.activate_segwit();
+        await omnilayer.activateSegwit();
         await alice.wallet.omni().btcFund(1);
-        await omnilayer.omni_generate();
+        await omnilayer.generate();
         await bob.wallet.omni().btcFund(1);
-        await omnilayer.omni_generate();
+        await omnilayer.generate();
     });
 
     let tokenId;
-    it("Create RegtestOmniCoin", async function() {
+    it("Create Regtest Omni Token", async function() {
         const res = await alice.wallet.omni().createOmniToken();
         res.propertyid.should.be.a("number");
         tokenId = res.propertyid;
     });
 
     let aliceOmniUTXO;
-    it("Grant RegtestOmniCoin", async function() {
+    it("Grant Regtest Omni Token", async function() {
         const grantAmount = beta_asset * 3;
         aliceOmniUTXO = await alice.wallet.omni().grantOmniToken(tokenId, alice.wallet.omni().identity().output, grantAmount);
         const balance = await omnilayer.getBalance(tokenId, alice.wallet.omni().identity().address);
