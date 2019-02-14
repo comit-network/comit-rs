@@ -4,41 +4,52 @@ use crate::{
         ledger::Bitcoin,
         rfc003::{
             self,
-            bitcoin::{extract_secret::extract_secret, find_htlc_vout::find_htlc_vout},
-            events::{Deployed, Funded, HtlcEvents, RedeemedOrRefunded},
-            ledger::{RedeemTransaction, RefundTransaction},
+            bitcoin::extract_secret::extract_secret,
+            events::{
+                DeployTransaction, Deployed, FundTransaction, Funded, HtlcEvents,
+                RedeemTransaction, RedeemedOrRefunded, RefundTransaction,
+            },
             state_machine::HtlcParams,
         },
     },
 };
-use bitcoin_support::{BitcoinQuantity, OutPoint};
+use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint};
 use futures::{
     future::{self, Either},
     Future,
 };
-
 use std::sync::Arc;
+
 impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync> {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
     ) -> Box<Deployed<Bitcoin>> {
         let query_bitcoin = Arc::clone(&self);
-        let query = self
+        let htlc_location = self
             .create(BitcoinQuery::Transaction {
                 to_address: Some(htlc_params.compute_address()),
                 from_outpoint: None,
                 unlock_script: None,
             })
-            .map_err(rfc003::Error::LedgerQueryService);
+            .and_then(move |query_id| query_bitcoin.transaction_first_result(&query_id))
+            .map_err(rfc003::Error::LedgerQueryService)
+            .and_then(move |tx| {
+                let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
+                    .ok_or_else(|| {
+                        rfc003::Error::Internal(
+                            "Query returned Bitcoin transaction that didn't match the requested address".into(),
+                        )
+                    })?;
 
-        let transaction = query.and_then(move |query_id| {
-            query_bitcoin
-                .transaction_first_result(&query_id)
-                .map_err(rfc003::Error::LedgerQueryService)
-        });
-
-        let htlc_location = transaction.and_then(move |tx| find_htlc_vout(&tx, &htlc_params));
+                Ok(DeployTransaction {
+                    location: OutPoint {
+                        txid: tx.txid(),
+                        vout,
+                    },
+                    transaction: tx,
+                })
+            });
 
         Box::new(htlc_location)
     }
@@ -46,10 +57,15 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
     fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
-        _htlc_location: &OutPoint,
-    ) -> Box<Funded<Bitcoin>> {
-        // It's already funded when it's deployed
-        Box::new(future::ok(None))
+        htlc_deployment: &DeployTransaction<Bitcoin>,
+    ) -> Box<Funded<Bitcoin, BitcoinQuantity>> {
+        let tx = &htlc_deployment.transaction;
+        let asset =
+            BitcoinQuantity::from_satoshi(tx.output[htlc_deployment.location.vout as usize].value);
+        Box::new(future::ok(FundTransaction {
+            transaction: tx.clone(),
+            asset,
+        }))
     }
 
     fn htlc_redeemed_or_refunded(

@@ -87,10 +87,10 @@ impl Actions for SwapStates<Alice<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity
             }
             SS::AlphaDeployed(AlphaDeployed {
                 ref swap,
-                ref alpha_htlc_location,
+                ref alpha_deploy_transaction,
                 ..
             }) => vec![alice::ActionKind::Fund(
-                swap.fund_action(*alpha_htlc_location),
+                swap.fund_action(alpha_deploy_transaction.location),
             )],
             SS::BothFunded(BothFunded {
                 ref alpha_htlc_location,

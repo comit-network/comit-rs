@@ -24,6 +24,18 @@ pub enum EthereumQuery {
     },
 }
 
+impl EthereumQuery {
+    pub fn contract_deployment(contract_data: Bytes) -> Self {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(contract_data),
+            transaction_data_length: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct EventMatcher {
     pub address: Option<Address>,

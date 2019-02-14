@@ -20,15 +20,13 @@ mod secret_source;
 mod timestamp;
 
 mod create_ledger_events;
-#[cfg(test)]
-mod state_machine_test;
 
 pub use self::{
     alice::Alice,
     bob::Bob,
     create_ledger_events::CreateLedgerEvents,
     error::Error,
-    ledger::{FundTransaction, Ledger, RedeemTransaction, RefundTransaction},
+    ledger::Ledger,
     role::*,
     save_state::SaveState,
     secret::{FromErr, RandomnessSource, Secret, SecretHash},

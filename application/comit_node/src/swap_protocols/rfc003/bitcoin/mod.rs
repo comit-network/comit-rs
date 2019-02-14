@@ -7,7 +7,6 @@ use secp256k1_support::KeyPair;
 
 mod actions;
 mod extract_secret;
-mod find_htlc_vout;
 mod htlc;
 mod htlc_events;
 

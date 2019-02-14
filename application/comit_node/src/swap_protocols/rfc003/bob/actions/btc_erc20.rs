@@ -101,9 +101,11 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>>
             }
             SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed {
                 ref swap,
-                ref beta_htlc_location,
+                ref beta_deploy_transaction,
                 ..
-            }) => vec![bob::ActionKind::Fund(swap.fund_action(*beta_htlc_location))],
+            }) => vec![bob::ActionKind::Fund(
+                swap.fund_action(beta_deploy_transaction.location),
+            )],
             SS::BothFunded(BothFunded {
                 ref beta_htlc_location,
                 ref swap,

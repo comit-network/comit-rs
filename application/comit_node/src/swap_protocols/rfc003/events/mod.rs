@@ -10,7 +10,7 @@ use crate::{
             self,
             ledger::Ledger,
             state_machine::{HtlcParams, StateMachineResponse},
-            FundTransaction, RedeemTransaction, RefundTransaction, Role,
+            Role, Secret,
         },
     },
 };
@@ -29,12 +29,29 @@ pub type StateMachineResponseFuture<ALSI, BLRI> =
 pub type ResponseFuture<R: Role> =
     StateMachineResponseFuture<R::AlphaRedeemHtlcIdentity, R::BetaRefundHtlcIdentity>;
 
-pub type Deployed<L: Ledger> = Future<L::HtlcLocation>;
-pub type Funded<L: Ledger> = Future<Option<FundTransaction<L>>>;
-pub type Refunded<L: Ledger> = Future<L::TxId>;
-pub type Redeemed<L: Ledger> = Future<L::TxId>;
-pub type AlphaRefundedOrBetaFunded<AL: Ledger, BL: Ledger> =
-    Future<Either<AL::Transaction, BL::HtlcLocation>>;
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FundTransaction<L: Ledger, A: Asset> {
+    pub transaction: L::Transaction,
+    pub asset: A,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RedeemTransaction<L: Ledger> {
+    pub transaction: L::Transaction,
+    pub secret: Secret,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DeployTransaction<L: Ledger> {
+    pub transaction: L::Transaction,
+    pub location: L::HtlcLocation,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RefundTransaction<L: Ledger>(pub L::Transaction);
+
+pub type Deployed<L: Ledger> = Future<DeployTransaction<L>>;
+pub type Funded<L: Ledger, A: Asset> = Future<FundTransaction<L, A>>;
 pub type RedeemedOrRefunded<L: Ledger> = Future<Either<RedeemTransaction<L>, RefundTransaction<L>>>;
 
 pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
@@ -43,8 +60,8 @@ pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
     fn htlc_funded(
         &mut self,
         htlc_params: HtlcParams<L, A>,
-        htlc_location: &L::HtlcLocation,
-    ) -> &mut Funded<L>;
+        htlc_deployment: &DeployTransaction<L>,
+    ) -> &mut Funded<L, A>;
 
     fn htlc_redeemed_or_refunded(
         &mut self,
@@ -70,8 +87,8 @@ pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + 'static {
     fn htlc_funded(
         &self,
         htlc_params: HtlcParams<L, A>,
-        htlc_location: &L::HtlcLocation,
-    ) -> Box<Funded<L>>;
+        htlc_deployment: &DeployTransaction<L>,
+    ) -> Box<Funded<L, A>>;
     fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<L, A>,

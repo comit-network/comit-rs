@@ -5,7 +5,10 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         rfc003::{
-            self, events, ledger::Ledger, RedeemTransaction, Role, SaveState, SecretHash, Timestamp,
+            self,
+            events::{self, DeployTransaction, RedeemTransaction},
+            ledger::Ledger,
+            Role, SaveState, SecretHash, Timestamp,
         },
     },
 };
@@ -159,7 +162,7 @@ pub enum Swap<R: Role> {
     #[state_machine_future(transitions(AlphaFunded, Final))]
     AlphaDeployed {
         swap: OngoingSwap<R>,
-        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+        alpha_deploy_transaction: DeployTransaction<R::AlphaLedger>,
     },
 
     #[state_machine_future(transitions(AlphaFundedBetaDeployed, Final))]
@@ -172,7 +175,7 @@ pub enum Swap<R: Role> {
     AlphaFundedBetaDeployed {
         swap: OngoingSwap<R>,
         alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
-        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
+        beta_deploy_transaction: DeployTransaction<R::BetaLedger>,
     },
 
     #[state_machine_future(transitions(
@@ -264,7 +267,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         state: &'s mut RentToOwn<'s, Accepted<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
-        let alpha_htlc_location = try_ready!(context
+        let alpha_deploy_transaction = try_ready!(context
             .alpha_ledger_events
             .htlc_deployed(state.swap.alpha_htlc_params())
             .poll());
@@ -273,7 +276,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             context.state_repo,
             AlphaDeployed {
                 swap: state.swap,
-                alpha_htlc_location,
+                alpha_deploy_transaction,
             }
         )
     }
@@ -282,18 +285,29 @@ impl<R: Role> PollSwap<R> for Swap<R> {
         state: &'s mut RentToOwn<'s, AlphaDeployed<R>>,
         context: &'c mut RentToOwn<'c, Context<R>>,
     ) -> Result<Async<AfterAlphaDeployed<R>>, rfc003::Error> {
-        let _alpha_funding_transaction = try_ready!(context
+        let alpha_funding_transaction = try_ready!(context
             .alpha_ledger_events
-            .htlc_funded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .htlc_funded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deploy_transaction
+            )
             .poll());
         let state = state.take();
-        transition_save!(
-            context.state_repo,
-            AlphaFunded {
-                swap: state.swap,
-                alpha_htlc_location: state.alpha_htlc_location,
-            }
-        )
+
+        if alpha_funding_transaction
+            .asset
+            .equal_or_greater_value(&state.swap.alpha_asset)
+        {
+            transition_save!(
+                context.state_repo,
+                AlphaFunded {
+                    swap: state.swap,
+                    alpha_htlc_location: state.alpha_deploy_transaction.location,
+                }
+            )
+        } else {
+            Err(rfc003::Error::InsufficientFunding)
+        }
     }
 
     fn poll_alpha_funded<'s, 'c>(
@@ -313,7 +327,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             )
         }
 
-        let beta_htlc_location = try_ready!(context
+        let beta_deploy_transaction = try_ready!(context
             .beta_ledger_events
             .htlc_deployed(state.swap.beta_htlc_params())
             .poll());
@@ -323,7 +337,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             AlphaFundedBetaDeployed {
                 swap: state.swap,
                 alpha_htlc_location: state.alpha_htlc_location,
-                beta_htlc_location,
+                beta_deploy_transaction
             }
         )
     }
@@ -345,19 +359,30 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             )
         }
 
-        let _ = try_ready!(context
+        let beta_funding_transaction = try_ready!(context
             .beta_ledger_events
-            .htlc_funded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
+            .htlc_funded(
+                state.swap.beta_htlc_params(),
+                &state.beta_deploy_transaction
+            )
             .poll());
         let state = state.take();
-        transition_save!(
-            context.state_repo,
-            BothFunded {
-                swap: state.swap,
-                alpha_htlc_location: state.alpha_htlc_location,
-                beta_htlc_location: state.beta_htlc_location,
-            }
-        )
+
+        if beta_funding_transaction
+            .asset
+            .equal_or_greater_value(&state.swap.beta_asset)
+        {
+            transition_save!(
+                context.state_repo,
+                BothFunded {
+                    swap: state.swap,
+                    alpha_htlc_location: state.alpha_htlc_location,
+                    beta_htlc_location: state.beta_deploy_transaction.location,
+                }
+            )
+        } else {
+            Err(rfc003::Error::InsufficientFunding)
+        }
     }
 
     fn poll_both_funded<'s, 'c>(
