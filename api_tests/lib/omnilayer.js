@@ -86,34 +86,30 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     const bob_btc = bob_btc_utxo.value - fee / 2 - btc_value - dust;
     const alice_btc = alice_omni_utxo.value - fee / 2 + btc_value;
 
-    // Bob BTC input
-    txb.addInput(bob_btc_utxo.txid, bob_btc_utxo.vout, bitcoin.Transaction.SIGHASH_ANYONECANPAY, bob_btc_output);
     // Alice Omni input
-    console.log(alice_omni_utxo.txid, alice_omni_utxo.vout, bitcoin.Transaction.SIGHASH_ANYONECANPAY, alice_output);
-    txb.addInput(alice_omni_utxo.txid, alice_omni_utxo.vout, bitcoin.Transaction.SIGHASH_ANYONECANPAY, alice_output);
+    txb.addInput(alice_omni_utxo.txid, alice_omni_utxo.vout, null, alice_output);
+    // Bob BTC input
+    txb.addInput(bob_btc_utxo.txid, bob_btc_utxo.vout, null, bob_btc_output);
 
     // Add BTC change back to Bob
     txb.addOutput(bob_btc_output, bob_btc);
     // Add BTC output to Alice
-    txb.addOutput(alice_output, btc_value);
+    txb.addOutput(alice_output, alice_btc);
     // Add Omni output to Bob (it's Omni because it's different from the inputs)
     txb.addOutput(bob_omni_output, dust);
 
     // Add Omni instructions
-    console.log("--\ntokenId:", tokenId);
-    console.log("--\nomni_value:", omni_value);
     const payload = await create_omni_rpc_client().command([
         {
             method: "omni_createpayload_simplesend",
             parameters: [tokenId, omni_value.toString()],
         },
     ]);
-    console.log("--\npayload:",payload);
     const embed = payloadToEmbed(payload[0]);
     txb.addOutput(embed.output, 500);
 
-    const plainTransaction = await _rpc_client.decodeRawTransaction(txb.buildIncomplete().toHex());
-    console.log("---\nplain Omni Transaction:", JSON.stringify(plainTransaction));
+    txb.sign(0, alice_keypair, null, null, alice_omni_utxo.value);
+    txb.sign(1, bob_keypair, null, null, bob_btc_utxo.value);
 
     const tx = await create_omni_rpc_client().command([
         {
@@ -121,13 +117,12 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
             parameters: [txb.buildIncomplete().toHex()],
         },
     ]);
-
     console.log("--\nSwaperoo Omni transaction:", tx);
 
-    txb.sign(0, key_pair, null, null, input_amount);
-
+    const plainTransaction = await _rpc_client.decodeRawTransaction(txb.buildIncomplete().toHex());
+    console.log("----\nFinal transaction:", plainTransaction);
     const txid = await _rpc_client.sendRawTransaction(txb.build().toHex());
-    await _rpc_client.generate(1);
+    await _rpc_client.generate(10);
 
     const balance = await create_omni_rpc_client().command([
         {
@@ -183,7 +178,7 @@ class OmniWallet extends BitcoinWallet {
         txb.sign(0, key_pair, null, null, input_amount);
 
         await _rpc_client.sendRawTransaction(txb.build().toHex());
-        await _rpc_client.generate(1);
+        await _rpc_client.generate(10);
 
         const properties = await create_omni_rpc_client().command([
             {
@@ -199,7 +194,7 @@ class OmniWallet extends BitcoinWallet {
         return properties[0].find(isRegtestToken);
     }
 
-    async grantOmniToken(tokenId) {
+    async grantOmniToken(tokenId, recipientOutput) {
         if (!tokenId) {
             throw new Error("tokenId must be provided, got: " + tokenId);
         }
@@ -211,7 +206,9 @@ class OmniWallet extends BitcoinWallet {
         const fee = 2500;
         const change = input_amount - fee;
         txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
-        txb.addOutput(this.identity().output, change);
+        txb.addOutput(recipientOutput, change);
+
+        console.log("---\nGrant Output:", bitcoin.script.toASM(recipientOutput));
 
         const payload = await create_omni_rpc_client().command([
             {
@@ -226,7 +223,7 @@ class OmniWallet extends BitcoinWallet {
         txb.sign(0, key_pair, null, null, input_amount);
 
         const txid = await _rpc_client.sendRawTransaction(txb.build().toHex());
-        await _rpc_client.generate(1);
+        await _rpc_client.generate(10);
 
         const balance = await create_omni_rpc_client().command([
             {
@@ -235,9 +232,11 @@ class OmniWallet extends BitcoinWallet {
             },
         ]);
         console.log("---\nBalance after granting:", balance);
+        console.log("Hopefully address with balance:", this.identity().address);
 
         // const rawTransaction = await _rpc_client.getRawTransaction(txid);
         // const plainTransaction = await _rpc_client.decodeRawTransaction(rawTransaction);
+        // console.log("---\nGranting Transaction:", JSON.stringify(plainTransaction, null, 2));
 
         return { txid: txid, vout: 0, value: change }; // We assume bitcoin-js preserves the order
     }

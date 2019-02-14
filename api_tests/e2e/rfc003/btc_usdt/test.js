@@ -11,7 +11,6 @@ const omni_rpc_client = omnilayer.create_client();
 const alice = actor.create("alice", {});
 const bob = actor.create("bob", {});
 
-const alice_final_address = "mxHrqVGroA6VgNeZR7ndjFkywNozVdYEYT";
 const bob_final_address = "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cA";
 
 const alpha_asset = 100000000;
@@ -38,22 +37,22 @@ describe("RFC003: Bitcoin for USD Tether (Omnilayer)", () => {
 
     let aliceOmniUTXO;
     it("Grant RegtestOmniCoin", async function() {
-        aliceOmniUTXO = await alice.wallet.omni().grantOmniToken(tokenId);
+        aliceOmniUTXO = await alice.wallet.omni().grantOmniToken(tokenId, alice.wallet.omni().identity().output);
     });
 
     it("Swaperoo it", async function() {
         const aliceDetails = {
-            alice_keypair: null, //TODO
+            alice_keypair: alice.wallet.omni().keypair,
             alice_omni_utxo: aliceOmniUTXO,
-            alice_final_address: alice_final_address
+            alice_final_address: alice.wallet.omni().identity().address
         };
         const bobDetails = {
-            bob_keypair: null, //TODO
+            bob_keypair: bob.wallet.omni().keypair,
             bob_btc_utxo: bob.wallet.omni().bitcoin_utxos.shift(),
-            bob_btc_output: bob.wallet.omni().identity().output, //TODO
+            bob_btc_output: bob.wallet.omni().identity().output,
             bob_final_address: bob_final_address
         };
 
-        const res = await omnilayer.swaperoo(aliceDetails, bobDetails, tokenId, 550, 2);
+        const res = await omnilayer.swaperoo(aliceDetails, bobDetails, tokenId, 4200, 2);
     });
 });
