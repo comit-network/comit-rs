@@ -44,6 +44,16 @@ function create_omni_rpc_client() {
         }));
 }
 
+module.exports.getBalance = async function(tokenId, address) {
+    const res = await _rpc_client.command([
+        {
+            method: "omni_getbalance",
+            parameters: [address, tokenId],
+        },
+    ]);
+    return res[0].balance;
+};
+
 module.exports.create_client = () => {
     return create_omni_rpc_client();
 };
@@ -194,7 +204,7 @@ class OmniWallet extends BitcoinWallet {
         return properties[0].find(isRegtestToken);
     }
 
-    async grantOmniToken(tokenId, recipientOutput) {
+    async grantOmniToken(tokenId, recipientOutput, amount) {
         if (!tokenId) {
             throw new Error("tokenId must be provided, got: " + tokenId);
         }
@@ -213,7 +223,7 @@ class OmniWallet extends BitcoinWallet {
         const payload = await create_omni_rpc_client().command([
             {
                 method: "omni_createpayload_grant",
-                parameters: [tokenId, "9000", ""],
+                parameters: [tokenId, amount.toString(), ""],
             },
         ]);
 
