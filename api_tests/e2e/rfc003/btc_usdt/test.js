@@ -13,12 +13,8 @@ const bob = actor.create("bob", {});
 
 const bob_final_address = "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cA";
 
-const alpha_asset = 100000000;
-const beta_asset = 5000;
-const alpha_max_fee = 5000; // Max 5000 satoshis fee
-
-const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+const alpha_asset = 3;
+const beta_asset = 4200;
 
 describe("RFC003: Bitcoin for USD Tether (Omnilayer)", () => {
     before(async function() {
@@ -53,6 +49,15 @@ describe("RFC003: Bitcoin for USD Tether (Omnilayer)", () => {
             bob_final_address: bob_final_address
         };
 
-        const res = await omnilayer.swaperoo(aliceDetails, bobDetails, tokenId, 4200, 2);
+        await omnilayer.swaperoo(aliceDetails, bobDetails, tokenId, beta_asset, alpha_asset);
+
+        const bob_omni_balance = await omni_rpc_client.command([
+            {
+                method: "omni_getbalance",
+                parameters: [bob_final_address, tokenId],
+            },
+        ]);
+        console.log(bob_omni_balance);
+        bob_omni_balance[0].balance.should.equal(beta_asset);
     });
 });
