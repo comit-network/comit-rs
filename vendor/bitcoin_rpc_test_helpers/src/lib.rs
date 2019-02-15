@@ -1,11 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-// Place for putting common queries needed in tests
 use bitcoin_rpc_client::*;
 use bitcoin_support::{Address, BitcoinQuantity, IntoP2wpkhAddress, Network, Sha256dHash};
 
-// TODO: All of this should be under #[cfg(test)]
 pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(
         &self,
