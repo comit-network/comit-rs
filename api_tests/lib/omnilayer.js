@@ -72,7 +72,7 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     }
     // Caveat: If alice has a lot of BTC on her omni output it will all go to Bob
 
-    // alice_output = prev output for omni = new output for BTC (should only have dust BTC)
+    // alice_output = prev output for omni = new output for BTC
     const { alice_keypair, alice_omni_utxo, alice_final_address } = aliceDetails;
     // bob_btc_output = prev output for BTC = output for BTC change
     // bob_omni_output = new output for Omni
@@ -88,7 +88,7 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     const txb = new bitcoin.TransactionBuilder();
 
     const fee = 2500;
-    const dust = 500;
+    const dust = 546;
     const bob_btc = bob_btc_utxo.value - fee / 2 - btc_value - dust;
     const alice_btc = alice_omni_utxo.value - fee / 2 + btc_value;
 
@@ -112,10 +112,10 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
         },
     ]);
     const embed = payloadToEmbed(payload[0]);
-    txb.addOutput(embed.output, 500);
+    txb.addOutput(embed.output, 0);
 
-    txb.sign(0, alice_keypair, null, null, alice_omni_utxo.value);
-    txb.sign(1, bob_keypair, null, null, bob_btc_utxo.value);
+    txb.sign(0, alice_keypair, null, bitcoin.Transaction.SIGHASH_ALL, alice_omni_utxo.value);
+    txb.sign(1, bob_keypair, null, bitcoin.Transaction.SIGHASH_ALL, bob_btc_utxo.value);
 
     // const tx = await createOmniRpcClient().command([
     //     {
@@ -160,18 +160,22 @@ class OmniWallet extends BitcoinWallet {
                     1,
                     0,
                     "Money",
-                    "Gonna make you rich",
+                    "",
                     "Regtest Token",
                     "",
-                    "Better swap those tokens",
+                    "",
                 ],
             },
         ]);
 
         const embed = payloadToEmbed(payload[0]);
-        txb.addOutput(embed.output, 500);
+        txb.addOutput(embed.output, 0);
 
-        txb.sign(0, key_pair, null, null, input_amount);
+        txb.sign(0, key_pair, null, bitcoin.Transaction.SIGHASH_ALL, input_amount);
+
+        // const rawTransaction = await _rpc_client.getRawTransaction(txid);
+        // const plainTransaction = await _rpc_client.decodeRawTransaction(txb.build().toHex());
+        // console.log("---\nToken Create Transaction:", JSON.stringify(plainTransaction, null, 2));
 
         await createOmniRpcClient().sendRawTransaction(txb.build().toHex());
         await createOmniRpcClient().generate(1);
@@ -212,9 +216,9 @@ class OmniWallet extends BitcoinWallet {
         ]);
 
         const embed = payloadToEmbed(payload[0]);
-        txb.addOutput(embed.output, 500);
+        txb.addOutput(embed.output, 0);
 
-        txb.sign(0, key_pair, null, null, input_amount);
+        txb.sign(0, key_pair, null, bitcoin.Transaction.SIGHASH_ALL, input_amount);
 
         const txid = await _rpc_client.sendRawTransaction(txb.build().toHex());
         await createOmniRpcClient().generate(1);

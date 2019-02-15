@@ -9,15 +9,14 @@ const bob = actor.create("bob", {});
 
 const bob_final_address = "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cA";
 
-const alpha_asset = 3;
-const beta_asset = 4200;
+const beta_asset = 3;
+const alpha_asset = 4200;
 
 describe("RFC003: Bitcoin for Reg Test Omni Token (USD Tether style)", () => {
     before(async function() {
         this.timeout(50000);
         await omnilayer.activateSegwit();
         await alice.wallet.omni().btcFund(1);
-        await omnilayer.generate();
         await bob.wallet.omni().btcFund(1);
         await omnilayer.generate();
     });
@@ -31,10 +30,12 @@ describe("RFC003: Bitcoin for Reg Test Omni Token (USD Tether style)", () => {
 
     let aliceOmniUTXO;
     it("Grant Regtest Omni Token", async function() {
-        const grantAmount = beta_asset * 3;
+        const grantAmount = alpha_asset * 3;
         aliceOmniUTXO = await alice.wallet.omni().grantOmniToken(tokenId, alice.wallet.omni().identity().output, grantAmount);
         const balance = await omnilayer.getBalance(tokenId, alice.wallet.omni().identity().address);
         balance.should.equal(grantAmount.toString());
+        const bob_omni_balance = await omnilayer.getBalance(tokenId, bob_final_address);
+        bob_omni_balance.should.equal("0");
     });
 
     it("Swaperoo it", async function() {
@@ -50,9 +51,9 @@ describe("RFC003: Bitcoin for Reg Test Omni Token (USD Tether style)", () => {
             bob_final_address: bob_final_address,
         };
 
-        await omnilayer.swaperoo(aliceDetails, bobDetails, tokenId, beta_asset, alpha_asset);
+        await omnilayer.swaperoo(aliceDetails, bobDetails, tokenId, alpha_asset, beta_asset);
 
         const bob_omni_balance = await omnilayer.getBalance(tokenId, bob_final_address);
-        bob_omni_balance.should.equal(beta_asset.toString());
+        bob_omni_balance.should.equal(alpha_asset.toString());
     });
 });

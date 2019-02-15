@@ -38,6 +38,7 @@ services:
       -debug=1
       -zmqpubrawblock=tcp://*:29332
       -zmqpubrawtx=tcp://*:29333
+      -acceptnonstdtxn=0
     ports:
       - "19443:19443"
       - "29332:29332"
