@@ -7,7 +7,7 @@ const should = chai.should();
 const beta_asset = 3;
 const alpha_asset = 4200;
 
-describe("RFC003: Bitcoin for Omni Token (USD Tether style)[base58]", () => {
+describe("Bitcoin for Omni Token (USD Tether style)", () => {
     const alice = actor.create("alice", {});
     const bob = actor.create("bob", {});
     const bob_final_address = "mzNFGtxdTSTJ1Lh6fq5N5oUgbhwA7Nm7cA";
