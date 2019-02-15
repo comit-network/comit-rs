@@ -25,10 +25,6 @@ pub trait RegtestHelperClient {
 }
 
 impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
-    fn enable_segwit(&self) {
-        self.generate(432).unwrap().unwrap();
-    }
-
     fn find_utxo_at_tx_for_address(
         &self,
         txid: &TransactionId,
@@ -64,6 +60,10 @@ impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
             .find(|txout| txout.script_pub_key.hex == address.script_pubkey())
             .unwrap()
             .clone()
+    }
+
+    fn enable_segwit(&self) {
+        self.generate(432).unwrap().unwrap();
     }
 
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
