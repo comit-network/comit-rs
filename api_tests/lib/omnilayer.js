@@ -66,6 +66,90 @@ module.exports.activateSegwit = async function() {
     return createOmniRpcClient().generate(432);
 };
 
+module.exports.createOmniToken = async function(keypair, utxo, output) {
+    const txb = new bitcoin.TransactionBuilder();
+    const input_amount = utxo.value;
+    const fee = 2500;
+    const change = input_amount - fee;
+    txb.addInput(utxo.txid, utxo.vout, null, output);
+    txb.addOutput(output, change);
+
+    const payload = await createOmniRpcClient().command([
+        {
+            method: "omni_createpayload_issuancemanaged",
+            parameters: [
+                2,
+                1,
+                0,
+                "Money",
+                "",
+                "Regtest Token",
+                "",
+                "",
+            ],
+        },
+    ]);
+
+    const embed = payloadToEmbed(payload[0]);
+    txb.addOutput(embed.output, 0);
+
+    txb.sign(0, keypair, null, bitcoin.Transaction.SIGHASH_ALL, input_amount);
+
+    // const rawTransaction = await _rpc_client.getRawTransaction(txid);
+    // const plainTransaction = await _rpc_client.decodeRawTransaction(txb.build().toHex());
+    // console.log("---\nToken Create Transaction:", JSON.stringify(plainTransaction, null, 2));
+
+    await createOmniRpcClient().sendRawTransaction(txb.build().toHex());
+    await createOmniRpcClient().generate(1);
+
+    const properties = await createOmniRpcClient().command([
+        {
+            method: "omni_listproperties",
+            parameters: [],
+        },
+    ]);
+
+    function isRegtestToken(property) {
+        return property.name === "Regtest Token";
+    }
+
+    return properties[0].find(isRegtestToken);
+};
+
+module.exports.grantOmniToken = async function(keypair, utxo, prevOutput, tokenId, recipientOutput, amount) {
+    if (!tokenId) {
+        throw new Error("tokenId must be provided, got: " + tokenId);
+    }
+
+    const txb = new bitcoin.TransactionBuilder();
+    const input_amount = utxo.value;
+    const fee = 2500;
+    const change = input_amount - fee;
+    txb.addInput(utxo.txid, utxo.vout, null, prevOutput);
+    txb.addOutput(recipientOutput, change);
+
+    const payload = await createOmniRpcClient().command([
+        {
+            method: "omni_createpayload_grant",
+            parameters: [tokenId, amount.toString(), ""],
+        },
+    ]);
+
+    const embed = payloadToEmbed(payload[0]);
+    txb.addOutput(embed.output, 0);
+
+    txb.sign(0, keypair, null, bitcoin.Transaction.SIGHASH_ALL, input_amount);
+
+    const txid = await _rpc_client.sendRawTransaction(txb.build().toHex());
+    await createOmniRpcClient().generate(1);
+
+    // const rawTransaction = await _rpc_client.getRawTransaction(txid);
+    // const plainTransaction = await _rpc_client.decodeRawTransaction(rawTransaction);
+    // console.log("---\nGranting Transaction:", JSON.stringify(plainTransaction, null, 2));
+
+    return { txid: txid, vout: 0, value: change }; // We assume bitcoin-js preserves the order
+};
+
 module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni_value, btc_value) {
     if (!tokenId) {
         throw new Error("tokenId must be provided, got: " + tokenId);
@@ -134,100 +218,12 @@ class OmniWallet extends BitcoinWallet {
         super();
     }
 
-    async btcFund(value) {
-        await this.fund(value, _rpc_client);
-        await this.fund(value, _rpc_client);
-        await this.fund(value, _rpc_client);
-        await this.fund(value, _rpc_client);
-        await this.fund(value, _rpc_client);
-    }
-
-    async createOmniToken() {
-        const txb = new bitcoin.TransactionBuilder();
-        const utxo = this.bitcoin_utxos.shift();
-        const input_amount = utxo.value;
-        const key_pair = this.keypair;
-        const fee = 2500;
-        const change = input_amount - fee;
-        txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
-        txb.addOutput(this.identity().output, change);
-
-        const payload = await createOmniRpcClient().command([
-            {
-                method: "omni_createpayload_issuancemanaged",
-                parameters: [
-                    2,
-                    1,
-                    0,
-                    "Money",
-                    "",
-                    "Regtest Token",
-                    "",
-                    "",
-                ],
-            },
-        ]);
-
-        const embed = payloadToEmbed(payload[0]);
-        txb.addOutput(embed.output, 0);
-
-        txb.sign(0, key_pair, null, bitcoin.Transaction.SIGHASH_ALL, input_amount);
-
-        // const rawTransaction = await _rpc_client.getRawTransaction(txid);
-        // const plainTransaction = await _rpc_client.decodeRawTransaction(txb.build().toHex());
-        // console.log("---\nToken Create Transaction:", JSON.stringify(plainTransaction, null, 2));
-
-        await createOmniRpcClient().sendRawTransaction(txb.build().toHex());
-        await createOmniRpcClient().generate(1);
-
-        const properties = await createOmniRpcClient().command([
-            {
-                method: "omni_listproperties",
-                parameters: [],
-            },
-        ]);
-
-        function isRegtestToken(property) {
-            return property.name === "Regtest Token";
-        }
-
-        return properties[0].find(isRegtestToken);
-    }
-
-    async grantOmniToken(tokenId, recipientOutput, amount) {
-        if (!tokenId) {
-            throw new Error("tokenId must be provided, got: " + tokenId);
-        }
-
-        const txb = new bitcoin.TransactionBuilder();
-        const utxo = this.bitcoin_utxos.shift();
-        const input_amount = utxo.value;
-        const key_pair = this.keypair;
-        const fee = 2500;
-        const change = input_amount - fee;
-        txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
-        txb.addOutput(recipientOutput, change);
-
-        const payload = await createOmniRpcClient().command([
-            {
-                method: "omni_createpayload_grant",
-                parameters: [tokenId, amount.toString(), ""],
-            },
-        ]);
-
-        const embed = payloadToEmbed(payload[0]);
-        txb.addOutput(embed.output, 0);
-
-        txb.sign(0, key_pair, null, bitcoin.Transaction.SIGHASH_ALL, input_amount);
-
-        const txid = await _rpc_client.sendRawTransaction(txb.build().toHex());
-        await createOmniRpcClient().generate(1);
-
-        // const rawTransaction = await _rpc_client.getRawTransaction(txid);
-        // const plainTransaction = await _rpc_client.decodeRawTransaction(rawTransaction);
-        // console.log("---\nGranting Transaction:", JSON.stringify(plainTransaction, null, 2));
-
-        return { txid: txid, vout: 0, value: change }; // We assume bitcoin-js preserves the order
+    async btcFund(value, base58 = false) {
+        await this.fund(value, _rpc_client, base58);
+        await this.fund(value, _rpc_client, base58);
+        await this.fund(value, _rpc_client, base58);
+        await this.fund(value, _rpc_client, base58);
+        await this.fund(value, _rpc_client, base58);
     }
 }
 

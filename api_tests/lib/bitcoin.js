@@ -80,25 +80,35 @@ class BitcoinWallet {
     constructor() {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this.bitcoin_utxos = [];
-        this._identity = bitcoin.payments.p2pkh({
+        this._identity = bitcoin.payments.p2wpkh({
+            pubkey: this.keypair.publicKey,
+            network: regtest,
+        });
+        this._identityBase58 = bitcoin.payments.p2pkh({
             pubkey: this.keypair.publicKey,
             network: regtest,
         });
     }
 
-    identity() {
-        return this._identity;
+    identity(base58 = false) {
+        if(base58) {
+            return this._identityBase58;
+        }
+        else {
+            return this._identity;
+        }
     }
 
-    async fund(btc_value, rpcClient = _rpc_client) {
+
+    async fund(btc_value, rpcClient = _rpc_client, base58 = false) {
         let txid = await rpcClient.sendToAddress(
-            this.identity().address,
+            this.identity(base58).address,
             btc_value
         );
         let raw_transaction = await rpcClient.getRawTransaction(txid);
         let transaction = bitcoin.Transaction.fromHex(raw_transaction);
         for (let [i, out] of transaction.outs.entries()) {
-            if (out.script.equals(this.identity().output)) {
+            if (out.script.equals(this.identity(base58).output)) {
                 out.txid = txid;
                 out.vout = i;
                 this.bitcoin_utxos.push(out);

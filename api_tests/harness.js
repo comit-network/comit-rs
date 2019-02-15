@@ -87,13 +87,15 @@ const util = require("./lib/util.js");
 // Clean-up docker containers and processes helper //
 // *********************************************** //
 
-function cleanUp(subprocesses) {
+function cleanUp(ledgers, subprocesses) {
     subprocesses.forEach(function(subprocess) {
         logger.info("++ Killing", subprocess.spawnfile, subprocess.pid);
         subprocess.kill();
     });
-    logger.info("++ Stopping docker containers");
-    execSync("docker-compose rm -sfv", docker_compose_options);
+    if (ledgers.length !== 0) {
+        logger.info("++ Stopping docker containers");
+        execSync("docker-compose rm -sfv", docker_compose_options);
+    }
 }
 
 process.once("SIGINT", function() {
@@ -234,6 +236,6 @@ describe("🛠", async function() {
 
     after(async function() {
         this.timeout(ledger_down_time);
-        await cleanUp(subprocesses);
+        await cleanUp(config.ledgers, subprocesses);
     });
 });
