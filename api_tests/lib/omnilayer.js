@@ -198,7 +198,7 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     await createOmniRpcClient().generate(1);
 };
 
-module.exports.lockInHTLC = async function(aliceDetails, bobDetails, tokenId, omni_value, btc_value) {
+module.exports.lockInHTLC = async function(aliceDetails, bobDetails, tokenId, omni_value) {
     if (!tokenId) {
         throw new Error("tokenId must be provided, got: " + tokenId);
     }
@@ -207,7 +207,7 @@ module.exports.lockInHTLC = async function(aliceDetails, bobDetails, tokenId, om
     const { alice_keypair, alice_omni_utxo, alice_final_address } = aliceDetails;
     // bob_btc_output = prev output for BTC = output for BTC change
     // bob_omni_output = new output for Omni
-    const { bob_keypair, bob_btc_utxo, bob_btc_output, bob_final_address } = bobDetails;
+    const { bob_keypair, bob_btc_output, bob_final_address } = bobDetails;
 
     const alice_output = bitcoin.address.toOutputScript(alice_final_address, bitcoin.networks.regtest);
     const bob_omni_output = bitcoin.address.toOutputScript(bob_final_address, bitcoin.networks.regtest);
@@ -291,6 +291,7 @@ module.exports.lockInHTLC = async function(aliceDetails, bobDetails, tokenId, om
     const txId = await createOmniRpcClient().sendRawTransaction(txHex);
     console.log("txId:", txId);
     await createOmniRpcClient().generate(1);
+    return address;
 };
 
 class OmniWallet extends BitcoinWallet {

@@ -92,7 +92,7 @@ function cleanUp(ledgers, subprocesses) {
         logger.info("++ Killing", subprocess.spawnfile, subprocess.pid);
         subprocess.kill();
     });
-    if (ledgers.length !== 0) {
+    if (ledgers && ledgers.length !== 0) {
         logger.info("++ Stopping docker containers");
         execSync("docker-compose rm -sfv", docker_compose_options);
     }
