@@ -92,7 +92,7 @@ impl Actions for bob::State<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity> {
                 ];
             }
             SwapCommunication::Accepted { ref swap_accepted } => swap_accepted,
-            SwapCommunication::Rejected { .. } => return vec![],
+            _ => return vec![],
         };
 
         let alpha_state = &self.alpha_ledger_state;

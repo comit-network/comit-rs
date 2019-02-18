@@ -67,9 +67,7 @@ impl Actions for alice::State<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>
     fn actions(&self) -> Vec<Self::ActionKind> {
         let swap_accepted = match self.swap_communication {
             SwapCommunication::Accepted { ref swap_accepted } => swap_accepted,
-            SwapCommunication::Proposed { .. } | SwapCommunication::Rejected { .. } => {
-                return vec![];
-            }
+            _ => return vec![],
         };
         let alpha_state = &self.alpha_ledger_state;
         let beta_state = &self.beta_ledger_state;
