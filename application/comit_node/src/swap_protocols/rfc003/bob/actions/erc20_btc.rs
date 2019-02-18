@@ -79,7 +79,6 @@ impl Actions for bob::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        dbg!(self.clone());
         let swap_accepted = match &self.swap_communication {
             SwapCommunication::Proposed {
                 pending_response, ..
@@ -100,7 +99,6 @@ impl Actions for bob::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        // dbg!((alpha_state.clone(), beta_state.clone(), self.secret.clone()));
         match (alpha_state, beta_state, self.secret) {
             (Funded { htlc_location, .. }, _, Some(secret)) => vec![bob::ActionKind::Redeem(
                 redeem_action(&swap_accepted, *htlc_location, secret),
