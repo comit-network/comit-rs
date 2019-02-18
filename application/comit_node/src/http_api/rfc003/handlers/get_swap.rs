@@ -123,14 +123,13 @@ pub enum SwapCommunicationState {
     Rejected,
 }
 
-// FIXME: Remove allow when refund is implemented
-#[allow(dead_code)]
 #[derive(Debug, Serialize)]
 pub enum HtlcState {
     NotDeployed,
     Deployed,
     Funded,
     Redeemed,
+    #[allow(dead_code)]
     Refunded,
 }
 
