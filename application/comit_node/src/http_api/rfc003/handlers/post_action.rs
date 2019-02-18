@@ -39,7 +39,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                         "Failed to deserialize body of accept response for swap {}: {:?}",
                         id, e
                     );
-                    problem::serde(&e)
+                    problem::deserialize(&e)
                 })
                 .and_then(|accept_body| {
                     let state = state_store
@@ -70,7 +70,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                             "Failed to deserialize body of decline response for swap {}: {:?}",
                             id, e
                         );
-                        problem::serde(&e)
+                        problem::deserialize(&e)
                     })
                     .and_then(move |decline_body| {
                         let state = state_store

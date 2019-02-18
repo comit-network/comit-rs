@@ -19,7 +19,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &Arc<T>,
     state_store: &Arc<S>,
     id: SwapId,
-) -> Result<(GetSwapResource, Vec<ActionName>), HttpApiProblem> {
+) -> Result<(Value, Vec<ActionName>), HttpApiProblem> {
     let metadata = metadata_store
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
@@ -49,24 +49,23 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 
             let actions: Vec<ActionName> =
                 state.actions().iter().map(|action| action.name()).collect();
-
-            (Ok((
-                GetSwapResource {
-                    swap,
-                    role,
-                    state: swap_state,
-                },
-                actions,
-            )))
+            serde_json::to_value(GetSwapResource {
+                swap,
+                role,
+                state: swap_state,
+            })
+            .map(|swap_resource| (swap_resource, actions))
+            .map_err(problem::serialize)
         })
     )
 }
 
 #[derive(Debug, Serialize)]
-pub struct GetSwapResource {
+#[serde(bound = "AL: Ledger, BL: Ledger")]
+pub struct GetSwapResource<AL: Ledger, BL: Ledger> {
     swap: SwapDescription,
     role: String,
-    state: SwapState,
+    state: SwapState<AL, BL>,
 }
 
 #[derive(Debug, Serialize)]
@@ -78,11 +77,12 @@ pub struct SwapDescription {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SwapState {
+#[serde(bound = "AL: Ledger, BL: Ledger")]
+pub struct SwapState<AL: Ledger, BL: Ledger> {
     outcome: SwapOutcome,
-    communication: SwapCommunication,
-    alpha_ledger: LedgerState,
-    beta_ledger: LedgerState,
+    communication: SwapCommunication<AL, BL>,
+    alpha_ledger: LedgerState<AL>,
+    beta_ledger: LedgerState<BL>,
 }
 
 #[derive(Debug, Serialize)]
@@ -95,22 +95,24 @@ pub enum SwapOutcome {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SwapCommunication {
+#[serde(bound = "AL: Ledger, BL: Ledger")]
+pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
     current_state: SwapCommunicationState,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
-    alpha_redeem_identity: Option<Value>,
-    beta_redeem_identity: Value,
-    alpha_refund_identity: Value,
-    beta_refund_identity: Option<Value>,
+    alpha_redeem_identity: Option<AL::Identity>,
+    beta_redeem_identity: BL::Identity,
+    alpha_refund_identity: AL::Identity,
+    beta_refund_identity: Option<BL::Identity>,
 }
 
-#[derive(Debug, Serialize, Default)]
-pub struct LedgerState {
+#[derive(Debug, Serialize)]
+#[serde(bound = "L: Ledger")]
+pub struct LedgerState<L: Ledger> {
     current_state: HtlcState,
-    htlc_location: Option<Value>,
-    redeem_tx: Option<Value>,
-    refund_tx: Option<Value>,
+    htlc_location: Option<L::HtlcLocation>,
+    redeem_tx: Option<L::Transaction>,
+    refund_tx: Option<L::Transaction>,
 }
 
 #[derive(Debug, Serialize)]
@@ -146,10 +148,10 @@ impl SwapDescription {
 }
 
 impl SwapOutcome {
-    pub fn new(
-        swap_communication: &SwapCommunication,
-        alpha_ledger: &LedgerState,
-        beta_ledger: &LedgerState,
+    pub fn new<AL: Ledger, BL: Ledger>(
+        swap_communication: &SwapCommunication<AL, BL>,
+        alpha_ledger: &LedgerState<AL>,
+        beta_ledger: &LedgerState<BL>,
         error: &Option<rfc003::Error>,
     ) -> Self {
         let swap_communication_state = &swap_communication.current_state;
@@ -179,7 +181,7 @@ impl SwapOutcome {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication
+    for SwapCommunication<AL, BL>
 {
     fn from(communication: alice::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use self::alice::SwapCommunication::*;
@@ -189,26 +191,26 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: json!(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: json!(request.alpha_ledger_refund_identity),
+                beta_redeem_identity: request.beta_ledger_redeem_identity,
+                alpha_refund_identity: request.alpha_ledger_refund_identity,
                 beta_refund_identity: None,
             },
             Accepted { swap_accepted, .. } => Self {
                 current_state: SwapCommunicationState::Accepted,
                 alpha_expiry: swap_accepted.request.alpha_expiry,
                 beta_expiry: swap_accepted.request.beta_expiry,
-                alpha_redeem_identity: Some(json!(swap_accepted.alpha_redeem_identity)),
-                beta_redeem_identity: json!(swap_accepted.request.beta_ledger_redeem_identity),
-                alpha_refund_identity: json!(swap_accepted.request.alpha_ledger_refund_identity),
-                beta_refund_identity: Some(json!(swap_accepted.beta_refund_identity)),
+                alpha_redeem_identity: Some(swap_accepted.alpha_redeem_identity),
+                beta_redeem_identity: swap_accepted.request.beta_ledger_redeem_identity,
+                alpha_refund_identity: swap_accepted.request.alpha_ledger_refund_identity,
+                beta_refund_identity: Some(swap_accepted.beta_refund_identity),
             },
             Rejected { request, .. } => Self {
                 current_state: SwapCommunicationState::Rejected,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: json!(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: json!(request.alpha_ledger_refund_identity),
+                beta_redeem_identity: request.beta_ledger_redeem_identity,
+                alpha_refund_identity: request.alpha_ledger_refund_identity,
                 beta_refund_identity: None,
             },
         }
@@ -216,7 +218,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication
+    for SwapCommunication<AL, BL>
 {
     fn from(communication: bob::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use self::bob::SwapCommunication::*;
@@ -226,28 +228,40 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: json!(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: json!(request.alpha_ledger_refund_identity),
+                beta_redeem_identity: request.beta_ledger_redeem_identity,
+                alpha_refund_identity: request.alpha_ledger_refund_identity,
                 beta_refund_identity: None,
             },
             Accepted { swap_accepted, .. } => Self {
                 current_state: SwapCommunicationState::Accepted,
                 alpha_expiry: swap_accepted.request.alpha_expiry,
                 beta_expiry: swap_accepted.request.beta_expiry,
-                alpha_redeem_identity: Some(json!(swap_accepted.alpha_redeem_identity)),
-                beta_redeem_identity: json!(swap_accepted.request.beta_ledger_redeem_identity),
-                alpha_refund_identity: json!(swap_accepted.request.alpha_ledger_refund_identity),
-                beta_refund_identity: Some(json!(swap_accepted.beta_refund_identity)),
+                alpha_redeem_identity: Some(swap_accepted.alpha_redeem_identity),
+                beta_redeem_identity: swap_accepted.request.beta_ledger_redeem_identity,
+                alpha_refund_identity: swap_accepted.request.alpha_ledger_refund_identity,
+                beta_refund_identity: Some(swap_accepted.beta_refund_identity),
             },
             Rejected { request, .. } => Self {
                 current_state: SwapCommunicationState::Rejected,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: json!(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: json!(request.alpha_ledger_refund_identity),
+                beta_redeem_identity: request.beta_ledger_redeem_identity,
+                alpha_refund_identity: request.alpha_ledger_refund_identity,
                 beta_refund_identity: None,
             },
+        }
+    }
+}
+
+// Implementation needed because Ledger doesn't have a Default
+impl<L: Ledger> Default for LedgerState<L> {
+    fn default() -> Self {
+        Self {
+            current_state: HtlcState::default(),
+            htlc_location: None,
+            redeem_tx: None,
+            refund_tx: None,
         }
     }
 }
@@ -258,19 +272,19 @@ impl Default for HtlcState {
     }
 }
 
-impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState {
+impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
     fn from(ledger_state: rfc003::LedgerState<L>) -> Self {
         use self::rfc003::LedgerState::*;
         match ledger_state {
             NotDeployed => Self::default(),
             Deployed { htlc_location } => Self {
                 current_state: HtlcState::Deployed,
-                htlc_location: Some(json!(htlc_location)),
+                htlc_location: Some(htlc_location),
                 ..Default::default()
             },
             Funded { htlc_location } => Self {
                 current_state: HtlcState::Funded,
-                htlc_location: Some(json!(htlc_location)),
+                htlc_location: Some(htlc_location),
                 ..Default::default()
             },
             Redeemed {
@@ -278,8 +292,8 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState {
                 redeem_transaction,
             } => Self {
                 current_state: HtlcState::Redeemed,
-                htlc_location: Some(json!(htlc_location)),
-                redeem_tx: Some(json!(redeem_transaction)),
+                htlc_location: Some(htlc_location),
+                redeem_tx: Some(redeem_transaction),
                 ..Default::default()
             },
             Refunded {
@@ -287,8 +301,8 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState {
                 refund_transaction,
             } => Self {
                 current_state: HtlcState::Redeemed,
-                htlc_location: Some(json!(htlc_location)),
-                refund_tx: Some(json!(refund_transaction)),
+                htlc_location: Some(htlc_location),
+                refund_tx: Some(refund_transaction),
                 ..Default::default()
             },
         }
