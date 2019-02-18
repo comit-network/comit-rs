@@ -55,6 +55,7 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     },
     Rejected {
         request: Request<AL, BL, AA, BA>,
+        response: SwapReject,
     },
 }
 
@@ -145,7 +146,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
             | SwapCommunication::Proposed { request, .. }
-            | SwapCommunication::Rejected { request } => request.clone(),
+            | SwapCommunication::Rejected { request, .. } => request.clone(),
         }
     }
 
@@ -170,22 +171,20 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
 
     fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, SwapReject>) {
         match self.swap_communication {
-            SwapCommunication::Proposed { ref request, .. } => {
-                match response {
-                    Ok(response) => {
-                        self.swap_communication = SwapCommunication::Accepted {
-                            request: request.clone(),
-                            response,
-                        }
-                    }
-                    // TODO: Pass on rejection type to storage layer
-                    Err(_reject) => {
-                        self.swap_communication = SwapCommunication::Rejected {
-                            request: request.clone(),
-                        }
+            SwapCommunication::Proposed { ref request, .. } => match response {
+                Ok(response) => {
+                    self.swap_communication = SwapCommunication::Accepted {
+                        request: request.clone(),
+                        response,
                     }
                 }
-            }
+                Err(response) => {
+                    self.swap_communication = SwapCommunication::Rejected {
+                        request: request.clone(),
+                        response,
+                    }
+                }
+            },
             _ => error!("Tried to set a response after it's already set"),
         }
     }
