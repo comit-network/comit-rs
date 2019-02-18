@@ -31,10 +31,10 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A> {
         accept_response: &rfc003::messages::AcceptResponseBody<L, BL>,
     ) -> Self {
         HtlcParams {
-            asset: request.alpha_asset.clone(),
-            ledger: request.alpha_ledger.clone(),
-            redeem_identity: accept_response.alpha_ledger_redeem_identity.clone(),
-            refund_identity: request.alpha_ledger_refund_identity.clone(),
+            asset: request.alpha_asset,
+            ledger: request.alpha_ledger,
+            redeem_identity: accept_response.alpha_ledger_redeem_identity,
+            refund_identity: request.alpha_ledger_refund_identity,
             expiry: request.alpha_expiry,
             secret_hash: request.secret_hash,
         }
@@ -45,10 +45,10 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A> {
         accept_response: &rfc003::messages::AcceptResponseBody<AL, L>,
     ) -> Self {
         HtlcParams {
-            asset: request.beta_asset.clone(),
-            ledger: request.beta_ledger.clone(),
-            redeem_identity: request.beta_ledger_redeem_identity.clone(),
-            refund_identity: accept_response.beta_ledger_refund_identity.clone(),
+            asset: request.beta_asset,
+            ledger: request.beta_ledger,
+            redeem_identity: request.beta_ledger_redeem_identity,
+            refund_identity: accept_response.beta_ledger_refund_identity,
             expiry: request.beta_expiry,
             secret_hash: request.secret_hash,
         }
@@ -89,8 +89,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
     pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA> {
         HtlcParams {
-            asset: self.alpha_asset.clone(),
-            ledger: self.alpha_ledger.clone(),
+            asset: self.alpha_asset,
+            ledger: self.alpha_ledger,
             redeem_identity: self.alpha_ledger_redeem_identity,
             refund_identity: self.alpha_ledger_refund_identity,
             expiry: self.alpha_expiry,
@@ -100,8 +100,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
     pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA> {
         HtlcParams {
-            asset: self.beta_asset.clone(),
-            ledger: self.beta_ledger.clone(),
+            asset: self.beta_asset,
+            ledger: self.beta_ledger,
             redeem_identity: self.beta_ledger_redeem_identity,
             refund_identity: self.beta_ledger_refund_identity,
             expiry: self.beta_expiry,
@@ -250,10 +250,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
     ) -> Result<Async<AfterStart<AL, BL, AA, BA>>, rfc003::Error> {
         let request = rfc003::messages::Request {
-            alpha_asset: state.alpha_asset.clone(),
-            beta_asset: state.beta_asset.clone(),
-            alpha_ledger: state.alpha_ledger.clone(),
-            beta_ledger: state.beta_ledger.clone(),
+            alpha_asset: state.alpha_asset,
+            beta_asset: state.beta_asset,
+            alpha_ledger: state.alpha_ledger,
+            beta_ledger: state.beta_ledger,
             alpha_ledger_refund_identity: state.alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: state.beta_ledger_redeem_identity,
             alpha_expiry: state.alpha_expiry,

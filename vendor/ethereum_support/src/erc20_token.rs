@@ -1,7 +1,7 @@
 use crate::{erc20_quantity::Erc20Quantity, web3::types::Address};
 use std::fmt;
 
-#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Token {
     token_contract: Address,
     quantity: Erc20Quantity,

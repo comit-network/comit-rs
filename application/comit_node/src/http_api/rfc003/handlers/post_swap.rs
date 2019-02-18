@@ -142,10 +142,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
             beta_ledger_redeem_identity,
         } = self.partial_identities.to_identities(secret_source);
         rfc003::messages::Request {
-            alpha_asset: self.alpha_asset.clone(),
-            beta_asset: self.beta_asset.clone(),
-            alpha_ledger: self.alpha_ledger.clone(),
-            beta_ledger: self.beta_ledger.clone(),
+            alpha_asset: self.alpha_asset,
+            beta_asset: self.beta_asset,
+            alpha_ledger: self.alpha_ledger,
+            beta_ledger: self.beta_ledger,
             alpha_expiry: self.alpha_expiry,
             beta_expiry: self.beta_expiry,
             secret_hash: secret_source.secret().hash(),

@@ -10,6 +10,7 @@ use std::hash::Hash;
 
 pub trait Ledger:
     Clone
+    + Copy
     + Debug
     + Send
     + Sync
