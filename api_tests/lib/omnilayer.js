@@ -3,6 +3,7 @@ const BitcoinRpcClient = require("bitcoin-core");
 const myBitcoin = require("./bitcoin");
 const BitcoinWallet = myBitcoin.BitcoinWallet;
 const Buffer = require("buffer").Buffer;
+const hash = require("hash.js");
 
 const OMNI_HEADER = "6f6d6e69";
 
@@ -10,21 +11,6 @@ function payloadToEmbed(payload) {
     const buffer = Buffer.from(OMNI_HEADER + payload, "hex");
     return bitcoin.payments.embed({ data: [buffer] });
 }
-
-//FIXME: Remove this whenever this change:
-// https://github.com/bitcoinjs/bitcoinjs-lib/commit/44a98c0fa6487eaf81500427366787a953ff890d#diff-9e60abeb4e2333a5d2f02de53b4edfac
-// Hits npm!
-const regtest = {
-    messagePrefix: "\x18Bitcoin Signed Message:\n",
-    bech32: "bcrt",
-    bip32: {
-        public: 0x043587cf,
-        private: 0x04358394,
-    },
-    pubKeyHash: 0x6f,
-    scriptHash: 0xc4,
-    wif: 0xef,
-};
 
 let _rpc_client;
 
@@ -67,7 +53,7 @@ module.exports.activateSegwit = async function() {
 };
 
 module.exports.createOmniToken = async function(keypair, utxo, output) {
-    const txb = new bitcoin.TransactionBuilder();
+    const txb = new bitcoin.TransactionBuilder(bitcoin.networks.regtest);
     const input_amount = utxo.value;
     const fee = 2500;
     const change = input_amount - fee;
@@ -121,7 +107,7 @@ module.exports.grantOmniToken = async function(keypair, utxo, prevOutput, tokenI
         throw new Error("tokenId must be provided, got: " + tokenId);
     }
 
-    const txb = new bitcoin.TransactionBuilder();
+    const txb = new bitcoin.TransactionBuilder(bitcoin.networks.regtest);
     const input_amount = utxo.value;
     const fee = 2500;
     const change = input_amount - fee;
@@ -154,7 +140,6 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     if (!tokenId) {
         throw new Error("tokenId must be provided, got: " + tokenId);
     }
-    // Caveat: If alice has a lot of BTC on her omni output it will all go to Bob
 
     // alice_output = prev output for omni = new output for BTC
     const { alice_keypair, alice_omni_utxo, alice_final_address } = aliceDetails;
@@ -162,14 +147,14 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     // bob_omni_output = new output for Omni
     const { bob_keypair, bob_btc_utxo, bob_btc_output, bob_final_address } = bobDetails;
 
-    const alice_output = bitcoin.address.toOutputScript(alice_final_address, regtest);
-    const bob_omni_output = bitcoin.address.toOutputScript(bob_final_address, regtest);
+    const alice_output = bitcoin.address.toOutputScript(alice_final_address, bitcoin.networks.regtest);
+    const bob_omni_output = bitcoin.address.toOutputScript(bob_final_address, bitcoin.networks.regtest);
 
     if (bob_omni_output === bob_btc_output) {
         throw new Error("Bob BTC and Omni output MUST be different");
     }
 
-    const txb = new bitcoin.TransactionBuilder();
+    const txb = new bitcoin.TransactionBuilder(bitcoin.networks.regtest);
 
     const fee = 2500;
     const dust = 546;
@@ -210,6 +195,101 @@ module.exports.swaperoo = async function(aliceDetails, bobDetails, tokenId, omni
     // const plainTransaction = await _rpc_client.decodeRawTransaction(txb.buildIncomplete().toHex());
 
     await createOmniRpcClient().sendRawTransaction(txb.build().toHex());
+    await createOmniRpcClient().generate(1);
+};
+
+module.exports.lockInHTLC = async function(aliceDetails, bobDetails, tokenId, omni_value, btc_value) {
+    if (!tokenId) {
+        throw new Error("tokenId must be provided, got: " + tokenId);
+    }
+
+    // alice_output = prev output for omni = new output for BTC
+    const { alice_keypair, alice_omni_utxo, alice_final_address } = aliceDetails;
+    // bob_btc_output = prev output for BTC = output for BTC change
+    // bob_omni_output = new output for Omni
+    const { bob_keypair, bob_btc_utxo, bob_btc_output, bob_final_address } = bobDetails;
+
+    const alice_output = bitcoin.address.toOutputScript(alice_final_address, bitcoin.networks.regtest);
+    const bob_omni_output = bitcoin.address.toOutputScript(bob_final_address, bitcoin.networks.regtest);
+
+    if (bob_omni_output === bob_btc_output) {
+        throw new Error("Bob BTC and Omni output MUST be different");
+    }
+
+    const txb = new bitcoin.TransactionBuilder(bitcoin.networks.regtest);
+
+    const fee = 2500;
+    const dust = 546;
+    const btc = alice_omni_utxo.value - fee - dust;
+
+    // Alice Omni input
+    txb.addInput(alice_omni_utxo.txid, alice_omni_utxo.vout, null, alice_output);
+
+    // Add BTC change back to Alice
+    txb.addOutput(alice_output, btc);
+
+    // Add Omni instructions
+    const payload = await createOmniRpcClient().command([
+        {
+            method: "omni_createpayload_simplesend",
+            parameters: [tokenId, omni_value.toString()],
+        },
+    ]);
+    const embed = payloadToEmbed(payload[0]);
+    txb.addOutput(embed.output, 0);
+
+    const recipientPubkeyHash = hash.sha256(bob_keypair.publicKey).digest('hex');
+
+    const senderPubkeyHash = hash.sha256(alice_keypair.publicKey).digest('hex');
+
+    const secret = 0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF;
+
+    const secretHash = hash.sha256(secret).digest('hex');
+    console.log("Secret hash:", secretHash);
+
+    const scriptASM = "OP_IF " +
+        "OP_SIZE " +
+        "20 " +
+        "OP_EQUALVERIFY " +
+        "OP_SHA256 " +
+        secretHash +
+        " OP_EQUALVERIFY " +
+        "OP_DUP " +
+        "OP_HASH160 " +
+        recipientPubkeyHash +
+        " OP_ELSE " +
+        "f08fbecf00 " +
+        "OP_NOP2 " +
+        "OP_DROP " +
+         "OP_DUP " +
+        "OP_HASH160 " +
+        senderPubkeyHash +
+        " OP_ENDIF " +
+        "OP_EQUALVERIFY " +
+        "OP_CHECKSIG";
+
+    const script = bitcoin.script.fromASM(scriptASM);
+
+    const p2sh = bitcoin.payments.p2sh({ redeem: { output: script, network: bitcoin.networks.regtest }, network: bitcoin.networks.regtest });
+    console.log("p2sh", p2sh);
+    const { address } = bitcoin.payments.p2sh({ redeem: { output: script, network: bitcoin.networks.regtest }, network: bitcoin.networks.regtest });
+    console.log("htlcAddress:", address);
+
+    txb.addOutput(address, dust);
+    txb.sign(0, alice_keypair, null, bitcoin.Transaction.SIGHASH_ALL, alice_omni_utxo.value);
+    const txHex = txb.build().toHex();
+    const omniTransaction = await createOmniRpcClient().command([
+        {
+            method: "omni_decodetransaction",
+            parameters: [txHex],
+        },
+    ]);
+    console.log("---\nomni transaction:", JSON.stringify(omniTransaction, null, 2));
+    const plainTransaction = await _rpc_client.decodeRawTransaction(txHex);
+    console.log("---\nplainTransaction:", JSON.stringify(plainTransaction, null, 2));
+
+    const txId = await createOmniRpcClient().sendRawTransaction(txHex);
+    console.log("txId:", txId);
     await createOmniRpcClient().generate(1);
 };
 
