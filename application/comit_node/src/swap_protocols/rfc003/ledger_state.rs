@@ -1,7 +1,5 @@
 use crate::swap_protocols::rfc003::ledger::Ledger;
 
-// FIXME: Can't get deploy or fund transactions because of the way the state
-// machine is implemented
 #[derive(Clone, Debug, PartialEq)]
 pub enum LedgerState<L: Ledger> {
     NotDeployed,
