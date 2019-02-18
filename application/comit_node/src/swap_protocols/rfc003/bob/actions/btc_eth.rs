@@ -1,70 +1,70 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        bitcoin,
+        self, bitcoin,
         bob::{
             self,
             actions::{Accept, Decline},
+            SwapCommunication,
         },
-        ethereum::{self, EtherHtlc, Htlc},
+        ethereum::{self, EtherHtlc},
         secret::Secret,
-        state_machine::*,
-        Actions, Bob,
+        secret_source::SecretSource,
+        state_machine::HtlcParams,
+        Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
 use ethereum_support::{Bytes, EtherQuantity};
+use std::sync::Arc;
 
-impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
-    pub fn fund_action(&self) -> ethereum::ContractDeploy {
-        let htlc = EtherHtlc::from(self.beta_htlc_params());
-        let data = htlc.compile_to_hex().into();
-        let gas_limit = htlc.deployment_gas_limit();
+type Request = rfc003::messages::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
+type Response = rfc003::messages::AcceptResponseBody<Bitcoin, Ethereum>;
 
-        ethereum::ContractDeploy {
-            data,
-            amount: self.beta_asset,
-            gas_limit,
-            network: self.beta_ledger.network,
-        }
-    }
+fn fund_action(request: &Request, response: &Response) -> ethereum::ContractDeploy {
+    HtlcParams::new_beta_params(request, response).into()
+}
 
-    pub fn refund_action(
-        &self,
-        beta_htlc_location: ethereum_support::Address,
-    ) -> ethereum::SendTransaction {
-        let data = Bytes::default();
-        let gas_limit = EtherHtlc::tx_gas_limit();
+fn _refund_action(
+    request: &Request,
+    beta_htlc_location: ethereum_support::Address,
+) -> ethereum::SendTransaction {
+    let data = Bytes::default();
+    let gas_limit = EtherHtlc::tx_gas_limit();
+    let network = request.beta_ledger.network;
 
-        ethereum::SendTransaction {
-            to: beta_htlc_location,
-            data,
-            gas_limit,
-            amount: EtherQuantity::zero(),
-            network: self.beta_ledger.network,
-        }
-    }
-
-    pub fn redeem_action(
-        &self,
-        alpha_htlc_location: OutPoint,
-        secret: Secret,
-    ) -> bitcoin::SpendOutput {
-        let htlc: bitcoin::Htlc = self.alpha_htlc_params().into();
-
-        bitcoin::SpendOutput {
-            output: PrimedInput::new(
-                alpha_htlc_location,
-                self.alpha_asset,
-                htlc.unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
-            ),
-            network: self.alpha_ledger.network,
-        }
+    ethereum::SendTransaction {
+        to: beta_htlc_location,
+        data,
+        gas_limit,
+        amount: EtherQuantity::zero(),
+        network,
     }
 }
 
-impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>> {
+fn redeem_action(
+    request: &Request,
+    response: &Response,
+    alpha_htlc_location: OutPoint,
+    secret_source: &dyn SecretSource,
+    secret: Secret,
+) -> bitcoin::SpendOutput {
+    let alpha_asset = request.alpha_asset;
+    let htlc = bitcoin::Htlc::from(HtlcParams::new_alpha_params(request, response));
+    let network = request.alpha_ledger.network;
+
+    bitcoin::SpendOutput {
+        output: PrimedInput::new(
+            alpha_htlc_location,
+            alpha_asset,
+            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
+        ),
+        network,
+    }
+}
+
+impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
     type ActionKind = bob::ActionKind<
         Accept<Bitcoin, Ethereum>,
         Decline<Bitcoin, Ethereum>,
@@ -75,82 +75,43 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantit
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        use self::SwapStates as SS;
-        match *self {
-            SS::Start(Start { ref role, .. }) => vec![
-                bob::ActionKind::Accept(role.accept_action()),
-                bob::ActionKind::Decline(role.decline_action()),
-            ],
-            SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
-                vec![bob::ActionKind::Fund(swap.fund_action())]
+        let (request, response) = match &self.swap_communication {
+            SwapCommunication::Proposed {
+                pending_response, ..
+            } => {
+                return vec![
+                    bob::ActionKind::Accept(Accept::new(
+                        pending_response.sender.clone(),
+                        Arc::clone(&self.secret_source),
+                    )),
+                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
+                ];
             }
-            SS::BothFunded(BothFunded {
-                ref beta_htlc_location,
-                ref swap,
-                ..
-            })
-            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
-                ref beta_htlc_location,
-                ref swap,
-                ..
-            })
-            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
-                ref beta_htlc_location,
-                ref swap,
-                ..
-            }) => vec![bob::ActionKind::Refund(
-                swap.refund_action(*beta_htlc_location),
-            )],
-            SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
-                ref swap,
-                ref alpha_htlc_location,
-                ref beta_redeemed_tx,
-                ..
-            }) => vec![bob::ActionKind::Redeem(
-                swap.redeem_action(*alpha_htlc_location, beta_redeemed_tx.secret),
-            )],
+            SwapCommunication::Accepted {
+                ref request,
+                ref response,
+            } => (request, response),
+            _ => return vec![],
+        };
+
+        let alpha_state = &self.alpha_ledger_state;
+        let beta_state = &self.beta_ledger_state;
+
+        use self::LedgerState::*;
+        match (alpha_state, beta_state, self.secret) {
+            (Funded { htlc_location, .. }, _, Some(secret)) => {
+                vec![bob::ActionKind::Redeem(redeem_action(
+                    &request,
+                    &response,
+                    *htlc_location,
+                    self.secret_source.as_ref(),
+                    secret,
+                ))]
+            }
+            (Funded { .. }, NotDeployed, _) => {
+                vec![bob::ActionKind::Fund(fund_action(&request, &response))]
+            }
             _ => vec![],
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::swap_protocols::rfc003::{role::test::Bobisha, Secret, Timestamp};
-    use hex::FromHex;
-
-    #[test]
-    fn given_state_instance_when_calling_actions_should_not_need_to_specify_type_arguments() {
-        let (bobisha, _) = Bobisha::create();
-        let swap_state = SwapStates::from(Start::<Bobisha> {
-            alpha_ledger_refund_identity: bitcoin_support::PubkeyHash::from_hex(
-                "875638cac0b0ae9f826575e190f2788918c354c2",
-            )
-            .unwrap(),
-            beta_ledger_redeem_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
-                .parse()
-                .unwrap(),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
-            secret: Secret::from(*b"hello world, you are beautiful!!").hash(),
-            role: bobisha,
-        });
-
-        let actions = swap_state.actions();
-
-        assert!(actions
-            .into_iter()
-            .find(|a| match a {
-                // Bobisha obviously has the same actions as Bob
-                bob::ActionKind::Accept(_) => true,
-                _ => false,
-            })
-            .is_some());
-    }
-
 }

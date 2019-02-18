@@ -1,85 +1,89 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        bitcoin,
+        self, bitcoin,
         bob::{
             self,
             actions::{Accept, Decline},
+            SwapCommunication,
         },
-        ethereum::{self, Erc20Htlc, Htlc},
+        ethereum::{self, Erc20Htlc},
         secret::Secret,
-        state_machine::*,
-        Actions, Bob,
+        secret_source::SecretSource,
+        state_machine::HtlcParams,
+        Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
+use std::sync::Arc;
 
-impl OngoingSwap<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
-    pub fn deploy_action(&self) -> ethereum::ContractDeploy {
-        let htlc = Erc20Htlc::from(self.beta_htlc_params());
-        let data = htlc.compile_to_hex().into();
-        let gas_limit = htlc.deployment_gas_limit();
+type Request = rfc003::messages::Request<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>;
+type Response = rfc003::messages::AcceptResponseBody<Bitcoin, Ethereum>;
 
-        ethereum::ContractDeploy {
-            data,
-            amount: EtherQuantity::zero(),
-            gas_limit,
-            network: self.beta_ledger.network,
-        }
-    }
+fn deploy_action(request: &Request, response: &Response) -> ethereum::ContractDeploy {
+    HtlcParams::new_beta_params(request, response).into()
+}
 
-    pub fn refund_action(
-        &self,
-        beta_htlc_location: ethereum_support::Address,
-    ) -> ethereum::SendTransaction {
-        let data = Bytes::default();
-        let gas_limit = Erc20Htlc::tx_gas_limit();
+pub fn fund_action(
+    request: &Request,
+    response: &Response,
+    beta_htlc_location: ethereum_support::Address,
+) -> ethereum::SendTransaction {
+    let to = request.beta_asset.token_contract();
+    let htlc = Erc20Htlc::from(HtlcParams::new_beta_params(request, response));
+    let gas_limit = Erc20Htlc::fund_tx_gas_limit();
+    let network = request.beta_ledger.network;
 
-        ethereum::SendTransaction {
-            to: beta_htlc_location,
-            data,
-            gas_limit,
-            amount: EtherQuantity::zero(),
-            network: self.beta_ledger.network,
-        }
-    }
-
-    pub fn fund_action(
-        &self,
-        beta_htlc_location: ethereum_support::Address,
-    ) -> ethereum::SendTransaction {
-        let htlc = Erc20Htlc::from(self.beta_htlc_params());
-        let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-
-        ethereum::SendTransaction {
-            to: self.beta_asset.token_contract(),
-            data: htlc.funding_tx_payload(beta_htlc_location),
-            gas_limit,
-            amount: EtherQuantity::zero(),
-            network: self.beta_ledger.network,
-        }
-    }
-
-    pub fn redeem_action(
-        &self,
-        alpha_htlc_location: OutPoint,
-        secret: Secret,
-    ) -> bitcoin::SpendOutput {
-        bitcoin::SpendOutput {
-            output: PrimedInput::new(
-                alpha_htlc_location,
-                self.alpha_asset,
-                bitcoin::Htlc::from(self.alpha_htlc_params())
-                    .unlock_with_secret(self.alpha_ledger_redeem_identity, &secret),
-            ),
-            network: self.alpha_ledger.network,
-        }
+    ethereum::SendTransaction {
+        to,
+        data: htlc.funding_tx_payload(beta_htlc_location),
+        gas_limit,
+        amount: EtherQuantity::zero(),
+        network,
     }
 }
 
-impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>> {
+pub fn _refund_action(
+    request: &Request,
+    beta_htlc_location: ethereum_support::Address,
+) -> ethereum::SendTransaction {
+    let data = Bytes::default();
+    let gas_limit = Erc20Htlc::tx_gas_limit();
+    let network = request.beta_ledger.network;
+
+    ethereum::SendTransaction {
+        to: beta_htlc_location,
+        data,
+        gas_limit,
+        amount: EtherQuantity::zero(),
+        network,
+    }
+}
+
+pub fn redeem_action(
+    request: &Request,
+    response: &Response,
+    alpha_htlc_location: OutPoint,
+    secret_source: &dyn SecretSource,
+    secret: Secret,
+) -> bitcoin::SpendOutput {
+    let alpha_asset = request.alpha_asset;
+    let htlc = bitcoin::Htlc::from(HtlcParams::new_alpha_params(request, response));
+    let network = request.alpha_ledger.network;
+
+    bitcoin::SpendOutput {
+        output: PrimedInput::new(
+            alpha_htlc_location,
+            alpha_asset,
+            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
+        ),
+        network,
+    }
+}
+
+impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
     type ActionKind = bob::ActionKind<
         Accept<Bitcoin, Ethereum>,
         Decline<Bitcoin, Ethereum>,
@@ -90,44 +94,44 @@ impl Actions for SwapStates<Bob<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>>
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        use self::SwapStates as SS;
-        match *self {
-            SS::Start(Start { ref role, .. }) => vec![
-                bob::ActionKind::Accept(role.accept_action()),
-                bob::ActionKind::Decline(role.decline_action()),
-            ],
-            SS::AlphaFunded(AlphaFunded { ref swap, .. }) => {
-                vec![bob::ActionKind::Deploy(swap.deploy_action())]
+        let (request, response) = match &self.swap_communication {
+            SwapCommunication::Proposed {
+                pending_response, ..
+            } => {
+                return vec![
+                    bob::ActionKind::Accept(Accept::new(
+                        pending_response.sender.clone(),
+                        Arc::clone(&self.secret_source),
+                    )),
+                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
+                ];
             }
-            SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed {
-                ref swap,
-                ref beta_htlc_location,
-                ..
-            }) => vec![bob::ActionKind::Fund(swap.fund_action(*beta_htlc_location))],
-            SS::BothFunded(BothFunded {
-                ref beta_htlc_location,
-                ref swap,
-                ..
-            })
-            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
-                ref beta_htlc_location,
-                ref swap,
-                ..
-            })
-            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
-                ref beta_htlc_location,
-                ref swap,
-                ..
-            }) => vec![bob::ActionKind::Refund(
-                swap.refund_action(*beta_htlc_location),
-            )],
-            SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
-                ref swap,
-                ref alpha_htlc_location,
-                ref beta_redeemed_tx,
-                ..
-            }) => vec![bob::ActionKind::Redeem(
-                swap.redeem_action(*alpha_htlc_location, beta_redeemed_tx.secret),
+            SwapCommunication::Accepted {
+                ref request,
+                ref response,
+            } => (request, response),
+            _ => return vec![],
+        };
+
+        let alpha_state = &self.alpha_ledger_state;
+        let beta_state = &self.beta_ledger_state;
+
+        use self::LedgerState::*;
+        match (alpha_state, beta_state, self.secret) {
+            (Funded { htlc_location, .. }, _, Some(secret)) => {
+                vec![bob::ActionKind::Redeem(redeem_action(
+                    &request,
+                    &response,
+                    *htlc_location,
+                    self.secret_source.as_ref(),
+                    secret,
+                ))]
+            }
+            (Funded { .. }, NotDeployed, _) => {
+                vec![bob::ActionKind::Deploy(deploy_action(&request, &response))]
+            }
+            (Funded { .. }, Deployed { htlc_location, .. }, _) => vec![bob::ActionKind::Fund(
+                fund_action(&request, &response, *htlc_location),
             )],
             _ => vec![],
         }

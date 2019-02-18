@@ -1,3 +1,4 @@
+use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
 use std::fmt;
 
@@ -12,6 +13,9 @@ impl fmt::Debug for Seed {
 }
 
 impl Seed {
+    pub fn swap_seed(&self, id: SwapId) -> Seed {
+        Seed(self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]))
+    }
     pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         let mut sha = Sha256::new();
         sha.input(&self.0);

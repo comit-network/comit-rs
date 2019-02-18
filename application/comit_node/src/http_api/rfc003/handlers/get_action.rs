@@ -3,7 +3,7 @@ use crate::{
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
-        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions, Alice, Bob},
+        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions},
         MetadataStore, RoleKind, SwapId,
     },
 };
@@ -13,7 +13,7 @@ use http_api_problem::HttpApiProblem;
 use std::{str::FromStr, sync::Arc};
 use warp::{self, Reply};
 
-pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: Arc<S>,
     id: &SwapId,
@@ -28,7 +28,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         &metadata,
         (|| {
             let state = state_store
-                .get::<Role>(id)?
+                .get::<ROLE>(id.clone())?
                 .ok_or_else(problem::state_store)?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
@@ -58,51 +58,16 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     )
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GetAction {
+    Fund,
+    Deploy,
+    Redeem,
+    Refund,
+}
+
 trait MatchesAction<A> {
     fn matches(self, action: &A) -> bool;
-}
-
-impl<Deploy, Fund, Redeem, Refund> MatchesAction<alice::ActionKind<Deploy, Fund, Redeem, Refund>>
-    for GetAction
-{
-    fn matches(self, other: &alice::ActionKind<Deploy, Fund, Redeem, Refund>) -> bool {
-        match other {
-            alice::ActionKind::Deploy(_) => self == GetAction::Deploy,
-            alice::ActionKind::Fund(_) => self == GetAction::Fund,
-            alice::ActionKind::Redeem(_) => self == GetAction::Redeem,
-            alice::ActionKind::Refund(_) => self == GetAction::Refund,
-        }
-    }
-}
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
-    MatchesAction<bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>> for GetAction
-{
-    fn matches(
-        self,
-        other: &bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>,
-    ) -> bool {
-        match other {
-            bob::ActionKind::Deploy(_) => self == GetAction::Deploy,
-            bob::ActionKind::Fund(_) => self == GetAction::Fund,
-            bob::ActionKind::Redeem(_) => self == GetAction::Redeem,
-            bob::ActionKind::Refund(_) => self == GetAction::Refund,
-            _ => false,
-        }
-    }
-}
-
-impl FromStr for GetAction {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        match s {
-            "deploy" => Ok(GetAction::Deploy),
-            "fund" => Ok(GetAction::Fund),
-            "redeem" => Ok(GetAction::Redeem),
-            "refund" => Ok(GetAction::Refund),
-            _ => Err(()),
-        }
-    }
 }
 
 pub trait IntoResponseBody {
@@ -110,33 +75,6 @@ pub trait IntoResponseBody {
         self,
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem>;
-}
-
-impl IntoResponseBody for bitcoin::SendToAddress {
-    fn into_response_body(
-        self,
-        query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
-        match query_params {
-            GetActionQueryParams::None {} => {
-                let bitcoin::SendToAddress {
-                    to,
-                    amount,
-                    network,
-                } = self.clone();
-                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
-                    to,
-                    amount,
-                    network,
-                })
-            }
-            _ => {
-                error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action does not take any query parameters"))
-            }
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -171,6 +109,43 @@ pub enum ActionResponseBody {
 struct MissingQueryParameter {
     data_type: &'static str,
     description: &'static str,
+}
+
+#[derive(Clone, Deserialize, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum GetActionQueryParams {
+    BitcoinAddressAndFee {
+        address: bitcoin_support::Address,
+        fee_per_byte: String,
+    },
+    None {},
+}
+
+impl IntoResponseBody for bitcoin::SendToAddress {
+    fn into_response_body(
+        self,
+        query_params: GetActionQueryParams,
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
+        match query_params {
+            GetActionQueryParams::None {} => {
+                let bitcoin::SendToAddress {
+                    to,
+                    amount,
+                    network,
+                } = self.clone();
+                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
+                    to,
+                    amount,
+                    network,
+                })
+            }
+            _ => {
+                error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
+                Err(HttpApiProblem::with_title_and_type_from_status(400)
+                    .set_detail("This action does not take any query parameters"))
+            }
+        }
+    }
 }
 
 impl IntoResponseBody for bitcoin::SpendOutput {
@@ -354,22 +329,48 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GetAction {
-    Fund,
-    Deploy,
-    Redeem,
-    Refund,
+impl<Deploy, Fund, Redeem, Refund> MatchesAction<alice::ActionKind<Deploy, Fund, Redeem, Refund>>
+    for GetAction
+{
+    fn matches(self, other: &alice::ActionKind<Deploy, Fund, Redeem, Refund>) -> bool {
+        match other {
+            alice::ActionKind::Deploy(_) => self == GetAction::Deploy,
+            alice::ActionKind::Fund(_) => self == GetAction::Fund,
+            alice::ActionKind::Redeem(_) => self == GetAction::Redeem,
+            alice::ActionKind::Refund(_) => self == GetAction::Refund,
+        }
+    }
 }
 
-#[derive(Clone, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum GetActionQueryParams {
-    BitcoinAddressAndFee {
-        address: bitcoin_support::Address,
-        fee_per_byte: String,
-    },
-    None {},
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
+    MatchesAction<bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>> for GetAction
+{
+    fn matches(
+        self,
+        other: &bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>,
+    ) -> bool {
+        match other {
+            bob::ActionKind::Deploy(_) => self == GetAction::Deploy,
+            bob::ActionKind::Fund(_) => self == GetAction::Fund,
+            bob::ActionKind::Redeem(_) => self == GetAction::Redeem,
+            bob::ActionKind::Refund(_) => self == GetAction::Refund,
+            _ => false,
+        }
+    }
+}
+
+impl FromStr for GetAction {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
+        match s {
+            "deploy" => Ok(GetAction::Deploy),
+            "fund" => Ok(GetAction::Fund),
+            "redeem" => Ok(GetAction::Redeem),
+            "refund" => Ok(GetAction::Refund),
+            _ => Err(()),
+        }
+    }
 }
 
 #[cfg(test)]

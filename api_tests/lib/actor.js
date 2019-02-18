@@ -24,7 +24,7 @@ class Actor {
         return "http://" + this.host + ":" + this.config.http_api.port;
     }
 
-    poll_comit_node_until(chai, location, state) {
+    poll_comit_node_until(chai, location, predicate) {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)
@@ -33,14 +33,19 @@ class Actor {
                         return rej(err);
                     }
                     res.should.have.status(200);
-                    if (res.body.state === state) {
-                        final_res(res.body);
+                    let body = Object.assign(
+                        { _links: {}, _embedded: {} },
+                        res.body
+                    );
+
+                    if (predicate(body)) {
+                        final_res(body);
                     } else {
                         setTimeout(() => {
                             this.poll_comit_node_until(
                                 chai,
                                 location,
-                                state
+                                predicate
                             ).then(result => {
                                 final_res(result);
                             });

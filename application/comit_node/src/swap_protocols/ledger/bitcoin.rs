@@ -4,7 +4,7 @@ use bitcoin_support::{
 };
 use secp256k1_support::PublicKey;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {
     pub network: Network,
 }

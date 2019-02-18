@@ -1,34 +1,31 @@
-use crate::{
-    comit_client,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            events::{CommunicationEvents, ResponseFuture},
-            ledger::Ledger,
-            Bob,
-        },
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self,
+        events::{CommunicationEvents, ResponseFuture},
+        ledger::Ledger,
     },
 };
 
 #[derive(DebugStub)]
-pub struct BobToAlice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub struct BobToAlice<AL: Ledger, BL: Ledger> {
     #[debug_stub = "ResponseFuture"]
-    response_future: Box<ResponseFuture<Bob<AL, BL, AA, BA>>>,
+    response_future: Box<ResponseFuture<AL, BL>>,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> BobToAlice<AL, BL, AA, BA> {
-    pub fn new(response_future: Box<ResponseFuture<Bob<AL, BL, AA, BA>>>) -> Self {
+impl<AL: Ledger, BL: Ledger> BobToAlice<AL, BL> {
+    pub fn new(response_future: Box<ResponseFuture<AL, BL>>) -> Self {
         Self { response_future }
     }
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> CommunicationEvents<Bob<AL, BL, AA, BA>>
-    for BobToAlice<AL, BL, AA, BA>
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> CommunicationEvents<AL, BL, AA, BA>
+    for BobToAlice<AL, BL>
 {
     fn request_responded(
         &mut self,
-        _request: &comit_client::rfc003::Request<AL, BL, AA, BA>,
-    ) -> &mut ResponseFuture<Bob<AL, BL, AA, BA>> {
+        _request: &rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> &mut ResponseFuture<AL, BL> {
         &mut self.response_future
     }
 }

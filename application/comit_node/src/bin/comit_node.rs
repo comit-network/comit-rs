@@ -86,7 +86,7 @@ fn create_ledger_query_service_api_client(
     ))
 }
 
-fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -106,7 +106,7 @@ fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     }
 }
 
-fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -118,7 +118,6 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         metadata_store,
         state_store,
         protocol_dependencies,
-        settings.comit.secret_seed,
         connection_pool,
     );
 
@@ -131,7 +130,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     runtime.spawn(server);
 }
 
-fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
     settings: &ComitNodeSettings,
     protocol_dependencies: ProtocolDependencies<T, S>,
     runtime: &mut tokio::runtime::Runtime,

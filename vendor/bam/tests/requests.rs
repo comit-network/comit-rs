@@ -141,7 +141,7 @@ fn reject_out_of_order_request() {
     assert_that(&response2)
         .is_ok()
         .is_some()
-        .is_equal_to(&r#"{"type":"RESPONSE","id":11,"payload":{"status":"OK00"}}"#.into());;
+        .is_equal_to(&r#"{"type":"RESPONSE","id":11,"payload":{"status":"OK00"}}"#.into());
 }
 
 #[test]

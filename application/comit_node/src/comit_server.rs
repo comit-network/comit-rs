@@ -6,7 +6,7 @@ use futures::{Future, Stream};
 use std::{io, net::SocketAddr};
 use tokio::{self, net::TcpListener};
 
-pub fn listen<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn listen<T: MetadataStore<SwapId>, S: StateStore>(
     addr: SocketAddr,
     protocol_dependencies: ProtocolDependencies<T, S>,
 ) -> impl Future<Item = (), Error = io::Error> {
