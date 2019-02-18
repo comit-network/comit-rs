@@ -11,7 +11,6 @@ pub mod ledger_state;
 pub mod messages;
 pub mod state_machine;
 pub mod state_store;
-pub mod swap_accepted;
 
 mod actions;
 mod actor_state;
@@ -36,6 +35,5 @@ pub use self::{
     save_state::SaveState,
     secret::{FromErr, RandomnessSource, Secret, SecretHash},
     secret_source::*,
-    swap_accepted::SwapAccepted,
     timestamp::Timestamp,
 };

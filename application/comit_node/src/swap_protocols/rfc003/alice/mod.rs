@@ -18,7 +18,6 @@ use crate::{
             save_state::SaveState,
             secret_source::SecretSource,
             state_machine::{Context, FutureSwapOutcome, Start, Swap},
-            swap_accepted::SwapAccepted,
             ActorState, Secret,
         },
     },
@@ -42,7 +41,8 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
         request: Request<AL, BL, AA, BA>,
     },
     Accepted {
-        swap_accepted: SwapAccepted<AL, BL, AA, BA>,
+        request: Request<AL, BL, AA, BA>,
+        response: AcceptResponseBody<AL, BL>,
     },
     Rejected {
         request: Request<AL, BL, AA, BA>,
@@ -83,10 +83,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
     pub fn request(&self) -> Request<AL, BL, AA, BA> {
         match &self.swap_communication {
-            SwapCommunication::Proposed { request } | SwapCommunication::Rejected { request } => {
-                request.clone()
-            }
-            SwapCommunication::Accepted { swap_accepted, .. } => swap_accepted.request.clone(),
+            SwapCommunication::Accepted { request, .. }
+            | SwapCommunication::Proposed { request }
+            | SwapCommunication::Rejected { request } => request.clone(),
         }
     }
 
@@ -110,15 +109,13 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
     fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, SwapReject>) {
         match self.swap_communication {
             SwapCommunication::Proposed { ref request } => match response {
-                Ok(ref accept) => {
+                Ok(response) => {
                     self.swap_communication = SwapCommunication::Accepted {
-                        swap_accepted: SwapAccepted {
-                            request: request.clone(),
-                            alpha_redeem_identity: accept.alpha_ledger_redeem_identity,
-                            beta_refund_identity: accept.beta_ledger_refund_identity,
-                        },
+                        request: request.clone(),
+                        response,
                     }
                 }
+                // TODO: Pass on rejection type to storage layer
                 Err(_reject) => {
                     self.swap_communication = SwapCommunication::Rejected {
                         request: request.clone(),

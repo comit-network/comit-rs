@@ -16,7 +16,7 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub secret_hash: SecretHash,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
     pub beta_ledger_refund_identity: BL::Identity,
     pub alpha_ledger_redeem_identity: AL::Identity,

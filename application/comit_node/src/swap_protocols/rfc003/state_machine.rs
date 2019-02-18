@@ -25,6 +25,36 @@ pub struct HtlcParams<L: Ledger, A: Asset> {
     pub secret_hash: SecretHash,
 }
 
+impl<L: Ledger, A: Asset> HtlcParams<L, A> {
+    pub fn new_alpha_params<BL: Ledger, BA: Asset>(
+        request: &rfc003::messages::Request<L, BL, A, BA>,
+        accept_response: &rfc003::messages::AcceptResponseBody<L, BL>,
+    ) -> Self {
+        HtlcParams {
+            asset: request.alpha_asset.clone(),
+            ledger: request.alpha_ledger.clone(),
+            redeem_identity: accept_response.alpha_ledger_redeem_identity.clone(),
+            refund_identity: request.alpha_ledger_refund_identity.clone(),
+            expiry: request.alpha_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
+
+    pub fn new_beta_params<AL: Ledger, AA: Asset>(
+        request: &rfc003::messages::Request<AL, L, AA, A>,
+        accept_response: &rfc003::messages::AcceptResponseBody<AL, L>,
+    ) -> Self {
+        HtlcParams {
+            asset: request.beta_asset.clone(),
+            ledger: request.beta_ledger.clone(),
+            redeem_identity: request.beta_ledger_redeem_identity.clone(),
+            refund_identity: accept_response.beta_ledger_refund_identity.clone(),
+            expiry: request.beta_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct OngoingSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub alpha_ledger: AL,

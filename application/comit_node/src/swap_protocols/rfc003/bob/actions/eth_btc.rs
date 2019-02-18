@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        bitcoin,
+        self, bitcoin,
         bob::{
             self,
             actions::{Accept, Decline},
@@ -10,7 +10,8 @@ use crate::swap_protocols::{
         ethereum::{self, EtherHtlc},
         secret::Secret,
         secret_source::SecretSource,
-        swap_accepted, Actions, LedgerState,
+        state_machine::HtlcParams,
+        Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -18,12 +19,13 @@ use bitcoin_witness::PrimedInput;
 use ethereum_support::{Bytes, EtherQuantity, U256};
 use std::sync::Arc;
 
-type SwapAccepted = swap_accepted::SwapAccepted<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>;
+type Request = rfc003::messages::Request<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity>;
+type Response = rfc003::messages::AcceptResponseBody<Ethereum, Bitcoin>;
 
-fn fund_action(swap_accepted: &SwapAccepted) -> bitcoin::SendToAddress {
-    let to = swap_accepted.beta_htlc_params().compute_address();
-    let amount = swap_accepted.request.beta_asset;
-    let network = swap_accepted.request.beta_ledger.network;
+fn fund_action(request: &Request, response: &Response) -> bitcoin::SendToAddress {
+    let to = HtlcParams::new_beta_params(request, response).compute_address();
+    let amount = request.beta_asset;
+    let network = request.beta_ledger.network;
 
     bitcoin::SendToAddress {
         to,
@@ -33,13 +35,14 @@ fn fund_action(swap_accepted: &SwapAccepted) -> bitcoin::SendToAddress {
 }
 
 fn _refund_action(
-    swap_accepted: &SwapAccepted,
+    request: &Request,
+    response: &Response,
     beta_htlc_location: OutPoint,
     secret_source: &dyn SecretSource,
 ) -> bitcoin::SpendOutput {
-    let beta_asset = swap_accepted.request.beta_asset;
-    let htlc = bitcoin::Htlc::from(swap_accepted.beta_htlc_params());
-    let network = swap_accepted.request.beta_ledger.network;
+    let beta_asset = request.beta_asset;
+    let htlc = bitcoin::Htlc::from(HtlcParams::new_beta_params(request, response));
+    let network = request.beta_ledger.network;
     bitcoin::SpendOutput {
         output: PrimedInput::new(
             beta_htlc_location,
@@ -51,13 +54,13 @@ fn _refund_action(
 }
 
 fn redeem_action(
-    swap_accepted: &SwapAccepted,
+    request: &Request,
     alpha_htlc_location: ethereum_support::Address,
     secret: Secret,
 ) -> ethereum::SendTransaction {
     let data = Bytes::from(secret.raw_secret().to_vec());
     let gas_limit = EtherHtlc::tx_gas_limit();
-    let network = swap_accepted.request.alpha_ledger.network;
+    let network = request.alpha_ledger.network;
 
     ethereum::SendTransaction {
         to: alpha_htlc_location,
@@ -79,7 +82,7 @@ impl Actions for bob::State<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity> {
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        let swap_accepted = match &self.swap_communication {
+        let (request, response) = match &self.swap_communication {
             SwapCommunication::Proposed {
                 pending_response, ..
             } => {
@@ -91,7 +94,10 @@ impl Actions for bob::State<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity> {
                     bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
                 ];
             }
-            SwapCommunication::Accepted { ref swap_accepted } => swap_accepted,
+            SwapCommunication::Accepted {
+                ref request,
+                ref response,
+            } => (request, response),
             _ => return vec![],
         };
 
@@ -101,10 +107,10 @@ impl Actions for bob::State<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity> {
         use self::LedgerState::*;
         match (alpha_state, beta_state, self.secret) {
             (Funded { htlc_location, .. }, _, Some(secret)) => vec![bob::ActionKind::Redeem(
-                redeem_action(&swap_accepted, *htlc_location, secret),
+                redeem_action(&request, *htlc_location, secret),
             )],
             (Funded { .. }, NotDeployed, _) => {
-                vec![bob::ActionKind::Fund(fund_action(&swap_accepted))]
+                vec![bob::ActionKind::Fund(fund_action(&request, &response))]
             }
             _ => vec![],
         }

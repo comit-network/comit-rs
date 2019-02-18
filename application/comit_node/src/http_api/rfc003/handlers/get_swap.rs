@@ -195,14 +195,14 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 alpha_refund_identity: request.alpha_ledger_refund_identity,
                 beta_refund_identity: None,
             },
-            Accepted { swap_accepted, .. } => Self {
+            Accepted { request, response } => Self {
                 current_state: SwapCommunicationState::Accepted,
-                alpha_expiry: swap_accepted.request.alpha_expiry,
-                beta_expiry: swap_accepted.request.beta_expiry,
-                alpha_redeem_identity: Some(swap_accepted.alpha_redeem_identity),
-                beta_redeem_identity: swap_accepted.request.beta_ledger_redeem_identity,
-                alpha_refund_identity: swap_accepted.request.alpha_ledger_refund_identity,
-                beta_refund_identity: Some(swap_accepted.beta_refund_identity),
+                alpha_expiry: request.alpha_expiry,
+                beta_expiry: request.beta_expiry,
+                alpha_redeem_identity: Some(response.alpha_ledger_redeem_identity),
+                beta_redeem_identity: request.beta_ledger_redeem_identity,
+                alpha_refund_identity: request.alpha_ledger_refund_identity,
+                beta_refund_identity: Some(response.beta_ledger_refund_identity),
             },
             Rejected { request, .. } => Self {
                 current_state: SwapCommunicationState::Rejected,
@@ -232,14 +232,14 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 alpha_refund_identity: request.alpha_ledger_refund_identity,
                 beta_refund_identity: None,
             },
-            Accepted { swap_accepted, .. } => Self {
+            Accepted { request, response } => Self {
                 current_state: SwapCommunicationState::Accepted,
-                alpha_expiry: swap_accepted.request.alpha_expiry,
-                beta_expiry: swap_accepted.request.beta_expiry,
-                alpha_redeem_identity: Some(swap_accepted.alpha_redeem_identity),
-                beta_redeem_identity: swap_accepted.request.beta_ledger_redeem_identity,
-                alpha_refund_identity: swap_accepted.request.alpha_ledger_refund_identity,
-                beta_refund_identity: Some(swap_accepted.beta_refund_identity),
+                alpha_expiry: request.alpha_expiry,
+                beta_expiry: request.beta_expiry,
+                alpha_redeem_identity: Some(response.alpha_ledger_redeem_identity),
+                beta_redeem_identity: request.beta_ledger_redeem_identity,
+                alpha_refund_identity: request.alpha_ledger_refund_identity,
+                beta_refund_identity: Some(response.beta_ledger_refund_identity),
             },
             Rejected { request, .. } => Self {
                 current_state: SwapCommunicationState::Rejected,

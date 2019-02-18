@@ -1,24 +1,27 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
+        self,
         alice::{self, SwapCommunication},
         bitcoin,
         ethereum::{self, Erc20Htlc},
         secret::Secret,
         secret_source::SecretSource,
-        swap_accepted, Actions, LedgerState,
+        state_machine::HtlcParams,
+        Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
-type SwapAccepted = swap_accepted::SwapAccepted<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>;
+type Request = rfc003::messages::Request<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>;
+type Response = rfc003::messages::AcceptResponseBody<Bitcoin, Ethereum>;
 
-fn fund_action(swap_accepted: &SwapAccepted) -> bitcoin::SendToAddress {
-    let to = swap_accepted.alpha_htlc_params().compute_address();
-    let amount = swap_accepted.request.alpha_asset;
-    let network = swap_accepted.request.alpha_ledger.network;
+fn fund_action(request: &Request, response: &Response) -> bitcoin::SendToAddress {
+    let to = HtlcParams::new_alpha_params(request, response).compute_address();
+    let amount = request.alpha_asset;
+    let network = request.alpha_ledger.network;
 
     bitcoin::SendToAddress {
         to,
@@ -28,13 +31,14 @@ fn fund_action(swap_accepted: &SwapAccepted) -> bitcoin::SendToAddress {
 }
 
 fn _refund_action(
-    swap_accepted: &SwapAccepted,
+    request: &Request,
+    response: &Response,
     alpha_htlc_location: OutPoint,
     secret_source: &dyn SecretSource,
 ) -> bitcoin::SpendOutput {
-    let alpha_asset = swap_accepted.request.alpha_asset;
-    let htlc = bitcoin::Htlc::from(swap_accepted.alpha_htlc_params());
-    let network = swap_accepted.request.alpha_ledger.network;
+    let alpha_asset = request.alpha_asset;
+    let htlc = bitcoin::Htlc::from(HtlcParams::new_alpha_params(request, response));
+    let network = request.alpha_ledger.network;
 
     bitcoin::SpendOutput {
         output: PrimedInput::new(
@@ -47,13 +51,13 @@ fn _refund_action(
 }
 
 fn redeem_action(
-    swap_accepted: &SwapAccepted,
+    request: &Request,
     beta_htlc_location: ethereum_support::Address,
     secret: Secret,
 ) -> ethereum::SendTransaction {
     let data = Bytes::from(secret.raw_secret().to_vec());
     let gas_limit = Erc20Htlc::tx_gas_limit();
-    let network = swap_accepted.request.beta_ledger.network;
+    let network = request.beta_ledger.network;
 
     ethereum::SendTransaction {
         to: beta_htlc_location,
@@ -73,8 +77,11 @@ impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        let swap_accepted = match self.swap_communication {
-            SwapCommunication::Accepted { ref swap_accepted } => swap_accepted,
+        let (request, response) = match self.swap_communication {
+            SwapCommunication::Accepted {
+                ref request,
+                ref response,
+            } => (request, response),
             _ => return vec![],
         };
         let alpha_state = &self.alpha_ledger_state;
@@ -83,12 +90,12 @@ impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
         use self::LedgerState::*;
         match (alpha_state, beta_state) {
             (_, Funded { htlc_location, .. }) => vec![alice::ActionKind::Redeem(redeem_action(
-                &swap_accepted,
+                &request,
                 *htlc_location,
                 self.secret_source.secret(),
             ))],
             (NotDeployed, NotDeployed) => {
-                vec![alice::ActionKind::Fund(fund_action(&swap_accepted))]
+                vec![alice::ActionKind::Fund(fund_action(&request, &response))]
             }
             _ => vec![],
         }
