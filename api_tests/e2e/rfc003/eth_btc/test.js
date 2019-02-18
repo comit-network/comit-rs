@@ -163,19 +163,22 @@ describe("RFC003: Ether for Bitcoin", () => {
         await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
-            state =>
-                state.outcome == "IN_PROGRESS" &&
-                state.communication.current_state == "SENT"
+            body =>
+                body.state.outcome == "IN_PROGRESS" &&
+                body.state.communication.current_state == "SENT"
         );
     });
 
     let bob_swap_href;
 
     it("[Bob] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-        let res = await chai.request(bob.comit_node_url()).get("/swaps");
+        let body = await bob.poll_comit_node_until(
+            chai,
+            "/swaps",
+            body => body._embedded.swaps.length > 0
+        );
 
-        let embedded = res.body._embedded;
-        let swap_embedded = embedded.swaps[0];
+        let swap_embedded = body._embedded.swaps[0];
         swap_embedded.protocol.should.equal("rfc003");
         swap_embedded.state.should.equal("IN_PROGRESS");
         let swap_link = swap_embedded._links;
@@ -189,12 +192,12 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Bob] Can get the accept action after Alice sends the swap request", async function() {
         this.timeout(10000);
-        let actions = await bob.poll_comit_node_until_actions(
+        let body = await bob.poll_comit_node_until(
             chai,
             bob_swap_href,
-            actions => actions.accept && actions.decline
+            body => body._links.accept && body._links.decline
         );
-        bob_accept_href = actions.accept.href;
+        bob_accept_href = body._links.accept.href;
     });
 
     it("[Bob] Can execute the accept action", async () => {
@@ -221,12 +224,12 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Alice] Can get the fund action after Bob accepts", async function() {
         this.timeout(10000);
-        let actions = await alice.poll_comit_node_until_actions(
+        let body = await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
-            actions => actions.fund
+            body => body._links.fund
         );
-        let alice_fund_href = actions.fund.href;
+        let alice_fund_href = body._links.fund.href;
         let res = await chai
             .request(alice.comit_node_url())
             .get(alice_fund_href);
@@ -253,12 +256,12 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Bob] Can get the fund action after Alice funds", async function() {
         this.timeout(10000);
-        let actions = await bob.poll_comit_node_until_actions(
+        let body = await bob.poll_comit_node_until(
             chai,
             bob_swap_href,
-            actions => actions.fund
+            body => body._links.fund
         );
-        let bob_fund_href = actions.fund.href;
+        let bob_fund_href = body._links.fund.href;
         let res = await chai.request(bob.comit_node_url()).get(bob_fund_href);
         res.should.have.status(200);
         bob_fund_action = res.body;
@@ -283,12 +286,12 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Alice] Can get the redeem action after Bob funds", async function() {
         this.timeout(10000);
-        let actions = await alice.poll_comit_node_until_actions(
+        let body = await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
-            actions => actions.redeem
+            body => body._links.redeem
         );
-        let alice_redeem_href = actions.redeem.href;
+        let alice_redeem_href = body._links.redeem.href;
         let res = await chai
             .request(alice.comit_node_url())
             .get(
@@ -331,12 +334,12 @@ describe("RFC003: Ether for Bitcoin", () => {
 
     it("[Bob] Can get the redeem action after Alice redeems", async function() {
         this.timeout(10000);
-        let actions = await bob.poll_comit_node_until_actions(
+        let body = await bob.poll_comit_node_until(
             chai,
             bob_swap_href,
-            actions => actions.redeem
+            body => body._links.redeem
         );
-        let bob_redeem_href = actions.redeem.href;
+        let bob_redeem_href = body._links.redeem.href;
         let res = await chai.request(bob.comit_node_url()).get(bob_redeem_href);
         res.should.have.status(200);
         bob_redeem_action = res.body;

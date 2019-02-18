@@ -33,38 +33,16 @@ class Actor {
                         return rej(err);
                     }
                     res.should.have.status(200);
+                    let body = Object.assign(
+                        { _links: {}, _embedded: {} },
+                        res.body
+                    );
 
-                    if (predicate(res.body.state)) {
-                        final_res(res.body);
+                    if (predicate(body)) {
+                        final_res(body);
                     } else {
                         setTimeout(() => {
                             this.poll_comit_node_until(
-                                chai,
-                                location,
-                                predicate
-                            ).then(result => {
-                                final_res(result);
-                            });
-                        }, 500);
-                    }
-                });
-        });
-    }
-
-    poll_comit_node_until_actions(chai, location, predicate) {
-        return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url())
-                .get(location)
-                .end((err, res) => {
-                    if (err) {
-                        return rej(err);
-                    }
-                    res.should.have.status(200);
-                    if (predicate(res.body._links || {})) {
-                        final_res(res.body._links);
-                    } else {
-                        setTimeout(() => {
-                            this.poll_comit_node_until_actions(
                                 chai,
                                 location,
                                 predicate

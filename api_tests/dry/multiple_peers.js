@@ -103,17 +103,20 @@ it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Cha
     await alice.poll_comit_node_until(
         chai,
         alice_swap_with_charlie_href,
-        state =>
-            state.outcome == "IN_PROGRESS" &&
-            state.communication.current_state == "SENT"
+        body =>
+            body.state.outcome == "IN_PROGRESS" &&
+            body.state.communication.current_state == "SENT"
     );
 });
 
 it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-    let res = await chai.request(charlie.comit_node_url()).get("/swaps");
+    let body = await charlie.poll_comit_node_until(
+        chai,
+        "/swaps",
+        body => body._embedded.swaps.length > 0
+    );
 
-    let embedded = res.body._embedded;
-    let swap_embedded = embedded.swaps[0];
+    let swap_embedded = body._embedded.swaps[0];
     swap_embedded.protocol.should.equal("rfc003");
     swap_embedded.state.should.equal("IN_PROGRESS");
     let swap_link = swap_embedded._links;

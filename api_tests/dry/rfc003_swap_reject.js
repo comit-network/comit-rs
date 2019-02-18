@@ -188,10 +188,13 @@ let bob_stingy_swap_href;
 let bob_reasonable_swap_href;
 
 it("[Bob] Shows the swaps as Start in /swaps", async () => {
-    let res = await chai.request(bob.comit_node_url()).get("/swaps");
-    let embedded = res.body._embedded;
-    embedded.swaps.should.have.lengthOf(2);
-    let swaps = embedded.swaps;
+    let body = await bob.poll_comit_node_until(
+        chai,
+        "/swaps",
+        body => body._embedded.swaps.length == 2
+    );
+
+    let swaps = body._embedded.swaps;
 
     for (let swap of swaps) {
         swap.protocol.should.equal("rfc003");
@@ -265,7 +268,7 @@ it("[Bob] Should be in the Rejected State after declining a swap request providi
     await bob.poll_comit_node_until(
         chai,
         bob_stingy_swap_href,
-        state => state.communication.current_state == "REJECTED"
+        body => body.state.communication.current_state == "REJECTED"
     );
 });
 
@@ -273,7 +276,7 @@ it("[Alice] Should be in the Rejected State after Bob declines a swap request pr
     await alice.poll_comit_node_until(
         chai,
         alice_stingy_swap_href,
-        state => state.communication.current_state == "REJECTED"
+        body => body.state.communication.current_state == "REJECTED"
     );
 });
 
@@ -303,7 +306,7 @@ it("[Bob] Should be in the Rejected State after declining a swap request without
     await bob.poll_comit_node_until(
         chai,
         bob_reasonable_swap_href,
-        state => state.communication.current_state == "REJECTED"
+        body => body.state.communication.current_state == "REJECTED"
     );
 });
 
@@ -311,6 +314,6 @@ it("[Alice] Should be in the Rejected State after Bob declines a swap request wi
     await alice.poll_comit_node_until(
         chai,
         alice_reasonable_swap_href,
-        state => state.communication.current_state == "REJECTED"
+        body => body.state.communication.current_state == "REJECTED"
     );
 });
