@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 bigdecimal = "0.0.12"
 byteorder = "1.2"
+extern_web3 = { package = "web3", version = "0.5" }
 lazy_static = "1"
 num = "0.1"
 regex = "1.0"
@@ -15,7 +16,6 @@ secp256k1_support = { path = "../secp256k1_support" }
 serde = "1.0.70"
 serde_derive = "1.0"
 tiny-keccak = "1.4"
-extern_web3 = { package = "web3", version = "0.5" }
 
 [dev-dependencies]
 hex = "0.3"
