@@ -129,6 +129,16 @@ find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modul
 '''
 ]
 
+[tasks.cargo-toml-format]
+description = "Runs cargo tomlfmt to format Cargo.toml files."
+workspace = false
+install_crate = { crate_name = "cargo-tomlfmt", binary = "cargo-tomlfmt", test_arg = "--help" }
+script = [
+'''
+find . -name Cargo.toml | xargs -n1 cargo tomlfmt -p
+'''
+]
+
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
 # This command removes everything that is older than 30 days, thus keeping only very recent libraries.
