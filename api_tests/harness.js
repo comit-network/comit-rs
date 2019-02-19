@@ -151,29 +151,19 @@ async function startComitNode(name, comit_config) {
     });
 }
 
-async function startLedgerQueryService(name, lqs_config) {
-    logger.info("Starting", name, "Ledger Query Service:", lqs_config);
+async function startBtsieve(name, btsieve_config) {
+    logger.info("Starting", name, "btsieve:", btsieve_config);
 
-    return await spawn(
-        project_root + "/target/debug/ledger_query_service",
-        [],
-        {
-            cwd: services_cwd,
-            encoding: "utf-8",
-            env: lqs_config.env,
-            stdio: [
-                "ignore",
-                fs.openSync(
-                    log_dir + "/ledger_query_service-" + name + ".log",
-                    "w"
-                ),
-                fs.openSync(
-                    log_dir + "/ledger_query_service-" + name + ".log",
-                    "w"
-                ),
-            ],
-        }
-    );
+    return await spawn(project_root + "/target/debug/btsieve", [], {
+        cwd: services_cwd,
+        encoding: "utf-8",
+        env: btsieve_config.env,
+        stdio: [
+            "ignore",
+            fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
+            fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
+        ],
+    });
 }
 
 // ********************************** //
@@ -198,14 +188,12 @@ function run_tests(file) {
                 await util.sleep(ledger_up_time);
             }
 
-            if (config.ledger_query_service) {
-                logger.info("++ Starting Ledger Query Service node(s)");
-                Object.keys(config.ledger_query_service).forEach(async function(
-                    name
-                ) {
-                    const subprocess = await startLedgerQueryService(
+            if (config.btsieve) {
+                logger.info("++ Starting btsieve node(s)");
+                Object.keys(config.btsieve).forEach(async function(name) {
+                    const subprocess = await startBtsieve(
                         name,
-                        config.ledger_query_service[name]
+                        config.btsieve[name]
                     );
                     subprocesses.push(subprocess);
                 });

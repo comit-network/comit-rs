@@ -1,7 +1,7 @@
 use crate::{
-    ledger_query_service::{
-        bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchFullQueryResults,
-        FetchQueryResults, LedgerQueryServiceApiClient, Query, QueryId,
+    btsieve::{
+        bitcoin::BitcoinQuery, ethereum::EthereumQuery, BtsieveApiClient, CreateQuery, Error,
+        FetchFullQueryResults, FetchQueryResults, Query, QueryId,
     },
     swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
 };
@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tokio::prelude::future::Future;
 
 #[derive(Debug)]
-pub struct DefaultLedgerQueryServiceApiClient {
+pub struct DefaultBtsieveApiClient {
     client: Client,
     create_bitcoin_transaction_query_endpoint: Url,
     create_bitcoin_block_query_endpoint: Url,
@@ -25,9 +25,9 @@ pub struct QueryResponse<T> {
     matches: Vec<T>,
 }
 
-impl DefaultLedgerQueryServiceApiClient {
+impl DefaultBtsieveApiClient {
     pub fn new(endpoint: &Url) -> Self {
-        DefaultLedgerQueryServiceApiClient {
+        DefaultBtsieveApiClient {
             client: Client::new(),
             create_bitcoin_transaction_query_endpoint: endpoint
                 .join("queries/bitcoin/transactions")
@@ -66,8 +66,9 @@ impl DefaultLedgerQueryServiceApiClient {
                 if response.status() != StatusCode::CREATED {
                     if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
                         error!(
-                            "Failed to create query. LQS returned: {}",
-                            String::from_utf8(bytes.to_vec()).expect("LQS returned non-utf8 error")
+                            "Failed to create query. btsieve returned: {}",
+                            String::from_utf8(bytes.to_vec())
+                                .expect("btsieve returned non-utf8 error")
                         );
                     }
 
@@ -169,7 +170,7 @@ impl DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
+impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultBtsieveApiClient {
     fn create_query(
         &self,
         query: BitcoinQuery,
@@ -184,7 +185,7 @@ impl CreateQuery<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl FetchQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
+impl FetchQueryResults<Bitcoin> for DefaultBtsieveApiClient {
     fn fetch_query_results(
         &self,
         query: &QueryId<Bitcoin>,
@@ -193,7 +194,7 @@ impl FetchQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl FetchFullQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
+impl FetchFullQueryResults<Bitcoin> for DefaultBtsieveApiClient {
     fn fetch_full_query_results(
         &self,
         query: &QueryId<Bitcoin>,
@@ -202,13 +203,13 @@ impl FetchFullQueryResults<Bitcoin> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for DefaultLedgerQueryServiceApiClient {
+impl BtsieveApiClient<Bitcoin, BitcoinQuery> for DefaultBtsieveApiClient {
     fn delete(&self, query: &QueryId<Bitcoin>) -> Box<dyn Future<Item = (), Error = Error> + Send> {
         self._delete(&query)
     }
 }
 
-impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
+impl CreateQuery<Ethereum, EthereumQuery> for DefaultBtsieveApiClient {
     fn create_query(
         &self,
         query: EthereumQuery,
@@ -224,7 +225,7 @@ impl CreateQuery<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient
     }
 }
 
-impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
+impl FetchQueryResults<Ethereum> for DefaultBtsieveApiClient {
     fn fetch_query_results(
         &self,
         query: &QueryId<Ethereum>,
@@ -233,7 +234,7 @@ impl FetchQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl FetchFullQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
+impl FetchFullQueryResults<Ethereum> for DefaultBtsieveApiClient {
     fn fetch_full_query_results(
         &self,
         query: &QueryId<Ethereum>,
@@ -242,7 +243,7 @@ impl FetchFullQueryResults<Ethereum> for DefaultLedgerQueryServiceApiClient {
     }
 }
 
-impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for DefaultLedgerQueryServiceApiClient {
+impl BtsieveApiClient<Ethereum, EthereumQuery> for DefaultBtsieveApiClient {
     fn delete(
         &self,
         query: &QueryId<Ethereum>,

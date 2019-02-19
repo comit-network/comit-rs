@@ -1,7 +1,7 @@
 use crate::{
-    ledger_query_service::{
-        bitcoin::BitcoinQuery, ethereum::EthereumQuery, CreateQuery, Error, FetchQueryResults,
-        LedgerQueryServiceApiClient, Query, QueryId,
+    btsieve::{
+        bitcoin::BitcoinQuery, ethereum::EthereumQuery, BtsieveApiClient, CreateQuery, Error,
+        FetchQueryResults, Query, QueryId,
     },
     swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
 };
@@ -11,12 +11,12 @@ use std::{marker::PhantomData, sync::Mutex};
 use tokio::prelude::{future::IntoFuture, Future};
 
 #[derive(Debug)]
-pub struct SimpleFakeLedgerQueryService {
+pub struct SimpleFakeBtsieve {
     pub bitcoin_results: Vec<BitcoinTxId>,
     pub ethereum_results: Vec<EthereumTxId>,
 }
 
-impl CreateQuery<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
+impl CreateQuery<Bitcoin, BitcoinQuery> for SimpleFakeBtsieve {
     fn create_query(
         &self,
         _query: BitcoinQuery,
@@ -25,7 +25,7 @@ impl CreateQuery<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
     }
 }
 
-impl FetchQueryResults<Bitcoin> for SimpleFakeLedgerQueryService {
+impl FetchQueryResults<Bitcoin> for SimpleFakeBtsieve {
     fn fetch_query_results(
         &self,
         _query: &QueryId<Bitcoin>,
@@ -34,7 +34,7 @@ impl FetchQueryResults<Bitcoin> for SimpleFakeLedgerQueryService {
     }
 }
 
-impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQueryService {
+impl BtsieveApiClient<Bitcoin, BitcoinQuery> for SimpleFakeBtsieve {
     fn delete(
         &self,
         _query: &QueryId<Bitcoin>,
@@ -43,7 +43,7 @@ impl LedgerQueryServiceApiClient<Bitcoin, BitcoinQuery> for SimpleFakeLedgerQuer
     }
 }
 
-impl CreateQuery<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
+impl CreateQuery<Ethereum, EthereumQuery> for SimpleFakeBtsieve {
     fn create_query(
         &self,
         _query: EthereumQuery,
@@ -52,7 +52,7 @@ impl CreateQuery<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
     }
 }
 
-impl FetchQueryResults<Ethereum> for SimpleFakeLedgerQueryService {
+impl FetchQueryResults<Ethereum> for SimpleFakeBtsieve {
     fn fetch_query_results(
         &self,
         _query: &QueryId<Ethereum>,
@@ -61,7 +61,7 @@ impl FetchQueryResults<Ethereum> for SimpleFakeLedgerQueryService {
     }
 }
 
-impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for SimpleFakeLedgerQueryService {
+impl BtsieveApiClient<Ethereum, EthereumQuery> for SimpleFakeBtsieve {
     fn delete(
         &self,
         _query: &QueryId<Ethereum>,
@@ -71,19 +71,19 @@ impl LedgerQueryServiceApiClient<Ethereum, EthereumQuery> for SimpleFakeLedgerQu
 }
 
 #[derive(Debug)]
-pub struct InvocationCountFakeLedgerQueryService<L: Ledger> {
+pub struct InvocationCountFakeBtsieve<L: Ledger> {
     pub number_of_invocations_before_result: u32,
     pub invocations: Mutex<u32>,
     pub results: Vec<L::TxId>,
 }
 
-impl<L: Ledger, Q: Query> CreateQuery<L, Q> for InvocationCountFakeLedgerQueryService<L> {
+impl<L: Ledger, Q: Query> CreateQuery<L, Q> for InvocationCountFakeBtsieve<L> {
     fn create_query(&self, _query: Q) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 }
 
-impl<L: Ledger> FetchQueryResults<L> for InvocationCountFakeLedgerQueryService<L> {
+impl<L: Ledger> FetchQueryResults<L> for InvocationCountFakeBtsieve<L> {
     fn fetch_query_results(
         &self,
         _query: &QueryId<L>,
@@ -102,9 +102,7 @@ impl<L: Ledger> FetchQueryResults<L> for InvocationCountFakeLedgerQueryService<L
     }
 }
 
-impl<L: Ledger, Q: Query> LedgerQueryServiceApiClient<L, Q>
-    for InvocationCountFakeLedgerQueryService<L>
-{
+impl<L: Ledger, Q: Query> BtsieveApiClient<L, Q> for InvocationCountFakeBtsieve<L> {
     fn delete(&self, _query: &QueryId<L>) -> Box<dyn Future<Item = (), Error = Error> + Send> {
         unimplemented!()
     }
@@ -114,14 +112,14 @@ impl<L: Ledger, Q: Query> LedgerQueryServiceApiClient<L, Q>
 type Response<L: Ledger> = dyn Future<Item = Vec<L::TxId>, Error = Error> + Send;
 
 #[derive(DebugStub)]
-pub struct LedgerQueryServiceMock<L: Ledger, Q> {
+pub struct BtsieveMock<L: Ledger, Q> {
     number_of_invocations: Mutex<u32>,
     #[debug_stub = "next result"]
     results_for_next_invocation: Mutex<Option<Box<Response<L>>>>,
     query_type: PhantomData<Q>,
 }
 
-impl<L: Ledger, Q> Default for LedgerQueryServiceMock<L, Q> {
+impl<L: Ledger, Q> Default for BtsieveMock<L, Q> {
     fn default() -> Self {
         Self {
             number_of_invocations: Mutex::new(0),
@@ -131,7 +129,7 @@ impl<L: Ledger, Q> Default for LedgerQueryServiceMock<L, Q> {
     }
 }
 
-impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
+impl<L: Ledger, Q> BtsieveMock<L, Q> {
     pub fn set_next_result(
         &self,
         next_result: Box<dyn Future<Item = Vec<L::TxId>, Error = Error> + Send>,
@@ -146,13 +144,13 @@ impl<L: Ledger, Q> LedgerQueryServiceMock<L, Q> {
     }
 }
 
-impl<L: Ledger, Q: Query> CreateQuery<L, Q> for LedgerQueryServiceMock<L, Q> {
+impl<L: Ledger, Q: Query> CreateQuery<L, Q> for BtsieveMock<L, Q> {
     fn create_query(&self, _query: Q) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
         Box::new(Ok(QueryId::new("http://localhost/results/1".parse().unwrap())).into_future())
     }
 }
 
-impl<L: Ledger, Q: Query> FetchQueryResults<L> for LedgerQueryServiceMock<L, Q> {
+impl<L: Ledger, Q: Query> FetchQueryResults<L> for BtsieveMock<L, Q> {
     fn fetch_query_results(
         &self,
         _query: &QueryId<L>,
@@ -170,7 +168,7 @@ impl<L: Ledger, Q: Query> FetchQueryResults<L> for LedgerQueryServiceMock<L, Q> 
     }
 }
 
-impl<L: Ledger, Q: Query> LedgerQueryServiceApiClient<L, Q> for LedgerQueryServiceMock<L, Q> {
+impl<L: Ledger, Q: Query> BtsieveApiClient<L, Q> for BtsieveMock<L, Q> {
     fn delete(&self, _query: &QueryId<L>) -> Box<dyn Future<Item = (), Error = Error> + Send> {
         unimplemented!()
     }

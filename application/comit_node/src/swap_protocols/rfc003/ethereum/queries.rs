@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{EthereumQuery, EventMatcher, Topic},
+    btsieve::{EthereumQuery, EventMatcher, Topic},
     swap_protocols::{
         ledger::Ethereum,
         rfc003::{

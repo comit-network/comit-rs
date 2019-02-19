@@ -1,7 +1,4 @@
-use crate::{
-    connection_pool::ConnectionPool, ledger_query_service::DefaultLedgerQueryServiceApiClient,
-    seed::Seed,
-};
+use crate::{btsieve::DefaultBtsieveApiClient, connection_pool::ConnectionPool, seed::Seed};
 use std::{sync::Arc, time::Duration};
 
 mod client_impl;
@@ -31,7 +28,7 @@ impl<T, S> Clone for ProtocolDependencies<T, S> {
 
 #[derive(Debug, Clone)]
 pub struct LedgerEventDependencies {
-    pub lqs_client: Arc<DefaultLedgerQueryServiceApiClient>,
-    pub lqs_bitcoin_poll_interval: Duration,
-    pub lqs_ethereum_poll_interval: Duration,
+    pub btsieve_client: Arc<DefaultBtsieveApiClient>,
+    pub btsieve_bitcoin_poll_interval: Duration,
+    pub btsieve_ethereum_poll_interval: Duration,
 }

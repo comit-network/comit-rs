@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{CreateQuery, EthereumQuery, FirstMatch, Query, QueryIdCache},
+    btsieve::{CreateQuery, EthereumQuery, FirstMatch, Query, QueryIdCache},
     swap_protocols::{
         self,
         asset::Asset,
@@ -25,7 +25,7 @@ use futures::{
 };
 
 #[allow(missing_debug_implementations)]
-pub struct LqsEvents<L: Ledger, Q: Query> {
+pub struct BtsieveEvents<L: Ledger, Q: Query> {
     create_ledger_query: QueryIdCache<L, Q>,
     ledger_first_match: FirstMatch<L>,
 
@@ -34,7 +34,7 @@ pub struct LqsEvents<L: Ledger, Q: Query> {
     htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<L>>>,
 }
 
-impl<L: Ledger, Q: Query> LqsEvents<L, Q>
+impl<L: Ledger, Q: Query> BtsieveEvents<L, Q>
 where
     L::Transaction: ExtractSecret,
 {
@@ -57,16 +57,17 @@ where
         let query_id = self.create_ledger_query.create_query(query);
 
         self.htlc_deployed_and_funded.get_or_insert_with(move || {
-            let funded_future = query_id
-                .map_err(rfc003::Error::LedgerQueryService)
-                .and_then(move |query_id| {
-                    ledger_first_match
-                        .first_match_of(query_id)
-                        .and_then(move |tx| {
-                            tx.find_htlc_location(&htlc_params)
-                                .map_err(|_| rfc003::Error::InsufficientFunding)
-                        })
-                });
+            let funded_future =
+                query_id
+                    .map_err(rfc003::Error::Btsieve)
+                    .and_then(move |query_id| {
+                        ledger_first_match
+                            .first_match_of(query_id)
+                            .and_then(move |tx| {
+                                tx.find_htlc_location(&htlc_params)
+                                    .map_err(|_| rfc003::Error::InsufficientFunding)
+                            })
+                    });
 
             Box::new(funded_future)
         })
@@ -85,7 +86,7 @@ where
         self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
             let inner_first_match = ledger_first_match.clone();
             let redeemed_future = redeemed_query_id
-                .map_err(rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::Btsieve)
                 .and_then(move |query_id| inner_first_match.first_match_of(query_id))
                 .and_then(move |transaction| {
                     let secret = transaction.extract_secret(&secret_hash).ok_or_else(|| {
@@ -104,7 +105,7 @@ where
                 });
             let inner_first_match = ledger_first_match.clone();
             let refunded_future = refunded_query_id
-                .map_err(rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::Btsieve)
                 .and_then(move |query_id| inner_first_match.first_match_of(query_id))
                 .map(RefundTransaction);
 
@@ -123,7 +124,7 @@ where
         })
     }
 }
-impl<L, A, Q> LedgerEvents<L, A> for LqsEvents<L, Q>
+impl<L, A, Q> LedgerEvents<L, A> for BtsieveEvents<L, Q>
 where
     L: Ledger,
     L::Transaction: ExtractSecret,
@@ -157,17 +158,17 @@ where
 }
 
 #[allow(missing_debug_implementations)]
-pub struct LqsEventsForErc20 {
-    lqs_events: LqsEvents<Ethereum, EthereumQuery>,
+pub struct BtsieveEventsForErc20 {
+    btsieve_events: BtsieveEvents<Ethereum, EthereumQuery>,
 }
 
-impl LqsEventsForErc20 {
+impl BtsieveEventsForErc20 {
     pub fn new(
         create_ledger_query: QueryIdCache<Ethereum, EthereumQuery>,
         ledger_first_match: FirstMatch<Ethereum>,
     ) -> Self {
         Self {
-            lqs_events: LqsEvents {
+            btsieve_events: BtsieveEvents {
                 create_ledger_query,
                 ledger_first_match,
                 htlc_deployed_and_funded: None,
@@ -178,13 +179,13 @@ impl LqsEventsForErc20 {
     }
 }
 
-impl LedgerEvents<Ethereum, Erc20Token> for LqsEventsForErc20 {
+impl LedgerEvents<Ethereum, Erc20Token> for BtsieveEventsForErc20 {
     fn htlc_deployed(
         &mut self,
         htlc_params: HtlcParams<Ethereum, Erc20Token>,
     ) -> &mut Deployed<Ethereum> {
         let query = erc20::new_htlc_deployed_query(&htlc_params);
-        self.lqs_events.htlc_deployed(htlc_params, query)
+        self.btsieve_events.htlc_deployed(htlc_params, query)
     }
 
     fn htlc_funded(
@@ -193,18 +194,19 @@ impl LedgerEvents<Ethereum, Erc20Token> for LqsEventsForErc20 {
         htlc_location: &<Ethereum as Ledger>::HtlcLocation,
     ) -> &mut Funded<Ethereum> {
         let query = erc20::new_htlc_funded_query(&htlc_params, htlc_location);
-        let query_id = self.lqs_events.create_ledger_query.create_query(query);
+        let query_id = self.btsieve_events.create_ledger_query.create_query(query);
 
-        let ledger_first_match = self.lqs_events.ledger_first_match.clone();
-        self.lqs_events.htlc_funded.get_or_insert_with(move || {
-            let funded_future = query_id
-                .map_err(rfc003::Error::LedgerQueryService)
-                .and_then(move |query_id| {
-                    ledger_first_match
-                        .first_match_of(query_id)
-                        .map(FundTransaction)
-                        .map(Some)
-                });
+        let ledger_first_match = self.btsieve_events.ledger_first_match.clone();
+        self.btsieve_events.htlc_funded.get_or_insert_with(move || {
+            let funded_future =
+                query_id
+                    .map_err(rfc003::Error::Btsieve)
+                    .and_then(move |query_id| {
+                        ledger_first_match
+                            .first_match_of(query_id)
+                            .map(FundTransaction)
+                            .map(Some)
+                    });
 
             Box::new(funded_future)
         })
@@ -218,7 +220,7 @@ impl LedgerEvents<Ethereum, Erc20Token> for LqsEventsForErc20 {
         let refunded_query = erc20::new_htlc_refunded_query(htlc_location);
         let redeemed_query = erc20::new_htlc_redeemed_query(htlc_location);
 
-        self.lqs_events.htlc_redeemed_or_refunded(
+        self.btsieve_events.htlc_redeemed_or_refunded(
             redeemed_query,
             refunded_query,
             htlc_params.secret_hash,

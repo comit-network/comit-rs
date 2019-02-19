@@ -1,4 +1,4 @@
-use crate::ledger_query_service::Query;
+use crate::btsieve::Query;
 use ethereum_support::web3::types::{Address, Bytes, H256};
 use serde::Serialize;
 

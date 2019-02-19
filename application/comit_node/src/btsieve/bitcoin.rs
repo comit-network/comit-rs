@@ -1,4 +1,4 @@
-use crate::ledger_query_service::Query;
+use crate::btsieve::Query;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]

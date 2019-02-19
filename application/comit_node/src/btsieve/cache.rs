@@ -1,6 +1,6 @@
 use crate::{
+    btsieve::{CreateQuery, Error, Query, QueryId},
     item_cache::ItemCache,
-    ledger_query_service::{CreateQuery, Error, Query, QueryId},
     swap_protocols::ledger::Ledger,
 };
 use std::{
@@ -87,24 +87,24 @@ mod tests {
     fn given_same_query_returns_original_query_id() {
         let inner = Arc::new(CountInvocations::default());
 
-        let lqs = QueryIdCache::wrap(inner.clone());
+        let btsieve = QueryIdCache::wrap(inner.clone());
 
         let mut runtime = Runtime::new().unwrap();
 
         let first_location = runtime
-            .block_on(lqs.create_query(SomeQuery { criteria: 10 }))
+            .block_on(btsieve.create_query(SomeQuery { criteria: 10 }))
             .unwrap();
 
         let second_location = runtime
-            .block_on(lqs.create_query(SomeQuery { criteria: 10 }))
+            .block_on(btsieve.create_query(SomeQuery { criteria: 10 }))
             .unwrap();
 
         let third_location = runtime
-            .block_on(lqs.create_query(SomeQuery { criteria: 10 }))
+            .block_on(btsieve.create_query(SomeQuery { criteria: 10 }))
             .unwrap();
 
         let fourth_location = runtime
-            .block_on(lqs.create_query(SomeQuery { criteria: 10 }))
+            .block_on(btsieve.create_query(SomeQuery { criteria: 10 }))
             .unwrap();
 
         assert_eq!(first_location, second_location);
@@ -119,16 +119,16 @@ mod tests {
     fn different_query_results_second_invocation() {
         let inner = Arc::new(CountInvocations::default());
 
-        let lqs = QueryIdCache::wrap(inner.clone());
+        let btsieve = QueryIdCache::wrap(inner.clone());
 
         let mut runtime = Runtime::new().unwrap();
 
         let first_location = runtime
-            .block_on(lqs.create_query(SomeQuery { criteria: 10 }))
+            .block_on(btsieve.create_query(SomeQuery { criteria: 10 }))
             .unwrap();
 
         let second_location = runtime
-            .block_on(lqs.create_query(SomeQuery { criteria: 20 }))
+            .block_on(btsieve.create_query(SomeQuery { criteria: 20 }))
             .unwrap();
 
         assert_ne!(first_location, second_location);
@@ -165,12 +165,12 @@ mod tests {
             next_response: Mutex::new(Some(receiver)),
         });
 
-        let lqs = QueryIdCache::wrap(controllable.clone());
+        let btsieve = QueryIdCache::wrap(controllable.clone());
 
         let mut runtime = Runtime::new().unwrap();
 
-        let first_query = lqs.create_query(SomeQuery { criteria: 10 });
-        let second_query = lqs.create_query(SomeQuery { criteria: 10 });
+        let first_query = btsieve.create_query(SomeQuery { criteria: 10 });
+        let second_query = btsieve.create_query(SomeQuery { criteria: 10 });
 
         sender
             .send(QueryId::new("http://localhost/foo/bar/".parse().unwrap()))

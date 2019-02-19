@@ -5,10 +5,10 @@
 extern crate log;
 
 use comit_node::{
+    btsieve::DefaultBtsieveApiClient,
     comit_server,
     connection_pool::ConnectionPool,
     http_api::route_factory,
-    ledger_query_service::DefaultLedgerQueryServiceApiClient,
     logging,
     settings::ComitNodeSettings,
     swap_protocols::{
@@ -30,13 +30,13 @@ fn main() -> Result<(), failure::Error> {
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
-    let lqs_client = create_ledger_query_service_api_client(&settings);
+    let btsieve_client = create_btsieve_api_client(&settings);
     let connection_pool = Arc::new(ConnectionPool::default());
     let dependencies = create_dependencies(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        Arc::clone(&lqs_client),
+        Arc::clone(&btsieve_client),
         Arc::clone(&connection_pool),
     );
 
@@ -78,26 +78,22 @@ fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
     }
 }
 
-fn create_ledger_query_service_api_client(
-    settings: &ComitNodeSettings,
-) -> Arc<DefaultLedgerQueryServiceApiClient> {
-    Arc::new(DefaultLedgerQueryServiceApiClient::new(
-        &settings.ledger_query_service.url,
-    ))
+fn create_btsieve_api_client(settings: &ComitNodeSettings) -> Arc<DefaultBtsieveApiClient> {
+    Arc::new(DefaultBtsieveApiClient::new(&settings.btsieve.url))
 }
 
 fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    lqs_client: Arc<DefaultLedgerQueryServiceApiClient>,
+    btsieve_client: Arc<DefaultBtsieveApiClient>,
     connection_pool: Arc<ConnectionPool>,
 ) -> ProtocolDependencies<T, S> {
     ProtocolDependencies {
         ledger_events: LedgerEventDependencies {
-            lqs_client,
-            lqs_bitcoin_poll_interval: settings.ledger_query_service.bitcoin.poll_interval_secs,
-            lqs_ethereum_poll_interval: settings.ledger_query_service.ethereum.poll_interval_secs,
+            btsieve_client,
+            btsieve_bitcoin_poll_interval: settings.btsieve.bitcoin.poll_interval_secs,
+            btsieve_ethereum_poll_interval: settings.btsieve.ethereum.poll_interval_secs,
         },
         metadata_store,
         state_store,
