@@ -22,6 +22,7 @@ describe("Bitcoin for Omni Token (USD Tether style)", () => {
     let tokenId;
     it("Create Regtest Omni Token", async function() {
         const res = await omnilayer.createOmniToken(
+            "Regtest Token",
             alice.wallet.omni().keypair,
             alice.wallet.omni().bitcoin_utxos.shift(),
             alice.wallet.omni().identity(true).output,
@@ -69,7 +70,7 @@ describe("Bitcoin for Omni Token (USD Tether style)", () => {
     });
 });
 
-describe("Omni Token (USD Tether style) transferred through HTLC", () => {
+describe("Omni Token (USD Tether style) transferred through P2SH HTLC", () => {
     const alice = actor.create("alice", {});
     const bob = actor.create("bob", {});
     const bob_final_address = "mh9g3jCJxkc4tzV88THmQHGNGiCzUZ1zg6";
@@ -87,6 +88,7 @@ describe("Omni Token (USD Tether style) transferred through HTLC", () => {
     let tokenId;
     it("Create Regtest Omni Token", async function() {
         const res = await omnilayer.createOmniToken(
+            "Regtest Token for HTLC",
             alice.wallet.omni().keypair,
             alice.wallet.omni().bitcoin_utxos.shift(),
             alice.wallet.omni().identity(true).output,
@@ -109,11 +111,12 @@ describe("Omni Token (USD Tether style) transferred through HTLC", () => {
 
 
         const balance = await omnilayer.getBalance(tokenId, alice.wallet.omni().identity(true).address);
-        // balance.should.equal(grantAmount.toString());
+        balance.should.equal(grantAmount.toString());
         const bob_omni_balance = await omnilayer.getBalance(tokenId, bob_final_address);
-        // bob_omni_balance.should.equal("0");
+        bob_omni_balance.should.equal("0");
     });
 
+    let htlcUTXO;
     it("Lock Regtest Omni Token in HTLC", async function() {
         const aliceDetails = {
             alice_keypair: alice.wallet.omni().keypair,
@@ -126,11 +129,25 @@ describe("Omni Token (USD Tether style) transferred through HTLC", () => {
             bob_final_address: bob_final_address,
         };
 
-        const htlcAddress = await omnilayer.lockInHTLC(aliceDetails, bobDetails, tokenId, alpha_asset);
+        htlcUTXO = await omnilayer.lockInHTLC(aliceDetails, bobDetails, tokenId, alpha_asset);
 
-        const htlcBalance = await omnilayer.getBalance(tokenId, htlcAddress);
-        console.log("htlcBalance:", htlcBalance);
-        // bob_omni_balance.should.equal(alpha_asset.toString());
+        const htlcBalance = await omnilayer.getBalance(tokenId, htlcUTXO.address);
+        htlcBalance.should.equal(alpha_asset.toString());
+    });
+
+    it("Redeem Regtest Omni Token from HTLC", async function() {
+        const bobDetails = {
+            bob_keypair: bob.wallet.omni().keypair,
+            bob_btc_output: bob.wallet.omni().identity(true).output,
+            bob_final_address: bob_final_address,
+        };
+
+        await omnilayer.redeemHTLC(htlcUTXO.script, bobDetails, htlcUTXO, tokenId, alpha_asset);
+
+        const htlcBalance = await omnilayer.getBalance(tokenId, htlcUTXO.address);
+        htlcBalance.should.equal("0");
+        const bob_omni_balance = await omnilayer.getBalance(tokenId, bob_final_address);
+        bob_omni_balance.should.equal(alpha_asset.toString());
     });
 
 });
