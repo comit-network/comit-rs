@@ -1,0 +1,6 @@
+ledgers = ["bitcoin", "ethereum"]
+
+[btsieve.main.env]
+BTSIEVE_CONFIG_PATH = "./regtest/btsieve"
+ETHEREUM_POLLING_TIME_SEC = "1"
+RUST_LOG = "trace"

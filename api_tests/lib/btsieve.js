@@ -1,4 +1,4 @@
-class LedgerQueryService {
+class Btsieve {
     constructor(host, port) {
         this.host = host;
         this.port = port;
@@ -34,5 +34,5 @@ class LedgerQueryService {
 }
 
 module.exports.create = (host, port) => {
-    return new LedgerQueryService(host, port);
+    return new Btsieve(host, port);
 };

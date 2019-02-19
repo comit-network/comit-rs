@@ -1,7 +1,5 @@
 use crate::{
-    ledger_query_service::{
-        fetch_transaction_stream::FetchTransactionStream, FetchFullQueryResults, QueryId,
-    },
+    btsieve::{fetch_transaction_stream::FetchTransactionStream, FetchFullQueryResults, QueryId},
     swap_protocols::ledger::Ledger,
 };
 use futures::{stream::Stream, Future};

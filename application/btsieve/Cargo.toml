@@ -1,5 +1,5 @@
 [package]
-name = "ledger_query_service"
+name = "btsieve"
 version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"

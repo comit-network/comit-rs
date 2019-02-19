@@ -9,7 +9,7 @@ mod bitcoin;
 mod cache;
 mod client;
 mod ethereum;
-pub mod fake_query_service;
+pub mod fake_btsieve;
 pub mod fetch_transaction_stream;
 mod first_match;
 
@@ -44,7 +44,7 @@ pub enum Error {
 
 pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + 'static {}
 
-pub trait LedgerQueryServiceApiClient<L: Ledger, Q: Query>:
+pub trait BtsieveApiClient<L: Ledger, Q: Query>:
     'static + Send + Sync + CreateQuery<L, Q> + FetchQueryResults<L>
 {
     fn delete(&self, query: &QueryId<L>) -> Box<dyn Future<Item = (), Error = Error> + Send>;

@@ -1,6 +1,0 @@
-ledgers = ["bitcoin", "ethereum"]
-
-[ledger_query_service.main.env]
-LEDGER_QUERY_SERVICE_CONFIG_PATH = "./regtest/ledger_query_service"
-ETHEREUM_POLLING_TIME_SEC = "1"
-RUST_LOG = "trace"

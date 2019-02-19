@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{FetchFullQueryResults, FetchQueryResults, QueryId},
+    btsieve::{FetchFullQueryResults, FetchQueryResults, QueryId},
     swap_protocols::ledger::Ledger,
 };
 use std::sync::Arc;
@@ -110,7 +110,7 @@ impl<L: Ledger> FetchTransactionStream<L> for Arc<dyn FetchFullQueryResults<L>> 
 mod tests {
     use super::*;
     use crate::{
-        ledger_query_service::{bitcoin::BitcoinQuery, fake_query_service::LedgerQueryServiceMock},
+        btsieve::{bitcoin::BitcoinQuery, fake_btsieve::BtsieveMock},
         swap_protocols::ledger::Bitcoin,
     };
     use bitcoin_support::TransactionId;
@@ -125,10 +125,9 @@ mod tests {
         let mut runtime = Runtime::new().unwrap();
 
         let (sender, receiver) = mpsc::unbounded();
-        let ledger_query_service =
-            Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
+        let btsieve = Arc::new(BtsieveMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_result(Box::new(future::ok(vec![
+        btsieve.set_next_result(Box::new(future::ok(vec![
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
@@ -143,7 +142,7 @@ mod tests {
             .unwrap(),
         ])));
 
-        let stream = ledger_query_service.fetch_transaction_id_stream(
+        let stream = btsieve.fetch_transaction_id_stream(
             receiver,
             QueryId::new("http://localhost/results/1".parse().unwrap()),
         );
@@ -192,7 +191,7 @@ mod tests {
             )
         );
         assert_eq!(
-            ledger_query_service.number_of_invocations(),
+            btsieve.number_of_invocations(),
             1,
             "should receive all three results within a single poll"
         );
@@ -205,15 +204,14 @@ mod tests {
         let mut runtime = Runtime::new().unwrap();
 
         let (sender, receiver) = mpsc::unbounded();
-        let ledger_query_service =
-            Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
+        let btsieve = Arc::new(BtsieveMock::<Bitcoin, BitcoinQuery>::default());
 
-        ledger_query_service.set_next_result(Box::new(future::ok(vec![TransactionId::from_hex(
+        btsieve.set_next_result(Box::new(future::ok(vec![TransactionId::from_hex(
             "0000000000000000000000000000000000000000000000000000000000000001",
         )
         .unwrap()])));
 
-        let stream = ledger_query_service.fetch_transaction_id_stream(
+        let stream = btsieve.fetch_transaction_id_stream(
             receiver,
             QueryId::new("http://localhost/results/1".parse().unwrap()),
         );
@@ -234,7 +232,7 @@ mod tests {
             )
         );
 
-        ledger_query_service.set_next_result(Box::new(future::ok(vec![
+        btsieve.set_next_result(Box::new(future::ok(vec![
             TransactionId::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
@@ -262,7 +260,7 @@ mod tests {
         );
 
         assert_eq!(
-            ledger_query_service.number_of_invocations(),
+            btsieve.number_of_invocations(),
             2,
             "should have polled twice"
         );
@@ -274,14 +272,13 @@ mod tests {
 
         let mut runtime = Runtime::new().unwrap();
         let (sender, receiver) = mpsc::unbounded();
-        let ledger_query_service =
-            Arc::new(LedgerQueryServiceMock::<Bitcoin, BitcoinQuery>::default());
-        let stream = ledger_query_service.fetch_transaction_id_stream(
+        let btsieve = Arc::new(BtsieveMock::<Bitcoin, BitcoinQuery>::default());
+        let stream = btsieve.fetch_transaction_id_stream(
             receiver,
             QueryId::new("http://localhost/results/1".parse().unwrap()),
         );
 
-        ledger_query_service.set_next_result(Box::new(future::ok(vec![])));
+        btsieve.set_next_result(Box::new(future::ok(vec![])));
         sender.unbounded_send(()).unwrap();
 
         let either = runtime

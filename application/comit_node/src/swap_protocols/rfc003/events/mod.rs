@@ -3,8 +3,8 @@
 #![allow(type_alias_bounds)]
 
 use crate::{
+    btsieve::Query,
     comit_client::SwapReject,
-    ledger_query_service::Query,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -15,9 +15,9 @@ use crate::{
 };
 use tokio::{self, prelude::future::Either};
 
-mod lqs;
+mod btsieve;
 
-pub use self::lqs::{LqsEvents, LqsEventsForErc20};
+pub use self::btsieve::{BtsieveEvents, BtsieveEventsForErc20};
 
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 

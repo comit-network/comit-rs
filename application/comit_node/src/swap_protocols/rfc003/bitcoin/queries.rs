@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::BitcoinQuery,
+    btsieve::BitcoinQuery,
     swap_protocols::{
         ledger::Bitcoin,
         rfc003::{

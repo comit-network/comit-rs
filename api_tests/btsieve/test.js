@@ -5,10 +5,10 @@ const bitcoin = require("../lib/bitcoin.js");
 const actor = require("../lib/actor.js");
 const ethereum = require("../lib/ethereum.js");
 const wallet = require("../lib/wallet.js");
-const lqs_conf = require("../lib/lqs.js");
+const btsieve_conf = require("../lib/btsieve.js");
 
 const bitcoin_rpc_client = bitcoin.create_client();
-const lqs = lqs_conf.create("localhost", 8080);
+const btsieve = btsieve_conf.create("localhost", 8080);
 const toby_wallet = wallet.create("toby");
 
 const alice_wallet = wallet.create("alice");
@@ -18,7 +18,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-describe("Test Ledger Query Service API", () => {
+describe("Test btsieve API", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
@@ -40,9 +40,9 @@ describe("Test Ledger Query Service API", () => {
 
     describe("Bitcoin", () => {
         describe("Transactions", () => {
-            it("LQS should respond not found when getting a non-existent bitcoin transaction query", async function() {
+            it("btsieve should respond not found when getting a non-existent bitcoin transaction query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .get("/queries/bitcoin/transactions/1")
                     .then(res => {
                         res.should.have.status(404);
@@ -51,9 +51,9 @@ describe("Test Ledger Query Service API", () => {
 
             const to_address = "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
             let location;
-            it("LQS should respond with location when creating a valid bitcoin transaction query", async function() {
+            it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .post("/queries/bitcoin/transactions")
                     .send({
                         to_address: to_address,
@@ -65,7 +65,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no match when querying an existing bitcoin transaction query", async function() {
+            it("btsieve should respond with no match when querying an existing bitcoin transaction query", async function() {
                 return chai
                     .request(location)
                     .get("")
@@ -76,14 +76,14 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
+            it("btsieve should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
                 this.slow(1000);
                 return toby_wallet
                     .btc()
                     .send_btc_to_address(to_address, 100000000)
                     .then(() => {
                         return bitcoin_rpc_client.generate(1).then(() => {
-                            return lqs
+                            return btsieve
                                 .poll_until_matches(chai, location)
                                 .then(body => {
                                     body.query.to_address.should.equal(
@@ -96,7 +96,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `expand_results`", async function() {
+            it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `expand_results`", async function() {
                 return bitcoin_rpc_client.generate(1).then(() => {
                     return chai
                         .request(location)
@@ -110,7 +110,7 @@ describe("Test Ledger Query Service API", () => {
                 });
             });
 
-            it("LQS should respond with no content when deleting an existing bitcoin transaction query", async function() {
+            it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
                 return chai
                     .request(location)
                     .delete("")
@@ -121,9 +121,9 @@ describe("Test Ledger Query Service API", () => {
         });
 
         describe("Blocks", () => {
-            it("LQS should respond not found when getting a non-existent bitcoin block query", async function() {
+            it("btsieve should respond not found when getting a non-existent bitcoin block query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .get("/queries/bitcoin/blocks/1")
                     .then(res => {
                         res.should.have.status(404);
@@ -132,9 +132,9 @@ describe("Test Ledger Query Service API", () => {
 
             const min_height = 600;
             let location;
-            it("LQS should respond with location when creating a valid bitcoin block query", async function() {
+            it("btsieve should respond with location when creating a valid bitcoin block query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .post("/queries/bitcoin/blocks")
                     .send({
                         min_height: min_height,
@@ -146,7 +146,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no match when querying an existing bitcoin block query", async function() {
+            it("btsieve should respond with no match when querying an existing bitcoin block query", async function() {
                 return chai
                     .request(location)
                     .get("")
@@ -157,7 +157,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no block match (yet) when requesting on the min_height 600 bitcoin block query", async function() {
+            it("btsieve should respond with no block match (yet) when requesting on the min_height 600 bitcoin block query", async function() {
                 this.slow(500);
                 return bitcoin_rpc_client.generate(50).then(() => {
                     return chai
@@ -171,18 +171,20 @@ describe("Test Ledger Query Service API", () => {
                 });
             });
 
-            it("LQS should respond with block match when requesting on the min_height 600 bitcoin block query", async function() {
+            it("btsieve should respond with block match when requesting on the min_height 600 bitcoin block query", async function() {
                 this.slow(2000);
                 this.timeout(3000);
                 return bitcoin_rpc_client.generate(200).then(() => {
-                    return lqs.poll_until_matches(chai, location).then(body => {
-                        body.query.min_height.should.equal(min_height);
-                        body.matches.length.should.greaterThan(1);
-                    });
+                    return btsieve
+                        .poll_until_matches(chai, location)
+                        .then(body => {
+                            body.query.min_height.should.equal(min_height);
+                            body.matches.length.should.greaterThan(1);
+                        });
                 });
             });
 
-            it("LQS should respond with no content when deleting an existing bitcoin block query", async function() {
+            it("btsieve should respond with no content when deleting an existing bitcoin block query", async function() {
                 return chai
                     .request(location)
                     .delete("")
@@ -199,9 +201,9 @@ describe("Test Ledger Query Service API", () => {
                 await toby_wallet.eth().fund(10);
             });
 
-            it("LQS should respond not found when getting a non-existent ethereum transaction query", async function() {
+            it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .get("/queries/ethereum/transactions/1")
                     .then(res => {
                         res.should.have.status(404);
@@ -210,9 +212,9 @@ describe("Test Ledger Query Service API", () => {
 
             const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
             let location;
-            it("LQS should respond with location when creating a valid ethereum transaction query", async function() {
+            it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .post("/queries/ethereum/transactions")
                     .send({
                         to_address: to_address,
@@ -224,7 +226,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no match when querying an existing ethereum transaction query", async function() {
+            it("btsieve should respond with no match when querying an existing ethereum transaction query", async function() {
                 return chai
                     .request(location)
                     .get("")
@@ -235,7 +237,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function() {
+            it("btsieve should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function() {
                 return toby_wallet
                     .eth()
                     .send_eth_transaction_to(
@@ -257,13 +259,13 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function() {
+            it("btsieve should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function() {
                 this.slow(2000);
                 return toby_wallet
                     .eth()
                     .send_eth_transaction_to(to_address, "", 5)
                     .then(() => {
-                        return lqs
+                        return btsieve
                             .poll_until_matches(chai, location)
                             .then(body => {
                                 body.query.to_address.should.equal(to_address);
@@ -272,9 +274,9 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no content when deleting an existing ethereum transaction query", async function() {
+            it("btsieve should respond with no content when deleting an existing ethereum transaction query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .delete("/queries/ethereum/transactions/1")
                     .then(res => {
                         res.should.have.status(204);
@@ -283,9 +285,9 @@ describe("Test Ledger Query Service API", () => {
         });
 
         describe("Blocks", () => {
-            it("LQS should respond not found when getting a non-existent ethereum block query", async function() {
+            it("btsieve should respond not found when getting a non-existent ethereum block query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .get("/queries/ethereum/blocks/1")
                     .then(res => {
                         res.should.have.status(404);
@@ -295,10 +297,10 @@ describe("Test Ledger Query Service API", () => {
             let location;
             const epoch_seconds_now = Math.round(Date.now() / 1000);
             const min_timestamp_secs = epoch_seconds_now + 3;
-            it("LQS should respond with location when creating a valid ethereum block query", async function() {
+            it("btsieve should respond with location when creating a valid ethereum block query", async function() {
                 this.timeout(1000);
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .post("/queries/ethereum/blocks")
                     .send({
                         min_timestamp_secs: min_timestamp_secs,
@@ -310,7 +312,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no match when querying an existing ethereum block query", async function() {
+            it("btsieve should respond with no match when querying an existing ethereum block query", async function() {
                 this.timeout(1000);
                 return chai
                     .request(location)
@@ -324,7 +326,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with block match when requesting on the timestamp ethereum block query after waiting 3 seconds", async function() {
+            it("btsieve should respond with block match when requesting on the timestamp ethereum block query after waiting 3 seconds", async function() {
                 this.timeout(80000);
                 this.slow(6000);
                 return sleep(3000)
@@ -338,7 +340,7 @@ describe("Test Ledger Query Service API", () => {
                             );
                     })
                     .then(() => {
-                        return lqs
+                        return btsieve
                             .poll_until_matches(chai, location)
                             .then(body => {
                                 body.query.min_timestamp_secs.should.equal(
@@ -349,7 +351,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no content when deleting an existing ethereum block query", async function() {
+            it("btsieve should respond with no content when deleting an existing ethereum block query", async function() {
                 return chai
                     .request(location)
                     .delete("")
@@ -360,9 +362,9 @@ describe("Test Ledger Query Service API", () => {
         });
 
         describe("Logs", () => {
-            it("LQS should respond not found when getting a non-existent ethereum transaction receipt query", async function() {
+            it("btsieve should respond not found when getting a non-existent ethereum transaction receipt query", async function() {
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .get("/queries/ethereum/logs/1")
                     .then(res => {
                         res.should.have.status(404);
@@ -379,10 +381,10 @@ describe("Test Ledger Query Service API", () => {
                 "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
 
             let location;
-            it("LQS should respond with location when creating a valid transaction receipt query", async function() {
+            it("btsieve should respond with location when creating a valid transaction receipt query", async function() {
                 this.timeout(1000);
                 return chai
-                    .request(lqs.url())
+                    .request(btsieve.url())
                     .post("/queries/ethereum/logs")
                     .send({
                         event_matchers: [
@@ -405,7 +407,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no match when querying an existing ethereum transaction receipt query", async function() {
+            it("btsieve should respond with no match when querying an existing ethereum transaction receipt query", async function() {
                 this.timeout(1000);
                 return chai
                     .request(location)
@@ -425,7 +427,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with transaction receipt match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
+            it("btsieve should respond with transaction receipt match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
                 this.slow(2000);
                 this.timeout(20000);
                 const transfer_token_data =
@@ -440,7 +442,7 @@ describe("Test Ledger Query Service API", () => {
                         0
                     )
                     .then(receipt => {
-                        return lqs
+                        return btsieve
                             .poll_until_matches(chai, location)
                             .then(body => {
                                 body.query.event_matchers.should.have.length(1);
@@ -468,7 +470,7 @@ describe("Test Ledger Query Service API", () => {
                     });
             });
 
-            it("LQS should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
+            it("btsieve should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
                 return chai
                     .request(location)
                     .delete("")

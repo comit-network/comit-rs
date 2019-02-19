@@ -8,7 +8,7 @@ config_dir = "./regtest/alice/"
 host = "127.0.0.1"
 config_dir = "./regtest/bob/"
 
-[ledger_query_service.main.env]
-LEDGER_QUERY_SERVICE_CONFIG_PATH = "./regtest/ledger_query_service"
+[btsieve.main.env]
+BTSIEVE_CONFIG_PATH = "./regtest/btsieve"
 ETHEREUM_POLLING_TIME_SEC = "1"
-RUST_LOG = "warn,ledger_query_service=debug,warp=info"
+RUST_LOG = "warn,btsieve=debug,warp=info"
