@@ -5,7 +5,26 @@ use futures::{
 use std::time::{Duration, Instant};
 use tokio::timer::Interval;
 
+// Keep polling a future that returns a vec and puts the results
+// deduplicated results into a stream.
+// Here in case we want to use it later
 #[allow(dead_code)]
+pub fn poll_future_into_stream<
+    I: PartialEq + Clone + 'static + Send,
+    E: Send + 'static,
+    Fut: Future<Item = Vec<I>, Error = E> + Send + 'static,
+    F: 'static + Send + FnMut() -> Fut,
+>(
+    poll_interval: Duration,
+    f: F,
+) -> Box<dyn Stream<Item = I, Error = E> + Send + 'static> {
+    let ticker = Interval::new(Instant::now(), poll_interval)
+        .map_err(|e| unreachable!("Interval cannot error {:?}", e))
+        .map(|_| ());
+
+    poll_dedup(ticker, f)
+}
+
 fn poll_dedup<
     I: PartialEq + Clone + 'static + Send,
     E: Send + 'static,
@@ -33,26 +52,6 @@ fn poll_dedup<
                 is_new
             }),
     )
-}
-
-/// Keep polling a future that returns a vec and puts the results
-/// deduplicated results into a stream.
-// Here in case we want to use it later
-#[allow(dead_code)]
-pub fn poll_future_into_stream<
-    I: PartialEq + Clone + 'static + Send,
-    E: Send + 'static,
-    Fut: Future<Item = Vec<I>, Error = E> + Send + 'static,
-    F: 'static + Send + FnMut() -> Fut,
->(
-    poll_interval: Duration,
-    f: F,
-) -> Box<dyn Stream<Item = I, Error = E> + Send + 'static> {
-    let ticker = Interval::new(Instant::now(), poll_interval)
-        .map_err(|e| unreachable!("Interval cannot error {:?}", e))
-        .map(|_| ());
-
-    poll_dedup(ticker, f)
 }
 
 pub fn poll_until_item<
