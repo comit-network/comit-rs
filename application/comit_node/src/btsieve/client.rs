@@ -2,7 +2,7 @@ use crate::{
     btsieve::{
         bitcoin::{BitcoinQuery, QueryBitcoin},
         ethereum::{EthereumQuery, QueryEthereum},
-        timer_poll_future::poll_until_item,
+        poll_until_item::poll_until_item,
         Error, Query, QueryId,
     },
     swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},

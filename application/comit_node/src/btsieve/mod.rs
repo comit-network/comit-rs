@@ -7,7 +7,7 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 mod bitcoin;
 mod client;
 mod ethereum;
-mod timer_poll_future;
+mod poll_until_item;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub struct QueryId<L: Ledger> {
@@ -36,6 +36,8 @@ pub enum Error {
     FailedRequest(String),
     #[fail(display = "The response was somehow malformed.")]
     MalformedResponse(String),
+    #[fail(display = "The btsieve client encountered an unrecoverable internal error.")]
+    Internal,
 }
 
 pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + 'static {}

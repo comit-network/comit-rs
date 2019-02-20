@@ -1,22 +1,19 @@
+use crate::btsieve::Error;
 use futures::{future::Future, stream::Stream};
 use std::time::{Duration, Instant};
 use tokio::timer::Interval;
 
 pub fn poll_until_item<
     I,
-    E,
-    Fut: Future<Item = Vec<I>, Error = E> + Send + 'static,
+    Fut: Future<Item = Vec<I>, Error = Error> + Send + 'static,
     F: 'static + Send + FnMut() -> Fut,
 >(
     poll_interval: Duration,
     mut f: F,
-) -> Box<dyn Future<Item = I, Error = E> + Send + 'static> {
-    let ticker = Interval::new(Instant::now(), poll_interval)
-        .map_err(|e| unreachable!("Interval cannot error {:?}", e))
-        .map(|_| ());
-
+) -> Box<dyn Future<Item = I, Error = Error> + Send + 'static> {
     Box::new(
-        ticker
+        Interval::new(Instant::now(), poll_interval)
+            .map_err(|_| Error::Internal)
             .and_then(move |_| f())
             .filter_map(|mut items| {
                 if items.is_empty() {
