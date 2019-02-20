@@ -70,7 +70,6 @@ pub fn poll_until_item<
 
     Box::new(
         ticker
-            .map_err(|_| unreachable!("Ticker cannot panic"))
             .and_then(move |_| f())
             .filter_map(|mut items| {
                 if items.is_empty() {
