@@ -12,18 +12,3 @@ pull_request_rules:
         strict: smart
         strict_method: rebase
       delete_head_branch:
-  - name: auto add wip (and remove review)
-    conditions:
-      - title~=^.?(wip|WIP).*
-      - label=review
-    actions:
-      label:
-        add: ["work-in-progress"]
-        remove: ["review"]
-  - name: auto add wip (no review)
-    conditions:
-      - title~=^.?(wip|WIP).*
-      - label!=review
-    actions:
-      label:
-        add: ["work-in-progress"]
