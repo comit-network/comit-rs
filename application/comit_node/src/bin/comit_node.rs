@@ -5,10 +5,10 @@
 extern crate log;
 
 use comit_node::{
+    btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
     comit_server,
     connection_pool::ConnectionPool,
     http_api::route_factory,
-    ledger_query_service::{LqsHttpClient, QueryBitcoin, QueryEthereum},
     logging,
     settings::ComitNodeSettings,
     swap_protocols::{
@@ -30,13 +30,13 @@ fn main() -> Result<(), failure::Error> {
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
-    let lqs_client = create_ledger_query_service_api_client(&settings);
+    let btsieve_client = create_btsieve_api_client(&settings);
     let connection_pool = Arc::new(ConnectionPool::default());
     let dependencies = create_dependencies(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        lqs_client.clone(),
+        btsieve_client.clone(),
         Arc::clone(&connection_pool),
     );
 
@@ -78,17 +78,17 @@ fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
     }
 }
 
-fn create_ledger_query_service_api_client(settings: &ComitNodeSettings) -> LqsHttpClient {
-    LqsHttpClient::new(
-        &settings.ledger_query_service.url,
-        settings.ledger_query_service.bitcoin.poll_interval_secs,
-        settings.ledger_query_service.ethereum.poll_interval_secs,
+fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient {
+    BtsieveHttpClient::new(
+        &settings.btsieve.url,
+        settings.btsieve.bitcoin.poll_interval_secs,
+        settings.btsieve.ethereum.poll_interval_secs,
     )
 }
 
 fn create_dependencies<
     T: MetadataStore<SwapId>,
-    S: StateStore<SwapId>,
+    S: StateStore,
     Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static,
 >(
     settings: &ComitNodeSettings,
@@ -106,7 +106,7 @@ fn create_dependencies<
     }
 }
 
-fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -118,7 +118,6 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         metadata_store,
         state_store,
         protocol_dependencies,
-        settings.comit.secret_seed,
         connection_pool,
     );
 
@@ -131,7 +130,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     runtime.spawn(server);
 }
 
-fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
     settings: &ComitNodeSettings,
     protocol_dependencies: ProtocolDependencies<T, S>,
     runtime: &mut tokio::runtime::Runtime,

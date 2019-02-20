@@ -40,7 +40,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 1. `cargo build` (do `export SOLC_BIN=/usr/bin/solc` if `solc` is installed locally)
 2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` to wherever the config file is located.
 3. `./target/release/comit_node`
-4. TODO: similar documentation for `ledger_query_service`
+4. TODO: similar documentation for `btsieve`
 
 
 ## Setup testing/dev environment
@@ -57,7 +57,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 - `cargo make all` also runs the whole test suite, including end-to-end tests.
 - `cargo make format` to format Rust code
 - `cargo make js-format` to format JavaScript code
-- `cargo make lqs` to run Ledger Query Service
+- `cargo make btsieve` to run btsieve tests
 - `cargo make dry` to run COMIT node dry tests
 - `cargo make e2e` to run COMIT node end-to-end tests
 - `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob)

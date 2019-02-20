@@ -144,7 +144,6 @@ describe("RFC003: Bitcoin for Ether", () => {
                     name: "Ether",
                     quantity: beta_asset.toString(),
                 },
-                alpha_ledger_refund_identity: null,
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_expiry: alpha_expiry,
                 beta_expiry: beta_expiry,
@@ -159,34 +158,47 @@ describe("RFC003: Bitcoin for Ether", () => {
             });
     });
 
-    it("[Alice] Should be in Start state after sending the swap request to Bob", async function() {
-        await alice.poll_comit_node_until(chai, alice_swap_href, "Start");
+    it("[Alice] Should be in IN_PROGRESS and SENT after sending the swap request to Bob", async function() {
+        this.timeout(10000);
+        await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            body =>
+                body.state.outcome == "IN_PROGRESS" &&
+                body.state.communication.current_state == "SENT"
+        );
     });
 
     let bob_swap_href;
 
-    it("[Bob] Shows the Swap as Start in /swaps", async () => {
-        let res = await chai.request(bob.comit_node_url()).get("/swaps");
+    it("[Bob] Shows the Swap as IN_PROGRESS in /swaps", async () => {
+        let body = await bob.poll_comit_node_until(
+            chai,
+            "/swaps",
+            body => body._embedded.swaps.length > 0
+        );
 
-        let embedded = res.body._embedded;
-        let swap_embedded = embedded.swaps[0];
+        let swap_embedded = body._embedded.swaps[0];
         swap_embedded.protocol.should.equal("rfc003");
-        swap_embedded.state.should.equal("Start");
+        swap_embedded.state.should.equal("IN_PROGRESS");
         let swap_link = swap_embedded._links;
         swap_link.should.be.a("object");
         bob_swap_href = swap_link.self.href;
         bob_swap_href.should.be.a("string");
+
         logger.info("Bob discovered a new swap at %s", bob_swap_href);
     });
 
     let bob_accept_href;
 
-    it("[Bob] Can get the accept action", async () => {
-        let res = await chai.request(bob.comit_node_url()).get(bob_swap_href);
-        res.should.have.status(200);
-        res.body.state.should.equal("Start");
-        res.body._links.accept.href.should.be.a("string");
-        bob_accept_href = res.body._links.accept.href;
+    it("[Bob] Can get the accept action after Alice sends the swap request", async function() {
+        this.timeout(10000);
+        let body = await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            body => body._links.accept && body._links.decline
+        );
+        bob_accept_href = body._links.accept.href;
     });
 
     it("[Bob] Can execute the accept action", async () => {
@@ -209,113 +221,81 @@ describe("RFC003: Bitcoin for Ether", () => {
         accept_res.should.have.status(200);
     });
 
-    it("[Bob] Should be in the Accepted State after accepting", async () => {
-        await bob.poll_comit_node_until(chai, bob_swap_href, "Accepted");
-    });
+    let alice_fund_action;
 
-    let alice_funding_href;
-
-    it("[Alice] Can get the HTLC fund action", async () => {
+    it("[Alice] Can get the fund action after Bob accepts", async function() {
+        this.timeout(10000);
+        let body = await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            body => body._links.fund
+        );
+        let alice_fund_href = body._links.fund.href;
         let res = await chai
             .request(alice.comit_node_url())
-            .get(alice_swap_href);
+            .get(alice_fund_href);
         res.should.have.status(200);
-        res.body.state.should.equal("Accepted");
-        let links = res.body._links;
-        links.should.have.property("fund");
-        alice_funding_href = links.fund.href;
-    });
-
-    let alice_funding_action;
-
-    it("[Alice] Can get the funding action from the ‘fund’ link", async () => {
-        let res = await chai
-            .request(alice.comit_node_url())
-            .get(alice_funding_href);
-        res.should.have.status(200);
-        alice_funding_action = res.body;
+        alice_fund_action = res.body;
 
         logger.info(
             "Alice retrieved the following funding parameters",
-            alice_funding_action
+            alice_fund_action
         );
     });
 
-    it("[Alice] Can execute the funding action", async () => {
-        alice_funding_action.payload.should.include.all.keys(
+    it("[Alice] Can execute the fund action", async function() {
+        this.timeout(10000);
+        alice_fund_action.payload.should.include.all.keys(
             "to",
             "amount",
             "network"
         );
-        await alice.do(alice_funding_action);
+        await alice.do(alice_fund_action);
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get(alice_swap_href);
     });
 
-    it("[Alice] Should be in AlphaFunded state after executing the funding action", async function() {
-        this.timeout(10000);
-        await alice.poll_comit_node_until(chai, alice_swap_href, "AlphaFunded");
-    });
+    let bob_fund_action;
 
-    let bob_funding_href;
-
-    it("[Bob] Should be in AlphaFunded state after Alice executes the funding action", async function() {
+    it("[Bob] Can get the fund action after Alice funds", async function() {
         this.timeout(10000);
-        let swap = await bob.poll_comit_node_until(
+        let body = await bob.poll_comit_node_until(
             chai,
             bob_swap_href,
-            "AlphaFunded"
+            body => body._links.fund
         );
-        swap.should.have.property("_links");
-        swap._links.should.have.property("fund");
-        bob_funding_href = swap._links.fund.href;
-    });
-
-    let bob_funding_action;
-
-    it("[Bob] Can get the funding action from the ‘fund’ link", async () => {
-        let res = await chai
-            .request(bob.comit_node_url())
-            .get(bob_funding_href);
+        let bob_fund_href = body._links.fund.href;
+        let res = await chai.request(bob.comit_node_url()).get(bob_fund_href);
         res.should.have.status(200);
-        bob_funding_action = res.body;
+        bob_fund_action = res.body;
 
         logger.info(
             "Bob retrieved the following funding parameters",
-            bob_funding_action
+            bob_fund_action
         );
     });
 
-    it("[Bob] Can execute the funding action", async () => {
-        bob_funding_action.payload.should.include.all.keys(
+    it("[Bob] Can execute the fund action", async () => {
+        bob_fund_action.payload.should.include.all.keys(
             "data",
             "amount",
             "gas_limit",
             "network"
         );
-        await bob.do(bob_funding_action);
-    });
-
-    let alice_redeem_href;
-
-    it("[Alice] Should be in BothFunded state after Bob executes the funding action", async function() {
-        this.timeout(10000);
-        let swap = await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "BothFunded"
-        );
-        swap.should.have.property("_links");
-        swap._links.should.have.property("redeem");
-        alice_redeem_href = swap._links.redeem.href;
-    });
-
-    it("[Bob] Should be in BothFunded state after executing the funding action", async function() {
-        this.timeout(10000);
-        await bob.poll_comit_node_until(chai, bob_swap_href, "BothFunded");
+        await bob.do(bob_fund_action);
     });
 
     let alice_redeem_action;
 
-    it("[Alice] Can get the redeem action from the ‘redeem’ link", async () => {
+    it("[Alice] Can get the redeem action after Bob funds", async function() {
+        this.timeout(10000);
+        let body = await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            body => body._links.redeem
+        );
+        let alice_redeem_href = body._links.redeem.href;
         let res = await chai
             .request(alice.comit_node_url())
             .get(alice_redeem_href);
@@ -344,15 +324,6 @@ describe("RFC003: Bitcoin for Ether", () => {
         await alice.do(alice_redeem_action);
     });
 
-    it("[Alice] Should be in AlphaFundedBetaRedeemed state after executing the redeem action", async function() {
-        this.timeout(10000);
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "AlphaFundedBetaRedeemed"
-        );
-    });
-
     it("[Alice] Should have received the beta asset after the redeem", async function() {
         let alice_eth_balance_after = await ethereum.eth_balance(
             alice_final_address
@@ -365,23 +336,16 @@ describe("RFC003: Bitcoin for Ether", () => {
             .should.be.equal(alice_eth_balance_expected.toString());
     });
 
-    let bob_redeem_href;
-
-    it("[Bob] Should be in AlphaFundedBetaRedeemed state after Alice executes the redeem action", async function() {
-        this.timeout(10000);
-        let swap = await bob.poll_comit_node_until(
-            chai,
-            bob_swap_href,
-            "AlphaFundedBetaRedeemed"
-        );
-        swap.should.have.property("_links");
-        swap._links.should.have.property("redeem");
-        bob_redeem_href = swap._links.redeem.href;
-    });
-
     let bob_redeem_action;
 
-    it("[Bob] Can get the redeem action from the ‘redeem’ link", async () => {
+    it("[Bob] Can get the redeem action after Alice redeems", async function() {
+        this.timeout(10000);
+        let body = await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            body => body._links.redeem
+        );
+        let bob_redeem_href = body._links.redeem.href;
         let res = await chai
             .request(bob.comit_node_url())
             .get(
@@ -416,19 +380,5 @@ describe("RFC003: Bitcoin for Ether", () => {
         const bob_btc_balance_expected =
             bob_btc_balance_before + alpha_asset - alpha_max_fee;
         bob_btc_balance_after.should.be.at.least(bob_btc_balance_expected);
-    });
-
-    it("[Alice] Should be in BothRedeemed state after Bob executes the redeem action", async function() {
-        this.timeout(10000);
-        await alice.poll_comit_node_until(
-            chai,
-            alice_swap_href,
-            "BothRedeemed"
-        );
-    });
-
-    it("[Bob] Should be in BothRedeemed state after executing the redeem action", async function() {
-        this.timeout(10000);
-        await bob.poll_comit_node_until(chai, bob_swap_href, "BothRedeemed");
     });
 });

@@ -20,18 +20,16 @@ extern crate bam;
 #[macro_use]
 extern crate futures;
 #[macro_use]
-extern crate frunk;
-#[macro_use]
 extern crate binary_macros;
 
 pub mod bam_api;
 pub mod bam_ext;
+pub mod btsieve;
 pub mod comit_client;
 pub mod comit_server;
 pub mod connection_pool;
 pub mod http_api;
 pub mod item_cache;
-pub mod ledger_query_service;
 pub mod logging;
 pub mod node_id;
 pub mod seed;

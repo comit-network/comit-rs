@@ -1,6 +1,6 @@
 use crate::{
+    btsieve::{QueryBitcoin, QueryEthereum},
     connection_pool::ConnectionPool,
-    ledger_query_service::{QueryBitcoin, QueryEthereum},
     seed::Seed,
 };
 use std::sync::Arc;

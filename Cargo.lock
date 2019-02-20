@@ -269,7 +269,7 @@ dependencies = [
 
 [[package]]
 name = "block-buffer"
-version = "0.7.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "block-padding 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -284,6 +284,42 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "byte-tools 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "btsieve"
+version = "0.1.0"
+dependencies = [
+ "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_support 0.1.0",
+ "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethbloom 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ethereum_support 0.1.0",
+ "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "http-api-problem 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hyper 0.12.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pretty_env_logger 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1_support 0.1.0",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_web3_client 0.1.0",
+ "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "url 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "warp 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "zmq-rs 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1187,42 +1223,6 @@ dependencies = [
 name = "lazycell"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "ledger_query_service"
-version = "0.1.0"
-dependencies = [
- "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_support 0.1.0",
- "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethbloom 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum-types 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ethereum_support 0.1.0",
- "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "http 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "http-api-problem 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "hyper 0.12.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "itertools 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "pretty_env_logger 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
- "secp256k1_support 0.1.0",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
- "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_web3_client 0.1.0",
- "testcontainers 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
- "url 1.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "warp 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "zmq-rs 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "libc"
@@ -2160,7 +2160,7 @@ name = "sha2"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "block-buffer 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "block-buffer 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "digest 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "fake-simd 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "opaque-debug 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3054,7 +3054,7 @@ dependencies = [
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
 "checksum blake2-rfc 0.2.18 (registry+https://github.com/rust-lang/crates.io-index)" = "5d6d530bdd2d52966a6d03b7a964add7ae1a288d25214066fd4b600f0f796400"
 "checksum block-buffer 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "a076c298b9ecdb530ed9d967e74a6027d6a7478924520acddcddc24c1c8ab3ab"
-"checksum block-buffer 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "49665c62e0e700857531fa5d3763e91b539ff1abeebd56808d378b495870d60d"
+"checksum block-buffer 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)" = "509de513cca6d92b6aacf9c61acfe7eaa160837323a81068d690cc1f8e5740da"
 "checksum block-padding 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "4fc4358306e344bf9775d0197fd00d2603e5afb0771bb353538630f022068ea3"
 "checksum build_const 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "39092a32794787acd8525ee150305ff051b0aa6cc2abaf193924f5ab05425f39"
 "checksum byte-tools 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "560c32574a12a89ecd91f5e742165893f86e3ab98d21f8ea548658eb9eef5f40"

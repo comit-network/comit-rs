@@ -1,37 +1,24 @@
 #![allow(clippy::too_many_arguments)] // TODO: Figure out how to properly place this on the state_machine_future derive so that is is forwarded to the generated structs and impl
 
 use crate::{
-    comit_client::{self, SwapReject},
+    comit_client::SwapReject,
     swap_protocols::{
         asset::Asset,
         rfc003::{
             self,
-            events::{self, DeployTransaction, RedeemTransaction},
+            events::{
+                self, DeployTransaction, FundTransaction, RedeemTransaction, RefundTransaction,
+            },
             ledger::Ledger,
-            Role, SaveState, SecretHash, Timestamp,
+            messages::AcceptResponseBody,
+            SaveState, SecretHash, Timestamp,
         },
     },
 };
-use futures::{future::Either, Async, Future};
+use either::Either;
+use futures::{future, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
-
-#[derive(Debug, Clone, PartialEq, Eq, LabelledGeneric)]
-pub struct StateMachineResponse<ALSI, BLRI> {
-    pub alpha_ledger_redeem_identity: ALSI,
-    pub beta_ledger_refund_identity: BLRI,
-}
-
-impl<AL: Ledger, BL: Ledger> From<comit_client::rfc003::AcceptResponseBody<AL, BL>>
-    for StateMachineResponse<AL::Identity, BL::Identity>
-{
-    fn from(accept_response: comit_client::rfc003::AcceptResponseBody<AL, BL>) -> Self {
-        Self {
-            alpha_ledger_redeem_identity: accept_response.alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity: accept_response.beta_ledger_refund_identity,
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct HtlcParams<L: Ledger, A: Asset> {
@@ -43,27 +30,53 @@ pub struct HtlcParams<L: Ledger, A: Asset> {
     pub secret_hash: SecretHash,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct OngoingSwap<R: Role> {
-    pub alpha_ledger: R::AlphaLedger,
-    pub beta_ledger: R::BetaLedger,
-    pub alpha_asset: R::AlphaAsset,
-    pub beta_asset: R::BetaAsset,
-    pub alpha_ledger_redeem_identity: R::AlphaRedeemHtlcIdentity,
-    pub alpha_ledger_refund_identity: R::AlphaRefundHtlcIdentity,
-    pub beta_ledger_redeem_identity: R::BetaRedeemHtlcIdentity,
-    pub beta_ledger_refund_identity: R::BetaRefundHtlcIdentity,
-    pub alpha_expiry: Timestamp,
-    pub beta_expiry: Timestamp,
-    pub secret: R::Secret,
-    pub role: R,
+impl<L: Ledger, A: Asset> HtlcParams<L, A> {
+    pub fn new_alpha_params<BL: Ledger, BA: Asset>(
+        request: &rfc003::messages::Request<L, BL, A, BA>,
+        accept_response: &rfc003::messages::AcceptResponseBody<L, BL>,
+    ) -> Self {
+        HtlcParams {
+            asset: request.alpha_asset,
+            ledger: request.alpha_ledger,
+            redeem_identity: accept_response.alpha_ledger_redeem_identity,
+            refund_identity: request.alpha_ledger_refund_identity,
+            expiry: request.alpha_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
+
+    pub fn new_beta_params<AL: Ledger, AA: Asset>(
+        request: &rfc003::messages::Request<AL, L, AA, A>,
+        accept_response: &rfc003::messages::AcceptResponseBody<AL, L>,
+    ) -> Self {
+        HtlcParams {
+            asset: request.beta_asset,
+            ledger: request.beta_ledger,
+            redeem_identity: request.beta_ledger_redeem_identity,
+            refund_identity: accept_response.beta_ledger_refund_identity,
+            expiry: request.beta_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
 }
 
-impl<R: Role> OngoingSwap<R> {
-    pub fn new(
-        start: Start<R>,
-        response: StateMachineResponse<R::AlphaRedeemHtlcIdentity, R::BetaRefundHtlcIdentity>,
-    ) -> Self {
+#[derive(Debug, Clone, PartialEq)]
+pub struct OngoingSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+    pub alpha_ledger: AL,
+    pub beta_ledger: BL,
+    pub alpha_asset: AA,
+    pub beta_asset: BA,
+    pub alpha_ledger_redeem_identity: AL::Identity,
+    pub alpha_ledger_refund_identity: AL::Identity,
+    pub beta_ledger_redeem_identity: BL::Identity,
+    pub beta_ledger_refund_identity: BL::Identity,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
+    pub secret_hash: SecretHash,
+}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
+    pub fn new(start: Start<AL, BL, AA, BA>, response: AcceptResponseBody<AL, BL>) -> Self {
         OngoingSwap {
             alpha_ledger: start.alpha_ledger,
             beta_ledger: start.beta_ledger,
@@ -75,107 +88,136 @@ impl<R: Role> OngoingSwap<R> {
             beta_ledger_refund_identity: response.beta_ledger_refund_identity,
             alpha_expiry: start.alpha_expiry,
             beta_expiry: start.beta_expiry,
-            secret: start.secret,
-            role: start.role,
+            secret_hash: start.secret_hash,
         }
     }
 
-    pub fn alpha_htlc_params(&self) -> HtlcParams<R::AlphaLedger, R::AlphaAsset> {
+    pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA> {
         HtlcParams {
-            asset: self.alpha_asset.clone(),
-            ledger: self.alpha_ledger.clone(),
-            redeem_identity: self.alpha_ledger_redeem_identity.clone().into(),
-            refund_identity: self.alpha_ledger_refund_identity.clone().into(),
+            asset: self.alpha_asset,
+            ledger: self.alpha_ledger,
+            redeem_identity: self.alpha_ledger_redeem_identity,
+            refund_identity: self.alpha_ledger_refund_identity,
             expiry: self.alpha_expiry,
-            secret_hash: self.secret.clone().into(),
+            secret_hash: self.secret_hash,
         }
     }
 
-    pub fn beta_htlc_params(&self) -> HtlcParams<R::BetaLedger, R::BetaAsset> {
+    pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA> {
         HtlcParams {
-            asset: self.beta_asset.clone(),
-            ledger: self.beta_ledger.clone(),
-            redeem_identity: self.beta_ledger_redeem_identity.clone().into(),
-            refund_identity: self.beta_ledger_refund_identity.clone().into(),
+            asset: self.beta_asset,
+            ledger: self.beta_ledger,
+            redeem_identity: self.beta_ledger_redeem_identity,
+            refund_identity: self.beta_ledger_refund_identity,
             expiry: self.beta_expiry,
-            secret_hash: self.secret.clone().into(),
+            secret_hash: self.secret_hash,
         }
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum SwapOutcome<R: Role> {
+pub enum SwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     Rejected {
-        start: Start<R>,
+        start: Start<AL, BL, AA, BA>,
         rejection_type: SwapReject,
     },
     AlphaRefunded {
-        swap: OngoingSwap<R>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        alpha_refund_transaction: RefundTransaction<AL>,
+    },
+    AlphaRedeemed {
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        alpha_redeem_transaction: RedeemTransaction<AL>,
     },
     BothRefunded {
-        swap: OngoingSwap<R>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        alpha_or_beta_refunded_transaction: Either<RefundTransaction<AL>, RefundTransaction<BL>>,
     },
     BothRedeemed {
-        swap: OngoingSwap<R>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        alpha_or_beta_redeemed_transaction: Either<RedeemTransaction<AL>, RedeemTransaction<BL>>,
     },
     AlphaRedeemedBetaRefunded {
-        swap: OngoingSwap<R>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        redeemed_or_refunded_transaction: Either<RedeemTransaction<AL>, RefundTransaction<BL>>,
     },
     AlphaRefundedBetaRedeemed {
-        swap: OngoingSwap<R>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        refunded_or_redeemed_transaction: Either<RefundTransaction<AL>, RedeemTransaction<BL>>,
     },
 }
 
 #[allow(type_alias_bounds)]
-pub type FutureSwapOutcome<R: Role> =
-    dyn Future<Item = SwapOutcome<R>, Error = rfc003::Error> + Send;
+pub type FutureSwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> =
+    dyn Future<Item = SwapOutcome<AL, BL, AA, BA>, Error = rfc003::Error> + Send;
 
 #[allow(missing_debug_implementations)]
-pub struct Context<R: Role> {
-    pub alpha_ledger_events: Box<dyn events::LedgerEvents<R::AlphaLedger, R::AlphaAsset>>,
-    pub beta_ledger_events: Box<dyn events::LedgerEvents<R::BetaLedger, R::BetaAsset>>,
-    pub state_repo: Arc<dyn SaveState<R>>,
-    pub communication_events: Box<dyn events::CommunicationEvents<R>>,
+pub struct Context<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+    pub alpha_ledger_events: Box<dyn events::LedgerEvents<AL, AA>>,
+    pub beta_ledger_events: Box<dyn events::LedgerEvents<BL, BA>>,
+    pub state_repo: Arc<dyn SaveState<AL, BL, AA, BA>>,
+    pub communication_events: Box<dyn events::CommunicationEvents<AL, BL, AA, BA>>,
 }
 
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 #[allow(missing_debug_implementations)]
-pub enum Swap<R: Role> {
+pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
-        alpha_ledger_refund_identity: R::AlphaRefundHtlcIdentity,
-        beta_ledger_redeem_identity: R::BetaRedeemHtlcIdentity,
-        alpha_ledger: R::AlphaLedger,
-        beta_ledger: R::BetaLedger,
-        alpha_asset: R::AlphaAsset,
-        beta_asset: R::BetaAsset,
+        alpha_ledger_refund_identity: AL::Identity,
+        beta_ledger_redeem_identity: BL::Identity,
+        alpha_ledger: AL,
+        beta_ledger: BL,
+        alpha_asset: AA,
+        beta_asset: BA,
         alpha_expiry: Timestamp,
         beta_expiry: Timestamp,
-        secret: R::Secret,
-        role: R,
+        secret_hash: SecretHash,
     },
 
     #[state_machine_future(transitions(AlphaDeployed))]
-    Accepted { swap: OngoingSwap<R> },
+    Accepted { swap: OngoingSwap<AL, BL, AA, BA> },
 
     #[state_machine_future(transitions(AlphaFunded, Final))]
     AlphaDeployed {
-        swap: OngoingSwap<R>,
-        alpha_deploy_transaction: DeployTransaction<R::AlphaLedger>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
     },
 
     #[state_machine_future(transitions(AlphaFundedBetaDeployed, Final))]
     AlphaFunded {
-        swap: OngoingSwap<R>,
-        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
     },
 
     #[state_machine_future(transitions(BothFunded, Final))]
     AlphaFundedBetaDeployed {
-        swap: OngoingSwap<R>,
-        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
-        beta_deploy_transaction: DeployTransaction<R::BetaLedger>,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
     },
 
     #[state_machine_future(transitions(
@@ -185,58 +227,77 @@ pub enum Swap<R: Role> {
         AlphaRedeemedBetaFunded,
     ))]
     BothFunded {
-        swap: OngoingSwap<R>,
-        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
-        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
     },
 
     #[state_machine_future(transitions(Final))]
     AlphaFundedBetaRefunded {
-        swap: OngoingSwap<R>,
-        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        beta_refund_transaction: RefundTransaction<BL>,
     },
 
     #[state_machine_future(transitions(Final))]
     AlphaRefundedBetaFunded {
-        swap: OngoingSwap<R>,
-        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        alpha_refund_transaction: RefundTransaction<AL>,
     },
 
     #[state_machine_future(transitions(Final))]
     AlphaRedeemedBetaFunded {
-        swap: OngoingSwap<R>,
-        beta_htlc_location: <R::BetaLedger as Ledger>::HtlcLocation,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        alpha_redeem_transaction: RedeemTransaction<AL>,
     },
 
     #[state_machine_future(transitions(Final))]
     AlphaFundedBetaRedeemed {
-        swap: OngoingSwap<R>,
-        beta_redeemed_tx: RedeemTransaction<R::BetaLedger>,
-        alpha_htlc_location: <R::AlphaLedger as Ledger>::HtlcLocation,
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deploy_transaction: DeployTransaction<AL>,
+        alpha_fund_transaction: FundTransaction<AL, AA>,
+        beta_deploy_transaction: DeployTransaction<BL>,
+        beta_fund_transaction: FundTransaction<BL, BA>,
+        beta_redeem_transaction: RedeemTransaction<BL>,
     },
 
     #[state_machine_future(ready)]
-    Final(SwapOutcome<R>),
+    Final(SwapOutcome<AL, BL, AA, BA>),
 
     #[state_machine_future(error)]
     Error(rfc003::Error),
 }
 
-impl<R: Role> PollSwap<R> for Swap<R> {
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
+    for Swap<AL, BL, AA, BA>
+{
     fn poll_start<'s, 'c>(
-        state: &'s mut RentToOwn<'s, Start<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterStart<R>>, rfc003::Error> {
-        let request = comit_client::rfc003::Request {
-            alpha_asset: state.alpha_asset.clone(),
-            beta_asset: state.beta_asset.clone(),
-            alpha_ledger: state.alpha_ledger.clone(),
-            beta_ledger: state.beta_ledger.clone(),
-            alpha_ledger_refund_identity: state.alpha_ledger_refund_identity.clone().into(),
-            beta_ledger_redeem_identity: state.beta_ledger_redeem_identity.clone().into(),
+        state: &'s mut RentToOwn<'s, Start<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterStart<AL, BL, AA, BA>>, rfc003::Error> {
+        let request = rfc003::messages::Request {
+            alpha_asset: state.alpha_asset,
+            beta_asset: state.beta_asset,
+            alpha_ledger: state.alpha_ledger,
+            beta_ledger: state.beta_ledger,
+            alpha_ledger_refund_identity: state.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: state.beta_ledger_redeem_identity,
             alpha_expiry: state.alpha_expiry,
             beta_expiry: state.beta_expiry,
-            secret_hash: state.secret.clone().into(),
+            secret_hash: state.secret_hash,
         };
 
         let response = try_ready!(context
@@ -264,9 +325,9 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     }
 
     fn poll_accepted<'s, 'c>(
-        state: &'s mut RentToOwn<'s, Accepted<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAccepted<R>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, Accepted<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAccepted<AL, BL, AA, BA>>, rfc003::Error> {
         let alpha_deploy_transaction = try_ready!(context
             .alpha_ledger_events
             .htlc_deployed(state.swap.alpha_htlc_params())
@@ -282,10 +343,10 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     }
 
     fn poll_alpha_deployed<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaDeployed<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaDeployed<R>>, rfc003::Error> {
-        let alpha_funding_transaction = try_ready!(context
+        state: &'s mut RentToOwn<'s, AlphaDeployed<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaDeployed<AL, BL, AA, BA>>, rfc003::Error> {
+        let alpha_fund_transaction = try_ready!(context
             .alpha_ledger_events
             .htlc_funded(
                 state.swap.alpha_htlc_params(),
@@ -294,7 +355,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .poll());
         let state = state.take();
 
-        if alpha_funding_transaction
+        if alpha_fund_transaction
             .asset
             .equal_or_greater_value(&state.swap.alpha_asset)
         {
@@ -302,7 +363,8 @@ impl<R: Role> PollSwap<R> for Swap<R> {
                 context.state_repo,
                 AlphaFunded {
                     swap: state.swap,
-                    alpha_htlc_location: state.alpha_deploy_transaction.location,
+                    alpha_fund_transaction,
+                    alpha_deploy_transaction: state.alpha_deploy_transaction,
                 }
             )
         } else {
@@ -311,20 +373,39 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     }
 
     fn poll_alpha_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaFunded<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaFunded<R>>, rfc003::Error> {
-        if let Async::Ready(_alpha_redeemed_or_refunded) = context
+        state: &'s mut RentToOwn<'s, AlphaFunded<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaFunded<AL, BL, AA, BA>>, rfc003::Error> {
+        if let Async::Ready(alpha_redeemed_or_refunded) = context
             .alpha_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deploy_transaction,
+                &state.alpha_fund_transaction,
+            )
             .poll()?
         {
-            transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::AlphaRefunded {
-                    swap: state.take().swap
-                })
-            )
+            let state = state.take();
+            match alpha_redeemed_or_refunded {
+                future::Either::A(redeem_transaction) => transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRedeemed {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        alpha_redeem_transaction: redeem_transaction
+                    })
+                ),
+                future::Either::B(refund_transaction) => transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRefunded {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        alpha_refund_transaction: refund_transaction
+                    })
+                ),
+            }
         }
 
         let beta_deploy_transaction = try_ready!(context
@@ -336,30 +417,50 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             context.state_repo,
             AlphaFundedBetaDeployed {
                 swap: state.swap,
-                alpha_htlc_location: state.alpha_htlc_location,
+                alpha_fund_transaction: state.alpha_fund_transaction,
+                alpha_deploy_transaction: state.alpha_deploy_transaction,
                 beta_deploy_transaction
             }
         )
     }
 
     fn poll_alpha_funded_beta_deployed<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaFundedBetaDeployed<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaFundedBetaDeployed<R>>, rfc003::Error> {
-        if let Async::Ready(_alpha_redeemed_or_refunded) = context
+        state: &'s mut RentToOwn<'s, AlphaFundedBetaDeployed<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaFundedBetaDeployed<AL, BL, AA, BA>>, rfc003::Error> {
+        if let Async::Ready(alpha_redeemed_or_refunded) = context
             .alpha_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deploy_transaction,
+                &state.alpha_fund_transaction,
+            )
             .poll()?
         {
-            transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::AlphaRefunded {
-                    swap: state.take().swap
-                })
-            )
+            let state = state.take();
+            match alpha_redeemed_or_refunded {
+                future::Either::A(redeem_transaction) => transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRedeemed {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        alpha_redeem_transaction: redeem_transaction
+                    })
+                ),
+                future::Either::B(refund_transaction) => transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRefunded {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        alpha_refund_transaction: refund_transaction
+                    })
+                ),
+            }
         }
 
-        let beta_funding_transaction = try_ready!(context
+        let beta_fund_transaction = try_ready!(context
             .beta_ledger_events
             .htlc_funded(
                 state.swap.beta_htlc_params(),
@@ -368,7 +469,7 @@ impl<R: Role> PollSwap<R> for Swap<R> {
             .poll());
         let state = state.take();
 
-        if beta_funding_transaction
+        if beta_fund_transaction
             .asset
             .equal_or_greater_value(&state.swap.beta_asset)
         {
@@ -376,8 +477,10 @@ impl<R: Role> PollSwap<R> for Swap<R> {
                 context.state_repo,
                 BothFunded {
                     swap: state.swap,
-                    alpha_htlc_location: state.alpha_htlc_location,
-                    beta_htlc_location: state.beta_deploy_transaction.location,
+                    alpha_fund_transaction: state.alpha_fund_transaction,
+                    alpha_deploy_transaction: state.alpha_deploy_transaction,
+                    beta_deploy_transaction: state.beta_deploy_transaction,
+                    beta_fund_transaction
                 }
             )
         } else {
@@ -386,29 +489,40 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     }
 
     fn poll_both_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, BothFunded<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterBothFunded<R>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, BothFunded<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterBothFunded<AL, BL, AA, BA>>, rfc003::Error> {
         if let Async::Ready(redeemed_or_refunded) = context
             .beta_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.beta_htlc_params(),
+                &state.beta_deploy_transaction,
+                &state.beta_fund_transaction,
+            )
             .poll()?
         {
             let state = state.take();
             match redeemed_or_refunded {
-                Either::A(beta_redeemed_tx) => transition_save!(
+                future::Either::A(beta_redeem_transaction) => transition_save!(
                     context.state_repo,
                     AlphaFundedBetaRedeemed {
                         swap: state.swap,
-                        beta_redeemed_tx,
-                        alpha_htlc_location: state.alpha_htlc_location,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        beta_redeem_transaction,
                     }
                 ),
-                Either::B(_beta_refunded_txid) => transition_save!(
+                future::Either::B(beta_refund_transaction) => transition_save!(
                     context.state_repo,
                     AlphaFundedBetaRefunded {
                         swap: state.swap,
-                        alpha_htlc_location: state.alpha_htlc_location,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        beta_refund_transaction,
                     }
                 ),
             }
@@ -416,26 +530,38 @@ impl<R: Role> PollSwap<R> for Swap<R> {
 
         match try_ready!(context
             .alpha_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deploy_transaction,
+                &state.alpha_fund_transaction
+            )
             .poll())
         {
-            Either::A(_alpha_redeemed_tx) => {
+            future::Either::A(alpha_redeem_transaction) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
                     AlphaRedeemedBetaFunded {
                         swap: state.swap,
-                        beta_htlc_location: state.beta_htlc_location,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        alpha_redeem_transaction,
                     }
                 )
             }
-            Either::B(_alpha_refunded_txid) => {
+            future::Either::B(alpha_refund_transaction) => {
                 let state = state.take();
                 transition_save!(
                     context.state_repo,
                     AlphaRefundedBetaFunded {
                         swap: state.swap,
-                        beta_htlc_location: state.beta_htlc_location,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        alpha_refund_transaction,
                     }
                 )
             }
@@ -443,105 +569,200 @@ impl<R: Role> PollSwap<R> for Swap<R> {
     }
 
     fn poll_alpha_funded_beta_refunded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaFundedBetaRefunded<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaFundedBetaRefunded<R>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, AlphaFundedBetaRefunded<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaFundedBetaRefunded<AL, BL, AA, BA>>, rfc003::Error> {
         match try_ready!(context
             .alpha_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deploy_transaction,
+                &state.alpha_fund_transaction
+            )
             .poll())
         {
-            Either::A(_alpha_redeemed_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::AlphaRedeemedBetaRefunded {
-                    swap: state.take().swap
-                })
-            ),
-            Either::B(_alpha_refunded_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::BothRefunded {
-                    swap: state.take().swap
-                })
-            ),
+            future::Either::A(alpha_redeemed_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRedeemedBetaRefunded {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        redeemed_or_refunded_transaction: Either::Left(alpha_redeemed_transaction),
+                    })
+                )
+            }
+            future::Either::B(alpha_refunded_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::BothRefunded {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        alpha_or_beta_refunded_transaction: Either::Left(
+                            alpha_refunded_transaction
+                        ),
+                    })
+                )
+            }
         }
     }
 
     fn poll_alpha_refunded_beta_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaRefundedBetaFunded<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaRefundedBetaFunded<R>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, AlphaRefundedBetaFunded<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaRefundedBetaFunded<AL, BL, AA, BA>>, rfc003::Error> {
         match try_ready!(context
             .beta_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.beta_htlc_params(),
+                &state.beta_deploy_transaction,
+                &state.beta_fund_transaction
+            )
             .poll())
         {
-            Either::A(_beta_redeemed_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::AlphaRefundedBetaRedeemed {
-                    swap: state.take().swap
-                })
-            ),
-            Either::B(_beta_refunded_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::BothRefunded {
-                    swap: state.take().swap
-                })
-            ),
+            future::Either::A(beta_redeemed_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRefundedBetaRedeemed {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        refunded_or_redeemed_transaction: Either::Right(beta_redeemed_transaction),
+                    })
+                )
+            }
+            future::Either::B(beta_refunded_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::BothRefunded {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        alpha_or_beta_refunded_transaction: Either::Right(
+                            beta_refunded_transaction
+                        ),
+                    })
+                )
+            }
         }
     }
 
     fn poll_alpha_redeemed_beta_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaRedeemedBetaFunded<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaRedeemedBetaFunded<R>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, AlphaRedeemedBetaFunded<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaRedeemedBetaFunded<AL, BL, AA, BA>>, rfc003::Error> {
         match try_ready!(context
             .beta_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.beta_htlc_params(), &state.beta_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.beta_htlc_params(),
+                &state.beta_deploy_transaction,
+                &state.beta_fund_transaction
+            )
             .poll())
         {
-            Either::A(_beta_redeemed_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::BothRedeemed {
-                    swap: state.take().swap
-                })
-            ),
-            Either::B(_beta_refunded_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::AlphaRedeemedBetaRefunded {
-                    swap: state.take().swap
-                })
-            ),
+            future::Either::A(beta_redeemed_transaction) => {
+                let state = state.take();
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::BothRedeemed {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        alpha_or_beta_redeemed_transaction: Either::Right(
+                            beta_redeemed_transaction
+                        ),
+                    })
+                )
+            }
+            future::Either::B(beta_refunded_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRedeemedBetaRefunded {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        redeemed_or_refunded_transaction: Either::Right(beta_refunded_transaction),
+                    })
+                )
+            }
         }
     }
 
     fn poll_alpha_funded_beta_redeemed<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaFundedBetaRedeemed<R>>,
-        context: &'c mut RentToOwn<'c, Context<R>>,
-    ) -> Result<Async<AfterAlphaFundedBetaRedeemed<R>>, rfc003::Error> {
+        state: &'s mut RentToOwn<'s, AlphaFundedBetaRedeemed<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaFundedBetaRedeemed<AL, BL, AA, BA>>, rfc003::Error> {
         match try_ready!(context
             .alpha_ledger_events
-            .htlc_redeemed_or_refunded(state.swap.alpha_htlc_params(), &state.alpha_htlc_location)
+            .htlc_redeemed_or_refunded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deploy_transaction,
+                &state.alpha_fund_transaction
+            )
             .poll())
         {
-            Either::A(_beta_redeemed_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::BothRedeemed {
-                    swap: state.take().swap
-                })
-            ),
-            Either::B(_beta_refunded_txid) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::AlphaRefundedBetaRedeemed {
-                    swap: state.take().swap
-                })
-            ),
+            future::Either::A(alpha_redeemed_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::BothRedeemed {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        alpha_or_beta_redeemed_transaction: Either::Left(
+                            alpha_redeemed_transaction
+                        ),
+                    })
+                )
+            }
+            future::Either::B(alpha_refunded_transaction) => {
+                let state = state.take();
+
+                transition_save!(
+                    context.state_repo,
+                    Final(SwapOutcome::AlphaRefundedBetaRedeemed {
+                        swap: state.swap,
+                        alpha_deploy_transaction: state.alpha_deploy_transaction,
+                        alpha_fund_transaction: state.alpha_fund_transaction,
+                        beta_deploy_transaction: state.beta_deploy_transaction,
+                        beta_fund_transaction: state.beta_fund_transaction,
+                        refunded_or_redeemed_transaction: Either::Left(alpha_refunded_transaction),
+                    })
+                )
+            }
         }
     }
 }
 
 macro_rules! impl_display {
     ($state:ident) => {
-        impl<R: Role> fmt::Display for $state<R> {
+        impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> fmt::Display for $state<AL, BL, AA, BA> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
                 write!(f, stringify!($state))
             }
@@ -560,91 +781,3 @@ impl_display!(AlphaRefundedBetaFunded);
 impl_display!(AlphaFundedBetaRedeemed);
 impl_display!(AlphaRedeemedBetaFunded);
 impl_display!(Final);
-
-impl<R: Role> SwapStates<R> {
-    pub fn name(&self) -> String {
-        use self::SwapStates as SS;
-        match *self {
-            SS::Start { .. } => String::from("Start"),
-            SS::Accepted { .. } => String::from("Accepted"),
-            SS::AlphaDeployed { .. } => String::from("AlphaDeployed"),
-            SS::AlphaFunded { .. } => String::from("AlphaFunded"),
-            SS::AlphaFundedBetaDeployed { .. } => String::from("AlphaFundedBetaDeployed"),
-            SS::BothFunded { .. } => String::from("BothFunded"),
-            SS::AlphaFundedBetaRefunded { .. } => String::from("AlphaFundedBetaRefunded"),
-            SS::AlphaRefundedBetaFunded { .. } => String::from("AlphaRefundedBetaFunded"),
-            SS::AlphaFundedBetaRedeemed { .. } => String::from("AlphaFundedBetaRedeemed"),
-            SS::AlphaRedeemedBetaFunded { .. } => String::from("AlphaRedeemedBetaFunded"),
-            SS::Final(Final(SwapOutcome::Rejected { .. })) => String::from("Rejected"),
-            SS::Final(Final(SwapOutcome::AlphaRefunded { .. })) => String::from("AlphaRefunded"),
-            SS::Final(Final(SwapOutcome::BothRefunded { .. })) => String::from("BothRefunded"),
-            SS::Final(Final(SwapOutcome::BothRedeemed { .. })) => String::from("BothRedeemed"),
-            SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { .. })) => {
-                String::from("AlphaRedeemedBetaRefunded")
-            }
-            SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { .. })) => {
-                String::from("AlphaRefundedBetaRedeemed")
-            }
-            SS::Error(_) => String::from("Error"),
-        }
-    }
-
-    pub fn start_state(&self) -> Result<Start<R>, Error> {
-        use self::SwapStates as SS;
-        match *self {
-            SS::Start(ref start) | SS::Final(Final(SwapOutcome::Rejected { ref start, .. })) => {
-                Ok(start.clone())
-            }
-            SS::Accepted(Accepted { ref swap, .. })
-            | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
-            | SS::AlphaFunded(AlphaFunded { ref swap, .. })
-            | SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { ref swap, .. })
-            | SS::BothFunded(BothFunded { ref swap, .. })
-            | SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded { ref swap, .. })
-            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
-            | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed { ref swap, .. })
-            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. })
-            | SS::Final(Final(SwapOutcome::AlphaRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::BothRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
-            | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => Ok(Start {
-                alpha_ledger: swap.alpha_ledger.clone(),
-                beta_ledger: swap.beta_ledger.clone(),
-                alpha_asset: swap.alpha_asset.clone(),
-                beta_asset: swap.beta_asset.clone(),
-                alpha_ledger_refund_identity: swap.alpha_ledger_refund_identity.clone(),
-                beta_ledger_redeem_identity: swap.beta_ledger_redeem_identity.clone(),
-                alpha_expiry: swap.alpha_expiry,
-                beta_expiry: swap.beta_expiry,
-                secret: swap.secret.clone(),
-                role: swap.role.clone(),
-            }),
-            SS::Error(ref e) => Err(e.clone()),
-        }
-    }
-
-    pub fn beta_expiry(&self) -> Option<Timestamp> {
-        use self::SwapStates as SS;
-        match *self {
-            SS::Accepted(Accepted { ref swap, .. })
-            | SS::AlphaDeployed(AlphaDeployed { ref swap, .. })
-            | SS::AlphaFunded(AlphaFunded { ref swap, .. })
-            | SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed { ref swap, .. })
-            | SS::BothFunded(BothFunded { ref swap, .. })
-            | SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded { ref swap, .. })
-            | SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded { ref swap, .. })
-            | SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed { ref swap, .. })
-            | SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded { ref swap, .. })
-            | SS::Final(Final(SwapOutcome::AlphaRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::BothRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::BothRedeemed { ref swap }))
-            | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded { ref swap }))
-            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed { ref swap })) => {
-                Some(swap.beta_expiry)
-            }
-            SS::Start(ref start) => Some(start.beta_expiry),
-            SS::Final(_) | SS::Error(_) => None,
-        }
-    }
-}

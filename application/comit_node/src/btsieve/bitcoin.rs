@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{Error, Query, QueryId},
+    btsieve::{Error, Query, QueryId},
     swap_protocols::ledger::Bitcoin,
 };
 use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};

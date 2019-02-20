@@ -15,7 +15,7 @@ use std::{
 pub struct ComitNodeSettings {
     pub comit: Comit,
     pub http_api: HttpApi,
-    pub ledger_query_service: LedgerQueryService,
+    pub btsieve: Btsieve,
     #[serde(with = "serde::log_level", default = "default_log")]
     pub log_level: LevelFilter,
 }
@@ -38,7 +38,7 @@ pub struct HttpApi {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct LedgerQueryService {
+pub struct Btsieve {
     #[serde(with = "serde::url")]
     pub url: url::Url,
     pub bitcoin: PollParameters,
@@ -103,14 +103,8 @@ mod tests {
         let settings = comit_settings();
 
         assert_that(&settings).is_ok();
-        assert_that(
-            &settings
-                .unwrap()
-                .ledger_query_service
-                .ethereum
-                .poll_interval_secs,
-        )
-        .is_equal_to(&Duration::from_secs(20));
+        assert_that(&settings.unwrap().btsieve.ethereum.poll_interval_secs)
+            .is_equal_to(&Duration::from_secs(20));
     }
 
 }

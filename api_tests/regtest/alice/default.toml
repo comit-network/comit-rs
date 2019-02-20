@@ -7,9 +7,9 @@ address="0.0.0.0"
 port=8000
 logging=true
 
-[ledger_query_service]
+[btsieve]
 url = "http://localhost:8080"
-[ledger_query_service.bitcoin]
+[btsieve.bitcoin]
 poll_interval_secs = 1
-[ledger_query_service.ethereum]
+[btsieve.ethereum]
 poll_interval_secs = 1

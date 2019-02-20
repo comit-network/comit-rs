@@ -87,7 +87,12 @@
       <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/vendor/noise_handshake/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/application/btsieve/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/application/btsieve/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/application/btsieve/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/application/btsieve/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/application/bitcoin_htlc/target" />
+      <excludeFolder url="file://$MODULE_DIR$/application/btsieve/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node_client/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_wallet/target" />

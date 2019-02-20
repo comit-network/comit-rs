@@ -1,5 +1,3 @@
-pub mod rfc003;
-
 use crate::{
     node_id::NodeId,
     swap_protocols::{self, asset::Asset},
@@ -16,10 +14,13 @@ pub trait Client: Send + Sync + 'static {
     >(
         &self,
         node_id: NodeId,
-        request: rfc003::Request<AL, BL, AA, BA>,
+        request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Box<
         dyn Future<
-                Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>,
+                Item = Result<
+                    swap_protocols::rfc003::messages::AcceptResponseBody<AL, BL>,
+                    SwapReject,
+                >,
                 Error = RequestError,
             > + Send,
     >;

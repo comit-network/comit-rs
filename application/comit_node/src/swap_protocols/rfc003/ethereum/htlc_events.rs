@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{EthereumQuery, EventMatcher, QueryEthereum, Topic},
+    btsieve::{EthereumQuery, EventMatcher, QueryEthereum, Topic},
     swap_protocols::{
         asset::Asset,
         ledger::Ethereum,
@@ -39,7 +39,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
         let htlc_location = query_ethereum
             .create(EthereumQuery::contract_deployment(htlc_params.bytecode()))
             .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::LedgerQueryService)
+            .map_err(rfc003::Error::Btsieve)
             .map(|tx| DeployTransaction {
                 location: calcualte_contract_address_from_deployment_transaction(&tx),
                 transaction: tx,
@@ -62,9 +62,15 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
     fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-        htlc_location: &Address,
+        htlc_deployment: &DeployTransaction<Ethereum>,
+        htlc_funding: &FundTransaction<Ethereum, EtherQuantity>,
     ) -> Box<RedeemedOrRefunded<Ethereum>> {
-        htlc_redeemed_or_refunded(Arc::clone(&self), htlc_params, htlc_location)
+        htlc_redeemed_or_refunded(
+            Arc::clone(&self),
+            htlc_params,
+            htlc_deployment,
+            htlc_funding,
+        )
     }
 }
 
@@ -75,21 +81,22 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 fn htlc_redeemed_or_refunded<A: Asset>(
     query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
     htlc_params: HtlcParams<Ethereum, A>,
-    htlc_location: &Address,
+    htlc_deployment: &DeployTransaction<Ethereum>,
+    _: &FundTransaction<Ethereum, A>,
 ) -> Box<RedeemedOrRefunded<Ethereum>> {
     let refunded_tx = {
         let query_ethereum = Arc::clone(&query_ethereum);
         query_ethereum
             .create(EthereumQuery::Event {
                 event_matchers: vec![EventMatcher {
-                    address: Some(*htlc_location),
+                    address: Some(htlc_deployment.location),
                     data: None,
                     topics: vec![Some(Topic(REFUND_LOG_MSG.into()))],
                 }],
             })
             .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::LedgerQueryService)
-            .map(RefundTransaction::<Ethereum>)
+            .map_err(rfc003::Error::Btsieve)
+            .map(RefundTransaction::<Ethereum>::new)
     };
 
     let redeemed_tx = {
@@ -97,13 +104,13 @@ fn htlc_redeemed_or_refunded<A: Asset>(
         query_ethereum
             .create(EthereumQuery::Event {
                 event_matchers: vec![EventMatcher {
-                    address: Some(*htlc_location),
+                    address: Some(htlc_deployment.location),
                     data: None,
                     topics: vec![Some(Topic(REDEEM_LOG_MSG.into()))],
                 }],
             })
             .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::LedgerQueryService)
+            .map_err(rfc003::Error::Btsieve)
             .and_then(move |transaction| {
                 let secret =
                     extract_secret(&transaction, &htlc_params.secret_hash).ok_or_else(|| {
@@ -147,7 +154,7 @@ mod erc20 {
             let htlc_location = query_ethereum
                 .create(EthereumQuery::contract_deployment(htlc_params.bytecode()))
                 .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-                .map_err(rfc003::Error::LedgerQueryService)
+                .map_err(rfc003::Error::Btsieve)
                 .map(|tx| DeployTransaction {
                     location: calcualte_contract_address_from_deployment_transaction(&tx),
                     transaction: tx,
@@ -175,13 +182,12 @@ mod erc20 {
                     }],
                 })
                 .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-                .map(|tx| {
-                    FundTransaction {
-                        transaction: tx,
-                        asset: htlc_params.asset, // TODO: Return the actual erc20 token amount
-                    }
+                .map(move |transaction| {
+                    // TODO: Get the actual asset out of response from btsieve
+                    let asset = htlc_params.asset;
+                    FundTransaction { transaction, asset }
                 })
-                .map_err(rfc003::Error::LedgerQueryService);
+                .map_err(rfc003::Error::Btsieve);
 
             Box::new(funding_transaction)
         }
@@ -189,9 +195,15 @@ mod erc20 {
         fn htlc_redeemed_or_refunded(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-            htlc_location: &Address,
+            htlc_deployment: &DeployTransaction<Ethereum>,
+            htlc_funding: &FundTransaction<Ethereum, Erc20Token>,
         ) -> Box<RedeemedOrRefunded<Ethereum>> {
-            htlc_redeemed_or_refunded(Arc::clone(&self), htlc_params, htlc_location)
+            htlc_redeemed_or_refunded(
+                Arc::clone(&self),
+                htlc_params,
+                htlc_deployment,
+                htlc_funding,
+            )
         }
     }
 }

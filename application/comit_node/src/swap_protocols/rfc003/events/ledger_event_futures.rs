@@ -2,7 +2,8 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         events::{
-            DeployTransaction, Deployed, Funded, HtlcEvents, LedgerEvents, RedeemedOrRefunded,
+            DeployTransaction, Deployed, FundTransaction, Funded, HtlcEvents, LedgerEvents,
+            RedeemedOrRefunded,
         },
         state_machine::HtlcParams,
         Ledger,
@@ -53,11 +54,12 @@ impl<L: Ledger, A: Asset> LedgerEvents<L, A> for LedgerEventFutures<L, A> {
     fn htlc_redeemed_or_refunded(
         &mut self,
         htlc_params: HtlcParams<L, A>,
-        htlc_location: &L::HtlcLocation,
+        htlc_deployment: &DeployTransaction<L>,
+        htlc_funding: &FundTransaction<L, A>,
     ) -> &mut RedeemedOrRefunded<L> {
         let htlc_events = &self.htlc_events;
         self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
-            htlc_events.htlc_redeemed_or_refunded(htlc_params, htlc_location)
+            htlc_events.htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
         })
     }
 }

@@ -1,9 +1,12 @@
 use crate::{
-    http_api::route_factory::{swap_path, RFC003},
+    http_api::{
+        rfc003::handlers::get_swap::SwapOutcome,
+        route_factory::{swap_path, RFC003},
+    },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::RoleKind,
-        rfc003::{state_store::StateStore, Alice, Bob},
+        rfc003::state_store::StateStore,
         Metadata, MetadataStore, SwapId,
     },
 };
@@ -13,11 +16,11 @@ use rustic_hal::HalResource;
 
 #[derive(Serialize, Debug)]
 pub struct EmbeddedSwapResource {
-    state: String,
+    state: SwapOutcome,
     protocol: String,
 }
 
-pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: &S,
 ) -> Result<Vec<HalResource>, HttpApiProblem> {
@@ -26,12 +29,20 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
         with_swap_types!(
             &metadata,
             (|| -> Result<(), HttpApiProblem> {
-                let state = state_store.get::<Role>(&id)?;
+                let state = state_store.get::<ROLE>(id)?;
 
                 match state {
                     Some(state) => {
+                        // TODO: Implement From<actor::State> for SwapOutcome
+                        let communication = state.swap_communication.clone().into();
+                        let alpha_ledger = state.alpha_ledger_state.clone().into();
+                        let beta_ledger = state.beta_ledger_state.clone().into();
+                        let error = state.error;
+                        let state =
+                            SwapOutcome::new(&communication, &alpha_ledger, &beta_ledger, &error);
+
                         let swap = EmbeddedSwapResource {
-                            state: state.name(),
+                            state,
                             protocol: RFC003.into(),
                         };
 

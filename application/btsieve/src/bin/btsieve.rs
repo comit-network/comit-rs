@@ -4,19 +4,19 @@
 #[macro_use]
 extern crate log;
 
-use config::ConfigError;
-use ethereum_support::web3::{
-    transports::{EventLoopHandle, Http},
-    Web3,
-};
-use futures::stream::Stream;
-use ledger_query_service::{
+use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     settings::{self, Settings},
     InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
     RouteFactory,
 };
+use config::ConfigError;
+use ethereum_support::web3::{
+    transports::{EventLoopHandle, Http},
+    Web3,
+};
+use futures::stream::Stream;
 use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -209,9 +209,9 @@ fn create_ethereum_routes(
 }
 
 fn load_settings() -> Result<Settings, ConfigError> {
-    let config_path = match var("LEDGER_QUERY_SERVICE_CONFIG_PATH") {
+    let config_path = match var("BTSIEVE_CONFIG_PATH") {
         Ok(value) => value,
-        Err(_) => "~/.config/ledger_query_service".into(),
+        Err(_) => "~/.config/btsieve".into(),
     };
     info!("Using settings located in {}", config_path);
     let default_config = format!("{}/{}", config_path.trim(), "default");

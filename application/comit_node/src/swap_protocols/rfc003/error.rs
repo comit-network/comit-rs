@@ -1,9 +1,9 @@
-use crate::{comit_client, ledger_query_service};
+use crate::{btsieve, comit_client};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     SwapResponse(comit_client::RequestError),
-    LedgerQueryService(ledger_query_service::Error),
+    Btsieve(btsieve::Error),
     TimerError,
     InsufficientFunding,
     Internal(String),

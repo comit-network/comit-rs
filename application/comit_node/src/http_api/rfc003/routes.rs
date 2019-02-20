@@ -9,7 +9,7 @@ use crate::{
         route_factory::swap_path,
     },
     swap_protocols::{
-        rfc003::{alice::AliceSpawner, state_store::StateStore, SecretSource},
+        rfc003::{alice::AliceSpawner, state_store::StateStore},
         MetadataStore, SwapId,
     },
 };
@@ -26,10 +26,9 @@ fn into_rejection(problem: HttpApiProblem) -> Rejection {
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
     alice_spawner: A,
-    secret_source: Arc<dyn SecretSource>,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(&alice_spawner, secret_source.as_ref(), request_body_kind)
+    handle_post_swap(&alice_spawner, request_body_kind)
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -40,12 +39,12 @@ pub fn post_swap<A: AliceSpawner>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    handle_get_swap(&metadata_store, &state_store, &id)
+    handle_get_swap(&metadata_store, &state_store, id)
         .map(|(swap_resource, actions)| {
             let mut response = HalResource::new(swap_resource);
             for action in actions {
@@ -58,7 +57,7 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
 ) -> Result<impl Reply, Rejection> {
@@ -72,10 +71,9 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn post_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    secret_source: Arc<dyn SecretSource>,
     id: SwapId,
     action: PostAction,
     body: serde_json::Value,
@@ -83,7 +81,6 @@ pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
     handle_post_action(
         metadata_store.as_ref(),
         state_store.as_ref(),
-        secret_source.as_ref(),
         id,
         action,
         body,
@@ -93,7 +90,7 @@ pub fn post_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_action<T: MetadataStore<SwapId>, S: StateStore<SwapId>>(
+pub fn get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,

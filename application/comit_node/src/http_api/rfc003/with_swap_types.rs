@@ -1,19 +1,20 @@
 macro_rules! _match_role {
-    ($role:ident, $fn:tt) => {
+    ($role:ident, $fn:tt) => {{
+        use crate::swap_protocols::rfc003::{alice, bob};
         #[allow(clippy::redundant_closure_call)]
         match $role {
             RoleKind::Alice => {
                 #[allow(dead_code)]
-                type Role = Alice<AL, BL, AA, BA>;
+                type ROLE = alice::State<AL, BL, AA, BA>;
                 $fn()
             }
             RoleKind::Bob => {
                 #[allow(dead_code)]
-                type Role = Bob<AL, BL, AA, BA>;
+                type ROLE = bob::State<AL, BL, AA, BA>;
                 $fn()
             }
         }
-    };
+    }};
 }
 
 #[macro_export]
@@ -104,24 +105,28 @@ macro_rules! with_swap_types {
 }
 
 macro_rules! _match_role_bob {
-    ($role:ident, $fn:tt) => {
+    ($role:ident, $fn:tt) => {{
+        use crate::swap_protocols::rfc003::bob;
         #[allow(clippy::redundant_closure_call)]
         match $role {
             RoleKind::Bob => {
                 #[allow(dead_code)]
-                type Role = Bob<AL, BL, AA, BA>;
+                type ROLE = bob::State<AL, BL, AA, BA>;
                 $fn()
             }
             _ => Err(HttpApiProblem::with_title_and_type_from_status(400)
                 .set_detail("Requested action is not supported for this role")),
         }
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! with_swap_types_bob {
     ($metadata:expr, $fn:tt) => {{
-        use crate::swap_protocols::{asset::AssetKind, LedgerKind};
+        use crate::{
+            http_api::rfc003::handlers::post_action::{OnlyRedeem, OnlyRefund},
+            swap_protocols::{asset::AssetKind, LedgerKind},
+        };
         use bitcoin_support::BitcoinQuantity;
         use ethereum_support::EtherQuantity;
         let metadata = $metadata;
@@ -142,6 +147,8 @@ macro_rules! with_swap_types_bob {
                 type AA = BitcoinQuantity;
                 #[allow(dead_code)]
                 type BA = EtherQuantity;
+                #[allow(dead_code)]
+                type BobAcceptBody = OnlyRefund<BL>;
 
                 _match_role_bob!(role, $fn)
             }
@@ -160,6 +167,8 @@ macro_rules! with_swap_types_bob {
                 type AA = BitcoinQuantity;
                 #[allow(dead_code)]
                 type BA = Erc20Token;
+                #[allow(dead_code)]
+                type BobAcceptBody = OnlyRefund<BL>;
 
                 _match_role_bob!(role, $fn)
             }
@@ -178,6 +187,8 @@ macro_rules! with_swap_types_bob {
                 type AA = EtherQuantity;
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
+                #[allow(dead_code)]
+                type BobAcceptBody = OnlyRedeem<AL>;
 
                 _match_role_bob!(role, $fn)
             }
@@ -196,6 +207,8 @@ macro_rules! with_swap_types_bob {
                 type AA = Erc20Token;
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
+                #[allow(dead_code)]
+                type BobAcceptBody = OnlyRedeem<AL>;
 
                 _match_role_bob!(role, $fn)
             }

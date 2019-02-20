@@ -42,11 +42,16 @@ pub fn unsupported() -> HttpApiProblem {
     HttpApiProblem::new("swap-not-supported").set_status(400)
 }
 
-pub fn serde(e: &serde_json::Error) -> HttpApiProblem {
+pub fn deserialize(e: &serde_json::Error) -> HttpApiProblem {
     error!("Failed to deserialize body: {:?}", e);
     HttpApiProblem::new("invalid-body")
         .set_status(400)
         .set_detail("Failed to deserialize given body.")
+}
+
+pub fn serialize(e: serde_json::Error) -> HttpApiProblem {
+    error!("Failed to serialize body: {:?}", e);
+    HttpApiProblem::with_title_and_type_from_status(500)
 }
 
 pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {

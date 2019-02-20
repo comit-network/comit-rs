@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{Error, Query, QueryId},
+    btsieve::{Error, Query, QueryId},
     swap_protocols::ledger::Ethereum,
 };
 use ethereum_support::web3::types::{Address, Bytes, Transaction, H256};

@@ -1,7 +1,4 @@
-use futures::{
-    future::Future,
-    stream::{iter_ok, Stream},
-};
+use futures::{future::Future, stream::Stream};
 use std::time::{Duration, Instant};
 use tokio::timer::Interval;
 

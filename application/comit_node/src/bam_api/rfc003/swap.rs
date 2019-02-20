@@ -1,6 +1,6 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
-    comit_client::{self, rfc003::RequestBody, SwapReject},
+    comit_client::SwapReject,
     swap_protocols::{
         asset::{Asset, AssetKind},
         ledger::LedgerKind,
@@ -129,14 +129,14 @@ fn handle_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
     beta_ledger: BL,
     alpha_asset: AA,
     beta_asset: BA,
-    body: RequestBody<AL, BL>,
+    body: rfc003::messages::RequestBody<AL, BL>,
 ) -> Box<dyn Future<Item = Response, Error = ()> + Send + 'static>
 where
     LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
 {
     match bob_spawner.spawn(
         swap_id,
-        rfc003::bob::SwapRequest::<AL, BL, AA, BA> {
+        rfc003::messages::Request::<AL, BL, AA, BA> {
             alpha_asset,
             beta_asset,
             alpha_ledger,
@@ -151,9 +151,9 @@ where
         Ok(response_future) => Box::new(response_future.then(move |result| {
             let response = match result {
                 Ok(Ok(response)) => {
-                    let body = comit_client::rfc003::AcceptResponseBody::<AL, BL> {
-                        beta_ledger_refund_identity: response.beta_ledger_refund_identity.into(),
-                        alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity.into(),
+                    let body = rfc003::messages::AcceptResponseBody::<AL, BL> {
+                        beta_ledger_refund_identity: response.beta_ledger_refund_identity,
+                        alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity,
                     };
                     Response::new(Status::OK(20)).with_body(
                         serde_json::to_value(body)

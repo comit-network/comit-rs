@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{BitcoinQuery, QueryBitcoin},
+    btsieve::{BitcoinQuery, QueryBitcoin},
     swap_protocols::{
         ledger::Bitcoin,
         rfc003::{
@@ -29,7 +29,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
         let htlc_location = self
             .create(BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
             .and_then(move |query_id| query_bitcoin.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::LedgerQueryService)
+            .map_err(rfc003::Error::Btsieve)
             .and_then(move |tx| {
                 let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
                     .ok_or_else(|| {
@@ -67,34 +67,35 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
     fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
-        htlc_location: &OutPoint,
+        htlc_deployment: &DeployTransaction<Bitcoin>,
+        _: &FundTransaction<Bitcoin, BitcoinQuantity>,
     ) -> Box<RedeemedOrRefunded<Bitcoin>> {
         let refunded_tx = {
             let query_bitcoin = Arc::clone(&self);
 
             let refunded_query = self
-                .create(BitcoinQuery::refund_htlc(*htlc_location))
-                .map_err(rfc003::Error::LedgerQueryService);
+                .create(BitcoinQuery::refund_htlc(htlc_deployment.location))
+                .map_err(rfc003::Error::Btsieve);
 
             refunded_query
                 .and_then(move |query_id| {
                     query_bitcoin
                         .transaction_first_result(&query_id)
-                        .map_err(rfc003::Error::LedgerQueryService)
+                        .map_err(rfc003::Error::Btsieve)
                 })
-                .map(RefundTransaction::<Bitcoin>)
+                .map(RefundTransaction::<Bitcoin>::new)
         };
 
         let redeemed_tx = {
             let query_bitcoin = Arc::clone(&self);
             let redeemed_query = self
-                .create(BitcoinQuery::redeem_htlc(*htlc_location))
-                .map_err(rfc003::Error::LedgerQueryService);
+                .create(BitcoinQuery::redeem_htlc(htlc_deployment.location))
+                .map_err(rfc003::Error::Btsieve);
 
             redeemed_query.and_then(move |query_id| {
                 query_bitcoin
                     .transaction_first_result(&query_id)
-                    .map_err(rfc003::Error::LedgerQueryService)
+                    .map_err(rfc003::Error::Btsieve)
                     .and_then(move |transaction| {
                         let secret = extract_secret(&transaction, &htlc_params.secret_hash)
                             .ok_or_else(|| {

@@ -5,11 +5,16 @@
 // open up a new connection and decide how to respond to requests?
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
-    comit_client::{rfc003, Client, RequestError, SwapDeclineReason, SwapReject},
+    comit_client::{Client, RequestError, SwapDeclineReason, SwapReject},
     node_id::NodeId,
     swap_protocols::{
-        self, asset::Asset, dependencies::ProtocolDependencies, metadata_store::MetadataStore,
-        rfc003::state_store::StateStore, swap_id::SwapId, SwapProtocols,
+        self,
+        asset::Asset,
+        dependencies::ProtocolDependencies,
+        metadata_store::MetadataStore,
+        rfc003::{self, state_store::StateStore},
+        swap_id::SwapId,
+        SwapProtocols,
     },
 };
 use bam::{self, json, Status};
@@ -23,11 +28,13 @@ pub struct Reason {
 
 #[allow(type_alias_bounds)]
 type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003::Ledger> = Box<
-    dyn Future<Item = Result<rfc003::AcceptResponseBody<AL, BL>, SwapReject>, Error = RequestError>
-        + Send,
+    dyn Future<
+            Item = Result<rfc003::messages::AcceptResponseBody<AL, BL>, SwapReject>,
+            Error = RequestError,
+        > + Send,
 >;
 
-impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> Client for ProtocolDependencies<T, S> {
+impl<T: MetadataStore<SwapId>, S: StateStore> Client for ProtocolDependencies<T, S> {
     fn send_rfc003_swap_request<
         AL: swap_protocols::rfc003::Ledger,
         BL: swap_protocols::rfc003::Ledger,
@@ -36,7 +43,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore<SwapId>> Client for ProtocolDepende
     >(
         &self,
         node_id: NodeId,
-        request: rfc003::Request<AL, BL, AA, BA>,
+        request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
         Box::new(
             self.connection_pool
@@ -109,7 +116,7 @@ fn build_swap_request<
     AA: Asset,
     BA: Asset,
 >(
-    request: rfc003::Request<AL, BL, AA, BA>,
+    request: rfc003::messages::Request<AL, BL, AA, BA>,
 ) -> Result<json::OutgoingRequest, serde_json::Error> {
     let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
     let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
@@ -123,7 +130,10 @@ fn build_swap_request<
         .with_header("alpha_asset", request.alpha_asset.into().to_bam_header()?)
         .with_header("beta_asset", request.beta_asset.into().to_bam_header()?)
         .with_header("swap_protocol", SwapProtocols::Rfc003.to_bam_header()?)
-        .with_body(serde_json::to_value(rfc003::RequestBody::<AL, BL> {
+        .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
+            AL,
+            BL,
+        > {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
             alpha_expiry,

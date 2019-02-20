@@ -7,6 +7,7 @@ use std::{
 };
 pub trait Asset:
     Clone
+    + Copy
     + Debug
     + Display
     + Send

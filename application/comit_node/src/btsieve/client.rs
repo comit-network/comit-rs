@@ -1,5 +1,5 @@
 use crate::{
-    ledger_query_service::{
+    btsieve::{
         bitcoin::{BitcoinQuery, QueryBitcoin},
         ethereum::{EthereumQuery, QueryEthereum},
         timer_poll_future::poll_until_item,
@@ -14,7 +14,7 @@ use serde::Deserialize;
 use tokio::prelude::future::Future;
 
 #[derive(Debug, Clone)]
-pub struct LqsHttpClient {
+pub struct BtsieveHttpClient {
     client: Client,
     create_bitcoin_transaction_query_endpoint: Url,
     create_bitcoin_block_query_endpoint: Url,
@@ -30,13 +30,13 @@ pub struct QueryResponse<T> {
     matches: Vec<T>,
 }
 
-impl LqsHttpClient {
+impl BtsieveHttpClient {
     pub fn new(
         endpoint: &Url,
         ethereum_poll_interval: Duration,
         bitcoin_poll_interval: Duration,
     ) -> Self {
-        LqsHttpClient {
+        Self {
             client: Client::new(),
             create_bitcoin_transaction_query_endpoint: endpoint
                 .join("queries/bitcoin/transactions")
@@ -77,8 +77,9 @@ impl LqsHttpClient {
                 if response.status() != StatusCode::CREATED {
                     if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
                         error!(
-                            "Failed to create query. LQS returned: {}",
-                            String::from_utf8(bytes.to_vec()).expect("LQS returned non-utf8 error")
+                            "Failed to create query. btsieve returned: {}",
+                            String::from_utf8(bytes.to_vec())
+                                .expect("btsieve returned non-utf8 error")
                         );
                     }
 
@@ -183,7 +184,7 @@ impl LqsHttpClient {
 mod ethereum {
     use super::*;
     use ethereum_support::{Transaction, H256};
-    impl QueryEthereum for LqsHttpClient {
+    impl QueryEthereum for BtsieveHttpClient {
         fn create(
             &self,
             query: EthereumQuery,
@@ -202,7 +203,7 @@ mod ethereum {
             &self,
             query: &QueryId<Ethereum>,
         ) -> Box<dyn Future<Item = (), Error = Error> + Send> {
-            LqsHttpClient::delete(&self, query)
+            BtsieveHttpClient::delete(&self, query)
         }
 
         fn txid_results(
@@ -234,7 +235,7 @@ mod ethereum {
 mod bitcoin {
     use super::*;
     use bitcoin_support::{Transaction, TransactionId};
-    impl QueryBitcoin for LqsHttpClient {
+    impl QueryBitcoin for BtsieveHttpClient {
         fn create(
             &self,
             query: BitcoinQuery,
@@ -252,7 +253,7 @@ mod bitcoin {
             &self,
             query: &QueryId<Bitcoin>,
         ) -> Box<dyn Future<Item = (), Error = Error> + Send> {
-            LqsHttpClient::delete(&self, query)
+            BtsieveHttpClient::delete(&self, query)
         }
 
         fn txid_results(

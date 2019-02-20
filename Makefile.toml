@@ -35,7 +35,7 @@ dependencies = [
 [tasks.post-test]
 workspace = false
 dependencies = [
-    "lqs",
+    "btsieve",
     "e2e",
     "dry",       
 ]
@@ -52,20 +52,20 @@ dependencies = [
 [tasks.ci-flow]
 workspace = false
 
-# Overridden because: we want --all-targets
+# Overridden because: we want --all and workspace = false
 [tasks.build]
 workspace = false
-args = ["build", "--all", "--all-targets"]
+args = ["build", "--all"]
 
-# Overridden because: we want --all-targets
+# Overridden because: we want --all and workspace = false
 [tasks.build-verbose]
 workspace = false
-args = ["build", "--all", "--all-targets", "--verbose"]
+args = ["build", "--all", "--verbose"]
 
-# Overridden because: we want --all-targets
+# Overridden because: we want --all and workspace = false
 [tasks.test-verbose]
 workspace = false
-args = ["test", "--all", "--all-targets", "--verbose"]
+args = ["test", "--all", "--verbose"]
 
 # Overridden because: add script
 [tasks.init]
@@ -95,9 +95,9 @@ alias = "e2e-tests-flow"
 workspace = false
 alias = "dry-tests-flow"
 
-[tasks.lqs]
+[tasks.btsieve]
 workspace = false
-alias = "lqs-tests-flow"
+alias = "btsieve-tests-flow"
 
 ################
 # Custom tasks #
@@ -258,32 +258,32 @@ workspace = false
 private = true
 
 ######################################
-# Ledger Query Service API Test flow #
-[tasks.lqs-tests-flow]
-description = "Defines the ledger_query_service API tests flow."
+# btsieve API Test flow #
+[tasks.btsieve-tests-flow]
+description = "Defines the btsieve API tests flow."
 workspace = false
 dependencies = [
     "build",
-    "pre-lqs-tests",
-    "lqs-tests",
-    "post-lqs-tests",
+    "pre-btsieve-tests",
+    "btsieve-tests",
+    "post-btsieve-tests",
 ]
 
-[tasks.pre-lqs-tests]
+[tasks.pre-btsieve-tests]
 alias = "pre-e2e-tests"
 
-[tasks.lqs-tests]
-description = "Runs ledger_query_service API tests."
+[tasks.btsieve-tests]
+description = "Runs btsieve API tests."
 workspace = false
 private = true
 script_runner = "bash"
 script = [
 '''
 export ROOT=$(pwd);
-./api_tests/npm_wrapper.sh ./ledger_query_service/
+./api_tests/npm_wrapper.sh ./btsieve/
 '''
 ]
 
-[tasks.post-lqs-tests]
+[tasks.post-btsieve-tests]
 workspace = false
 private = true

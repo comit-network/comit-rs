@@ -2,8 +2,7 @@ use crate::swap_protocols::{
     ledger::Bitcoin,
     rfc003::{state_machine::HtlcParams, Ledger},
 };
-use bitcoin_support::{Address, BitcoinQuantity, Blocks, OutPoint};
-use secp256k1_support::KeyPair;
+use bitcoin_support::{Address, BitcoinQuantity, OutPoint};
 
 mod actions;
 mod extract_secret;
@@ -17,9 +16,7 @@ pub use self::{
 };
 
 impl Ledger for Bitcoin {
-    type LockDuration = Blocks;
     type HtlcLocation = OutPoint;
-    type HtlcIdentity = KeyPair;
 }
 
 impl From<HtlcParams<Bitcoin, BitcoinQuantity>> for Htlc {
