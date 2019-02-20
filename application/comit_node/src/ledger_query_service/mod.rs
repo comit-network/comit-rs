@@ -7,7 +7,6 @@ use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 mod bitcoin;
 mod client;
 mod ethereum;
-
 mod timer_poll_future;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
