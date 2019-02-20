@@ -7,8 +7,8 @@ use crate::{
             self,
             ethereum::extract_secret::extract_secret,
             events::{
-                DeployTransaction, Deployed, FundTransaction, Funded, HtlcEvents,
-                RedeemTransaction, RedeemedOrRefunded, RefundTransaction,
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+                RedeemedOrRefundedFuture, Refunded,
             },
             state_machine::HtlcParams,
         },
@@ -34,26 +34,26 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-    ) -> Box<Deployed<Ethereum>> {
+    ) -> Box<DeployedFuture<Ethereum>> {
         let query_ethereum = Arc::clone(&self);
-        let htlc_location = query_ethereum
+        let deployed_future = query_ethereum
             .create(EthereumQuery::contract_deployment(htlc_params.bytecode()))
             .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
-            .map(|tx| DeployTransaction {
+            .map(|tx| Deployed {
                 location: calcualte_contract_address_from_deployment_transaction(&tx),
                 transaction: tx,
             });
 
-        Box::new(htlc_location)
+        Box::new(deployed_future)
     }
 
     fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-        deploy_transaction: &DeployTransaction<Ethereum>,
-    ) -> Box<Funded<Ethereum, EtherQuantity>> {
-        Box::new(future::ok(FundTransaction {
+        deploy_transaction: &Deployed<Ethereum>,
+    ) -> Box<FundedFuture<Ethereum, EtherQuantity>> {
+        Box::new(future::ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
             asset: EtherQuantity::from_wei(deploy_transaction.transaction.value),
         }))
@@ -62,9 +62,9 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
     fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-        htlc_deployment: &DeployTransaction<Ethereum>,
-        htlc_funding: &FundTransaction<Ethereum, EtherQuantity>,
-    ) -> Box<RedeemedOrRefunded<Ethereum>> {
+        htlc_deployment: &Deployed<Ethereum>,
+        htlc_funding: &Funded<Ethereum, EtherQuantity>,
+    ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
         htlc_redeemed_or_refunded(
             Arc::clone(&self),
             htlc_params,
@@ -81,10 +81,10 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 fn htlc_redeemed_or_refunded<A: Asset>(
     query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
     htlc_params: HtlcParams<Ethereum, A>,
-    htlc_deployment: &DeployTransaction<Ethereum>,
-    _: &FundTransaction<Ethereum, A>,
-) -> Box<RedeemedOrRefunded<Ethereum>> {
-    let refunded_tx = {
+    htlc_deployment: &Deployed<Ethereum>,
+    _: &Funded<Ethereum, A>,
+) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
+    let refunded_future = {
         let query_ethereum = Arc::clone(&query_ethereum);
         query_ethereum
             .create(EthereumQuery::Event {
@@ -96,10 +96,10 @@ fn htlc_redeemed_or_refunded<A: Asset>(
             })
             .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
-            .map(RefundTransaction::<Ethereum>::new)
+            .map(Refunded::<Ethereum>::new)
     };
 
-    let redeemed_tx = {
+    let redeemed_future = {
         let query_ethereum = Arc::clone(&query_ethereum);
         query_ethereum
             .create(EthereumQuery::Event {
@@ -118,7 +118,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                             "Redeem transaction didn't have the secret in it".into(),
                         )
                     })?;
-                Ok(RedeemTransaction {
+                Ok(Redeemed {
                     transaction,
                     secret,
                 })
@@ -126,8 +126,8 @@ fn htlc_redeemed_or_refunded<A: Asset>(
     };
 
     Box::new(
-        redeemed_tx
-            .select2(refunded_tx)
+        redeemed_future
+            .select2(refunded_future)
             .map(|tx| match tx {
                 Either::A((tx, _)) => Either::A(tx),
                 Either::B((tx, _)) => Either::B(tx),
@@ -149,27 +149,27 @@ mod erc20 {
         fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-        ) -> Box<Deployed<Ethereum>> {
+        ) -> Box<DeployedFuture<Ethereum>> {
             let query_ethereum = Arc::clone(&self);
-            let htlc_location = query_ethereum
+            let deployed_future = query_ethereum
                 .create(EthereumQuery::contract_deployment(htlc_params.bytecode()))
                 .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
                 .map_err(rfc003::Error::Btsieve)
-                .map(|tx| DeployTransaction {
+                .map(|tx| Deployed {
                     location: calcualte_contract_address_from_deployment_transaction(&tx),
                     transaction: tx,
                 });
 
-            Box::new(htlc_location)
+            Box::new(deployed_future)
         }
 
         fn htlc_funded(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-            deployment: &DeployTransaction<Ethereum>,
-        ) -> Box<Funded<Ethereum, Erc20Token>> {
+            deployment: &Deployed<Ethereum>,
+        ) -> Box<FundedFuture<Ethereum, Erc20Token>> {
             let query_ethereum = Arc::clone(&self);
-            let funding_transaction = self
+            let funded_future = self
                 .create(EthereumQuery::Event {
                     event_matchers: vec![EventMatcher {
                         address: Some(htlc_params.asset.token_contract()),
@@ -185,19 +185,19 @@ mod erc20 {
                 .map(move |transaction| {
                     // TODO: Get the actual asset out of response from btsieve
                     let asset = htlc_params.asset;
-                    FundTransaction { transaction, asset }
+                    Funded { transaction, asset }
                 })
                 .map_err(rfc003::Error::Btsieve);
 
-            Box::new(funding_transaction)
+            Box::new(funded_future)
         }
 
         fn htlc_redeemed_or_refunded(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-            htlc_deployment: &DeployTransaction<Ethereum>,
-            htlc_funding: &FundTransaction<Ethereum, Erc20Token>,
-        ) -> Box<RedeemedOrRefunded<Ethereum>> {
+            htlc_deployment: &Deployed<Ethereum>,
+            htlc_funding: &Funded<Ethereum, Erc20Token>,
+        ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
             htlc_redeemed_or_refunded(
                 Arc::clone(&self),
                 htlc_params,

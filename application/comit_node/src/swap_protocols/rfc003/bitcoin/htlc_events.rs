@@ -6,8 +6,8 @@ use crate::{
             self,
             bitcoin::extract_secret::extract_secret,
             events::{
-                DeployTransaction, Deployed, FundTransaction, Funded, HtlcEvents,
-                RedeemTransaction, RedeemedOrRefunded, RefundTransaction,
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+                RedeemedOrRefundedFuture, Refunded,
             },
             state_machine::HtlcParams,
         },
@@ -24,9 +24,9 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
-    ) -> Box<Deployed<Bitcoin>> {
+    ) -> Box<DeployedFuture<Bitcoin>> {
         let query_bitcoin = Arc::clone(&self);
-        let htlc_location = self
+        let deployed_future = self
             .create(BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
             .and_then(move |query_id| query_bitcoin.transaction_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
@@ -38,7 +38,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
                         )
                     })?;
 
-                Ok(DeployTransaction {
+                Ok(Deployed {
                     location: OutPoint {
                         txid: tx.txid(),
                         vout,
@@ -47,18 +47,18 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
                 })
             });
 
-        Box::new(htlc_location)
+        Box::new(deployed_future)
     }
 
     fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
-        htlc_deployment: &DeployTransaction<Bitcoin>,
-    ) -> Box<Funded<Bitcoin, BitcoinQuantity>> {
+        htlc_deployment: &Deployed<Bitcoin>,
+    ) -> Box<FundedFuture<Bitcoin, BitcoinQuantity>> {
         let tx = &htlc_deployment.transaction;
         let asset =
             BitcoinQuantity::from_satoshi(tx.output[htlc_deployment.location.vout as usize].value);
-        Box::new(future::ok(FundTransaction {
+        Box::new(future::ok(Funded {
             transaction: tx.clone(),
             asset,
         }))
@@ -67,10 +67,10 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
     fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
-        htlc_deployment: &DeployTransaction<Bitcoin>,
-        _: &FundTransaction<Bitcoin, BitcoinQuantity>,
-    ) -> Box<RedeemedOrRefunded<Bitcoin>> {
-        let refunded_tx = {
+        htlc_deployment: &Deployed<Bitcoin>,
+        _: &Funded<Bitcoin, BitcoinQuantity>,
+    ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
+        let refunded_future = {
             let query_bitcoin = Arc::clone(&self);
 
             let refunded_query = self
@@ -83,10 +83,10 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
                         .transaction_first_result(&query_id)
                         .map_err(rfc003::Error::Btsieve)
                 })
-                .map(RefundTransaction::<Bitcoin>::new)
+                .map(Refunded::<Bitcoin>::new)
         };
 
-        let redeemed_tx = {
+        let redeemed_future = {
             let query_bitcoin = Arc::clone(&self);
             let redeemed_query = self
                 .create(BitcoinQuery::redeem_htlc(htlc_deployment.location))
@@ -107,7 +107,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
                                     "Redeem transaction didn't have the secret in it".into(),
                                 )
                             })?;
-                        Ok(RedeemTransaction {
+                        Ok(Redeemed {
                             transaction,
                             secret,
                         })
@@ -116,8 +116,8 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
         };
 
         Box::new(
-            redeemed_tx
-                .select2(refunded_tx)
+            redeemed_future
+                .select2(refunded_future)
                 .map(|tx| match tx {
                     Either::A((tx, _)) => Either::A(tx),
                     Either::B((tx, _)) => Either::B(tx),

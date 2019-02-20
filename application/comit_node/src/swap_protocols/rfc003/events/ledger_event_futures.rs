@@ -2,8 +2,8 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         events::{
-            DeployTransaction, Deployed, FundTransaction, Funded, HtlcEvents, LedgerEvents,
-            RedeemedOrRefunded,
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, LedgerEvents,
+            RedeemedOrRefundedFuture,
         },
         state_machine::HtlcParams,
         Ledger,
@@ -18,9 +18,9 @@ use crate::swap_protocols::{
 #[allow(missing_debug_implementations)]
 pub struct LedgerEventFutures<L: Ledger, A: Asset> {
     htlc_events: Box<dyn HtlcEvents<L, A>>,
-    htlc_deployed: Option<Box<Deployed<L>>>,
-    htlc_funded: Option<Box<Funded<L, A>>>,
-    htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefunded<L>>>,
+    htlc_deployed: Option<Box<DeployedFuture<L>>>,
+    htlc_funded: Option<Box<FundedFuture<L, A>>>,
+    htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefundedFuture<L>>>,
 }
 
 impl<L: Ledger, A: Asset> LedgerEventFutures<L, A> {
@@ -35,7 +35,7 @@ impl<L: Ledger, A: Asset> LedgerEventFutures<L, A> {
 }
 
 impl<L: Ledger, A: Asset> LedgerEvents<L, A> for LedgerEventFutures<L, A> {
-    fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut Deployed<L> {
+    fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut DeployedFuture<L> {
         let htlc_events = &self.htlc_events;
         self.htlc_deployed
             .get_or_insert_with(move || htlc_events.htlc_deployed(htlc_params))
@@ -44,8 +44,8 @@ impl<L: Ledger, A: Asset> LedgerEvents<L, A> for LedgerEventFutures<L, A> {
     fn htlc_funded(
         &mut self,
         htlc_params: HtlcParams<L, A>,
-        htlc_location: &DeployTransaction<L>,
-    ) -> &mut Funded<L, A> {
+        htlc_location: &Deployed<L>,
+    ) -> &mut FundedFuture<L, A> {
         let htlc_events = &self.htlc_events;
         self.htlc_funded
             .get_or_insert_with(move || htlc_events.htlc_funded(htlc_params, htlc_location))
@@ -54,9 +54,9 @@ impl<L: Ledger, A: Asset> LedgerEvents<L, A> for LedgerEventFutures<L, A> {
     fn htlc_redeemed_or_refunded(
         &mut self,
         htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &DeployTransaction<L>,
-        htlc_funding: &FundTransaction<L, A>,
-    ) -> &mut RedeemedOrRefunded<L> {
+        htlc_deployment: &Deployed<L>,
+        htlc_funding: &Funded<L, A>,
+    ) -> &mut RedeemedOrRefundedFuture<L> {
         let htlc_events = &self.htlc_events;
         self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
             htlc_events.htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
