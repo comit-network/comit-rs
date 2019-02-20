@@ -2,7 +2,7 @@ use crate::{
     ledger_query_service::{Error, Query, QueryId},
     swap_protocols::ledger::Bitcoin,
 };
-use bitcoin_support::{Transaction, TransactionId};
+use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};
 use futures::Future;
 use serde::Serialize;
 
@@ -17,6 +17,32 @@ pub enum BitcoinQuery {
     Block {
         min_height: Option<u32>,
     },
+}
+
+impl BitcoinQuery {
+    pub fn deploy_htlc(address: Address) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: Some(address),
+            from_outpoint: None,
+            unlock_script: None,
+        }
+    }
+
+    pub fn refund_htlc(htlc_location: OutPoint) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: None,
+            from_outpoint: Some(htlc_location),
+            unlock_script: Some(vec![vec![0u8]]),
+        }
+    }
+
+    pub fn redeem_htlc(htlc_location: OutPoint) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: None,
+            from_outpoint: Some(htlc_location),
+            unlock_script: Some(vec![vec![1u8]]),
+        }
+    }
 }
 
 impl Query for BitcoinQuery {}

@@ -27,11 +27,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
     ) -> Box<Deployed<Bitcoin>> {
         let query_bitcoin = Arc::clone(&self);
         let htlc_location = self
-            .create(BitcoinQuery::Transaction {
-                to_address: Some(htlc_params.compute_address()),
-                from_outpoint: None,
-                unlock_script: None,
-            })
+            .create(BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
             .and_then(move |query_id| query_bitcoin.transaction_first_result(&query_id))
             .map_err(rfc003::Error::LedgerQueryService)
             .and_then(move |tx| {
@@ -77,11 +73,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
             let query_bitcoin = Arc::clone(&self);
 
             let refunded_query = self
-                .create(BitcoinQuery::Transaction {
-                    to_address: None,
-                    from_outpoint: Some(*htlc_location),
-                    unlock_script: Some(vec![vec![0u8]]),
-                })
+                .create(BitcoinQuery::refund_htlc(*htlc_location))
                 .map_err(rfc003::Error::LedgerQueryService);
 
             refunded_query
@@ -96,11 +88,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
         let redeemed_tx = {
             let query_bitcoin = Arc::clone(&self);
             let redeemed_query = self
-                .create(BitcoinQuery::Transaction {
-                    to_address: None,
-                    from_outpoint: Some(*htlc_location),
-                    unlock_script: Some(vec![vec![1u8]]),
-                })
+                .create(BitcoinQuery::redeem_htlc(*htlc_location))
                 .map_err(rfc003::Error::LedgerQueryService);
 
             redeemed_query.and_then(move |query_id| {
