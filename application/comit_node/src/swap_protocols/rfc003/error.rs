@@ -6,6 +6,5 @@ pub enum Error {
     Btsieve(btsieve::Error),
     TimerError,
     InsufficientFunding,
-    HtlcDeployment,
     Internal(String),
 }

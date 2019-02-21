@@ -1,21 +1,16 @@
-use crate::swap_protocols::rfc003::{
-    secret::{Secret, SecretHash},
-    ExtractSecret,
-};
+use crate::swap_protocols::rfc003::secret::{Secret, SecretHash};
 use bitcoin_support::Transaction;
 
-impl ExtractSecret for Transaction {
-    fn extract_secret(&self, secret_hash: &SecretHash) -> Option<Secret> {
-        self.input.iter().find_map(|txin| {
-            txin.witness
-                .iter()
-                .find_map(|script_item| match Secret::from_vec(&script_item) {
-                    Ok(secret) if secret.hash() == *secret_hash => Some(secret),
-                    Ok(_) => None,
-                    Err(_) => None,
-                })
-        })
-    }
+pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
+    transaction.input.iter().find_map(|txin| {
+        txin.witness
+            .iter()
+            .find_map(|script_item| match Secret::from_vec(&script_item) {
+                Ok(secret) if secret.hash() == *secret_hash => Some(secret),
+                Ok(_) => None,
+                Err(_) => None,
+            })
+    })
 }
 
 #[cfg(test)]
@@ -50,7 +45,7 @@ mod test {
         let secret = Secret::from(*b"This is our favourite passphrase");
         let transaction = setup(&secret);
 
-        assert_that!(transaction.extract_secret(&secret.hash()))
+        assert_that!(extract_secret(&transaction, &secret.hash()))
             .is_some()
             .is_equal_to(&secret);
     }
@@ -65,7 +60,7 @@ mod test {
              bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
         )
         .unwrap();
-        assert_that!(transaction.extract_secret(&secret_hash)).is_none();
+        assert_that!(extract_secret(&transaction, &secret_hash)).is_none();
     }
 
     #[test]
@@ -77,7 +72,7 @@ mod test {
                 .unwrap();
         let secret = Secret::from_vec(&hex_secret).unwrap();
 
-        assert_that!(transaction.extract_secret(&secret.hash()))
+        assert_that!(extract_secret(&transaction, &secret.hash()))
             .is_some()
             .is_equal_to(&secret);
     }

@@ -111,6 +111,8 @@ pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
 pub struct LedgerState<L: Ledger> {
     current_state: HtlcState,
     htlc_location: Option<L::HtlcLocation>,
+    deploy_tx: Option<L::Transaction>,
+    fund_tx: Option<L::Transaction>,
     redeem_tx: Option<L::Transaction>,
     refund_tx: Option<L::Transaction>,
 }
@@ -259,6 +261,8 @@ impl<L: Ledger> Default for LedgerState<L> {
         Self {
             current_state: HtlcState::default(),
             htlc_location: None,
+            deploy_tx: None,
+            fund_tx: None,
             redeem_tx: None,
             refund_tx: None,
         }
@@ -276,33 +280,54 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
         use self::rfc003::LedgerState::*;
         match ledger_state {
             NotDeployed => Self::default(),
-            Deployed { htlc_location } => Self {
+            Deployed {
+                htlc_location,
+                deploy_transaction,
+            } => Self {
                 current_state: HtlcState::Deployed,
                 htlc_location: Some(htlc_location),
-                ..Default::default()
+                deploy_tx: Some(deploy_transaction),
+                fund_tx: None,
+                refund_tx: None,
+                redeem_tx: None,
             },
-            Funded { htlc_location } => Self {
+            Funded {
+                htlc_location,
+                deploy_transaction,
+                fund_transaction,
+            } => Self {
                 current_state: HtlcState::Funded,
                 htlc_location: Some(htlc_location),
-                ..Default::default()
+                deploy_tx: Some(deploy_transaction),
+                fund_tx: Some(fund_transaction),
+                refund_tx: None,
+                redeem_tx: None,
             },
             Redeemed {
                 htlc_location,
+                deploy_transaction,
+                fund_transaction,
                 redeem_transaction,
             } => Self {
                 current_state: HtlcState::Redeemed,
                 htlc_location: Some(htlc_location),
+                deploy_tx: Some(deploy_transaction),
+                fund_tx: Some(fund_transaction),
                 redeem_tx: Some(redeem_transaction),
-                ..Default::default()
+                refund_tx: None,
             },
             Refunded {
                 htlc_location,
+                deploy_transaction,
+                fund_transaction,
                 refund_transaction,
             } => Self {
                 current_state: HtlcState::Redeemed,
                 htlc_location: Some(htlc_location),
+                deploy_tx: Some(deploy_transaction),
+                fund_tx: Some(fund_transaction),
                 refund_tx: Some(refund_transaction),
-                ..Default::default()
+                redeem_tx: None,
             },
         }
     }

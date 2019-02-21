@@ -5,7 +5,7 @@
 extern crate log;
 
 use comit_node::{
-    btsieve::DefaultBtsieveApiClient,
+    btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
     comit_server,
     connection_pool::ConnectionPool,
     http_api::route_factory,
@@ -14,7 +14,7 @@ use comit_node::{
     swap_protocols::{
         metadata_store::MetadataStore,
         rfc003::state_store::{InMemoryStateStore, StateStore},
-        InMemoryMetadataStore, LedgerEventDependencies, ProtocolDependencies, SwapId,
+        InMemoryMetadataStore, ProtocolDependencies, SwapId,
     },
 };
 use directories;
@@ -36,7 +36,7 @@ fn main() -> Result<(), failure::Error> {
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        Arc::clone(&btsieve_client),
+        btsieve_client.clone(),
         Arc::clone(&connection_pool),
     );
 
@@ -78,23 +78,27 @@ fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
     }
 }
 
-fn create_btsieve_api_client(settings: &ComitNodeSettings) -> Arc<DefaultBtsieveApiClient> {
-    Arc::new(DefaultBtsieveApiClient::new(&settings.btsieve.url))
+fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient {
+    BtsieveHttpClient::new(
+        &settings.btsieve.url,
+        settings.btsieve.bitcoin.poll_interval_secs,
+        settings.btsieve.ethereum.poll_interval_secs,
+    )
 }
 
-fn create_dependencies<T: MetadataStore<SwapId>, S: StateStore>(
+fn create_dependencies<
+    T: MetadataStore<SwapId>,
+    S: StateStore,
+    Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static,
+>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    btsieve_client: Arc<DefaultBtsieveApiClient>,
+    querier: Q,
     connection_pool: Arc<ConnectionPool>,
 ) -> ProtocolDependencies<T, S> {
     ProtocolDependencies {
-        ledger_events: LedgerEventDependencies {
-            btsieve_client,
-            btsieve_bitcoin_poll_interval: settings.btsieve.bitcoin.poll_interval_secs,
-            btsieve_ethereum_poll_interval: settings.btsieve.ethereum.poll_interval_secs,
-        },
+        ledger_events: querier.into(),
         metadata_store,
         state_store,
         connection_pool,

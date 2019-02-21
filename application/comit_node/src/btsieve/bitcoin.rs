@@ -1,4 +1,9 @@
-use crate::btsieve::Query;
+use crate::{
+    btsieve::{Error, Query, QueryId},
+    swap_protocols::ledger::Bitcoin,
+};
+use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};
+use futures::Future;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
@@ -14,7 +19,54 @@ pub enum BitcoinQuery {
     },
 }
 
+impl BitcoinQuery {
+    pub fn deploy_htlc(address: Address) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: Some(address),
+            from_outpoint: None,
+            unlock_script: None,
+        }
+    }
+
+    pub fn refund_htlc(htlc_location: OutPoint) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: None,
+            from_outpoint: Some(htlc_location),
+            unlock_script: Some(vec![vec![0u8]]),
+        }
+    }
+
+    pub fn redeem_htlc(htlc_location: OutPoint) -> Self {
+        BitcoinQuery::Transaction {
+            to_address: None,
+            from_outpoint: Some(htlc_location),
+            unlock_script: Some(vec![vec![1u8]]),
+        }
+    }
+}
+
 impl Query for BitcoinQuery {}
+
+pub trait QueryBitcoin {
+    fn create(
+        &self,
+        query: BitcoinQuery,
+    ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send>;
+
+    fn delete(&self, query: &QueryId<Bitcoin>) -> Box<dyn Future<Item = (), Error = Error> + Send>;
+    fn txid_results(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<dyn Future<Item = Vec<TransactionId>, Error = Error> + Send>;
+    fn transaction_results(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<dyn Future<Item = Vec<Transaction>, Error = Error> + Send>;
+    fn transaction_first_result(
+        &self,
+        query: &QueryId<Bitcoin>,
+    ) -> Box<dyn Future<Item = Transaction, Error = Error> + Send>;
+}
 
 #[cfg(test)]
 mod tests {

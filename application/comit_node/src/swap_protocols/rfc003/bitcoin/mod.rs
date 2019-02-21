@@ -7,13 +7,12 @@ use bitcoin_support::{Address, BitcoinQuantity, OutPoint};
 mod actions;
 mod extract_secret;
 mod htlc;
-mod queries;
-mod validation;
+mod htlc_events;
 
 pub use self::{
     actions::*,
     htlc::{Htlc, UnlockingError},
-    queries::*,
+    htlc_events::*,
 };
 
 impl Ledger for Bitcoin {

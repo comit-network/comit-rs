@@ -1,5 +1,9 @@
-use crate::{btsieve::DefaultBtsieveApiClient, connection_pool::ConnectionPool, seed::Seed};
-use std::{sync::Arc, time::Duration};
+use crate::{
+    btsieve::{QueryBitcoin, QueryEthereum},
+    connection_pool::ConnectionPool,
+    seed::Seed,
+};
+use std::sync::Arc;
 
 mod client_impl;
 
@@ -26,9 +30,19 @@ impl<T, S> Clone for ProtocolDependencies<T, S> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[allow(missing_debug_implementations)]
+#[derive(Clone)]
 pub struct LedgerEventDependencies {
-    pub btsieve_client: Arc<DefaultBtsieveApiClient>,
-    pub btsieve_bitcoin_poll_interval: Duration,
-    pub btsieve_ethereum_poll_interval: Duration,
+    pub query_bitcoin: Arc<dyn QueryBitcoin + Send + Sync + 'static>,
+    pub query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
+}
+
+impl<Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static> From<Q> for LedgerEventDependencies {
+    fn from(querier: Q) -> Self {
+        let queries = Arc::new(querier);
+        LedgerEventDependencies {
+            query_bitcoin: queries.clone(),
+            query_ethereum: queries.clone(),
+        }
+    }
 }

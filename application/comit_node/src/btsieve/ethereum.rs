@@ -1,5 +1,9 @@
-use crate::btsieve::Query;
-use ethereum_support::web3::types::{Address, Bytes, H256};
+use crate::{
+    btsieve::{Error, Query, QueryId},
+    swap_protocols::ledger::Ethereum,
+};
+use ethereum_support::web3::types::{Address, Bytes, Transaction, H256};
+use futures::Future;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
@@ -20,6 +24,18 @@ pub enum EthereumQuery {
     },
 }
 
+impl EthereumQuery {
+    pub fn contract_deployment(contract_data: Bytes) -> Self {
+        EthereumQuery::Transaction {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(contract_data),
+            transaction_data_length: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct EventMatcher {
     pub address: Option<Address>,
@@ -30,6 +46,28 @@ pub struct EventMatcher {
 pub struct Topic(pub H256);
 
 impl Query for EthereumQuery {}
+
+pub trait QueryEthereum {
+    fn create(
+        &self,
+        query: EthereumQuery,
+    ) -> Box<dyn Future<Item = QueryId<Ethereum>, Error = Error> + Send>;
+
+    fn delete(&self, query: &QueryId<Ethereum>)
+        -> Box<dyn Future<Item = (), Error = Error> + Send>;
+    fn txid_results(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<dyn Future<Item = Vec<H256>, Error = Error> + Send>;
+    fn transaction_results(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<dyn Future<Item = Vec<Transaction>, Error = Error> + Send>;
+    fn transaction_first_result(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<dyn Future<Item = Transaction, Error = Error> + Send>;
+}
 
 #[cfg(test)]
 mod tests {

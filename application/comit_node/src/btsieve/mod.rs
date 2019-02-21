@@ -1,17 +1,13 @@
-pub use self::{bitcoin::*, cache::*, client::*, ethereum::*, first_match::*};
+pub use self::{bitcoin::*, client::*, ethereum::*};
 use crate::swap_protocols::ledger::Ledger;
 use reqwest::Url;
 use serde::Serialize;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
-use tokio::prelude::Future;
 
 mod bitcoin;
-mod cache;
 mod client;
 mod ethereum;
-pub mod fake_btsieve;
-pub mod fetch_transaction_stream;
-mod first_match;
+mod poll_until_item;
 
 #[derive(Clone, Debug, PartialOrd, PartialEq)]
 pub struct QueryId<L: Ledger> {
@@ -40,33 +36,8 @@ pub enum Error {
     FailedRequest(String),
     #[fail(display = "The response was somehow malformed.")]
     MalformedResponse(String),
+    #[fail(display = "The btsieve client encountered an unrecoverable internal error.")]
+    Internal,
 }
 
 pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + 'static {}
-
-pub trait BtsieveApiClient<L: Ledger, Q: Query>:
-    'static + Send + Sync + CreateQuery<L, Q> + FetchQueryResults<L>
-{
-    fn delete(&self, query: &QueryId<L>) -> Box<dyn Future<Item = (), Error = Error> + Send>;
-}
-
-pub trait CreateQuery<L: Ledger, Q: Query>: 'static + Send + Sync + Debug {
-    fn create_query(
-        &self,
-        query: Q,
-    ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send + 'static>;
-}
-
-pub trait FetchQueryResults<L: Ledger>: 'static + Send + Sync {
-    fn fetch_query_results(
-        &self,
-        query: &QueryId<L>,
-    ) -> Box<dyn Future<Item = Vec<L::TxId>, Error = Error> + Send>;
-}
-
-pub trait FetchFullQueryResults<L: Ledger>: 'static + Send + Sync + Debug {
-    fn fetch_full_query_results(
-        &self,
-        query: &QueryId<L>,
-    ) -> Box<dyn Future<Item = Vec<L::Transaction>, Error = Error> + Send>;
-}
