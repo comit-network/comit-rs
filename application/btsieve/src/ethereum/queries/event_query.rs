@@ -14,7 +14,7 @@ use ethereum_support::{
 use ethereum_types::clean_0x;
 use futures::{
     future::Future,
-    stream::{self, Stream},
+    stream::{FuturesOrdered, Stream},
 };
 use std::sync::Arc;
 
@@ -147,7 +147,7 @@ impl Expand<Embed> for EventQuery {
         _: &Vec<Embed>,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
-        let futures: Vec<_> = result
+        result
             .0
             .iter()
             .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
@@ -163,9 +163,7 @@ impl Expand<Embed> for EventQuery {
                     .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
                     .map_err(Error::Web3)
             })
-            .collect();
-
-        stream::futures_ordered(futures)
+            .collect::<FuturesOrdered<_>>()
             .filter_map(|item| item)
             .map(PayloadKind::Transaction)
             .collect()
