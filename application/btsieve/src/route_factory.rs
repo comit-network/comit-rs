@@ -3,7 +3,7 @@ use crate::{
     query_result_repository::{QueryResult, QueryResultRepository},
     routes, web3,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::sync::Arc;
 use url::Url;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -25,24 +25,25 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
-pub trait ExpandResult {
+pub trait Expand<E> {
     type Client: 'static + Send + Sync;
     type Item: Serialize;
 
-    fn expand_result(
+    fn expand(
         result: &QueryResult,
+        embed: &Vec<E>,
         client: Arc<Self::Client>,
     ) -> Result<Vec<Self::Item>, Error>;
 }
 
-pub trait ShouldExpand {
-    fn should_expand(query_params: &QueryParams) -> bool;
+pub trait ShouldEmbed<E> {
+    fn should_embed(query_params: &QueryParams<E>) -> bool;
 }
 
 #[derive(Deserialize, Debug, Eq, PartialEq)]
-pub struct QueryParams {
-    #[serde(default)]
-    pub expand_results: bool,
+pub struct QueryParams<E> {
+    #[serde(default = "Vec::new")]
+    pub embed: Vec<E>,
 }
 
 impl RouteFactory {
@@ -51,16 +52,21 @@ impl RouteFactory {
     }
 
     pub fn create<
-        Q: QueryType + ExpandResult + ShouldExpand + DeserializeOwned + Serialize + Send + 'static,
+        E,
+        Q: QueryType + Expand<E> + ShouldEmbed<E> + DeserializeOwned + Serialize + Send + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
     >(
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Arc<<Q as ExpandResult>::Client>,
+        client: Arc<<Q as Expand<E>>::Client>,
         ledger_name: &'static str,
-    ) -> BoxedFilter<(impl Reply,)> {
+    ) -> BoxedFilter<(impl Reply,)>
+    where
+        for<'de> E: Deserialize<'de>,
+        E: Send + 'static,
+    {
         let route = Q::route();
 
         let path = warp::path("queries")
@@ -86,7 +92,7 @@ impl RouteFactory {
             .and(query_result_repository.clone())
             .and(client.clone())
             .and(warp::path::param::<u32>())
-            .and(warp::query::<QueryParams>())
+            .and(warp::query::<QueryParams<E>>())
             .and_then(routes::retrieve_query);
 
         let delete = warp::delete2()

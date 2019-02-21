@@ -1,6 +1,6 @@
 use crate::{
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -114,22 +114,37 @@ impl QueryType for EventQuery {
     }
 }
 
-impl ShouldExpand for EventQuery {
-    fn should_expand(params: &QueryParams) -> bool {
-        params.expand_results
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Embed {
+    Transaction,
+    Receipt,
+}
+
+impl ShouldEmbed<Embed> for EventQuery {
+    fn should_embed(params: &QueryParams<Embed>) -> bool {
+        params.embed.len() > 0
     }
 }
 
-impl ExpandResult for EventQuery {
-    type Client = Web3<Http>;
-    type Item = Transaction;
+#[derive(Serialize)]
+#[serde(untagged)]
+pub enum PayloadKind {
+    Transaction(Transaction),
+    Receipt(TransactionReceipt),
+    TransactionAndReceipt {
+        transaction: Transaction,
+        receipt: TransactionReceipt,
+    },
+}
 
-    // TODO: return TransactionReceipt and not Transaction.
-    // Temporarily return the transaction and not the transaction receipt as the
-    // secret is currently only available in the transaction call data but not
-    // in the receipt. This needs to be fixed with https://github.com/comit-network/comit-rs/issues/638
-    fn expand_result(
+impl Expand<Embed> for EventQuery {
+    type Client = Web3<Http>;
+    type Item = PayloadKind;
+
+    fn expand(
         result: &QueryResult,
+        _: &Vec<Embed>,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
         let futures: Vec<_> = result
@@ -152,6 +167,7 @@ impl ExpandResult for EventQuery {
 
         stream::futures_ordered(futures)
             .filter_map(|item| item)
+            .map(PayloadKind::Transaction)
             .collect()
             .wait()
     }

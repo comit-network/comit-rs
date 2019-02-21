@@ -147,7 +147,7 @@ impl BtsieveHttpClient {
         query: &QueryId<L>,
     ) -> Box<dyn Future<Item = Vec<L::Transaction>, Error = Error> + Send> {
         let mut url = query.as_ref().clone();
-        url.set_query(Some("expand_results=true"));
+        url.set_query(Some("inlines=true"));
 
         let transactions = self
             .client

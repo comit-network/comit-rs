@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
-    route_factory::{ExpandResult, QueryParams, ShouldExpand},
+    route_factory::{Expand, QueryParams, ShouldEmbed},
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
@@ -89,15 +89,16 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
-    Q: Serialize + ShouldExpand + Send + ExpandResult,
+    E,
+    Q: Serialize + ShouldEmbed<E> + Send + Expand<E>,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<<Q as ExpandResult>::Client>,
+    client: Arc<<Q as Expand<E>>::Client>,
     id: u32,
-    query_params: QueryParams,
+    query_params: QueryParams<E>,
 ) -> Result<impl Reply, Rejection> {
     let query = query_repository.get(id).ok_or_else(|| {
         warp::reject::custom(HttpApiProblemStdError {
@@ -109,10 +110,10 @@ pub fn retrieve_query<
             let query_result = query_result_repository.get(id).unwrap_or_default();
             let mut result = ResponsePayload::TransactionIds(query_result.0.clone());
 
-            if Q::should_expand(&query_params) {
-                match Q::expand_result(&query_result, client) {
+            if Q::should_embed(&query_params) {
+                match Q::expand(&query_result, &query_params.embed, client) {
                     Ok(data) => {
-                        result = ResponsePayload::Transactions(data);
+                        result = ResponsePayload::Embedded(data);
                     }
                     Err(e) => {
                         error!("Could not acquire expanded data: {:?}", e);
@@ -149,9 +150,9 @@ pub fn delete_query<Q: Send, QR: QueryRepository<Q>, QRR: QueryResultRepository<
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(untagged)]
-enum ResponsePayload<T> {
+enum ResponsePayload<E> {
     TransactionIds(Vec<String>),
-    Transactions(Vec<T>),
+    Embedded(Vec<E>),
 }
 
 impl<T> Default for ResponsePayload<T> {

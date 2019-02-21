@@ -1,6 +1,6 @@
 use crate::{
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
 };
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
@@ -66,18 +66,25 @@ impl QueryType for TransactionQuery {
     }
 }
 
-impl ShouldExpand for TransactionQuery {
-    fn should_expand(params: &QueryParams) -> bool {
-        params.expand_results
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Embed {
+    Transaction,
+}
+
+impl ShouldEmbed<Embed> for TransactionQuery {
+    fn should_embed(params: &QueryParams<Embed>) -> bool {
+        params.embed.len() > 0
     }
 }
 
-impl ExpandResult for TransactionQuery {
+impl Expand<Embed> for TransactionQuery {
     type Client = Web3<Http>;
     type Item = Transaction;
 
-    fn expand_result(
+    fn expand(
         result: &QueryResult,
+        _: &Vec<Embed>,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
         let futures: Vec<_> = result

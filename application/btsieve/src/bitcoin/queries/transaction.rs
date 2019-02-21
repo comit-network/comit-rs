@@ -1,11 +1,10 @@
 use crate::{
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
 };
 use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
-    Address, MinedBlock as Block, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith,
-    Transaction, TransactionId,
+    Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction, TransactionId,
 };
 use std::sync::Arc;
 
@@ -22,18 +21,25 @@ impl QueryType for TransactionQuery {
     }
 }
 
-impl ShouldExpand for TransactionQuery {
-    fn should_expand(query_params: &QueryParams) -> bool {
-        query_params.expand_results
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Embed {
+    Transaction,
+}
+
+impl ShouldEmbed<Embed> for TransactionQuery {
+    fn should_embed(query_params: &QueryParams<Embed>) -> bool {
+        query_params.embed.len() > 0
     }
 }
 
-impl ExpandResult for TransactionQuery {
+impl Expand<Embed> for TransactionQuery {
     type Client = BitcoinCoreClient;
     type Item = Transaction;
 
-    fn expand_result(
+    fn expand(
         result: &QueryResult,
+        _: &Vec<Embed>,
         client: Arc<BitcoinCoreClient>,
     ) -> Result<Vec<Transaction>, Error> {
         let mut expanded_result: Vec<Transaction> = Vec::new();
@@ -82,48 +88,10 @@ impl TransactionQuery {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct BlockQuery {
-    pub min_height: Option<u32>,
-}
-
-impl QueryType for BlockQuery {
-    fn route() -> &'static str {
-        "blocks"
-    }
-}
-
-impl ShouldExpand for BlockQuery {
-    fn should_expand(_: &QueryParams) -> bool {
-        false
-    }
-}
-
-impl ExpandResult for BlockQuery {
-    type Client = BitcoinCoreClient;
-    type Item = ();
-
-    fn expand_result(
-        _result: &QueryResult,
-        _client: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        unimplemented!()
-    }
-}
-
-impl BlockQuery {
-    pub fn matches(&self, block: &Block) -> bool {
-        self.min_height
-            .map_or(true, |height| height <= block.height)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_support::{
-        serialize::deserialize, Block, BlockHeader, MinedBlock, Sha256dHash, Transaction,
-    };
+    use bitcoin_support::{serialize::deserialize, OutPoint, Sha256dHash, Transaction};
     use spectral::prelude::*;
 
     const WITNESS_TX: &'static str = "0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000";
@@ -143,87 +111,6 @@ mod tests {
             txid: Sha256dHash::from_hex(tx).unwrap(),
             vout,
         }
-    }
-
-    #[test]
-    fn given_query_min_height_then_lesser_block_does_not_match() {
-        let block_header = BlockHeader {
-            version: 1,
-            prev_blockhash: Sha256dHash::default(),
-            merkle_root: Sha256dHash::default(),
-            time: 0,
-            bits: 1,
-            nonce: 0,
-        };
-
-        let block = MinedBlock::new(
-            Block {
-                header: block_header,
-                txdata: vec![],
-            },
-            40,
-        );
-
-        let query = BlockQuery {
-            min_height: Some(42),
-        };
-
-        let result = query.matches(&block);
-        assert_that(&result).is_false();
-    }
-
-    #[test]
-    fn given_query_min_height_then_exact_block_matches() {
-        let block_header = BlockHeader {
-            version: 1,
-            prev_blockhash: Sha256dHash::default(),
-            merkle_root: Sha256dHash::default(),
-            time: 0,
-            bits: 1,
-            nonce: 0,
-        };
-
-        let block = MinedBlock::new(
-            Block {
-                header: block_header,
-                txdata: vec![],
-            },
-            42,
-        );
-
-        let query = BlockQuery {
-            min_height: Some(42),
-        };
-
-        let result = query.matches(&block);
-        assert_that(&result).is_true();
-    }
-
-    #[test]
-    fn given_query_min_height_then_greater_block_matches() {
-        let block_header = BlockHeader {
-            version: 1,
-            prev_blockhash: Sha256dHash::default(),
-            merkle_root: Sha256dHash::default(),
-            time: 0,
-            bits: 1,
-            nonce: 0,
-        };
-
-        let block = MinedBlock::new(
-            Block {
-                header: block_header,
-                txdata: vec![],
-            },
-            45,
-        );
-
-        let query = BlockQuery {
-            min_height: Some(42),
-        };
-
-        let result = query.matches(&block);
-        assert_that(&result).is_true();
     }
 
     #[test]

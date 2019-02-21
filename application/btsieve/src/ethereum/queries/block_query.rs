@@ -1,6 +1,6 @@
 use crate::{
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
 };
 use ethereum_support::{
     web3::{transports::Http, types::U256, Web3},
@@ -26,17 +26,25 @@ impl QueryType for BlockQuery {
     }
 }
 
-impl ShouldExpand for BlockQuery {
-    fn should_expand(_: &QueryParams) -> bool {
+#[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Embed {}
+
+impl ShouldEmbed<Embed> for BlockQuery {
+    fn should_embed(_: &QueryParams<Embed>) -> bool {
         false
     }
 }
 
-impl ExpandResult for BlockQuery {
+impl Expand<Embed> for BlockQuery {
     type Client = Web3<Http>;
     type Item = ();
 
-    fn expand_result(_: &QueryResult, _: Arc<Web3<Http>>) -> Result<Vec<Self::Item>, Error> {
+    fn expand(
+        _: &QueryResult,
+        _: &Vec<Embed>,
+        _: Arc<Web3<Http>>,
+    ) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }
 }
