@@ -170,12 +170,12 @@ it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
             let reasonable_swap_in_swaps = {
                 _links: { self: { href: alice_reasonable_swap_href } },
                 protocol: "rfc003",
-                state: "IN_PROGRESS",
+                status: "IN_PROGRESS",
             };
             let stingy_swap_in_swaps = {
                 _links: { self: { href: alice_stingy_swap_href } },
                 protocol: "rfc003",
-                state: "IN_PROGRESS",
+                status: "IN_PROGRESS",
             };
             swaps.should.have.deep.members([
                 stingy_swap_in_swaps,
@@ -198,7 +198,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
 
     for (let swap of swaps) {
         swap.protocol.should.equal("rfc003");
-        swap.state.should.equal("IN_PROGRESS");
+        swap.status.should.equal("IN_PROGRESS");
     }
 
     let swap_1_link = swaps[0]._links.self;

@@ -16,7 +16,7 @@ use rustic_hal::HalResource;
 
 #[derive(Serialize, Debug)]
 pub struct EmbeddedSwapResource {
-    state: SwapStatus,
+    status: SwapStatus,
     protocol: String,
 }
 
@@ -38,11 +38,11 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let alpha_ledger = state.alpha_ledger_state.clone().into();
                         let beta_ledger = state.beta_ledger_state.clone().into();
                         let error = state.error;
-                        let state =
+                        let status =
                             SwapStatus::new(&communication, &alpha_ledger, &beta_ledger, &error);
 
                         let swap = EmbeddedSwapResource {
-                            state,
+                            status,
                             protocol: RFC003.into(),
                         };
 

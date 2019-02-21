@@ -118,7 +118,7 @@ it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
 
     let swap_embedded = body._embedded.swaps[0];
     swap_embedded.protocol.should.equal("rfc003");
-    swap_embedded.state.should.equal("IN_PROGRESS");
+    swap_embedded.status.should.equal("IN_PROGRESS");
     let swap_link = swap_embedded._links;
     swap_link.should.be.a("object");
     let swap_href = swap_link.self.href;
