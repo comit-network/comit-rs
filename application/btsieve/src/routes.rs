@@ -12,7 +12,6 @@ use warp::{self, Rejection, Reply};
 
 #[derive(Debug)]
 pub enum Error {
-    EmptyQuery,
     QuerySave,
     DataExpansion,
     MissingClient,
@@ -40,17 +39,10 @@ impl From<Error> for HttpApiProblem {
     fn from(e: Error) -> Self {
         use self::Error::*;
         match e {
-            EmptyQuery => HttpApiProblem::new("query-missing-conditions")
-                .set_status(400)
-                .set_detail("Query needs at least one condition"),
-            QuerySave => HttpApiProblem::new("query-could-not-be-saved")
-                .set_status(500)
+            QuerySave => HttpApiProblem::with_title_and_type_from_status(500)
                 .set_detail("Failed to create new query"),
-            DataExpansion | MissingClient => HttpApiProblem::new("query-expanded-data-unavailable")
-                .set_status(500)
-                .set_detail("There was a problem acquiring the query's expanded data"),
-            QueryNotFound => HttpApiProblem::new("query-not-found")
-                .set_status(404)
+            DataExpansion | MissingClient => HttpApiProblem::with_title_and_type_from_status(500),
+            QueryNotFound => HttpApiProblem::with_title_and_type_from_status(404)
                 .set_detail("The requested query does not exist"),
         }
     }
