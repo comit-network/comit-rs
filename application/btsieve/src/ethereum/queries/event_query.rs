@@ -13,9 +13,10 @@ use ethereum_support::{
 };
 use ethereum_types::clean_0x;
 use futures::{
-    future::Future,
+    future::{self, Future},
     stream::{FuturesOrdered, Stream},
 };
+use itertools::Itertools;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -114,7 +115,7 @@ impl QueryType for EventQuery {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 pub enum Embed {
     Transaction,
@@ -130,8 +131,12 @@ impl ShouldEmbed<Embed> for EventQuery {
 #[derive(Serialize)]
 #[serde(untagged)]
 pub enum PayloadKind {
-    Transaction(Transaction),
-    Receipt(TransactionReceipt),
+    Transaction {
+        transaction: Transaction,
+    },
+    Receipt {
+        receipt: TransactionReceipt,
+    },
     TransactionAndReceipt {
         transaction: Transaction,
         receipt: TransactionReceipt,
@@ -144,7 +149,7 @@ impl Expand<Embed> for EventQuery {
 
     fn expand(
         result: &QueryResult,
-        _: &Vec<Embed>,
+        embed: &Vec<Embed>,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
         result
@@ -157,17 +162,63 @@ impl Expand<Embed> for EventQuery {
                     None
                 }
             })
-            .map(|id| {
-                client
-                    .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
-                    .map_err(Error::Web3)
-            })
+            .map(|id| create_future(client.as_ref(), H256::from_slice(id.as_ref()), embed))
             .collect::<FuturesOrdered<_>>()
             .filter_map(|item| item)
-            .map(PayloadKind::Transaction)
             .collect()
             .wait()
+    }
+}
+
+fn create_future(
+    client: &Web3<Http>,
+    transaction_id: H256,
+    embed: &Vec<Embed>,
+) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
+    let transaction_future = client
+        .eth()
+        .transaction(TransactionId::Hash(transaction_id))
+        .map_err(Error::Web3);
+
+    let receipt_future = client
+        .eth()
+        .transaction_receipt(transaction_id)
+        .map_err(Error::Web3);
+
+    let unique_choices = embed.iter().unique().collect_vec();
+
+    match unique_choices.as_slice() {
+        [Embed::Transaction] => Box::new(transaction_future.map(|maybe_transaction| {
+            maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
+        })),
+        [Embed::Receipt] => Box::new(
+            receipt_future
+                .map(|maybe_receipt| maybe_receipt.map(|receipt| PayloadKind::Receipt { receipt })),
+        ),
+        [Embed::Receipt, Embed::Transaction] | [Embed::Transaction, Embed::Receipt] => Box::new(
+            transaction_future
+                .join(receipt_future)
+                .map(|maybe| match maybe {
+                    (Some(transaction), Some(receipt)) => {
+                        Some(PayloadKind::TransactionAndReceipt {
+                            transaction,
+                            receipt,
+                        })
+                    }
+                    _ => None,
+                }),
+        ),
+        &[] => {
+            warn!("no embed choices given, cannot expand {:?}", transaction_id);
+            Box::new(future::ok(None))
+        }
+        choices => {
+            warn!(
+                "unsupported combination of choices given {:?}, will not expand to anything",
+                choices
+            );
+            Box::new(future::ok(None))
+        }
     }
 }
 

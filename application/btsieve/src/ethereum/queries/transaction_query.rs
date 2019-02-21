@@ -9,7 +9,7 @@ use ethereum_support::{
 use ethereum_types::clean_0x;
 use futures::{
     future::Future,
-    stream::{self, Stream},
+    stream::{FuturesOrdered, Stream},
 };
 use std::sync::Arc;
 
@@ -66,10 +66,15 @@ impl QueryType for TransactionQuery {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 pub enum Embed {
     Transaction,
+}
+
+#[derive(Serialize)]
+pub struct Payload {
+    transaction: Transaction,
 }
 
 impl ShouldEmbed<Embed> for TransactionQuery {
@@ -80,14 +85,14 @@ impl ShouldEmbed<Embed> for TransactionQuery {
 
 impl Expand<Embed> for TransactionQuery {
     type Client = Web3<Http>;
-    type Item = Transaction;
+    type Item = Payload;
 
     fn expand(
         result: &QueryResult,
         _: &Vec<Embed>,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
-        let futures: Vec<_> = result
+        result
             .0
             .iter()
             .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
@@ -103,10 +108,9 @@ impl Expand<Embed> for TransactionQuery {
                     .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
                     .map_err(Error::Web3)
             })
-            .collect();
-
-        stream::futures_ordered(futures)
+            .collect::<FuturesOrdered<_>>()
             .filter_map(|item| item)
+            .map(|transaction| Payload { transaction })
             .collect()
             .wait()
     }

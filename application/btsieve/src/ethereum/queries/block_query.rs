@@ -26,7 +26,7 @@ impl QueryType for BlockQuery {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 pub enum Embed {}
 

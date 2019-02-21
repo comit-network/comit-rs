@@ -40,7 +40,7 @@ pub trait ShouldEmbed<E> {
     fn should_embed(query_params: &QueryParams<E>) -> bool;
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq)]
+#[derive(Deserialize, Debug, Eq, PartialEq, Hash)]
 pub struct QueryParams<E> {
     #[serde(default = "Vec::new")]
     pub embed: Vec<E>,

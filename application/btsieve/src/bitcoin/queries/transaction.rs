@@ -21,7 +21,7 @@ impl QueryType for TransactionQuery {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "lowercase")]
 pub enum Embed {
     Transaction,
@@ -33,16 +33,21 @@ impl ShouldEmbed<Embed> for TransactionQuery {
     }
 }
 
+#[derive(Serialize)]
+pub struct Payload {
+    transaction: Transaction,
+}
+
 impl Expand<Embed> for TransactionQuery {
     type Client = BitcoinCoreClient;
-    type Item = Transaction;
+    type Item = Payload;
 
     fn expand(
         result: &QueryResult,
         _: &Vec<Embed>,
         client: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<Transaction>, Error> {
-        let mut expanded_result: Vec<Transaction> = Vec::new();
+    ) -> Result<Vec<Self::Item>, Error> {
+        let mut expanded_result = Vec::new();
         for tx_id in result.clone().0 {
             let tx_id = TransactionId::from_hex(tx_id.as_str()).map_err(|_| Error::InvalidHex)?;
 
@@ -50,7 +55,9 @@ impl Expand<Embed> for TransactionQuery {
                 .get_raw_transaction_verbose(&tx_id)
                 .map_err(Error::BitcoinRpcConnection)?
                 .map_err(Error::BitcoinRpcResponse)?;
-            expanded_result.push(transaction.into());
+            expanded_result.push(Payload {
+                transaction: transaction.into(),
+            });
         }
         Ok(expanded_result)
     }
