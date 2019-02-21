@@ -164,7 +164,7 @@ describe("RFC003: Ether for Bitcoin", () => {
             chai,
             alice_swap_href,
             body =>
-                body.state.outcome == "IN_PROGRESS" &&
+                body.status == "IN_PROGRESS" &&
                 body.state.communication.current_state == "SENT"
         );
     });

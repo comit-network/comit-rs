@@ -39,9 +39,8 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
             let alpha_ledger = state.alpha_ledger_state.clone().into();
             let beta_ledger = state.beta_ledger_state.clone().into();
             let error = state.error.clone();
-            let outcome = SwapOutcome::new(&communication, &alpha_ledger, &beta_ledger, &error);
+            let status = SwapStatus::new(&communication, &alpha_ledger, &beta_ledger, &error);
             let swap_state = SwapState {
-                outcome,
                 communication,
                 alpha_ledger,
                 beta_ledger,
@@ -51,6 +50,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
                 state.actions().iter().map(|action| action.name()).collect();
             serde_json::to_value(GetSwapResource {
                 swap,
+                status,
                 role,
                 state: swap_state,
             })
@@ -65,6 +65,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 pub struct GetSwapResource<AL: Ledger, BL: Ledger> {
     swap: SwapDescription,
     role: String,
+    status: SwapStatus,
     state: SwapState<AL, BL>,
 }
 
@@ -79,7 +80,6 @@ pub struct SwapDescription {
 #[derive(Debug, Serialize)]
 #[serde(bound = "AL: Ledger, BL: Ledger")]
 pub struct SwapState<AL: Ledger, BL: Ledger> {
-    outcome: SwapOutcome,
     communication: SwapCommunication<AL, BL>,
     alpha_ledger: LedgerState<AL>,
     beta_ledger: LedgerState<BL>,
@@ -87,7 +87,7 @@ pub struct SwapState<AL: Ledger, BL: Ledger> {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum SwapOutcome {
+pub enum SwapStatus {
     InProgress,
     Swapped,
     NotSwapped,
@@ -148,7 +148,7 @@ impl SwapDescription {
     }
 }
 
-impl SwapOutcome {
+impl SwapStatus {
     pub fn new<AL: Ledger, BL: Ledger>(
         swap_communication: &SwapCommunication<AL, BL>,
         alpha_ledger: &LedgerState<AL>,
@@ -164,10 +164,10 @@ impl SwapOutcome {
             (Rejected, _, _, None)
             | (Accepted, Redeemed, Refunded, None)
             | (Accepted, Refunded, Redeemed, None)
-            | (Accepted, Refunded, Refunded, None) => SwapOutcome::NotSwapped,
-            (Accepted, Redeemed, Redeemed, None) => SwapOutcome::Swapped,
+            | (Accepted, Refunded, Refunded, None) => SwapStatus::NotSwapped,
+            (Accepted, Redeemed, Redeemed, None) => SwapStatus::Swapped,
             (Sent, NotDeployed, NotDeployed, None) | (Accepted, _, _, None) => {
-                SwapOutcome::InProgress
+                SwapStatus::InProgress
             }
             (swap_communication_state, alpha_ledger, beta_ledger, error) => {
                 warn!(
@@ -175,7 +175,7 @@ impl SwapOutcome {
                      alpha ledger state {:?}, beta ledger state {:?} and error {:?}",
                     swap_communication_state, alpha_ledger, beta_ledger, error
                 );
-                SwapOutcome::InternalFailure
+                SwapStatus::InternalFailure
             }
         }
     }

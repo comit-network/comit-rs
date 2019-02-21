@@ -1,6 +1,6 @@
 use crate::{
     http_api::{
-        rfc003::handlers::get_swap::SwapOutcome,
+        rfc003::handlers::get_swap::SwapStatus,
         route_factory::{swap_path, RFC003},
     },
     swap_protocols::{
@@ -16,7 +16,7 @@ use rustic_hal::HalResource;
 
 #[derive(Serialize, Debug)]
 pub struct EmbeddedSwapResource {
-    state: SwapOutcome,
+    state: SwapStatus,
     protocol: String,
 }
 
@@ -39,7 +39,7 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let beta_ledger = state.beta_ledger_state.clone().into();
                         let error = state.error;
                         let state =
-                            SwapOutcome::new(&communication, &alpha_ledger, &beta_ledger, &error);
+                            SwapStatus::new(&communication, &alpha_ledger, &beta_ledger, &error);
 
                         let swap = EmbeddedSwapResource {
                             state,

@@ -149,7 +149,7 @@ it("[Alice] Is able to GET the swap after POSTing it", async () => {
 
             let body = res.body;
             body.role.should.equal("Alice");
-            body.state.outcome.should.equal("IN_PROGRESS");
+            body.status.should.equal("IN_PROGRESS");
             let swap = body.swap;
             swap.should.be.a("object");
             swap.alpha_asset.quantity.should.equal(
@@ -235,7 +235,7 @@ it("[Bob] Has the accept and decline actions when GETing the swap", async () => 
             res.should.have.status(200);
 
             let body = res.body;
-            body.state.outcome.should.equal("IN_PROGRESS");
+            body.status.should.equal("IN_PROGRESS");
             body.swap.should.be.a("object");
 
             let action_links = body._links;

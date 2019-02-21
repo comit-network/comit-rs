@@ -112,7 +112,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
             chai,
             alice_swap_href,
             body =>
-                body.state.outcome == "IN_PROGRESS" &&
+                body.status == "IN_PROGRESS" &&
                 body.state.communication.current_state == "SENT"
         );
     });
