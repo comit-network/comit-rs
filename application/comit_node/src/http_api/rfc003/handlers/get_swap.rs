@@ -32,7 +32,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
                 .ok_or_else(problem::state_store)?;
             trace!("Retrieved state for {}: {:?}", id, state);
 
-            let swap = SwapDescription::new(state.clone().request());
+            let parameters = SwapParameters::new(state.clone().request());
             let role = format!("{}", metadata.role);
 
             let communication = state.swap_communication.clone().into();
@@ -49,7 +49,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
             let actions: Vec<ActionName> =
                 state.actions().iter().map(|action| action.name()).collect();
             serde_json::to_value(GetSwapResource {
-                swap,
+                parameters,
                 status,
                 role,
                 state: swap_state,
@@ -63,14 +63,14 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 #[derive(Debug, Serialize)]
 #[serde(bound = "AL: Ledger, BL: Ledger")]
 pub struct GetSwapResource<AL: Ledger, BL: Ledger> {
-    swap: SwapDescription,
+    parameters: SwapParameters,
     role: String,
     status: SwapStatus,
     state: SwapState<AL, BL>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct SwapDescription {
+pub struct SwapParameters {
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,
     alpha_asset: HttpAsset,
@@ -135,7 +135,7 @@ pub enum HtlcState {
     Refunded,
 }
 
-impl SwapDescription {
+impl SwapParameters {
     fn new<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Self {

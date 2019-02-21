@@ -150,9 +150,9 @@ it("[Alice] Is able to GET the swap after POSTing it", async () => {
             let body = res.body;
             body.role.should.equal("Alice");
             body.status.should.equal("IN_PROGRESS");
-            let swap = body.swap;
-            swap.should.be.a("object");
-            swap.alpha_asset.quantity.should.equal(
+            let parameters = body.parameters;
+            parameters.should.be.a("object");
+            parameters.alpha_asset.quantity.should.equal(
                 alpha_asset_reasonable_quantity
             );
         });
@@ -214,7 +214,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
     let swap_2 = await chai.request(bob.comit_node_url()).get(swap_2_href);
 
     if (
-        swap_1.body.swap.alpha_asset.quantity ==
+        swap_1.body.parameters.alpha_asset.quantity ==
         parseInt(alpha_asset_stingy_quantity)
     ) {
         bob_stingy_swap_href = swap_1_href;
@@ -236,7 +236,7 @@ it("[Bob] Has the accept and decline actions when GETing the swap", async () => 
 
             let body = res.body;
             body.status.should.equal("IN_PROGRESS");
-            body.swap.should.be.a("object");
+            body.parameters.should.be.a("object");
 
             let action_links = body._links;
             action_links.should.be.a("object");
