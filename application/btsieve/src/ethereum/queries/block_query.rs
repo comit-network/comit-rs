@@ -2,7 +2,10 @@ use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
 };
-use ethereum_support::{web3::types::U256, Block, Transaction};
+use ethereum_support::{
+    web3::{transports::Http, types::U256, Web3},
+    Block, Transaction,
+};
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -30,10 +33,10 @@ impl ShouldExpand for BlockQuery {
 }
 
 impl ExpandResult for BlockQuery {
-    type Client = ();
+    type Client = Web3<Http>;
     type Item = ();
 
-    fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
+    fn expand_result(_: &QueryResult, _: Arc<Web3<Http>>) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }
 }

@@ -14,7 +14,6 @@ use warp::{self, Rejection, Reply};
 pub enum Error {
     QuerySave,
     DataExpansion,
-    MissingClient,
     QueryNotFound,
 }
 
@@ -41,7 +40,7 @@ impl From<Error> for HttpApiProblem {
         match e {
             QuerySave => HttpApiProblem::with_title_and_type_from_status(500)
                 .set_detail("Failed to create new query"),
-            DataExpansion | MissingClient => HttpApiProblem::with_title_and_type_from_status(500),
+            DataExpansion => HttpApiProblem::with_title_and_type_from_status(500),
             QueryNotFound => HttpApiProblem::with_title_and_type_from_status(404)
                 .set_detail("The requested query does not exist"),
         }
@@ -96,7 +95,7 @@ pub fn retrieve_query<
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Option<Arc<<Q as ExpandResult>::Client>>,
+    client: Arc<<Q as ExpandResult>::Client>,
     id: u32,
     query_params: QueryParams,
 ) -> Result<impl Reply, Rejection> {
@@ -111,22 +110,14 @@ pub fn retrieve_query<
             let mut result = ResponsePayload::TransactionIds(query_result.0.clone());
 
             if Q::should_expand(&query_params) {
-                match client {
-                    Some(client) => match Q::expand_result(&query_result, client) {
-                        Ok(data) => {
-                            result = ResponsePayload::Transactions(data);
-                        }
-                        Err(e) => {
-                            error!("Could not acquire expanded data: {:?}", e);
-                            return Err(warp::reject::custom(HttpApiProblemStdError {
-                                http_api_problem: Error::DataExpansion.into(),
-                            }));
-                        }
-                    },
-                    None => {
-                        error!("No Client available to expand data");
+                match Q::expand_result(&query_result, client) {
+                    Ok(data) => {
+                        result = ResponsePayload::Transactions(data);
+                    }
+                    Err(e) => {
+                        error!("Could not acquire expanded data: {:?}", e);
                         return Err(warp::reject::custom(HttpApiProblemStdError {
-                            http_api_problem: Error::MissingClient.into(),
+                            http_api_problem: Error::DataExpansion.into(),
                         }));
                     }
                 }

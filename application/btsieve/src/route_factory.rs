@@ -58,7 +58,7 @@ impl RouteFactory {
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Option<Arc<<Q as ExpandResult>::Client>>,
+        client: Arc<<Q as ExpandResult>::Client>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)> {
         let route = Q::route();

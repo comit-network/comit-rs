@@ -100,10 +100,13 @@ impl ShouldExpand for BlockQuery {
 }
 
 impl ExpandResult for BlockQuery {
-    type Client = ();
+    type Client = BitcoinCoreClient;
     type Item = ();
 
-    fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
+    fn expand_result(
+        _result: &QueryResult,
+        _client: Arc<BitcoinCoreClient>,
+    ) -> Result<Vec<Self::Item>, Error> {
         unimplemented!()
     }
 }

@@ -97,14 +97,14 @@ fn create_bitcoin_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
-        Some(Arc::clone(&client)),
+        Arc::clone(&client),
         ledger_name,
     );
 
     let block_routes = route_factory.create(
         block_query_repository,
         block_query_result_repository,
-        None,
+        Arc::clone(&client),
         ledger_name,
     );
 
@@ -184,21 +184,21 @@ fn create_ethereum_routes(
     let transaction_routes = route_factory.create(
         transaction_query_repository,
         transaction_query_result_repository,
-        Some(Arc::clone(&web3_client)),
+        Arc::clone(&web3_client),
         ledger_name,
     );
 
     let block_routes = route_factory.create(
         block_query_repository,
         block_query_result_repository,
-        None,
+        Arc::clone(&web3_client),
         ledger_name,
     );
 
     let bloom_routes = route_factory.create(
         log_query_repository,
         log_query_result_repository,
-        Some(Arc::clone(&web3_client)),
+        Arc::clone(&web3_client),
         ledger_name,
     );
 
