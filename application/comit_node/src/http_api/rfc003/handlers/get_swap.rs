@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{asset::HttpAsset, ledger::HttpLedger, problem},
+    http_api::{asset::HttpAsset, ledger::HttpLedger, problem, rfc003::handlers::Http},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
@@ -8,8 +8,10 @@ use crate::{
         Metadata, MetadataStore, SwapId,
     },
 };
-use ethereum_support::Erc20Token;
+use bitcoin_support;
+use ethereum_support::{self, Erc20Token};
 use http_api_problem::HttpApiProblem;
+use serde::Serialize;
 use serde_json::Value;
 use std::sync::Arc;
 
@@ -61,7 +63,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "AL: Ledger, BL: Ledger")]
+#[serde(bound = "Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize")]
 pub struct GetSwapResource<AL: Ledger, BL: Ledger> {
     parameters: SwapParameters,
     role: String,
@@ -78,11 +80,11 @@ pub struct SwapParameters {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "AL: Ledger, BL: Ledger")]
+#[serde(bound = "Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize")]
 pub struct SwapState<AL: Ledger, BL: Ledger> {
     communication: SwapCommunication<AL, BL>,
-    alpha_ledger: LedgerState<AL>,
-    beta_ledger: LedgerState<BL>,
+    alpha_ledger: LedgerState<AL::HtlcLocation, AL::Transaction>,
+    beta_ledger: LedgerState<BL::HtlcLocation, BL::Transaction>,
 }
 
 #[derive(Debug, Serialize)]
@@ -95,7 +97,7 @@ pub enum SwapStatus {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "AL: Ledger, BL: Ledger")]
+#[serde(bound = "")]
 pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
     status: SwapCommunicationState,
     alpha_expiry: Timestamp,
@@ -107,14 +109,14 @@ pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "L: Ledger")]
-pub struct LedgerState<L: Ledger> {
+#[serde(bound = "Http<T>: Serialize, H: Serialize")]
+pub struct LedgerState<H, T> {
     status: HtlcState,
-    htlc_location: Option<L::HtlcLocation>,
-    deploy_tx: Option<L::Transaction>,
-    fund_tx: Option<L::Transaction>,
-    redeem_tx: Option<L::Transaction>,
-    refund_tx: Option<L::Transaction>,
+    htlc_location: Option<H>,
+    deploy_tx: Option<Http<T>>,
+    fund_tx: Option<Http<T>>,
+    redeem_tx: Option<Http<T>>,
+    refund_tx: Option<Http<T>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -151,8 +153,8 @@ impl SwapParameters {
 impl SwapStatus {
     pub fn new<AL: Ledger, BL: Ledger>(
         swap_communication: &SwapCommunication<AL, BL>,
-        alpha_ledger: &LedgerState<AL>,
-        beta_ledger: &LedgerState<BL>,
+        alpha_ledger: &LedgerState<AL::HtlcLocation, AL::Transaction>,
+        beta_ledger: &LedgerState<BL::HtlcLocation, BL::Transaction>,
         error: &Option<rfc003::Error>,
     ) -> Self {
         let swap_communication_state = &swap_communication.status;
@@ -256,7 +258,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
 }
 
 // Implementation needed because Ledger doesn't have a Default
-impl<L: Ledger> Default for LedgerState<L> {
+impl<H, T> Default for LedgerState<H, T> {
     fn default() -> Self {
         Self {
             status: HtlcState::default(),
@@ -275,7 +277,7 @@ impl Default for HtlcState {
     }
 }
 
-impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
+impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L::Transaction> {
     fn from(ledger_state: rfc003::LedgerState<L>) -> Self {
         use self::rfc003::LedgerState::*;
         match ledger_state {
@@ -286,7 +288,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
             } => Self {
                 status: HtlcState::Deployed,
                 htlc_location: Some(htlc_location),
-                deploy_tx: Some(deploy_transaction),
+                deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: None,
                 refund_tx: None,
                 redeem_tx: None,
@@ -298,8 +300,8 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
             } => Self {
                 status: HtlcState::Funded,
                 htlc_location: Some(htlc_location),
-                deploy_tx: Some(deploy_transaction),
-                fund_tx: Some(fund_transaction),
+                deploy_tx: Some(Http(deploy_transaction)),
+                fund_tx: Some(Http(fund_transaction)),
                 refund_tx: None,
                 redeem_tx: None,
             },
@@ -311,9 +313,9 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
             } => Self {
                 status: HtlcState::Redeemed,
                 htlc_location: Some(htlc_location),
-                deploy_tx: Some(deploy_transaction),
-                fund_tx: Some(fund_transaction),
-                redeem_tx: Some(redeem_transaction),
+                deploy_tx: Some(Http(deploy_transaction)),
+                fund_tx: Some(Http(fund_transaction)),
+                redeem_tx: Some(Http(redeem_transaction)),
                 refund_tx: None,
             },
             Refunded {
@@ -324,9 +326,9 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
             } => Self {
                 status: HtlcState::Redeemed,
                 htlc_location: Some(htlc_location),
-                deploy_tx: Some(deploy_transaction),
-                fund_tx: Some(fund_transaction),
-                refund_tx: Some(refund_transaction),
+                deploy_tx: Some(Http(deploy_transaction)),
+                fund_tx: Some(Http(fund_transaction)),
+                refund_tx: Some(Http(refund_transaction)),
                 redeem_tx: None,
             },
         }

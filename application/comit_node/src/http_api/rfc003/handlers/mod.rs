@@ -11,3 +11,26 @@ pub use self::{
     post_action::{handle_post_action, PostAction},
     post_swap::{handle_post_swap, SwapRequestBodyKind},
 };
+
+use serde::{Serialize, Serializer};
+
+#[derive(Debug)]
+pub struct Http<I>(I);
+
+impl Serialize for Http<bitcoin_support::Transaction> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0.txid()))
+    }
+}
+
+impl Serialize for Http<ethereum_support::Transaction> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.hash.serialize(serializer)
+    }
+}
