@@ -12,10 +12,74 @@ pub use self::{
     post_swap::{handle_post_swap, SwapRequestBodyKind},
 };
 
-use serde::{Serialize, Serializer};
+use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::{Erc20Token, EtherQuantity};
+use serde::{ser::SerializeStruct, Serialize, Serializer};
 
 #[derive(Debug)]
-pub struct Http<I>(I);
+pub struct Http<I>(pub I);
+
+impl Serialize for Http<Bitcoin> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("", 2)?;
+        state.serialize_field("name", "Bitcoin")?;
+        state.serialize_field("network", &self.0.network)?;
+        state.end()
+    }
+}
+
+impl Serialize for Http<Ethereum> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("", 2)?;
+        state.serialize_field("name", "Ethereum")?;
+        state.serialize_field("network", &self.0.network)?;
+        state.end()
+    }
+}
+
+impl Serialize for Http<BitcoinQuantity> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("", 2)?;
+        state.serialize_field("name", "Bitcoin")?;
+        state.serialize_field("quantity", &self.0)?;
+        state.end()
+    }
+}
+
+impl Serialize for Http<EtherQuantity> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("", 2)?;
+        state.serialize_field("name", "Ether")?;
+        state.serialize_field("quantity", &self.0)?;
+        state.end()
+    }
+}
+
+impl Serialize for Http<Erc20Token> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("", 3)?;
+        state.serialize_field("name", "ERC20")?;
+        state.serialize_field("quantity", &self.0.quantity())?;
+        state.serialize_field("token_contract", &self.0.token_contract())?;
+        state.end()
+    }
+}
 
 impl Serialize for Http<bitcoin_support::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

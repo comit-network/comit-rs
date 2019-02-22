@@ -1,7 +1,7 @@
 #[allow(unused_imports)]
-use crate::http_api::{asset::ToHttpAsset, ledger::ToHttpLedger};
+use crate::http_api::asset::HttpAsset;
 use crate::{
-    http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
+    http_api::{self, ledger::HttpLedger, problem},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},

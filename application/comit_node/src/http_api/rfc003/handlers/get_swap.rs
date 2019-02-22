@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{asset::HttpAsset, ledger::HttpLedger, problem, rfc003::handlers::Http},
+    http_api::{problem, rfc003::handlers::Http},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
@@ -64,22 +64,26 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 
 #[derive(Debug, Serialize)]
 #[serde(
-    bound = "Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
+    bound = "Http<AL>: Serialize, Http<BL>: Serialize, Http<AA>: Serialize, Http<BA>: Serialize,\
+             Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
              Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
 )]
-pub struct GetSwapResource<AL: Ledger, BL: Ledger> {
-    parameters: SwapParameters,
+pub struct GetSwapResource<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+    parameters: SwapParameters<AL, BL, AA, BA>,
     role: String,
     status: SwapStatus,
     state: SwapState<AL, BL>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct SwapParameters {
-    alpha_ledger: HttpLedger,
-    beta_ledger: HttpLedger,
-    alpha_asset: HttpAsset,
-    beta_asset: HttpAsset,
+#[serde(
+    bound = "Http<AL>: Serialize, Http<BL>: Serialize, Http<AA>: Serialize, Http<BA>: Serialize"
+)]
+pub struct SwapParameters<AL, BL, AA, BA> {
+    alpha_ledger: Http<AL>,
+    beta_ledger: Http<BL>,
+    alpha_asset: Http<AA>,
+    beta_asset: Http<BA>,
 }
 
 #[derive(Debug, Serialize)]
@@ -143,15 +147,13 @@ pub enum HtlcState {
     Refunded,
 }
 
-impl SwapParameters {
-    fn new<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        request: rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> Self {
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapParameters<AL, BL, AA, BA> {
+    fn new(request: rfc003::messages::Request<AL, BL, AA, BA>) -> Self {
         Self {
-            alpha_ledger: request.alpha_ledger.to_http_ledger().unwrap(),
-            beta_ledger: request.beta_ledger.to_http_ledger().unwrap(),
-            alpha_asset: request.alpha_asset.to_http_asset().unwrap(),
-            beta_asset: request.beta_asset.to_http_asset().unwrap(),
+            alpha_ledger: Http(request.alpha_ledger),
+            alpha_asset: Http(request.alpha_asset),
+            beta_ledger: Http(request.beta_ledger),
+            beta_asset: Http(request.beta_asset),
         }
     }
 }

@@ -3,7 +3,6 @@ pub mod route_factory;
 
 #[macro_use]
 pub mod ledger;
-
 #[macro_use]
 pub mod asset;
 
@@ -18,21 +17,21 @@ use std::{net::SocketAddr, sync::Arc};
 use warp::{self, Rejection, Reply};
 
 mod ledger_impls {
-    use super::ledger::{Error, FromHttpLedger, HttpLedger, ToHttpLedger};
+    use super::ledger::{Error, FromHttpLedger, HttpLedger};
     use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
 
-    impl_http_ledger!(Bitcoin { network });
-    impl_http_ledger!(Ethereum { network });
+    impl_from_http_ledger!(Bitcoin { network });
+    impl_from_http_ledger!(Ethereum { network });
 
 }
 
 mod asset_impls {
-    use super::asset::{Error, FromHttpAsset, HttpAsset, ToHttpAsset};
+    use super::asset::{Error, FromHttpAsset, HttpAsset};
     use bitcoin_support::BitcoinQuantity;
     use ethereum_support::{Erc20Token, EtherQuantity};
 
-    impl_http_quantity_asset!(BitcoinQuantity, Bitcoin);
-    impl_http_quantity_asset!(EtherQuantity, Ether);
+    impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
+    impl_from_http_quantity_asset!(EtherQuantity, Ether);
 
     impl FromHttpAsset for Erc20Token {
         fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
@@ -42,14 +41,6 @@ mod asset_impls {
                 asset.parameter("token_contract")?,
                 asset.parameter("quantity")?,
             ))
-        }
-    }
-
-    impl ToHttpAsset for Erc20Token {
-        fn to_http_asset(&self) -> Result<HttpAsset, Error> {
-            Ok(HttpAsset::with_asset("ERC20")
-                .with_parameter("quantity", self.quantity())?
-                .with_parameter("token_contract", self.token_contract())?)
         }
     }
 }
@@ -71,7 +62,7 @@ pub fn peers(connection_pool: Arc<ConnectionPool>) -> Result<impl Reply, Rejecti
 mod tests {
 
     use crate::{
-        http_api::{asset::ToHttpAsset, ledger::ToHttpLedger},
+        http_api::rfc003::handlers::Http,
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
     use bitcoin_support::{self, BitcoinQuantity};
@@ -86,9 +77,9 @@ mod tests {
             Erc20Quantity(U256::from(100_000_000_000u64)),
         );
 
-        let bitcoin = bitcoin.to_http_asset().unwrap();
-        let ether = ether.to_http_asset().unwrap();
-        let pay = pay.to_http_asset().unwrap();
+        let bitcoin = Http(bitcoin);
+        let ether = Http(ether);
+        let pay = Http(pay);
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();
         let ether_serialized = serde_json::to_string(&ether).unwrap();
@@ -110,8 +101,8 @@ mod tests {
         let bitcoin = Bitcoin::new(bitcoin_support::Network::Regtest);
         let ethereum = Ethereum::new(ethereum_support::Network::Regtest);
 
-        let bitcoin = bitcoin.to_http_ledger().unwrap();
-        let ethereum = ethereum.to_http_ledger().unwrap();
+        let bitcoin = Http(bitcoin);
+        let ethereum = Http(ethereum);
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();
         let ethereum_serialized = serde_json::to_string(&ethereum).unwrap();

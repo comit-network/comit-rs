@@ -1,11 +1,12 @@
-use serde::{de::DeserializeOwned, Serialize};
+use ::serde::{de::DeserializeOwned, Serialize};
+
 use std::fmt::Debug;
 
 mod bitcoin;
 mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
-use crate::http_api::ledger::{FromHttpLedger, ToHttpLedger};
+use crate::http_api::ledger::FromHttpLedger;
 use std::hash::Hash;
 
 pub trait Ledger:
@@ -20,7 +21,6 @@ pub trait Ledger:
     + Eq
     + Hash
     + FromHttpLedger
-    + ToHttpLedger
     + Into<LedgerKind>
 {
     type Quantity: Debug + Copy + DeserializeOwned + Serialize + Send + Sync + 'static;

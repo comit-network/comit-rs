@@ -1,4 +1,4 @@
-use crate::http_api::asset::{FromHttpAsset, ToHttpAsset};
+use crate::http_api::asset::FromHttpAsset;
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use std::{
@@ -17,7 +17,6 @@ pub trait Asset:
     + Eq
     + Hash
     + FromHttpAsset
-    + ToHttpAsset
     + Into<AssetKind>
 {
     fn equal_or_greater_value(&self, other: &Self) -> bool;

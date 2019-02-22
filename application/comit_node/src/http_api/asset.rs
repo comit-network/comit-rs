@@ -1,7 +1,7 @@
-use ::serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
+use ::serde::{de::DeserializeOwned, Deserializer, Serialize};
 use std::{collections::BTreeMap, fmt};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct HttpAsset {
     name: String,
     #[serde(default, flatten)]
@@ -66,7 +66,7 @@ impl fmt::Display for Error {
     }
 }
 
-macro_rules! impl_from_http_quantity_asset {
+macro_rules! _impl_from_http_quantity_asset {
     ($asset_type:ty, $name:ident) => {
         impl FromHttpAsset for $asset_type {
             #[allow(unused_mut)]
@@ -79,20 +79,9 @@ macro_rules! impl_from_http_quantity_asset {
     };
 }
 
-macro_rules! impl_to_http_quantity_asset {
+macro_rules! impl_from_http_quantity_asset {
     ($asset_type:ty, $name:ident) => {
-        impl ToHttpAsset for $asset_type {
-            fn to_http_asset(&self) -> Result<HttpAsset, Error> {
-                Ok(HttpAsset::with_asset(stringify!($name)).with_parameter("quantity", &self)?)
-            }
-        }
-    };
-}
-
-macro_rules! impl_http_quantity_asset {
-    ($asset_type:ty, $name:ident) => {
-        impl_from_http_quantity_asset!($asset_type, $name);
-        impl_to_http_quantity_asset!($asset_type, $name);
+        _impl_from_http_quantity_asset!($asset_type, $name);
     };
 }
 
@@ -103,22 +92,9 @@ where
     fn from_http_asset(asset: HttpAsset) -> Result<Self, Error>;
 }
 
-pub trait ToHttpAsset
-where
-    Self: Sized,
-{
-    fn to_http_asset(&self) -> Result<HttpAsset, Error>;
-}
-
 impl FromHttpAsset for HttpAsset {
     fn from_http_asset(asset: HttpAsset) -> Result<Self, Error> {
         Ok(asset)
-    }
-}
-
-impl ToHttpAsset for HttpAsset {
-    fn to_http_asset(&self) -> Result<HttpAsset, Error> {
-        Ok(self.clone())
     }
 }
 
@@ -134,16 +110,5 @@ pub mod serde {
         let asset = HttpAsset::deserialize(deserializer)?;
 
         T::from_http_asset(asset).map_err(D::Error::custom)
-    }
-
-    pub fn serialize<T: ToHttpAsset, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use ::serde::{ser::Error, Serialize};
-
-        let asset = value.to_http_asset().map_err(S::Error::custom)?;
-
-        HttpAsset::serialize(&asset, serializer)
     }
 }
