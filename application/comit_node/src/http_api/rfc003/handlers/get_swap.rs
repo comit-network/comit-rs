@@ -97,7 +97,7 @@ pub enum SwapStatus {
 #[derive(Debug, Serialize)]
 #[serde(bound = "AL: Ledger, BL: Ledger")]
 pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
-    current_state: SwapCommunicationState,
+    status: SwapCommunicationState,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
     alpha_redeem_identity: Option<AL::Identity>,
@@ -109,7 +109,7 @@ pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
 #[derive(Debug, Serialize)]
 #[serde(bound = "L: Ledger")]
 pub struct LedgerState<L: Ledger> {
-    current_state: HtlcState,
+    status: HtlcState,
     htlc_location: Option<L::HtlcLocation>,
     deploy_tx: Option<L::Transaction>,
     fund_tx: Option<L::Transaction>,
@@ -155,9 +155,9 @@ impl SwapStatus {
         beta_ledger: &LedgerState<BL>,
         error: &Option<rfc003::Error>,
     ) -> Self {
-        let swap_communication_state = &swap_communication.current_state;
-        let alpha_ledger = &alpha_ledger.current_state;
-        let beta_ledger = &beta_ledger.current_state;
+        let swap_communication_state = &swap_communication.status;
+        let alpha_ledger = &alpha_ledger.status;
+        let beta_ledger = &beta_ledger.status;
 
         use self::{HtlcState::*, SwapCommunicationState::*};
         match (swap_communication_state, alpha_ledger, beta_ledger, error) {
@@ -188,7 +188,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
         use self::alice::SwapCommunication::*;
         match communication {
             Proposed { request } => Self {
-                current_state: SwapCommunicationState::Sent,
+                status: SwapCommunicationState::Sent,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
@@ -197,7 +197,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_refund_identity: None,
             },
             Accepted { request, response } => Self {
-                current_state: SwapCommunicationState::Accepted,
+                status: SwapCommunicationState::Accepted,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: Some(response.alpha_ledger_redeem_identity),
@@ -206,7 +206,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_refund_identity: Some(response.beta_ledger_refund_identity),
             },
             Rejected { request, .. } => Self {
-                current_state: SwapCommunicationState::Rejected,
+                status: SwapCommunicationState::Rejected,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
@@ -225,7 +225,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
         use self::bob::SwapCommunication::*;
         match communication {
             Proposed { request, .. } => Self {
-                current_state: SwapCommunicationState::Sent,
+                status: SwapCommunicationState::Sent,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
@@ -234,7 +234,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_refund_identity: None,
             },
             Accepted { request, response } => Self {
-                current_state: SwapCommunicationState::Accepted,
+                status: SwapCommunicationState::Accepted,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: Some(response.alpha_ledger_redeem_identity),
@@ -243,7 +243,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_refund_identity: Some(response.beta_ledger_refund_identity),
             },
             Rejected { request, .. } => Self {
-                current_state: SwapCommunicationState::Rejected,
+                status: SwapCommunicationState::Rejected,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
@@ -259,7 +259,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
 impl<L: Ledger> Default for LedgerState<L> {
     fn default() -> Self {
         Self {
-            current_state: HtlcState::default(),
+            status: HtlcState::default(),
             htlc_location: None,
             deploy_tx: None,
             fund_tx: None,
@@ -284,7 +284,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
                 htlc_location,
                 deploy_transaction,
             } => Self {
-                current_state: HtlcState::Deployed,
+                status: HtlcState::Deployed,
                 htlc_location: Some(htlc_location),
                 deploy_tx: Some(deploy_transaction),
                 fund_tx: None,
@@ -296,7 +296,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
                 deploy_transaction,
                 fund_transaction,
             } => Self {
-                current_state: HtlcState::Funded,
+                status: HtlcState::Funded,
                 htlc_location: Some(htlc_location),
                 deploy_tx: Some(deploy_transaction),
                 fund_tx: Some(fund_transaction),
@@ -309,7 +309,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
                 fund_transaction,
                 redeem_transaction,
             } => Self {
-                current_state: HtlcState::Redeemed,
+                status: HtlcState::Redeemed,
                 htlc_location: Some(htlc_location),
                 deploy_tx: Some(deploy_transaction),
                 fund_tx: Some(fund_transaction),
@@ -322,7 +322,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L> {
                 fund_transaction,
                 refund_transaction,
             } => Self {
-                current_state: HtlcState::Redeemed,
+                status: HtlcState::Redeemed,
                 htlc_location: Some(htlc_location),
                 deploy_tx: Some(deploy_transaction),
                 fund_tx: Some(fund_transaction),

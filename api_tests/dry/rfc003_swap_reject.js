@@ -268,7 +268,7 @@ it("[Bob] Should be in the Rejected State after declining a swap request providi
     await bob.poll_comit_node_until(
         chai,
         bob_stingy_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
 
@@ -276,7 +276,7 @@ it("[Alice] Should be in the Rejected State after Bob declines a swap request pr
     await alice.poll_comit_node_until(
         chai,
         alice_stingy_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
 
@@ -306,7 +306,7 @@ it("[Bob] Should be in the Rejected State after declining a swap request without
     await bob.poll_comit_node_until(
         chai,
         bob_reasonable_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
 
@@ -314,6 +314,6 @@ it("[Alice] Should be in the Rejected State after Bob declines a swap request wi
     await alice.poll_comit_node_until(
         chai,
         alice_reasonable_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
