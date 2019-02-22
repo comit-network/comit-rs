@@ -5,6 +5,7 @@ pub mod transaction_query;
 pub use self::{
     block_query::BlockQuery, event_query::EventQuery, transaction_query::TransactionQuery,
 };
+use ethereum_support::{Transaction, TransactionReceipt};
 use ethereum_types::{clean_0x, H256};
 
 fn to_h256(tx_id: &String) -> Option<H256> {
@@ -15,4 +16,22 @@ fn to_h256(tx_id: &String) -> Option<H256> {
             None
         }
     }
+}
+
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum PayloadKind {
+    Id {
+        id: H256,
+    },
+    Transaction {
+        transaction: Transaction,
+    },
+    Receipt {
+        receipt: TransactionReceipt,
+    },
+    TransactionAndReceipt {
+        transaction: Transaction,
+        receipt: TransactionReceipt,
+    },
 }

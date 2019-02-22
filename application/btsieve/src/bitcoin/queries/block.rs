@@ -1,4 +1,5 @@
 use crate::{
+    bitcoin::queries::PayloadKind,
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
@@ -25,12 +26,6 @@ pub enum ReturnAs {
     BlockId,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(untagged)]
-pub enum PayloadKind {
-    BlockId { id: BlockId },
-}
-
 impl Transform<ReturnAs> for BlockQuery {
     type Client = BitcoinCoreClient;
     type Item = PayloadKind;
@@ -45,7 +40,7 @@ impl Transform<ReturnAs> for BlockQuery {
             .iter()
             .filter_map(to_block_id)
             .map(|id| match return_as {
-                ReturnAs::BlockId => PayloadKind::BlockId { id },
+                ReturnAs::BlockId => PayloadKind::Id { id },
             })
             .collect())
     }

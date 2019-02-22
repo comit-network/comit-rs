@@ -1,11 +1,11 @@
 use crate::{
-    ethereum::queries::to_h256,
+    ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
 use ethereum_support::{
     web3::{transports::Http, types::U256, Web3},
-    Block, BlockId, Transaction,
+    Block, Transaction,
 };
 use std::sync::Arc;
 
@@ -35,12 +35,6 @@ pub enum ReturnAs {
     BlockId,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(untagged)]
-pub enum PayloadKind {
-    BlockId { id: BlockId },
-}
-
 impl Transform<ReturnAs> for BlockQuery {
     type Client = Web3<Http>;
     type Item = PayloadKind;
@@ -55,9 +49,7 @@ impl Transform<ReturnAs> for BlockQuery {
             .iter()
             .filter_map(to_h256)
             .map(|id| match return_as {
-                ReturnAs::BlockId => PayloadKind::BlockId {
-                    id: BlockId::Hash(id),
-                },
+                ReturnAs::BlockId => PayloadKind::Id { id },
             })
             .collect())
     }

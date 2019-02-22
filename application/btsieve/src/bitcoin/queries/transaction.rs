@@ -1,4 +1,5 @@
 use crate::{
+    bitcoin::queries::PayloadKind,
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
@@ -28,13 +29,6 @@ pub enum ReturnAs {
     #[derivative(Default)]
     TransactionId,
     Transaction,
-}
-
-#[derive(Serialize, Debug)]
-#[serde(untagged)]
-pub enum PayloadKind {
-    Transaction { transaction: Transaction },
-    TransactionId { id: TransactionId },
 }
 
 impl Transform<ReturnAs> for TransactionQuery {
@@ -76,7 +70,7 @@ fn convert_to_payload(
     id: TransactionId,
 ) -> Result<PayloadKind, Error> {
     match return_as {
-        ReturnAs::TransactionId => Ok(PayloadKind::TransactionId { id }),
+        ReturnAs::TransactionId => Ok(PayloadKind::Id { id }),
         ReturnAs::Transaction => match client.get_raw_transaction_verbose(&id) {
             Ok(Ok(transaction)) => Ok(PayloadKind::Transaction {
                 transaction: transaction.into(),

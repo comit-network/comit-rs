@@ -1,5 +1,5 @@
 use crate::{
-    ethereum::queries::to_h256,
+    ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
@@ -75,13 +75,6 @@ pub enum ReturnAs {
     Transaction,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(untagged)]
-pub enum PayloadKind {
-    TransactionId { id: H256 },
-    Transaction { transaction: Transaction },
-}
-
 impl Transform<ReturnAs> for TransactionQuery {
     type Client = Web3<Http>;
     type Item = PayloadKind;
@@ -120,9 +113,9 @@ fn to_payload(
         ReturnAs::Transaction => Box::new(transaction_future.map(|maybe_transaction| {
             maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
         })),
-        ReturnAs::TransactionId => Box::new(future::ok(Some(PayloadKind::TransactionId {
-            id: transaction_id,
-        }))),
+        ReturnAs::TransactionId => {
+            Box::new(future::ok(Some(PayloadKind::Id { id: transaction_id })))
+        }
     }
 }
 

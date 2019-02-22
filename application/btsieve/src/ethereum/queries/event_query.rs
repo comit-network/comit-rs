@@ -1,5 +1,5 @@
 use crate::{
-    ethereum::queries::to_h256,
+    ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
@@ -125,24 +125,6 @@ pub enum ReturnAs {
     TransactionAndReceipt,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(untagged)]
-pub enum PayloadKind {
-    TransactionId {
-        id: H256,
-    },
-    Transaction {
-        transaction: Transaction,
-    },
-    Receipt {
-        receipt: TransactionReceipt,
-    },
-    TransactionAndReceipt {
-        transaction: Transaction,
-        receipt: TransactionReceipt,
-    },
-}
-
 impl Transform<ReturnAs> for EventQuery {
     type Client = Web3<Http>;
     type Item = PayloadKind;
@@ -190,9 +172,9 @@ fn to_payload(
             receipt_future
                 .map(|maybe_receipt| maybe_receipt.map(|receipt| PayloadKind::Receipt { receipt })),
         ),
-        ReturnAs::TransactionId => Box::new(future::ok(Some(PayloadKind::TransactionId {
-            id: transaction_id,
-        }))),
+        ReturnAs::TransactionId => {
+            Box::new(future::ok(Some(PayloadKind::Id { id: transaction_id })))
+        }
         ReturnAs::TransactionAndReceipt => Box::new(transaction_future.join(receipt_future).map(
             move |maybe| match maybe {
                 (Some(transaction), Some(receipt)) => Some(PayloadKind::TransactionAndReceipt {
