@@ -235,6 +235,8 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
     for (let swap of swaps) {
         swap.protocol.should.equal("rfc003");
         swap.status.should.equal("IN_PROGRESS");
+        swap._links.accept.href.should.be.a("string");
+        swap._links.decline.href.should.be.a("string");
     }
 
     let swap_1_link = swaps[0]._links.self;

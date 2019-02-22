@@ -7,7 +7,7 @@ use crate::{
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::RoleKind,
-        rfc003::{state_store::StateStore, Ledger},
+        rfc003::{state_store::StateStore, Actions, Ledger},
         Metadata, MetadataStore, SwapId,
     },
 };
@@ -47,6 +47,8 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let alpha_ledger = state.alpha_ledger_state.clone().into();
                         let beta_ledger = state.beta_ledger_state.clone().into();
                         let parameters = SwapParameters::new(state.clone().request());
+                        let actions: Vec<String> =
+                            state.actions().iter().map(|action| action.name()).collect();
                         let error = state.error;
                         let status = SwapStatus::new::<AL, BL>(
                             &communication,
@@ -63,6 +65,12 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
 
                         let mut hal_resource = HalResource::new(swap);
                         hal_resource.with_link("self", swap_path(id));
+
+                        for action in actions {
+                            let route = format!("{}/{}", swap_path(id), action);
+                            hal_resource.with_link(action, route);
+                        }
+
                         resources.push(hal_resource);
                     }
                     None => error!("Couldn't find state for {} despite having the metadata", id),
