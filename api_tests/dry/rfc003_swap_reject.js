@@ -169,11 +169,47 @@ it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
             let swaps = embedded.swaps;
             let reasonable_swap_in_swaps = {
                 _links: { self: { href: alice_reasonable_swap_href } },
+                parameters: {
+                    alpha_asset: {
+                        name: "Bitcoin",
+                        quantity: "100000000",
+                    },
+                    alpha_ledger: {
+                        name: "Bitcoin",
+                        network: "regtest",
+                    },
+                    beta_asset: {
+                        name: "Ether",
+                        quantity: "10000000000000000000",
+                    },
+                    beta_ledger: {
+                        name: "Ethereum",
+                        network: "regtest",
+                    },
+                },
                 protocol: "rfc003",
                 status: "IN_PROGRESS",
             };
             let stingy_swap_in_swaps = {
                 _links: { self: { href: alice_stingy_swap_href } },
+                parameters: {
+                    alpha_asset: {
+                        name: "Bitcoin",
+                        quantity: "100",
+                    },
+                    alpha_ledger: {
+                        name: "Bitcoin",
+                        network: "regtest",
+                    },
+                    beta_asset: {
+                        name: "Ether",
+                        quantity: "10000000000000000000",
+                    },
+                    beta_ledger: {
+                        name: "Ethereum",
+                        network: "regtest",
+                    },
+                },
                 protocol: "rfc003",
                 status: "IN_PROGRESS",
             };

@@ -151,7 +151,7 @@ pub enum HtlcState {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapParameters<AL, BL, AA, BA> {
-    fn new(request: rfc003::messages::Request<AL, BL, AA, BA>) -> Self {
+    pub fn new(request: rfc003::messages::Request<AL, BL, AA, BA>) -> Self {
         Self {
             alpha_ledger: Http(request.alpha_ledger),
             alpha_asset: Http(request.alpha_asset),
