@@ -1,6 +1,6 @@
 use crate::{
     query_result_repository::QueryResult,
-    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
+    route_factory::{Error, QueryType, Transform},
 };
 use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
@@ -21,45 +21,69 @@ impl QueryType for TransactionQuery {
     }
 }
 
-#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[serde(rename_all = "lowercase")]
-pub enum Embed {
+#[derive(Deserialize, Derivative, Debug, PartialEq)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    TransactionId,
     Transaction,
 }
 
-impl ShouldEmbed<Embed> for TransactionQuery {
-    fn should_embed(query_params: &QueryParams<Embed>) -> bool {
-        query_params.embed.len() > 0
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum PayloadKind {
+    Transaction { transaction: Transaction },
+    TransactionId { id: TransactionId },
+}
+
+impl Transform<ReturnAs> for TransactionQuery {
+    type Client = BitcoinCoreClient;
+    type Item = PayloadKind;
+
+    fn transform(
+        result: &QueryResult,
+        return_as: &ReturnAs,
+        client: Arc<BitcoinCoreClient>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        // Close over some local variables for easier usage of the method
+        let to_payload = |id: TransactionId| convert_to_payload(client.as_ref(), return_as, id);
+
+        result
+            .0
+            .iter()
+            .filter_map(to_transaction_id)
+            .map(to_payload)
+            // .collect for Vec<Result<PayloadKind, Error>> transforms it into
+            // Result<Vec<PayloadKind>, Error> returning the first Error or the whole
+            // collection.
+            // We want this because the the Error means something is wrong with the connection to
+            // our bitcoin node and skipping is unlikely to help since the next call will fail as
+            // well. That is why we simply fail the whole function.
+            .collect()
     }
 }
 
-#[derive(Serialize)]
-pub struct Payload {
-    transaction: Transaction,
+fn to_transaction_id(id: &String) -> Option<TransactionId> {
+    TransactionId::from_hex(id)
+        .map_err(|e| warn!("skipping {} because it is invalid hex: {:?}", id, e))
+        .ok()
 }
 
-impl Expand<Embed> for TransactionQuery {
-    type Client = BitcoinCoreClient;
-    type Item = Payload;
-
-    fn expand(
-        result: &QueryResult,
-        _: &Vec<Embed>,
-        client: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        let mut expanded_result = Vec::new();
-        for tx_id in result.clone().0 {
-            let tx_id = TransactionId::from_hex(tx_id.as_str()).map_err(|_| Error::InvalidHex)?;
-
-            let transaction = client
-                .get_raw_transaction_verbose(&tx_id)
-                .map_err(Error::BitcoinRpcConnection)?
-                .map_err(Error::BitcoinRpcResponse)?;
-            expanded_result.push(Payload {
+fn convert_to_payload(
+    client: &BitcoinCoreClient,
+    return_as: &ReturnAs,
+    id: TransactionId,
+) -> Result<PayloadKind, Error> {
+    match return_as {
+        ReturnAs::TransactionId => Ok(PayloadKind::TransactionId { id }),
+        ReturnAs::Transaction => match client.get_raw_transaction_verbose(&id) {
+            Ok(Ok(transaction)) => Ok(PayloadKind::Transaction {
                 transaction: transaction.into(),
-            });
-        }
-        Ok(expanded_result)
+            }),
+            Ok(Err(e)) => Err(Error::BitcoinRpcResponse(e)),
+            Err(e) => Err(Error::BitcoinRpcConnection(e)),
+        },
     }
 }
 

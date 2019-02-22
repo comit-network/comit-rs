@@ -4,13 +4,12 @@ use crate::{
     routes, web3,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
-use std::sync::Arc;
+use std::{fmt::Debug, sync::Arc};
 use url::Url;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Debug)]
 pub enum Error {
-    InvalidHex,
     BitcoinRpcConnection(bitcoin_rpc_client::ClientError),
     BitcoinRpcResponse(bitcoin_rpc_client::RpcError),
     Web3(web3::Error),
@@ -25,25 +24,21 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
-pub trait Expand<E> {
+pub trait Transform<R> {
     type Client: 'static + Send + Sync;
-    type Item: Serialize;
+    type Item: Serialize + Debug;
 
-    fn expand(
+    fn transform(
         result: &QueryResult,
-        embed: &Vec<E>,
+        return_as: &R,
         client: Arc<Self::Client>,
     ) -> Result<Vec<Self::Item>, Error>;
 }
 
-pub trait ShouldEmbed<E> {
-    fn should_embed(query_params: &QueryParams<E>) -> bool;
-}
-
-#[derive(Deserialize, Debug, Eq, PartialEq, Hash)]
-pub struct QueryParams<E> {
-    #[serde(default = "Vec::new")]
-    pub embed: Vec<E>,
+#[derive(Deserialize, Serialize, Default, Debug, Eq, PartialEq, Hash)]
+pub struct QueryParams<R> {
+    #[serde(default)]
+    pub return_as: R,
 }
 
 impl RouteFactory {
@@ -52,20 +47,20 @@ impl RouteFactory {
     }
 
     pub fn create<
-        E,
-        Q: QueryType + Expand<E> + ShouldEmbed<E> + DeserializeOwned + Serialize + Send + 'static,
+        R,
+        Q: QueryType + Transform<R> + DeserializeOwned + Serialize + Debug + Send + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
     >(
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Arc<<Q as Expand<E>>::Client>,
+        client: Arc<<Q as Transform<R>>::Client>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)>
     where
-        for<'de> E: Deserialize<'de>,
-        E: Send + 'static,
+        for<'de> R: Deserialize<'de>,
+        R: Send + Default + Debug + 'static,
     {
         let route = Q::route();
 
@@ -92,7 +87,7 @@ impl RouteFactory {
             .and(query_result_repository.clone())
             .and(client.clone())
             .and(warp::path::param::<u32>())
-            .and(warp::query::<QueryParams<E>>())
+            .and(warp::query::<QueryParams<R>>())
             .and_then(routes::retrieve_query);
 
         let delete = warp::delete2()

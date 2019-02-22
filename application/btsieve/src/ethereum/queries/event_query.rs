@@ -1,6 +1,7 @@
 use crate::{
+    ethereum::queries::to_h256,
     query_result_repository::QueryResult,
-    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
+    route_factory::{Error, QueryType, Transform},
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -11,12 +12,10 @@ use ethereum_support::{
     },
     Address, Block, Bytes, Transaction,
 };
-use ethereum_types::clean_0x;
 use futures::{
     future::{self, Future},
     stream::{FuturesOrdered, Stream},
 };
-use itertools::Itertools;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -115,22 +114,23 @@ impl QueryType for EventQuery {
     }
 }
 
-#[derive(Deserialize, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[serde(rename_all = "lowercase")]
-pub enum Embed {
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    TransactionId,
     Transaction,
     Receipt,
+    TransactionAndReceipt,
 }
 
-impl ShouldEmbed<Embed> for EventQuery {
-    fn should_embed(params: &QueryParams<Embed>) -> bool {
-        params.embed.len() > 0
-    }
-}
-
-#[derive(Serialize)]
+#[derive(Serialize, Debug)]
 #[serde(untagged)]
 pub enum PayloadKind {
+    TransactionId {
+        id: H256,
+    },
     Transaction {
         transaction: Transaction,
     },
@@ -143,26 +143,23 @@ pub enum PayloadKind {
     },
 }
 
-impl Expand<Embed> for EventQuery {
+impl Transform<ReturnAs> for EventQuery {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 
-    fn expand(
+    fn transform(
         result: &QueryResult,
-        embed: &Vec<Embed>,
+        return_as: &ReturnAs,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
+        let to_payload =
+            |transaction_id: H256| to_payload(client.as_ref(), transaction_id, return_as);
+
         result
             .0
             .iter()
-            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
-                Ok(bytes) => Some(bytes),
-                Err(e) => {
-                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
-                    None
-                }
-            })
-            .map(|id| create_future(client.as_ref(), H256::from_slice(id.as_ref()), embed))
+            .filter_map(to_h256)
+            .map(to_payload)
             .collect::<FuturesOrdered<_>>()
             .filter_map(|item| item)
             .collect()
@@ -170,10 +167,10 @@ impl Expand<Embed> for EventQuery {
     }
 }
 
-fn create_future(
+fn to_payload(
     client: &Web3<Http>,
     transaction_id: H256,
-    embed: &Vec<Embed>,
+    return_as: &ReturnAs,
 ) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
     let transaction_future = client
         .eth()
@@ -185,40 +182,41 @@ fn create_future(
         .transaction_receipt(transaction_id)
         .map_err(Error::Web3);
 
-    let unique_choices = embed.iter().unique().collect_vec();
-
-    match unique_choices.as_slice() {
-        [Embed::Transaction] => Box::new(transaction_future.map(|maybe_transaction| {
+    match return_as {
+        ReturnAs::Transaction => Box::new(transaction_future.map(|maybe_transaction| {
             maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
         })),
-        [Embed::Receipt] => Box::new(
+        ReturnAs::Receipt => Box::new(
             receipt_future
                 .map(|maybe_receipt| maybe_receipt.map(|receipt| PayloadKind::Receipt { receipt })),
         ),
-        [Embed::Receipt, Embed::Transaction] | [Embed::Transaction, Embed::Receipt] => Box::new(
-            transaction_future
-                .join(receipt_future)
-                .map(|maybe| match maybe {
-                    (Some(transaction), Some(receipt)) => {
-                        Some(PayloadKind::TransactionAndReceipt {
-                            transaction,
-                            receipt,
-                        })
-                    }
-                    _ => None,
+        ReturnAs::TransactionId => Box::new(future::ok(Some(PayloadKind::TransactionId {
+            id: transaction_id,
+        }))),
+        ReturnAs::TransactionAndReceipt => Box::new(transaction_future.join(receipt_future).map(
+            move |maybe| match maybe {
+                (Some(transaction), Some(receipt)) => Some(PayloadKind::TransactionAndReceipt {
+                    transaction,
+                    receipt,
                 }),
-        ),
-        &[] => {
-            warn!("no embed choices given, cannot expand {:?}", transaction_id);
-            Box::new(future::ok(None))
-        }
-        choices => {
-            warn!(
-                "unsupported combination of choices given {:?}, will not expand to anything",
-                choices
-            );
-            Box::new(future::ok(None))
-        }
+                // TODO: Investigate under which circumstances the ethereum node fails to return a
+                // transaction/receipt
+                (None, _) => {
+                    warn!(
+                        "received empty response for eth_getTransactionByHash({:x?})",
+                        transaction_id
+                    );
+                    None
+                }
+                (_, None) => {
+                    warn!(
+                        "received empty response for eth_getTransactionReceipt({:x?})",
+                        transaction_id
+                    );
+                    None
+                }
+            },
+        )),
     }
 }
 

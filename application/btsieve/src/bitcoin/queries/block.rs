@@ -1,9 +1,9 @@
 use crate::{
     query_result_repository::QueryResult,
-    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
+    route_factory::{Error, QueryType, Transform},
 };
 use bitcoin_rpc_client::BitcoinCoreClient;
-use bitcoin_support::MinedBlock;
+use bitcoin_support::{BlockId, MinedBlock};
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
@@ -17,27 +17,44 @@ impl QueryType for BlockQuery {
     }
 }
 
-#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[serde(rename_all = "lowercase")]
-pub enum Embed {}
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    BlockId,
+}
 
-impl ShouldEmbed<Embed> for BlockQuery {
-    fn should_embed(_: &QueryParams<Embed>) -> bool {
-        false
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum PayloadKind {
+    BlockId { id: BlockId },
+}
+
+impl Transform<ReturnAs> for BlockQuery {
+    type Client = BitcoinCoreClient;
+    type Item = PayloadKind;
+
+    fn transform(
+        result: &QueryResult,
+        return_as: &ReturnAs,
+        _: Arc<BitcoinCoreClient>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        Ok(result
+            .0
+            .iter()
+            .filter_map(to_block_id)
+            .map(|id| match return_as {
+                ReturnAs::BlockId => PayloadKind::BlockId { id },
+            })
+            .collect())
     }
 }
 
-impl Expand<Embed> for BlockQuery {
-    type Client = BitcoinCoreClient;
-    type Item = ();
-
-    fn expand(
-        _: &QueryResult,
-        _: &Vec<Embed>,
-        _: Arc<BitcoinCoreClient>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        unimplemented!()
-    }
+fn to_block_id(id: &String) -> Option<BlockId> {
+    BlockId::from_hex(id)
+        .map_err(|e| warn!("skipping {} because it is invalid hex: {:?}", id, e))
+        .ok()
 }
 
 impl BlockQuery {

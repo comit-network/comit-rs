@@ -1,12 +1,16 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
-    route_factory::{Expand, QueryParams, ShouldEmbed},
+    route_factory::{QueryParams, Transform},
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
-use serde::Serialize;
-use std::{error::Error as StdError, fmt, sync::Arc};
+use serde::{Deserialize, Serialize};
+use std::{
+    error::Error as StdError,
+    fmt::{self, Debug},
+    sync::Arc,
+};
 use url::Url;
 use warp::{self, Rejection, Reply};
 
@@ -89,48 +93,39 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
-    E,
-    Q: Serialize + ShouldEmbed<E> + Send + Expand<E>,
+    R: Debug + Default,
+    Q: Serialize + Send + Transform<R> + Debug,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<<Q as Expand<E>>::Client>,
+    client: Arc<<Q as Transform<R>>::Client>,
     id: u32,
-    query_params: QueryParams<E>,
-) -> Result<impl Reply, Rejection> {
-    let query = query_repository.get(id).ok_or_else(|| {
-        warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: Error::QueryNotFound.into(),
+    query_params: QueryParams<R>,
+) -> Result<impl Reply, Rejection>
+where
+    for<'de> R: Deserialize<'de>,
+{
+    query_repository
+        .get(id)
+        .ok_or(Error::QueryNotFound)
+        .and_then(|query| {
+            let result = query_result_repository.get(id).unwrap_or_default();
+
+            Q::transform(&result, dbg!(&query_params.return_as), client)
+                .map(|matches| dbg!(RetrieveQueryResponse { query, matches }))
+                .map(|response| warp::reply::json(&response))
+                .map_err(|e| {
+                    error!("Could not acquire expanded data: {:?}", e);
+                    Error::DataExpansion
+                })
         })
-    });
-    match query {
-        Ok(query) => {
-            let query_result = query_result_repository.get(id).unwrap_or_default();
-            let mut result = ResponsePayload::TransactionIds(query_result.0.clone());
-
-            if Q::should_embed(&query_params) {
-                match Q::expand(&query_result, &query_params.embed, client) {
-                    Ok(data) => {
-                        result = ResponsePayload::Embedded(data);
-                    }
-                    Err(e) => {
-                        error!("Could not acquire expanded data: {:?}", e);
-                        return Err(warp::reject::custom(HttpApiProblemStdError {
-                            http_api_problem: Error::DataExpansion.into(),
-                        }));
-                    }
-                }
-            }
-
-            Ok(warp::reply::json(&RetrieveQueryResponse {
-                query,
-                matches: result,
-            }))
-        }
-        Err(e) => Err(e),
-    }
+        .map_err(|e| {
+            warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: e.into(),
+            })
+        })
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -148,21 +143,8 @@ pub fn delete_query<Q: Send, QR: QueryRepository<Q>, QRR: QueryResultRepository<
     ))
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(untagged)]
-enum ResponsePayload<E> {
-    TransactionIds(Vec<String>),
-    Embedded(Vec<E>),
-}
-
-impl<T> Default for ResponsePayload<T> {
-    fn default() -> Self {
-        ResponsePayload::TransactionIds(Vec::new())
-    }
-}
-
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct RetrieveQueryResponse<Q, T> {
     query: Q,
-    matches: ResponsePayload<T>,
+    matches: T,
 }

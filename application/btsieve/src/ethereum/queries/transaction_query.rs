@@ -1,14 +1,14 @@
 use crate::{
+    ethereum::queries::to_h256,
     query_result_repository::QueryResult,
-    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
+    route_factory::{Error, QueryType, Transform},
 };
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
     Address, Bytes, Transaction, TransactionId,
 };
-use ethereum_types::clean_0x;
 use futures::{
-    future::Future,
+    future::{self, Future},
     stream::{FuturesOrdered, Stream},
 };
 use std::sync::Arc;
@@ -66,53 +66,63 @@ impl QueryType for TransactionQuery {
     }
 }
 
-#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[serde(rename_all = "lowercase")]
-pub enum Embed {
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    TransactionId,
     Transaction,
 }
 
-#[derive(Serialize)]
-pub struct Payload {
-    transaction: Transaction,
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum PayloadKind {
+    TransactionId { id: H256 },
+    Transaction { transaction: Transaction },
 }
 
-impl ShouldEmbed<Embed> for TransactionQuery {
-    fn should_embed(params: &QueryParams<Embed>) -> bool {
-        params.embed.len() > 0
-    }
-}
-
-impl Expand<Embed> for TransactionQuery {
+impl Transform<ReturnAs> for TransactionQuery {
     type Client = Web3<Http>;
-    type Item = Payload;
+    type Item = PayloadKind;
 
-    fn expand(
+    fn transform(
         result: &QueryResult,
-        _: &Vec<Embed>,
+        return_as: &ReturnAs,
         client: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
+        let to_payload =
+            |transaction_id: H256| to_payload(client.as_ref(), transaction_id, return_as);
+
         result
             .0
             .iter()
-            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
-                Ok(bytes) => Some(bytes),
-                Err(e) => {
-                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
-                    None
-                }
-            })
-            .map(|id| {
-                client
-                    .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
-                    .map_err(Error::Web3)
-            })
+            .filter_map(to_h256)
+            .map(to_payload)
             .collect::<FuturesOrdered<_>>()
             .filter_map(|item| item)
-            .map(|transaction| Payload { transaction })
             .collect()
             .wait()
+    }
+}
+
+fn to_payload(
+    client: &Web3<Http>,
+    transaction_id: H256,
+    return_as: &ReturnAs,
+) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
+    let transaction_future = client
+        .eth()
+        .transaction(TransactionId::Hash(transaction_id))
+        .map_err(Error::Web3);
+
+    match return_as {
+        ReturnAs::Transaction => Box::new(transaction_future.map(|maybe_transaction| {
+            maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
+        })),
+        ReturnAs::TransactionId => Box::new(future::ok(Some(PayloadKind::TransactionId {
+            id: transaction_id,
+        }))),
     }
 }
 

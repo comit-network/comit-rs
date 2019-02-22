@@ -1,10 +1,11 @@
 use crate::{
+    ethereum::queries::to_h256,
     query_result_repository::QueryResult,
-    route_factory::{Error, Expand, QueryParams, QueryType, ShouldEmbed},
+    route_factory::{Error, QueryType, Transform},
 };
 use ethereum_support::{
     web3::{transports::Http, types::U256, Web3},
-    Block, Transaction,
+    Block, BlockId, Transaction,
 };
 use std::sync::Arc;
 
@@ -26,26 +27,39 @@ impl QueryType for BlockQuery {
     }
 }
 
-#[derive(Deserialize, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[serde(rename_all = "lowercase")]
-pub enum Embed {}
-
-impl ShouldEmbed<Embed> for BlockQuery {
-    fn should_embed(_: &QueryParams<Embed>) -> bool {
-        false
-    }
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    BlockId,
 }
 
-impl Expand<Embed> for BlockQuery {
-    type Client = Web3<Http>;
-    type Item = ();
+#[derive(Serialize, Debug)]
+#[serde(untagged)]
+pub enum PayloadKind {
+    BlockId { id: BlockId },
+}
 
-    fn expand(
-        _: &QueryResult,
-        _: &Vec<Embed>,
+impl Transform<ReturnAs> for BlockQuery {
+    type Client = Web3<Http>;
+    type Item = PayloadKind;
+
+    fn transform(
+        result: &QueryResult,
+        return_as: &ReturnAs,
         _: Arc<Web3<Http>>,
     ) -> Result<Vec<Self::Item>, Error> {
-        unimplemented!()
+        Ok(result
+            .0
+            .iter()
+            .filter_map(to_h256)
+            .map(|id| match return_as {
+                ReturnAs::BlockId => PayloadKind::BlockId {
+                    id: BlockId::Hash(id),
+                },
+            })
+            .collect())
     }
 }
 

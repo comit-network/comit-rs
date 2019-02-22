@@ -15,9 +15,7 @@ pub use bitcoin::{
     util::{
         bip143::SighashComponents,
         bip32::{self, ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
-        hash::{
-            self, Hash160, Sha256dHash, Sha256dHash as TransactionId, Sha256dHash as BlockHash,
-        },
+        hash::{self, Hash160, Sha256dHash, Sha256dHash as TransactionId, Sha256dHash as BlockId},
         privkey::Privkey as PrivateKey,
         Error,
     },
