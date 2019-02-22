@@ -1,10 +1,8 @@
-pub mod block_query;
-pub mod event_query;
-pub mod transaction_query;
+pub mod block;
+pub mod event;
+pub mod transaction;
 
-pub use self::{
-    block_query::BlockQuery, event_query::EventQuery, transaction_query::TransactionQuery,
-};
+pub use self::{block::BlockQuery, event::EventQuery, transaction::TransactionQuery};
 use ethereum_support::{Transaction, TransactionReceipt};
 use ethereum_types::{clean_0x, H256};
 
