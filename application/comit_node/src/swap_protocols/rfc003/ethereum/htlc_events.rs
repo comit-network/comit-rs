@@ -16,6 +16,7 @@ use crate::{
 };
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
+    TransactionAndReceipt,
 };
 use futures::{
     future::{self, Either},
@@ -141,6 +142,8 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 
 mod erc20 {
     use super::*;
+    use ethereum_support::{Erc20Quantity, U256};
+
     // keccak('Transfer(address,address,uint256)')
     const TRANSFER_LOG_MSG: &str =
         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -181,13 +184,26 @@ mod erc20 {
                         ],
                     }],
                 })
-                .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-                .map(move |transaction| {
-                    // TODO: Get the actual asset out of response from btsieve
-                    let asset = htlc_params.asset;
-                    Funded { transaction, asset }
+                .and_then(move |query_id| {
+                    query_ethereum.transaction_and_receipt_first_result(&query_id)
                 })
-                .map_err(rfc003::Error::Btsieve);
+                .map_err(rfc003::Error::Btsieve)
+                .and_then(
+                    |TransactionAndReceipt {
+                              transaction,
+                              receipt,
+                          }| {
+                        receipt.logs.into_iter().find(|log| log.topics.contains(&TRANSFER_LOG_MSG.into())).ok_or_else(|| {
+                            warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
+                            rfc003::Error::InsufficientFunding
+                        }).map(|log| {
+                            let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
+                            let asset = Erc20Token::new(log.address, quantity);
+
+                            Funded { transaction, asset }
+                        })
+                    },
+                );
 
             Box::new(funded_future)
         }
