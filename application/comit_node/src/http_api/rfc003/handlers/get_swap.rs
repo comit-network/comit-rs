@@ -63,7 +63,10 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize")]
+#[serde(
+    bound = "Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
+             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
+)]
 pub struct GetSwapResource<AL: Ledger, BL: Ledger> {
     parameters: SwapParameters,
     role: String,
@@ -80,7 +83,10 @@ pub struct SwapParameters {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize")]
+#[serde(
+    bound = "Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
+             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
+)]
 pub struct SwapState<AL: Ledger, BL: Ledger> {
     communication: SwapCommunication<AL, BL>,
     alpha_ledger: LedgerState<AL::HtlcLocation, AL::Transaction>,
@@ -109,10 +115,10 @@ pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "Http<T>: Serialize, H: Serialize")]
+#[serde(bound = "Http<T>: Serialize, Http<H>: Serialize")]
 pub struct LedgerState<H, T> {
     status: HtlcState,
-    htlc_location: Option<H>,
+    htlc_location: Option<Http<H>>,
     deploy_tx: Option<Http<T>>,
     fund_tx: Option<Http<T>>,
     redeem_tx: Option<Http<T>>,
@@ -287,7 +293,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 deploy_transaction,
             } => Self {
                 status: HtlcState::Deployed,
-                htlc_location: Some(htlc_location),
+                htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: None,
                 refund_tx: None,
@@ -299,7 +305,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 fund_transaction,
             } => Self {
                 status: HtlcState::Funded,
-                htlc_location: Some(htlc_location),
+                htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
                 refund_tx: None,
@@ -312,7 +318,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 redeem_transaction,
             } => Self {
                 status: HtlcState::Redeemed,
-                htlc_location: Some(htlc_location),
+                htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
                 redeem_tx: Some(Http(redeem_transaction)),
@@ -325,7 +331,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 refund_transaction,
             } => Self {
                 status: HtlcState::Redeemed,
-                htlc_location: Some(htlc_location),
+                htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
                 refund_tx: Some(Http(refund_transaction)),

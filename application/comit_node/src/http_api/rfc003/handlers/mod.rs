@@ -34,3 +34,21 @@ impl Serialize for Http<ethereum_support::Transaction> {
         self.0.hash.serialize(serializer)
     }
 }
+
+impl Serialize for Http<bitcoin_support::OutPoint> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl Serialize for Http<ethereum_support::Address> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
