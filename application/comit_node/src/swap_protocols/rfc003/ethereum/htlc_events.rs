@@ -5,12 +5,12 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             self,
-            ethereum::extract_secret::extract_secret,
             events::{
                 Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
                 RedeemedOrRefundedFuture, Refunded,
             },
             state_machine::HtlcParams,
+            Secret,
         },
     },
 };
@@ -81,7 +81,7 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 
 fn htlc_redeemed_or_refunded<A: Asset>(
     query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
-    htlc_params: HtlcParams<Ethereum, A>,
+    _: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
@@ -110,18 +110,26 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                     topics: vec![Some(Topic(REDEEM_LOG_MSG.into()))],
                 }],
             })
-            .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
+            .and_then(move |query_id| query_ethereum.transaction_and_receipt_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
-            .and_then(move |transaction| {
-                let secret =
-                    extract_secret(&transaction, &htlc_params.secret_hash).ok_or_else(|| {
-                        rfc003::Error::Internal(
-                            "Redeem transaction didn't have the secret in it".into(),
-                        )
-                    })?;
-                Ok(Redeemed {
-                    transaction,
-                    secret,
+            .and_then(move |TransactionAndReceipt {transaction, receipt}| {
+
+                receipt
+                    .logs
+                    .into_iter()
+                    .find(|log| log.topics.contains(&REDEEM_LOG_MSG.into()))
+                    .ok_or_else(|| {
+                        rfc003::Error::Internal(format!("transaction receipt {:?} did not contain a REDEEM log", transaction.hash))
+                    }).and_then(|log| {
+
+                    let log_data = log.data.0.as_ref();
+                    let secret = Secret::from_vec(log_data)
+                        .map_err(|e| rfc003::Error::Internal(format!("failed to construct secret from data in transaction receipt {:?}: {:?}", transaction.hash, e)))?;
+
+                    Ok(Redeemed {
+                            transaction,
+                            secret,
+                    })
                 })
             })
     };
