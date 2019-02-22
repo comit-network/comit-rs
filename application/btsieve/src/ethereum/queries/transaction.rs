@@ -11,7 +11,6 @@ use futures::{
     future::{self, Future},
     stream::{FuturesOrdered, Stream},
 };
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct TransactionQuery {
@@ -82,10 +81,9 @@ impl Transform<ReturnAs> for TransactionQuery {
     fn transform(
         result: &QueryResult,
         return_as: &ReturnAs,
-        client: Arc<Web3<Http>>,
+        client: &Web3<Http>,
     ) -> Result<Vec<Self::Item>, Error> {
-        let to_payload =
-            |transaction_id: H256| to_payload(client.as_ref(), transaction_id, return_as);
+        let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
 
         result
             .0

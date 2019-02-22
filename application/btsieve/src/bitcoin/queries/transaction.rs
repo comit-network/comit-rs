@@ -7,7 +7,6 @@ use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
     Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction, TransactionId,
 };
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct TransactionQuery {
@@ -38,10 +37,10 @@ impl Transform<ReturnAs> for TransactionQuery {
     fn transform(
         result: &QueryResult,
         return_as: &ReturnAs,
-        client: Arc<BitcoinCoreClient>,
+        client: &BitcoinCoreClient,
     ) -> Result<Vec<Self::Item>, Error> {
         // Close over some local variables for easier usage of the method
-        let to_payload = |id: TransactionId| convert_to_payload(client.as_ref(), return_as, id);
+        let to_payload = |id: TransactionId| convert_to_payload(client, return_as, id);
 
         result
             .0

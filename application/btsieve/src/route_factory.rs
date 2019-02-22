@@ -31,7 +31,7 @@ pub trait Transform<R> {
     fn transform(
         result: &QueryResult,
         return_as: &R,
-        client: Arc<Self::Client>,
+        client: &Self::Client,
     ) -> Result<Vec<Self::Item>, Error>;
 }
 

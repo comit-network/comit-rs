@@ -7,7 +7,6 @@ use ethereum_support::{
     web3::{transports::Http, types::U256, Web3},
     Block, Transaction,
 };
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BlockQuery {
@@ -42,7 +41,7 @@ impl Transform<ReturnAs> for BlockQuery {
     fn transform(
         result: &QueryResult,
         return_as: &ReturnAs,
-        _: Arc<Web3<Http>>,
+        _: &Web3<Http>,
     ) -> Result<Vec<Self::Item>, Error> {
         Ok(result
             .0

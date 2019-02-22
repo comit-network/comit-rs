@@ -5,7 +5,6 @@ use crate::{
 };
 use bitcoin_rpc_client::BitcoinCoreClient;
 use bitcoin_support::{BlockId, MinedBlock};
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BlockQuery {
@@ -33,7 +32,7 @@ impl Transform<ReturnAs> for BlockQuery {
     fn transform(
         result: &QueryResult,
         return_as: &ReturnAs,
-        _: Arc<BitcoinCoreClient>,
+        _: &BitcoinCoreClient,
     ) -> Result<Vec<Self::Item>, Error> {
         Ok(result
             .0
