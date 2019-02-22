@@ -112,8 +112,8 @@ describe("RFC003: Bitcoin for ERC20", () => {
             chai,
             alice_swap_href,
             body =>
-                body.state.outcome == "IN_PROGRESS" &&
-                body.state.communication.current_state == "SENT"
+                body.status == "IN_PROGRESS" &&
+                body.state.communication.status == "SENT"
         );
     });
 
@@ -128,7 +128,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
         let swap_embedded = body._embedded.swaps[0];
         swap_embedded.protocol.should.equal("rfc003");
-        swap_embedded.state.should.equal("IN_PROGRESS");
+        swap_embedded.status.should.equal("IN_PROGRESS");
         let swap_link = swap_embedded._links;
         swap_link.should.be.a("object");
         bob_swap_href = swap_link.self.href;

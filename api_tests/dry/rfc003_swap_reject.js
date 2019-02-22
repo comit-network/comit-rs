@@ -149,10 +149,10 @@ it("[Alice] Is able to GET the swap after POSTing it", async () => {
 
             let body = res.body;
             body.role.should.equal("Alice");
-            body.state.outcome.should.equal("IN_PROGRESS");
-            let swap = body.swap;
-            swap.should.be.a("object");
-            swap.alpha_asset.quantity.should.equal(
+            body.status.should.equal("IN_PROGRESS");
+            let parameters = body.parameters;
+            parameters.should.be.a("object");
+            parameters.alpha_asset.quantity.should.equal(
                 alpha_asset_reasonable_quantity
             );
         });
@@ -170,12 +170,12 @@ it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
             let reasonable_swap_in_swaps = {
                 _links: { self: { href: alice_reasonable_swap_href } },
                 protocol: "rfc003",
-                state: "IN_PROGRESS",
+                status: "IN_PROGRESS",
             };
             let stingy_swap_in_swaps = {
                 _links: { self: { href: alice_stingy_swap_href } },
                 protocol: "rfc003",
-                state: "IN_PROGRESS",
+                status: "IN_PROGRESS",
             };
             swaps.should.have.deep.members([
                 stingy_swap_in_swaps,
@@ -198,7 +198,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
 
     for (let swap of swaps) {
         swap.protocol.should.equal("rfc003");
-        swap.state.should.equal("IN_PROGRESS");
+        swap.status.should.equal("IN_PROGRESS");
     }
 
     let swap_1_link = swaps[0]._links.self;
@@ -214,7 +214,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
     let swap_2 = await chai.request(bob.comit_node_url()).get(swap_2_href);
 
     if (
-        swap_1.body.swap.alpha_asset.quantity ==
+        swap_1.body.parameters.alpha_asset.quantity ==
         parseInt(alpha_asset_stingy_quantity)
     ) {
         bob_stingy_swap_href = swap_1_href;
@@ -235,8 +235,8 @@ it("[Bob] Has the accept and decline actions when GETing the swap", async () => 
             res.should.have.status(200);
 
             let body = res.body;
-            body.state.outcome.should.equal("IN_PROGRESS");
-            body.swap.should.be.a("object");
+            body.status.should.equal("IN_PROGRESS");
+            body.parameters.should.be.a("object");
 
             let action_links = body._links;
             action_links.should.be.a("object");
@@ -268,7 +268,7 @@ it("[Bob] Should be in the Rejected State after declining a swap request providi
     await bob.poll_comit_node_until(
         chai,
         bob_stingy_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
 
@@ -276,7 +276,7 @@ it("[Alice] Should be in the Rejected State after Bob declines a swap request pr
     await alice.poll_comit_node_until(
         chai,
         alice_stingy_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
 
@@ -306,7 +306,7 @@ it("[Bob] Should be in the Rejected State after declining a swap request without
     await bob.poll_comit_node_until(
         chai,
         bob_reasonable_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
 
@@ -314,6 +314,6 @@ it("[Alice] Should be in the Rejected State after Bob declines a swap request wi
     await alice.poll_comit_node_until(
         chai,
         alice_reasonable_swap_href,
-        body => body.state.communication.current_state == "REJECTED"
+        body => body.state.communication.status == "REJECTED"
     );
 });
