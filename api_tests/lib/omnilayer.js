@@ -311,7 +311,7 @@ module.exports.redeemHTLC = async function(redeemScript, bobDetails, htlcUTXO, t
     // HTLC input
     txb.addInput(htlcUTXO.txid, htlcUTXO.vout, null);
 
-    // Add BTC change back to Alice
+    // BTC to Bob
     txb.addOutput(bob_final_address, btc);
 
     // Add Omni instructions
@@ -473,7 +473,7 @@ module.exports.redeemWitnessHTLC = async function(redeemScript, p2wsh, bobDetail
     // HTLC input
     txb.addInput(htlcUTXO.txid, htlcUTXO.vout);
 
-    // Add BTC change back to Alice
+    // BTC to Bob
     txb.addOutput(bob_final_address, btc);
 
     // Add Omni instructions
