@@ -276,7 +276,7 @@ mod ethereum {
                 let mut url = query.as_ref().clone();
                 url.set_query(Some("return_as=transaction_and_receipt"));
 
-                let transactions = poll_client
+                let results = poll_client
                     .get(url.clone())
                     .send()
                     .and_then(|mut response| {
@@ -301,7 +301,7 @@ mod ethereum {
                             .collect()
                     });
 
-                Box::new(transactions)
+                Box::new(results)
             })
         }
     }
