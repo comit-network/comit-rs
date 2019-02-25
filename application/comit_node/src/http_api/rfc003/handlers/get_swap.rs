@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{problem, rfc003::handlers::Http},
+    http_api::{problem, Http},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
