@@ -1,5 +1,5 @@
 use crate::{
-    ethereum::queries::{to_h256, PayloadKind},
+    ethereum::queries::{create_receipt_future, create_transaction_future, to_h256, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
@@ -7,7 +7,7 @@ use ethbloom::Input;
 use ethereum_support::{
     web3::{
         transports::Http,
-        types::{TransactionId, TransactionReceipt, H256},
+        types::{TransactionReceipt, H256},
         Web3,
     },
     Address, Block, Bytes, Transaction,
@@ -151,51 +151,27 @@ fn to_payload(
     transaction_id: H256,
     return_as: &ReturnAs,
 ) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
-    let transaction_future = client
-        .eth()
-        .transaction(TransactionId::Hash(transaction_id))
-        .map(|maybe_transaction| maybe_transaction.map(Box::new))
-        .map_err(Error::Web3);
-
-    let receipt_future = client
-        .eth()
-        .transaction_receipt(transaction_id)
-        .map(|maybe_receipt| maybe_receipt.map(Box::new))
-        .map_err(Error::Web3);
+    let tx_future = create_transaction_future(client, transaction_id);
+    let receipt_future = create_receipt_future(client, transaction_id);
 
     match return_as {
-        ReturnAs::Transaction => Box::new(transaction_future.map(|maybe_transaction| {
-            maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
-        })),
+        ReturnAs::Transaction => Box::new(
+            tx_future
+                .map(|maybe| maybe.map(|transaction| PayloadKind::Transaction { transaction })),
+        ),
         ReturnAs::Receipt => Box::new(
-            receipt_future
-                .map(|maybe_receipt| maybe_receipt.map(|receipt| PayloadKind::Receipt { receipt })),
+            receipt_future.map(|maybe| maybe.map(|receipt| PayloadKind::Receipt { receipt })),
         ),
         ReturnAs::TransactionId => {
             Box::new(future::ok(Some(PayloadKind::Id { id: transaction_id })))
         }
-        ReturnAs::TransactionAndReceipt => Box::new(transaction_future.join(receipt_future).map(
+        ReturnAs::TransactionAndReceipt => Box::new(tx_future.join(receipt_future).map(
             move |maybe| match maybe {
                 (Some(transaction), Some(receipt)) => Some(PayloadKind::TransactionAndReceipt {
                     transaction,
                     receipt,
                 }),
-                // TODO: Investigate under which circumstances the ethereum node fails to return a
-                // transaction/receipt
-                (None, _) => {
-                    warn!(
-                        "received empty response for eth_getTransactionByHash({:x?})",
-                        transaction_id
-                    );
-                    None
-                }
-                (_, None) => {
-                    warn!(
-                        "received empty response for eth_getTransactionReceipt({:x?})",
-                        transaction_id
-                    );
-                    None
-                }
+                _ => None,
             },
         )),
     }

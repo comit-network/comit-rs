@@ -1,11 +1,11 @@
 use crate::{
-    ethereum::queries::{to_h256, PayloadKind},
+    ethereum::queries::{create_transaction_future, to_h256, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
-    Address, Bytes, Transaction, TransactionId,
+    Address, Bytes, Transaction,
 };
 use futures::{
     future::{self, Future},
@@ -101,16 +101,12 @@ fn to_payload(
     transaction_id: H256,
     return_as: &ReturnAs,
 ) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
-    let transaction_future = client
-        .eth()
-        .transaction(TransactionId::Hash(transaction_id))
-        .map(|maybe_transaction| maybe_transaction.map(Box::new))
-        .map_err(Error::Web3);
-
     match return_as {
-        ReturnAs::Transaction => Box::new(transaction_future.map(|maybe_transaction| {
-            maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
-        })),
+        ReturnAs::Transaction => Box::new(create_transaction_future(client, transaction_id).map(
+            |maybe_transaction| {
+                maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
+            },
+        )),
         ReturnAs::TransactionId => {
             Box::new(future::ok(Some(PayloadKind::Id { id: transaction_id })))
         }
