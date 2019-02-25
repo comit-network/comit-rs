@@ -113,7 +113,6 @@ fn htlc_redeemed_or_refunded<A: Asset>(
             .and_then(move |query_id| query_ethereum.transaction_and_receipt_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
             .and_then(move |TransactionAndReceipt {transaction, receipt}| {
-
                 receipt
                     .logs
                     .into_iter()
