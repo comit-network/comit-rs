@@ -113,8 +113,8 @@ where
         .and_then(|query| {
             let result = query_result_repository.get(id).unwrap_or_default();
 
-            Q::transform(&result, dbg!(&query_params.return_as), client.as_ref())
-                .map(|matches| dbg!(RetrieveQueryResponse { query, matches }))
+            Q::transform(&result, &query_params.return_as, client.as_ref())
+                .map(|matches| RetrieveQueryResponse { query, matches })
                 .map(|response| warp::reply::json(&response))
                 .map_err(|e| {
                     error!("Could not acquire expanded data: {:?}", e);
