@@ -1,5 +1,8 @@
 use crate::{
-    http_api::problem,
+    http_api::{
+        problem,
+        rfc003::action::{Action, ToAction},
+    },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
@@ -10,14 +13,14 @@ use crate::{
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use warp::{self, Reply};
 
 pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: Arc<S>,
     id: &SwapId,
-    action: GetAction,
+    action: Action,
     query_params: &GetActionQueryParams,
 ) -> Result<impl Reply, HttpApiProblem> {
     let metadata = metadata_store
@@ -36,7 +39,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                 .actions()
                 .iter()
                 .find_map(|state_action| {
-                    if action.matches(state_action) {
+                    if action == state_action.to_action() {
                         Some(
                             state_action
                                 .clone()
@@ -56,18 +59,6 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                 })
         })
     )
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum GetAction {
-    Fund,
-    Deploy,
-    Redeem,
-    Refund,
-}
-
-trait MatchesAction<A> {
-    fn matches(self, action: &A) -> bool;
 }
 
 pub trait IntoResponseBody {
@@ -325,50 +316,6 @@ where
                 error!("IntoResponseBody is not implemented for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(500))
             }
-        }
-    }
-}
-
-impl<Deploy, Fund, Redeem, Refund> MatchesAction<alice::ActionKind<Deploy, Fund, Redeem, Refund>>
-    for GetAction
-{
-    fn matches(self, other: &alice::ActionKind<Deploy, Fund, Redeem, Refund>) -> bool {
-        match other {
-            alice::ActionKind::Deploy(_) => self == GetAction::Deploy,
-            alice::ActionKind::Fund(_) => self == GetAction::Fund,
-            alice::ActionKind::Redeem(_) => self == GetAction::Redeem,
-            alice::ActionKind::Refund(_) => self == GetAction::Refund,
-        }
-    }
-}
-
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
-    MatchesAction<bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>> for GetAction
-{
-    fn matches(
-        self,
-        other: &bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>,
-    ) -> bool {
-        match other {
-            bob::ActionKind::Deploy(_) => self == GetAction::Deploy,
-            bob::ActionKind::Fund(_) => self == GetAction::Fund,
-            bob::ActionKind::Redeem(_) => self == GetAction::Redeem,
-            bob::ActionKind::Refund(_) => self == GetAction::Refund,
-            _ => false,
-        }
-    }
-}
-
-impl FromStr for GetAction {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        match s {
-            "deploy" => Ok(GetAction::Deploy),
-            "fund" => Ok(GetAction::Fund),
-            "redeem" => Ok(GetAction::Redeem),
-            "refund" => Ok(GetAction::Refund),
-            _ => Err(()),
         }
     }
 }

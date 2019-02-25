@@ -1,5 +1,9 @@
 use crate::{
-    http_api::{problem, Http},
+    http_api::{
+        problem,
+        rfc003::action::{Action, ToAction},
+        Http,
+    },
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
@@ -15,13 +19,11 @@ use serde::Serialize;
 use serde_json::Value;
 use std::sync::Arc;
 
-type ActionName = String;
-
 pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &Arc<T>,
     state_store: &Arc<S>,
     id: SwapId,
-) -> Result<(Value, Vec<ActionName>), HttpApiProblem> {
+) -> Result<(Value, Vec<Action>), HttpApiProblem> {
     let metadata = metadata_store
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
@@ -49,8 +51,11 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
                 beta_ledger,
             };
 
-            let actions: Vec<ActionName> =
-                state.actions().iter().map(|action| action.name()).collect();
+            let actions: Vec<Action> = state
+                .actions()
+                .iter()
+                .map(|action| action.to_action())
+                .collect();
             serde_json::to_value(GetSwapResource {
                 parameters,
                 status,

@@ -1,6 +1,9 @@
 use crate::{
     http_api::{
-        rfc003::handlers::get_swap::{SwapParameters, SwapStatus},
+        rfc003::{
+            action::{Action, AddLinks, ToAction},
+            handlers::get_swap::{SwapParameters, SwapStatus},
+        },
         route_factory::{swap_path, RFC003},
         Http,
     },
@@ -47,8 +50,11 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let alpha_ledger = state.alpha_ledger_state.clone().into();
                         let beta_ledger = state.beta_ledger_state.clone().into();
                         let parameters = SwapParameters::new(state.clone().request());
-                        let actions: Vec<String> =
-                            state.actions().iter().map(|action| action.name()).collect();
+                        let actions: Vec<Action> = state
+                            .actions()
+                            .iter()
+                            .map(|action| action.to_action())
+                            .collect();
                         let error = state.error;
                         let status = SwapStatus::new::<AL, BL>(
                             &communication,
@@ -66,10 +72,7 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let mut hal_resource = HalResource::new(swap);
                         hal_resource.with_link("self", swap_path(id));
 
-                        for action in actions {
-                            let route = format!("{}/{}", swap_path(id), action);
-                            hal_resource.with_link(action, route);
-                        }
+                        hal_resource.add_links(&id, actions);
 
                         resources.push(hal_resource);
                     }

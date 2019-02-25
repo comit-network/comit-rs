@@ -61,7 +61,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::rfc003::routes::GetAction>())
+        .and(warp::path::param::<http_api::rfc003::action::Action>())
         .and(warp::query::<GetActionQueryParams>())
         .and(warp::get2())
         .and(warp::path::end())
