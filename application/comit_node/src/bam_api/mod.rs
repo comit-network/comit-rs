@@ -83,8 +83,8 @@ impl ToBamHeader for AssetKind {
                 Header::with_str_value("Ether").with_parameter("quantity", ether)?
             }
             AssetKind::Erc20(erc20) => Header::with_str_value("ERC20")
-                .with_parameter("address", erc20.token_contract())?
-                .with_parameter("quantity", erc20.quantity())?,
+                .with_parameter("address", erc20.token_contract)?
+                .with_parameter("quantity", erc20.quantity)?,
             unknown @ AssetKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }

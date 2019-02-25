@@ -27,7 +27,7 @@ fn fund_action(
     response: &Response,
     alpha_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
-    let to = request.alpha_asset.token_contract();
+    let to = request.alpha_asset.token_contract;
     let htlc = Erc20Htlc::from(HtlcParams::new_alpha_params(request, response));
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
     let network = request.alpha_ledger.network;

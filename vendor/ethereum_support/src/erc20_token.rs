@@ -3,8 +3,8 @@ use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Token {
-    token_contract: Address,
-    quantity: Erc20Quantity,
+    pub token_contract: Address,
+    pub quantity: Erc20Quantity,
 }
 
 impl fmt::Display for Erc20Token {
@@ -19,13 +19,5 @@ impl Erc20Token {
             token_contract,
             quantity,
         }
-    }
-
-    pub fn token_contract(&self) -> Address {
-        self.token_contract
-    }
-
-    pub fn quantity(&self) -> Erc20Quantity {
-        self.quantity
     }
 }

@@ -34,7 +34,7 @@ impl Asset for EtherQuantity {
 }
 impl Asset for Erc20Token {
     fn equal_or_greater_value(&self, other: &Erc20Token) -> bool {
-        self.token_contract() == other.token_contract() && self.quantity() >= other.quantity()
+        self.token_contract == other.token_contract && self.quantity >= other.quantity
     }
 }
 

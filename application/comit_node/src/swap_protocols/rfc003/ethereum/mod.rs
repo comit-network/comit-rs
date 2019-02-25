@@ -69,8 +69,8 @@ impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
             htlc_params.secret_hash,
-            htlc_params.asset.token_contract(),
-            htlc_params.asset.quantity(),
+            htlc_params.asset.token_contract,
+            htlc_params.asset.quantity,
         )
     }
 }

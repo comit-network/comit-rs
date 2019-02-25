@@ -20,66 +20,42 @@ use serde::{ser::SerializeStruct, Serialize, Serializer};
 #[derive(Debug)]
 pub struct Http<I>(pub I);
 
-impl Serialize for Http<Bitcoin> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("", 2)?;
-        state.serialize_field("name", "Bitcoin")?;
-        state.serialize_field("network", &self.0.network)?;
-        state.end()
-    }
+macro_rules! _count {
+    () => (0usize);
+    ($x:tt $($xs:tt)*) => (1usize + _count!($($xs)*));
 }
 
-impl Serialize for Http<Ethereum> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("", 2)?;
-        state.serialize_field("name", "Ethereum")?;
-        state.serialize_field("network", &self.0.network)?;
-        state.end()
-    }
+macro_rules! impl_serialize_http {
+    ($type:ty $(:= $name:tt)? { $($field_name:tt $(=> $field_value:ident)?),* }) => {
+        impl Serialize for Http<$type> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                let params = _count!($($name)*);
+                let mut state = serializer.serialize_struct("", 1 + params)?;
+
+                #[allow(unused_variables)]
+                let name = stringify!($type);
+                $(let name = $name;)?
+                state.serialize_field("name", name)?;
+
+                $(
+                  state.serialize_field($field_name, &(self.0)$(.$field_value)?)?;
+                )*
+
+                state.end()
+            }
+        }
+    };
 }
 
-impl Serialize for Http<BitcoinQuantity> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("", 2)?;
-        state.serialize_field("name", "Bitcoin")?;
-        state.serialize_field("quantity", &self.0)?;
-        state.end()
-    }
-}
+impl_serialize_http!(Bitcoin { "network" => network });
+impl_serialize_http!(Ethereum { "network" => network });
 
-impl Serialize for Http<EtherQuantity> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("", 2)?;
-        state.serialize_field("name", "Ether")?;
-        state.serialize_field("quantity", &self.0)?;
-        state.end()
-    }
-}
-
-impl Serialize for Http<Erc20Token> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut state = serializer.serialize_struct("", 3)?;
-        state.serialize_field("name", "ERC20")?;
-        state.serialize_field("quantity", &self.0.quantity())?;
-        state.serialize_field("token_contract", &self.0.token_contract())?;
-        state.end()
-    }
-}
+impl_serialize_http!(BitcoinQuantity := "Bitcoin" { "quantity" });
+impl_serialize_http!(EtherQuantity := "Ether" { "quantity" });
+impl_serialize_http!(Erc20Token := "ERC20" { "quantity" => quantity, "token_contract" => token_contract });
 
 impl Serialize for Http<bitcoin_support::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

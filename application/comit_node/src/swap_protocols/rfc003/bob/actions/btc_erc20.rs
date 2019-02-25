@@ -31,7 +31,7 @@ pub fn fund_action(
     response: &Response,
     beta_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
-    let to = request.beta_asset.token_contract();
+    let to = request.beta_asset.token_contract;
     let htlc = Erc20Htlc::from(HtlcParams::new_beta_params(request, response));
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
     let network = request.beta_ledger.network;

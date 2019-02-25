@@ -172,7 +172,7 @@ mod erc20 {
             let funded_future = self
                 .create(EthereumQuery::Event {
                     event_matchers: vec![EventMatcher {
-                        address: Some(htlc_params.asset.token_contract()),
+                        address: Some(htlc_params.asset.token_contract),
                         data: None,
                         topics: vec![
                             Some(Topic(TRANSFER_LOG_MSG.into())),
