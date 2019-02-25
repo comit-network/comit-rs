@@ -1,4 +1,4 @@
-pub use crate::http_api::rfc003::handlers::{GetActionQueryParams, PostAction};
+pub use crate::http_api::rfc003::handlers::GetActionQueryParams;
 use crate::{
     http_api::{
         problem::HttpApiProblemStdError,
@@ -75,7 +75,7 @@ pub fn post_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
-    action: PostAction,
+    action: Action,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
     handle_post_action(

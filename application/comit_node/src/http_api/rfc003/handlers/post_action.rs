@@ -1,6 +1,6 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::problem,
+    http_api::{problem, rfc003::action::Action},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
@@ -14,14 +14,13 @@ use crate::{
 use bitcoin_support;
 use ethereum_support::{self, Erc20Token};
 use http_api_problem::HttpApiProblem;
-use std::str::FromStr;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
 pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: &S,
     id: SwapId,
-    action: PostAction,
+    action: Action,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
     use crate::swap_protocols::{Metadata, RoleKind};
@@ -33,7 +32,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
     with_swap_types_bob!(
         &metadata,
         (|| match action {
-            PostAction::Accept => serde_json::from_value::<BobAcceptBody>(body)
+            Action::Accept => serde_json::from_value::<BobAcceptBody>(body)
                 .map_err(|e| {
                     error!(
                         "Failed to deserialize body of accept response for swap {}: {:?}",
@@ -54,57 +53,46 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                                 bob::ActionKind::Accept(accept) => Some(Ok(accept)),
                                 _ => None,
                             })
-                            .unwrap_or_else(|| {
-                                Err(HttpApiProblem::with_title_and_type_from_status(404))
-                            })?
+                            .unwrap_or_else(|| Err(problem::invalid_action(action)))?
                     };
 
                     accept_action
                         .accept(accept_body)
-                        .map_err(|_| problem::action_already_taken())
+                        .map_err(|_| problem::action_already_done(action))
                 }),
-            PostAction::Decline => {
-                serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
-                    .map_err(|e| {
-                        error!(
-                            "Failed to deserialize body of decline response for swap {}: {:?}",
-                            id, e
-                        );
-                        problem::deserialize(&e)
-                    })
-                    .and_then(move |decline_body| {
-                        let state = state_store
-                            .get::<ROLE>(id)?
-                            .ok_or_else(problem::state_store)?;
+            Action::Decline => serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
+                .map_err(|e| {
+                    error!(
+                        "Failed to deserialize body of decline response for swap {}: {:?}",
+                        id, e
+                    );
+                    problem::deserialize(&e)
+                })
+                .and_then(move |decline_body| {
+                    let state = state_store
+                        .get::<ROLE>(id)?
+                        .ok_or_else(problem::state_store)?;
 
-                        let decline_action = {
-                            state
-                                .actions()
-                                .into_iter()
-                                .find_map(move |action| match action {
-                                    bob::ActionKind::Decline(decline) => Some(Ok(decline)),
-                                    _ => None,
-                                })
-                                .unwrap_or_else(|| {
-                                    Err(HttpApiProblem::with_title_and_type_from_status(404))
-                                })?
-                        };
+                    let decline_action = {
+                        state
+                            .actions()
+                            .into_iter()
+                            .find_map(move |action| match action {
+                                bob::ActionKind::Decline(decline) => Some(Ok(decline)),
+                                _ => None,
+                            })
+                            .unwrap_or_else(|| Err(problem::invalid_action(action)))?
+                    };
 
-                        let reason = decline_body.reason;
+                    let reason = decline_body.reason;
 
-                        decline_action
-                            .decline(reason)
-                            .map_err(|_| problem::action_already_taken())
-                    })
-            }
+                    decline_action
+                        .decline(reason)
+                        .map_err(|_| problem::action_already_done(action))
+                }),
+            _ => Err(problem::invalid_action(action)),
         })
     )
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum PostAction {
-    Accept,
-    Decline,
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -142,18 +130,6 @@ impl ToAcceptResponseBody<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
         AcceptResponseBody {
             alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
             beta_ledger_refund_identity: secret_source.secp256k1_refund().into(),
-        }
-    }
-}
-
-impl FromStr for PostAction {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, <Self as FromStr>::Err> {
-        match s {
-            "accept" => Ok(PostAction::Accept),
-            "decline" => Ok(PostAction::Decline),
-            _ => Err(()),
         }
     }
 }

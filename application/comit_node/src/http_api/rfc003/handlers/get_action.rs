@@ -53,10 +53,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                         None
                     }
                 })
-                .unwrap_or_else(|| {
-                    Err(HttpApiProblem::with_title_and_type_from_status(400)
-                        .set_detail("Requested action is not supported for this swap"))
-                })
+                .unwrap_or_else(|| Err(problem::invalid_action(action)))
         })
     )
 }

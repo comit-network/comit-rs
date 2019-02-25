@@ -1,6 +1,9 @@
-use crate::swap_protocols::{
-    metadata_store,
-    rfc003::{self, state_store},
+use crate::{
+    http_api::rfc003::action::Action,
+    swap_protocols::{
+        metadata_store,
+        rfc003::{self, state_store},
+    },
 };
 use http::StatusCode;
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
@@ -60,8 +63,14 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
-pub fn action_already_taken() -> HttpApiProblem {
-    HttpApiProblem::new("action-already-taken").set_status(400)
+pub fn action_already_done(action: Action) -> HttpApiProblem {
+    error!("{} action has already been done", action);
+    HttpApiProblem::new("action-already-done").set_status(400)
+}
+
+pub fn invalid_action(action: Action) -> HttpApiProblem {
+    error!("{} action is invalid for this swap", action);
+    HttpApiProblem::new("invalid-action").set_status(404)
 }
 
 impl From<state_store::Error> for HttpApiProblem {
