@@ -73,6 +73,12 @@ impl FromStr for Action {
     }
 }
 
+impl From<Action> for String {
+    fn from(action: Action) -> Self {
+        action.to_string()
+    }
+}
+
 impl Display for Action {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
         let s = match self {
@@ -87,7 +93,7 @@ impl Display for Action {
     }
 }
 
-pub fn new_hal_link(id: &SwapId, action: Action) -> HalLink {
+pub fn new_action_link(id: &SwapId, action: Action) -> HalLink {
     let route = format!("{}/{}", swap_path(*id), action);
     route.into()
 }

@@ -3,7 +3,7 @@ use crate::{
     http_api::{
         problem::HttpApiProblemStdError,
         rfc003::{
-            action::{new_hal_link, Action},
+            action::{new_action_link, Action},
             handlers::{
                 handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
                 handle_post_swap, SwapRequestBodyKind,
@@ -51,8 +51,8 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
         .map(|(swap_resource, actions)| {
             let mut response = HalResource::new(swap_resource);
             for action in actions {
-                let link = new_hal_link(&id, action);
-                response.with_link(action.to_string(), link);
+                let link = new_action_link(&id, action);
+                response.with_link(action, link);
             }
 
             Ok(warp::reply::json(&response))
