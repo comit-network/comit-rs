@@ -115,7 +115,7 @@ workspace = false
 install_script = ["[[ -f ./api_tests/node_modules/.bin/prettier ]] || (cd ./api_tests; yarn install;)"]
 script = [
 '''
-find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier --write
+(cd api_tests; yarn run prettier --write '**/*.js')
 '''
 ]
 
@@ -125,7 +125,7 @@ workspace = false
 install_script = ["[[ -f ./api_tests/node_modules/.bin/prettier ]] || (cd ./api_tests; yarn install;)"]
 script = [
 '''
-find . -not -path '*/node_modules/*' -name '*.js' | xargs ./api_tests/node_modules/.bin/prettier -l
+(cd api_tests; yarn run prettier --check '**/*.js')
 '''
 ]
 
