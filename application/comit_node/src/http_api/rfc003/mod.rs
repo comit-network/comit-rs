@@ -16,22 +16,12 @@ mod htlc_location_impls {
             self.0.serialize(serializer)
         }
     }
-
-    impl Serialize for Http<ethereum_support::Address> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            self.0.serialize(serializer)
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::http_api::Http;
     use bitcoin_support::{OutPoint, Sha256dHash};
-    use ethereum_support::{Address, H160};
 
     #[test]
     fn http_htlc_location_serializes_correctly_to_json() {
@@ -42,23 +32,17 @@ mod tests {
             .unwrap(),
             vout: 1u32,
         };
-        let ethereum_htlc_location: Address = H160::from(7);
+        // Ethereum HtlcLocation matches Ethereum Identity, so it is already being
+        // tested elsewhere.
 
         let bitcoin_htlc_location = Http(bitcoin_htlc_location);
-        let ethereum_htlc_location = Http(ethereum_htlc_location);
 
         let bitcoin_htlc_location_serialized =
             serde_json::to_string(&bitcoin_htlc_location).unwrap();
-        let ethereum_htlc_location_serialized =
-            serde_json::to_string(&ethereum_htlc_location).unwrap();
 
         assert_eq!(
             &bitcoin_htlc_location_serialized,
             r#"{"txid":"ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024","vout":1}"#
-        );
-        assert_eq!(
-            &ethereum_htlc_location_serialized,
-            r#""0x0000000000000000000000000000000000000007""#
         );
     }
 }

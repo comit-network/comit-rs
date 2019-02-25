@@ -70,7 +70,7 @@ macro_rules! _impl_from_http_quantity_asset {
     ($asset_type:ty, $name:ident) => {
         impl FromHttpAsset for $asset_type {
             #[allow(unused_mut)]
-            fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
+            fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
                 asset.is_asset(stringify!($name))?;
 
                 asset.parameter("quantity")

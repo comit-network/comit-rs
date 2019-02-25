@@ -73,7 +73,7 @@ macro_rules! _impl_from_http_ledger {
     ) => {
         impl FromHttpLedger for $name {
             #[allow(unused_mut)]
-            fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, Error> {
+            fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, ledger::Error> {
                 ledger.is_ledger(stringify!($name))?;
 
                 Ok($name {

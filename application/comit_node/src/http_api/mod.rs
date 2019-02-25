@@ -14,95 +14,19 @@ pub use self::problem::*;
 
 pub const PATH: &str = "swaps";
 
-use crate::connection_pool::ConnectionPool;
+use crate::{
+    connection_pool::ConnectionPool,
+    http_api::{
+        asset::{FromHttpAsset, HttpAsset},
+        ledger::{FromHttpLedger, HttpLedger},
+    },
+    swap_protocols::ledger::{Bitcoin, Ethereum},
+};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::{Erc20Token, EtherQuantity};
+use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::{net::SocketAddr, sync::Arc};
 use warp::{self, Rejection, Reply};
-
-#[derive(Debug)]
-pub struct Http<I>(pub I);
-
-mod ledger_impls {
-    use super::{
-        ledger::{Error, FromHttpLedger, HttpLedger},
-        Http,
-    };
-    use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
-    use serde::{ser::SerializeStruct, Serialize, Serializer};
-
-    impl_serialize_http!(Bitcoin { "network" => network });
-    impl_serialize_http!(Ethereum { "network" => network });
-
-    impl_from_http_ledger!(Bitcoin { network });
-    impl_from_http_ledger!(Ethereum { network });
-}
-
-mod asset_impls {
-    use super::{
-        asset::{Error, FromHttpAsset, HttpAsset},
-        Http,
-    };
-    use bitcoin_support::BitcoinQuantity;
-    use ethereum_support::{Erc20Token, EtherQuantity};
-    use serde::{ser::SerializeStruct, Serialize, Serializer};
-
-    impl_serialize_http!(BitcoinQuantity := "Bitcoin" { "quantity" });
-    impl_serialize_http!(EtherQuantity := "Ether" { "quantity" });
-    impl_serialize_http!(Erc20Token := "ERC20" { "quantity" => quantity, "token_contract" => token_contract });
-
-    impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
-    impl_from_http_quantity_asset!(EtherQuantity, Ether);
-
-    impl FromHttpAsset for Erc20Token {
-        fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
-            asset.is_asset("ERC20")?;
-
-            Ok(Erc20Token::new(
-                asset.parameter("token_contract")?,
-                asset.parameter("quantity")?,
-            ))
-        }
-    }
-}
-
-mod transaction_impls {
-    use super::Http;
-    use serde::{Serialize, Serializer};
-
-    impl Serialize for Http<bitcoin_support::Transaction> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            serializer.serialize_str(&format!("{}", self.0.txid()))
-        }
-    }
-
-    impl Serialize for Http<ethereum_support::Transaction> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            self.0.hash.serialize(serializer)
-        }
-    }
-}
-
-mod identity_impls {
-    use super::Http;
-    use serde::{Serialize, Serializer};
-
-    impl Serialize for Http<bitcoin_support::PubkeyHash> {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            self.0.serialize(serializer)
-        }
-    }
-
-    // Serialize already implemented for Http<ethereum_support::Identity> since
-    // Identity === Transaction === Address
-}
 
 #[derive(Debug, Serialize)]
 struct GetPeers {
@@ -115,6 +39,67 @@ pub fn peers(connection_pool: Arc<ConnectionPool>) -> Result<impl Reply, Rejecti
     };
 
     Ok(warp::reply::json(&response))
+}
+
+#[derive(Debug)]
+pub struct Http<I>(pub I);
+
+impl_serialize_http!(Bitcoin { "network" => network });
+impl_from_http_ledger!(Bitcoin { network });
+impl_serialize_http!(BitcoinQuantity := "Bitcoin" { "quantity" });
+impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
+
+impl Serialize for Http<bitcoin_support::Transaction> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0.txid()))
+    }
+}
+
+impl Serialize for Http<bitcoin_support::PubkeyHash> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl_serialize_http!(Ethereum { "network" => network });
+impl_from_http_ledger!(Ethereum { network });
+impl_serialize_http!(EtherQuantity := "Ether" { "quantity" });
+impl_serialize_http!(Erc20Token := "ERC20" { "quantity" => quantity, "token_contract" => token_contract });
+impl_from_http_quantity_asset!(EtherQuantity, Ether);
+
+impl FromHttpAsset for Erc20Token {
+    fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
+        asset.is_asset("ERC20")?;
+
+        Ok(Erc20Token::new(
+            asset.parameter("token_contract")?,
+            asset.parameter("quantity")?,
+        ))
+    }
+}
+
+impl Serialize for Http<ethereum_support::Transaction> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.hash.serialize(serializer)
+    }
+}
+
+impl Serialize for Http<ethereum_support::H160> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
 }
 
 #[cfg(test)]
@@ -225,15 +210,21 @@ mod tests {
         let bitcoin_identity: Vec<u8> =
             hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let bitcoin_identity = PubkeyHash::from(&bitcoin_identity[..]);
-        // Ethereum Identity matches Ethereum Transaction, which is tested above
+        let ethereum_identity = H160::from(7);
 
         let bitcoin_identity = Http(bitcoin_identity);
+        let ethereum_identity = Http(ethereum_identity);
 
         let bitcoin_identity_serialized = serde_json::to_string(&bitcoin_identity).unwrap();
+        let ethereum_identity_serialized = serde_json::to_string(&ethereum_identity).unwrap();
 
         assert_eq!(
             &bitcoin_identity_serialized,
             r#""c021f17be99c6adfbcba5d38ee0d292c0399d2f5""#
+        );
+        assert_eq!(
+            &ethereum_identity_serialized,
+            r#""0x0000000000000000000000000000000000000007""#
         );
     }
 
