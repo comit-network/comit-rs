@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::QueryResultRepository,
-    route_factory::{QueryParams, Transform},
+    route_factory::{QueryParams, ResultToHttpPayload},
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
@@ -94,13 +94,13 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
     R: Debug + Default,
-    Q: Serialize + Send + Transform<R> + Debug,
+    Q: Serialize + Send + ResultToHttpPayload<R> + Debug,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<<Q as Transform<R>>::Client>,
+    client: Arc<<Q as ResultToHttpPayload<R>>::Client>,
     id: u32,
     query_params: QueryParams<R>,
 ) -> Result<impl Reply, Rejection>
@@ -113,7 +113,7 @@ where
         .and_then(|query| {
             let result = query_result_repository.get(id).unwrap_or_default();
 
-            Q::transform(&result, &query_params.return_as, client.as_ref())
+            Q::result_to_http_payload(&result, &query_params.return_as, client.as_ref())
                 .map(|matches| RetrieveQueryResponse { query, matches })
                 .map(|response| warp::reply::json(&response))
                 .map_err(|e| {

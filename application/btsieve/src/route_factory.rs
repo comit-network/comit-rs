@@ -24,11 +24,11 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
-pub trait Transform<R> {
+pub trait ResultToHttpPayload<R> {
     type Client: 'static + Send + Sync;
     type Item: Serialize + Debug;
 
-    fn transform(
+    fn result_to_http_payload(
         result: &QueryResult,
         return_as: &R,
         client: &Self::Client,
@@ -48,14 +48,14 @@ impl RouteFactory {
 
     pub fn create<
         R,
-        Q: QueryType + Transform<R> + DeserializeOwned + Serialize + Debug + Send + 'static,
+        Q: QueryType + ResultToHttpPayload<R> + DeserializeOwned + Serialize + Debug + Send + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
     >(
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Arc<<Q as Transform<R>>::Client>,
+        client: Arc<<Q as ResultToHttpPayload<R>>::Client>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)>
     where

@@ -1,7 +1,7 @@
 use crate::{
     ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, Transform},
+    route_factory::{Error, QueryType, ResultToHttpPayload},
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -124,11 +124,11 @@ pub enum ReturnAs {
     TransactionAndReceipt,
 }
 
-impl Transform<ReturnAs> for EventQuery {
+impl ResultToHttpPayload<ReturnAs> for EventQuery {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 
-    fn transform(
+    fn result_to_http_payload(
         result: &QueryResult,
         return_as: &ReturnAs,
         client: &Web3<Http>,

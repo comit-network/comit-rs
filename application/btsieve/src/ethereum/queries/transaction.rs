@@ -1,7 +1,7 @@
 use crate::{
     ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, Transform},
+    route_factory::{Error, QueryType, ResultToHttpPayload},
 };
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
@@ -74,11 +74,11 @@ pub enum ReturnAs {
     Transaction,
 }
 
-impl Transform<ReturnAs> for TransactionQuery {
+impl ResultToHttpPayload<ReturnAs> for TransactionQuery {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 
-    fn transform(
+    fn result_to_http_payload(
         result: &QueryResult,
         return_as: &ReturnAs,
         client: &Web3<Http>,
