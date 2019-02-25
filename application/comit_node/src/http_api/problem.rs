@@ -65,12 +65,12 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
 
 pub fn action_already_done(action: Action) -> HttpApiProblem {
     error!("{} action has already been done", action);
-    HttpApiProblem::new("action-already-done").set_status(400)
+    HttpApiProblem::new("action-already-done").set_status(409)
 }
 
 pub fn invalid_action(action: Action) -> HttpApiProblem {
     error!("{} action is invalid for this swap", action);
-    HttpApiProblem::new("invalid-action").set_status(404)
+    HttpApiProblem::new("invalid-action").set_status(400)
 }
 
 impl From<state_store::Error> for HttpApiProblem {
