@@ -1,7 +1,7 @@
 use crate::{
     http_api::{
         rfc003::{
-            action::{Action, AddLinks, ToAction},
+            action::{new_hal_link, Action, ToAction},
             handlers::get_swap::{SwapParameters, SwapStatus},
         },
         route_factory::{swap_path, RFC003},
@@ -72,7 +72,10 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let mut hal_resource = HalResource::new(swap);
                         hal_resource.with_link("self", swap_path(id));
 
-                        hal_resource.add_links(&id, actions);
+                        for action in actions {
+                            let link = new_hal_link(&id, action);
+                            hal_resource.with_link(action.to_string(), link);
+                        }
 
                         resources.push(hal_resource);
                     }

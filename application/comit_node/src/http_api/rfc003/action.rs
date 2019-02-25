@@ -5,7 +5,7 @@ use crate::{
         SwapId,
     },
 };
-use rustic_hal::HalResource;
+use rustic_hal::HalLink;
 use std::{
     fmt::{Display, Formatter},
     str::FromStr,
@@ -87,16 +87,7 @@ impl Display for Action {
     }
 }
 
-// SwapId may not be the right type to use here
-pub trait AddLinks<T> {
-    fn add_links(&mut self, id: &SwapId, links: Vec<T>);
-}
-
-impl AddLinks<Action> for HalResource {
-    fn add_links(&mut self, id: &SwapId, actions: Vec<Action>) {
-        for action in actions {
-            let route = format!("{}/{}", swap_path(*id), action);
-            self.with_link(action.to_string(), route);
-        }
-    }
+pub fn new_hal_link(id: &SwapId, action: Action) -> HalLink {
+    let route = format!("{}/{}", swap_path(*id), action);
+    route.into()
 }
