@@ -40,7 +40,7 @@ impl ToHttpPayload<TransactionQuery, ReturnAs> for QueryResult {
         client: &BitcoinCoreClient,
     ) -> Result<Vec<Self::Item>, Error> {
         // Close over some local variables for easier usage of the method
-        let to_payload = |id: TransactionId| convert_to_payload(client, return_as, id);
+        let to_payload = |id: TransactionId| to_payload(client, return_as, id);
 
         self.0
             .iter()
@@ -56,7 +56,7 @@ impl ToHttpPayload<TransactionQuery, ReturnAs> for QueryResult {
     }
 }
 
-fn convert_to_payload(
+fn to_payload(
     client: &BitcoinCoreClient,
     return_as: &ReturnAs,
     id: TransactionId,
