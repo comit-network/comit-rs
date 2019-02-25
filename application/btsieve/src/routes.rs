@@ -17,7 +17,7 @@ use warp::{self, Rejection, Reply};
 #[derive(Debug)]
 pub enum Error {
     QuerySave,
-    DataExpansion,
+    TransformToPayload,
     QueryNotFound,
 }
 
@@ -44,7 +44,7 @@ impl From<Error> for HttpApiProblem {
         match e {
             QuerySave => HttpApiProblem::with_title_and_type_from_status(500)
                 .set_detail("Failed to create new query"),
-            DataExpansion => HttpApiProblem::with_title_and_type_from_status(500),
+            TransformToPayload => HttpApiProblem::with_title_and_type_from_status(500),
             QueryNotFound => HttpApiProblem::with_title_and_type_from_status(404)
                 .set_detail("The requested query does not exist"),
         }
@@ -117,8 +117,11 @@ where
                 .map(|matches| RetrieveQueryResponse { query, matches })
                 .map(|response| warp::reply::json(&response))
                 .map_err(|e| {
-                    error!("Could not acquire expanded data: {:?}", e);
-                    Error::DataExpansion
+                    error!(
+                        "failed to transform result for query {} to payload {:?}: {:?}",
+                        id, query_params.return_as, e
+                    );
+                    Error::TransformToPayload
                 })
         })
         .map_err(|e| {
