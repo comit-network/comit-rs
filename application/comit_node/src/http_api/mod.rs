@@ -87,6 +87,23 @@ mod transaction_impls {
     }
 }
 
+mod identity_impls {
+    use super::Http;
+    use serde::{Serialize, Serializer};
+
+    impl Serialize for Http<bitcoin_support::PubkeyHash> {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            self.0.serialize(serializer)
+        }
+    }
+
+    // Serialize already implemented for Http<ethereum_support::Identity> since
+    // Identity === Transaction === Address
+}
+
 #[derive(Debug, Serialize)]
 struct GetPeers {
     pub peers: Vec<SocketAddr>,
@@ -106,7 +123,7 @@ mod tests {
         http_api::Http,
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
-    use bitcoin_support::{self, BitcoinQuantity, OutPoint, Script, TxIn};
+    use bitcoin_support::{self, BitcoinQuantity, OutPoint, PubkeyHash, Script, TxIn};
     use ethereum_support::{
         self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
     };
@@ -200,6 +217,23 @@ mod tests {
         assert_eq!(
             &ethereum_tx_serialized,
             r#""0x0000000000000000000000000000000000000000000000000000000014cc2b82""#
+        );
+    }
+
+    #[test]
+    fn http_identity_serializes_correctly_to_json() {
+        let bitcoin_identity: Vec<u8> =
+            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
+        let bitcoin_identity = PubkeyHash::from(&bitcoin_identity[..]);
+        // Ethereum Identity matches Ethereum Transaction, which is tested above
+
+        let bitcoin_identity = Http(bitcoin_identity);
+
+        let bitcoin_identity_serialized = serde_json::to_string(&bitcoin_identity).unwrap();
+
+        assert_eq!(
+            &bitcoin_identity_serialized,
+            r#""c021f17be99c6adfbcba5d38ee0d292c0399d2f5""#
         );
     }
 

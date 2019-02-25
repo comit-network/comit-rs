@@ -41,7 +41,8 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
             let alpha_ledger = state.alpha_ledger_state.clone().into();
             let beta_ledger = state.beta_ledger_state.clone().into();
             let error = state.error.clone();
-            let status = SwapStatus::new(&communication, &alpha_ledger, &beta_ledger, &error);
+            let status =
+                SwapStatus::new::<AL, BL>(&communication, &alpha_ledger, &beta_ledger, &error);
             let swap_state = SwapState {
                 communication,
                 alpha_ledger,
@@ -65,6 +66,7 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 #[derive(Debug, Serialize)]
 #[serde(
     bound = "Http<AL>: Serialize, Http<BL>: Serialize, Http<AA>: Serialize, Http<BA>: Serialize,\
+             Http<AL::Identity>: Serialize, Http<BL::Identity>: Serialize,\
              Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
              Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
 )]
@@ -88,11 +90,12 @@ pub struct SwapParameters<AL, BL, AA, BA> {
 
 #[derive(Debug, Serialize)]
 #[serde(
-    bound = "Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
+    bound = "Http<AL::Identity>: Serialize, Http<BL::Identity>: Serialize,\
+             Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
              Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
 )]
 pub struct SwapState<AL: Ledger, BL: Ledger> {
-    communication: SwapCommunication<AL, BL>,
+    communication: SwapCommunication<AL::Identity, BL::Identity>,
     alpha_ledger: LedgerState<AL::HtlcLocation, AL::Transaction>,
     beta_ledger: LedgerState<BL::HtlcLocation, BL::Transaction>,
 }
@@ -107,15 +110,15 @@ pub enum SwapStatus {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "")]
-pub struct SwapCommunication<AL: Ledger, BL: Ledger> {
+#[serde(bound = "Http<AI>: Serialize, Http<BI>: Serialize")]
+pub struct SwapCommunication<AI, BI> {
     status: SwapCommunicationState,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
-    alpha_redeem_identity: Option<AL::Identity>,
-    beta_redeem_identity: BL::Identity,
-    alpha_refund_identity: AL::Identity,
-    beta_refund_identity: Option<BL::Identity>,
+    alpha_redeem_identity: Option<Http<AI>>,
+    beta_redeem_identity: Http<BI>,
+    alpha_refund_identity: Http<AI>,
+    beta_refund_identity: Option<Http<BI>>,
 }
 
 #[derive(Debug, Serialize)]
@@ -160,7 +163,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapParameters<AL, BL, AA, BA
 
 impl SwapStatus {
     pub fn new<AL: Ledger, BL: Ledger>(
-        swap_communication: &SwapCommunication<AL, BL>,
+        swap_communication: &SwapCommunication<AL::Identity, BL::Identity>,
         alpha_ledger: &LedgerState<AL::HtlcLocation, AL::Transaction>,
         beta_ledger: &LedgerState<BL::HtlcLocation, BL::Transaction>,
         error: &Option<rfc003::Error>,
@@ -192,7 +195,7 @@ impl SwapStatus {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication<AL, BL>
+    for SwapCommunication<AL::Identity, BL::Identity>
 {
     fn from(communication: alice::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use self::alice::SwapCommunication::*;
@@ -202,26 +205,26 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: request.beta_ledger_redeem_identity,
-                alpha_refund_identity: request.alpha_ledger_refund_identity,
+                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
+                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
             },
             Accepted { request, response } => Self {
                 status: SwapCommunicationState::Accepted,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
-                alpha_redeem_identity: Some(response.alpha_ledger_redeem_identity),
-                beta_redeem_identity: request.beta_ledger_redeem_identity,
-                alpha_refund_identity: request.alpha_ledger_refund_identity,
-                beta_refund_identity: Some(response.beta_ledger_refund_identity),
+                alpha_redeem_identity: Some(Http(response.alpha_ledger_redeem_identity)),
+                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
+                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
+                beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
             },
             Rejected { request, .. } => Self {
                 status: SwapCommunicationState::Rejected,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: request.beta_ledger_redeem_identity,
-                alpha_refund_identity: request.alpha_ledger_refund_identity,
+                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
+                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
             },
         }
@@ -229,7 +232,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication<AL, BL>
+    for SwapCommunication<AL::Identity, BL::Identity>
 {
     fn from(communication: bob::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use self::bob::SwapCommunication::*;
@@ -239,26 +242,26 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: request.beta_ledger_redeem_identity,
-                alpha_refund_identity: request.alpha_ledger_refund_identity,
+                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
+                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
             },
             Accepted { request, response } => Self {
                 status: SwapCommunicationState::Accepted,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
-                alpha_redeem_identity: Some(response.alpha_ledger_redeem_identity),
-                beta_redeem_identity: request.beta_ledger_redeem_identity,
-                alpha_refund_identity: request.alpha_ledger_refund_identity,
-                beta_refund_identity: Some(response.beta_ledger_refund_identity),
+                alpha_redeem_identity: Some(Http(response.alpha_ledger_redeem_identity)),
+                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
+                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
+                beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
             },
             Rejected { request, .. } => Self {
                 status: SwapCommunicationState::Rejected,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
-                beta_redeem_identity: request.beta_ledger_redeem_identity,
-                alpha_refund_identity: request.alpha_ledger_refund_identity,
+                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
+                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
             },
         }
