@@ -24,12 +24,12 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
-pub trait ResultToHttpPayload<R> {
+pub trait ToHttpPayload<Q, R> {
     type Client: 'static + Send + Sync;
     type Item: Serialize + Debug;
 
-    fn result_to_http_payload(
-        result: &QueryResult,
+    fn to_http_payload(
+        &self,
         return_as: &R,
         client: &Self::Client,
     ) -> Result<Vec<Self::Item>, Error>;
@@ -48,19 +48,21 @@ impl RouteFactory {
 
     pub fn create<
         R,
-        Q: QueryType + ResultToHttpPayload<R> + DeserializeOwned + Serialize + Debug + Send + 'static,
+        Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
         QR: QueryRepository<Q>,
         QRR: QueryResultRepository<Q>,
+        C: 'static + Send + Sync,
     >(
         &self,
         query_repository: Arc<QR>,
         query_result_repository: Arc<QRR>,
-        client: Arc<<Q as ResultToHttpPayload<R>>::Client>,
+        client: Arc<C>,
         ledger_name: &'static str,
     ) -> BoxedFilter<(impl Reply,)>
     where
         for<'de> R: Deserialize<'de>,
         R: Send + Default + Debug + 'static,
+        QueryResult: ToHttpPayload<Q, R, Client = C>,
     {
         let route = Q::route();
 

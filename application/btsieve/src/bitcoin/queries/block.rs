@@ -1,7 +1,7 @@
 use crate::{
     bitcoin::queries::{to_sha256d_hash, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, ResultToHttpPayload},
+    route_factory::{Error, QueryType, ToHttpPayload},
 };
 use bitcoin_rpc_client::BitcoinCoreClient;
 use bitcoin_support::MinedBlock;
@@ -25,16 +25,16 @@ pub enum ReturnAs {
     BlockId,
 }
 
-impl ResultToHttpPayload<ReturnAs> for BlockQuery {
+impl ToHttpPayload<BlockQuery, ReturnAs> for QueryResult {
     type Client = BitcoinCoreClient;
     type Item = PayloadKind;
 
-    fn result_to_http_payload(
-        result: &QueryResult,
+    fn to_http_payload(
+        &self,
         return_as: &ReturnAs,
         _: &BitcoinCoreClient,
     ) -> Result<Vec<Self::Item>, Error> {
-        Ok(result
+        Ok(self
             .0
             .iter()
             .filter_map(to_sha256d_hash)

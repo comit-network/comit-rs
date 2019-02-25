@@ -1,7 +1,7 @@
 use crate::{
     ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, ResultToHttpPayload},
+    route_factory::{Error, QueryType, ToHttpPayload},
 };
 use ethereum_support::{
     web3::{transports::Http, types::U256, Web3},
@@ -34,16 +34,16 @@ pub enum ReturnAs {
     BlockId,
 }
 
-impl ResultToHttpPayload<ReturnAs> for BlockQuery {
+impl ToHttpPayload<BlockQuery, ReturnAs> for QueryResult {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 
-    fn result_to_http_payload(
-        result: &QueryResult,
+    fn to_http_payload(
+        &self,
         return_as: &ReturnAs,
         _: &Web3<Http>,
     ) -> Result<Vec<Self::Item>, Error> {
-        Ok(result
+        Ok(self
             .0
             .iter()
             .filter_map(to_h256)

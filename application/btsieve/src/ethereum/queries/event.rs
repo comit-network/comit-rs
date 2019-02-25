@@ -1,7 +1,7 @@
 use crate::{
     ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, ResultToHttpPayload},
+    route_factory::{Error, QueryType, ToHttpPayload},
 };
 use ethbloom::Input;
 use ethereum_support::{
@@ -124,19 +124,18 @@ pub enum ReturnAs {
     TransactionAndReceipt,
 }
 
-impl ResultToHttpPayload<ReturnAs> for EventQuery {
+impl ToHttpPayload<EventQuery, ReturnAs> for QueryResult {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 
-    fn result_to_http_payload(
-        result: &QueryResult,
+    fn to_http_payload(
+        &self,
         return_as: &ReturnAs,
         client: &Web3<Http>,
     ) -> Result<Vec<Self::Item>, Error> {
         let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
 
-        result
-            .0
+        self.0
             .iter()
             .filter_map(to_h256)
             .map(to_payload)
