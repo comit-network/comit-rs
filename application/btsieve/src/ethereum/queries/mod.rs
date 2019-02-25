@@ -6,7 +6,9 @@ pub use self::{block::BlockQuery, event::EventQuery, transaction::TransactionQue
 use ethereum_support::{Transaction, TransactionReceipt};
 use ethereum_types::{clean_0x, H256};
 
-fn to_h256(tx_id: &String) -> Option<H256> {
+fn to_h256<S: AsRef<str>>(tx_id: S) -> Option<H256> {
+    let tx_id = tx_id.as_ref();
+
     match hex::decode(clean_0x(tx_id)) {
         Ok(bytes) => Some(H256::from_slice(&bytes)),
         Err(e) => {
@@ -23,13 +25,13 @@ pub enum PayloadKind {
         id: H256,
     },
     Transaction {
-        transaction: Transaction,
+        transaction: Box<Transaction>,
     },
     Receipt {
-        receipt: TransactionReceipt,
+        receipt: Box<TransactionReceipt>,
     },
     TransactionAndReceipt {
-        transaction: Transaction,
-        receipt: TransactionReceipt,
+        transaction: Box<Transaction>,
+        receipt: Box<TransactionReceipt>,
     },
 }

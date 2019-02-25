@@ -155,11 +155,13 @@ fn to_payload(
     let transaction_future = client
         .eth()
         .transaction(TransactionId::Hash(transaction_id))
+        .map(|maybe_transaction| maybe_transaction.map(Box::new))
         .map_err(Error::Web3);
 
     let receipt_future = client
         .eth()
         .transaction_receipt(transaction_id)
+        .map(|maybe_receipt| maybe_receipt.map(Box::new))
         .map_err(Error::Web3);
 
     match return_as {

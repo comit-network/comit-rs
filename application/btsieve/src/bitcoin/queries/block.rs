@@ -1,10 +1,10 @@
 use crate::{
-    bitcoin::queries::PayloadKind,
+    bitcoin::queries::{to_sha256d_hash, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
 use bitcoin_rpc_client::BitcoinCoreClient;
-use bitcoin_support::{BlockId, MinedBlock};
+use bitcoin_support::MinedBlock;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BlockQuery {
@@ -37,18 +37,12 @@ impl Transform<ReturnAs> for BlockQuery {
         Ok(result
             .0
             .iter()
-            .filter_map(to_block_id)
+            .filter_map(to_sha256d_hash)
             .map(|id| match return_as {
                 ReturnAs::BlockId => PayloadKind::Id { id },
             })
             .collect())
     }
-}
-
-fn to_block_id(id: &String) -> Option<BlockId> {
-    BlockId::from_hex(id)
-        .map_err(|e| warn!("skipping {} because it is invalid hex: {:?}", id, e))
-        .ok()
 }
 
 impl BlockQuery {

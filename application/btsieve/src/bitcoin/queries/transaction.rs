@@ -1,5 +1,5 @@
 use crate::{
-    bitcoin::queries::PayloadKind,
+    bitcoin::queries::{to_sha256d_hash, PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, Transform},
 };
@@ -45,7 +45,7 @@ impl Transform<ReturnAs> for TransactionQuery {
         result
             .0
             .iter()
-            .filter_map(to_transaction_id)
+            .filter_map(to_sha256d_hash)
             .map(to_payload)
             // .collect for Vec<Result<PayloadKind, Error>> transforms it into
             // Result<Vec<PayloadKind>, Error> returning the first Error or the whole
@@ -55,12 +55,6 @@ impl Transform<ReturnAs> for TransactionQuery {
             // well. That is why we simply fail the whole function.
             .collect()
     }
-}
-
-fn to_transaction_id(id: &String) -> Option<TransactionId> {
-    TransactionId::from_hex(id)
-        .map_err(|e| warn!("skipping {} because it is invalid hex: {:?}", id, e))
-        .ok()
 }
 
 fn convert_to_payload(
