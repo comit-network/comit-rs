@@ -25,7 +25,7 @@ impl<'de> Deserialize<'de> for Erc20Quantity {
             type Value = Erc20Quantity;
 
             fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-                formatter.write_str("A string representing a wei quantity")
+                formatter.write_str("A string representing an ERC20 quantity")
             }
 
             fn visit_str<E>(self, v: &str) -> Result<Erc20Quantity, E>

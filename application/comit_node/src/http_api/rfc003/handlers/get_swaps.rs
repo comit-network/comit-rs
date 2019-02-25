@@ -38,8 +38,12 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let alpha_ledger = state.alpha_ledger_state.clone().into();
                         let beta_ledger = state.beta_ledger_state.clone().into();
                         let error = state.error;
-                        let status =
-                            SwapStatus::new(&communication, &alpha_ledger, &beta_ledger, &error);
+                        let status = SwapStatus::new::<AL, BL>(
+                            &communication,
+                            &alpha_ledger,
+                            &beta_ledger,
+                            &error,
+                        );
 
                         let swap = EmbeddedSwapResource {
                             status,

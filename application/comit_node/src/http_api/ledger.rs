@@ -1,7 +1,7 @@
-use ::serde::{de::DeserializeOwned, Deserializer, Serialize, Serializer};
+use ::serde::{de::DeserializeOwned, Deserializer, Serialize};
 use std::{collections::HashMap, fmt};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct HttpLedger {
     name: String,
     #[serde(default, flatten)]
@@ -65,7 +65,7 @@ impl fmt::Display for Error {
     }
 }
 
-macro_rules! impl_from_http_ledger {
+macro_rules! _impl_from_http_ledger {
     (
         $name:ident {
             $($fields:ident),*
@@ -73,7 +73,7 @@ macro_rules! impl_from_http_ledger {
     ) => {
         impl FromHttpLedger for $name {
             #[allow(unused_mut)]
-            fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, Error> {
+            fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, ledger::Error> {
                 ledger.is_ledger(stringify!($name))?;
 
                 Ok($name {
@@ -86,39 +86,18 @@ macro_rules! impl_from_http_ledger {
     };
 }
 
-macro_rules! impl_to_http_ledger {
-    (
-        $name:ident {
-            $($fields:ident),*
-        }
-    ) => {
-        impl ToHttpLedger for $name {
-            fn to_http_ledger(&self) -> Result<HttpLedger, Error> {
-
-                Ok(HttpLedger::with_ledger(stringify!($name))
-                $(
-                    .with_parameter(stringify!($fields), &self.$fields)?
-                )*
-                )
-            }
-        }
-    };
-}
-
-macro_rules! impl_http_ledger {
+macro_rules! impl_from_http_ledger {
     (
         $name:ident
     ) => {
-        impl_from_http_ledger!($name {});
-        impl_to_http_ledger!($name {});
+        _impl_from_http_ledger!($name {});
     };
     (
         $name:ident {
             $($fields:ident),*
         }
     ) => {
-        impl_from_http_ledger!($name {$($fields),*});
-        impl_to_http_ledger!($name {$($fields),*});
+        _impl_from_http_ledger!($name {$($fields),*});
     };
 }
 
@@ -129,22 +108,9 @@ where
     fn from_http_ledger(ledger: HttpLedger) -> Result<Self, Error>;
 }
 
-pub trait ToHttpLedger
-where
-    Self: Sized,
-{
-    fn to_http_ledger(&self) -> Result<HttpLedger, Error>;
-}
-
 impl FromHttpLedger for HttpLedger {
     fn from_http_ledger(ledger: HttpLedger) -> Result<Self, Error> {
         Ok(ledger)
-    }
-}
-
-impl ToHttpLedger for HttpLedger {
-    fn to_http_ledger(&self) -> Result<HttpLedger, Error> {
-        Ok(self.clone())
     }
 }
 
@@ -162,14 +128,4 @@ pub mod serde {
         T::from_http_ledger(ledger).map_err(D::Error::custom)
     }
 
-    pub fn serialize<T: ToHttpLedger, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        use ::serde::{ser::Error, Serialize};
-
-        let ledger = value.to_http_ledger().map_err(S::Error::custom)?;
-
-        HttpLedger::serialize(&ledger, serializer)
-    }
 }

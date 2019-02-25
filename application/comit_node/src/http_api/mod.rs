@@ -3,9 +3,10 @@ pub mod route_factory;
 
 #[macro_use]
 pub mod ledger;
-
 #[macro_use]
 pub mod asset;
+#[macro_use]
+pub mod impl_serialize_http;
 
 mod problem;
 
@@ -13,46 +14,19 @@ pub use self::problem::*;
 
 pub const PATH: &str = "swaps";
 
-use crate::connection_pool::ConnectionPool;
+use crate::{
+    connection_pool::ConnectionPool,
+    http_api::{
+        asset::{FromHttpAsset, HttpAsset},
+        ledger::{FromHttpLedger, HttpLedger},
+    },
+    swap_protocols::ledger::{Bitcoin, Ethereum},
+};
+use bitcoin_support::BitcoinQuantity;
+use ethereum_support::{Erc20Token, EtherQuantity};
+use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::{net::SocketAddr, sync::Arc};
 use warp::{self, Rejection, Reply};
-
-mod ledger_impls {
-    use super::ledger::{Error, FromHttpLedger, HttpLedger, ToHttpLedger};
-    use crate::swap_protocols::ledger::{Bitcoin, Ethereum};
-
-    impl_http_ledger!(Bitcoin { network });
-    impl_http_ledger!(Ethereum { network });
-
-}
-
-mod asset_impls {
-    use super::asset::{Error, FromHttpAsset, HttpAsset, ToHttpAsset};
-    use bitcoin_support::BitcoinQuantity;
-    use ethereum_support::{Erc20Token, EtherQuantity};
-
-    impl_http_quantity_asset!(BitcoinQuantity, Bitcoin);
-    impl_http_quantity_asset!(EtherQuantity, Ether);
-
-    impl FromHttpAsset for Erc20Token {
-        fn from_http_asset(mut asset: HttpAsset) -> Result<Self, Error> {
-            asset.is_asset("ERC20")?;
-
-            Ok(Erc20Token::new(
-                asset.parameter("token_contract")?,
-                asset.parameter("quantity")?,
-            ))
-        }
-    }
-
-    impl ToHttpAsset for Erc20Token {
-        fn to_http_asset(&self) -> Result<HttpAsset, Error> {
-            Ok(HttpAsset::with_asset("ERC20")
-                .with_parameter("quantity", self.quantity())?
-                .with_parameter("token_contract", self.token_contract())?)
-        }
-    }
-}
 
 #[derive(Debug, Serialize)]
 struct GetPeers {
@@ -67,15 +41,77 @@ pub fn peers(connection_pool: Arc<ConnectionPool>) -> Result<impl Reply, Rejecti
     Ok(warp::reply::json(&response))
 }
 
+#[derive(Debug)]
+pub struct Http<I>(pub I);
+
+impl_serialize_http!(Bitcoin { "network" => network });
+impl_from_http_ledger!(Bitcoin { network });
+impl_serialize_http!(BitcoinQuantity := "Bitcoin" { "quantity" });
+impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
+
+impl Serialize for Http<bitcoin_support::Transaction> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.0.txid()))
+    }
+}
+
+impl Serialize for Http<bitcoin_support::PubkeyHash> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl_serialize_http!(Ethereum { "network" => network });
+impl_from_http_ledger!(Ethereum { network });
+impl_serialize_http!(EtherQuantity := "Ether" { "quantity" });
+impl_serialize_http!(Erc20Token := "ERC20" { "quantity" => quantity, "token_contract" => token_contract });
+impl_from_http_quantity_asset!(EtherQuantity, Ether);
+
+impl FromHttpAsset for Erc20Token {
+    fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
+        asset.is_asset("ERC20")?;
+
+        Ok(Erc20Token::new(
+            asset.parameter("token_contract")?,
+            asset.parameter("quantity")?,
+        ))
+    }
+}
+
+impl Serialize for Http<ethereum_support::Transaction> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.hash.serialize(serializer)
+    }
+}
+
+impl Serialize for Http<ethereum_support::H160> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-
     use crate::{
-        http_api::{asset::ToHttpAsset, ledger::ToHttpLedger},
+        http_api::Http,
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
-    use bitcoin_support::{self, BitcoinQuantity};
-    use ethereum_support::{self, Address, Erc20Quantity, Erc20Token, EtherQuantity, U256};
+    use bitcoin_support::{self, BitcoinQuantity, OutPoint, PubkeyHash, Script, TxIn};
+    use ethereum_support::{
+        self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
+    };
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -86,9 +122,9 @@ mod tests {
             Erc20Quantity(U256::from(100_000_000_000u64)),
         );
 
-        let bitcoin = bitcoin.to_http_asset().unwrap();
-        let ether = ether.to_http_asset().unwrap();
-        let pay = pay.to_http_asset().unwrap();
+        let bitcoin = Http(bitcoin);
+        let ether = Http(ether);
+        let pay = Http(pay);
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();
         let ether_serialized = serde_json::to_string(&ether).unwrap();
@@ -110,8 +146,8 @@ mod tests {
         let bitcoin = Bitcoin::new(bitcoin_support::Network::Regtest);
         let ethereum = Ethereum::new(ethereum_support::Network::Regtest);
 
-        let bitcoin = bitcoin.to_http_ledger().unwrap();
-        let ethereum = ethereum.to_http_ledger().unwrap();
+        let bitcoin = Http(bitcoin);
+        let ethereum = Http(ethereum);
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();
         let ethereum_serialized = serde_json::to_string(&ethereum).unwrap();
@@ -123,6 +159,72 @@ mod tests {
         assert_eq!(
             &ethereum_serialized,
             r#"{"name":"Ethereum","network":"regtest"}"#
+        );
+    }
+
+    #[test]
+    fn http_transaction_serializes_correctly_to_json() {
+        let bitcoin_tx = bitcoin_support::Transaction {
+            version: 1,
+            lock_time: 0,
+            input: vec![TxIn {
+                previous_output: OutPoint::null(),
+                script_sig: Script::new(),
+                sequence: 0,
+                witness: vec![],
+            }],
+            output: vec![],
+        };
+        let ethereum_tx = ethereum_support::Transaction {
+            hash: H256::from(348924802),
+            nonce: U256::from(0),
+            block_hash: None,
+            block_number: None,
+            transaction_index: None,
+            from: H160::from(0),
+            to: None,
+            value: U256::from(0),
+            gas_price: U256::from(0),
+            gas: U256::from(0),
+            input: Bytes::from(vec![]),
+        };
+
+        let bitcoin_tx = Http(bitcoin_tx);
+        let ethereum_tx = Http(ethereum_tx);
+
+        let bitcoin_tx_serialized = serde_json::to_string(&bitcoin_tx).unwrap();
+        let ethereum_tx_serialized = serde_json::to_string(&ethereum_tx).unwrap();
+
+        assert_eq!(
+            &bitcoin_tx_serialized,
+            r#""e6634b155d7d472f60629d168f612781efa9f48e256c5aa3f9ddd2fa181fdedf""#
+        );
+        assert_eq!(
+            &ethereum_tx_serialized,
+            r#""0x0000000000000000000000000000000000000000000000000000000014cc2b82""#
+        );
+    }
+
+    #[test]
+    fn http_identity_serializes_correctly_to_json() {
+        let bitcoin_identity: Vec<u8> =
+            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
+        let bitcoin_identity = PubkeyHash::from(&bitcoin_identity[..]);
+        let ethereum_identity = H160::from(7);
+
+        let bitcoin_identity = Http(bitcoin_identity);
+        let ethereum_identity = Http(ethereum_identity);
+
+        let bitcoin_identity_serialized = serde_json::to_string(&bitcoin_identity).unwrap();
+        let ethereum_identity_serialized = serde_json::to_string(&ethereum_identity).unwrap();
+
+        assert_eq!(
+            &bitcoin_identity_serialized,
+            r#""c021f17be99c6adfbcba5d38ee0d292c0399d2f5""#
+        );
+        assert_eq!(
+            &ethereum_identity_serialized,
+            r#""0x0000000000000000000000000000000000000007""#
         );
     }
 
