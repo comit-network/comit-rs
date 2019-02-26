@@ -1,17 +1,16 @@
 use crate::{
+    ethereum::queries::{create_transaction_future, to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, QueryType, ToHttpPayload},
 };
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
-    Address, Bytes, Transaction, TransactionId,
+    Address, Bytes, Transaction,
 };
-use ethereum_types::clean_0x;
 use futures::{
-    future::Future,
-    stream::{self, Stream},
+    future::{self, Future},
+    stream::{FuturesOrdered, Stream},
 };
-use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct TransactionQuery {
@@ -66,42 +65,47 @@ impl QueryType for TransactionQuery {
     }
 }
 
-impl ShouldExpand for TransactionQuery {
-    fn should_expand(params: &QueryParams) -> bool {
-        params.expand_results
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    TransactionId,
+    Transaction,
+}
+
+impl ToHttpPayload<ReturnAs> for QueryResult {
+    type Client = Web3<Http>;
+    type Item = PayloadKind;
+
+    fn to_http_payload(
+        &self,
+        return_as: &ReturnAs,
+        client: &Web3<Http>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
+
+        self.0
+            .iter()
+            .filter_map(to_h256)
+            .map(to_payload)
+            .collect::<FuturesOrdered<_>>()
+            .collect()
+            .wait()
     }
 }
 
-impl ExpandResult for TransactionQuery {
-    type Client = Web3<Http>;
-    type Item = Transaction;
-
-    fn expand_result(
-        result: &QueryResult,
-        client: Arc<Web3<Http>>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        let futures: Vec<_> = result
-            .0
-            .iter()
-            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
-                Ok(bytes) => Some(bytes),
-                Err(e) => {
-                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
-                    None
-                }
-            })
-            .map(|id| {
-                client
-                    .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
-                    .map_err(Error::Web3)
-            })
-            .collect();
-
-        stream::futures_ordered(futures)
-            .filter_map(|item| item)
-            .collect()
-            .wait()
+fn to_payload(
+    client: &Web3<Http>,
+    transaction_id: H256,
+    return_as: &ReturnAs,
+) -> Box<dyn Future<Item = PayloadKind, Error = Error>> {
+    match return_as {
+        ReturnAs::Transaction => Box::new(
+            create_transaction_future(client, transaction_id)
+                .map(|transaction| PayloadKind::Transaction { transaction }),
+        ),
+        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
     }
 }
 

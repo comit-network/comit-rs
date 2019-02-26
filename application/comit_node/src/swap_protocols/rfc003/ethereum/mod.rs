@@ -8,7 +8,6 @@ use std::time::Duration;
 mod actions;
 mod erc20_htlc;
 mod ether_htlc;
-mod extract_secret;
 pub mod htlc_events;
 
 pub use self::{actions::*, erc20_htlc::*, ether_htlc::*};

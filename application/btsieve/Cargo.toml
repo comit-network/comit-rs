@@ -29,6 +29,7 @@ tokio = "0.1"
 url = "1.7"
 warp = "0.1"
 zmq-rs = "0.1"
+derivative = "1"
 
 [dev-dependencies]
 env_logger = "0.5"

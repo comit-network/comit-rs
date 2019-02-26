@@ -84,7 +84,7 @@ exit:
 
 */
 redeem:
-    log1(0, 0, 0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413) // log keccak256(Redeemed())
+    log1(0, 32, 0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413) // log keccak256(Redeemed(<secret>))
     mstore(32,0x3000000000000000000000000000000000000003) // redeem address
     finishTransferTokens
     jump
@@ -100,13 +100,13 @@ finishTransferTokens:
     mstore(64, 0x5000000000000000000000000000000000000000000000000000000000000005) // Amount
     call(
       sub(gas,100000), 
-      0x6000000000000000000000000000000000000006,
+      0x6000000000000000000000000000000000000006, // Token Contract address
       0,  // Ether to transfer
       28, // = 32-4
       68, // = 2*32+4
       96, // return location
       32  // return size
-    ) // Token Contract address
+    )
     pop
 
     selfdestruct(mload(32))

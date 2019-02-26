@@ -33,3 +33,9 @@ pub mod web3 {
         pub use extern_web3::transports::{EventLoopHandle, Http};
     }
 }
+
+#[derive(Debug)]
+pub struct TransactionAndReceipt {
+    pub transaction: Transaction,
+    pub receipt: TransactionReceipt,
+}

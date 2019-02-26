@@ -1,21 +1,23 @@
 use crate::{
     query_repository::QueryRepository,
-    query_result_repository::QueryResultRepository,
-    route_factory::{ExpandResult, QueryParams, ShouldExpand},
+    query_result_repository::{QueryResult, QueryResultRepository},
+    route_factory::{QueryParams, ToHttpPayload},
 };
 use http_api_problem::{HttpApiProblem, HttpStatusCode};
 use hyper::StatusCode;
-use serde::Serialize;
-use std::{error::Error as StdError, fmt, sync::Arc};
+use serde::{Deserialize, Serialize};
+use std::{
+    error::Error as StdError,
+    fmt::{self, Debug},
+    sync::Arc,
+};
 use url::Url;
 use warp::{self, Rejection, Reply};
 
 #[derive(Debug)]
 pub enum Error {
-    EmptyQuery,
     QuerySave,
-    DataExpansion,
-    MissingClient,
+    TransformToPayload,
     QueryNotFound,
 }
 
@@ -40,17 +42,10 @@ impl From<Error> for HttpApiProblem {
     fn from(e: Error) -> Self {
         use self::Error::*;
         match e {
-            EmptyQuery => HttpApiProblem::new("query-missing-conditions")
-                .set_status(400)
-                .set_detail("Query needs at least one condition"),
-            QuerySave => HttpApiProblem::new("query-could-not-be-saved")
-                .set_status(500)
+            QuerySave => HttpApiProblem::with_title_and_type_from_status(500)
                 .set_detail("Failed to create new query"),
-            DataExpansion | MissingClient => HttpApiProblem::new("query-expanded-data-unavailable")
-                .set_status(500)
-                .set_detail("There was a problem acquiring the query's expanded data"),
-            QueryNotFound => HttpApiProblem::new("query-not-found")
-                .set_status(404)
+            TransformToPayload => HttpApiProblem::with_title_and_type_from_status(500),
+            QueryNotFound => HttpApiProblem::with_title_and_type_from_status(404)
                 .set_detail("The requested query does not exist"),
         }
     }
@@ -98,55 +93,45 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
-    Q: Serialize + ShouldExpand + Send + ExpandResult,
+    R: Debug + Default,
+    Q: Serialize + Send + Debug,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
+    C: 'static + Send + Sync,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Option<Arc<<Q as ExpandResult>::Client>>,
+    client: Arc<C>,
     id: u32,
-    query_params: QueryParams,
-) -> Result<impl Reply, Rejection> {
-    let query = query_repository.get(id).ok_or_else(|| {
-        warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: Error::QueryNotFound.into(),
+    query_params: QueryParams<R>,
+) -> Result<impl Reply, Rejection>
+where
+    for<'de> R: Deserialize<'de>,
+    QueryResult: ToHttpPayload<R, Client = C>,
+{
+    query_repository
+        .get(id)
+        .ok_or(Error::QueryNotFound)
+        .and_then(|query| {
+            query_result_repository
+                .get(id)
+                .unwrap_or_default()
+                .to_http_payload(&query_params.return_as, client.as_ref())
+                .map(|matches| RetrieveQueryResponse { query, matches })
+                .map(|response| warp::reply::json(&response))
+                .map_err(|e| {
+                    error!(
+                        "failed to transform result for query {} to payload {:?}: {:?}",
+                        id, query_params.return_as, e
+                    );
+                    Error::TransformToPayload
+                })
         })
-    });
-    match query {
-        Ok(query) => {
-            let query_result = query_result_repository.get(id).unwrap_or_default();
-            let mut result = ResponsePayload::TransactionIds(query_result.0.clone());
-
-            if Q::should_expand(&query_params) {
-                match client {
-                    Some(client) => match Q::expand_result(&query_result, client) {
-                        Ok(data) => {
-                            result = ResponsePayload::Transactions(data);
-                        }
-                        Err(e) => {
-                            error!("Could not acquire expanded data: {:?}", e);
-                            return Err(warp::reject::custom(HttpApiProblemStdError {
-                                http_api_problem: Error::DataExpansion.into(),
-                            }));
-                        }
-                    },
-                    None => {
-                        error!("No Client available to expand data");
-                        return Err(warp::reject::custom(HttpApiProblemStdError {
-                            http_api_problem: Error::MissingClient.into(),
-                        }));
-                    }
-                }
-            }
-
-            Ok(warp::reply::json(&RetrieveQueryResponse {
-                query,
-                matches: result,
-            }))
-        }
-        Err(e) => Err(e),
-    }
+        .map_err(|e| {
+            warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: e.into(),
+            })
+        })
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -164,21 +149,8 @@ pub fn delete_query<Q: Send, QR: QueryRepository<Q>, QRR: QueryResultRepository<
     ))
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(untagged)]
-enum ResponsePayload<T> {
-    TransactionIds(Vec<String>),
-    Transactions(Vec<T>),
-}
-
-impl<T> Default for ResponsePayload<T> {
-    fn default() -> Self {
-        ResponsePayload::TransactionIds(Vec::new())
-    }
-}
-
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct RetrieveQueryResponse<Q, T> {
     query: Q,
-    matches: ResponsePayload<T>,
+    matches: T,
 }

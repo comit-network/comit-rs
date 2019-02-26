@@ -1,9 +1,12 @@
 use crate::{
+    ethereum::queries::{to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, QueryType, ToHttpPayload},
 };
-use ethereum_support::{web3::types::U256, Block, Transaction};
-use std::sync::Arc;
+use ethereum_support::{
+    web3::{transports::Http, types::U256, Web3},
+    Block, Transaction,
+};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BlockQuery {
@@ -23,18 +26,31 @@ impl QueryType for BlockQuery {
     }
 }
 
-impl ShouldExpand for BlockQuery {
-    fn should_expand(_: &QueryParams) -> bool {
-        false
-    }
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    BlockId,
 }
 
-impl ExpandResult for BlockQuery {
-    type Client = ();
-    type Item = ();
+impl ToHttpPayload<ReturnAs> for QueryResult {
+    type Client = Web3<Http>;
+    type Item = PayloadKind;
 
-    fn expand_result(_result: &QueryResult, _client: Arc<()>) -> Result<Vec<Self::Item>, Error> {
-        unimplemented!()
+    fn to_http_payload(
+        &self,
+        return_as: &ReturnAs,
+        _: &Web3<Http>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        Ok(self
+            .0
+            .iter()
+            .filter_map(to_h256)
+            .map(|id| match return_as {
+                ReturnAs::BlockId => PayloadKind::Id { id },
+            })
+            .collect())
     }
 }
 

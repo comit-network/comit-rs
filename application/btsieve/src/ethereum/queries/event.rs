@@ -1,22 +1,21 @@
 use crate::{
+    ethereum::queries::{create_receipt_future, create_transaction_future, to_h256, PayloadKind},
     query_result_repository::QueryResult,
-    route_factory::{Error, ExpandResult, QueryParams, QueryType, ShouldExpand},
+    route_factory::{Error, QueryType, ToHttpPayload},
 };
 use ethbloom::Input;
 use ethereum_support::{
     web3::{
         transports::Http,
-        types::{TransactionId, TransactionReceipt, H256},
+        types::{TransactionReceipt, H256},
         Web3,
     },
     Address, Block, Bytes, Transaction,
 };
-use ethereum_types::clean_0x;
 use futures::{
-    future::Future,
-    stream::{self, Stream},
+    future::{self, Future},
+    stream::{FuturesOrdered, Stream},
 };
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Topic(H256);
@@ -114,46 +113,60 @@ impl QueryType for EventQuery {
     }
 }
 
-impl ShouldExpand for EventQuery {
-    fn should_expand(params: &QueryParams) -> bool {
-        params.expand_results
+#[derive(Deserialize, Derivative, Debug)]
+#[derivative(Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReturnAs {
+    #[derivative(Default)]
+    TransactionId,
+    Transaction,
+    Receipt,
+    TransactionAndReceipt,
+}
+
+impl ToHttpPayload<ReturnAs> for QueryResult {
+    type Client = Web3<Http>;
+    type Item = PayloadKind;
+
+    fn to_http_payload(
+        &self,
+        return_as: &ReturnAs,
+        client: &Web3<Http>,
+    ) -> Result<Vec<Self::Item>, Error> {
+        let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
+
+        self.0
+            .iter()
+            .filter_map(to_h256)
+            .map(to_payload)
+            .collect::<FuturesOrdered<_>>()
+            .collect()
+            .wait()
     }
 }
 
-impl ExpandResult for EventQuery {
-    type Client = Web3<Http>;
-    type Item = Transaction;
+fn to_payload(
+    client: &Web3<Http>,
+    transaction_id: H256,
+    return_as: &ReturnAs,
+) -> Box<dyn Future<Item = PayloadKind, Error = Error>> {
+    let tx_future = create_transaction_future(client, transaction_id);
+    let receipt_future = create_receipt_future(client, transaction_id);
 
-    // TODO: return TransactionReceipt and not Transaction.
-    // Temporarily return the transaction and not the transaction receipt as the
-    // secret is currently only available in the transaction call data but not
-    // in the receipt. This needs to be fixed with https://github.com/comit-network/comit-rs/issues/638
-    fn expand_result(
-        result: &QueryResult,
-        client: Arc<Web3<Http>>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        let futures: Vec<_> = result
-            .0
-            .iter()
-            .filter_map(|tx_id| match hex::decode(clean_0x(tx_id)) {
-                Ok(bytes) => Some(bytes),
-                Err(e) => {
-                    warn!("Skipping {} because it is not valid hex: {:?}", tx_id, e);
-                    None
-                }
-            })
-            .map(|id| {
-                client
-                    .eth()
-                    .transaction(TransactionId::Hash(H256::from_slice(id.as_ref())))
-                    .map_err(Error::Web3)
-            })
-            .collect();
-
-        stream::futures_ordered(futures)
-            .filter_map(|item| item)
-            .collect()
-            .wait()
+    match return_as {
+        ReturnAs::Transaction => {
+            Box::new(tx_future.map(|transaction| PayloadKind::Transaction { transaction }))
+        }
+        ReturnAs::Receipt => {
+            Box::new(receipt_future.map(|receipt| PayloadKind::Receipt { receipt }))
+        }
+        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
+        ReturnAs::TransactionAndReceipt => Box::new(tx_future.join(receipt_future).map(
+            move |(transaction, receipt)| PayloadKind::TransactionAndReceipt {
+                transaction,
+                receipt,
+            },
+        )),
     }
 }
 

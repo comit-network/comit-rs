@@ -94,17 +94,18 @@ fn create_bitcoin_routes(
 
     let ledger_name = "bitcoin";
 
-    let transaction_routes = route_factory.create(
-        transaction_query_repository,
-        transaction_query_result_repository,
-        Some(Arc::clone(&client)),
-        ledger_name,
-    );
+    let transaction_routes = route_factory
+        .create::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
+            transaction_query_repository,
+            transaction_query_result_repository,
+            Arc::clone(&client),
+            ledger_name,
+        );
 
-    let block_routes = route_factory.create(
+    let block_routes = route_factory.create::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
         block_query_repository,
         block_query_result_repository,
-        None,
+        Arc::clone(&client),
         ledger_name,
     );
 
@@ -181,24 +182,25 @@ fn create_ethereum_routes(
 
     let ledger_name = "ethereum";
 
-    let transaction_routes = route_factory.create(
-        transaction_query_repository,
-        transaction_query_result_repository,
-        Some(Arc::clone(&web3_client)),
-        ledger_name,
-    );
+    let transaction_routes = route_factory
+        .create::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
+            transaction_query_repository,
+            transaction_query_result_repository,
+            Arc::clone(&web3_client),
+            ledger_name,
+        );
 
-    let block_routes = route_factory.create(
+    let block_routes = route_factory.create::<ethereum::queries::block::ReturnAs, _, _, _, _>(
         block_query_repository,
         block_query_result_repository,
-        None,
+        Arc::clone(&web3_client),
         ledger_name,
     );
 
-    let bloom_routes = route_factory.create(
+    let bloom_routes = route_factory.create::<ethereum::queries::event::ReturnAs, _, _, _, _>(
         log_query_repository,
         log_query_result_repository,
-        Some(Arc::clone(&web3_client)),
+        Arc::clone(&web3_client),
         ledger_name,
     );
 

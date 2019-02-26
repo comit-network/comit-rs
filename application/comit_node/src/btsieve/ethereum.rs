@@ -2,7 +2,10 @@ use crate::{
     btsieve::{Error, Query, QueryId},
     swap_protocols::ledger::Ethereum,
 };
-use ethereum_support::web3::types::{Address, Bytes, Transaction, H256};
+use ethereum_support::{
+    web3::types::{Address, Bytes, Transaction, H256},
+    TransactionAndReceipt,
+};
 use futures::Future;
 use serde::Serialize;
 
@@ -67,6 +70,10 @@ pub trait QueryEthereum {
         &self,
         query: &QueryId<Ethereum>,
     ) -> Box<dyn Future<Item = Transaction, Error = Error> + Send>;
+    fn transaction_and_receipt_first_result(
+        &self,
+        query: &QueryId<Ethereum>,
+    ) -> Box<dyn Future<Item = TransactionAndReceipt, Error = Error> + Send>;
 }
 
 #[cfg(test)]

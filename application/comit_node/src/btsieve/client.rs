@@ -25,8 +25,26 @@ pub struct BtsieveHttpClient {
     bitcoin_poll_interval: Duration,
 }
 
+mod payloads {
+    #[derive(Debug, Deserialize)]
+    pub struct TransactionId<T> {
+        pub id: T,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub struct Transaction<T> {
+        pub transaction: T,
+    }
+
+    #[derive(Debug, Deserialize)]
+    pub struct TransactionAndReceipt<T, R> {
+        pub transaction: T,
+        pub receipt: R,
+    }
+}
+
 #[derive(Debug, Deserialize)]
-pub struct QueryResponse<T> {
+struct QueryResponse<T> {
     matches: Vec<T>,
 }
 
@@ -130,14 +148,22 @@ impl BtsieveHttpClient {
             .client
             .get(url.clone())
             .send()
-            .and_then(|mut response| response.json::<QueryResponse<L::TxId>>())
+            .and_then(|mut response| {
+                response.json::<QueryResponse<payloads::TransactionId<L::TxId>>>()
+            })
             .map_err(move |e| {
                 Error::FailedRequest(format!(
                     "Failed to fetch results for {:?} because {:?}",
                     url, e
                 ))
             })
-            .map(|response| response.matches);
+            .map(|response| {
+                response
+                    .matches
+                    .into_iter()
+                    .map(|payload| payload.id)
+                    .collect()
+            });
 
         Box::new(transactions)
     }
@@ -147,20 +173,28 @@ impl BtsieveHttpClient {
         query: &QueryId<L>,
     ) -> Box<dyn Future<Item = Vec<L::Transaction>, Error = Error> + Send> {
         let mut url = query.as_ref().clone();
-        url.set_query(Some("expand_results=true"));
+        url.set_query(Some("return_as=transaction"));
 
         let transactions = self
             .client
             .get(url.clone())
             .send()
-            .and_then(|mut response| response.json::<QueryResponse<L::Transaction>>())
+            .and_then(|mut response| {
+                response.json::<QueryResponse<payloads::Transaction<L::Transaction>>>()
+            })
             .map_err(move |e| {
                 Error::FailedRequest(format!(
                     "Failed to fetch full results for {:?} because {:?}",
                     url, e
                 ))
             })
-            .map(|response| response.matches);
+            .map(|response| {
+                response
+                    .matches
+                    .into_iter()
+                    .map(|payload| payload.transaction)
+                    .collect()
+            });
 
         Box::new(transactions)
     }
@@ -183,7 +217,8 @@ impl BtsieveHttpClient {
 
 mod ethereum {
     use super::*;
-    use ethereum_support::{Transaction, H256};
+    use ethereum_support::{Transaction, TransactionAndReceipt, TransactionReceipt, H256};
+
     impl QueryEthereum for BtsieveHttpClient {
         fn create(
             &self,
@@ -218,6 +253,7 @@ mod ethereum {
         ) -> Box<dyn Future<Item = Vec<Transaction>, Error = Error> + Send> {
             self.fetch_transactions(query)
         }
+
         fn transaction_first_result(
             &self,
             query: &QueryId<Ethereum>,
@@ -226,6 +262,46 @@ mod ethereum {
             let query = query.clone();
             poll_until_item(self.ethereum_poll_interval, move || {
                 poll_client.fetch_transactions(&query)
+            })
+        }
+
+        fn transaction_and_receipt_first_result(
+            &self,
+            query: &QueryId<Ethereum>,
+        ) -> Box<dyn Future<Item = TransactionAndReceipt, Error = Error> + Send> {
+            let poll_client = self.client.clone();
+            let query = query.clone();
+
+            poll_until_item(self.ethereum_poll_interval, move || {
+                let mut url = query.as_ref().clone();
+                url.set_query(Some("return_as=transaction_and_receipt"));
+
+                let results = poll_client
+                    .get(url.clone())
+                    .send()
+                    .and_then(|mut response| {
+                        response.json::<QueryResponse<
+                            payloads::TransactionAndReceipt<Transaction, TransactionReceipt>,
+                        >>()
+                    })
+                    .map_err(move |e| {
+                        Error::FailedRequest(format!(
+                            "Failed to fetch full results for {:?} because {:?}",
+                            url, e
+                        ))
+                    })
+                    .map(|response| {
+                        response
+                            .matches
+                            .into_iter()
+                            .map(|payload| TransactionAndReceipt {
+                                transaction: payload.transaction,
+                                receipt: payload.receipt,
+                            })
+                            .collect()
+                    });
+
+                Box::new(results)
             })
         }
     }

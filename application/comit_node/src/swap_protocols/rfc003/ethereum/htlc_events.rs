@@ -5,17 +5,18 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             self,
-            ethereum::extract_secret::extract_secret,
             events::{
                 Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
                 RedeemedOrRefundedFuture, Refunded,
             },
             state_machine::HtlcParams,
+            Secret,
         },
     },
 };
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
+    TransactionAndReceipt,
 };
 use futures::{
     future::{self, Either},
@@ -80,7 +81,7 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 
 fn htlc_redeemed_or_refunded<A: Asset>(
     query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
-    htlc_params: HtlcParams<Ethereum, A>,
+    _: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
@@ -109,18 +110,25 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                     topics: vec![Some(Topic(REDEEM_LOG_MSG.into()))],
                 }],
             })
-            .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
+            .and_then(move |query_id| query_ethereum.transaction_and_receipt_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
-            .and_then(move |transaction| {
-                let secret =
-                    extract_secret(&transaction, &htlc_params.secret_hash).ok_or_else(|| {
-                        rfc003::Error::Internal(
-                            "Redeem transaction didn't have the secret in it".into(),
-                        )
-                    })?;
-                Ok(Redeemed {
-                    transaction,
-                    secret,
+            .and_then(move |TransactionAndReceipt {transaction, receipt}| {
+                receipt
+                    .logs
+                    .into_iter()
+                    .find(|log| log.topics.contains(&REDEEM_LOG_MSG.into()))
+                    .ok_or_else(|| {
+                        rfc003::Error::Internal(format!("transaction receipt {:?} did not contain a REDEEM log", transaction.hash))
+                    }).and_then(|log| {
+
+                    let log_data = log.data.0.as_ref();
+                    let secret = Secret::from_vec(log_data)
+                        .map_err(|e| rfc003::Error::Internal(format!("failed to construct secret from data in transaction receipt {:?}: {:?}", transaction.hash, e)))?;
+
+                    Ok(Redeemed {
+                            transaction,
+                            secret,
+                    })
                 })
             })
     };
@@ -141,6 +149,8 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 
 mod erc20 {
     use super::*;
+    use ethereum_support::{Erc20Quantity, U256};
+
     // keccak('Transfer(address,address,uint256)')
     const TRANSFER_LOG_MSG: &str =
         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -181,13 +191,26 @@ mod erc20 {
                         ],
                     }],
                 })
-                .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-                .map(move |transaction| {
-                    // TODO: Get the actual asset out of response from btsieve
-                    let asset = htlc_params.asset;
-                    Funded { transaction, asset }
+                .and_then(move |query_id| {
+                    query_ethereum.transaction_and_receipt_first_result(&query_id)
                 })
-                .map_err(rfc003::Error::Btsieve);
+                .map_err(rfc003::Error::Btsieve)
+                .and_then(
+                    |TransactionAndReceipt {
+                              transaction,
+                              receipt,
+                          }| {
+                        receipt.logs.into_iter().find(|log| log.topics.contains(&TRANSFER_LOG_MSG.into())).ok_or_else(|| {
+                            warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
+                            rfc003::Error::InsufficientFunding
+                        }).map(|log| {
+                            let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
+                            let asset = Erc20Token::new(log.address, quantity);
+
+                            Funded { transaction, asset }
+                        })
+                    },
+                );
 
             Box::new(funded_future)
         }

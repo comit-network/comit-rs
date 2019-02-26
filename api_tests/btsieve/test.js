@@ -1,5 +1,6 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
+chai.use(require("chai-string"));
 const should = chai.should();
 const bitcoin = require("../lib/bitcoin.js");
 const actor = require("../lib/actor.js");
@@ -90,22 +91,26 @@ describe("Test btsieve API", () => {
                                         to_address
                                     );
                                     body.matches.should.have.lengthOf(1);
-                                    body.matches[0].should.be.a("string");
+                                    body.matches[0].id.should.be.a("string");
                                 });
                         });
                     });
             });
 
-            it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `expand_results`", async function() {
+            it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `return_as=transaction`", async function() {
                 return bitcoin_rpc_client.generate(1).then(() => {
                     return chai
                         .request(location)
-                        .get("?expand_results=true")
+                        .get("?return_as=transaction")
                         .then(res => {
                             res.body.query.to_address.should.equal(to_address);
                             res.body.matches.should.have.lengthOf(1);
-                            res.body.matches[0].output.should.have.lengthOf(2);
-                            res.body.matches[0].output[0].should.be.a("object");
+                            res.body.matches[0].transaction.output.should.have.lengthOf(
+                                2
+                            );
+                            res.body.matches[0].transaction.output[0].should.be.a(
+                                "object"
+                            );
                         });
                 });
             });
@@ -414,15 +419,6 @@ describe("Test btsieve API", () => {
                     .get("")
                     .then(res => {
                         res.should.have.status(200);
-                        res.body.query.event_matchers.should.have.length(1);
-                        res.body.query.event_matchers[0].address
-                            .toLowerCase()
-                            .should.equal(token_contract_address.toLowerCase());
-                        res.body.query.event_matchers[0].topics.every(topic => {
-                            [transfer_topic, from_address, to_address].includes(
-                                topic.toLowerCase()
-                            );
-                        });
                         res.body.matches.should.be.empty;
                     });
             });
@@ -434,40 +430,31 @@ describe("Test btsieve API", () => {
                     "0xa9059cbb" +
                     to_address.replace("0x", "") +
                     "0000000000000000000000000000000000000000000000000000000000000001";
-                return alice_wallet
+
+                let receipt = await alice_wallet
                     .eth()
                     .send_eth_transaction_to(
                         token_contract_address,
                         transfer_token_data,
                         0
-                    )
-                    .then(receipt => {
-                        return btsieve
-                            .poll_until_matches(chai, location)
-                            .then(body => {
-                                body.query.event_matchers.should.have.length(1);
-                                body.query.event_matchers[0].address
-                                    .toLowerCase()
-                                    .should.equal(
-                                        token_contract_address.toLowerCase()
-                                    );
-                                body.query.event_matchers[0].topics.every(
-                                    topic => {
-                                        [
-                                            transfer_topic,
-                                            from_address,
-                                            to_address,
-                                        ].includes(topic.toLowerCase());
-                                    }
-                                );
-                                body.matches.should.have.lengthOf(1);
-                                let query_transaction_hash =
-                                    "0x" + body.matches[0];
-                                query_transaction_hash.should.equal(
-                                    receipt.transactionHash
-                                );
-                            });
-                    });
+                    );
+
+                let body = await btsieve.poll_until_matches(chai, location);
+
+                body.matches.should.have.lengthOf(1);
+                body.matches[0].id.should.equal(receipt.transactionHash);
+                body.matches[0].id.should.startWith("0x");
+            });
+
+            it("btsieve should return transaction and receipt if `return_as` is given", async function() {
+                let body = await btsieve.poll_until_matches(
+                    chai,
+                    location + "?return_as=transaction_and_receipt"
+                );
+
+                body.matches.should.have.lengthOf(1);
+                body.matches[0].transaction.should.be.a("object");
+                body.matches[0].receipt.should.be.a("object");
             });
 
             it("btsieve should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
