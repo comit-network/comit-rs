@@ -30,7 +30,7 @@ pub enum ReturnAs {
     Transaction,
 }
 
-impl ToHttpPayload<TransactionQuery, ReturnAs> for QueryResult {
+impl ToHttpPayload<ReturnAs> for QueryResult {
     type Client = BitcoinCoreClient;
     type Item = PayloadKind;
 

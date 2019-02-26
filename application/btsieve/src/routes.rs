@@ -107,7 +107,7 @@ pub fn retrieve_query<
 ) -> Result<impl Reply, Rejection>
 where
     for<'de> R: Deserialize<'de>,
-    QueryResult: ToHttpPayload<Q, R, Client = C>,
+    QueryResult: ToHttpPayload<R, Client = C>,
 {
     query_repository
         .get(id)

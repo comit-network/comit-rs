@@ -25,7 +25,7 @@ pub enum ReturnAs {
     BlockId,
 }
 
-impl ToHttpPayload<BlockQuery, ReturnAs> for QueryResult {
+impl ToHttpPayload<ReturnAs> for QueryResult {
     type Client = BitcoinCoreClient;
     type Item = PayloadKind;
 

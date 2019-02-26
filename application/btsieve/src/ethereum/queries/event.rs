@@ -124,7 +124,7 @@ pub enum ReturnAs {
     TransactionAndReceipt,
 }
 
-impl ToHttpPayload<EventQuery, ReturnAs> for QueryResult {
+impl ToHttpPayload<ReturnAs> for QueryResult {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 

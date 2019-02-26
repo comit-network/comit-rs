@@ -34,7 +34,7 @@ pub enum ReturnAs {
     BlockId,
 }
 
-impl ToHttpPayload<BlockQuery, ReturnAs> for QueryResult {
+impl ToHttpPayload<ReturnAs> for QueryResult {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 

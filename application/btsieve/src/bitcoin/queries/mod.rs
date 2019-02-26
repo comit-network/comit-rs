@@ -1,5 +1,5 @@
-mod block;
-mod transaction;
+pub mod block;
+pub mod transaction;
 
 pub use self::{block::BlockQuery, transaction::TransactionQuery};
 use bitcoin_support::{Sha256dHash, Transaction};

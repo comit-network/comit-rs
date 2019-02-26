@@ -74,7 +74,7 @@ pub enum ReturnAs {
     Transaction,
 }
 
-impl ToHttpPayload<TransactionQuery, ReturnAs> for QueryResult {
+impl ToHttpPayload<ReturnAs> for QueryResult {
     type Client = Web3<Http>;
     type Item = PayloadKind;
 

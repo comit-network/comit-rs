@@ -26,7 +26,7 @@ pub trait QueryType {
     fn route() -> &'static str;
 }
 
-pub trait ToHttpPayload<Q, R> {
+pub trait ToHttpPayload<R> {
     type Client: 'static + Send + Sync;
     type Item: Serialize + Debug;
 
@@ -64,7 +64,7 @@ impl RouteFactory {
     where
         for<'de> R: Deserialize<'de>,
         R: Send + Default + Debug + 'static,
-        QueryResult: ToHttpPayload<Q, R, Client = C>,
+        QueryResult: ToHttpPayload<R, Client = C>,
     {
         let route = Q::route();
 
