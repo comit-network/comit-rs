@@ -20,22 +20,6 @@ module.exports.eth_balance = async function(address) {
     return eth_balance(address);
 };
 
-module.exports.log_eth_balance = async function(
-    when,
-    player,
-    address,
-    address_type
-) {
-    logger.info(
-        "%s the swap, %s has %s wei at the %s address %s",
-        when,
-        player,
-        await eth_balance(address),
-        address_type,
-        address
-    );
-};
-
 {
     const function_identifier = "40c10f19";
     module.exports.mint_erc20_tokens = (

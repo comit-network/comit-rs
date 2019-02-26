@@ -6,9 +6,8 @@ const Web3 = require("web3");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
+const sb = require("satoshi-bitcoin");
 const logger = global.harness.logger;
-
-const bitcoin_rpc_client = bitcoin.create_client();
 
 const bob_initial_eth = "11";
 const alice_initial_eth = "0.1";
@@ -21,8 +20,8 @@ const bob_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
-const alpha_asset = 100000000;
-const beta_asset = BigInt(Web3.utils.toWei("10", "ether"));
+const alpha_asset_amount = 100000000;
+const beta_asset_amount = BigInt(Web3.utils.toWei("10", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -35,89 +34,7 @@ describe("RFC003: Bitcoin for Ether", () => {
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.eth().fund(alice_initial_eth);
         await alice.wallet.btc().fund(10);
-        // Watch only import
-        await bitcoin.btc_import_address(bob_final_address);
-        await bitcoin.btc_import_address(alice.wallet.btc().identity().address);
-        await bitcoin.btc_import_address(bob.wallet.btc().identity().address);
         await bitcoin.btc_generate();
-
-        await ethereum.log_eth_balance(
-            "Before",
-            "Alice",
-            alice_final_address,
-            "final"
-        );
-        await ethereum.log_eth_balance(
-            "Before",
-            "Alice",
-            alice.wallet.eth().address(),
-            "wallet"
-        );
-        await bitcoin.log_btc_balance(
-            "Before",
-            "Alice",
-            alice.wallet.btc().identity().address,
-            "wallet"
-        );
-
-        await bitcoin.log_btc_balance(
-            "Before",
-            "Bob",
-            bob_final_address,
-            "final"
-        );
-        await ethereum.log_eth_balance(
-            "Before",
-            "Bob",
-            bob.wallet.eth().address(),
-            "wallet"
-        );
-        await bitcoin.log_btc_balance(
-            "Before",
-            "Bob",
-            bob.wallet.btc().identity().address,
-            "wallet"
-        );
-    });
-
-    after(async function() {
-        await ethereum.log_eth_balance(
-            "After",
-            "Alice",
-            alice_final_address,
-            "final"
-        );
-        await ethereum.log_eth_balance(
-            "After",
-            "Alice",
-            alice.wallet.eth().address(),
-            "wallet"
-        );
-        await bitcoin.log_btc_balance(
-            "After",
-            "Alice",
-            alice.wallet.btc().identity().address,
-            "wallet"
-        );
-
-        await bitcoin.log_btc_balance(
-            "After",
-            "Bob",
-            bob_final_address,
-            "final"
-        );
-        await ethereum.log_eth_balance(
-            "After",
-            "Bob",
-            bob.wallet.eth().address(),
-            "wallet"
-        );
-        await bitcoin.log_btc_balance(
-            "After",
-            "Bob",
-            bob.wallet.btc().identity().address,
-            "wallet"
-        );
     });
 
     let swap_location;
@@ -138,11 +55,11 @@ describe("RFC003: Bitcoin for Ether", () => {
                 },
                 alpha_asset: {
                     name: "Bitcoin",
-                    quantity: alpha_asset.toString(),
+                    quantity: alpha_asset_amount.toString(),
                 },
                 beta_asset: {
                     name: "Ether",
-                    quantity: beta_asset.toString(),
+                    quantity: beta_asset_amount.toString(),
                 },
                 beta_ledger_redeem_identity: alice_final_address,
                 alpha_expiry: alpha_expiry,
@@ -329,7 +246,8 @@ describe("RFC003: Bitcoin for Ether", () => {
             alice_final_address
         );
 
-        let alice_eth_balance_expected = alice_eth_balance_before + beta_asset;
+        let alice_eth_balance_expected =
+            alice_eth_balance_before + beta_asset_amount;
 
         alice_eth_balance_after
             .toString()
@@ -363,22 +281,28 @@ describe("RFC003: Bitcoin for Ether", () => {
         );
     });
 
-    let bob_btc_balance_before;
-
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.payload.should.include.all.keys("hex", "network");
-        bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
 
         await bob.do(bob_redeem_action);
         await bitcoin.btc_generate();
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_btc_balance_after = await bitcoin.btc_balance(
-            bob_final_address
+        this.timeout(10000);
+        let body = await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            body => body.state.alpha_ledger.status == "Redeemed"
         );
-        const bob_btc_balance_expected =
-            bob_btc_balance_before + alpha_asset - alpha_max_fee;
-        bob_btc_balance_after.should.be.at.least(bob_btc_balance_expected);
+        let bob_redeem_txid = body.state.alpha_ledger.redeem_tx;
+        let bob_redeem_tx = await bitcoin.getRawTransaction(bob_redeem_txid);
+
+        let receive_address = bob_redeem_tx.vout[0].scriptPubKey.addresses[0];
+        receive_address.should.be.equal(bob_final_address);
+
+        const bob_satoshi_expected = alpha_asset_amount - alpha_max_fee;
+        let bob_satoshi_received = sb.toSatoshi(bob_redeem_tx.vout[0].value);
+        bob_satoshi_received.should.be.at.least(bob_satoshi_expected);
     });
 });

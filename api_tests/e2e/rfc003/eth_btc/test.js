@@ -6,9 +6,8 @@ const ethereum = require("../../../lib/ethereum.js");
 const ethutil = require("ethereumjs-util");
 const should = chai.should();
 const Web3 = require("web3");
+const sb = require("satoshi-bitcoin");
 const logger = global.harness.logger;
-
-let bitcoin_rpc_client = bitcoin.create_client();
 
 const bob_initial_eth = "0.1";
 const alice_initial_eth = "11";
@@ -36,88 +35,7 @@ describe("RFC003: Ether for Bitcoin", () => {
         await alice.wallet.btc().fund(0.1);
         await bob.wallet.eth().fund(bob_initial_eth);
         await bob.wallet.btc().fund(10);
-        await bitcoin.btc_import_address(alice_final_address); // Watch only import
-        await bitcoin.btc_import_address(bob.wallet.btc().identity().address); // Watch only import
-        await bitcoin.btc_import_address(alice.wallet.btc().identity().address); // Watch only import
         await bitcoin.btc_generate();
-
-        await bitcoin.log_btc_balance(
-            "Before",
-            "Alice",
-            alice_final_address,
-            "final"
-        );
-        await bitcoin.log_btc_balance(
-            "Before",
-            "Alice",
-            alice.wallet.btc().identity().address,
-            "wallet"
-        );
-        await ethereum.log_eth_balance(
-            "Before",
-            "Alice",
-            alice.wallet.eth().address(),
-            "wallet"
-        );
-
-        await ethereum.log_eth_balance(
-            "Before",
-            "Bob",
-            bob_final_address,
-            "final"
-        );
-        await bitcoin.log_btc_balance(
-            "Before",
-            "Bob",
-            bob.wallet.btc().identity().address,
-            "wallet"
-        );
-        await ethereum.log_eth_balance(
-            "Before",
-            "Bob",
-            bob.wallet.eth().address(),
-            "wallet"
-        );
-    });
-
-    after(async function() {
-        await bitcoin.log_btc_balance(
-            "After",
-            "Alice",
-            alice_final_address,
-            "final"
-        );
-        await bitcoin.log_btc_balance(
-            "After",
-            "Alice",
-            alice.wallet.btc().identity().address,
-            "wallet"
-        );
-        await ethereum.log_eth_balance(
-            "After",
-            "Alice",
-            alice.wallet.eth().address(),
-            "wallet"
-        );
-
-        await ethereum.log_eth_balance(
-            "After",
-            "Bob",
-            bob_final_address,
-            "final"
-        );
-        await bitcoin.log_btc_balance(
-            "After",
-            "Bob",
-            bob.wallet.btc().identity().address,
-            "wallet"
-        );
-        await ethereum.log_eth_balance(
-            "After",
-            "Bob",
-            bob.wallet.eth().address(),
-            "wallet"
-        );
     });
 
     let swap_location;
@@ -309,25 +227,32 @@ describe("RFC003: Ether for Bitcoin", () => {
         );
     });
 
-    let alice_btc_balance_before;
-
     it("[Alice] Can execute the redeem action", async function() {
         alice_redeem_action.payload.should.include.all.keys("hex", "network");
-        alice_btc_balance_before = await bitcoin.btc_balance(
-            alice_final_address
-        );
         await alice.do(alice_redeem_action);
         await bitcoin.btc_generate();
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_btc_balance_after = await bitcoin.btc_balance(
-            alice_final_address
+        this.timeout(10000);
+        let body = await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            body => body.state.beta_ledger.status == "Redeemed"
+        );
+        let alice_redeem_txid = body.state.beta_ledger.redeem_tx;
+        let alice_redeem_tx = await bitcoin.getRawTransaction(
+            alice_redeem_txid
         );
 
-        const alice_btc_balance_expected =
-            alice_btc_balance_before + beta_asset_amount - beta_max_fee;
-        alice_btc_balance_after.should.be.at.least(alice_btc_balance_expected);
+        let receive_address = alice_redeem_tx.vout[0].scriptPubKey.addresses[0];
+        receive_address.should.be.equal(alice_final_address);
+
+        const alice_satoshi_expected = beta_asset_amount - beta_max_fee;
+        let alice_satoshi_received = sb.toSatoshi(
+            alice_redeem_tx.vout[0].value
+        );
+        alice_satoshi_received.should.be.at.least(alice_satoshi_expected);
     });
 
     let bob_redeem_action;

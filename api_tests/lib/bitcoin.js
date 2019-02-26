@@ -32,33 +32,13 @@ module.exports.btc_activate_segwit = async function() {
     return create_bitcoin_rpc_client().generate(432);
 };
 
-module.exports.btc_import_address = async function(address) {
-    return create_bitcoin_rpc_client().importAddress(address);
-};
-
-async function btc_balance(address) {
-    let btc_balance = await _bitcoin_rpc_client.getReceivedByAddress(address);
-    return parseFloat(btc_balance) * 100000000;
+async function getRawTransaction(tx_id) {
+    let tx = await _bitcoin_rpc_client.getRawTransaction(tx_id, 1);
+    return tx;
 }
 
-module.exports.btc_balance = async function(address) {
-    return btc_balance(address);
-};
-
-module.exports.log_btc_balance = async function(
-    when,
-    player,
-    address,
-    address_type
-) {
-    global.harness.logger.info(
-        "%s the swap, %s has %s satoshis at the %s address %s",
-        when,
-        player,
-        await btc_balance(address),
-        address_type,
-        address
-    );
+module.exports.getRawTransaction = async function(tx_id) {
+    return getRawTransaction(tx_id);
 };
 
 class BitcoinWallet {

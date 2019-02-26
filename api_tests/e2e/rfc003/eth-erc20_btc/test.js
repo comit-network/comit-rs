@@ -6,8 +6,8 @@ const ethereum = require("../../../lib/ethereum.js");
 const bitcoin = require("../../../lib/bitcoin.js");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
+const sb = require("satoshi-bitcoin");
 const logger = global.harness.logger;
-const bitcoin_rpc_client = bitcoin.create_client();
 
 const toby_wallet = wallet.create("toby");
 
@@ -41,7 +41,6 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
 
-        await bitcoin.btc_import_address(alice_final_address); // Watch only import
         await bitcoin.btc_generate();
     });
 
@@ -289,25 +288,32 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         );
     });
 
-    let alice_btc_balance_before;
-
     it("[Alice] Can execute the redeem action", async function() {
         alice_redeem_action.payload.should.include.all.keys("hex", "network");
-        alice_btc_balance_before = await bitcoin.btc_balance(
-            alice_final_address
-        );
         await alice.do(alice_redeem_action);
         await bitcoin.btc_generate();
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_btc_balance_after = await bitcoin.btc_balance(
-            alice_final_address
+        this.timeout(10000);
+        let body = await alice.poll_comit_node_until(
+            chai,
+            alice_swap_href,
+            body => body.state.beta_ledger.status == "Redeemed"
+        );
+        let alice_redeem_txid = body.state.beta_ledger.redeem_tx;
+        let alice_redeem_tx = await bitcoin.getRawTransaction(
+            alice_redeem_txid
         );
 
-        const alice_btc_balance_expected =
-            alice_btc_balance_before + beta_asset_amount - beta_max_fee;
-        alice_btc_balance_after.should.be.at.least(alice_btc_balance_expected);
+        let receive_address = alice_redeem_tx.vout[0].scriptPubKey.addresses[0];
+        receive_address.should.be.equal(alice_final_address);
+
+        const alice_satoshi_expected = beta_asset_amount - beta_max_fee;
+        let alice_satoshi_received = sb.toSatoshi(
+            alice_redeem_tx.vout[0].value
+        );
+        alice_satoshi_received.should.be.at.least(alice_satoshi_expected);
     });
 
     let bob_redeem_action;

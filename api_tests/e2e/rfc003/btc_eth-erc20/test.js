@@ -7,9 +7,8 @@ const ethutil = require("ethereumjs-util");
 const ethereum = require("../../../lib/ethereum.js");
 const should = chai.should();
 const wallet = require("../../../lib/wallet.js");
+const sb = require("satoshi-bitcoin");
 const logger = global.harness.logger;
-
-const bitcoin_rpc_client = bitcoin.create_client();
 
 const toby_wallet = wallet.create();
 
@@ -43,8 +42,6 @@ describe("RFC003: Bitcoin for ERC20", () => {
         await alice.wallet.eth().fund(1);
         let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
-
-        await bitcoin.btc_import_address(bob_final_address); // Watch only import
         await bitcoin.btc_generate();
     });
 
@@ -341,22 +338,27 @@ describe("RFC003: Bitcoin for ERC20", () => {
         );
     });
 
-    let bob_btc_balance_before;
-
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.payload.should.include.all.keys("hex", "network");
-        bob_btc_balance_before = await bitcoin.btc_balance(bob_final_address);
-
         await bob.do(bob_redeem_action);
         await bitcoin.btc_generate();
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_btc_balance_after = await bitcoin.btc_balance(
-            bob_final_address
+        this.timeout(10000);
+        let body = await bob.poll_comit_node_until(
+            chai,
+            bob_swap_href,
+            body => body.state.alpha_ledger.status == "Redeemed"
         );
-        const bob_btc_balance_expected =
-            bob_btc_balance_before + alpha_asset_amount - alpha_max_fee;
-        bob_btc_balance_after.should.be.at.least(bob_btc_balance_expected);
+        let bob_redeem_txid = body.state.alpha_ledger.redeem_tx;
+        let bob_redeem_tx = await bitcoin.getRawTransaction(bob_redeem_txid);
+
+        let receive_address = bob_redeem_tx.vout[0].scriptPubKey.addresses[0];
+        receive_address.should.be.equal(bob_final_address);
+
+        const bob_satoshi_expected = alpha_asset_amount - alpha_max_fee;
+        let bob_satoshi_received = sb.toSatoshi(bob_redeem_tx.vout[0].value);
+        bob_satoshi_received.should.be.at.least(bob_satoshi_expected);
     });
 });
