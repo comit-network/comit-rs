@@ -4,7 +4,6 @@ const EthereumTx = require("ethereumjs-tx");
 const fs = require("fs");
 const Web3 = require("web3");
 const util = require("./util.js");
-const logger = global.harness.logger;
 const eth_config = global.harness.ledgers_config.ethereum;
 const web3 = new Web3(new Web3.providers.HttpProvider(eth_config.rpc_url));
 
@@ -98,13 +97,6 @@ class EthereumWallet {
             chainId: 1,
         });
 
-        logger.trace(
-            "Transaction %s transfers %s wei to %s",
-            tx.hash().toString("hex"),
-            tx.value,
-            tx.to.toString("hex")
-        );
-
         return this.sign_and_send(tx);
     }
 
@@ -131,12 +123,6 @@ class EthereumWallet {
             receipt.contractAddress
         );
 
-        logger.trace(
-            "Contract deployed at %s holds %s wei",
-            receipt.contractAddress,
-            contract_balance
-        );
-
         return receipt;
     }
 
@@ -145,12 +131,6 @@ class EthereumWallet {
         const serializedTx = tx.serialize();
         let hex = "0x" + serializedTx.toString("hex");
         let receipt = await web3.eth.sendSignedTransaction(hex);
-
-        logger.trace(
-            "Receipt for transaction %s",
-            receipt.transactionHash,
-            receipt
-        );
 
         return receipt;
     }

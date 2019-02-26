@@ -7,7 +7,6 @@ const ethutil = require("ethereumjs-util");
 const should = chai.should();
 const Web3 = require("web3");
 const sb = require("satoshi-bitcoin");
-const logger = global.harness.logger;
 
 const bob_initial_eth = "0.1";
 const alice_initial_eth = "11";
@@ -70,7 +69,6 @@ describe("RFC003: Ether for Bitcoin", () => {
             .then(res => {
                 res.should.have.status(201);
                 swap_location = res.headers.location;
-                logger.info("Alice created a new swap at %s", swap_location);
                 swap_location.should.be.a("string");
                 alice_swap_href = swap_location;
             });
@@ -103,7 +101,6 @@ describe("RFC003: Ether for Bitcoin", () => {
         swap_link.should.be.a("object");
         bob_swap_href = swap_link.self.href;
         bob_swap_href.should.be.a("string");
-        logger.info("Bob discovered a new swap at %s", bob_swap_href);
     });
 
     let bob_accept_href;
@@ -123,12 +120,6 @@ describe("RFC003: Ether for Bitcoin", () => {
             beta_ledger_refund_identity: null,
             alpha_ledger_redeem_identity: bob_final_address,
         };
-
-        logger.info(
-            "Bob is accepting the swap via %s with the following parameters",
-            bob_accept_href,
-            bob_response
-        );
 
         let accept_res = await chai
             .request(bob.comit_node_url())
@@ -153,11 +144,6 @@ describe("RFC003: Ether for Bitcoin", () => {
             .get(alice_fund_href);
         res.should.have.status(200);
         alice_fund_action = res.body;
-
-        logger.info(
-            "Alice retrieved the following funding parameters",
-            alice_fund_action
-        );
     });
 
     it("[Alice] Can execute the fund action", async () => {
@@ -183,11 +169,6 @@ describe("RFC003: Ether for Bitcoin", () => {
         let res = await chai.request(bob.comit_node_url()).get(bob_fund_href);
         res.should.have.status(200);
         bob_fund_action = res.body;
-
-        logger.info(
-            "Bob retrieved the following funding parameters",
-            bob_fund_action
-        );
     });
 
     it("[Bob] Can execute the fund action", async () => {
@@ -220,11 +201,6 @@ describe("RFC003: Ether for Bitcoin", () => {
             );
         res.should.have.status(200);
         alice_redeem_action = res.body;
-
-        logger.info(
-            "Alice retrieved the following redeem parameters",
-            alice_redeem_action
-        );
     });
 
     it("[Alice] Can execute the redeem action", async function() {
@@ -268,11 +244,6 @@ describe("RFC003: Ether for Bitcoin", () => {
         let res = await chai.request(bob.comit_node_url()).get(bob_redeem_href);
         res.should.have.status(200);
         bob_redeem_action = res.body;
-
-        logger.info(
-            "Bob retrieved the following redeem parameters",
-            bob_redeem_action
-        );
     });
 
     let bob_eth_balance_before;
