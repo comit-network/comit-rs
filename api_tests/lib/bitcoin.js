@@ -80,7 +80,7 @@ class BitcoinWallet {
         const fee = 2500;
         const change = input_amount - value - fee;
         txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
-        //TODO: Add it back to UTXOs after transaction is successful
+        // The remains of the utxo are NOT added back to the wallet
         txb.addOutput(this.identity().output, change);
         txb.addOutput(
             bitcoin.address.toOutputScript(to, bitcoin.networks.regtest),
