@@ -3,6 +3,7 @@ use crate::{
     query_result_repository::{QueryResult, QueryResultRepository},
     routes, web3,
 };
+use ethereum_types::H256;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use url::Url;
@@ -13,6 +14,7 @@ pub enum Error {
     BitcoinRpcConnection(bitcoin_rpc_client::ClientError),
     BitcoinRpcResponse(bitcoin_rpc_client::RpcError),
     Web3(web3::Error),
+    MissingTransaction(H256),
 }
 
 #[derive(DebugStub)]

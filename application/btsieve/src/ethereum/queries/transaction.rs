@@ -90,7 +90,6 @@ impl ToHttpPayload<TransactionQuery, ReturnAs> for QueryResult {
             .filter_map(to_h256)
             .map(to_payload)
             .collect::<FuturesOrdered<_>>()
-            .filter_map(|item| item)
             .collect()
             .wait()
     }
@@ -100,16 +99,13 @@ fn to_payload(
     client: &Web3<Http>,
     transaction_id: H256,
     return_as: &ReturnAs,
-) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
+) -> Box<dyn Future<Item = PayloadKind, Error = Error>> {
     match return_as {
-        ReturnAs::Transaction => Box::new(create_transaction_future(client, transaction_id).map(
-            |maybe_transaction| {
-                maybe_transaction.map(|transaction| PayloadKind::Transaction { transaction })
-            },
-        )),
-        ReturnAs::TransactionId => {
-            Box::new(future::ok(Some(PayloadKind::Id { id: transaction_id })))
-        }
+        ReturnAs::Transaction => Box::new(
+            create_transaction_future(client, transaction_id)
+                .map(|transaction| PayloadKind::Transaction { transaction }),
+        ),
+        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
     }
 }
 

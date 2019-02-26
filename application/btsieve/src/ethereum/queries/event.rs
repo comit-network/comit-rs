@@ -140,7 +140,6 @@ impl ToHttpPayload<EventQuery, ReturnAs> for QueryResult {
             .filter_map(to_h256)
             .map(to_payload)
             .collect::<FuturesOrdered<_>>()
-            .filter_map(|item| item)
             .collect()
             .wait()
     }
@@ -150,28 +149,22 @@ fn to_payload(
     client: &Web3<Http>,
     transaction_id: H256,
     return_as: &ReturnAs,
-) -> Box<dyn Future<Item = Option<PayloadKind>, Error = Error>> {
+) -> Box<dyn Future<Item = PayloadKind, Error = Error>> {
     let tx_future = create_transaction_future(client, transaction_id);
     let receipt_future = create_receipt_future(client, transaction_id);
 
     match return_as {
-        ReturnAs::Transaction => Box::new(
-            tx_future
-                .map(|maybe| maybe.map(|transaction| PayloadKind::Transaction { transaction })),
-        ),
-        ReturnAs::Receipt => Box::new(
-            receipt_future.map(|maybe| maybe.map(|receipt| PayloadKind::Receipt { receipt })),
-        ),
-        ReturnAs::TransactionId => {
-            Box::new(future::ok(Some(PayloadKind::Id { id: transaction_id })))
+        ReturnAs::Transaction => {
+            Box::new(tx_future.map(|transaction| PayloadKind::Transaction { transaction }))
         }
+        ReturnAs::Receipt => {
+            Box::new(receipt_future.map(|receipt| PayloadKind::Receipt { receipt }))
+        }
+        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
         ReturnAs::TransactionAndReceipt => Box::new(tx_future.join(receipt_future).map(
-            move |maybe| match maybe {
-                (Some(transaction), Some(receipt)) => Some(PayloadKind::TransactionAndReceipt {
-                    transaction,
-                    receipt,
-                }),
-                _ => None,
+            move |(transaction, receipt)| PayloadKind::TransactionAndReceipt {
+                transaction,
+                receipt,
             },
         )),
     }

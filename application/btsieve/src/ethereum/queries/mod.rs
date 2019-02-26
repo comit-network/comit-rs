@@ -41,42 +41,32 @@ pub enum PayloadKind {
     },
 }
 
-// TODO: Investigate under which circumstances the ethereum node fails to return
-// a transaction/receipt
 pub fn create_transaction_future(
     client: &Web3<Http>,
     id: H256,
-) -> impl Future<Item = Option<Box<Transaction>>, Error = Error> {
+) -> impl Future<Item = Box<Transaction>, Error = Error> {
     client
         .eth()
         .transaction(TransactionId::Hash(id))
-        .map(move |maybe_transaction| {
-            maybe_transaction.map(Box::new).or_else(|| {
-                warn!(
-                    "received empty response for eth_getTransactionByHash({:x?})",
-                    id
-                );
-                None
-            })
-        })
         .map_err(Error::Web3)
+        .and_then(move |maybe_transaction| {
+            maybe_transaction
+                .map(Box::new)
+                .ok_or_else(|| Error::MissingTransaction(id))
+        })
 }
 
 pub fn create_receipt_future(
     client: &Web3<Http>,
     id: H256,
-) -> impl Future<Item = Option<Box<TransactionReceipt>>, Error = Error> {
+) -> impl Future<Item = Box<TransactionReceipt>, Error = Error> {
     client
         .eth()
         .transaction_receipt(id)
-        .map(move |maybe_receipt| {
-            maybe_receipt.map(Box::new).or_else(|| {
-                warn!(
-                    "received empty response for eth_getTransactionReceipt({:x?})",
-                    id
-                );
-                None
-            })
-        })
         .map_err(Error::Web3)
+        .and_then(move |maybe_receipt| {
+            maybe_receipt
+                .map(Box::new)
+                .ok_or_else(|| Error::MissingTransaction(id))
+        })
 }
