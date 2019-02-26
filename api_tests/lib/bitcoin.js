@@ -1,5 +1,6 @@
 const bitcoin = require("bitcoinjs-lib");
 const BitcoinRpcClient = require("bitcoin-core");
+const sb = require("satoshi-bitcoin");
 const util = require("./util.js");
 
 let _bitcoin_rpc_client;
@@ -32,13 +33,23 @@ module.exports.btc_activate_segwit = async function() {
     return create_bitcoin_rpc_client().generate(432);
 };
 
-async function getRawTransaction(tx_id) {
+async function getSatoshiTransferredTo(tx_id, address) {
+    let satoshi = 0;
     let tx = await _bitcoin_rpc_client.getRawTransaction(tx_id, 1);
-    return tx;
+    let vout = tx.vout[0];
+
+    if (
+        vout.scriptPubKey.addresses.length === 1 &&
+        vout.scriptPubKey.addresses[0] === address
+    ) {
+        satoshi = sb.toSatoshi(vout.value);
+    }
+
+    return satoshi;
 }
 
-module.exports.getRawTransaction = async function(tx_id) {
-    return getRawTransaction(tx_id);
+module.exports.getSatoshiTransferredTo = async function(tx_id, address) {
+    return getSatoshiTransferredTo(tx_id, address);
 };
 
 class BitcoinWallet {

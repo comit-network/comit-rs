@@ -6,7 +6,6 @@ const ethereum = require("../../../lib/ethereum.js");
 const bitcoin = require("../../../lib/bitcoin.js");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
-const sb = require("satoshi-bitcoin");
 
 const toby_wallet = wallet.create("toby");
 
@@ -272,17 +271,13 @@ describe("RFC003: ERC20 for Bitcoin", () => {
             body => body.state.beta_ledger.status == "Redeemed"
         );
         let alice_redeem_txid = body.state.beta_ledger.redeem_tx;
-        let alice_redeem_tx = await bitcoin.getRawTransaction(
-            alice_redeem_txid
+
+        let alice_satoshi_received = await bitcoin.getSatoshiTransferredTo(
+            alice_redeem_txid,
+            alice_final_address
         );
-
-        let receive_address = alice_redeem_tx.vout[0].scriptPubKey.addresses[0];
-        receive_address.should.be.equal(alice_final_address);
-
         const alice_satoshi_expected = beta_asset_amount - beta_max_fee;
-        let alice_satoshi_received = sb.toSatoshi(
-            alice_redeem_tx.vout[0].value
-        );
+
         alice_satoshi_received.should.be.at.least(alice_satoshi_expected);
     });
 

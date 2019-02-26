@@ -6,7 +6,6 @@ const Web3 = require("web3");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
-const sb = require("satoshi-bitcoin");
 
 const bob_initial_eth = "11";
 const alice_initial_eth = "0.1";
@@ -266,13 +265,13 @@ describe("RFC003: Bitcoin for Ether", () => {
             body => body.state.alpha_ledger.status == "Redeemed"
         );
         let bob_redeem_txid = body.state.alpha_ledger.redeem_tx;
-        let bob_redeem_tx = await bitcoin.getRawTransaction(bob_redeem_txid);
 
-        let receive_address = bob_redeem_tx.vout[0].scriptPubKey.addresses[0];
-        receive_address.should.be.equal(bob_final_address);
-
+        let bob_satoshi_received = await bitcoin.getSatoshiTransferredTo(
+            bob_redeem_txid,
+            bob_final_address
+        );
         const bob_satoshi_expected = alpha_asset_amount - alpha_max_fee;
-        let bob_satoshi_received = sb.toSatoshi(bob_redeem_tx.vout[0].value);
+
         bob_satoshi_received.should.be.at.least(bob_satoshi_expected);
     });
 });
