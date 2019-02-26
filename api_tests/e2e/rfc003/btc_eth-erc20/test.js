@@ -314,7 +314,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
         let body = await bob.poll_comit_node_until(
             chai,
             bob_swap_href,
-            body => body.state.alpha_ledger.status == "Redeemed"
+            body => body.state.alpha_ledger.status === "Redeemed"
         );
         let bob_redeem_txid = body.state.alpha_ledger.redeem_tx;
 

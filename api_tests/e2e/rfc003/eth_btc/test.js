@@ -213,7 +213,7 @@ describe("RFC003: Ether for Bitcoin", () => {
         let body = await alice.poll_comit_node_until(
             chai,
             alice_swap_href,
-            body => body.state.beta_ledger.status == "Redeemed"
+            body => body.state.beta_ledger.status === "Redeemed"
         );
         let alice_redeem_txid = body.state.beta_ledger.redeem_tx;
 
