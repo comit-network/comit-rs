@@ -2,21 +2,6 @@ const bitcoin = require("bitcoinjs-lib");
 const BitcoinRpcClient = require("bitcoin-core");
 const util = require("./util.js");
 
-//FIXME: Remove this whenever this change:
-// https://github.com/bitcoinjs/bitcoinjs-lib/commit/44a98c0fa6487eaf81500427366787a953ff890d#diff-9e60abeb4e2333a5d2f02de53b4edfac
-// Hits npm!
-const regtest = {
-    messagePrefix: "\x18Bitcoin Signed Message:\n",
-    bech32: "bcrt",
-    bip32: {
-        public: 0x043587cf,
-        private: 0x04358394,
-    },
-    pubKeyHash: 0x6f,
-    scriptHash: 0xc4,
-    wif: 0xef,
-};
-
 let _bitcoin_rpc_client;
 
 function create_bitcoin_rpc_client() {
@@ -82,7 +67,7 @@ class BitcoinWallet {
         this.bitcoin_utxos = [];
         this._identity = bitcoin.payments.p2wpkh({
             pubkey: this.keypair.publicKey,
-            network: regtest,
+            network: bitcoin.networks.regtest,
         });
     }
 
@@ -117,7 +102,10 @@ class BitcoinWallet {
         txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
         //TODO: Add it back to UTXOs after transaction is successful
         txb.addOutput(this.identity().output, change);
-        txb.addOutput(bitcoin.address.toOutputScript(to, regtest), value);
+        txb.addOutput(
+            bitcoin.address.toOutputScript(to, bitcoin.networks.regtest),
+            value
+        );
         txb.sign(0, key_pair, null, null, input_amount);
 
         return _bitcoin_rpc_client.sendRawTransaction(txb.build().toHex());
