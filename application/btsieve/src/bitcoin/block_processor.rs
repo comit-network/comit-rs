@@ -4,7 +4,6 @@ use crate::{
 };
 use bitcoin_support::{serialize::BitcoinHash, MinedBlock as Block};
 use itertools::Itertools;
-use tokio;
 
 pub fn check_block_queries(
     block_queries: ArcQueryRepository<BlockQuery>,

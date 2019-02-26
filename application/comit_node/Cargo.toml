@@ -11,7 +11,7 @@ regex = "1"
 binary_macros = "0.6"
 bitcoin_rpc_client = "0.5"
 chrono = { version = "0.4", features = ["serde"] }
-config = "0.9"
+config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
 directories = "1.0"

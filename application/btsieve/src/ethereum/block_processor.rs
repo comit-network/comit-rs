@@ -10,7 +10,6 @@ use futures::{
 };
 use itertools::Itertools;
 use std::sync::Arc;
-use tokio;
 
 pub fn check_block_queries(
     block_queries: ArcQueryRepository<BlockQuery>,

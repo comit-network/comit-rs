@@ -1,4 +1,6 @@
-#![allow(clippy::too_many_arguments)] // TODO: Figure out how to properly place this on the state_machine_future derive so that is is forwarded to the generated structs and impl
+// TODO: Figure out how to properly place this on the state_machine_future
+// derive so that is is forwarded to the generated structs and impl
+#![allow(clippy::too_many_arguments)]
 
 use crate::{
     comit_client::SwapReject,
