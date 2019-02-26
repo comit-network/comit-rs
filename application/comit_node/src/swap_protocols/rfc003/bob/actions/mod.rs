@@ -21,22 +21,6 @@ pub enum ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Refund(Refund),
 }
 
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
-    ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
-{
-    pub fn name(&self) -> String {
-        use self::ActionKind::*;
-        match *self {
-            Accept(_) => String::from("accept"),
-            Decline(_) => String::from("decline"),
-            Deploy(_) => String::from("deploy"),
-            Fund(_) => String::from("fund"),
-            Redeem(_) => String::from("redeem"),
-            Refund(_) => String::from("refund"),
-        }
-    }
-}
-
 #[derive(Clone)]
 #[allow(missing_debug_implementations)]
 pub struct Accept<AL: Ledger, BL: Ledger> {

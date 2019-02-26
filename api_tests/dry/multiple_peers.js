@@ -104,8 +104,8 @@ it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Cha
         chai,
         alice_swap_with_charlie_href,
         body =>
-            body.status == "IN_PROGRESS" &&
-            body.state.communication.status == "SENT"
+            body.status === "IN_PROGRESS" &&
+            body.state.communication.status === "SENT"
     );
 });
 
