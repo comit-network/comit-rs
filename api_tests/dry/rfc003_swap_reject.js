@@ -252,7 +252,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
     let swap_2 = await chai.request(bob.comit_node_url()).get(swap_2_href);
 
     if (
-        swap_1.body.parameters.alpha_asset.quantity ===
+        parseInt(swap_1.body.parameters.alpha_asset.quantity) ===
         parseInt(alpha_asset_stingy_quantity)
     ) {
         bob_stingy_swap_href = swap_1_href;
@@ -263,7 +263,7 @@ it("[Bob] Shows the swaps as Start in /swaps", async () => {
     }
 });
 
-let bob_decline_href_1;
+let bob_decline_href_stingy;
 
 it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
     await chai
@@ -284,8 +284,10 @@ it("[Bob] Has the accept and decline actions when GETing the swap", async () => 
             );
 
             action_links.decline.should.be.a("object");
-            bob_decline_href_1 = action_links.decline.href;
-            bob_decline_href_1.should.equal(bob_stingy_swap_href + "/decline");
+            bob_decline_href_stingy = action_links.decline.href;
+            bob_decline_href_stingy.should.equal(
+                bob_stingy_swap_href + "/decline"
+            );
         });
 });
 
@@ -296,7 +298,7 @@ it("[Bob] Can execute a decline action providing a reason", async () => {
 
     let decline_res = await chai
         .request(bob.comit_node_url())
-        .post(bob_decline_href_1)
+        .post(bob_decline_href_stingy)
         .send(bob_response);
 
     decline_res.should.have.status(200);
