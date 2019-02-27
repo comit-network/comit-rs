@@ -55,6 +55,7 @@ module.exports.getSatoshiTransferredTo = async function(tx_id, address) {
 class BitcoinWallet {
     constructor() {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
+        // TODO: Use wallet instead of array to track Bitcoin UTXOs
         this.bitcoin_utxos = [];
         this._identity = bitcoin.payments.p2wpkh({
             pubkey: this.keypair.publicKey,
@@ -91,7 +92,6 @@ class BitcoinWallet {
         const fee = 2500;
         const change = input_amount - value - fee;
         txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
-        // The remains of the utxo are NOT added back to the wallet
         txb.addOutput(this.identity().output, change);
         txb.addOutput(
             bitcoin.address.toOutputScript(to, bitcoin.networks.regtest),
