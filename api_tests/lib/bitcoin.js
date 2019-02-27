@@ -48,9 +48,7 @@ async function get_satoshi_transferred_to(tx_id, address) {
     return satoshi;
 }
 
-module.exports.get_satoshi_transferred_to = async function(tx_id, address) {
-    return get_satoshi_transferred_to(tx_id, address);
-};
+module.exports.get_satoshi_transferred_to = get_satoshi_transferred_to;
 
 class BitcoinWallet {
     constructor() {
