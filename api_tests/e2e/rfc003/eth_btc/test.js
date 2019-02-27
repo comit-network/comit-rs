@@ -18,8 +18,8 @@ const alice_final_address =
 const bob_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
-const alpha_asset_amount = BigInt(Web3.utils.toWei("10", "ether"));
-const beta_asset_amount = 100000000;
+const alpha_asset_quantity = BigInt(Web3.utils.toWei("10", "ether"));
+const beta_asset_quantity = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -54,11 +54,11 @@ describe("RFC003: Ether for Bitcoin", () => {
                 },
                 alpha_asset: {
                     name: "Ether",
-                    quantity: alpha_asset_amount.toString(),
+                    quantity: alpha_asset_quantity.toString(),
                 },
                 beta_asset: {
                     name: "Bitcoin",
-                    quantity: beta_asset_amount.toString(),
+                    quantity: beta_asset_quantity.toString(),
                 },
                 alpha_ledger_refund_identity: alice.wallet.eth().address(),
                 alpha_expiry: alpha_expiry,
@@ -221,7 +221,7 @@ describe("RFC003: Ether for Bitcoin", () => {
             alice_redeem_txid,
             alice_final_address
         );
-        const alice_satoshi_expected = beta_asset_amount - beta_max_fee;
+        const alice_satoshi_expected = beta_asset_quantity - beta_max_fee;
 
         alice_satoshi_received.should.be.at.least(alice_satoshi_expected);
     });
@@ -261,7 +261,7 @@ describe("RFC003: Ether for Bitcoin", () => {
         );
 
         let bob_eth_balance_expected =
-            bob_eth_balance_before + alpha_asset_amount;
+            bob_eth_balance_before + alpha_asset_quantity;
         bob_eth_balance_after
             .toString()
             .should.equal(bob_eth_balance_expected.toString());
