@@ -33,7 +33,7 @@ module.exports.btc_activate_segwit = async function() {
     return create_bitcoin_rpc_client().generate(432);
 };
 
-async function get_satoshi_transferred_to(tx_id, address) {
+async function get_first_utxo_value_transferred_to(tx_id, address) {
     let satoshi = 0;
     let tx = await _bitcoin_rpc_client.getRawTransaction(tx_id, 1);
     let vout = tx.vout[0];
@@ -48,7 +48,7 @@ async function get_satoshi_transferred_to(tx_id, address) {
     return satoshi;
 }
 
-module.exports.get_satoshi_transferred_to = get_satoshi_transferred_to;
+module.exports.get_first_utxo_value_transferred_to = get_first_utxo_value_transferred_to;
 
 class BitcoinWallet {
     constructor() {

@@ -318,7 +318,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
         );
         let bob_redeem_txid = body.state.alpha_ledger.redeem_tx;
 
-        let bob_satoshi_received = await bitcoin.get_satoshi_transferred_to(
+        let bob_satoshi_received = await bitcoin.get_first_utxo_value_transferred_to(
             bob_redeem_txid,
             bob_final_address
         );

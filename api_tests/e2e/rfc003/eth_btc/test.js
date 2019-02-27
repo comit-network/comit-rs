@@ -217,7 +217,7 @@ describe("RFC003: Ether for Bitcoin", () => {
         );
         let alice_redeem_txid = body.state.beta_ledger.redeem_tx;
 
-        let alice_satoshi_received = await bitcoin.get_satoshi_transferred_to(
+        let alice_satoshi_received = await bitcoin.get_first_utxo_value_transferred_to(
             alice_redeem_txid,
             alice_final_address
         );
