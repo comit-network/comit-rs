@@ -29,7 +29,6 @@ pub mod comit_client;
 pub mod comit_server;
 pub mod connection_pool;
 pub mod http_api;
-pub mod item_cache;
 pub mod logging;
 pub mod node_id;
 pub mod seed;
