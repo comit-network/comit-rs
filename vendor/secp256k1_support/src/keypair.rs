@@ -1,7 +1,7 @@
 use crate::public_key::PublicKey;
 use rand::Rng;
 use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
-use std::fmt;
+use std::{convert::Into, fmt};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct KeyPair {
@@ -39,7 +39,7 @@ impl KeyPair {
 
     pub fn from_secret_key_slice(data: &[u8]) -> Result<KeyPair, Error> {
         SecretKey::from_slice(&*super::SECP, data)
-            .map(|secret_key| secret_key.into())
+            .map(Into::into)
             .map_err(Error::Secp256k1)
     }
 

@@ -21,7 +21,6 @@ pub use bitcoin::{
     },
     Address,
 };
-use bitcoin_bech32;
 
 pub use crate::{
     blocks::*,

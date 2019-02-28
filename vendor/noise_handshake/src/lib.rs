@@ -2,9 +2,6 @@
 #![deny(unsafe_code)]
 #![feature(stmt_expr_attributes)]
 
-#[macro_use]
-extern crate log;
-
 mod handshake;
 
 pub use crate::handshake::*;

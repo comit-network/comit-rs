@@ -50,6 +50,10 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                         let alpha_ledger = state.alpha_ledger_state.clone().into();
                         let beta_ledger = state.beta_ledger_state.clone().into();
                         let parameters = SwapParameters::new(state.clone().request());
+
+                        // The macro takes advantage of not needing to specify whether it uses
+                        // alice::ActionKind::name() or bob::ActionKind::name()
+                        #[allow(clippy::redundant_closure)]
                         let actions: Vec<Action> = state
                             .actions()
                             .iter()

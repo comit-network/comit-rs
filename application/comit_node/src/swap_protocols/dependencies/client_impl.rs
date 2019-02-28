@@ -19,7 +19,6 @@ use crate::{
 };
 use bam::{self, json, Status};
 use futures::Future;
-use tokio;
 
 #[derive(Debug, Deserialize)]
 pub struct Reason {

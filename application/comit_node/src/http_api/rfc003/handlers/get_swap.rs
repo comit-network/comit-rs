@@ -51,6 +51,9 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
                 beta_ledger,
             };
 
+            // The macro takes advantage of not needing to specify whether it uses
+            // alice::ActionKind::name() or bob::ActionKind::name()
+            #[allow(clippy::redundant_closure)]
             let actions: Vec<Action> = state
                 .actions()
                 .iter()
