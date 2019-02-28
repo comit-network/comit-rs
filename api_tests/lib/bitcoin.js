@@ -1,5 +1,6 @@
 const bitcoin = require("bitcoinjs-lib");
 const BitcoinRpcClient = require("bitcoin-core");
+const sb = require("satoshi-bitcoin");
 const util = require("./util.js");
 
 let _bitcoin_rpc_client;
@@ -32,38 +33,27 @@ module.exports.btc_activate_segwit = async function() {
     return create_bitcoin_rpc_client().generate(432);
 };
 
-module.exports.btc_import_address = async function(address) {
-    return create_bitcoin_rpc_client().importAddress(address);
-};
+async function get_first_utxo_value_transferred_to(tx_id, address) {
+    let satoshi = 0;
+    let tx = await _bitcoin_rpc_client.getRawTransaction(tx_id, 1);
+    let vout = tx.vout[0];
 
-async function btc_balance(address) {
-    let btc_balance = await _bitcoin_rpc_client.getReceivedByAddress(address);
-    return parseFloat(btc_balance) * 100000000;
+    if (
+        vout.scriptPubKey.addresses.length === 1 &&
+        vout.scriptPubKey.addresses[0] === address
+    ) {
+        satoshi = sb.toSatoshi(vout.value);
+    }
+
+    return satoshi;
 }
 
-module.exports.btc_balance = async function(address) {
-    return btc_balance(address);
-};
-
-module.exports.log_btc_balance = async function(
-    when,
-    player,
-    address,
-    address_type
-) {
-    global.harness.logger.info(
-        "%s the swap, %s has %s satoshis at the %s address %s",
-        when,
-        player,
-        await btc_balance(address),
-        address_type,
-        address
-    );
-};
+module.exports.get_first_utxo_value_transferred_to = get_first_utxo_value_transferred_to;
 
 class BitcoinWallet {
     constructor() {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
+        // TODO: Use wallet instead of array to track Bitcoin UTXOs
         this.bitcoin_utxos = [];
         this._identity = bitcoin.payments.p2wpkh({
             pubkey: this.keypair.publicKey,
@@ -100,7 +90,6 @@ class BitcoinWallet {
         const fee = 2500;
         const change = input_amount - value - fee;
         txb.addInput(utxo.txid, utxo.vout, null, this.identity().output);
-        //TODO: Add it back to UTXOs after transaction is successful
         txb.addOutput(this.identity().output, change);
         txb.addOutput(
             bitcoin.address.toOutputScript(to, bitcoin.networks.regtest),

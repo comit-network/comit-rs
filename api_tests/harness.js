@@ -34,8 +34,6 @@ log4js.configure({
     },
     categories: { default: { appenders: ["test_suite"], level: "ALL" } },
 });
-const logger = log4js.getLogger("test_suite");
-global.harness.logger = logger;
 
 const docker_cwd = project_root + "/api_tests/regtest";
 const services_cwd = project_root + "/api_tests/";
@@ -47,16 +45,10 @@ const docker_compose_options = {
 };
 
 const config = Toml.parse(fs.readFileSync(test_dir + "/config.toml", "utf8"));
-logger.debug("++ Config:\n", config, "\n++ --------------------");
 global.harness.config = config;
 
 const ledgers_config = Toml.parse(
     fs.readFileSync(project_root + "/api_tests/regtest/ledgers.toml", "utf8")
-);
-logger.debug(
-    "++ Ledgers Config:\n",
-    ledgers_config,
-    "\n++ --------------------"
 );
 global.harness.ledgers_config = ledgers_config;
 
@@ -89,15 +81,12 @@ const util = require("./lib/util.js");
 
 function cleanUp(subprocesses) {
     subprocesses.forEach(function(subprocess) {
-        logger.info("++ Killing", subprocess.spawnfile, subprocess.pid);
         subprocess.kill();
     });
-    logger.info("++ Stopping docker containers");
     execSync("docker-compose rm -sfv", docker_compose_options);
 }
 
 process.once("SIGINT", function() {
-    logger.debug("++ SIGINT received");
     cleanUp();
 });
 
@@ -137,8 +126,6 @@ async function generateBlock(ledgers) {
 }
 
 async function startComitNode(name, comit_config) {
-    logger.info("Starting", name + "'s COMIT node:", comit_config);
-
     return await spawn(project_root + "/target/debug/comit_node", [], {
         cwd: services_cwd,
         encoding: "utf-8",
@@ -152,8 +139,6 @@ async function startComitNode(name, comit_config) {
 }
 
 async function startBtsieve(name, btsieve_config) {
-    logger.info("Starting", name, "btsieve:", btsieve_config);
-
     return await spawn(project_root + "/target/debug/btsieve", [], {
         cwd: services_cwd,
         encoding: "utf-8",
@@ -178,18 +163,15 @@ function run_tests(file) {
             this.timeout(ledger_up_time + 4000);
 
             if (config.ledgers) {
-                logger.info("++ Starting docker container(s)");
                 const subprocess = await startDockerContainers(
                     config.ledgers,
                     ledgers_config
                 );
                 subprocesses.push(subprocess);
-                logger.info("++ Docker containers started");
                 await util.sleep(ledger_up_time);
             }
 
             if (config.btsieve) {
-                logger.info("++ Starting btsieve node(s)");
                 Object.keys(config.btsieve).forEach(async function(name) {
                     const subprocess = await startBtsieve(
                         name,
@@ -200,7 +182,6 @@ function run_tests(file) {
             }
 
             if (config.comit_node) {
-                logger.info("++ Starting COMIT node(s)");
                 Object.keys(config.comit_node).forEach(async function(name) {
                     const subprocess = await startComitNode(
                         name,
