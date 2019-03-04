@@ -1,4 +1,4 @@
-language: rust
+language: minimal
 cache:
   yarn: true
   directories:
@@ -6,20 +6,21 @@ cache:
   - "$HOME/.cache/sccache"
   - "$TRAVIS_BUILD_DIR/api_tests/node_modules"
 sudo: required
-rust: nightly-2018-12-06
 addons:
   apt:
     sources:
     - sourceline: 'deb http://dl.yarnpkg.com/debian/ stable main'
       key_url: 'http://dl.yarnpkg.com/debian/pubkey.gpg'
+    - sourceline: 'deb https://deb.nodesource.com/node_11.x trusty main'
+      key_url: 'https://deb.nodesource.com/gpgkey/nodesource.gpg.key'
     packages:
     - libzmq3-dev
     - yarn
-install: true
+    - nodejs=11.10*
 services: docker
-before_script:
-- which cargo-make || cargo install --debug cargo-make
-- nvm install 11
+install:
+  - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
+  - which cargo-make || cargo install --debug cargo-make
 script: cargo make travis
 notifications:
   email: false
