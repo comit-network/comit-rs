@@ -140,6 +140,12 @@ script = [
 '''
 ]
 
+[tasks.travis]
+workspace = false
+# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
+env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
+run_task = "ci-flow"
+
 [tasks.clean-registry]
 # The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
 # This command removes everything that is older than 30 days, thus keeping only very recent libraries.
@@ -153,7 +159,7 @@ linux_alias = "clean-registry-linux"
 condition = { platforms = ["linux"] }
 workspace = false
 private = true
-force = true
+ignore_errors = true
 script = [
 '''
 find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
@@ -161,17 +167,11 @@ find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
 '''
 ]
 
-[tasks.travis]
-workspace = false
-# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
-run_task = "ci-flow"
-
 [tasks.clean-registry-mac]
 condition = { platforms = ["mac"] }
 workspace = false
 private = true
-force = true
+ignore_errors = true
 script = [
 '''
 find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
