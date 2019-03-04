@@ -4,6 +4,7 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
+        "build": "./node_modules/typescript/bin/tsc",
         "test": "harness.js"
     },
     "engines": {
@@ -27,9 +28,16 @@
         "satoshi-bitcoin": "^1.0.4",
         "toml": "^2.3.3",
         "typedarray-to-buffer": "^3.1.5",
+        "typescript": "^3.3.3333",
         "web3": "^1.0.0-beta.36"
     },
     "devDependencies": {
+        "@types/bitcoinjs-lib": "^4.0.0",
+        "@types/chai": "^4.1.7",
+        "@types/chai-http": "^3.0.5",
+        "@types/ethereumjs-util": "^5.2.0",
+        "@types/scrypt": "^6.0.0",
+        "@types/web3": "^1.0.18",
         "chai-bignumber": "^2.0.2",
         "chai-string": "^1.5.0"
     },

@@ -1,5 +1,6 @@
 const chai = require("chai");
 const Web3 = require("web3");
+const Utils = require("web3-utils");
 const actor = require("../lib/actor.js");
 const should = chai.should();
 const util = require("../lib/util.js");
@@ -16,8 +17,8 @@ const alpha_asset_bob_quantity = "100000000";
 const alpha_asset_charlie_quantity = "200000000";
 
 const beta_asset_name = "Ether";
-const beta_asset_bob_quantity = Web3.utils.toWei("10", "ether");
-const beta_asset_charlie_quantity = Web3.utils.toWei("20", "ether");
+const beta_asset_bob_quantity = Utils.toWei("10", "ether");
+const beta_asset_charlie_quantity = Utils.toWei("20", "ether");
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
 const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;

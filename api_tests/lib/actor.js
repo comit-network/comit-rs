@@ -4,7 +4,9 @@ const fs = require("fs");
 const bitcoin = require("./bitcoin.js");
 const ethutil = require("ethereumjs-util");
 
-const bitcoin_rpc_client = bitcoin.create_client();
+const bitcoin_rpc_client = bitcoin.createClient(
+    global.harness.ledgers_config.bitcoin
+);
 
 class Actor {
     constructor(name) {
@@ -72,9 +74,7 @@ class Actor {
             case "bitcoin-send-amount-to-address": {
                 let { to, amount } = action.payload;
 
-                return this.wallet
-                    .btc()
-                    .send_btc_to_address(to, parseInt(amount));
+                return this.wallet.btc().sendToAddress(to, parseInt(amount));
                 break;
             }
             case "bitcoin-broadcast-signed-transaction": {

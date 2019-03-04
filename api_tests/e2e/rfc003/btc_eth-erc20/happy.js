@@ -1,5 +1,5 @@
 const chai = require("chai");
-const Web3 = require("web3");
+const Utils = require("web3-utils");
 chai.use(require("chai-http"));
 const bitcoin = require("../../../lib/bitcoin.js");
 const actor = require("../../../lib/actor.js");
@@ -12,7 +12,7 @@ const toby_wallet = wallet.create();
 
 const toby_initial_eth = "10";
 const bob_initial_eth = "5";
-const bob_initial_erc20 = BigInt(Web3.utils.toWei("10000", "ether"));
+const bob_initial_erc20 = BigInt(Utils.toWei("10000", "ether"));
 
 const alice = actor.create("alice", {});
 const bob = actor.create("bob", {});
@@ -23,7 +23,7 @@ const bob_final_address =
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_quantity = 100000000;
-const beta_asset_quantity = BigInt(Web3.utils.toWei("5000", "ether"));
+const beta_asset_quantity = BigInt(Utils.toWei("5000", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -33,14 +33,14 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await bitcoin.btc_activate_segwit();
+        await bitcoin.activateSegwit();
         await toby_wallet.eth().fund(toby_initial_eth);
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.btc().fund(10);
         await alice.wallet.eth().fund(1);
         let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
         token_contract_address = receipt.contractAddress;
-        await bitcoin.btc_generate();
+        await bitcoin.generate();
     });
 
     it(bob_initial_erc20 + " tokens were minted to Bob", async function() {
@@ -306,7 +306,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.payload.should.include.all.keys("hex", "network");
         await bob.do(bob_redeem_action);
-        await bitcoin.btc_generate();
+        await bitcoin.generate();
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {

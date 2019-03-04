@@ -8,7 +8,7 @@ const ethereum = require("../lib/ethereum.js");
 const wallet = require("../lib/wallet.js");
 const btsieve_conf = require("../lib/btsieve.js");
 
-const bitcoin_rpc_client = bitcoin.create_client();
+const bitcoin_rpc_client = bitcoin.createClient();
 const btsieve = btsieve_conf.create("localhost", 8080);
 const toby_wallet = wallet.create("toby");
 
@@ -23,7 +23,7 @@ describe("Test btsieve API", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await bitcoin.btc_activate_segwit();
+        await bitcoin.activateSegwit();
         await toby_wallet.btc().fund(5);
         await toby_wallet.eth().fund(20);
         await alice_wallet.eth().fund(1);
@@ -81,7 +81,7 @@ describe("Test btsieve API", () => {
                 this.slow(1000);
                 return toby_wallet
                     .btc()
-                    .send_btc_to_address(to_address, 100000000)
+                    .sendToAddress(to_address, 100000000)
                     .then(() => {
                         return bitcoin_rpc_client.generate(1).then(() => {
                             return btsieve

@@ -96,7 +96,7 @@ class LedgerRunner {
 
             if (to_be_started.includes("bitcoin")) {
                 this.block_timers.bitcoin = setInterval(async () => {
-                    await bitcoin.btc_generate();
+                    await bitcoin.generate();
                 }, 3000);
             }
         }
