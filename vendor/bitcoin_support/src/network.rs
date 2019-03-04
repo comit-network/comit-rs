@@ -1,5 +1,4 @@
-use bitcoin::network::constants::Network as ExternNetwork;
-use serde::Deserialize;
+use bitcoin;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -9,22 +8,22 @@ pub enum Network {
     Testnet,
 }
 
-impl From<ExternNetwork> for Network {
+impl From<bitcoin::network::constants::Network> for Network {
     fn from(item: ExternNetwork) -> Network {
         match item {
-            ExternNetwork::Bitcoin => Network::Mainnet,
-            ExternNetwork::Regtest => Network::Regtest,
-            ExternNetwork::Testnet => Network::Testnet,
+            bitcoin::network::constants::Network::Bitcoin => Network::Mainnet,
+            bitcoin::network::constants::Network::Regtest => Network::Regtest,
+            bitcoin::network::constants::Network::Testnet => Network::Testnet,
         }
     }
 }
 
-impl From<Network> for ExternNetwork {
-    fn from(item: Network) -> ExternNetwork {
+impl From<Network> for bitcoin::network::constants::Network {
+    fn from(item: Network) -> bitcoin::network::constants::Network {
         match item {
-            Network::Mainnet => ExternNetwork::Bitcoin,
-            Network::Regtest => ExternNetwork::Regtest,
-            Network::Testnet => ExternNetwork::Testnet,
+            Network::Mainnet => bitcoin::network::constants::Network::Bitcoin,
+            Network::Regtest => bitcoin::network::constants::Network::Regtest,
+            Network::Testnet => bitcoin::network::constants::Network::Testnet,
         }
     }
 }
