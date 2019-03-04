@@ -33,7 +33,7 @@ reqwest = "0.9"
 rlp = "0.2"
 rust-crypto = "0.2"
 rustc-hex = "1"
-rustic_hal = { git = "https://github.com/pduval/rustic_hal" }
+rustic_hal = "0.2"
 serde = "1"
 serde_derive = "1"
 serde_json = "1"

@@ -49,11 +49,11 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 ) -> Result<impl Reply, Rejection> {
     handle_get_swap(&metadata_store, &state_store, id)
         .map(|(swap_resource, actions)| {
-            let mut response = HalResource::new(swap_resource);
-            for action in actions {
+            let response = HalResource::new(swap_resource);
+            let response = actions.into_iter().fold(response, |acc, action| {
                 let link = new_action_link(&id, action);
-                response.with_link(action, link);
-            }
+                acc.with_link(action, link)
+            });
 
             Ok(warp::reply::json(&response))
         })
@@ -67,8 +67,7 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
 ) -> Result<impl Reply, Rejection> {
     handle_get_swaps(metadata_store.as_ref(), state_store.as_ref())
         .map(|swaps| {
-            let mut response = HalResource::new("");
-            response.with_resources("swaps", swaps);
+            let response = HalResource::new("").with_resources("swaps", swaps);
             Ok(warp::reply::json(&response))
         })
         .map_err(into_rejection)

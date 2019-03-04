@@ -73,13 +73,11 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
                             parameters,
                         };
 
-                        let mut hal_resource = HalResource::new(swap);
-                        hal_resource.with_link("self", swap_path(id));
-
-                        for action in actions {
+                        let hal_resource = HalResource::new(swap).with_link("self", swap_path(id));
+                        let hal_resource = actions.into_iter().fold(hal_resource, |acc, action| {
                             let link = new_action_link(&id, action);
-                            hal_resource.with_link(action, link);
-                        }
+                            acc.with_link(action, link)
+                        });
 
                         resources.push(hal_resource);
                     }
