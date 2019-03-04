@@ -29,11 +29,7 @@ impl IntoP2wpkhAddress for PubkeyHash {
                 bitcoin_bech32::WitnessProgram::new(
                     bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
                     self.as_ref().to_vec(),
-                    match network {
-                        Network::Regtest => bitcoin_bech32::constants::Network::Regtest,
-                        Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
-                        Network::Mainnet => bitcoin_bech32::constants::Network::Bitcoin,
-                    },
+                    network.into(),
                 )
                 .expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
             ),
