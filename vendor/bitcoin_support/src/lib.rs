@@ -11,7 +11,7 @@ pub use bitcoin::{
         script::{self, Script},
         transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },
-    network::{constants::Network, serialize},
+    network::serialize,
     util::{
         bip143::SighashComponents,
         bip32::{self, ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
@@ -25,6 +25,7 @@ pub use bitcoin::{
 pub use crate::{
     blocks::*,
     mined_block::*,
+    network::*,
     pubkey::*,
     transaction::*,
     weight::{Error as WeightError, *},
@@ -33,6 +34,7 @@ pub use bitcoin_quantity::*;
 
 mod blocks;
 mod mined_block;
+mod network;
 mod pubkey;
 mod transaction;
 mod weight;

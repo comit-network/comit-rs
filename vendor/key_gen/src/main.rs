@@ -18,7 +18,7 @@ fn main() {
     let keypair = KeyPair::new(&mut rng);
     let secret_key = keypair.secret_key();
     let public_key = keypair.public_key();
-    let private_key = PrivateKey::from_secret_key(secret_key, true, Network::Bitcoin);
+    let private_key = PrivateKey::from_secret_key(secret_key, true, Network::Mainnet.into());
 
     info!("private_key: {}", hex::encode(&secret_key[..]));
     info!("btc_base58_private_key: {}", private_key.to_string());
@@ -33,7 +33,7 @@ fn main() {
     let eth_address = public_key.to_ethereum_address();
     info!("eth_address: {:?}", eth_address);
     {
-        let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Bitcoin);
+        let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Mainnet);
         info!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
     }
 
@@ -48,7 +48,7 @@ fn main() {
     info!("pubkey_hash: {:?}", PubkeyHash::from(public_key));
 
     {
-        let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Bitcoin);
+        let extended_privkey = extended_privkey_from_secret_key(secret_key, Network::Mainnet);
         let extended_pubkey = ExtendedPubKey::from_private(&SECP, &extended_privkey);
         info!("btc_extended_privkey_mainnet: {}", extended_privkey);
         info!("btc_extended_pubkey_mainnet: {}", extended_pubkey);
@@ -73,7 +73,7 @@ fn extended_privkey_from_secret_key(
 ) -> ExtendedPrivKey {
     let chain_code = ChainCode::from(&[1u8; 32][..]);
     ExtendedPrivKey {
-        network,
+        network: network.into(),
         depth: 0,
         parent_fingerprint: Fingerprint::default(),
         child_number: ChildNumber::from(0),
