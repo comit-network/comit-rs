@@ -6,6 +6,9 @@
     "scripts": {
         "test": "mocha --bail"
     },
+    "engines": {
+        "node": "11.10"
+    },
     "author": "CoBloX Team",
     "license": "ISC",
     "dependencies": {

@@ -46,7 +46,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 ## Setup testing/dev environment
 
 1. Install `docker` & `docker-compose`
-2. Install `nvm`, `npm` & `yarn`
+2. Install `node` (check the version required in package.json) & `yarn`
 3. Install `cargo-make`: `cargo install cargo-make`
 4. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
    
