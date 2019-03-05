@@ -7,14 +7,20 @@ const bitcoin = require("../../../lib/bitcoin.js");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
 
-const toby_wallet = wallet.create("toby");
+const toby_wallet = wallet.create("toby", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const toby_initial_eth = "10";
 const alice_initial_eth = "5";
 const alice_initial_erc20 = Utils.toWei("10000", "ether");
 
-const alice = actor.create("alice");
-const bob = actor.create("bob");
+const alice = actor.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
+const bob = actor.create("bob", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
@@ -36,7 +42,9 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         await alice.wallet.eth().fund(alice_initial_eth);
         await bob.wallet.btc().fund(10);
         await bob.wallet.eth().fund(1);
-        let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
+        let receipt = await toby_wallet
+            .eth()
+            .deploy_erc20_token_contract(global.harness.project_root);
         token_contract_address = receipt.contractAddress;
 
         await bitcoin.generate();
@@ -45,8 +53,8 @@ describe("RFC003: ERC20 for Bitcoin", () => {
     it(alice_initial_erc20 + " tokens were minted to Alice", async function() {
         let alice_wallet_address = alice.wallet.eth().address();
 
-        let receipt = await ethereum.mint_erc20_tokens(
-            toby_wallet,
+        let receipt = await ethereum.mintErc20Tokens(
+            toby_wallet.eth(),
             token_contract_address,
             alice_wallet_address,
             alice_initial_erc20

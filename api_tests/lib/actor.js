@@ -9,7 +9,7 @@ const bitcoin_rpc_client = bitcoin.createClient(
 );
 
 class Actor {
-    constructor(name) {
+    constructor(name, config) {
         const node_config = global.harness.config.comit_node[name];
         if (!node_config) {
             throw new Error("comit_node." + name + " configuration is needed");
@@ -25,7 +25,7 @@ class Actor {
                 "utf8"
             )
         );
-        this.wallet = wallet.create(name);
+        this.wallet = wallet.create(name, config);
     }
 
     comit_node_url() {
@@ -114,6 +114,6 @@ class Actor {
     }
 }
 
-module.exports.create = name => {
-    return new Actor(name);
+module.exports.create = (name, config) => {
+    return new Actor(name, config);
 };

@@ -1,5 +1,4 @@
-import { ECPair, Out, Transaction } from "bitcoinjs-lib";
-const bitcoin = require("bitcoinjs-lib");
+import { Transaction, ECPair, Out, payments, networks, TransactionBuilder, address } from "bitcoinjs-lib";
 const BitcoinRpcClient = require("bitcoin-core");
 const sb = require("satoshi-bitcoin");
 const util = require("./util.js");
@@ -86,9 +85,9 @@ class BitcoinWallet {
         this.keypair = ECPair.makeRandom({ rng: util.test_rng });
         // TODO: Use wallet instead of array to track Bitcoin UTXOs
         this.bitcoinUtxos = [];
-        this._identity = bitcoin.payments.p2wpkh({
+        this._identity = payments.p2wpkh({
             pubkey: this.keypair.publicKey,
-            network: bitcoin.networks.regtest,
+            network: networks.regtest,
         });
     }
 
@@ -117,7 +116,7 @@ class BitcoinWallet {
     }
 
     async sendToAddress(to: string, value: number) {
-        const txb = new bitcoin.TransactionBuilder();
+        const txb = new TransactionBuilder();
         const utxo = this.bitcoinUtxos.shift();
         const input_amount = utxo.value;
         const key_pair = this.keypair;
@@ -126,7 +125,7 @@ class BitcoinWallet {
         txb.addInput(utxo.txId, utxo.vout, null, this.identity().output);
         txb.addOutput(this.identity().output, change);
         txb.addOutput(
-            bitcoin.address.toOutputScript(to, bitcoin.networks.regtest),
+            address.toOutputScript(to, networks.regtest),
             value
         );
         txb.sign(0, key_pair, null, null, input_amount);

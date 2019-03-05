@@ -10,8 +10,12 @@ const ethutil = require("ethereumjs-util");
 const bob_initial_eth = "11";
 const alice_initial_eth = "0.1";
 
-const alice = actor.create("alice", {});
-const bob = actor.create("bob", {});
+const alice = actor.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
+const bob = actor.create("bob", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const alice_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_final_address =
@@ -29,6 +33,7 @@ describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
         await bitcoin.activateSegwit();
+        // Initialize the client
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.eth().fund(alice_initial_eth);
         await alice.wallet.btc().fund(10);
@@ -207,14 +212,14 @@ describe("RFC003: Bitcoin for Ether", () => {
             "gas_limit",
             "network"
         );
-        alice_eth_balance_before = await ethereum.eth_balance(
+        alice_eth_balance_before = await ethereum.ethBalance(
             alice_final_address
         );
         await alice.do(alice_redeem_action);
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_eth_balance_after = await ethereum.eth_balance(
+        let alice_eth_balance_after = await ethereum.ethBalance(
             alice_final_address
         );
 

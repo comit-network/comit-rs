@@ -2,9 +2,9 @@ const bitcoin = require("./bitcoin.js");
 const ethereum = require("./ethereum.js");
 
 class Wallet {
-    constructor(owner) {
+    constructor(owner, config) {
         this.owner = owner;
-        this._eth_wallet = ethereum.create();
+        this._eth_wallet = ethereum.create(config.ethConfig);
         this._btc_wallet = bitcoin.create_wallet();
     }
 
@@ -17,6 +17,6 @@ class Wallet {
     }
 }
 
-module.exports.create = owner => {
-    return new Wallet(owner);
+module.exports.create = (owner, config) => {
+    return new Wallet(owner, config);
 };

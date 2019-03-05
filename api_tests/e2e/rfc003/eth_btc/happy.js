@@ -10,8 +10,12 @@ const Utils = require("web3-utils");
 const bob_initial_eth = "0.1";
 const alice_initial_eth = "11";
 
-const alice = actor.create("alice");
-const bob = actor.create("bob");
+const alice = actor.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
+const bob = actor.create("bob", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
@@ -251,12 +255,12 @@ describe("RFC003: Ether for Bitcoin", () => {
             "gas_limit",
             "network"
         );
-        bob_eth_balance_before = await ethereum.eth_balance(bob_final_address);
+        bob_eth_balance_before = await ethereum.ethBalance(bob_final_address);
         await bob.do(bob_redeem_action);
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_eth_balance_after = await ethereum.eth_balance(
+        let bob_eth_balance_after = await ethereum.ethBalance(
             bob_final_address
         );
 

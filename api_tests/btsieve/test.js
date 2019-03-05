@@ -28,11 +28,13 @@ describe("Test btsieve API", () => {
         await toby_wallet.eth().fund(20);
         await alice_wallet.eth().fund(1);
 
-        let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
+        let receipt = await toby_wallet
+            .eth()
+            .deploy_erc20_token_contract(global.harness.project_root);
         token_contract_address = receipt.contractAddress;
 
-        await ethereum.mint_erc20_tokens(
-            toby_wallet,
+        await ethereum.mintErc20Tokens(
+            toby_wallet.eth(),
             token_contract_address,
             alice_wallet_address,
             10
