@@ -14,7 +14,7 @@ const toby_wallet = wallet.create("toby", {
 
 const toby_initial_eth = "10";
 const bob_initial_eth = "5";
-const bob_initial_erc20 = BigInt(Utils.toWei("10000", "ether"));
+const bob_initial_erc20 = Utils.toBN(Utils.toWei("10000", "ether"));
 
 const alice = actor.create("alice", {
     ethConfig: global.harness.ledgers_config.ethereum,
@@ -29,7 +29,7 @@ const bob_final_address =
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_quantity = 100000000;
-const beta_asset_quantity = BigInt(Utils.toWei("5000", "ether"));
+const beta_asset_quantity = Utils.toBN(Utils.toWei("5000", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -68,7 +68,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
             token_contract_address
         );
 
-        (erc20_balance === bob_initial_erc20).should.equal(true);
+        erc20_balance.eq(bob_initial_erc20).should.equal(true);
     });
 
     let swap_location;
@@ -282,11 +282,12 @@ describe("RFC003: Bitcoin for ERC20", () => {
             token_contract_address
         );
 
-        let alice_erc20_balance_expected =
-            alice_erc20_balance_before + beta_asset_quantity;
+        let alice_erc20_balance_expected = alice_erc20_balance_before.add(
+            beta_asset_quantity
+        );
         alice_erc20_balance_after
-            .toString()
-            .should.equal(alice_erc20_balance_expected.toString());
+            .eq(alice_erc20_balance_expected)
+            .should.equal(true);
     });
 
     let bob_redeem_action;

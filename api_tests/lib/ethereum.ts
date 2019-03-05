@@ -1,5 +1,6 @@
 import { ECPair } from "bitcoinjs-lib";
 import EthereumTx = require("ethereumjs-tx");
+import BN = require("bn.js");
 
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
@@ -49,13 +50,11 @@ module.exports.ethBalance = async function(address: string) {
         ownerWallet: EthereumWallet,
         contract_address: string,
         to_address: string,
-        amount: string,
+        amount: BN,
     ) => {
-        const bnAmount = _web3Client.utils.toBN(amount);
-
         to_address = to_address.replace(/^0x/, "").padStart(64, "0");
         const hexAmount = _web3Client.utils
-            .numberToHex(bnAmount)
+            .numberToHex(amount)
             .replace(/^0x/, "")
             .padStart(64, "0");
         const payload = "0x" + function_identifier + to_address + hexAmount;
@@ -184,7 +183,7 @@ module.exports.erc20_balance = async function(
     };
 
     let hex_balance = await _web3Client.eth.call(tx);
-    return BigInt(_web3Client.utils.toBN(hex_balance).toString());
+    return _web3Client.utils.toBN(hex_balance);
 };
 
 module.exports.create = (ethConfig: IEthConfig) => {
