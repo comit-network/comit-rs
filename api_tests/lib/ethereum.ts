@@ -12,7 +12,7 @@ let _web3Client: any;
 let _ethConfig: IEthConfig;
 
 interface IEthConfig {
-    rpc_url: string
+    rpc_url: string;
 }
 
 function createWeb3Client(ethConfig: IEthConfig) {
@@ -33,7 +33,6 @@ module.exports.createClient = (ethConfig: IEthConfig) => {
     return createWeb3Client(ethConfig);
 };
 
-
 async function ethBalance(address: string) {
     return _web3Client.eth.getBalance(address).then((balance: string) => {
         return BigInt(balance);
@@ -50,7 +49,7 @@ module.exports.ethBalance = async function(address: string) {
         ownerWallet: EthereumWallet,
         contract_address: string,
         to_address: string,
-        amount: BN,
+        amount: BN
     ) => {
         to_address = to_address.replace(/^0x/, "").padStart(64, "0");
         const hexAmount = _web3Client.utils
@@ -59,8 +58,11 @@ module.exports.ethBalance = async function(address: string) {
             .padStart(64, "0");
         const payload = "0x" + function_identifier + to_address + hexAmount;
 
-        return ownerWallet
-            .send_eth_transaction_to(contract_address, payload, "0x0");
+        return ownerWallet.send_eth_transaction_to(
+            contract_address,
+            payload,
+            "0x0"
+        );
     };
 }
 
@@ -74,7 +76,6 @@ class EthereumWallet {
             "0x" +
             ethutil.privateToAddress(this.keypair.privateKey).toString("hex");
         createWeb3Client(ethConfig);
-
     }
 
     address() {
@@ -94,14 +95,17 @@ class EthereumWallet {
             to: this.address(),
             value: _web3Client.utils.numberToHex(weiAmount),
         };
-        return _web3Client.eth.personal.sendTransaction(tx, parity_dev_password);
+        return _web3Client.eth.personal.sendTransaction(
+            tx,
+            parity_dev_password
+        );
     }
 
     async send_eth_transaction_to(
         to: string,
         data: string = "0x0",
         value: string = "0",
-        gas_limit: string = "0x100000",
+        gas_limit: string = "0x100000"
     ) {
         if (!to) {
             throw new Error("`to` cannot be null");
@@ -123,14 +127,13 @@ class EthereumWallet {
     }
 
     async deploy_erc20_token_contract(projectRoot: string) {
-
         const token_contract_deploy =
             "0x" +
             fs
                 .readFileSync(
                     projectRoot +
-                    "/application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
-                    "utf8",
+                        "/application/comit_node/tests/parity_client/erc20_token_contract.asm.hex",
+                    "utf8"
                 )
                 .trim();
         return this.deploy_contract(token_contract_deploy);
@@ -167,7 +170,7 @@ class EthereumWallet {
 
 module.exports.erc20_balance = async function(
     tokenHolderAddress: string,
-    contractAddress: string,
+    contractAddress: string
 ) {
     const function_identifier = "70a08231";
 

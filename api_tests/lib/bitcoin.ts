@@ -1,29 +1,41 @@
-import { Transaction, ECPair, Out, payments, networks, TransactionBuilder, address } from "bitcoinjs-lib";
+import {
+    Transaction,
+    ECPair,
+    Out,
+    payments,
+    networks,
+    TransactionBuilder,
+    address,
+} from "bitcoinjs-lib";
 const BitcoinRpcClient = require("bitcoin-core");
 const sb = require("satoshi-bitcoin");
 const util = require("./util.js");
 
 interface IBitcoinConfig {
     // snake_case because it comes from TOML file
-    rpc_username: string,
-    rpc_password: string,
-    rpc_host: string,
-    rpc_port: number
+    rpc_username: string;
+    rpc_password: string;
+    rpc_host: string;
+    rpc_port: number;
 }
 
 interface IBitcoinRpcClient {
     //TODO: do not use 'any'
-    generate(num: number): Promise<any>,
-    getRawTransaction(txId: string, verbose?: boolean, blockHash?: string): Promise<any>,
-    sendToAddress(address: string, amount: number|string): Promise<any>,
-    sendRawTransaction(hexString: string): Promise<any>
+    generate(num: number): Promise<any>;
+    getRawTransaction(
+        txId: string,
+        verbose?: boolean,
+        blockHash?: string
+    ): Promise<any>;
+    sendToAddress(address: string, amount: number | string): Promise<any>;
+    sendRawTransaction(hexString: string): Promise<any>;
 }
 
 interface IUtxo {
     // TODO: declare transaction Id type
-    txId: string,
-    value: number,
-    vout: number,
+    txId: string;
+    value: number;
+    vout: number;
 }
 
 let _bitcoinRpcClient: IBitcoinRpcClient;
@@ -79,7 +91,15 @@ module.exports.get_first_utxo_value_transferred_to = getFirstUtxoValueTransferre
 class BitcoinWallet {
     keypair: ECPair;
     bitcoinUtxos: IUtxo[];
-    _identity: { address: string, hash: Buffer, output: Buffer, pubkey: Buffer, signature: Buffer, input: Buffer, witness: Buffer[] };
+    _identity: {
+        address: string;
+        hash: Buffer;
+        output: Buffer;
+        pubkey: Buffer;
+        signature: Buffer;
+        input: Buffer;
+        witness: Buffer[];
+    };
 
     constructor() {
         this.keypair = ECPair.makeRandom({ rng: util.test_rng });
@@ -124,10 +144,7 @@ class BitcoinWallet {
         const change = input_amount - value - fee;
         txb.addInput(utxo.txId, utxo.vout, null, this.identity().output);
         txb.addOutput(this.identity().output, change);
-        txb.addOutput(
-            address.toOutputScript(to, networks.regtest),
-            value
-        );
+        txb.addOutput(address.toOutputScript(to, networks.regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
         return _bitcoinRpcClient.sendRawTransaction(txb.build().toHex());
