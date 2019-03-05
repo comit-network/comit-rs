@@ -8,11 +8,18 @@ const ethereum = require("../lib/ethereum.js");
 const wallet = require("../lib/wallet.js");
 const btsieve_conf = require("../lib/btsieve.js");
 
-const bitcoin_rpc_client = bitcoin.createClient();
+// TODO: This should not be exposed
+const bitcoin_rpc_client = bitcoin.createClient(
+    global.harness.ledgers_config.bitcoin
+);
 const btsieve = btsieve_conf.create("localhost", 8080);
-const toby_wallet = wallet.create("toby");
+const toby_wallet = wallet.create("toby", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
-const alice_wallet = wallet.create("alice");
+const alice_wallet = wallet.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 const alice_wallet_address = alice_wallet.eth().address();
 
 function sleep(ms) {

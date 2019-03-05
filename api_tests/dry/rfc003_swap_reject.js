@@ -21,8 +21,12 @@ const beta_asset_quantity = Utils.toWei("10", "ether");
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
 const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-const alice = actor.create("alice");
-const bob = actor.create("bob");
+const alice = actor.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
+const bob = actor.create("bob", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const alice_comit_node_address = alice.config.comit.comit_listen;
 const bob_comit_node_address = bob.config.comit.comit_listen;
