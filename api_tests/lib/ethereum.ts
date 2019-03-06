@@ -11,7 +11,7 @@ const util = require("./util.js");
 let _web3Client: any;
 let _ethConfig: IEthConfig;
 
-interface IEthConfig {
+export interface IEthConfig {
     rpc_url: string;
 }
 
@@ -65,7 +65,7 @@ module.exports.ethBalance = async function(address: string) {
     };
 }
 
-class EthereumWallet {
+export class EthereumWallet {
     keypair: ECPair;
     _address: string;
 
@@ -180,6 +180,6 @@ module.exports.erc20_balance = async function(
     return _web3Client.utils.toBN(hex_balance);
 };
 
-module.exports.create = (ethConfig: IEthConfig) => {
+export function createEthereumWallet(ethConfig: IEthConfig) {
     return new EthereumWallet(ethConfig);
-};
+}

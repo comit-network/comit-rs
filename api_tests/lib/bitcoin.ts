@@ -97,7 +97,7 @@ async function getFirstUtxoValueTransferredTo(txId: string, address: string) {
 
 module.exports.get_first_utxo_value_transferred_to = getFirstUtxoValueTransferredTo;
 
-class BitcoinWallet {
+export class BitcoinWallet {
     keypair: ECPair;
     bitcoinUtxos: IUtxo[];
     _identity: {
@@ -160,6 +160,6 @@ class BitcoinWallet {
     }
 }
 
-module.exports.create_wallet = () => {
+export function createBitcoinWallet() {
     return new BitcoinWallet();
-};
+}
