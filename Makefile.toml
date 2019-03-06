@@ -35,9 +35,9 @@ dependencies = [
 [tasks.post-test]
 workspace = false
 dependencies = [
+    "dry",
     "btsieve",
     "e2e",
-    "dry",       
 ]
 
 # Overridden because: added dependencies
@@ -109,6 +109,15 @@ alias = "dry-tests-flow"
 [tasks.btsieve]
 workspace = false
 alias = "btsieve-tests-flow"
+
+[tasks.api]
+descript = "Runs all api tests."
+workspace = false
+dependencies = [
+    "dry-tests-flow",
+    "btsieve-tests-flow",
+    "e2e-tests-flow",
+]
 
 ################
 # Custom tasks #
