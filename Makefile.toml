@@ -143,7 +143,7 @@ script = [
 [tasks.travis]
 workspace = false
 # Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache", "CAT_LOGS" = "true" }
+env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache"  }
 run_task = "ci-flow"
 
 [tasks.clean-registry]
@@ -204,7 +204,7 @@ description = "Defines the E2E-tests flow."
 workspace = false
 dependencies = [
     "build",
-    "pre-dry-tests",
+    "pre-api-tests",
     "dry-tests"
 ]
 
@@ -212,16 +212,13 @@ dependencies = [
 description = "Runs tests that don't require any external services"
 workspace = false
 private = true
-script_runner = "bash"
-script = [
-'''
-export ROOT=$(pwd);
-./api_tests/npm_wrapper.sh ./dry/
-'''
-]
+script = [ "./api_tests/harness.js ./api_tests/dry/*.js" ]
 
-[tasks.pre-dry-tests]
-alias = "pre-e2e-tests"
+[tasks.pre-api-tests]
+description = "Install/build dependencies for api tests"
+workspace = false
+private = true
+script = [ "( cd ./api_tests && yarn install; )" ]
 
 #################
 # E2E Test flow #
@@ -230,16 +227,9 @@ description = "Defines the E2E-tests flow."
 workspace = false
 dependencies = [
     "build",
-    "pre-e2e-tests",
+    "pre-api-tests",
     "e2e-tests",
-    "post-e2e-tests",
 ]
-
-[tasks.pre-e2e-tests]
-description = "Do stuff before the e2e tests are run."
-workspace = false
-private = true
-script = []
 
 [tasks.e2e-tests]
 # Usage: `cargo make e2e <folder>` folder can be:
@@ -251,22 +241,17 @@ private = true
 script_runner = "bash"
 script = [
 '''
-export PARAMS=$@;
-[[ -z ${PARAMS} ]] && export PARAMS=$(ls ./api_tests/e2e/rfc003/);
-export ROOT=$(pwd);
-for GLOB_DIR in ${PARAMS}; do
-    cd "$ROOT/api_tests/e2e/rfc003/"
-    for DIR in ${GLOB_DIR}; do
-        cd "$ROOT";
-        [[ -d "./api_tests/e2e/rfc003/${DIR}" ]] && ./api_tests/npm_wrapper.sh "./e2e/rfc003/${DIR}"
-    done;
+glob="${1:-*}";
+for dir in api_tests/e2e/rfc003/$glob; do
+    add_test_files=$(ls "$dir/"*.js 2>/dev/null|| true);
+    if test "$add_test_files"; then
+        files="$files $add_test_files"
+    fi
 done;
+
+./api_tests/harness.js $files;
 '''
 ]
-
-[tasks.post-e2e-tests]
-workspace = false
-private = true
 
 ######################################
 # btsieve API Test flow #
@@ -275,13 +260,9 @@ description = "Defines the btsieve API tests flow."
 workspace = false
 dependencies = [
     "build",
-    "pre-btsieve-tests",
+    "pre-api-tests",
     "btsieve-tests",
-    "post-btsieve-tests",
 ]
-
-[tasks.pre-btsieve-tests]
-alias = "pre-e2e-tests"
 
 [tasks.btsieve-tests]
 description = "Runs btsieve API tests."
@@ -290,11 +271,6 @@ private = true
 script_runner = "bash"
 script = [
 '''
-export ROOT=$(pwd);
-./api_tests/npm_wrapper.sh ./btsieve/
+./api_tests/harness.js ./api_tests/btsieve/*.js
 '''
 ]
-
-[tasks.post-btsieve-tests]
-workspace = false
-private = true

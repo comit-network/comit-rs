@@ -4,10 +4,10 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
-        "test": "mocha --bail"
+        "test": "harness.js"
     },
     "engines": {
-        "node": "11.10"
+        "node": "^10.14"
     },
     "author": "CoBloX Team",
     "license": "ISC",
@@ -17,6 +17,7 @@
         "bitcoinjs-lib": "^4.0.2",
         "chai": "^4.2.0",
         "chai-http": "^4.2.0",
+        "commander": "^2.19.0",
         "ethereumjs-tx": "^1.3.7",
         "ethereumjs-util": "^5.2.0",
         "grpc": "^1.17.0-pre1",

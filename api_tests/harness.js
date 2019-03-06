@@ -1,8 +1,17 @@
+#!/usr/bin/env node
+
 const bitcoin = require("./lib/bitcoin.js");
 const execSync = require("child_process").execSync;
 const spawn = require("child_process").spawn;
 const Toml = require("toml");
 const fs = require("fs");
+const Mocha = require("mocha");
+const path = require("path");
+const commander = require("commander");
+
+commander
+    .option("--dump-logs", "Dump logs to stdout on failure")
+    .parse(process.argv);
 
 // ************************ //
 // Setting global variables //
@@ -16,202 +25,272 @@ const project_root = execSync("git rev-parse --show-toplevel", {
 }).trim();
 global.harness.project_root = project_root;
 
-const test_dir = process.env.TEST_DIR;
-if (!test_dir) {
-    throw new Error("env var $TEST_DIR env variable must be set");
-}
-
-const log_dir = test_dir + "/log";
-global.harness.log_dir = log_dir;
-
-const log4js = require("log4js");
-log4js.configure({
-    appenders: {
-        test_suite: {
-            type: "file",
-            filename: log_dir + "/test-suite.log",
-        },
-    },
-    categories: { default: { appenders: ["test_suite"], level: "ALL" } },
-});
-
 const docker_cwd = project_root + "/api_tests/regtest";
-const services_cwd = project_root + "/api_tests/";
-process.chdir(services_cwd);
+const test_root = project_root + "/api_tests";
+global.harness.test_root = test_root;
 
 const docker_compose_options = {
     cwd: docker_cwd,
     encoding: "utf-8",
 };
 
-const config = Toml.parse(fs.readFileSync(test_dir + "/config.toml", "utf8"));
-global.harness.config = config;
-
 const ledgers_config = Toml.parse(
     fs.readFileSync(project_root + "/api_tests/regtest/ledgers.toml", "utf8")
 );
 global.harness.ledgers_config = ledgers_config;
 
-let ledger_up_time = 0;
-let ledger_down_time = 0;
-{
-    if (config.ledgers) {
-        config.ledgers.forEach(function(ledger) {
-            const config_ledger = ledgers_config[ledger];
-
-            const up_time = config_ledger.up_time;
-            if (up_time && up_time > ledger_up_time) {
-                ledger_up_time = up_time;
-            }
-
-            const down_time = parseInt(config_ledger.down_time);
-            if (down_time && down_time > ledger_down_time) {
-                ledger_down_time = down_time;
-            }
-        });
-    }
-}
-
 // To be done once all global variables are set
 const util = require("./lib/util.js");
+const log_dir = project_root + "/api_tests/log";
 
-// *********************************************** //
-// Clean-up docker containers and processes helper //
-// *********************************************** //
-
-function cleanUp(subprocesses) {
-    subprocesses.forEach(function(subprocess) {
-        subprocess.kill();
-    });
-    execSync("docker-compose rm -sfv", docker_compose_options);
+if (!fs.existsSync(log_dir)) {
+    fs.mkdirSync(log_dir);
 }
-
-process.once("SIGINT", function() {
-    cleanUp();
-});
 
 // ********************** //
 // Start services helpers //
 // ********************** //
-
-async function startDockerContainers(ledgers, ledgers_config) {
-    if (ledgers.length === 0) {
-        throw new Error("No ledgers to start");
+class LedgerRunner {
+    constructor() {
+        this.running_ledgers = {};
+        this.block_timers = {};
     }
 
-    let names = [];
-    ledgers.forEach(function(ledger) {
-        names.push(ledgers_config[ledger].docker);
-    });
-    await execSync(
-        "docker-compose up -d " + names.join(" "),
-        docker_compose_options
-    );
+    async ensureLedgersRunning(ledgers) {
+        let running_ledgers = this.running_ledgers;
+        let to_be_started = ledgers.filter(name => !running_ledgers[name]);
 
-    return await spawn("docker-compose", ["logs", "--tail=all", "-f"], {
-        cwd: docker_cwd,
-        encoding: "utf-8",
-        stdio: [
-            "ignore",
-            fs.openSync(log_dir + "/docker-compose.log", "w"),
-            fs.openSync(log_dir + "/docker-compose-err.log", "w"),
-        ],
-    });
-}
+        if (to_be_started.length > 0) {
+            let wait_times = [0];
 
-async function generateBlock(ledgers) {
-    if (ledgers && ledgers.includes("bitcoin")) {
-        await bitcoin.btc_generate();
-    }
-}
+            let images_to_start = to_be_started.map(
+                name => ledgers_config[name].docker
+            );
 
-async function startComitNode(name, comit_config) {
-    return await spawn(project_root + "/target/debug/comit_node", [], {
-        cwd: services_cwd,
-        encoding: "utf-8",
-        env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
-        stdio: [
-            "ignore",
-            fs.openSync(log_dir + "/comit_node-" + name + ".log", "w"),
-            fs.openSync(log_dir + "/comit_node-" + name + ".log", "w"),
-        ],
-    });
-}
+            await spawn("docker-compose", ["up", ...images_to_start], {
+                cwd: docker_cwd,
+                encoding: "utf-8",
+                stdio: [
+                    "ignore",
+                    fs.openSync(`${log_dir}/docker-compose.log`, "w"),
+                    "inherit",
+                ],
+            });
 
-async function startBtsieve(name, btsieve_config) {
-    return await spawn(project_root + "/target/debug/btsieve", [], {
-        cwd: services_cwd,
-        encoding: "utf-8",
-        env: btsieve_config.env,
-        stdio: [
-            "ignore",
-            fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
-            fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
-        ],
-    });
-}
-
-// ********************************** //
-// Start services, run test, shutdown //
-// ********************************** //
-
-function run_tests(file) {
-    describe("🏃" + file, async function() {
-        let block_interval;
-        let subprocesses = [];
-        before(async function() {
-            this.timeout(ledger_up_time + 4000);
-
-            if (config.ledgers) {
-                const subprocess = await startDockerContainers(
-                    config.ledgers,
-                    ledgers_config
+            for (let ledger of to_be_started) {
+                let ledger_config = ledgers_config[ledger];
+                this.running_ledgers[ledger] = true;
+                wait_times.push(
+                    process.env.CARGO_MAKE_CI === "TRUE"
+                        ? ledger_config.ci_docker_wait
+                        : ledger_config.local_docker_wait
                 );
-                subprocesses.push(subprocess);
-                await util.sleep(ledger_up_time);
             }
 
-            if (config.btsieve) {
-                Object.keys(config.btsieve).forEach(async function(name) {
-                    const subprocess = await startBtsieve(
-                        name,
-                        config.btsieve[name]
-                    );
-                    subprocesses.push(subprocess);
-                });
+            let wait_time = Math.max(...wait_times);
+            console.log(
+                `Waiting ${wait_time} for ${to_be_started.join(", ")} to start`
+            );
+
+            await util.sleep(wait_time);
+
+            if (to_be_started.includes("bitcoin")) {
+                this.block_timers.bitcoin = setInterval(async () => {
+                    await bitcoin.btc_generate();
+                }, 3000);
             }
+        }
+    }
 
-            if (config.comit_node) {
-                Object.keys(config.comit_node).forEach(async function(name) {
-                    const subprocess = await startComitNode(
-                        name,
-                        config.comit_node[name]
-                    );
-                    subprocesses.push(subprocess);
-                });
-            }
+    stopLedgers() {
+        let names = Object.keys(this.running_ledgers);
+        if (names.length > 0) {
+            console.log("Stopping ledgers: " + names.join(", "));
 
-            block_interval = setInterval(() => {
-                generateBlock(config.ledgers, ledgers_config);
-            }, 3000);
+            Object.values(this.block_timers).forEach(clearInterval);
 
-            await util.sleep(2000);
-        });
-
-        require(file);
-
-        after(async function() {
-            clearInterval(block_interval);
-            this.timeout(ledger_down_time);
-            await cleanUp(subprocesses);
-        });
-    });
-}
-
-let items = fs.readdirSync(test_dir);
-
-for (let item of items) {
-    if (item.endsWith(".js")) {
-        run_tests(test_dir + "/" + item);
+            execSync("docker-compose rm -sfv", docker_compose_options);
+        }
+        this.running_ledgers = {};
     }
 }
+
+class ComitRunner {
+    constructor() {
+        this.running_nodes = {};
+    }
+
+    async ensureComitNodesRunning(comit_nodes) {
+        console.log(
+            "Starting comit node for " +
+                comit_nodes.map(([name, _]) => name).join(", ")
+        );
+        for (let [name, comit_config] of comit_nodes) {
+            if (this.running_nodes[name]) {
+                continue;
+            }
+
+            this.running_nodes[name] = await spawn(
+                project_root + "/target/debug/comit_node",
+                [],
+                {
+                    cwd: test_root,
+                    encoding: "utf-8",
+                    env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
+                    stdio: [
+                        "ignore",
+                        fs.openSync(
+                            log_dir + "/comit_node-" + name + ".log",
+                            "w"
+                        ),
+                        fs.openSync(
+                            log_dir + "/comit_node-" + name + ".log",
+                            "w"
+                        ),
+                    ],
+                }
+            );
+
+            this.running_nodes[name].on("exit", (code, signal) => {
+                console.log(
+                    `comit-node ${name} exited with ${code ||
+                        "signal " + signal}`
+                );
+            });
+        }
+
+        await util.sleep(500);
+    }
+
+    stopComitNodes() {
+        let names = Object.keys(this.running_nodes);
+
+        if (names.length > 0) {
+            console.log("Stopping comit nodes: " + names.join(", "));
+            for (let process of Object.values(this.running_nodes)) {
+                process.kill();
+            }
+            this.running_nodes = {};
+        }
+    }
+}
+
+class BtsieveRunner {
+    constructor() {
+        this.running_btsieves = {};
+    }
+
+    async ensureBtsievesRunning(btsieves) {
+        for (let [name, btsieve_config] of btsieves) {
+            if (this.running_btsieves[name]) {
+                continue;
+            }
+
+            this.running_btsieves[name] = await spawn(
+                project_root + "/target/debug/btsieve",
+                [],
+                {
+                    cwd: test_root,
+                    encoding: "utf-8",
+                    env: btsieve_config.env,
+                    stdio: [
+                        "ignore",
+                        fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
+                        fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
+                    ],
+                }
+            );
+        }
+    }
+
+    async stopBtsieves() {
+        let names = Object.keys(this.running_btsieves);
+
+        if (names.length > 0) {
+            console.log("Stopping Btsieve(s): " + names.join(", "));
+            for (let process of Object.values(this.running_btsieves)) {
+                process.kill();
+            }
+        }
+
+        this.running_btsieves = {};
+    }
+}
+
+async function run_tests(test_files) {
+    let ledger_runner = new LedgerRunner();
+    let node_runner = new ComitRunner();
+    let btsieve_runner = new BtsieveRunner();
+
+    let clean_up = () => {};
+
+    process.once("SIGINT", () => {
+        console.log("SIGINT RECEIEVED");
+        clean_up();
+    });
+
+    clean_up = () => {
+        console.log("cleaning up");
+        btsieve_runner.stopBtsieves();
+        node_runner.stopComitNodes();
+        ledger_runner.stopLedgers();
+        console.log("cleanup done");
+        process.exit();
+    };
+
+    for (let test_file of test_files) {
+        let test_dir = path.dirname(test_file);
+        let config = Toml.parse(
+            fs.readFileSync(test_dir + "/config.toml", "utf8")
+        );
+        global.harness.config = config;
+
+        const mocha = new Mocha({
+            bail: true,
+            ui: "bdd",
+        });
+
+        mocha.addFile(test_file);
+
+        if (config.ledgers) {
+            await ledger_runner.ensureLedgersRunning(config.ledgers);
+        }
+
+        if (config.btsieve) {
+            await btsieve_runner.ensureBtsievesRunning(
+                Object.entries(config.btsieve)
+            );
+        }
+
+        if (config.comit_node) {
+            await node_runner.ensureComitNodesRunning(
+                Object.entries(config.comit_node)
+            );
+        }
+
+        let test_finish = new Promise((res, rej) => {
+            mocha.run(async failures => {
+                res(failures);
+            });
+        });
+
+        let failures = await test_finish;
+
+        if (failures) {
+            process.exitCode = 1;
+            if (commander.dumpLogs || process.env.CARGO_MAKE_CI === "TRUE") {
+                execSync(`/bin/sh -c 'tail -n +1 ${test_root}/log/*.log'`, {
+                    stdio: "inherit",
+                });
+            }
+            break;
+        }
+        node_runner.stopComitNodes();
+    }
+
+    clean_up();
+}
+
+let test_files = commander.args;
+
+run_tests(test_files);

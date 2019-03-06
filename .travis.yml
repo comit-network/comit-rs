@@ -11,12 +11,12 @@ addons:
     sources:
     - sourceline: 'deb http://dl.yarnpkg.com/debian/ stable main'
       key_url: 'http://dl.yarnpkg.com/debian/pubkey.gpg'
-    - sourceline: 'deb https://deb.nodesource.com/node_11.x trusty main'
+    - sourceline: 'deb https://deb.nodesource.com/node_10.x/ trusty main'
       key_url: 'https://deb.nodesource.com/gpgkey/nodesource.gpg.key'
     packages:
     - libzmq3-dev
     - yarn
-    - nodejs=11.10*
+    - nodejs=10.*
 services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
