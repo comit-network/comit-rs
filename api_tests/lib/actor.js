@@ -4,6 +4,7 @@ const fs = require("fs");
 const bitcoin = require("./bitcoin.js");
 const ethutil = require("ethereumjs-util");
 
+// TODO: pass value instead of using global config
 const bitcoin_rpc_client = bitcoin.createClient(
     global.harness.ledgers_config.bitcoin
 );

@@ -33,7 +33,6 @@ describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
         await bitcoin.activateSegwit();
-        // Initialize the client
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.eth().fund(alice_initial_eth);
         await alice.wallet.btc().fund(10);
