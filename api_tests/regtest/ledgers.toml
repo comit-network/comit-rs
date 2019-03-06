@@ -4,11 +4,12 @@ rpc_host = "localhost"
 rpc_port = "18443"
 rpc_username = "bitcoin"
 rpc_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
-up_time = "10000"
-down_time = "2000"
+local_docker_wait = 3000
+ci_docker_wait = 10000
 
 [ethereum]
 docker = "eth"
 rpc_url = "http://localhost:8545"
-up_time = "10000"
-down_time = "15000"
+local_docker_wait = 1500
+ci_docker_wait = 5000
+

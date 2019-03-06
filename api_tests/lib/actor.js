@@ -15,7 +15,13 @@ class Actor {
         this.name = name;
         this.host = node_config.host;
         this.config = Toml.parse(
-            fs.readFileSync(node_config.config_dir + "/default.toml", "utf8")
+            fs.readFileSync(
+                global.harness.test_root +
+                    "/" +
+                    node_config.config_dir +
+                    "/default.toml",
+                "utf8"
+            )
         );
         this.wallet = wallet.create(name);
     }

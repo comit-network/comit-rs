@@ -152,9 +152,7 @@ describe("RFC003: Bitcoin for Ether", () => {
             "network"
         );
         await alice.do(alice_fund_action);
-        let res = await chai
-            .request(alice.comit_node_url())
-            .get(alice_swap_href);
+        await chai.request(alice.comit_node_url()).get(alice_swap_href);
     });
 
     let bob_fund_action;
