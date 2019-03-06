@@ -35,9 +35,7 @@ dependencies = [
 [tasks.post-test]
 workspace = false
 dependencies = [
-    "dry",
-    "btsieve",
-    "e2e",
+    "api",
 ]
 
 # Overridden because: added dependencies
@@ -111,13 +109,8 @@ workspace = false
 alias = "btsieve-tests-flow"
 
 [tasks.api]
-descript = "Runs all api tests."
 workspace = false
-dependencies = [
-    "dry-tests-flow",
-    "btsieve-tests-flow",
-    "e2e-tests-flow",
-]
+alias = "api-tests-flow"
 
 ################
 # Custom tasks #
@@ -209,7 +202,7 @@ args = ["--stop-server"]
 #####################
 # Dry api Test flow #
 [tasks.dry-tests-flow]
-description = "Defines the E2E-tests flow."
+description = "Defines the dry tests flow."
 workspace = false
 dependencies = [
     "build",
@@ -243,7 +236,7 @@ dependencies = [
 [tasks.e2e-tests]
 # Usage: `cargo make e2e <folder>` folder can be:
 # - empty (run all tests)
-# - btc_eth or btc_eth-erc20
+# - btc_eth or btc_eth-erc20 or *erc20
 description = "Runs RFC003 end-to-end tests specified on command line. Supports GLOB."
 workspace = false
 private = true
@@ -281,5 +274,27 @@ script_runner = "bash"
 script = [
 '''
 ./api_tests/harness.js ./api_tests/btsieve/*.js
+'''
+]
+
+######################################
+# all API Tests flow #
+[tasks.api-tests-flow]
+description = "Defines all API tests flow."
+workspace = false
+dependencies = [
+    "build",
+    "pre-api-tests",
+    "api-tests",
+]
+
+[tasks.api-tests]
+description = "Runs all API tests."
+workspace = false
+private = true
+script_runner = "bash"
+script = [
+'''
+./api_tests/harness.js ./api_tests/btsieve/*.js ./api_tests/btsieve/*.js api_tests/e2e/rfc003/*/*.js
 '''
 ]
