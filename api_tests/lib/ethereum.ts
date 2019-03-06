@@ -34,7 +34,7 @@ module.exports.createClient = (ethConfig: IEthConfig) => {
 
 async function ethBalance(address: string) {
     return _web3Client.eth.getBalance(address).then((balance: string) => {
-        return BigInt(balance);
+        return _web3Client.utils.toBN(balance);
     });
 }
 

@@ -23,7 +23,7 @@ const bob_final_address =
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_quantity = 100000000;
-const beta_asset_quantity = BigInt(utils.toWei("10", "ether"));
+const beta_asset_quantity = utils.toBN(utils.toWei("10", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -223,12 +223,13 @@ describe("RFC003: Bitcoin for Ether", () => {
             alice_final_address
         );
 
-        let alice_eth_balance_expected =
-            alice_eth_balance_before + beta_asset_quantity;
+        let alice_eth_balance_expected = alice_eth_balance_before.add(
+            beta_asset_quantity
+        );
 
         alice_eth_balance_after
-            .toString()
-            .should.be.equal(alice_eth_balance_expected.toString());
+            .eq(alice_eth_balance_expected)
+            .should.be.equal(true);
     });
 
     let bob_redeem_action;
