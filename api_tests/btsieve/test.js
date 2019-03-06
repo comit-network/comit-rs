@@ -7,8 +7,11 @@ const actor = require("../lib/actor.js");
 const ethereum = require("../lib/ethereum.js");
 const wallet = require("../lib/wallet.js");
 const btsieve_conf = require("../lib/btsieve.js");
+const utils = require("web3-utils");
 
-// TODO: This should not be exposed
+// TODO: Do not expose BitcoinRpcClient
+// Best if functions exposed by bitcoin.ts library are used
+// instead of directly using the bitcoin RPC client
 const bitcoin_rpc_client = bitcoin.createClient(
     global.harness.ledgers_config.bitcoin
 );
@@ -32,8 +35,8 @@ describe("Test btsieve API", () => {
         this.timeout(5000);
         await bitcoin.activateSegwit();
         await toby_wallet.btc().fund(5);
-        await toby_wallet.eth().fund(20);
-        await alice_wallet.eth().fund(1);
+        await toby_wallet.eth().fund(utils.toBN(20));
+        await alice_wallet.eth().fund(utils.toBN(1));
 
         let receipt = await toby_wallet
             .eth()
@@ -212,7 +215,7 @@ describe("Test btsieve API", () => {
     describe("Ethereum", () => {
         describe("Transactions", () => {
             before(async () => {
-                await toby_wallet.eth().fund(10);
+                await toby_wallet.eth().fund(utils.toBN(10));
             });
 
             it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {

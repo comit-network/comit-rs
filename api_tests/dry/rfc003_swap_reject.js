@@ -1,5 +1,5 @@
 const chai = require("chai");
-const Utils = require("web3-utils");
+const utils = require("web3-utils");
 const actor = require("../lib/actor.js");
 const should = chai.should();
 chai.use(require("chai-http"));
@@ -16,7 +16,7 @@ const alpha_asset_reasonable_quantity = "100000000";
 const alpha_asset_stingy_quantity = "100";
 
 const beta_asset_name = "Ether";
-const beta_asset_quantity = Utils.toWei("10", "ether");
+const beta_asset_quantity = utils.toWei("10", "ether");
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
 const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;

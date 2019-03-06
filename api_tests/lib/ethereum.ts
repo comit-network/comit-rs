@@ -20,7 +20,6 @@ function createWeb3Client(ethConfig: IEthConfig) {
         throw new Error("ethereum configuration is needed");
     }
     if (!_web3Client || _ethConfig !== ethConfig) {
-        //_web3Client = new Web3(new HttpProvider(ethConfig.rpc_url));
         const httpProvider = new Web3.providers.HttpProvider(ethConfig.rpc_url);
         _web3Client = new Web3(httpProvider);
         _ethConfig = ethConfig;
@@ -82,11 +81,7 @@ class EthereumWallet {
         return this._address;
     }
 
-    // TODO: Pass BN to avoid ambiguity
-    async fund(ethAmount: string | number) {
-        if (typeof ethAmount == "number") {
-            ethAmount = ethAmount.toString();
-        }
+    async fund(ethAmount: BN) {
         const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
         const parity_dev_password = "";
         const weiAmount = _web3Client.utils.toWei(ethAmount, "ether");
@@ -151,10 +146,6 @@ class EthereumWallet {
             value: _web3Client.utils.numberToHex(_web3Client.utils.toBN(value)),
             chainId: 1,
         });
-
-        // let contract_balance = await _web3Client.eth.getBalance(
-        //     receipt.contractAddress,
-        // );
 
         return this.signAndSend(tx);
     }

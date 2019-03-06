@@ -126,7 +126,7 @@ workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = [
 '''
-(cd api_tests; yarn run prettier --write '**/*.[tj]s')
+(cd api_tests; yarn run prettier --write '**/*.{ts,js}')
 '''
 ]
 
@@ -136,7 +136,7 @@ workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = [
 '''
-(cd api_tests; yarn run prettier --check '**/*.[tj]s')
+(cd api_tests; yarn run prettier --check '**/*.{ts,js}')
 '''
 ]
 

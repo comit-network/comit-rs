@@ -4,7 +4,7 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
-        "build": "./node_modules/typescript/bin/tsc",
+        "build": "tsc",
         "test": "harness.js"
     },
     "engines": {

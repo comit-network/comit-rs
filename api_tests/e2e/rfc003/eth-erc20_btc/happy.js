@@ -1,7 +1,7 @@
 const chai = require("chai");
 chai.use(require("chai-http"));
 const wallet = require("../../../lib/wallet.js");
-const Utils = require("web3-utils");
+const utils = require("web3-utils");
 const ethereum = require("../../../lib/ethereum.js");
 const bitcoin = require("../../../lib/bitcoin.js");
 const actor = require("../../../lib/actor.js");
@@ -11,9 +11,9 @@ const toby_wallet = wallet.create("toby", {
     ethConfig: global.harness.ledgers_config.ethereum,
 });
 
-const toby_initial_eth = "10";
-const alice_initial_eth = "5";
-const alice_initial_erc20 = Utils.toWei("10000", "ether");
+const toby_initial_eth = utils.toBN(10);
+const alice_initial_eth = utils.toBN(5);
+const alice_initial_erc20 = utils.toWei("10000", "ether");
 
 const alice = actor.create("alice", {
     ethConfig: global.harness.ledgers_config.ethereum,
@@ -26,7 +26,7 @@ const alice_final_address =
     "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
 const bob_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_comit_node_address = bob.config.comit.comit_listen;
-const alpha_asset_quantity = Utils.toBN(Utils.toWei("5000", "ether"));
+const alpha_asset_quantity = utils.toBN(utils.toWei("5000", "ether"));
 
 const beta_asset_quantity = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
@@ -41,7 +41,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         await toby_wallet.eth().fund(toby_initial_eth);
         await alice.wallet.eth().fund(alice_initial_eth);
         await bob.wallet.btc().fund(10);
-        await bob.wallet.eth().fund(1);
+        await bob.wallet.eth().fund(utils.toBN(1));
         let receipt = await toby_wallet
             .eth()
             .deploy_erc20_token_contract(global.harness.project_root);

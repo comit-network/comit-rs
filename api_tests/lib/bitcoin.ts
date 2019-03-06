@@ -11,6 +11,12 @@ const BitcoinRpcClient = require("bitcoin-core");
 const sb = require("satoshi-bitcoin");
 const util = require("./util.js");
 
+// TODO: Remove regtest
+// Once this is merged: https://github.com/DefinitelyTyped/DefinitelyTyped/pull/33571
+
+const networksAny: any = networks;
+const regtest: any = networksAny.regtest;
+
 interface IBitcoinConfig {
     // snake_case because it comes from TOML file
     rpc_username: string;
@@ -20,7 +26,9 @@ interface IBitcoinConfig {
 }
 
 interface IBitcoinRpcClient {
-    //TODO: do not use 'any'
+    // TODO: Create Interface for Promise returned by RPC calls
+    // We should avoid to use `any` and instead create the interface
+    // of what is returned by the RPC calls
     generate(num: number): Promise<any>;
     getRawTransaction(
         txId: string,
@@ -32,7 +40,8 @@ interface IBitcoinRpcClient {
 }
 
 interface IUtxo {
-    // TODO: declare transaction Id type
+    // TODO: declare transactionId type
+    // Best to have specific transactionId type than using generic strings
     txId: string;
     value: number;
     vout: number;
@@ -107,7 +116,7 @@ class BitcoinWallet {
         this.bitcoinUtxos = [];
         this._identity = payments.p2wpkh({
             pubkey: this.keypair.publicKey,
-            network: networks.regtest,
+            network: regtest,
         });
     }
 
@@ -144,7 +153,7 @@ class BitcoinWallet {
         const change = input_amount - value - fee;
         txb.addInput(utxo.txId, utxo.vout, null, this.identity().output);
         txb.addOutput(this.identity().output, change);
-        txb.addOutput(address.toOutputScript(to, networks.regtest), value);
+        txb.addOutput(address.toOutputScript(to, regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
         return _bitcoinRpcClient.sendRawTransaction(txb.build().toHex());

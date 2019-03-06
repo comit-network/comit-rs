@@ -77,7 +77,7 @@ pub fn erc20_harness<D: Docker>(
 
     alice_client.give_eth_to(alice, params.alice_initial_ether);
 
-    let token_contract = alice_client.deploy_erc20_token_contract(global.harness.project_root);
+    let token_contract = alice_client.deploy_erc20_token_contract();
 
     alice_client.mint_tokens(token_contract, params.alice_initial_tokens, alice);
 

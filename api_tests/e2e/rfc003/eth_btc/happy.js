@@ -5,7 +5,7 @@ const bitcoin = require("../../../lib/bitcoin.js");
 const ethereum = require("../../../lib/ethereum.js");
 const ethutil = require("ethereumjs-util");
 const should = chai.should();
-const Utils = require("web3-utils");
+const utils = require("web3-utils");
 
 const bob_initial_eth = "0.1";
 const alice_initial_eth = "11";
@@ -22,7 +22,7 @@ const alice_final_address =
 const bob_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
-const alpha_asset_quantity = BigInt(Utils.toWei("10", "ether"));
+const alpha_asset_quantity = BigInt(utils.toWei("10", "ether"));
 const beta_asset_quantity = 100000000;
 const beta_max_fee = 5000; // Max 5000 satoshis fee
 
