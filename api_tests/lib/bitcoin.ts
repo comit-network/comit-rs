@@ -138,16 +138,17 @@ export class BitcoinWallet {
         let raw_transaction = await _bitcoinRpcClient.getRawTransaction(txId);
         let transaction = Transaction.fromHex(raw_transaction);
         let entries: Out[] = transaction.outs;
-        for (let i in entries) {
-            if (entries[i].script.equals(this.identity().output)) {
-                let out: Utxo = {
-                    txId: txId,
-                    vout: parseInt(i),
-                    value: entries[i].value,
-                };
-                this.bitcoinUtxos.push(out);
-            }
-        }
+        this.bitcoinUtxos.push(
+            ...entries
+                .filter(entry => entry.script.equals(this.identity().output))
+                .map(entry => {
+                    return {
+                        txId: txId,
+                        vout: entries.indexOf(entry),
+                        value: entry.value,
+                    };
+                })
+        );
     }
 
     async sendToAddress(to: string, value: number) {
