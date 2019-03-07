@@ -7,12 +7,22 @@ const actor = require("../lib/actor.js");
 const ethereum = require("../lib/ethereum.js");
 const wallet = require("../lib/wallet.js");
 const btsieve_conf = require("../lib/btsieve.js");
+const utils = require("web3-utils");
 
-const bitcoin_rpc_client = bitcoin.create_client();
+// TODO: Do not expose BitcoinRpcClient
+// Best if functions exposed by bitcoin.ts library are used
+// instead of directly using the bitcoin RPC client
+const bitcoin_rpc_client = bitcoin.createClient(
+    global.harness.ledgers_config.bitcoin
+);
 const btsieve = btsieve_conf.create("localhost", 8080);
-const toby_wallet = wallet.create("toby");
+const toby_wallet = wallet.create("toby", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
-const alice_wallet = wallet.create("alice");
+const alice_wallet = wallet.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 const alice_wallet_address = alice_wallet.eth().address();
 
 function sleep(ms) {
@@ -23,16 +33,18 @@ describe("Test btsieve API", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await bitcoin.btc_activate_segwit();
+        await bitcoin.ensureSegwit();
         await toby_wallet.btc().fund(5);
-        await toby_wallet.eth().fund(20);
-        await alice_wallet.eth().fund(1);
+        await toby_wallet.eth().fund(utils.toBN(20));
+        await alice_wallet.eth().fund(utils.toBN(1));
 
-        let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
+        let receipt = await toby_wallet
+            .eth()
+            .deploy_erc20_token_contract(global.harness.project_root);
         token_contract_address = receipt.contractAddress;
 
-        await ethereum.mint_erc20_tokens(
-            toby_wallet,
+        await ethereum.mintErc20Tokens(
+            toby_wallet.eth(),
             token_contract_address,
             alice_wallet_address,
             10
@@ -81,7 +93,7 @@ describe("Test btsieve API", () => {
                 this.slow(1000);
                 return toby_wallet
                     .btc()
-                    .send_btc_to_address(to_address, 100000000)
+                    .sendToAddress(to_address, 100000000)
                     .then(() => {
                         return bitcoin_rpc_client.generate(1).then(() => {
                             return btsieve
@@ -203,7 +215,7 @@ describe("Test btsieve API", () => {
     describe("Ethereum", () => {
         describe("Transactions", () => {
             before(async () => {
-                await toby_wallet.eth().fund(10);
+                await toby_wallet.eth().fund(utils.toBN(10));
             });
 
             it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {

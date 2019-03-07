@@ -2,7 +2,7 @@ const chai = require("chai");
 chai.use(require("chai-http"));
 const bitcoin = require("../../../lib/bitcoin.js");
 const ethereum = require("../../../lib/ethereum.js");
-const Web3 = require("web3");
+const utils = require("web3-utils");
 const actor = require("../../../lib/actor.js");
 const should = chai.should();
 const ethutil = require("ethereumjs-util");
@@ -10,8 +10,12 @@ const ethutil = require("ethereumjs-util");
 const bob_initial_eth = "11";
 const alice_initial_eth = "0.1";
 
-const alice = actor.create("alice", {});
-const bob = actor.create("bob", {});
+const alice = actor.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
+const bob = actor.create("bob", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const alice_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
 const bob_final_address =
@@ -19,7 +23,7 @@ const bob_final_address =
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_quantity = 100000000;
-const beta_asset_quantity = BigInt(Web3.utils.toWei("10", "ether"));
+const beta_asset_quantity = utils.toBN(utils.toWei("10", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -28,11 +32,11 @@ const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 describe("RFC003: Bitcoin for Ether", () => {
     before(async function() {
         this.timeout(5000);
-        await bitcoin.btc_activate_segwit();
+        await bitcoin.ensureSegwit();
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.eth().fund(alice_initial_eth);
         await alice.wallet.btc().fund(10);
-        await bitcoin.btc_generate();
+        await bitcoin.generate();
     });
 
     let swap_location;
@@ -207,23 +211,24 @@ describe("RFC003: Bitcoin for Ether", () => {
             "gas_limit",
             "network"
         );
-        alice_eth_balance_before = await ethereum.eth_balance(
+        alice_eth_balance_before = await ethereum.ethBalance(
             alice_final_address
         );
         await alice.do(alice_redeem_action);
     });
 
     it("[Alice] Should have received the beta asset after the redeem", async function() {
-        let alice_eth_balance_after = await ethereum.eth_balance(
+        let alice_eth_balance_after = await ethereum.ethBalance(
             alice_final_address
         );
 
-        let alice_eth_balance_expected =
-            alice_eth_balance_before + beta_asset_quantity;
+        let alice_eth_balance_expected = alice_eth_balance_before.add(
+            beta_asset_quantity
+        );
 
         alice_eth_balance_after
-            .toString()
-            .should.be.equal(alice_eth_balance_expected.toString());
+            .eq(alice_eth_balance_expected)
+            .should.be.equal(true);
     });
 
     let bob_redeem_action;
@@ -252,7 +257,7 @@ describe("RFC003: Bitcoin for Ether", () => {
         bob_redeem_action.payload.should.include.all.keys("hex", "network");
 
         await bob.do(bob_redeem_action);
-        await bitcoin.btc_generate();
+        await bitcoin.generate();
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {

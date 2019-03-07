@@ -4,10 +4,13 @@ const fs = require("fs");
 const bitcoin = require("./bitcoin.js");
 const ethutil = require("ethereumjs-util");
 
-const bitcoin_rpc_client = bitcoin.create_client();
+// TODO: pass value instead of using global config
+const bitcoin_rpc_client = bitcoin.createClient(
+    global.harness.ledgers_config.bitcoin
+);
 
 class Actor {
-    constructor(name) {
+    constructor(name, config) {
         const node_config = global.harness.config.comit_node[name];
         if (!node_config) {
             throw new Error("comit_node." + name + " configuration is needed");
@@ -23,7 +26,7 @@ class Actor {
                 "utf8"
             )
         );
-        this.wallet = wallet.create(name);
+        this.wallet = wallet.create(name, config);
     }
 
     comit_node_url() {
@@ -72,9 +75,7 @@ class Actor {
             case "bitcoin-send-amount-to-address": {
                 let { to, amount } = action.payload;
 
-                return this.wallet
-                    .btc()
-                    .send_btc_to_address(to, parseInt(amount));
+                return this.wallet.btc().sendToAddress(to, parseInt(amount));
                 break;
             }
             case "bitcoin-broadcast-signed-transaction": {
@@ -114,6 +115,6 @@ class Actor {
     }
 }
 
-module.exports.create = name => {
-    return new Actor(name);
+module.exports.create = (name, config) => {
+    return new Actor(name, config);
 };

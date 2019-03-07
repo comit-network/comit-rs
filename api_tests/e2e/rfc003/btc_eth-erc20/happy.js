@@ -1,5 +1,5 @@
 const chai = require("chai");
-const Web3 = require("web3");
+const utils = require("web3-utils");
 chai.use(require("chai-http"));
 const bitcoin = require("../../../lib/bitcoin.js");
 const actor = require("../../../lib/actor.js");
@@ -8,14 +8,20 @@ const ethereum = require("../../../lib/ethereum.js");
 const should = chai.should();
 const wallet = require("../../../lib/wallet.js");
 
-const toby_wallet = wallet.create();
+const toby_wallet = wallet.create("toby", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const toby_initial_eth = "10";
-const bob_initial_eth = "5";
-const bob_initial_erc20 = BigInt(Web3.utils.toWei("10000", "ether"));
+const bob_initial_eth = utils.toBN(5);
+const bob_initial_erc20 = utils.toBN(utils.toWei("10000", "ether"));
 
-const alice = actor.create("alice", {});
-const bob = actor.create("bob", {});
+const alice = actor.create("alice", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
+const bob = actor.create("bob", {
+    ethConfig: global.harness.ledgers_config.ethereum,
+});
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_final_address =
@@ -23,7 +29,7 @@ const bob_final_address =
 const bob_comit_node_address = bob.config.comit.comit_listen;
 
 const alpha_asset_quantity = 100000000;
-const beta_asset_quantity = BigInt(Web3.utils.toWei("5000", "ether"));
+const beta_asset_quantity = utils.toBN(utils.toWei("5000", "ether"));
 const alpha_max_fee = 5000; // Max 5000 satoshis fee
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -33,21 +39,23 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await bitcoin.btc_activate_segwit();
+        await bitcoin.ensureSegwit();
         await toby_wallet.eth().fund(toby_initial_eth);
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.btc().fund(10);
-        await alice.wallet.eth().fund(1);
-        let receipt = await toby_wallet.eth().deploy_erc20_token_contract();
+        await alice.wallet.eth().fund(utils.toBN(1));
+        let receipt = await toby_wallet
+            .eth()
+            .deploy_erc20_token_contract(global.harness.project_root);
         token_contract_address = receipt.contractAddress;
-        await bitcoin.btc_generate();
+        await bitcoin.generate();
     });
 
     it(bob_initial_erc20 + " tokens were minted to Bob", async function() {
         let bob_wallet_address = bob.wallet.eth().address();
 
-        let receipt = await ethereum.mint_erc20_tokens(
-            toby_wallet,
+        let receipt = await ethereum.mintErc20Tokens(
+            toby_wallet.eth(),
             token_contract_address,
             bob_wallet_address,
             bob_initial_erc20
@@ -60,7 +68,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
             token_contract_address
         );
 
-        (erc20_balance === bob_initial_erc20).should.equal(true);
+        erc20_balance.eq(bob_initial_erc20).should.equal(true);
     });
 
     let swap_location;
@@ -274,11 +282,12 @@ describe("RFC003: Bitcoin for ERC20", () => {
             token_contract_address
         );
 
-        let alice_erc20_balance_expected =
-            alice_erc20_balance_before + beta_asset_quantity;
+        let alice_erc20_balance_expected = alice_erc20_balance_before.add(
+            beta_asset_quantity
+        );
         alice_erc20_balance_after
-            .toString()
-            .should.equal(alice_erc20_balance_expected.toString());
+            .eq(alice_erc20_balance_expected)
+            .should.equal(true);
     });
 
     let bob_redeem_action;
@@ -306,7 +315,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     it("[Bob] Can execute the redeem action", async function() {
         bob_redeem_action.payload.should.include.all.keys("hex", "network");
         await bob.do(bob_redeem_action);
-        await bitcoin.btc_generate();
+        await bitcoin.generate();
     });
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {

@@ -35,9 +35,7 @@ dependencies = [
 [tasks.post-test]
 workspace = false
 dependencies = [
-    "btsieve",
-    "e2e",
-    "dry",       
+    "api",
 ]
 
 # Overridden because: added dependencies
@@ -110,6 +108,10 @@ alias = "dry-tests-flow"
 workspace = false
 alias = "btsieve-tests-flow"
 
+[tasks.api]
+workspace = false
+alias = "api-tests-flow"
+
 ################
 # Custom tasks #
 
@@ -126,7 +128,7 @@ workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = [
 '''
-(cd api_tests; yarn run prettier --write '**/*.js')
+(cd api_tests; yarn run prettier --write '**/*.{ts,js}')
 '''
 ]
 
@@ -136,7 +138,7 @@ workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = [
 '''
-(cd api_tests; yarn run prettier --check '**/*.js')
+(cd api_tests; yarn run prettier --check '**/*.{ts,js}')
 '''
 ]
 
@@ -200,7 +202,7 @@ args = ["--stop-server"]
 #####################
 # Dry api Test flow #
 [tasks.dry-tests-flow]
-description = "Defines the E2E-tests flow."
+description = "Defines the dry tests flow."
 workspace = false
 dependencies = [
     "build",
@@ -218,7 +220,7 @@ script = [ "./api_tests/harness.js ./api_tests/dry/*.js" ]
 description = "Install/build dependencies for api tests"
 workspace = false
 private = true
-script = [ "( cd ./api_tests && yarn install; )" ]
+script = [ "( cd ./api_tests && yarn install && yarn run build; )" ]
 
 #################
 # E2E Test flow #
@@ -234,7 +236,7 @@ dependencies = [
 [tasks.e2e-tests]
 # Usage: `cargo make e2e <folder>` folder can be:
 # - empty (run all tests)
-# - btc_eth or btc_eth-erc20
+# - btc_eth or btc_eth-erc20 or *erc20
 description = "Runs RFC003 end-to-end tests specified on command line. Supports GLOB."
 workspace = false
 private = true
@@ -272,5 +274,27 @@ script_runner = "bash"
 script = [
 '''
 ./api_tests/harness.js ./api_tests/btsieve/*.js
+'''
+]
+
+######################################
+# all API Tests flow #
+[tasks.api-tests-flow]
+description = "Defines all API tests flow."
+workspace = false
+dependencies = [
+    "build",
+    "pre-api-tests",
+    "api-tests",
+]
+
+[tasks.api-tests]
+description = "Runs all API tests."
+workspace = false
+private = true
+script_runner = "bash"
+script = [
+'''
+./api_tests/harness.js ./api_tests/dry/*.js ./api_tests/btsieve/*.js api_tests/e2e/rfc003/*/*.js
 '''
 ]
