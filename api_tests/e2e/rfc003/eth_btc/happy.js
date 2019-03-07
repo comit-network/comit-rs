@@ -32,7 +32,7 @@ const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 describe("RFC003: Ether for Bitcoin", () => {
     before(async function() {
         this.timeout(5000);
-        await bitcoin.activateSegwit();
+        await bitcoin.ensureSegwit();
         await alice.wallet.eth().fund(alice_initial_eth);
         await alice.wallet.btc().fund(0.1);
         await bob.wallet.eth().fund(bob_initial_eth);

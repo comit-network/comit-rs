@@ -33,7 +33,7 @@ describe("Test btsieve API", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await bitcoin.activateSegwit();
+        await bitcoin.ensureSegwit();
         await toby_wallet.btc().fund(5);
         await toby_wallet.eth().fund(utils.toBN(20));
         await alice_wallet.eth().fund(utils.toBN(1));

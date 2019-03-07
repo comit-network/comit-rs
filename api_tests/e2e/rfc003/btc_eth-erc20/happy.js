@@ -39,7 +39,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let token_contract_address;
     before(async function() {
         this.timeout(5000);
-        await bitcoin.activateSegwit();
+        await bitcoin.ensureSegwit();
         await toby_wallet.eth().fund(toby_initial_eth);
         await bob.wallet.eth().fund(bob_initial_eth);
         await alice.wallet.btc().fund(10);

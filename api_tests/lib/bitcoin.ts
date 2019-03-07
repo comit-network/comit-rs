@@ -77,7 +77,7 @@ module.exports.generate = async function(num: number = 1) {
     return createBitcoinRpcClient(_bitcoinConfig).generate(num);
 };
 
-module.exports.activateSegwit = async function() {
+module.exports.ensureSegwit = async function() {
     const blockHeight = await createBitcoinRpcClient(
         _bitcoinConfig
     ).getBlockCount();
