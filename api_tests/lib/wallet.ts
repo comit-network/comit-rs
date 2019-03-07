@@ -1,17 +1,17 @@
 import { createBitcoinWallet, BitcoinWallet } from "./bitcoin";
-import { createEthereumWallet, EthereumWallet, IEthConfig } from "./ethereum";
+import { createEthereumWallet, EthereumWallet, EthConfig } from "./ethereum";
 
-export interface IWalletConfig {
-    ethConfig: IEthConfig;
+export interface WalletConfig {
+    ethConfig: EthConfig;
 }
 
 class Wallet {
     owner: string;
-    _config: IWalletConfig;
+    _config: WalletConfig;
     _ethWallet: EthereumWallet;
     _btcWallet: BitcoinWallet;
 
-    constructor(owner: string, config: IWalletConfig) {
+    constructor(owner: string, config: WalletConfig) {
         this.owner = owner;
         this._config = config;
     }
@@ -31,6 +31,6 @@ class Wallet {
     }
 }
 
-export function create(owner: string, config: IWalletConfig) {
+export function create(owner: string, config: WalletConfig) {
     return new Wallet(owner, config);
 }

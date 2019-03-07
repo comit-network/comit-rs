@@ -17,7 +17,7 @@ const util = require("./util.js");
 const networksAny: any = networks;
 const regtest: any = networksAny.regtest;
 
-interface IBitcoinConfig {
+interface BitcoinConfig {
     // snake_case because it comes from TOML file
     rpc_username: string;
     rpc_password: string;
@@ -25,7 +25,7 @@ interface IBitcoinConfig {
     rpc_port: number;
 }
 
-interface IBitcoinRpcClient {
+interface BitcoinRpcClient {
     // TODO: Create Interface for Promise returned by RPC calls
     // We should avoid to use `any` and instead create the interface
     // of what is returned by the RPC calls
@@ -40,7 +40,7 @@ interface IBitcoinRpcClient {
     sendRawTransaction(hexString: string): Promise<any>;
 }
 
-interface IUtxo {
+interface Utxo {
     // TODO: declare transactionId type
     // Best to have specific transactionId type than using generic strings
     txId: string;
@@ -48,10 +48,10 @@ interface IUtxo {
     vout: number;
 }
 
-let _bitcoinRpcClient: IBitcoinRpcClient;
-let _bitcoinConfig: IBitcoinConfig;
+let _bitcoinRpcClient: BitcoinRpcClient;
+let _bitcoinConfig: BitcoinConfig;
 
-function createBitcoinRpcClient(btcConfig: IBitcoinConfig) {
+function createBitcoinRpcClient(btcConfig: BitcoinConfig) {
     if (!btcConfig && !_bitcoinConfig) {
         throw new Error("bitcoin configuration is needed");
     }
@@ -69,7 +69,7 @@ function createBitcoinRpcClient(btcConfig: IBitcoinConfig) {
     return _bitcoinRpcClient;
 }
 
-module.exports.createClient = (btcConfig: IBitcoinConfig) => {
+module.exports.createClient = (btcConfig: BitcoinConfig) => {
     return createBitcoinRpcClient(btcConfig);
 };
 
@@ -105,7 +105,7 @@ module.exports.get_first_utxo_value_transferred_to = getFirstUtxoValueTransferre
 
 export class BitcoinWallet {
     keypair: ECPair;
-    bitcoinUtxos: IUtxo[];
+    bitcoinUtxos: Utxo[];
     _identity: {
         address: string;
         hash: Buffer;
@@ -140,7 +140,7 @@ export class BitcoinWallet {
         let entries: Out[] = transaction.outs;
         for (let i in entries) {
             if (entries[i].script.equals(this.identity().output)) {
-                let out: IUtxo = {
+                let out: Utxo = {
                     txId: txId,
                     vout: parseInt(i),
                     value: entries[i].value,

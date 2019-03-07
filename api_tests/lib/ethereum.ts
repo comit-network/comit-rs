@@ -9,13 +9,13 @@ const fs = require("fs");
 const util = require("./util.js");
 
 let _web3Client: any;
-let _ethConfig: IEthConfig;
+let _ethConfig: EthConfig;
 
-export interface IEthConfig {
+export interface EthConfig {
     rpc_url: string;
 }
 
-function createWeb3Client(ethConfig: IEthConfig) {
+function createWeb3Client(ethConfig: EthConfig) {
     if (!ethConfig && _web3Client) {
         throw new Error("ethereum configuration is needed");
     }
@@ -28,7 +28,7 @@ function createWeb3Client(ethConfig: IEthConfig) {
     return _web3Client;
 }
 
-module.exports.createClient = (ethConfig: IEthConfig) => {
+module.exports.createClient = (ethConfig: EthConfig) => {
     return createWeb3Client(ethConfig);
 };
 
@@ -69,7 +69,7 @@ export class EthereumWallet {
     keypair: ECPair;
     _address: string;
 
-    constructor(ethConfig: IEthConfig) {
+    constructor(ethConfig: EthConfig) {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this._address =
             "0x" +
@@ -180,6 +180,6 @@ module.exports.erc20_balance = async function(
     return _web3Client.utils.toBN(hex_balance);
 };
 
-export function createEthereumWallet(ethConfig: IEthConfig) {
+export function createEthereumWallet(ethConfig: EthConfig) {
     return new EthereumWallet(ethConfig);
 }
