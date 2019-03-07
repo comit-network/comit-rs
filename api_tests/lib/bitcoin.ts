@@ -7,6 +7,7 @@ import {
     TransactionBuilder,
     address,
 } from "bitcoinjs-lib";
+
 const BitcoinRpcClient = require("bitcoin-core");
 const sb = require("satoshi-bitcoin");
 const util = require("./util.js");
@@ -30,13 +31,17 @@ interface BitcoinRpcClient {
     // We should avoid to use `any` and instead create the interface
     // of what is returned by the RPC calls
     generate(num: number): Promise<any>;
+
     getBlockCount(): Promise<number>;
+
     getRawTransaction(
         txId: string,
         verbose?: boolean,
         blockHash?: string
     ): Promise<any>;
+
     sendToAddress(address: string, amount: number | string): Promise<any>;
+
     sendRawTransaction(hexString: string): Promise<any>;
 }
 
