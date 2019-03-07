@@ -295,6 +295,6 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/harness.js ./api_tests/btsieve/*.js ./api_tests/btsieve/*.js api_tests/e2e/rfc003/*/*.js
+./api_tests/harness.js ./api_tests/dry/*.js ./api_tests/btsieve/*.js api_tests/e2e/rfc003/*/*.js
 '''
 ]
