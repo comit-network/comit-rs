@@ -89,7 +89,7 @@ fabric.properties
 
 api_tests/regtest/lnd_certs
 
-# To remove once migration to TypeScript is done
+# TODO: To remove once migration to TypeScript is done
 */lib/bitcoin.js
 */lib/ethereum.js
 */lib/wallet.js
