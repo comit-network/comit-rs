@@ -80,6 +80,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .or(get_swaps)
         .or(get_peers)
         .with(warp::log("http"))
+        .with(warp::cors().allow_any_origin())
         .recover(http_api::unpack_problem)
         .boxed()
 }
