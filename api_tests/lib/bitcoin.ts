@@ -30,6 +30,7 @@ interface IBitcoinRpcClient {
     // We should avoid to use `any` and instead create the interface
     // of what is returned by the RPC calls
     generate(num: number): Promise<any>;
+    getBlockCount(): Promise<number>;
     getRawTransaction(
         txId: string,
         verbose?: boolean,
@@ -77,7 +78,12 @@ module.exports.generate = async function(num: number = 1) {
 };
 
 module.exports.activateSegwit = async function() {
-    return createBitcoinRpcClient(_bitcoinConfig).generate(432);
+    const blockHeight = await createBitcoinRpcClient(
+        _bitcoinConfig
+    ).getBlockCount();
+    if (blockHeight < 432) {
+        await createBitcoinRpcClient(_bitcoinConfig).generate(432);
+    }
 };
 
 async function getFirstUtxoValueTransferredTo(txId: string, address: string) {
