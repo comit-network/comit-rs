@@ -1,6 +1,6 @@
 use crate::{
     connection_pool::ConnectionPool,
-    http_api::{self, rfc003::routes::GetActionQueryParams},
+    http_api,
     swap_protocols::{rfc003::state_store, MetadataStore, ProtocolDependencies, SwapId},
 };
 use std::sync::Arc;
@@ -30,7 +30,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(warp::post2())
         .and(protocol_dependencies.clone())
         .and(warp::body::json())
-        .and_then(http_api::rfc003::routes::post_swap);
+        .and_then(http_api::routes::rfc003::post_swap);
 
     let rfc003_get_swap = rfc003
         .and(warp::get2())
@@ -38,40 +38,40 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(state_store.clone())
         .and(warp::path::param())
         .and(warp::path::end())
-        .and_then(http_api::rfc003::routes::get_swap);
+        .and_then(http_api::routes::rfc003::get_swap);
 
     let get_swaps = path
         .and(warp::get2())
         .and(warp::path::end())
         .and(metadata_store.clone())
         .and(state_store.clone())
-        .and_then(http_api::rfc003::routes::get_swaps);
+        .and_then(http_api::routes::index::get_swaps);
 
     let rfc003_post_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::rfc003::action::Action>())
+        .and(warp::path::param::<http_api::routes::rfc003::action::Action>())
         .and(warp::post2())
         .and(warp::path::end())
         .and(warp::body::json().or(empty_json_body).unify())
-        .and_then(http_api::rfc003::routes::post_action);
+        .and_then(http_api::routes::rfc003::post_action);
 
     let rfc003_get_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::rfc003::action::Action>())
-        .and(warp::query::<GetActionQueryParams>())
+        .and(warp::path::param::<http_api::routes::rfc003::action::Action>())
+        .and(warp::query::<http_api::routes::rfc003::GetActionQueryParams>())
         .and(warp::get2())
         .and(warp::path::end())
-        .and_then(http_api::rfc003::routes::get_action);
+        .and_then(http_api::routes::rfc003::get_action);
 
     let get_peers = warp::path("peers")
         .and(comit_connection_pool.clone())
         .and(warp::get2())
         .and(warp::path::end())
-        .and_then(http_api::peers);
+        .and_then(http_api::routes::peers::get_peers);
 
     rfc003_get_swap
         .or(rfc003_post_swap)

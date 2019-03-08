@@ -192,6 +192,7 @@ describe("SWAP request REJECTED", () => {
                             network: "regtest",
                         },
                     },
+                    role: "Alice",
                     protocol: "rfc003",
                     status: "IN_PROGRESS",
                 };
@@ -215,6 +216,7 @@ describe("SWAP request REJECTED", () => {
                             network: "regtest",
                         },
                     },
+                    role: "Alice",
                     protocol: "rfc003",
                     status: "IN_PROGRESS",
                 };

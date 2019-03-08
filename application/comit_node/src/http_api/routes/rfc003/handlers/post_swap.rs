@@ -96,7 +96,7 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, Partial
     beta_expiry: Timestamp,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
-    #[serde(with = "http_api::rfc003::socket_addr")]
+    #[serde(with = "http_api::serde::socket_addr")]
     peer: SocketAddr,
 }
 

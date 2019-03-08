@@ -1,6 +1,6 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::{problem, rfc003::action::Action},
+    http_api::{problem, routes::rfc003::action::Action},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{

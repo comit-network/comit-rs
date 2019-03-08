@@ -1,20 +1,19 @@
 use crate::{
     http_api::{
         problem,
-        rfc003::action::{Action, ToAction},
+        routes::rfc003::action::{Action, ToAction},
     },
     swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
         metadata_store::Metadata,
         rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions},
-        MetadataStore, RoleKind, SwapId,
+        MetadataStore, SwapId,
     },
 };
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::HttpApiProblem;
+use rustic_hal::HalResource;
 use std::sync::Arc;
-use warp::{self, Reply};
 
 pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
@@ -22,7 +21,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
     id: &SwapId,
     action: Action,
     query_params: &GetActionQueryParams,
-) -> Result<impl Reply, HttpApiProblem> {
+) -> Result<HalResource, HttpApiProblem> {
     let metadata = metadata_store
         .get(id)?
         .ok_or_else(problem::swap_not_found)?;
@@ -46,7 +45,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                                 .into_response_body(query_params.clone())
                                 .map(|body| {
                                     trace!("Swap {}: Returning {:?} for {:?}", id, body, action);
-                                    warp::reply::json(&body)
+                                    HalResource::new(body)
                                 }),
                         )
                     } else {
