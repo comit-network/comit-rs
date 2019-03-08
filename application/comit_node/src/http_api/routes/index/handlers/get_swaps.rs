@@ -1,5 +1,5 @@
 use crate::{
-    http_api::swap_resource::new_rfc003_hal_swap_resource,
+    http_api::swap_resource::{new_rfc003_hal_swap_resource, IncludeState},
     swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
 };
 use http_api_problem::HttpApiProblem;
@@ -11,7 +11,8 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
 ) -> Result<Vec<HalResource>, HttpApiProblem> {
     let mut resources = vec![];
     for (id, metadata) in metadata_store.all()?.into_iter() {
-        let hal_swap_resource = new_rfc003_hal_swap_resource(state_store, id, metadata, false);
+        let hal_swap_resource =
+            new_rfc003_hal_swap_resource(state_store, id, metadata, IncludeState::No);
         resources.push(hal_swap_resource);
     }
 

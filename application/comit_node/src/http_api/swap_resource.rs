@@ -59,11 +59,16 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::messages::Reques
     }
 }
 
+pub enum IncludeState {
+    Yes,
+    No,
+}
+
 pub fn new_rfc003_hal_swap_resource<S: StateStore>(
     state_store: &S,
     id: SwapId,
     metadata: Metadata,
-    include_state: bool,
+    include_state: IncludeState,
 ) -> Result<HalResource, HttpApiProblem> {
     use crate::http_api::{
         problem,
@@ -105,14 +110,13 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
                 protocol: RFC003.into(),
                 parameters,
                 role: format!("{}", metadata.role),
-                state: if include_state {
-                    Some(SwapState::<AL, BL> {
+                state: match include_state {
+                    IncludeState::Yes => Some(SwapState::<AL, BL> {
                         communication,
                         alpha_ledger,
                         beta_ledger,
-                    })
-                } else {
-                    None
+                    }),
+                    IncludeState::No => None,
                 },
             };
 
