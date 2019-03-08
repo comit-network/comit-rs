@@ -69,6 +69,16 @@ describe("Sanity tests", () => {
             });
     });
 
+    it("[Alice] Sets appropriate CORS headers", async () => {
+        let res = await chai
+            .request(alice.comit_node_url())
+            .get("/swaps")
+            .set("Origin", "localhost:3000");
+
+        res.should.have.status(200);
+        res.should.have.header("access-control-allow-origin", "localhost:3000");
+    });
+
     it("[Alice] Returns 400 bad request for malformed requests", async () => {
         await chai
             .request(alice.comit_node_url())
