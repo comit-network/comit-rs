@@ -1,44 +1,36 @@
-pub mod rfc003;
+#[macro_use]
+pub mod with_swap_types;
+#[macro_use]
+pub mod with_swap_types_bob;
 pub mod route_factory;
+pub mod routes;
+pub mod serde;
 #[macro_use]
 pub mod ledger;
 #[macro_use]
 pub mod asset;
 #[macro_use]
 pub mod impl_serialize_http;
-
 mod problem;
+mod swap_resource;
 
-pub use self::problem::*;
+pub use self::{
+    problem::*,
+    swap_resource::{SwapParameters, SwapResource, SwapStatus},
+};
 
 pub const PATH: &str = "swaps";
 
 use crate::{
-    connection_pool::ConnectionPool,
     http_api::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
     },
     swap_protocols::ledger::{Bitcoin, Ethereum},
 };
+use ::serde::{ser::SerializeStruct, Serialize, Serializer};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
-use serde::{ser::SerializeStruct, Serialize, Serializer};
-use std::{net::SocketAddr, sync::Arc};
-use warp::{self, Rejection, Reply};
-
-#[derive(Debug, Serialize)]
-struct GetPeers {
-    pub peers: Vec<SocketAddr>,
-}
-
-pub fn peers(connection_pool: Arc<ConnectionPool>) -> Result<impl Reply, Rejection> {
-    let response = GetPeers {
-        peers: connection_pool.connected_addrs(),
-    };
-
-    Ok(warp::reply::json(&response))
-}
 
 #[derive(Debug)]
 pub struct Http<I>(pub I);
@@ -101,13 +93,22 @@ impl Serialize for Http<ethereum_support::H160> {
     }
 }
 
+impl Serialize for Http<bitcoin_support::OutPoint> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{
         http_api::Http,
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
-    use bitcoin_support::{self, BitcoinQuantity, OutPoint, PubkeyHash, Script, TxIn};
+    use bitcoin_support::{self, BitcoinQuantity, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
     use ethereum_support::{
         self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
     };
@@ -227,4 +228,26 @@ mod tests {
         );
     }
 
+    #[test]
+    fn http_htlc_location_serializes_correctly_to_json() {
+        let bitcoin_htlc_location = OutPoint {
+            txid: Sha256dHash::from_hex(
+                "ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024",
+            )
+            .unwrap(),
+            vout: 1u32,
+        };
+        // Ethereum HtlcLocation matches Ethereum Identity, so it is already being
+        // tested elsewhere.
+
+        let bitcoin_htlc_location = Http(bitcoin_htlc_location);
+
+        let bitcoin_htlc_location_serialized =
+            serde_json::to_string(&bitcoin_htlc_location).unwrap();
+
+        assert_eq!(
+            &bitcoin_htlc_location_serialized,
+            r#"{"txid":"ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024","vout":1}"#
+        );
+    }
 }

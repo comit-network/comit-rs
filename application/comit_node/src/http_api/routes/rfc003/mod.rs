@@ -1,30 +1,22 @@
-pub use crate::http_api::rfc003::handlers::GetActionQueryParams;
+pub mod action;
+mod handlers;
+mod swap_state;
+
 use crate::{
     http_api::{
-        problem::HttpApiProblemStdError,
-        rfc003::{
-            action::{new_action_link, Action},
-            handlers::{
-                handle_get_action, handle_get_swap, handle_get_swaps, handle_post_action,
-                handle_post_swap, SwapRequestBodyKind,
-            },
-        },
         route_factory::swap_path,
+        routes::{into_rejection, rfc003::action::Action},
     },
     swap_protocols::{
         rfc003::{alice::AliceSpawner, state_store::StateStore},
         MetadataStore, SwapId,
     },
 };
-use http_api_problem::HttpApiProblem;
 use hyper::header;
-use rustic_hal::HalResource;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
 
-fn into_rejection(problem: HttpApiProblem) -> Rejection {
-    warp::reject::custom(HttpApiProblemStdError::from(problem))
-}
+pub use self::{handlers::*, swap_state::*};
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
@@ -47,29 +39,8 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
     state_store: Arc<S>,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    handle_get_swap(&metadata_store, &state_store, id)
-        .map(|(swap_resource, actions)| {
-            let response = HalResource::new(swap_resource);
-            let response = actions.into_iter().fold(response, |acc, action| {
-                let link = new_action_link(&id, action);
-                acc.with_link(action, link)
-            });
-
-            Ok(warp::reply::json(&response))
-        })
-        .map_err(into_rejection)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-) -> Result<impl Reply, Rejection> {
-    handle_get_swaps(metadata_store.as_ref(), state_store.as_ref())
-        .map(|swaps| {
-            let response = HalResource::new("").with_resources("swaps", swaps);
-            Ok(warp::reply::json(&response))
-        })
+    handle_get_swap(metadata_store.as_ref(), state_store.as_ref(), id)
+        .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(into_rejection)
 }
 
@@ -107,5 +78,6 @@ pub fn get_action<T: MetadataStore<SwapId>, S: StateStore>(
         action,
         &query_params,
     )
+    .map(|swap_resource| warp::reply::json(&swap_resource))
     .map_err(into_rejection)
 }

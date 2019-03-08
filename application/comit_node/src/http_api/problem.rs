@@ -1,5 +1,5 @@
 use crate::{
-    http_api::rfc003::action::Action,
+    http_api::routes::rfc003::action::Action,
     swap_protocols::{
         metadata_store,
         rfc003::{self, state_store},
