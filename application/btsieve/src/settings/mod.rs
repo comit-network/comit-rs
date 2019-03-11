@@ -1,7 +1,8 @@
 mod serde;
 
-use bitcoin_support::Network;
+use bitcoin_support::Network as BitcoinNetwork;
 use config::{Config, ConfigError, File};
+use ethereum_support::Network as EthereumNetwork;
 use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -21,7 +22,7 @@ pub struct HttpApi {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
-    pub network: Network,
+    pub network: BitcoinNetwork,
     pub zmq_endpoint: String,
     // Below could be options
     #[serde(with = "serde::url")]
@@ -36,6 +37,7 @@ pub struct Ethereum {
     pub node_url: url::Url,
     #[serde(with = "serde::duration")]
     pub poll_interval_secs: Duration,
+    pub network: EthereumNetwork,
 }
 
 impl Settings {

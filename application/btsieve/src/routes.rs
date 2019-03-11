@@ -71,6 +71,7 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
     external_url: Url,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
+    network: &'static str,
     query_type: &'static str,
     query: Q,
 ) -> Result<impl Reply, Rejection> {
@@ -79,7 +80,9 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
     match result {
         Ok(id) => {
             let uri = external_url
-                .join(format!("/queries/{}/{}/{}", ledger_name, query_type, id).as_str())
+                .join(
+                    format!("/queries/{}/{}/{}/{}", ledger_name, network, query_type, id).as_str(),
+                )
                 .expect("Should be able to join urls")
                 .to_string();
             let reply = warp::reply::with_status(warp::reply(), warp::http::StatusCode::CREATED);

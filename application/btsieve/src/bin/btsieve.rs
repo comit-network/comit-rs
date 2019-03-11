@@ -93,6 +93,7 @@ fn create_bitcoin_routes(
     let client = Arc::new(bitcoin_rpc_client);
 
     let ledger_name = "bitcoin";
+    let network: &'static str = settings.network.into();
 
     let transaction_routes = route_factory
         .create::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
@@ -100,6 +101,7 @@ fn create_bitcoin_routes(
             transaction_query_result_repository,
             Arc::clone(&client),
             ledger_name,
+            network,
         );
 
     let block_routes = route_factory.create::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
@@ -107,6 +109,7 @@ fn create_bitcoin_routes(
         block_query_result_repository,
         Arc::clone(&client),
         ledger_name,
+        network,
     );
 
     transaction_routes.or(block_routes).boxed()
@@ -181,6 +184,7 @@ fn create_ethereum_routes(
     }
 
     let ledger_name = "ethereum";
+    let network: &'static str = settings.network.into();
 
     let transaction_routes = route_factory
         .create::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
@@ -188,6 +192,7 @@ fn create_ethereum_routes(
             transaction_query_result_repository,
             Arc::clone(&web3_client),
             ledger_name,
+            network,
         );
 
     let block_routes = route_factory.create::<ethereum::queries::block::ReturnAs, _, _, _, _>(
@@ -195,6 +200,7 @@ fn create_ethereum_routes(
         block_query_result_repository,
         Arc::clone(&web3_client),
         ledger_name,
+        network,
     );
 
     let bloom_routes = route_factory.create::<ethereum::queries::event::ReturnAs, _, _, _, _>(
@@ -202,6 +208,7 @@ fn create_ethereum_routes(
         log_query_result_repository,
         Arc::clone(&web3_client),
         ledger_name,
+        network,
     );
 
     (

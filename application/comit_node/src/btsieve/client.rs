@@ -52,24 +52,26 @@ impl BtsieveHttpClient {
     pub fn new(
         endpoint: &Url,
         ethereum_poll_interval: Duration,
+        ethereum_network: &str,
         bitcoin_poll_interval: Duration,
+        bitcoin_network: &str,
     ) -> Self {
         Self {
             client: Client::new(),
             create_bitcoin_transaction_query_endpoint: endpoint
-                .join("queries/bitcoin/transactions")
+                .join(format!("queries/bitcoin/{}/transactions", bitcoin_network).as_ref())
                 .expect("invalid url"),
             create_bitcoin_block_query_endpoint: endpoint
-                .join("queries/bitcoin/blocks")
+                .join(format!("queries/bitcoin/{}/blocks", bitcoin_network).as_ref())
                 .expect("invalid url"),
             create_ethereum_transaction_query_endpoint: endpoint
-                .join("queries/ethereum/transactions")
+                .join(format!("queries/ethereum/{}/transactions", ethereum_network).as_ref())
                 .expect("invalid url"),
             create_ethereum_block_query_endpoint: endpoint
-                .join("queries/ethereum/blocks")
+                .join(format!("queries/ethereum/{}/blocks", ethereum_network).as_ref())
                 .expect("invalid url"),
             create_ethereum_event_query_endpoint: endpoint
-                .join("queries/ethereum/logs")
+                .join(format!("queries/ethereum/{}/logs", ethereum_network).as_ref())
                 .expect("invalid url"),
             ethereum_poll_interval,
             bitcoin_poll_interval,

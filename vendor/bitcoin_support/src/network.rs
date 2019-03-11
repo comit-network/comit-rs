@@ -1,11 +1,14 @@
 use bitcoin;
 use bitcoin_bech32;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash, IntoStaticStr)]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
+    #[strum(serialize = "mainnet")]
     Mainnet,
+    #[strum(serialize = "regtest")]
     Regtest,
+    #[strum(serialize = "testnet")]
     Testnet,
 }
 
@@ -36,5 +39,21 @@ impl From<Network> for bitcoin_bech32::constants::Network {
             Network::Testnet => bitcoin_bech32::constants::Network::Testnet,
             Network::Mainnet => bitcoin_bech32::constants::Network::Bitcoin,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn string_deserialize() {
+        let mainnet: &'static str = Network::Mainnet.into();
+        let regtest: &'static str = Network::Regtest.into();
+        let testnet: &'static str = Network::Testnet.into();
+
+        assert_eq!(mainnet, "mainnet");
+        assert_eq!(regtest, "regtest");
+        assert_eq!(testnet, "testnet");
     }
 }

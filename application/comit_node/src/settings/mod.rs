@@ -49,6 +49,7 @@ pub struct Btsieve {
 pub struct PollParameters {
     #[serde(with = "serde::duration")]
     pub poll_interval_secs: Duration,
+    pub network: String,
 }
 
 impl ComitNodeSettings {

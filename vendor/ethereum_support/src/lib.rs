@@ -5,6 +5,8 @@
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate strum_macros;
 
 pub use crate::{
     contract_address::*, erc20_quantity::*, erc20_token::*, ether_quantity::*, key::*, network::*,

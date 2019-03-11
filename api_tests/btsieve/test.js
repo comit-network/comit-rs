@@ -56,7 +56,19 @@ describe("Test btsieve API", () => {
             it("btsieve should respond not found when getting a non-existent bitcoin transaction query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .get("/queries/bitcoin/transactions/1")
+                    .get("/queries/bitcoin/regtest/transactions/1")
+                    .then(res => {
+                        res.should.have.status(404);
+                    });
+            });
+
+            it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
+                return chai
+                    .request(btsieve.url())
+                    .post("/queries/bitcoin/banananet/transactions")
+                    .send({
+                        to_address: to_address,
+                    })
                     .then(res => {
                         res.should.have.status(404);
                     });
@@ -67,7 +79,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .post("/queries/bitcoin/transactions")
+                    .post("/queries/bitcoin/regtest/transactions")
                     .send({
                         to_address: to_address,
                     })
@@ -141,7 +153,19 @@ describe("Test btsieve API", () => {
             it("btsieve should respond not found when getting a non-existent bitcoin block query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .get("/queries/bitcoin/blocks/1")
+                    .get("/queries/bitcoin/regtest/blocks/1")
+                    .then(res => {
+                        res.should.have.status(404);
+                    });
+            });
+
+            it("btsieve should respond not found when creating a bitcoin block query for an invalid network", async function() {
+                return chai
+                    .request(btsieve.url())
+                    .post("/queries/bitcoin/banananet/blocks")
+                    .send({
+                        min_height: min_height,
+                    })
                     .then(res => {
                         res.should.have.status(404);
                     });
@@ -152,7 +176,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with location when creating a valid bitcoin block query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .post("/queries/bitcoin/blocks")
+                    .post("/queries/bitcoin/regtest/blocks")
                     .send({
                         min_height: min_height,
                     })
@@ -221,7 +245,19 @@ describe("Test btsieve API", () => {
             it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .get("/queries/ethereum/transactions/1")
+                    .get("/queries/ethereum/regtest/transactions/1")
+                    .then(res => {
+                        res.should.have.status(404);
+                    });
+            });
+
+            it("btsieve should respond not found when creating an ethereum transaction query for an invalid network", async function() {
+                return chai
+                    .request(btsieve.url())
+                    .post("/queries/ethereum/banananet/transactions")
+                    .send({
+                        to_address: to_address,
+                    })
                     .then(res => {
                         res.should.have.status(404);
                     });
@@ -232,7 +268,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .post("/queries/ethereum/transactions")
+                    .post("/queries/ethereum/regtest/transactions")
                     .send({
                         to_address: to_address,
                     })
@@ -294,7 +330,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with no content when deleting an existing ethereum transaction query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .delete("/queries/ethereum/transactions/1")
+                    .delete("/queries/ethereum/regtest/transactions/1")
                     .then(res => {
                         res.should.have.status(204);
                     });
@@ -305,7 +341,19 @@ describe("Test btsieve API", () => {
             it("btsieve should respond not found when getting a non-existent ethereum block query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .get("/queries/ethereum/blocks/1")
+                    .get("/queries/ethereum/regtest/blocks/1")
+                    .then(res => {
+                        res.should.have.status(404);
+                    });
+            });
+
+            it("btsieve should respond not found when creating an ethereum block query for an invalid network", async function() {
+                return chai
+                    .request(btsieve.url())
+                    .post("/queries/ethereum/banananet/blocks")
+                    .send({
+                        min_timestamp_secs: min_timestamp_secs,
+                    })
                     .then(res => {
                         res.should.have.status(404);
                     });
@@ -318,7 +366,7 @@ describe("Test btsieve API", () => {
                 this.timeout(1000);
                 return chai
                     .request(btsieve.url())
-                    .post("/queries/ethereum/blocks")
+                    .post("/queries/ethereum/regtest/blocks")
                     .send({
                         min_timestamp_secs: min_timestamp_secs,
                     })
@@ -378,11 +426,11 @@ describe("Test btsieve API", () => {
             });
         });
 
-        describe("Logs", () => {
+        describe("Transaction Receipts", () => {
             it("btsieve should respond not found when getting a non-existent ethereum transaction receipt query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .get("/queries/ethereum/logs/1")
+                    .get("/queries/ethereum/regtest/logs/1")
                     .then(res => {
                         res.should.have.status(404);
                     });
@@ -402,7 +450,7 @@ describe("Test btsieve API", () => {
                 this.timeout(1000);
                 return chai
                     .request(btsieve.url())
-                    .post("/queries/ethereum/logs")
+                    .post("/queries/ethereum/regtest/logs")
                     .send({
                         event_matchers: [
                             {

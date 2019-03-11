@@ -11,5 +11,8 @@ logging=true
 url = "http://localhost:8080"
 [btsieve.bitcoin]
 poll_interval_secs = 1
+network = "regtest"
+
 [btsieve.ethereum]
 poll_interval_secs = 1
+network = "regtest"
