@@ -93,7 +93,7 @@ fn create_bitcoin_routes(
     let client = Arc::new(bitcoin_rpc_client);
 
     let ledger_name = "bitcoin";
-    let network: &'static str = settings.network.into();
+    let network = settings.network.into();
 
     let transaction_routes = route_factory
         .create::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
@@ -184,7 +184,7 @@ fn create_ethereum_routes(
     }
 
     let ledger_name = "ethereum";
-    let network: &'static str = settings.network.into();
+    let network = settings.network.into();
 
     let transaction_routes = route_factory
         .create::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
