@@ -1,50 +1,52 @@
-const chai = require("chai");
-chai.use(require("chai-http"));
-chai.use(require("chai-string"));
+import * as bitcoin from "../lib/bitcoin";
+import { Wallet } from "../lib/wallet";
+import * as chai from "chai";
+import chaiHttp = require("chai-http");
+import * as ethereum from "../lib/ethereum";
+import { HarnessGlobal, sleep } from "../lib/util";
+import {
+    BitcoinResponse,
+    EthereumLogResponse,
+    EthereumResponse,
+    Btsieve,
+} from "../lib/btsieve";
+
 const should = chai.should();
-const bitcoin = require("../lib/bitcoin.js");
-const actor = require("../lib/actor.js");
-const ethereum = require("../lib/ethereum.js");
-const wallet = require("../lib/wallet.js");
-const btsieve_conf = require("../lib/btsieve.js");
-const utils = require("web3-utils");
+chai.use(chaiHttp);
 
-// TODO: Do not expose BitcoinRpcClient
-// Best if functions exposed by bitcoin.ts library are used
-// instead of directly using the bitcoin RPC client
-const bitcoin_rpc_client = bitcoin.createClient(
-    global.harness.ledgers_config.bitcoin
-);
-const btsieve = btsieve_conf.create("localhost", 8080);
-const toby_wallet = wallet.create("toby", {
-    ethConfig: global.harness.ledgers_config.ethereum,
+declare var global: HarnessGlobal;
+
+const btsieve = new Btsieve("localhost", 8080);
+
+bitcoin.init(global.ledgers_config.bitcoin);
+
+const tobyWallet = new Wallet("toby", {
+    ethConfig: global.ledgers_config.ethereum,
+    btcConfig: global.ledgers_config.bitcoin,
 });
 
-const alice_wallet = wallet.create("alice", {
-    ethConfig: global.harness.ledgers_config.ethereum,
+const aliceWallet = new Wallet("alice", {
+    ethConfig: global.ledgers_config.ethereum,
 });
-const alice_wallet_address = alice_wallet.eth().address();
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+const alice_wallet_address = aliceWallet.eth().address();
 
 describe("Test btsieve API", () => {
-    let token_contract_address;
+    let token_contract_address: string;
     before(async function() {
         this.timeout(5000);
         await bitcoin.ensureSegwit();
-        await toby_wallet.btc().fund(5);
-        await toby_wallet.eth().fund(utils.toBN(20));
-        await alice_wallet.eth().fund(utils.toBN(1));
+        await tobyWallet.btc().fund(5);
+        await tobyWallet.eth().fund("20");
+        await aliceWallet.eth().fund("1");
 
-        let receipt = await toby_wallet
+        let receipt = await tobyWallet
             .eth()
-            .deploy_erc20_token_contract(global.harness.project_root);
+            .deploy_erc20_token_contract(global.project_root);
         token_contract_address = receipt.contractAddress;
 
         await ethereum.mintErc20Tokens(
-            toby_wallet.eth(),
+            tobyWallet.eth(),
             token_contract_address,
             alice_wallet_address,
             10
@@ -75,7 +77,7 @@ describe("Test btsieve API", () => {
             });
 
             const to_address = "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
-            let location;
+            let location: string;
             it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
                 return chai
                     .request(btsieve.url())
@@ -85,7 +87,7 @@ describe("Test btsieve API", () => {
                     })
                     .then(res => {
                         res.should.have.status(201);
-                        location = res.headers.location;
+                        location = res.header.location;
                         location.should.be.a("string");
                     });
             });
@@ -103,14 +105,14 @@ describe("Test btsieve API", () => {
 
             it("btsieve should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
                 this.slow(1000);
-                return toby_wallet
+                return tobyWallet
                     .btc()
                     .sendToAddress(to_address, 100000000)
                     .then(() => {
-                        return bitcoin_rpc_client.generate(1).then(() => {
+                        return bitcoin.generate(1).then(() => {
                             return btsieve
-                                .poll_until_matches(chai, location)
-                                .then(body => {
+                                .poll_until_matches(location)
+                                .then((body: BitcoinResponse) => {
                                     body.query.to_address.should.equal(
                                         to_address
                                     );
@@ -122,7 +124,7 @@ describe("Test btsieve API", () => {
             });
 
             it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `return_as=transaction`", async function() {
-                return bitcoin_rpc_client.generate(1).then(() => {
+                return bitcoin.generate(1).then(() => {
                     return chai
                         .request(location)
                         .get("?return_as=transaction")
@@ -142,7 +144,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
                 return chai
                     .request(location)
-                    .delete("")
+                    .del("")
                     .then(res => {
                         res.should.have.status(204);
                     });
@@ -172,7 +174,7 @@ describe("Test btsieve API", () => {
             });
 
             const min_height = 600;
-            let location;
+            let location: string;
             it("btsieve should respond with location when creating a valid bitcoin block query", async function() {
                 return chai
                     .request(btsieve.url())
@@ -182,7 +184,7 @@ describe("Test btsieve API", () => {
                     })
                     .then(res => {
                         res.should.have.status(201);
-                        location = res.headers.location;
+                        location = res.header.location;
                         location.should.be.a("string");
                     });
             });
@@ -200,7 +202,7 @@ describe("Test btsieve API", () => {
 
             it("btsieve should respond with no block match (yet) when requesting on the min_height 600 bitcoin block query", async function() {
                 this.slow(500);
-                return bitcoin_rpc_client.generate(50).then(() => {
+                return bitcoin.generate(50).then(() => {
                     return chai
                         .request(location)
                         .get("")
@@ -215,10 +217,10 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with block match when requesting on the min_height 600 bitcoin block query", async function() {
                 this.slow(2000);
                 this.timeout(3000);
-                return bitcoin_rpc_client.generate(200).then(() => {
+                return bitcoin.generate(200).then(() => {
                     return btsieve
-                        .poll_until_matches(chai, location)
-                        .then(body => {
+                        .poll_until_matches(location)
+                        .then((body: BitcoinResponse) => {
                             body.query.min_height.should.equal(min_height);
                             body.matches.length.should.greaterThan(1);
                         });
@@ -228,7 +230,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with no content when deleting an existing bitcoin block query", async function() {
                 return chai
                     .request(location)
-                    .delete("")
+                    .del("")
                     .then(res => {
                         res.should.have.status(204);
                     });
@@ -239,7 +241,7 @@ describe("Test btsieve API", () => {
     describe("Ethereum", () => {
         describe("Transactions", () => {
             before(async () => {
-                await toby_wallet.eth().fund(utils.toBN(10));
+                await tobyWallet.eth().fund("10");
             });
 
             it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {
@@ -264,7 +266,7 @@ describe("Test btsieve API", () => {
             });
 
             const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-            let location;
+            let location: string;
             it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
                 return chai
                     .request(btsieve.url())
@@ -274,7 +276,7 @@ describe("Test btsieve API", () => {
                     })
                     .then(res => {
                         res.should.have.status(201);
-                        location = res.headers.location;
+                        location = res.header.location;
                         location.should.be.a("string");
                     });
             });
@@ -291,9 +293,9 @@ describe("Test btsieve API", () => {
             });
 
             it("btsieve should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function() {
-                return toby_wallet
+                return tobyWallet
                     .eth()
-                    .send_eth_transaction_to(
+                    .sendEthTransactionTo(
                         "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                         "",
                         1
@@ -314,13 +316,13 @@ describe("Test btsieve API", () => {
 
             it("btsieve should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function() {
                 this.slow(2000);
-                return toby_wallet
+                return tobyWallet
                     .eth()
-                    .send_eth_transaction_to(to_address, "", 5)
+                    .sendEthTransactionTo(to_address, "", 5)
                     .then(() => {
                         return btsieve
-                            .poll_until_matches(chai, location)
-                            .then(body => {
+                            .poll_until_matches(location)
+                            .then((body: EthereumResponse) => {
                                 body.query.to_address.should.equal(to_address);
                                 body.matches.should.lengthOf(1);
                             });
@@ -330,7 +332,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with no content when deleting an existing ethereum transaction query", async function() {
                 return chai
                     .request(btsieve.url())
-                    .delete("/queries/ethereum/regtest/transactions/1")
+                    .del("/queries/ethereum/regtest/transactions/1")
                     .then(res => {
                         res.should.have.status(204);
                     });
@@ -359,7 +361,7 @@ describe("Test btsieve API", () => {
                     });
             });
 
-            let location;
+            let location: string;
             const epoch_seconds_now = Math.round(Date.now() / 1000);
             const min_timestamp_secs = epoch_seconds_now + 3;
             it("btsieve should respond with location when creating a valid ethereum block query", async function() {
@@ -372,7 +374,7 @@ describe("Test btsieve API", () => {
                     })
                     .then(res => {
                         res.should.have.status(201);
-                        location = res.headers.location;
+                        location = res.header.location;
                         location.should.be.a("string");
                     });
             });
@@ -396,9 +398,9 @@ describe("Test btsieve API", () => {
                 this.slow(6000);
                 return sleep(3000)
                     .then(() => {
-                        return toby_wallet
+                        return tobyWallet
                             .eth()
-                            .send_eth_transaction_to(
+                            .sendEthTransactionTo(
                                 "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                                 "",
                                 1
@@ -406,8 +408,8 @@ describe("Test btsieve API", () => {
                     })
                     .then(() => {
                         return btsieve
-                            .poll_until_matches(chai, location)
-                            .then(body => {
+                            .poll_until_matches(location)
+                            .then((body: EthereumResponse) => {
                                 body.query.min_timestamp_secs.should.equal(
                                     min_timestamp_secs
                                 );
@@ -419,7 +421,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with no content when deleting an existing ethereum block query", async function() {
                 return chai
                     .request(location)
-                    .delete("")
+                    .del("")
                     .then(res => {
                         res.should.have.status(204);
                     });
@@ -445,7 +447,7 @@ describe("Test btsieve API", () => {
             const to_address =
                 "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
 
-            let location;
+            let location: string;
             it("btsieve should respond with location when creating a valid transaction receipt query", async function() {
                 this.timeout(1000);
                 return chai
@@ -467,7 +469,7 @@ describe("Test btsieve API", () => {
                     })
                     .then(res => {
                         res.should.have.status(201);
-                        location = res.headers.location;
+                        location = res.header.location;
                         location.should.be.a("string");
                     });
             });
@@ -491,27 +493,27 @@ describe("Test btsieve API", () => {
                     to_address.replace("0x", "") +
                     "0000000000000000000000000000000000000000000000000000000000000001";
 
-                let receipt = await alice_wallet
+                let receipt = await aliceWallet
                     .eth()
-                    .send_eth_transaction_to(
+                    .sendEthTransactionTo(
                         token_contract_address,
                         transfer_token_data,
                         0
                     );
 
-                let body = await btsieve.poll_until_matches(chai, location);
+                let body = (await btsieve.poll_until_matches(
+                    location
+                )) as EthereumLogResponse;
 
                 body.matches.should.have.lengthOf(1);
                 body.matches[0].id.should.equal(receipt.transactionHash);
-                body.matches[0].id.should.startWith("0x");
+                body.matches[0].id.should.match(/^0x/);
             });
 
             it("btsieve should return transaction and receipt if `return_as` is given", async function() {
-                let body = await btsieve.poll_until_matches(
-                    chai,
+                let body: any = await btsieve.poll_until_matches(
                     location + "?return_as=transaction_and_receipt"
                 );
-
                 body.matches.should.have.lengthOf(1);
                 body.matches[0].transaction.should.be.a("object");
                 body.matches[0].receipt.should.be.a("object");
@@ -520,7 +522,7 @@ describe("Test btsieve API", () => {
             it("btsieve should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
                 return chai
                     .request(location)
-                    .delete("")
+                    .del("")
                     .then(res => {
                         res.should.have.status(204);
                     });

@@ -5,6 +5,7 @@
     "main": "index.js",
     "scripts": {
         "build": "tsc",
+        "build-watch": "tsc --watch",
         "test": "harness.js"
     },
     "engines": {
@@ -29,18 +30,20 @@
         "toml": "^2.3.3",
         "typedarray-to-buffer": "^3.1.5",
         "typescript": "^3.3.3333",
-        "web3": "^1.0.0-beta.47"
+        "web3": "^1.0.0-beta.48"
     },
     "devDependencies": {
         "@types/bitcoinjs-lib": "^4.0.0",
         "@types/chai": "^4.1.7",
-        "@types/chai-http": "^3.0.5",
+        "@types/chai-http": "^4.2.0",
         "@types/ethereumjs-tx": "^1.0.1",
         "@types/ethereumjs-util": "^5.2.0",
+        "@types/mocha": "^5.2.6",
+        "@types/node": "^11.11.0",
         "@types/scrypt": "^6.0.0",
-        "@types/web3": "^1.0.18",
         "chai-bignumber": "^2.0.2",
-        "chai-string": "^1.5.0"
+        "chai-string": "^1.5.0",
+        "ts-node": "^8.0.3"
     },
     "prettier": {
         "trailingComma": "es5",

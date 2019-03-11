@@ -1,11 +1,12 @@
-import { createBitcoinWallet, BitcoinWallet } from "./bitcoin";
-import { createEthereumWallet, EthereumWallet, EthConfig } from "./ethereum";
+import { BitcoinWallet, BtcConfig } from "./bitcoin";
+import { EthereumWallet, EthConfig } from "./ethereum";
 
 export interface WalletConfig {
-    ethConfig: EthConfig;
+    ethConfig?: EthConfig;
+    btcConfig?: BtcConfig;
 }
 
-class Wallet {
+export class Wallet {
     owner: string;
     _config: WalletConfig;
     _ethWallet: EthereumWallet;
@@ -18,19 +19,15 @@ class Wallet {
 
     eth() {
         if (!this._ethWallet) {
-            this._ethWallet = createEthereumWallet(this._config.ethConfig);
+            this._ethWallet = new EthereumWallet(this._config.ethConfig);
         }
         return this._ethWallet;
     }
 
     btc() {
         if (!this._btcWallet) {
-            this._btcWallet = createBitcoinWallet();
+            this._btcWallet = new BitcoinWallet(this._config.btcConfig);
         }
         return this._btcWallet;
     }
-}
-
-export function create(owner: string, config: WalletConfig) {
-    return new Wallet(owner, config);
 }

@@ -7,6 +7,7 @@
 
 # User-specific stuff:
 .idea/**/workspace.xml
+.idea/workspace.xml
 .idea/**/tasks.xml
 .idea/dictionaries
 .idea/httpRequests
@@ -86,10 +87,3 @@ fabric.properties
 
 # vi swap files
 *.swp
-
-api_tests/regtest/lnd_certs
-
-# TODO: To remove once migration to TypeScript is done
-*/lib/bitcoin.js
-*/lib/ethereum.js
-*/lib/wallet.js

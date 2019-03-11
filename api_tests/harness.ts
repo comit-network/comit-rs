@@ -1,8 +1,12 @@
-#!/usr/bin/env node
+#!/usr/bin/env ./api_tests/node_modules/.bin/ts-node --project api_tests/tsconfig.json
 
-const bitcoin = require("./lib/bitcoin.js");
-const execSync = require("child_process").execSync;
-const spawn = require("child_process").spawn;
+import * as bitcoin from "./lib/bitcoin";
+import { ChildProcess, execSync } from "child_process";
+import { spawn } from "child_process";
+import { BtsieveConfig } from "./lib/btsieve";
+import { HarnessGlobal } from "./lib/util";
+import { MetaComitNodeConfig } from "./lib/comit";
+
 const Toml = require("toml");
 const fs = require("fs");
 const Mocha = require("mocha");
@@ -17,27 +21,26 @@ commander
 // Setting global variables //
 // ************************ //
 
-// Used to pass down data to test.js
-global.harness = {};
+declare const global: HarnessGlobal;
 
-const project_root = execSync("git rev-parse --show-toplevel", {
-    encoding: "utf-8",
+const project_root: string = execSync("git rev-parse --show-toplevel", {
+    encoding: "utf8",
 }).trim();
-global.harness.project_root = project_root;
+global.project_root = project_root;
 
 const docker_cwd = project_root + "/api_tests/regtest";
 const test_root = project_root + "/api_tests";
-global.harness.test_root = test_root;
+global.test_root = test_root;
 
 const docker_compose_options = {
     cwd: docker_cwd,
-    encoding: "utf-8",
+    encoding: "utf8",
 };
 
 const ledgers_config = Toml.parse(
     fs.readFileSync(project_root + "/api_tests/regtest/ledgers.toml", "utf8")
 );
-global.harness.ledgers_config = ledgers_config;
+global.ledgers_config = ledgers_config;
 
 // To be done once all global variables are set
 const util = require("./lib/util.js");
@@ -51,12 +54,15 @@ if (!fs.existsSync(log_dir)) {
 // Start services helpers //
 // ********************** //
 class LedgerRunner {
+    running_ledgers: { [key: string]: boolean };
+    block_timers: { [key: string]: any };
+
     constructor() {
         this.running_ledgers = {};
         this.block_timers = {};
     }
 
-    async ensureLedgersRunning(ledgers) {
+    async ensureLedgersRunning(ledgers: string[]) {
         let running_ledgers = this.running_ledgers;
         let to_be_started = ledgers.filter(name => !running_ledgers[name]);
 
@@ -69,7 +75,6 @@ class LedgerRunner {
 
             await spawn("docker-compose", ["up", ...images_to_start], {
                 cwd: docker_cwd,
-                encoding: "utf-8",
                 stdio: [
                     "ignore",
                     fs.openSync(`${log_dir}/docker-compose.log`, "w"),
@@ -89,13 +94,15 @@ class LedgerRunner {
 
             let wait_time = Math.max(...wait_times);
             console.log(
-                `Waiting ${wait_time} for ${to_be_started.join(", ")} to start`
+                `Waiting ${wait_time}ms for ${to_be_started.join(
+                    ", "
+                )} to start`
             );
 
             await util.sleep(wait_time);
 
             if (to_be_started.includes("bitcoin")) {
-                this.block_timers.bitcoin = setInterval(async () => {
+                this.block_timers["bitcoin"] = setInterval(async () => {
                     await bitcoin.generate();
                 }, 3000);
             }
@@ -116,11 +123,15 @@ class LedgerRunner {
 }
 
 class ComitRunner {
+    running_nodes: { [key: string]: ChildProcess };
+
     constructor() {
         this.running_nodes = {};
     }
 
-    async ensureComitNodesRunning(comit_nodes) {
+    async ensureComitNodesRunning(
+        comit_nodes: [string, MetaComitNodeConfig][]
+    ) {
         console.log(
             "Starting comit node for " +
                 comit_nodes.map(([name, _]) => name).join(", ")
@@ -135,7 +146,6 @@ class ComitRunner {
                 [],
                 {
                     cwd: test_root,
-                    encoding: "utf-8",
                     env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
                     stdio: [
                         "ignore",
@@ -151,7 +161,7 @@ class ComitRunner {
                 }
             );
 
-            this.running_nodes[name].on("exit", (code, signal) => {
+            this.running_nodes[name].on("exit", (code: number, signal: any) => {
                 console.log(
                     `comit-node ${name} exited with ${code ||
                         "signal " + signal}`
@@ -176,11 +186,13 @@ class ComitRunner {
 }
 
 class BtsieveRunner {
+    running_btsieves: { [key: string]: any };
+
     constructor() {
         this.running_btsieves = {};
     }
 
-    async ensureBtsievesRunning(btsieves) {
+    async ensureBtsievesRunning(btsieves: [string, BtsieveConfig][]) {
         for (let [name, btsieve_config] of btsieves) {
             if (this.running_btsieves[name]) {
                 continue;
@@ -191,7 +203,6 @@ class BtsieveRunner {
                 [],
                 {
                     cwd: test_root,
-                    encoding: "utf-8",
                     env: btsieve_config.env,
                     stdio: [
                         "ignore",
@@ -217,7 +228,7 @@ class BtsieveRunner {
     }
 }
 
-async function run_tests(test_files) {
+async function run_tests(test_files: string[]) {
     let ledger_runner = new LedgerRunner();
     let node_runner = new ComitRunner();
     let btsieve_runner = new BtsieveRunner();
@@ -243,7 +254,7 @@ async function run_tests(test_files) {
         let config = Toml.parse(
             fs.readFileSync(test_dir + "/config.toml", "utf8")
         );
-        global.harness.config = config;
+        global.config = config;
 
         const mocha = new Mocha({
             bail: true,
@@ -269,7 +280,7 @@ async function run_tests(test_files) {
         }
 
         let test_finish = new Promise((res, rej) => {
-            mocha.run(async failures => {
+            mocha.run(async (failures: number) => {
                 res(failures);
             });
         });

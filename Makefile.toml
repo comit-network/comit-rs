@@ -10,7 +10,7 @@ description = "Format, build and run the Rust tests. No clippy nor end-to-end."
 workspace = false
 dependencies = [
      "format",
-     "js-format",
+     "ts-format",
      "build",
      "test"
 ]
@@ -27,7 +27,7 @@ dependencies = [
 workspace = false
 dependencies = [
     "check-rs-format",
-    "check-js-format",
+    "check-ts-format",
     "clippy"
 ]
 
@@ -122,23 +122,23 @@ install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustf
 command = "cargo"
 args = ["fmt", "--", "--check"]
 
-[tasks.js-format]
-description = "Runs prettier to format JavaScript code."
+[tasks.ts-format]
+description = "Runs prettier to format TypeScript code."
 workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = [
 '''
-(cd api_tests; yarn run prettier --write '**/*.{ts,js}')
+(cd api_tests; yarn run prettier --write '**/*.ts')
 '''
 ]
 
-[tasks.check-js-format]
-description = "Runs prettier to check appropriate JavaScript code format."
+[tasks.check-ts-format]
+description = "Runs prettier to check appropriate TypeScript code format."
 workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = [
 '''
-(cd api_tests; yarn run prettier --check '**/*.{ts,js}')
+(cd api_tests; yarn run prettier --check '**/*.ts')
 '''
 ]
 
@@ -214,13 +214,13 @@ dependencies = [
 description = "Runs tests that don't require any external services"
 workspace = false
 private = true
-script = [ "./api_tests/harness.js ./api_tests/dry/*.js" ]
+script = [ "./api_tests/harness.ts ./api_tests/dry/*.ts" ]
 
 [tasks.pre-api-tests]
 description = "Install/build dependencies for api tests"
 workspace = false
 private = true
-script = [ "( cd ./api_tests && yarn install && yarn run build; )" ]
+script = [ "( cd ./api_tests && yarn install; )" ]
 
 #################
 # E2E Test flow #
@@ -245,13 +245,13 @@ script = [
 '''
 glob="${1:-*}";
 for dir in api_tests/e2e/rfc003/$glob; do
-    add_test_files=$(ls "$dir/"*.js 2>/dev/null|| true);
+    add_test_files=$(ls "$dir/"*.ts 2>/dev/null|| true);
     if test "$add_test_files"; then
         files="$files $add_test_files"
     fi
 done;
 
-./api_tests/harness.js $files;
+./api_tests/harness.ts $files;
 '''
 ]
 
@@ -273,7 +273,7 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/harness.js ./api_tests/btsieve/*.js
+./api_tests/harness.ts ./api_tests/btsieve/*.ts
 '''
 ]
 
@@ -295,6 +295,6 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/harness.js ./api_tests/dry/*.js ./api_tests/btsieve/*.js api_tests/e2e/rfc003/*/*.js
+./api_tests/harness.ts ./api_tests/dry/*.ts ./api_tests/btsieve/*.ts api_tests/e2e/rfc003/*/*.ts
 '''
 ]
