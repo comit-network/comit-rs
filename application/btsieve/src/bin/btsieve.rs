@@ -4,6 +4,8 @@
 #[macro_use]
 extern crate log;
 
+use bitcoin_rpc_client::BitcoinRpcApi;
+use bitcoin_support::Network as BitcoinNetwork;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
@@ -61,6 +63,11 @@ fn create_bitcoin_routes(
         settings.node_password.as_str(),
     );
 
+    // TODO fix this unwrap
+    let blockchain_info = bitcoin_rpc_client.get_blockchain_info().unwrap().unwrap();
+
+    info!("Connected to Bitcoin: {:?}", blockchain_info);
+
     info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
     {
@@ -93,7 +100,8 @@ fn create_bitcoin_routes(
     let client = Arc::new(bitcoin_rpc_client);
 
     let ledger_name = "bitcoin";
-    let network = settings.network.into();
+    let network = BitcoinNetwork::from(blockchain_info.chain).into();
+    trace!("Setting up bitcoin routes to {:?}", network);
 
     let transaction_routes = route_factory
         .create::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(

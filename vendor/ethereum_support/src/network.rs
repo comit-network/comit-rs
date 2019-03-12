@@ -14,7 +14,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn string_deserialize() {
+    fn string_serialize() {
         let mainnet: &'static str = Network::Mainnet.into();
         let regtest: &'static str = Network::Regtest.into();
         let ropsten: &'static str = Network::Ropsten.into();
