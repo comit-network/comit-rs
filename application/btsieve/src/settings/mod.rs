@@ -21,7 +21,6 @@ pub struct HttpApi {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
     pub zmq_endpoint: String,
-    // Below could be options
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub node_username: String,
