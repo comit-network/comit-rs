@@ -14,11 +14,14 @@ use btsieve::{
     RouteFactory,
 };
 use config::ConfigError;
-use ethereum_support::web3::{
-    transports::{EventLoopHandle, Http},
-    Web3,
+use ethereum_support::{
+    web3::{
+        transports::{EventLoopHandle, Http},
+        Web3,
+    },
+    Network as EthereumNetwork,
 };
-use futures::stream::Stream;
+use futures::{future::Future, stream::Stream};
 use std::{env::var, sync::Arc};
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -143,6 +146,13 @@ fn create_ethereum_routes(
         Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
     let web3_client = Arc::new(Web3::new(transport));
 
+    // TODO remove this unwrap here
+    let network = web3_client.net().version().wait().unwrap();
+    trace!("Connected to ethereum {:?}", network);
+
+    let network = EthereumNetwork::from_network_id(network).into();
+    trace!("Setting up ethereum routes to {:?}", network);
+
     {
         let block_query_repository = block_query_repository.clone();
         let transaction_query_repository = transaction_query_repository.clone();
@@ -192,7 +202,6 @@ fn create_ethereum_routes(
     }
 
     let ledger_name = "ethereum";
-    let network = settings.network.into();
 
     let transaction_routes = route_factory
         .create::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(

@@ -7,6 +7,19 @@ pub enum Network {
     Regtest,
     #[strum(serialize = "ropsten")]
     Ropsten,
+    #[strum(serialize = "unknown")]
+    Unknown,
+}
+
+impl Network {
+    pub fn from_network_id(s: String) -> Self {
+        match s.as_str() {
+            "1" => Network::Mainnet,
+            "3" => Network::Ropsten,
+            "17" => Network::Regtest,
+            _ => Network::Unknown,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -22,5 +35,25 @@ mod test {
         assert_eq!(mainnet, "mainnet");
         assert_eq!(regtest, "regtest");
         assert_eq!(ropsten, "ropsten");
+    }
+
+    #[test]
+    fn from_version() {
+        assert_eq!(
+            Network::from_network_id(String::from("1")),
+            Network::Mainnet
+        );
+        assert_eq!(
+            Network::from_network_id(String::from("3")),
+            Network::Ropsten
+        );
+        assert_eq!(
+            Network::from_network_id(String::from("17")),
+            Network::Regtest
+        );
+        assert_eq!(
+            Network::from_network_id(String::from("-1")),
+            Network::Unknown
+        );
     }
 }
