@@ -92,7 +92,7 @@ class LedgerRunner {
                 `Waiting ${wait_time} for ${to_be_started.join(", ")} to start`
             );
 
-            await util.sleep(wait_time);
+            await util.sleep(10000);
 
             if (to_be_started.includes("bitcoin")) {
                 this.block_timers.bitcoin = setInterval(async () => {
