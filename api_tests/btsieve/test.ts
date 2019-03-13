@@ -88,7 +88,9 @@ describe("Test btsieve API", () => {
                     .then(res => {
                         res.should.have.status(201);
                         location = res.header.location;
-                        location.should.be.a("string");
+                        location.should.contain(
+                            "/queries/bitcoin/transactions"
+                        );
                     });
             });
 
@@ -185,7 +187,7 @@ describe("Test btsieve API", () => {
                     .then(res => {
                         res.should.have.status(201);
                         location = res.header.location;
-                        location.should.be.a("string");
+                        location.should.contain("/queries/bitcoin/blocks");
                     });
             });
 
@@ -277,7 +279,7 @@ describe("Test btsieve API", () => {
                     .then(res => {
                         res.should.have.status(201);
                         location = res.header.location;
-                        location.should.be.a("string");
+                        location.should.contain("/queries/ethereum/blocks");
                     });
             });
 
@@ -375,7 +377,7 @@ describe("Test btsieve API", () => {
                     .then(res => {
                         res.should.have.status(201);
                         location = res.header.location;
-                        location.should.be.a("string");
+                        location.should.contain("/queries/ethereum/blocks");
                     });
             });
 
@@ -470,7 +472,7 @@ describe("Test btsieve API", () => {
                     .then(res => {
                         res.should.have.status(201);
                         location = res.header.location;
-                        location.should.be.a("string");
+                        location.should.contain("/queries/ethereum/logs");
                     });
             });
 

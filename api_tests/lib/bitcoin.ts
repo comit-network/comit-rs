@@ -54,7 +54,7 @@ export function init(btcConfig: BtcConfig) {
 
 function createBitcoinRpcClient(btcConfig: BtcConfig) {
     if (!btcConfig && !_bitcoinConfig) {
-        throw new Error("bitcoin configuration is needed}");
+        throw new Error("bitcoin configuration is needed");
     }
 
     if (!_bitcoinRpcClient || btcConfig !== _bitcoinConfig) {
