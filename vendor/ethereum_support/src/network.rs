@@ -1,4 +1,6 @@
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash, IntoStaticStr)]
+#[derive(
+    Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash, ToString, IntoStaticStr,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
     #[strum(serialize = "mainnet")]
