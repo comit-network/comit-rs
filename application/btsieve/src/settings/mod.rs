@@ -1,6 +1,5 @@
 mod serde;
 
-use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
 use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
@@ -21,9 +20,7 @@ pub struct HttpApi {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
-    pub network: Network,
     pub zmq_endpoint: String,
-    // Below could be options
     #[serde(with = "serde::url")]
     pub node_url: url::Url,
     pub node_username: String,

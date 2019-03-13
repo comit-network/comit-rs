@@ -1,5 +1,4 @@
 [bitcoin]
-network = "regtest"
 node_url = "http://localhost:18443"
 node_username = "bitcoin"
 node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="

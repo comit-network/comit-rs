@@ -60,6 +60,7 @@ impl RouteFactory {
         query_result_repository: Arc<QRR>,
         client: Arc<C>,
         ledger_name: &'static str,
+        network: &'static str,
     ) -> BoxedFilter<(impl Reply,)>
     where
         for<'de> R: Deserialize<'de>,
@@ -70,6 +71,7 @@ impl RouteFactory {
 
         let path = warp::path("queries")
             .and(warp::path(ledger_name))
+            .and(warp::path(network))
             .and(warp::path(&route));
 
         let external_url = self.external_url.clone();
@@ -82,6 +84,7 @@ impl RouteFactory {
             .and(external_url.clone())
             .and(query_repository.clone())
             .and(warp::any().map(move || ledger_name))
+            .and(warp::any().map(move || network))
             .and(warp::any().map(move || route))
             .and(warp::body::json())
             .and_then(routes::create_query);
