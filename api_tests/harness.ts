@@ -4,7 +4,7 @@ import * as bitcoin from "./lib/bitcoin";
 import { ChildProcess, execSync } from "child_process";
 import { spawn } from "child_process";
 import { BtsieveConfig } from "./lib/btsieve";
-import { HarnessGlobal } from "./lib/util";
+import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
 
 const Toml = require("toml");
@@ -42,8 +42,6 @@ const ledgers_config = Toml.parse(
 );
 global.ledgers_config = ledgers_config;
 
-// To be done once all global variables are set
-const util = require("./lib/util.js");
 const log_dir = project_root + "/api_tests/log";
 
 if (!fs.existsSync(log_dir)) {
@@ -99,12 +97,13 @@ class LedgerRunner {
                 )} to start`
             );
 
-            await util.sleep(wait_time);
+            await sleep(wait_time);
 
             if (to_be_started.includes("bitcoin")) {
                 this.block_timers["bitcoin"] = setInterval(async () => {
                     await bitcoin.generate();
                 }, 3000);
+                bitcoin.init(global.ledgers_config.bitcoin);
             }
         }
     }
@@ -169,7 +168,7 @@ class ComitRunner {
             });
         }
 
-        await util.sleep(500);
+        await sleep(500);
     }
 
     stopComitNodes() {

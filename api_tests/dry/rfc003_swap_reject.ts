@@ -338,21 +338,19 @@ describe("SWAP request REJECTED", () => {
         await chai
             .request(bob.comit_node_url())
             .get(bob_reasonable_swap_href)
-            .then(res => {
+            .then(async function(res) {
                 res.should.have.status(200);
                 bob_decline_href_2 = res.body._links.decline.href;
                 bob_decline_href_2.should.equal(
                     bob_reasonable_swap_href + "/decline"
                 );
+                let decline_res = await chai
+                    .request(bob.comit_node_url())
+                    .post(bob_decline_href_2)
+                    .send({});
+
+                decline_res.should.have.status(200);
             });
-
-        // TODO: move into the block
-        let decline_res = await chai
-            .request(bob.comit_node_url())
-            .post(bob_decline_href_2)
-            .send({});
-
-        decline_res.should.have.status(200);
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {

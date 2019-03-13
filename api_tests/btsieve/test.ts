@@ -18,8 +18,6 @@ declare var global: HarnessGlobal;
 
 const btsieve = new Btsieve("localhost", 8080);
 
-bitcoin.init(global.ledgers_config.bitcoin);
-
 const tobyWallet = new Wallet("toby", {
     ethConfig: global.ledgers_config.ethereum,
     btcConfig: global.ledgers_config.bitcoin,
@@ -279,7 +277,9 @@ describe("Test btsieve API", () => {
                     .then(res => {
                         res.should.have.status(201);
                         location = res.header.location;
-                        location.should.contain("/queries/ethereum/blocks");
+                        location.should.contain(
+                            "/queries/ethereum/transactions"
+                        );
                     });
             });
 

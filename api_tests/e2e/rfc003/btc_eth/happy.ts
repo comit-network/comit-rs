@@ -13,9 +13,6 @@ chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
 
-// Move that to harness with #767
-bitcoin.init(global.ledgers_config.bitcoin);
-
 const bob_initial_eth = "11";
 const alice_initial_eth = "0.1";
 

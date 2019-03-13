@@ -14,8 +14,6 @@ chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
 
-bitcoin.init(global.ledgers_config.bitcoin);
-
 const tobyWallet = new Wallet("toby", {
     ethConfig: global.ledgers_config.ethereum,
 });

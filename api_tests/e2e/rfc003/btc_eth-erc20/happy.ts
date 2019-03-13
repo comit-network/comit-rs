@@ -11,9 +11,8 @@ import chaiHttp = require("chai-http");
 
 const should = chai.should();
 chai.use(chaiHttp);
-declare var global: HarnessGlobal;
 
-bitcoin.init(global.ledgers_config.bitcoin);
+declare var global: HarnessGlobal;
 
 const tobyWallet = new Wallet("toby", {
     ethConfig: global.ledgers_config.ethereum,
