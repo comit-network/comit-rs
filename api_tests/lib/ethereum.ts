@@ -3,13 +3,13 @@ import * as util from "./util";
 import { HttpProvider } from "web3-providers";
 import { BN } from "web3-utils";
 import * as utils from "web3-utils";
+import * as fs from "fs";
 
 import EthereumTx = require("ethereumjs-tx");
 
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
 const ethutil = require("ethereumjs-util");
-const fs = require("fs");
 
 let _web3Client: any;
 let _ethConfig: EthConfig;

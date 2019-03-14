@@ -6,9 +6,9 @@ import { spawn } from "child_process";
 import { BtsieveConfig } from "./lib/btsieve";
 import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
+import * as toml from "toml";
+import * as fs from "fs";
 
-const Toml = require("toml");
-const fs = require("fs");
 const Mocha = require("mocha");
 const path = require("path");
 const commander = require("commander");
@@ -37,7 +37,7 @@ const docker_compose_options = {
     encoding: "utf8",
 };
 
-const ledgers_config = Toml.parse(
+const ledgers_config = toml.parse(
     fs.readFileSync(project_root + "/api_tests/regtest/ledgers.toml", "utf8")
 );
 global.ledgers_config = ledgers_config;
@@ -250,7 +250,7 @@ async function run_tests(test_files: string[]) {
 
     for (let test_file of test_files) {
         let test_dir = path.dirname(test_file);
-        let config = Toml.parse(
+        let config = toml.parse(
             fs.readFileSync(test_dir + "/config.toml", "utf8")
         );
         global.config = config;

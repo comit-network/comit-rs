@@ -6,14 +6,13 @@ import {
     ComitNodeConfig,
     MetaComitNodeConfig,
 } from "./comit";
+import * as bitcoin from "./bitcoin";
+import * as toml from "toml";
+import * as fs from "fs";
 
 import chaiHttp = require("chai-http");
 
 chai.use(chaiHttp);
-
-const Toml = require("toml");
-const fs = require("fs");
-const bitcoin = require("./bitcoin.js");
 
 export interface BtsieveForComitNodeConfig {
     poll_interval_secs: number;
@@ -43,7 +42,7 @@ export class Actor {
             }
 
             this.host = metaComitNodeConfig.host;
-            this.comitNodeConfig = Toml.parse(
+            this.comitNodeConfig = toml.parse(
                 fs.readFileSync(
                     root +
                         "/" +
