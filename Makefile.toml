@@ -295,6 +295,8 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/harness.ts ./api_tests/dry/*.ts ./api_tests/btsieve/*.ts api_tests/e2e/rfc003/*/*.ts
+./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
+  ./api_tests/harness.ts \
+    ./api_tests/{dry,btsieve,e2e/*/*}/*.ts
 '''
 ]
