@@ -116,7 +116,7 @@ describe("SWAP requests to multiple peers", () => {
     });
 
     it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
-        await alice.poll_comit_node_until(
+        await alice.pollComitNodeUntil(
             alice_swap_with_charlie_href,
             (body: SwapResponse) =>
                 body.status === "IN_PROGRESS" &&
@@ -125,7 +125,7 @@ describe("SWAP requests to multiple peers", () => {
     });
 
     it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-        let body = (await charlie.poll_comit_node_until(
+        let body = (await charlie.pollComitNodeUntil(
             "/swaps",
             (body: SwapResponse) => body._embedded.swaps.length > 0
         )) as SwapResponse;

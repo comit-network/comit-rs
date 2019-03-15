@@ -18,7 +18,7 @@ export interface SwapResponse extends HalResource {
     status: string;
 }
 
-export interface Action {
+export interface ActionDirective {
     type: string;
     payload: any;
 }
@@ -38,6 +38,28 @@ export interface Swap extends HalResource {
     parameters: any;
     protocol: string;
     status: string;
+}
+
+export interface Asset {
+    name: string;
+    quantity: string;
+    token_contract?: string;
+}
+
+export interface Ledger {
+    name: string;
+    network: string;
+}
+
+export interface SwapRequest {
+    alpha_ledger: Ledger;
+    beta_ledger: Ledger;
+    alpha_asset: Asset;
+    beta_asset: Asset;
+    beta_ledger_redeem_identity: string;
+    alpha_expiry: number;
+    beta_expiry: number;
+    peer: string;
 }
 
 //**** Config files ****//

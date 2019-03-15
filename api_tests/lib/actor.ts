@@ -1,7 +1,7 @@
 import { WalletConfig, Wallet } from "./wallet";
 import * as chai from "chai";
 import {
-    Action,
+    ActionDirective,
     SwapResponse,
     ComitNodeConfig,
     MetaComitNodeConfig,
@@ -62,7 +62,7 @@ export class Actor {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
-    poll_comit_node_until(
+    pollComitNodeUntil(
         location: string,
         predicate: (body: SwapResponse) => boolean
     ) {
@@ -83,19 +83,18 @@ export class Actor {
                         final_res(body);
                     } else {
                         setTimeout(() => {
-                            this.poll_comit_node_until(
-                                location,
-                                predicate
-                            ).then(result => {
-                                final_res(result);
-                            });
+                            this.pollComitNodeUntil(location, predicate).then(
+                                result => {
+                                    final_res(result);
+                                }
+                            );
                         }, 500);
                     }
                 });
         });
     }
 
-    do(action: Action) {
+    do(action: ActionDirective) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
@@ -104,6 +103,7 @@ export class Actor {
 
         switch (type) {
             case "bitcoin-send-amount-to-address": {
+                action.payload.should.include.all.keys("to", "amount");
                 let { to, amount } = action.payload;
 
                 return this.wallet.btc().sendToAddress(to, parseInt(amount));
@@ -114,11 +114,18 @@ export class Actor {
                 return bitcoin.sendRawTransaction(hex);
             }
             case "ethereum-deploy-contract": {
+                action.payload.should.include.all.keys("data", "amount");
                 let { data, amount } = action.payload;
 
                 return this.wallet.eth().deploy_contract(data, amount);
             }
             case "ethereum-invoke-contract": {
+                action.payload.should.include.all.keys(
+                    "contract_address",
+                    "data",
+                    "amount",
+                    "gas_limit"
+                );
                 let {
                     contract_address,
                     data,

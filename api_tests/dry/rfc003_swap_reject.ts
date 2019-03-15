@@ -236,7 +236,7 @@ describe("SWAP request REJECTED", () => {
     let bob_reasonable_swap_href: string;
 
     it("[Bob] Shows the swaps as Start in /swaps", async () => {
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             "/swaps",
             body => body._embedded.swaps.length === 2
         )) as SwapsResponse;
@@ -316,7 +316,7 @@ describe("SWAP request REJECTED", () => {
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async function() {
-        await bob.poll_comit_node_until(
+        await bob.pollComitNodeUntil(
             bob_stingy_swap_href,
             (body: SwapResponse) =>
                 body.state.communication.status === "REJECTED"
@@ -324,7 +324,7 @@ describe("SWAP request REJECTED", () => {
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
-        await alice.poll_comit_node_until(
+        await alice.pollComitNodeUntil(
             alice_stingy_swap_href,
             (body: SwapResponse) =>
                 body.state.communication.status === "REJECTED"
@@ -353,7 +353,7 @@ describe("SWAP request REJECTED", () => {
     });
 
     it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
-        await bob.poll_comit_node_until(
+        await bob.pollComitNodeUntil(
             bob_reasonable_swap_href,
             (body: SwapResponse) =>
                 body.state.communication.status === "REJECTED"
@@ -361,7 +361,7 @@ describe("SWAP request REJECTED", () => {
     });
 
     it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
-        await alice.poll_comit_node_until(
+        await alice.pollComitNodeUntil(
             alice_reasonable_swap_href,
             (body: SwapResponse) =>
                 body.state.communication.status === "REJECTED"

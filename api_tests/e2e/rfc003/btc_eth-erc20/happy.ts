@@ -2,7 +2,11 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { AcceptPayload, Action, SwapResponse } from "../../../lib/comit";
+import {
+    AcceptPayload,
+    ActionDirective,
+    SwapResponse,
+} from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
@@ -118,7 +122,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Alice] Should be in IN_PROGRESS and SENT after sending the swap request to Bob", async function() {
         this.timeout(10000);
-        await alice.poll_comit_node_until(
+        await alice.pollComitNodeUntil(
             alice_swap_href,
             body =>
                 body.status === "IN_PROGRESS" &&
@@ -129,7 +133,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
     let bob_swap_href: string;
 
     it("[Bob] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             "/swaps",
             body => body._embedded.swaps.length > 0
         )) as SwapResponse;
@@ -147,7 +151,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Bob] Can get the accept action after Alice sends the swap request", async function() {
         this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             bob_swap_href,
             body => body._links.accept && body._links.decline
         )) as SwapResponse;
@@ -168,11 +172,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
         accept_res.should.have.status(200);
     });
 
-    let alice_fund_action: Action;
+    let alice_fund_action: ActionDirective;
 
     it("[Alice] Can get the fund action after Bob accepts", async function() {
         this.timeout(10000);
-        let body = (await alice.poll_comit_node_until(
+        let body = (await alice.pollComitNodeUntil(
             alice_swap_href,
             body => body._links.fund
         )) as SwapResponse;
@@ -193,11 +197,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
         await alice.do(alice_fund_action);
     });
 
-    let bob_deploy_action: Action;
+    let bob_deploy_action: ActionDirective;
 
     it("[Bob] Can get the deploy action after Alice funds", async function() {
         this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             bob_swap_href,
             body => body._links.deploy
         )) as SwapResponse;
@@ -218,11 +222,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
         await bob.do(bob_deploy_action);
     });
 
-    let bob_fund_action: Action;
+    let bob_fund_action: ActionDirective;
 
     it("[Bob] Can get the fund action after he deploys", async function() {
         this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             bob_swap_href,
             body => body._links.fund
         )) as SwapResponse;
@@ -244,11 +248,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
         receipt.status.should.equal(true);
     });
 
-    let alice_redeem_action: Action;
+    let alice_redeem_action: ActionDirective;
 
     it("[Alice] Can get the redeem action after Bob funds", async function() {
         this.timeout(10000);
-        let body = (await alice.poll_comit_node_until(
+        let body = (await alice.pollComitNodeUntil(
             alice_swap_href,
             body => body._links.redeem
         )) as SwapResponse;
@@ -291,11 +295,11 @@ describe("RFC003: Bitcoin for ERC20", () => {
             .should.equal(true);
     });
 
-    let bob_redeem_action: Action;
+    let bob_redeem_action: ActionDirective;
 
     it("[Bob] Can get the redeem action after Alice redeems", async function() {
         this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             bob_swap_href,
             body => body._links.redeem
         )) as SwapResponse;
@@ -320,7 +324,7 @@ describe("RFC003: Bitcoin for ERC20", () => {
 
     it("[Bob] Should have received the alpha asset after the redeem", async function() {
         this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
+        let body = (await bob.pollComitNodeUntil(
             bob_swap_href,
             body => body.state.alpha_ledger.status === "Redeemed"
         )) as SwapResponse;
