@@ -1,10 +1,17 @@
-const chai = require("chai");
-const Web3 = require("web3");
-const utils = require("web3-utils");
-const actor = require("../lib/actor.js");
+import { Actor, TestConfig } from "../lib/actor";
+import { EthConfig } from "../lib/ethereum";
+import * as chai from "chai";
+import { SwapResponse } from "../lib/comit";
+import { BtcConfig } from "../lib/bitcoin";
+import * as utils from "web3-utils";
+import { HarnessGlobal } from "../lib/util";
+
+import chaiHttp = require("chai-http");
+
+declare var global: HarnessGlobal;
+
+chai.use(chaiHttp);
 const should = chai.should();
-const util = require("../lib/util.js");
-chai.use(require("chai-http"));
 
 const alpha_ledger_name = "Bitcoin";
 const alpha_ledger_network = "regtest";
@@ -23,22 +30,22 @@ const beta_asset_charlie_quantity = utils.toWei("20", "ether");
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
 const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-const alice = actor.create("alice", {
-    ethConfig: global.harness.ledgers_config.ethereum,
+const alice = new Actor("alice", global.config, global.test_root, {
+    ethConfig: global.ledgers_config.ethereum,
 });
-const bob = actor.create("bob", {
-    ethConfig: global.harness.ledgers_config.ethereum,
+const bob = new Actor("bob", global.config, global.test_root, {
+    ethConfig: global.ledgers_config.ethereum,
 });
-const charlie = actor.create("charlie", {
-    ethConfig: global.harness.ledgers_config.ethereum,
+const charlie = new Actor("charlie", global.config, global.test_root, {
+    ethConfig: global.ledgers_config.ethereum,
 });
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const alice_comit_node_address = alice.config.comit.comit_listen;
-const bob_comit_node_address = bob.config.comit.comit_listen;
-const charlie_comit_node_address = charlie.config.comit.comit_listen;
+const alice_comit_node_address = alice.comitNodeConfig.comit.comit_listen;
+const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
+const charlie_comit_node_address = charlie.comitNodeConfig.comit.comit_listen;
 
-let alice_swap_with_charlie_href;
+let alice_swap_with_charlie_href: string;
 
 describe("SWAP requests to multiple peers", () => {
     it("[Alice] Should be able to send a swap request to Bob", async () => {
@@ -102,7 +109,7 @@ describe("SWAP requests to multiple peers", () => {
             .then(res => {
                 res.error.should.equal(false);
                 res.should.have.status(201);
-                swap_location = res.headers.location;
+                const swap_location = res.header.location;
                 swap_location.should.be.a("string");
                 alice_swap_with_charlie_href = swap_location;
             });
@@ -110,20 +117,18 @@ describe("SWAP requests to multiple peers", () => {
 
     it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
         await alice.poll_comit_node_until(
-            chai,
             alice_swap_with_charlie_href,
-            body =>
+            (body: SwapResponse) =>
                 body.status === "IN_PROGRESS" &&
                 body.state.communication.status === "SENT"
         );
     });
 
     it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-        let body = await charlie.poll_comit_node_until(
-            chai,
+        let body = (await charlie.poll_comit_node_until(
             "/swaps",
-            body => body._embedded.swaps.length > 0
-        );
+            (body: SwapResponse) => body._embedded.swaps.length > 0
+        )) as SwapResponse;
 
         let swap_embedded = body._embedded.swaps[0];
         swap_embedded.protocol.should.equal("rfc003");

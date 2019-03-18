@@ -1,12 +1,15 @@
 import { ECPair } from "bitcoinjs-lib";
+import * as util from "./util";
+import { HttpProvider } from "web3-providers";
+import { BN } from "web3-utils";
+import * as utils from "web3-utils";
+import * as fs from "fs";
+
 import EthereumTx = require("ethereumjs-tx");
-import BN = require("bn.js");
 
 const Web3 = require("web3");
 const bitcoin = require("bitcoinjs-lib");
 const ethutil = require("ethereumjs-util");
-const fs = require("fs");
-const util = require("./util.js");
 
 let _web3Client: any;
 let _ethConfig: EthConfig;
@@ -20,7 +23,7 @@ function createWeb3Client(ethConfig: EthConfig) {
         throw new Error("ethereum configuration is needed");
     }
     if (!_web3Client || _ethConfig !== ethConfig) {
-        const httpProvider = new Web3.providers.HttpProvider(ethConfig.rpc_url);
+        const httpProvider = new HttpProvider(ethConfig.rpc_url);
         _web3Client = new Web3(httpProvider);
         _ethConfig = ethConfig;
     }
@@ -32,9 +35,9 @@ module.exports.createClient = (ethConfig: EthConfig) => {
     return createWeb3Client(ethConfig);
 };
 
-async function ethBalance(address: string) {
+export async function ethBalance(address: string) {
     return _web3Client.eth.getBalance(address).then((balance: string) => {
-        return _web3Client.utils.toBN(balance);
+        return utils.toBN(balance);
     });
 }
 
@@ -42,28 +45,30 @@ module.exports.ethBalance = async function(address: string) {
     return ethBalance(address);
 };
 
-{
-    const function_identifier = "40c10f19";
-    module.exports.mintErc20Tokens = (
-        ownerWallet: EthereumWallet,
-        contract_address: string,
-        to_address: string,
-        amount: BN
-    ) => {
-        to_address = to_address.replace(/^0x/, "").padStart(64, "0");
-        const hexAmount = _web3Client.utils
-            .numberToHex(amount)
-            .replace(/^0x/, "")
-            .padStart(64, "0");
-        const payload = "0x" + function_identifier + to_address + hexAmount;
+const function_identifier = "40c10f19";
 
-        return ownerWallet.send_eth_transaction_to(
-            contract_address,
-            payload,
-            "0x0"
-        );
-    };
+export async function mintErc20Tokens(
+    ownerWallet: EthereumWallet,
+    contract_address: string,
+    to_address: string,
+    amount: BN | string | number
+) {
+    to_address = to_address.replace(/^0x/, "").padStart(64, "0");
+
+    if (typeof amount === "string" || typeof amount === "number") {
+        amount = utils.toBN(amount);
+    }
+
+    const hexAmount = utils
+        .numberToHex(amount)
+        .replace(/^0x/, "")
+        .padStart(64, "0");
+    const payload = "0x" + function_identifier + to_address + hexAmount;
+
+    return ownerWallet.sendEthTransactionTo(contract_address, payload, "0x0");
 }
+
+module.exports.mintErc20Tokens = mintErc20Tokens;
 
 export class EthereumWallet {
     keypair: ECPair;
@@ -81,14 +86,17 @@ export class EthereumWallet {
         return this._address;
     }
 
-    async fund(ethAmount: BN) {
+    async fund(ethAmount: string) {
         const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
         const parity_dev_password = "";
-        const weiAmount = _web3Client.utils.toWei(ethAmount, "ether");
+
+        const weiAmount = utils.toWei(ethAmount, "ether");
+        const weiAmountBN = utils.toBN(weiAmount);
+
         const tx = {
             from: parity_dev_account,
             to: this.address(),
-            value: _web3Client.utils.numberToHex(weiAmount),
+            value: utils.numberToHex(weiAmountBN),
         };
         return _web3Client.eth.personal.sendTransaction(
             tx,
@@ -96,14 +104,18 @@ export class EthereumWallet {
         );
     }
 
-    async send_eth_transaction_to(
+    async sendEthTransactionTo(
         to: string,
         data: string = "0x0",
-        value: string = "0",
+        value: BN | string | number = utils.toBN(0),
         gas_limit: string = "0x100000"
     ) {
         if (!to) {
             throw new Error("`to` cannot be null");
+        }
+
+        if (typeof value === "string" || typeof value === "number") {
+            value = utils.toBN(value);
         }
 
         let nonce = await _web3Client.eth.getTransactionCount(this.address());
@@ -114,7 +126,7 @@ export class EthereumWallet {
             gasLimit: gas_limit,
             to: to,
             data: data,
-            value: _web3Client.utils.numberToHex(_web3Client.utils.toBN(value)),
+            value: utils.numberToHex(value),
             chainId: 1,
         });
 
@@ -134,8 +146,16 @@ export class EthereumWallet {
         return this.deploy_contract(token_contract_deploy);
     }
 
-    async deploy_contract(data = "0x0", value = "0", gas_limit = "0x3D0900") {
+    async deploy_contract(
+        data: string = "0x0",
+        value: BN | number | string = utils.toBN(0),
+        gas_limit = "0x3D0900"
+    ) {
         let nonce = await _web3Client.eth.getTransactionCount(this.address());
+
+        if (typeof value === "number" || typeof value === "string") {
+            value = utils.toBN(value);
+        }
 
         const tx = new EthereumTx({
             nonce: "0x" + nonce.toString(16),
@@ -143,7 +163,7 @@ export class EthereumWallet {
             gasLimit: gas_limit,
             to: null,
             data: data,
-            value: _web3Client.utils.numberToHex(_web3Client.utils.toBN(value)),
+            value: utils.numberToHex(value),
             chainId: 1,
         });
 
@@ -159,7 +179,7 @@ export class EthereumWallet {
     }
 }
 
-module.exports.erc20_balance = async function(
+export async function erc20Balance(
     tokenHolderAddress: string,
     contractAddress: string
 ) {
@@ -177,9 +197,7 @@ module.exports.erc20_balance = async function(
     };
 
     let hex_balance = await _web3Client.eth.call(tx);
-    return _web3Client.utils.toBN(hex_balance);
-};
-
-export function createEthereumWallet(ethConfig: EthConfig) {
-    return new EthereumWallet(ethConfig);
+    return utils.toBN(hex_balance);
 }
+
+module.exports.erc20Balance = erc20Balance;

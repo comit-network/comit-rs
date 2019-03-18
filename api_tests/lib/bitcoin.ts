@@ -7,18 +7,12 @@ import {
     TransactionBuilder,
     address,
 } from "bitcoinjs-lib";
+import { test_rng } from "./util";
 
 const BitcoinRpcClient = require("bitcoin-core");
 const sb = require("satoshi-bitcoin");
-const util = require("./util.js");
 
-// TODO: Remove regtest
-// Once this is merged: https://github.com/DefinitelyTyped/DefinitelyTyped/pull/33571
-
-const networksAny: any = networks;
-const regtest: any = networksAny.regtest;
-
-interface BitcoinConfig {
+export interface BtcConfig {
     // snake_case because it comes from TOML file
     rpc_username: string;
     rpc_password: string;
@@ -46,17 +40,20 @@ interface BitcoinRpcClient {
 }
 
 interface Utxo {
-    // TODO: declare transactionId type
-    // Best to have specific transactionId type than using generic strings
     txId: string;
     value: number;
     vout: number;
 }
 
 let _bitcoinRpcClient: BitcoinRpcClient;
-let _bitcoinConfig: BitcoinConfig;
+let _bitcoinConfig: BtcConfig;
 
-function createBitcoinRpcClient(btcConfig: BitcoinConfig) {
+export function init(btcConfig: BtcConfig) {
+    console.log("Initiating bitcoin");
+    createBitcoinRpcClient(btcConfig);
+}
+
+function createBitcoinRpcClient(btcConfig: BtcConfig) {
     if (!btcConfig && !_bitcoinConfig) {
         throw new Error("bitcoin configuration is needed");
     }
@@ -74,24 +71,27 @@ function createBitcoinRpcClient(btcConfig: BitcoinConfig) {
     return _bitcoinRpcClient;
 }
 
-module.exports.createClient = (btcConfig: BitcoinConfig) => {
-    return createBitcoinRpcClient(btcConfig);
-};
-
-module.exports.generate = async function(num: number = 1) {
+export async function generate(num: number = 1) {
     return createBitcoinRpcClient(_bitcoinConfig).generate(num);
-};
+}
 
-module.exports.ensureSegwit = async function() {
+module.exports.generate = generate;
+
+export async function ensureSegwit() {
     const blockHeight = await createBitcoinRpcClient(
         _bitcoinConfig
     ).getBlockCount();
     if (blockHeight < 432) {
         await createBitcoinRpcClient(_bitcoinConfig).generate(432);
     }
-};
+}
 
-async function getFirstUtxoValueTransferredTo(txId: string, address: string) {
+module.exports.ensureSegwit = ensureSegwit;
+
+export async function getFirstUtxoValueTransferredTo(
+    txId: string,
+    address: string
+) {
     let satoshi = 0;
     let tx = await _bitcoinRpcClient.getRawTransaction(txId, true);
     let vout = tx.vout[0];
@@ -106,7 +106,11 @@ async function getFirstUtxoValueTransferredTo(txId: string, address: string) {
     return satoshi;
 }
 
-module.exports.get_first_utxo_value_transferred_to = getFirstUtxoValueTransferredTo;
+module.exports.getFirstUtxoValueTransferredTo = getFirstUtxoValueTransferredTo;
+
+export async function sendRawTransaction(hexString: string) {
+    return createBitcoinRpcClient(_bitcoinConfig).sendRawTransaction(hexString);
+}
 
 export class BitcoinWallet {
     keypair: ECPair;
@@ -121,14 +125,16 @@ export class BitcoinWallet {
         witness: Buffer[];
     };
 
-    constructor() {
-        this.keypair = ECPair.makeRandom({ rng: util.test_rng });
+    constructor(btcConfig: BtcConfig) {
+        this.keypair = ECPair.makeRandom({ rng: test_rng });
         // TODO: Use wallet instead of array to track Bitcoin UTXOs
         this.bitcoinUtxos = [];
         this._identity = payments.p2wpkh({
             pubkey: this.keypair.publicKey,
-            network: regtest,
+            network: networks.regtest,
         });
+
+        createBitcoinRpcClient(btcConfig);
     }
 
     identity() {
@@ -165,13 +171,9 @@ export class BitcoinWallet {
         const change = input_amount - value - fee;
         txb.addInput(utxo.txId, utxo.vout, null, this.identity().output);
         txb.addOutput(this.identity().output, change);
-        txb.addOutput(address.toOutputScript(to, regtest), value);
+        txb.addOutput(address.toOutputScript(to, networks.regtest), value);
         txb.sign(0, key_pair, null, null, input_amount);
 
         return _bitcoinRpcClient.sendRawTransaction(txb.build().toHex());
     }
-}
-
-export function createBitcoinWallet() {
-    return new BitcoinWallet();
 }

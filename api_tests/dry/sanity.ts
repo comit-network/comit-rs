@@ -1,11 +1,18 @@
 // These are stateless tests -- they don't require any state of the comit node and they don't change it
 // They are mostly about checking invalid request responses
-const chai = require("chai");
-chai.use(require("chai-http"));
+import { Actor } from "../lib/actor";
+import * as chai from "chai";
+import { HarnessGlobal } from "../lib/util";
+
+import chaiHttp = require("chai-http");
+
+chai.use(chaiHttp);
 const should = chai.should();
-const actor = require("../lib/actor.js");
-const alice = actor.create("alice");
-const bob = actor.create("bob");
+
+declare var global: HarnessGlobal;
+
+const alice = new Actor("alice", global.config, global.test_root);
+const bob = new Actor("bob", global.config, global.test_root);
 
 describe("Sanity tests", () => {
     it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {

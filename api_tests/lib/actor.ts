@@ -1,39 +1,71 @@
-const Toml = require("toml");
-const wallet = require("./wallet.js");
-const fs = require("fs");
-const bitcoin = require("./bitcoin.js");
-const ethutil = require("ethereumjs-util");
+import { WalletConfig, Wallet } from "./wallet";
+import * as chai from "chai";
+import {
+    Action,
+    SwapResponse,
+    ComitNodeConfig,
+    MetaComitNodeConfig,
+} from "./comit";
+import * as bitcoin from "./bitcoin";
+import * as toml from "toml";
+import * as fs from "fs";
 
-// TODO: pass value instead of using global config
-const bitcoin_rpc_client = bitcoin.createClient(
-    global.harness.ledgers_config.bitcoin
-);
+import chaiHttp = require("chai-http");
 
-class Actor {
-    constructor(name, config) {
-        const node_config = global.harness.config.comit_node[name];
-        if (!node_config) {
-            throw new Error("comit_node." + name + " configuration is needed");
-        }
+chai.use(chaiHttp);
+
+export interface BtsieveForComitNodeConfig {
+    poll_interval_secs: number;
+}
+
+export interface TestConfig {
+    comit_node: { [key: string]: MetaComitNodeConfig };
+}
+
+export class Actor {
+    name: string;
+    host: string;
+    wallet: Wallet;
+    comitNodeConfig: ComitNodeConfig;
+
+    constructor(
+        name: string,
+        testConfig?: TestConfig,
+        root?: string,
+        walletConfig?: WalletConfig
+    ) {
         this.name = name;
-        this.host = node_config.host;
-        this.config = Toml.parse(
-            fs.readFileSync(
-                global.harness.test_root +
-                    "/" +
-                    node_config.config_dir +
-                    "/default.toml",
-                "utf8"
-            )
-        );
-        this.wallet = wallet.create(name, config);
+        if (testConfig) {
+            const metaComitNodeConfig = testConfig.comit_node[name];
+            if (!metaComitNodeConfig) {
+                throw new Error("comit_node configuration is needed");
+            }
+
+            this.host = metaComitNodeConfig.host;
+            this.comitNodeConfig = toml.parse(
+                fs.readFileSync(
+                    root +
+                        "/" +
+                        metaComitNodeConfig.config_dir +
+                        "/default.toml",
+                    "utf8"
+                )
+            );
+        }
+
+        if (walletConfig) {
+            this.wallet = new Wallet(name, walletConfig);
+        }
     }
 
     comit_node_url() {
-        return "http://" + this.host + ":" + this.config.http_api.port;
+        return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
-    poll_comit_node_until(chai, location, predicate) {
+    poll_comit_node_until(
+        location: string,
+        predicate: (body: SwapResponse) => boolean
+    ) {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)
@@ -52,7 +84,6 @@ class Actor {
                     } else {
                         setTimeout(() => {
                             this.poll_comit_node_until(
-                                chai,
                                 location,
                                 predicate
                             ).then(result => {
@@ -64,7 +95,7 @@ class Actor {
         });
     }
 
-    async do(action) {
+    do(action: Action) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
@@ -76,19 +107,16 @@ class Actor {
                 let { to, amount } = action.payload;
 
                 return this.wallet.btc().sendToAddress(to, parseInt(amount));
-                break;
             }
             case "bitcoin-broadcast-signed-transaction": {
                 let { hex } = action.payload;
 
-                return bitcoin_rpc_client.sendRawTransaction(hex);
-                break;
+                return bitcoin.sendRawTransaction(hex);
             }
             case "ethereum-deploy-contract": {
-                let { data, amount, gas_limit } = action.payload;
+                let { data, amount } = action.payload;
 
                 return this.wallet.eth().deploy_contract(data, amount);
-                break;
             }
             case "ethereum-invoke-contract": {
                 let {
@@ -100,21 +128,15 @@ class Actor {
 
                 return this.wallet
                     .eth()
-                    .send_eth_transaction_to(
+                    .sendEthTransactionTo(
                         contract_address,
                         data,
                         amount,
                         gas_limit
                     );
-                break;
             }
             default:
                 throw Error("Action type " + type + " unsupported");
-                break;
         }
     }
 }
-
-module.exports.create = (name, config) => {
-    return new Actor(name, config);
-};

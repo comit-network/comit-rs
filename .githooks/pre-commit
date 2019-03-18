@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 cargo make check-rs-format && \
-cargo make check-js-format
+cargo make check-ts-format
