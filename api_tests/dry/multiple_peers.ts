@@ -13,17 +13,17 @@ declare var global: HarnessGlobal;
 chai.use(chaiHttp);
 const should = chai.should();
 
-const alpha_ledger_name = "Bitcoin";
+const alpha_ledger_name = "bitcoin";
 const alpha_ledger_network = "regtest";
 
-const beta_ledger_name = "Ethereum";
+const beta_ledger_name = "ethereum";
 const beta_ledger_network = "regtest";
 
-const alpha_asset_name = "Bitcoin";
+const alpha_asset_name = "bitcoin";
 const alpha_asset_bob_quantity = "100000000";
 const alpha_asset_charlie_quantity = "200000000";
 
-const beta_asset_name = "Ether";
+const beta_asset_name = "ether";
 const beta_asset_bob_quantity = utils.toWei("10", "ether");
 const beta_asset_charlie_quantity = utils.toWei("20", "ether");
 

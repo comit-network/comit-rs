@@ -9,7 +9,7 @@ pub struct HttpLedger {
 }
 
 impl HttpLedger {
-    pub fn is_ledger(&self, name: &'static str) -> Result<(), Error> {
+    pub fn is_ledger(&self, name: &str) -> Result<(), Error> {
         if self.name == name {
             Ok(())
         } else {
@@ -74,7 +74,8 @@ macro_rules! _impl_from_http_ledger {
         impl FromHttpLedger for $name {
             #[allow(unused_mut)]
             fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, ledger::Error> {
-                ledger.is_ledger(stringify!($name))?;
+                let name = stringify!($name).to_lowercase();
+                ledger.is_ledger(name.as_ref())?;
 
                 Ok($name {
                     $(

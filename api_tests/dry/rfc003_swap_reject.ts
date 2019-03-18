@@ -11,17 +11,17 @@ chai.use(chaiHttp);
 const should = chai.should();
 declare var global: HarnessGlobal;
 
-const alpha_ledger_name = "Bitcoin";
+const alpha_ledger_name = "bitcoin";
 const alpha_ledger_network = "regtest";
 
-const beta_ledger_name = "Ethereum";
+const beta_ledger_name = "ethereum";
 const beta_ledger_network = "regtest";
 
-const alpha_asset_name = "Bitcoin";
+const alpha_asset_name = "bitcoin";
 const alpha_asset_reasonable_quantity = "100000000";
 const alpha_asset_stingy_quantity = "100";
 
-const beta_asset_name = "Ether";
+const beta_asset_name = "ether";
 const beta_asset_quantity = utils.toWei("10", "ether");
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;

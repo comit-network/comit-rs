@@ -9,7 +9,7 @@ pub struct HttpAsset {
 }
 
 impl HttpAsset {
-    pub fn is_asset(&self, name: &'static str) -> Result<(), Error> {
+    pub fn is_asset(&self, name: &str) -> Result<(), Error> {
         if self.name == name {
             Ok(())
         } else {
@@ -71,7 +71,8 @@ macro_rules! _impl_from_http_quantity_asset {
         impl FromHttpAsset for $asset_type {
             #[allow(unused_mut)]
             fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
-                asset.is_asset(stringify!($name))?;
+                let name = stringify!($name).to_lowercase();
+                asset.is_asset(name.as_ref())?;
 
                 asset.parameter("quantity")
             }

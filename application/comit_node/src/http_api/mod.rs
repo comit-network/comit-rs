@@ -66,7 +66,7 @@ impl_from_http_quantity_asset!(EtherQuantity, Ether);
 
 impl FromHttpAsset for Erc20Token {
     fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
-        asset.is_asset("ERC20")?;
+        asset.is_asset("erc20")?;
 
         Ok(Erc20Token::new(
             asset.parameter("token_contract")?,
