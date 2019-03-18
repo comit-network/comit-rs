@@ -1,7 +1,6 @@
-import { ActionDirective, SwapResponse, SwapsResponse } from "../lib/comit";
+import { ActionDirective, HalResource, SwapsResponse } from "../lib/comit";
 import * as chai from "chai";
 import { Actor } from "../lib/actor";
-import AsyncFunc = Mocha.AsyncFunc;
 
 const should = chai.should();
 
@@ -98,30 +97,25 @@ async function getAction(
 ): Promise<[string, ActionDirective]> {
     location.should.not.be.empty;
 
-    let [href, action] = await actor
-        .pollComitNodeUntil(location, body => body._links[actionTrigger.name])
-        .then(async function(body: SwapResponse) {
-            let href: string = body._links[actionTrigger.name].href;
-            href.should.not.be.empty;
+    const body = (await actor.pollComitNodeUntil(
+        location,
+        body => body._links[actionTrigger.name]
+    )) as HalResource;
 
-            if (actionTrigger.parameters) {
-                href = href + "?" + actionTrigger.parameters;
-            }
+    let href: string = body._links[actionTrigger.name].href;
+    href.should.not.be.empty;
 
-            if (actionTrigger.method === Method.Get) {
-                return chai
-                    .request(actor.comit_node_url())
-                    .get(href)
-                    .then(res => {
-                        res.should.have.status(200);
-                        let payload = res.body;
-                        return [href, payload];
-                    });
-            }
-            return [href, null];
-        });
+    if (actionTrigger.parameters) {
+        href = href + "?" + actionTrigger.parameters;
+    }
 
-    return [href, action];
+    if (actionTrigger.method === Method.Get) {
+        const res = await chai.request(actor.comit_node_url()).get(href);
+        res.should.have.status(200);
+        let payload = res.body;
+        return [href, payload];
+    }
+    return [href, null];
 }
 
 async function executeAction(
@@ -135,13 +129,12 @@ async function executeAction(
             case Method.Get:
                 return actor.do(actionPayload);
             case Method.Post:
-                return chai
+                const res = await chai
                     .request(actor.comit_node_url())
                     .post(actionHref)
-                    .send(actionTrigger.payload)
-                    .then(res => {
-                        res.should.have.status(200);
-                    });
+                    .send(actionTrigger.payload);
+                res.should.have.status(200);
+                return res;
             default:
                 throw new Error("Unexpected error: unknown method");
         }

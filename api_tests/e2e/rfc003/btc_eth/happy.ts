@@ -80,7 +80,8 @@ const aliceRedeemTest = new AfterTest(
             betaAssetQuantity
         );
         aliceEthBalanceAfter.eq(aliceEthBalanceExpected).should.be.equal(true);
-    }
+    },
+    5000
 );
 
 const bobRedeemTest = new AfterTest(

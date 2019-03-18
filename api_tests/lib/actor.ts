@@ -82,12 +82,12 @@ export class Actor {
                     if (predicate(body)) {
                         final_res(body);
                     } else {
-                        setTimeout(() => {
-                            this.pollComitNodeUntil(location, predicate).then(
-                                result => {
-                                    final_res(result);
-                                }
+                        setTimeout(async () => {
+                            const result = await this.pollComitNodeUntil(
+                                location,
+                                predicate
                             );
+                            final_res(result);
                         }, 500);
                     }
                 });

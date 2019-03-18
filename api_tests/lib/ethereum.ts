@@ -36,9 +36,8 @@ module.exports.createClient = (ethConfig: EthConfig) => {
 };
 
 export async function ethBalance(address: string) {
-    return _web3Client.eth.getBalance(address).then((balance: string) => {
-        return utils.toBN(balance);
-    });
+    const balance: string = await _web3Client.eth.getBalance(address);
+    return utils.toBN(balance);
 }
 
 module.exports.ethBalance = async function(address: string) {

@@ -108,7 +108,7 @@ describe("Test btsieve API", () => {
                     .then(() => {
                         return bitcoin.generate(1).then(() => {
                             return btsieve
-                                .poll_until_matches(location)
+                                .pollUntilMatches(location)
                                 .then((body: IdMatchResponse) => {
                                     body.query.to_address.should.equal(
                                         to_address
@@ -216,7 +216,7 @@ describe("Test btsieve API", () => {
                 this.timeout(3000);
                 return bitcoin.generate(200).then(() => {
                     return btsieve
-                        .poll_until_matches(location)
+                        .pollUntilMatches(location)
                         .then((body: IdMatchResponse) => {
                             body.query.min_height.should.equal(min_height);
                             body.matches.length.should.greaterThan(1);
@@ -318,7 +318,7 @@ describe("Test btsieve API", () => {
                     .sendEthTransactionTo(to_address, "", 5)
                     .then(() => {
                         return btsieve
-                            .poll_until_matches(location)
+                            .pollUntilMatches(location)
                             .then((body: EthereumTransactionResponse) => {
                                 body.query.to_address.should.equal(to_address);
                                 body.matches.should.lengthOf(1);
@@ -405,7 +405,7 @@ describe("Test btsieve API", () => {
                     })
                     .then(() => {
                         return btsieve
-                            .poll_until_matches(location)
+                            .pollUntilMatches(location)
                             .then((body: EthereumTransactionResponse) => {
                                 body.query.min_timestamp_secs.should.equal(
                                     min_timestamp_secs
@@ -498,7 +498,7 @@ describe("Test btsieve API", () => {
                         0
                     );
 
-                let body = (await btsieve.poll_until_matches(
+                let body = (await btsieve.pollUntilMatches(
                     location
                 )) as IdMatchResponse;
 
@@ -508,7 +508,7 @@ describe("Test btsieve API", () => {
             });
 
             it("btsieve should return transaction and receipt if `return_as` is given", async function() {
-                let body: any = await btsieve.poll_until_matches(
+                let body: any = await btsieve.pollUntilMatches(
                     location + "?return_as=transaction_and_receipt"
                 );
                 body.matches.should.have.lengthOf(1);
