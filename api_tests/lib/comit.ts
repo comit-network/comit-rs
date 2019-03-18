@@ -7,9 +7,7 @@ export interface AcceptPayload {
     alpha_ledger_redeem_identity: string;
 }
 
-export interface SwapResponse {
-    _links: any;
-    _embedded: any;
+export interface SwapResponse extends HalResource {
     parameters: any;
     role: string;
     state: {
@@ -25,21 +23,24 @@ export interface Action {
     payload: any;
 }
 
-export interface SwapsResponse {
-    _link: any;
+export interface SwapsResponse extends HalResource {
     _embedded: {
         swaps: Swap[];
     };
 }
 
-export interface Swap {
+export interface HalResource {
     _links: any;
+    _embedded: any;
+}
+
+export interface Swap extends HalResource {
     parameters: any;
     protocol: string;
     status: string;
 }
 
-/// Config files
+//**** Config files ****//
 
 export interface MetaComitNodeConfig {
     // snake_case as it comes from TOML file

@@ -5,9 +5,8 @@ import chaiHttp = require("chai-http");
 import * as ethereum from "../lib/ethereum";
 import { HarnessGlobal, sleep } from "../lib/util";
 import {
-    BitcoinResponse,
-    EthereumLogResponse,
-    EthereumResponse,
+    IdMatchResponse,
+    EthereumTransactionResponse,
     Btsieve,
 } from "../lib/btsieve";
 
@@ -110,7 +109,7 @@ describe("Test btsieve API", () => {
                         return bitcoin.generate(1).then(() => {
                             return btsieve
                                 .poll_until_matches(location)
-                                .then((body: BitcoinResponse) => {
+                                .then((body: IdMatchResponse) => {
                                     body.query.to_address.should.equal(
                                         to_address
                                     );
@@ -218,7 +217,7 @@ describe("Test btsieve API", () => {
                 return bitcoin.generate(200).then(() => {
                     return btsieve
                         .poll_until_matches(location)
-                        .then((body: BitcoinResponse) => {
+                        .then((body: IdMatchResponse) => {
                             body.query.min_height.should.equal(min_height);
                             body.matches.length.should.greaterThan(1);
                         });
@@ -320,7 +319,7 @@ describe("Test btsieve API", () => {
                     .then(() => {
                         return btsieve
                             .poll_until_matches(location)
-                            .then((body: EthereumResponse) => {
+                            .then((body: EthereumTransactionResponse) => {
                                 body.query.to_address.should.equal(to_address);
                                 body.matches.should.lengthOf(1);
                             });
@@ -407,7 +406,7 @@ describe("Test btsieve API", () => {
                     .then(() => {
                         return btsieve
                             .poll_until_matches(location)
-                            .then((body: EthereumResponse) => {
+                            .then((body: EthereumTransactionResponse) => {
                                 body.query.min_timestamp_secs.should.equal(
                                     min_timestamp_secs
                                 );
@@ -501,7 +500,7 @@ describe("Test btsieve API", () => {
 
                 let body = (await btsieve.poll_until_matches(
                     location
-                )) as EthereumLogResponse;
+                )) as IdMatchResponse;
 
                 body.matches.should.have.lengthOf(1);
                 body.matches[0].id.should.equal(receipt.transactionHash);

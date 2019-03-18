@@ -2,7 +2,12 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { AcceptPayload, Action, SwapResponse } from "../../../lib/comit";
+import {
+    AcceptPayload,
+    Action,
+    SwapsResponse,
+    SwapResponse,
+} from "../../../lib/comit";
 import { BN, toWei, toBN } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 
@@ -97,11 +102,10 @@ describe("RFC003: Bitcoin for Ether", () => {
     let bob_swap_href: string;
 
     it("[Bob] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-        let body: any = await bob.poll_comit_node_until(
+        let body: any = (await bob.poll_comit_node_until(
             "/swaps",
             body => body._embedded.swaps.length > 0
-        );
-
+        )) as SwapsResponse;
         let swap_embedded = body._embedded.swaps[0];
         swap_embedded.protocol.should.equal("rfc003");
         swap_embedded.status.should.equal("IN_PROGRESS");

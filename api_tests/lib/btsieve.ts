@@ -6,16 +6,12 @@ chai.use(chaiHttp);
 import { Transaction } from "web3-core";
 import { TransactionReceipt } from "web3-core";
 
-export interface IdMatch {
-    id: string;
-}
-
-export interface BitcoinResponse {
+export interface IdMatchResponse {
     query: any;
-    matches: IdMatch[];
+    matches: { id: string }[];
 }
 
-export interface EthereumResponse {
+export interface EthereumTransactionResponse {
     query: any;
     matches: EthereumMatch[];
 }
@@ -23,11 +19,6 @@ export interface EthereumResponse {
 export interface EthereumMatch {
     transaction: Transaction;
     receipt: TransactionReceipt;
-}
-
-export interface EthereumLogResponse {
-    query: { event_matches: any[] };
-    matches: IdMatch[];
 }
 
 export interface BtsieveConfig {
