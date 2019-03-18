@@ -60,57 +60,16 @@ let swapRequest: SwapRequest = {
     peer: bobComitNodeListen,
 };
 
-let bobAcceptPayload: AcceptPayload = {
-    beta_ledger_refund_identity: bob.wallet.eth().address(),
-    alpha_ledger_redeem_identity: null,
-};
-
-const aliceRedeemTest = new AfterTest(
-    "[alice] Should have received the beta asset after the redeem",
-    async function(swapLocations: { [key: string]: string }) {
-        let body = (await alice.pollComitNodeUntil(
-            swapLocations["alice"],
-            body => body.state.beta_ledger.status === "Redeemed"
-        )) as SwapResponse;
-
-        const aliceEthBalanceAfter = await ethereum.ethBalance(
-            aliceFinalAddress
-        );
-        const aliceEthBalanceExpected = aliceEthBalanceBefore.add(
-            betaAssetQuantity
-        );
-        aliceEthBalanceAfter.eq(aliceEthBalanceExpected).should.be.equal(true);
-    },
-    5000
-);
-
-const bobRedeemTest = new AfterTest(
-    "[bob] Should have received the alpha asset after the redeem",
-    async function(swapLocations: { [key: string]: string }) {
-        let body = (await bob.pollComitNodeUntil(
-            swapLocations["bob"],
-            body => body.state.alpha_ledger.status === "Redeemed"
-        )) as SwapResponse;
-        let redeemTxId = body.state.alpha_ledger.redeem_tx;
-
-        let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
-            redeemTxId,
-            bobFinalAddress
-        );
-        const satoshiExpected = alphaAssetQuantity - alphaMaxFee;
-
-        satoshiReceived.should.be.at.least(satoshiExpected);
-    },
-    10000
-);
-
 const actions: ActionTrigger[] = [
     new ActionTrigger({
         actor: bob,
         name: "accept",
         method: Method.Post,
         timeout: 10000,
-        payload: bobAcceptPayload,
+        payload: {
+            beta_ledger_refund_identity: bob.wallet.eth().address(),
+            alpha_ledger_redeem_identity: null,
+        },
     }),
     new ActionTrigger({
         actor: alice,
@@ -129,7 +88,26 @@ const actions: ActionTrigger[] = [
         name: "redeem",
         method: Method.Get,
         timeout: 10000,
-        afterTest: aliceRedeemTest,
+        afterTest: new AfterTest(
+            "[alice] Should have received the beta asset after the redeem",
+            async function(swapLocations: { [key: string]: string }) {
+                let body = (await alice.pollComitNodeUntil(
+                    swapLocations["alice"],
+                    body => body.state.beta_ledger.status === "Redeemed"
+                )) as SwapResponse;
+
+                const aliceEthBalanceAfter = await ethereum.ethBalance(
+                    aliceFinalAddress
+                );
+                const aliceEthBalanceExpected = aliceEthBalanceBefore.add(
+                    betaAssetQuantity
+                );
+                aliceEthBalanceAfter
+                    .eq(aliceEthBalanceExpected)
+                    .should.be.equal(true);
+            },
+            5000
+        ),
     }),
     new ActionTrigger({
         actor: bob,
@@ -137,7 +115,25 @@ const actions: ActionTrigger[] = [
         method: Method.Get,
         timeout: 10000,
         parameters: "address=" + bobFinalAddress + "&fee_per_byte=20",
-        afterTest: bobRedeemTest,
+        afterTest: new AfterTest(
+            "[bob] Should have received the alpha asset after the redeem",
+            async function(swapLocations: { [key: string]: string }) {
+                let body = (await bob.pollComitNodeUntil(
+                    swapLocations["bob"],
+                    body => body.state.alpha_ledger.status === "Redeemed"
+                )) as SwapResponse;
+                let redeemTxId = body.state.alpha_ledger.redeem_tx;
+
+                let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
+                    redeemTxId,
+                    bobFinalAddress
+                );
+                const satoshiExpected = alphaAssetQuantity - alphaMaxFee;
+
+                satoshiReceived.should.be.at.least(satoshiExpected);
+            },
+            10000
+        ),
     }),
 ];
 
