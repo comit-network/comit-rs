@@ -62,7 +62,6 @@ export class Actor {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
-    // `chai` used to be passed down. Not sure why?
     poll_comit_node_until(
         location: string,
         predicate: (body: SwapResponse) => boolean

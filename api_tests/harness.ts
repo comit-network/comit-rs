@@ -53,7 +53,7 @@ if (!fs.existsSync(log_dir)) {
 // ********************** //
 class LedgerRunner {
     running_ledgers: { [key: string]: boolean };
-    block_timers: { [key: string]: any };
+    block_timers: { [key: string]: NodeJS.Timeout };
 
     constructor() {
         this.running_ledgers = {};
@@ -160,12 +160,15 @@ class ComitRunner {
                 }
             );
 
-            this.running_nodes[name].on("exit", (code: number, signal: any) => {
-                console.log(
-                    `comit-node ${name} exited with ${code ||
-                        "signal " + signal}`
-                );
-            });
+            this.running_nodes[name].on(
+                "exit",
+                (code: number, signal: number) => {
+                    console.log(
+                        `comit-node ${name} exited with ${code ||
+                            "signal " + signal}`
+                    );
+                }
+            );
         }
 
         await sleep(500);
@@ -185,7 +188,7 @@ class ComitRunner {
 }
 
 class BtsieveRunner {
-    running_btsieves: { [key: string]: any };
+    running_btsieves: { [key: string]: ChildProcess };
 
     constructor() {
         this.running_btsieves = {};
