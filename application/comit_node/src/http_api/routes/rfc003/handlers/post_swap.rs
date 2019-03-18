@@ -1,7 +1,3 @@
-// TODO: Remove allow(clippy::redundant_closure) once serde issue is resolved
-// https://github.com/serde-rs/serde/issues/1491
-#![allow(clippy::redundant_closure)]
-
 use crate::{
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     swap_protocols::{

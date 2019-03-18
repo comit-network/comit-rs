@@ -1,5 +1,4 @@
-// TODO: Figure out how to properly place this on the state_machine_future
-// derive so that is is forwarded to the generated structs and impl
+// The state_machine_future derive generates quite complex code ...
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
