@@ -39,7 +39,7 @@ describe("Test btsieve API", () => {
 
         let receipt = await tobyWallet
             .eth()
-            .deploy_erc20_token_contract(global.project_root);
+            .deployErc20TokeContract(global.project_root);
         token_contract_address = receipt.contractAddress;
 
         await ethereum.mintErc20Tokens(

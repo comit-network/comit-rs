@@ -53,7 +53,7 @@ describe("RFC003: ERC20 for Bitcoin", () => {
         await bob.wallet.eth().fund("1");
         let receipt = await tobyWallet
             .eth()
-            .deploy_erc20_token_contract(global.project_root);
+            .deployErc20TokeContract(global.project_root);
         token_contract_address = receipt.contractAddress;
 
         await bitcoin.generate();

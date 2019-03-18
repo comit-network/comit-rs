@@ -132,7 +132,7 @@ export class EthereumWallet {
         return this.signAndSend(tx);
     }
 
-    async deploy_erc20_token_contract(projectRoot: string) {
+    async deployErc20TokeContract(projectRoot: string) {
         const token_contract_deploy =
             "0x" +
             fs
