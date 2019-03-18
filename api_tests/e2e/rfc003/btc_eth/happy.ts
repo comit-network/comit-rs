@@ -4,7 +4,7 @@ import { Actor } from "../../../lib/actor";
 import { AcceptPayload, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { toBN, toWei, BN } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, Callback, execute, Method } from "../../test_executor";
+import { ActionTrigger, AfterTest, execute, Method } from "../../test_executor";
 import chaiHttp = require("chai-http");
 import * as ethereum from "../../../lib/ethereum";
 
@@ -65,9 +65,14 @@ let bobAcceptPayload: AcceptPayload = {
     alpha_ledger_redeem_identity: null,
 };
 
-const aliceRedeemTest = new Callback(
-    "[alice] should have received the beta asset after the redeem",
-    async function() {
+const aliceRedeemTest = new AfterTest(
+    "[alice] Should have received the beta asset after the redeem",
+    async function(swapLocations: { [key: string]: string }) {
+        let body = (await alice.pollComitNodeUntil(
+            swapLocations["alice"],
+            body => body.state.beta_ledger.status === "Redeemed"
+        )) as SwapResponse;
+
         const aliceEthBalanceAfter = await ethereum.ethBalance(
             aliceFinalAddress
         );
@@ -78,7 +83,7 @@ const aliceRedeemTest = new Callback(
     }
 );
 
-const bobRedeemTest = new Callback(
+const bobRedeemTest = new AfterTest(
     "[bob] Should have received the alpha asset after the redeem",
     async function(swapLocations: { [key: string]: string }) {
         let body = (await bob.pollComitNodeUntil(
@@ -99,30 +104,44 @@ const bobRedeemTest = new Callback(
 );
 
 const actions: ActionTrigger[] = [
-    new ActionTrigger(bob, "accept", Method.Post, 10000, bobAcceptPayload),
-    new ActionTrigger(alice, "fund", Method.Get, 10000),
-    new ActionTrigger(bob, "fund", Method.Get, 10000),
-    new ActionTrigger(
-        alice,
-        "redeem",
-        Method.Get,
-        10000,
-        null,
-        null,
-        aliceRedeemTest
-    ),
-    new ActionTrigger(
-        bob,
-        "redeem",
-        Method.Get,
-        10000,
-        null,
-        "address=" + bobFinalAddress + "&fee_per_byte=20",
-        bobRedeemTest
-    ),
+    new ActionTrigger({
+        actor: bob,
+        name: "accept",
+        method: Method.Post,
+        timeout: 10000,
+        payload: bobAcceptPayload,
+    }),
+    new ActionTrigger({
+        actor: alice,
+        name: "fund",
+        method: Method.Get,
+        timeout: 10000,
+    }),
+    new ActionTrigger({
+        actor: bob,
+        name: "fund",
+        method: Method.Get,
+        timeout: 10000,
+    }),
+    new ActionTrigger({
+        actor: alice,
+        name: "redeem",
+        method: Method.Get,
+        timeout: 10000,
+        afterTest: aliceRedeemTest,
+    }),
+    new ActionTrigger({
+        actor: bob,
+        name: "redeem",
+        method: Method.Get,
+        timeout: 10000,
+        parameters: "address=" + bobFinalAddress + "&fee_per_byte=20",
+        afterTest: bobRedeemTest,
+    }),
 ];
 
 const initialUrl = "/swaps/rfc003";
+const listUrl = "/swaps";
 
 let aliceEthBalanceBefore: BN;
 
@@ -137,5 +156,5 @@ describe("RFC003: Bitcoin for Ether", async () => {
         aliceEthBalanceBefore = await ethereum.ethBalance(aliceFinalAddress);
     });
 
-    await execute(alice, bob, actions, initialUrl, swapRequest);
+    await execute(alice, bob, actions, initialUrl, listUrl, swapRequest);
 });

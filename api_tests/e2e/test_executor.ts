@@ -10,7 +10,7 @@ export enum Method {
     Post,
 }
 
-export class Callback {
+export class AfterTest {
     /**
      * To be triggered once an action is executed
      *
@@ -36,7 +36,7 @@ export class Callback {
 
 export class ActionTrigger {
     /**
-     * Triggers an action and do the callback
+     * Triggers an action and do the afterTest
      *
      * @param actor: the actor for which/that triggers the action
      * @param name: the name of the action that will be extracted from the COMIT-rs HTTP API
@@ -44,26 +44,26 @@ export class ActionTrigger {
      * @param parameters: the GET parameters to pass if the action requires a GET call on the COMIT-rs HTTP API
      * @param method: the HTTP Method to use on the action.
      * @param timeout: the time to allow the action to be executed
-     * @param callback: a callback to be executed after the action is executed.
+     * @param afterTest: a afterTest to be executed after the action is executed.
      *
      */
     actor: Actor;
     name: string;
     method: Method;
     payload?: object;
-    parameters: string;
-    timeout: number;
-    callback: Callback;
+    parameters?: string;
+    timeout?: number;
+    afterTest?: AfterTest;
 
-    constructor(
-        actor: Actor,
-        name: string,
-        method: Method,
-        timeout: number = 10000,
-        payload?: object,
-        parameters?: string,
-        callback?: Callback
-    ) {
+    constructor({
+        actor,
+        name,
+        method,
+        timeout,
+        payload,
+        parameters,
+        afterTest,
+    }: ActionTrigger) {
         this.actor = actor;
         this.name = name;
         this.method = method;
@@ -85,8 +85,8 @@ export class ActionTrigger {
             default:
                 break;
         }
-        if (callback) {
-            this.callback = callback;
+        if (afterTest) {
+            this.afterTest = afterTest;
         }
     }
 }
@@ -153,12 +153,14 @@ export async function execute(
     bob: Actor,
     actions: ActionTrigger[],
     initialUrl: string,
+    listUrl: string,
     initialRequest: object
 ) {
-    // TODO: Make this section more generic
+    // This may need to become more generic at a later stage
+    // However, it would be unnecessary pre-optimisation now.
     let swapLocations: { [key: string]: string } = {};
 
-    it("[Alice] Should be able to make a request via HTTP api", async () => {
+    it("[alice] Should be able to make a request via HTTP api", async () => {
         let res: ChaiHttp.Response = await chai
             .request(alice.comit_node_url())
             .post(initialUrl)
@@ -170,19 +172,9 @@ export async function execute(
         swapLocations["alice"] = swapLocation;
     });
 
-    it("[Alice] Should be in IN_PROGRESS and SENT after sending the request to Bob", async function() {
-        this.timeout(10000);
-        await alice.pollComitNodeUntil(
-            swapLocations["alice"],
-            body =>
-                body.status === "IN_PROGRESS" &&
-                body.state.communication.status === "SENT"
-        );
-    });
-
-    it("[Bob] Shows the Swap as IN_PROGRESS in /swaps", async () => {
+    it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
         let body = (await bob.pollComitNodeUntil(
-            "/swaps",
+            listUrl,
             body => body._embedded.swaps.length > 0
         )) as SwapsResponse;
 
@@ -233,13 +225,13 @@ export async function execute(
             }
         );
 
-        const callback = action.callback;
-        if (callback) {
-            it(callback.description, async function() {
-                if (callback.timeout) {
-                    this.timeout(callback.timeout);
+        const afterTest = action.afterTest;
+        if (afterTest) {
+            it(afterTest.description, async function() {
+                if (afterTest.timeout) {
+                    this.timeout(afterTest.timeout);
                 }
-                return callback.callback(
+                return afterTest.callback(
                     swapLocations,
                     [actionHref, actionPayload],
                     actionExecutionResult
