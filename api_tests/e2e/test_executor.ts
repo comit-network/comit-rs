@@ -141,7 +141,7 @@ async function executeAction(
     })(actionTrigger.method);
 }
 
-export async function execute(
+export function execute(
     alice: Actor,
     bob: Actor,
     actions: ActionTrigger[],
@@ -153,17 +153,20 @@ export async function execute(
     // However, it would be unnecessary pre-optimisation now.
     let swapLocations: { [key: string]: string } = {};
 
-    it("[alice] Should be able to make a request via HTTP api", async () => {
-        let res: ChaiHttp.Response = await chai
-            .request(alice.comit_node_url())
-            .post(initialUrl)
-            .send(initialRequest);
-
-        res.should.have.status(201);
-        const swapLocation: string = res.header.location;
-        swapLocation.should.not.be.empty;
-        swapLocations["alice"] = swapLocation;
-    });
+    it(
+        "[alice] Should be able to make a request via HTTP api to " +
+            initialUrl,
+        async () => {
+            let res: ChaiHttp.Response = await chai
+                .request(alice.comit_node_url())
+                .post(initialUrl)
+                .send(initialRequest);
+            res.should.have.status(201);
+            const swapLocation: string = res.header.location;
+            swapLocation.should.not.be.empty;
+            swapLocations["alice"] = swapLocation;
+        }
+    );
 
     it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
         let body = (await bob.pollComitNodeUntil(
