@@ -15,8 +15,11 @@ macro_rules! impl_serialize_http {
                 let mut state = serializer.serialize_struct("", 1 + params)?;
 
                 #[allow(unused_variables)]
-                let name = stringify!($type);
+                let name = stringify!($type).to_lowercase();
+                #[allow(unused_variables)]
+                let name = name.as_str();
                 $(let name = $name;)?
+
                 state.serialize_field("name", name)?;
 
                 $(

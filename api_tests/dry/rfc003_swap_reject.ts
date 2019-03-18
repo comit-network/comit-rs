@@ -185,19 +185,19 @@ setTimeout(async function() {
                         _links: { self: { href: alice_reasonable_swap_href } },
                         parameters: {
                             alpha_asset: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 quantity: "100000000",
                             },
                             alpha_ledger: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 network: "regtest",
                             },
                             beta_asset: {
-                                name: "Ether",
+                                name: "ether",
                                 quantity: "10000000000000000000",
                             },
                             beta_ledger: {
-                                name: "Ethereum",
+                                name: "ethereum",
                                 network: "regtest",
                             },
                         },
@@ -209,19 +209,19 @@ setTimeout(async function() {
                         _links: { self: { href: alice_stingy_swap_href } },
                         parameters: {
                             alpha_asset: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 quantity: "100",
                             },
                             alpha_ledger: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 network: "regtest",
                             },
                             beta_asset: {
-                                name: "Ether",
+                                name: "ether",
                                 quantity: "10000000000000000000",
                             },
                             beta_ledger: {
-                                name: "Ethereum",
+                                name: "ethereum",
                                 network: "regtest",
                             },
                         },
