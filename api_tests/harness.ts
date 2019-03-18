@@ -261,6 +261,7 @@ async function run_tests(test_files: string[]) {
         const mocha = new Mocha({
             bail: true,
             ui: "bdd",
+            delay: true,
         });
 
         mocha.addFile(test_file);
