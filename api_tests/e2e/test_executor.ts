@@ -1,13 +1,16 @@
-import { ActionDirective, HalResource, SwapsResponse } from "../lib/comit";
+import {
+    AcceptPayload,
+    Action,
+    ActionDirective,
+    getMethod,
+    HalResource,
+    Method,
+    SwapsResponse,
+} from "../lib/comit";
 import * as chai from "chai";
 import { Actor } from "../lib/actor";
 
 const should = chai.should();
-
-export enum Method {
-    Get,
-    Post,
-}
 
 export class AfterTest {
     /**
@@ -47,27 +50,24 @@ export class ActionTrigger {
      *
      */
     actor: Actor;
-    name: string;
-    method: Method;
-    payload?: object;
+    action: Action;
+    payload?: AcceptPayload;
     parameters?: string;
     timeout?: number;
     afterTest?: AfterTest;
 
     constructor({
         actor,
-        name,
-        method,
+        action,
         timeout,
         payload,
         parameters,
         afterTest,
     }: ActionTrigger) {
         this.actor = actor;
-        this.name = name;
-        this.method = method;
+        this.action = action;
         this.timeout = timeout;
-        switch (method) {
+        switch (getMethod(action)) {
             case Method.Post: {
                 if (payload) {
                     this.payload = payload;
@@ -99,17 +99,17 @@ async function getAction(
 
     const body = (await actor.pollComitNodeUntil(
         location,
-        body => body._links[actionTrigger.name]
+        body => body._links[actionTrigger.action]
     )) as HalResource;
 
-    let href: string = body._links[actionTrigger.name].href;
+    let href: string = body._links[actionTrigger.action].href;
     href.should.not.be.empty;
 
     if (actionTrigger.parameters) {
         href = href + "?" + actionTrigger.parameters;
     }
 
-    if (actionTrigger.method === Method.Get) {
+    if (getMethod(actionTrigger.action) === Method.Get) {
         const res = await chai.request(actor.comit_node_url()).get(href);
         res.should.have.status(200);
         let payload = res.body;
@@ -138,7 +138,7 @@ async function executeAction(
             default:
                 throw new Error("Unexpected error: unknown method");
         }
-    })(actionTrigger.method);
+    })(getMethod(actionTrigger.action));
 }
 
 export function execute(
@@ -193,7 +193,7 @@ export function execute(
             "[" +
                 action.actor.name +
                 "] Can get the " +
-                action.name +
+                action.action +
                 " action",
             async function() {
                 this.timeout(action.timeout);
@@ -209,7 +209,7 @@ export function execute(
             "[" +
                 action.actor.name +
                 "] Can execute the " +
-                action.name +
+                action.action +
                 " action",
             async function() {
                 actionExecutionResult = await executeAction(

@@ -2,10 +2,10 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { SwapRequest, SwapResponse } from "../../../lib/comit";
-import { toBN, toWei, BN } from "web3-utils";
+import { Action, SwapRequest, SwapResponse } from "../../../lib/comit";
+import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, AfterTest, execute, Method } from "../../test_executor";
+import { ActionTrigger, AfterTest, execute } from "../../test_executor";
 import chaiHttp = require("chai-http");
 
 const should = chai.should();
@@ -76,8 +76,7 @@ async function test() {
     const actions: ActionTrigger[] = [
         new ActionTrigger({
             actor: bob,
-            name: "accept",
-            method: Method.Post,
+            action: Action.Accept,
             timeout: 10000,
             payload: {
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
@@ -86,20 +85,17 @@ async function test() {
         }),
         new ActionTrigger({
             actor: alice,
-            name: "fund",
-            method: Method.Get,
+            action: Action.Fund,
             timeout: 10000,
         }),
         new ActionTrigger({
             actor: bob,
-            name: "fund",
-            method: Method.Get,
+            action: Action.Fund,
             timeout: 10000,
         }),
         new ActionTrigger({
             actor: alice,
-            name: "redeem",
-            method: Method.Get,
+            action: Action.Redeem,
             timeout: 10000,
             afterTest: new AfterTest(
                 "[alice] Should have received the beta asset after the redeem",
@@ -124,8 +120,7 @@ async function test() {
         }),
         new ActionTrigger({
             actor: bob,
-            name: "redeem",
-            method: Method.Get,
+            action: Action.Redeem,
             timeout: 10000,
             parameters: "address=" + bobFinalAddress + "&fee_per_byte=20",
             afterTest: new AfterTest(

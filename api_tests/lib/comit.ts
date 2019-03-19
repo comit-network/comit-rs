@@ -63,6 +63,39 @@ export interface SwapRequest {
     peer: string;
 }
 
+export enum Method {
+    Get,
+    Post,
+}
+
+export enum Action {
+    Accept = "accept",
+    Decline = "decline",
+    Deploy = "deploy",
+    Fund = "fund",
+    Redeem = "redeem",
+    Refund = "refund",
+}
+
+export function getMethod(action: Action): Method {
+    switch (action) {
+        case Action.Accept:
+            return Method.Post;
+        case Action.Decline:
+            return Method.Post;
+        case Action.Deploy:
+            return Method.Get;
+        case Action.Fund:
+            return Method.Get;
+        case Action.Redeem:
+            return Method.Get;
+        case Action.Refund:
+            return Method.Get;
+        default:
+            throw new Error("Method undefined for action " + action);
+    }
+}
+
 //**** Config files ****//
 
 export interface MetaComitNodeConfig {
