@@ -214,7 +214,12 @@ dependencies = [
 description = "Runs tests that don't require any external services"
 workspace = false
 private = true
-script = [ "./api_tests/harness.ts ./api_tests/dry/*.ts" ]
+script = [
+'''
+./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
+  ./api_tests/harness.ts ./api_tests/dry/*.ts"
+'''
+]
 
 [tasks.pre-api-tests]
 description = "Install/build dependencies for api tests"
@@ -251,7 +256,8 @@ for dir in api_tests/e2e/rfc003/$glob; do
     fi
 done;
 
-./api_tests/harness.ts $files;
+./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
+  ./api_tests/harness.ts $files;
 '''
 ]
 
@@ -273,7 +279,8 @@ private = true
 script_runner = "bash"
 script = [
 '''
-./api_tests/harness.ts ./api_tests/btsieve/*.ts
+./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
+  ./api_tests/harness.ts ./api_tests/btsieve/*.ts
 '''
 ]
 
