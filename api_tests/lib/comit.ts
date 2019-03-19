@@ -56,7 +56,8 @@ export interface SwapRequest {
     beta_ledger: Ledger;
     alpha_asset: Asset;
     beta_asset: Asset;
-    beta_ledger_redeem_identity: string;
+    beta_ledger_redeem_identity?: string;
+    alpha_ledger_refund_identity?: string;
     alpha_expiry: number;
     beta_expiry: number;
     peer: string;
