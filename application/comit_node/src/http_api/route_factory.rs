@@ -73,8 +73,14 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(warp::path::end())
         .and_then(http_api::routes::peers::get_peers);
 
-    warp::options()
-        .map(warp::reply)
+    let preflight_cors_route = warp::options().map(warp::reply);
+
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST"])
+        .allow_headers(vec!["content-type"]);
+
+    preflight_cors_route
         .or(rfc003_get_swap)
         .or(rfc003_post_swap)
         .or(rfc003_post_action)
@@ -82,12 +88,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .or(get_swaps)
         .or(get_peers)
         .with(warp::log("http"))
-        .with(
-            warp::cors()
-                .allow_any_origin()
-                .allow_methods(vec!["GET", "POST"])
-                .allow_headers(vec!["content-type"]),
-        )
+        .with(cors)
         .recover(http_api::unpack_problem)
         .boxed()
 }
