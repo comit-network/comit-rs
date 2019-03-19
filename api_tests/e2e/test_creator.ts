@@ -141,7 +141,7 @@ async function executeAction(
     })(getMethod(actionTrigger.action));
 }
 
-export function execute(
+export function createTests(
     alice: Actor,
     bob: Actor,
     actions: ActionTrigger[],

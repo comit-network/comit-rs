@@ -6,7 +6,7 @@ import { Action, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, AfterTest, execute } from "../../test_executor";
+import { ActionTrigger, AfterTest, createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
 const should = chai.should();
@@ -180,7 +180,7 @@ async function test() {
     ];
 
     describe("RFC003: Bitcoin for ERC20", async () => {
-        execute(alice, bob, actions, initialUrl, listUrl, swapRequest);
+        createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();
 }
