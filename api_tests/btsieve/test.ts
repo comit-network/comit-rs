@@ -28,7 +28,7 @@ const aliceWallet = new Wallet("alice", {
 
 const alice_wallet_address = aliceWallet.eth().address();
 
-async function test() {
+setTimeout(async function() {
     describe("Test btsieve API", () => {
         let token_contract_address: string;
         before(async function() {
@@ -539,6 +539,4 @@ async function test() {
     });
 
     run();
-}
-
-setTimeout(test, 0);
+}, 0);

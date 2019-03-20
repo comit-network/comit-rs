@@ -14,7 +14,7 @@ chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
 
-async function test() {
+(async function() {
     const tobyWallet = new Wallet("toby", {
         ethConfig: global.ledgers_config.ethereum,
     });
@@ -183,6 +183,4 @@ async function test() {
         createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();
-}
-
-test();
+})();

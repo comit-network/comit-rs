@@ -13,7 +13,10 @@ declare var global: HarnessGlobal;
 
 const alice = new Actor("alice", global.config, global.test_root);
 
-async function test() {
+// the `setTimeout` forces it to be added on the event loop
+// This is needed because there is no async call in the test
+// And hence it does not get run without this `setTimeout`
+setTimeout(async function() {
     describe("Sanity tests", () => {
         it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
             let res = await chai
@@ -102,9 +105,4 @@ async function test() {
     });
 
     run();
-}
-
-// Force test to be added on the event loop
-// This is needed because there is no async call in the test
-// And hence it does not get run without this `setTimeout`
-setTimeout(test, 0);
+}, 0);

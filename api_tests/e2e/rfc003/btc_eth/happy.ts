@@ -13,7 +13,7 @@ chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
 
-async function test() {
+(async function() {
     const bobInitialEth = "11";
     const aliceInitialEth = "0.1";
 
@@ -149,6 +149,4 @@ async function test() {
         createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();
-}
-
-test();
+})();

@@ -36,7 +36,10 @@ const bob = new Actor("bob", global.config, global.test_root, {
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
 
-async function test() {
+// the `setTimeout` forces it to be added on the event loop
+// This is needed because there is no async call in the test
+// And hence it does not get run without this `setTimeout`
+setTimeout(async function() {
     describe("SWAP request REJECTED", () => {
         let alice_reasonable_swap_href: string;
         it("[Alice] Should be able to make first swap request via HTTP api", async () => {
@@ -371,6 +374,4 @@ async function test() {
     });
 
     run();
-}
-
-setTimeout(test, 0);
+}, 0);

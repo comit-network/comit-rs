@@ -46,7 +46,11 @@ const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
 const charlie_comit_node_address = charlie.comitNodeConfig.comit.comit_listen;
 
 let alice_swap_with_charlie_href: string;
-async function test() {
+
+// the `setTimeout` forces it to be added on the event loop
+// This is needed because there is no async call in the test
+// And hence it does not get run without this `setTimeout`
+setTimeout(async function() {
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
             let res = await chai
@@ -146,6 +150,4 @@ async function test() {
     });
 
     run();
-}
-
-setTimeout(test, 0);
+}, 0);
