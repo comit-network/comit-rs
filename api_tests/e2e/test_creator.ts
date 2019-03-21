@@ -25,14 +25,12 @@ export class AfterTest {
      */
     description: string;
     callback: any;
-    timeout?: number;
+    timeout: number;
 
     constructor(description: string, callback: any, timeout?: number) {
         this.description = description;
         this.callback = callback;
-        if (timeout) {
-            this.timeout = timeout;
-        }
+        this.timeout = timeout || 10000;
     }
 }
 

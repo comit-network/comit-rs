@@ -77,7 +77,6 @@ declare var global: HarnessGlobal;
         new ActionTrigger({
             actor: bob,
             action: Action.Accept,
-            timeout: 10000,
             payload: {
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
                 alpha_ledger_redeem_identity: null,
@@ -86,17 +85,14 @@ declare var global: HarnessGlobal;
         new ActionTrigger({
             actor: alice,
             action: Action.Fund,
-            timeout: 10000,
         }),
         new ActionTrigger({
             actor: bob,
             action: Action.Fund,
-            timeout: 10000,
         }),
         new ActionTrigger({
             actor: alice,
             action: Action.Redeem,
-            timeout: 10000,
             afterTest: new AfterTest(
                 "[alice] Should have received the beta asset after the redeem",
                 async function(swapLocations: { [key: string]: string }) {
@@ -114,14 +110,12 @@ declare var global: HarnessGlobal;
                     aliceEthBalanceAfter
                         .eq(aliceEthBalanceExpected)
                         .should.be.equal(true);
-                },
-                5000
+                }
             ),
         }),
         new ActionTrigger({
             actor: bob,
             action: Action.Redeem,
-            timeout: 10000,
             parameters: "address=" + bobFinalAddress + "&fee_per_byte=20",
             afterTest: new AfterTest(
                 "[bob] Should have received the alpha asset after the redeem",
