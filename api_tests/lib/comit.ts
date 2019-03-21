@@ -2,7 +2,7 @@
 
 import { BtsieveForComitNodeConfig } from "./actor";
 
-export interface AcceptPayload {
+export interface AcceptRequestBody {
     beta_ledger_refund_identity?: string;
     alpha_ledger_redeem_identity?: string;
 }
@@ -68,7 +68,7 @@ export enum Method {
     Post,
 }
 
-export enum Action {
+export enum ActionKind {
     Accept = "accept",
     Decline = "decline",
     Deploy = "deploy",
@@ -77,19 +77,19 @@ export enum Action {
     Refund = "refund",
 }
 
-export function getMethod(action: Action): Method {
+export function getMethod(action: ActionKind): Method {
     switch (action) {
-        case Action.Accept:
+        case ActionKind.Accept:
             return Method.Post;
-        case Action.Decline:
+        case ActionKind.Decline:
             return Method.Post;
-        case Action.Deploy:
+        case ActionKind.Deploy:
             return Method.Get;
-        case Action.Fund:
+        case ActionKind.Fund:
             return Method.Get;
-        case Action.Redeem:
+        case ActionKind.Redeem:
             return Method.Get;
-        case Action.Refund:
+        case ActionKind.Refund:
             return Method.Get;
         default:
             throw new Error("Method undefined for action " + action);

@@ -2,7 +2,7 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { Action, SwapRequest, SwapResponse } from "../../../lib/comit";
+import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
@@ -108,27 +108,27 @@ declare var global: HarnessGlobal;
     const actions = [
         {
             actor: bob,
-            action: Action.Accept,
-            payload: {
+            action: ActionKind.Accept,
+            requestBody: {
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
                 alpha_ledger_redeem_identity: bobFinalAddress,
             },
         },
         {
             actor: alice,
-            action: Action.Deploy,
+            action: ActionKind.Deploy,
         },
         {
             actor: alice,
-            action: Action.Fund,
+            action: ActionKind.Fund,
         },
         {
             actor: bob,
-            action: Action.Fund,
+            action: ActionKind.Fund,
         },
         {
             actor: alice,
-            action: Action.Redeem,
+            action: ActionKind.Redeem,
             uriQuery: { address: aliceFinalAddress, fee_per_byte: 20 },
             afterTest: {
                 description:
@@ -155,7 +155,7 @@ declare var global: HarnessGlobal;
         },
         {
             actor: bob,
-            action: Action.Redeem,
+            action: ActionKind.Redeem,
             afterTest: {
                 description:
                     "[bob] Should have received the alpha asset after the redeem",

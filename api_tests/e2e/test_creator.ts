@@ -1,6 +1,6 @@
 import {
-    AcceptPayload,
-    Action,
+    AcceptRequestBody,
+    ActionKind,
     ActionDirective,
     getMethod,
     HalResource,
@@ -35,7 +35,7 @@ interface ActionTrigger {
      *
      * @param actor: the actor for which/that triggers the action
      * @param name: the name of the action that will be extracted from the COMIT-rs HTTP API
-     * @param payload: the payload to pass if the action requires a POST call on the COMIT-rs HTTP API
+     * @param requestBody: the requestBody to pass if the action requires a POST call on the COMIT-rs HTTP API
      * @param parameters: the GET parameters to pass if the action requires a GET call on the COMIT-rs HTTP API
      * @param method: the HTTP Method to use on the action.
      * @param timeout: the time to allow the action to be executed
@@ -43,8 +43,8 @@ interface ActionTrigger {
      *
      */
     actor: Actor;
-    action: Action;
-    payload?: AcceptPayload;
+    action: ActionKind;
+    requestBody?: AcceptRequestBody;
     uriQuery?: object;
     timeout?: number;
     afterTest?: AfterTest;
@@ -84,17 +84,17 @@ async function executeAction(
     actor: Actor,
     actionTrigger: ActionTrigger,
     actionHref?: string,
-    actionPayload?: ActionDirective
+    actionDirective?: ActionDirective
 ) {
     return (async function(method) {
         switch (method) {
             case Method.Get:
-                return actor.do(actionPayload);
+                return actor.do(actionDirective);
             case Method.Post:
                 const res = await chai
                     .request(actor.comit_node_url())
                     .post(actionHref)
-                    .send(actionTrigger.payload);
+                    .send(actionTrigger.requestBody);
                 res.should.have.status(200);
                 return res;
             default:
@@ -148,7 +148,7 @@ export function createTests(
     while (actions.length !== 0) {
         let action = actions.shift();
         let actionHref: string = null;
-        let actionPayload: ActionDirective = null;
+        let actionDirective: ActionDirective = null;
         let actionExecutionResult: any = null;
 
         it(
@@ -159,7 +159,7 @@ export function createTests(
                 " action",
             async function() {
                 this.timeout(action.timeout || 10000);
-                [actionHref, actionPayload] = await getAction(
+                [actionHref, actionDirective] = await getAction(
                     action.actor,
                     swapLocations[action.actor.name],
                     action
@@ -178,7 +178,7 @@ export function createTests(
                     action.actor,
                     action,
                     actionHref,
-                    actionPayload
+                    actionDirective
                 );
             }
         );
@@ -191,7 +191,7 @@ export function createTests(
                 }
                 return afterTest.callback(
                     swapLocations,
-                    [actionHref, actionPayload],
+                    [actionHref, actionDirective],
                     actionExecutionResult
                 );
             });
