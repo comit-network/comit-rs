@@ -101,7 +101,7 @@ async function executeAction(
     })(getMethod(actionTrigger.action));
 }
 
-export function createTests(
+export async function createTests(
     alice: Actor,
     bob: Actor,
     actions: ActionTrigger[],
@@ -139,8 +139,9 @@ export function createTests(
         swapEmbedded.status.should.equal("IN_PROGRESS");
         const swapLink = swapEmbedded._links;
         swapLink.should.be.a("object");
-        swapLocations["bob"] = swapLink.self.href;
-        swapLocations["bob"].should.be.a("string");
+        const swapLocation: string = swapLink.self.href;
+        swapLocation.should.not.be.empty;
+        swapLocations["bob"] = swapLocation;
     });
 
     while (actions.length !== 0) {
@@ -181,20 +182,25 @@ export function createTests(
             }
         );
 
+        let body: any = null;
+        if (action.state) {
+            it(
+                "[" + action.actor.name + "] state is as expected",
+                async function() {
+                    this.timeout(action.timeout || 10000);
+                    body = (await action.actor.pollComitNodeUntil(
+                        swapLocations[action.actor.name],
+                        body => action.state(body.state)
+                    )) as HalResource;
+                }
+            );
+        }
+
         const test = action.test;
         if (test) {
             it(test.description, async function() {
                 if (test.timeout) {
                     this.timeout(test.timeout);
-                }
-
-                let body: any = null;
-
-                if (action.state) {
-                    body = (await action.actor.pollComitNodeUntil(
-                        swapLocations[action.actor.name],
-                        body => action.state(body.state)
-                    )) as HalResource;
                 }
 
                 return test.callback(body);

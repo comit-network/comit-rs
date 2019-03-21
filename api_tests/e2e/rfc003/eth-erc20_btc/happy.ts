@@ -113,18 +113,22 @@ declare var global: HarnessGlobal;
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
                 alpha_ledger_redeem_identity: bobFinalAddress,
             },
+            state: (state: any) => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Deploy,
+            state: (state: any) => state.alpha_ledger.status === "Deployed",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
+            state: (state: any) => state.alpha_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
+            state: (state: any) => state.beta_ledger.status === "Funded",
         },
         {
             actor: alice,
