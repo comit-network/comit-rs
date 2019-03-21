@@ -92,16 +92,11 @@ declare var global: HarnessGlobal;
             actor: alice,
             action: ActionKind.Redeem,
             uriQuery: { address: aliceFinalAddress, fee_per_byte: 20 },
-            afterTest: {
+            state: (state: any) => state.beta_ledger.status === "Redeemed",
+            test: {
                 description:
                     "[alice] Should have received the beta asset after the redeem",
-                callback: async function(swapLocations: {
-                    [key: string]: string;
-                }) {
-                    let body = (await alice.pollComitNodeUntil(
-                        swapLocations["alice"],
-                        body => body.state.beta_ledger.status === "Redeemed"
-                    )) as SwapResponse;
+                callback: async (body: any) => {
                     let redeemTxId = body.state.beta_ledger.redeem_tx;
 
                     let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
@@ -118,10 +113,11 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Redeem,
-            afterTest: {
+            state: (state: any) => state.alpha_ledger.status === "Redeemed",
+            test: {
                 description:
                     "[bob] Should have received the alpha asset after the redeem",
-                callback: async function() {
+                callback: async () => {
                     let ethBalanceAfter = await ethereum.ethBalance(
                         bobFinalAddress
                     );

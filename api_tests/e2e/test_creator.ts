@@ -13,16 +13,13 @@ import * as URI from "urijs";
 
 const should = chai.should();
 
-interface AfterTest {
+interface Test {
     /**
      * To be triggered once an action is executed
      *
-     * @param description: the description to use for the test
-     * @param callback: an (async) function takes 3 parameters:
-     *                  - the array of swapLocations
-     *                  - the value returned by `getAction`
-     *                  - the value returned by `executeAction`
-     * @param timeout: if set, overrides the Mocha default timeout.
+     * @property description: the description to use for the callback
+     * @property callback: an (async) function take the body of a swap state response as parameter
+     * @property timeout: if set, overrides the Mocha default timeout.
      */
     description: string;
     callback: any;
@@ -31,15 +28,15 @@ interface AfterTest {
 
 interface ActionTrigger {
     /**
-     * Triggers an action and do the afterTest
+     * Triggers an action and do the callback
      *
-     * @param actor: the actor for which/that triggers the action
-     * @param name: the name of the action that will be extracted from the COMIT-rs HTTP API
-     * @param requestBody: the requestBody to pass if the action requires a POST call on the COMIT-rs HTTP API
-     * @param parameters: the GET parameters to pass if the action requires a GET call on the COMIT-rs HTTP API
-     * @param method: the HTTP Method to use on the action.
-     * @param timeout: the time to allow the action to be executed
-     * @param afterTest: a afterTest to be executed after the action is executed.
+     * @property actor: the actor for which/that triggers the action
+     * @property action: the name of the action that will be extracted from the COMIT-rs HTTP API
+     * @property requestBody: the requestBody to pass if the action requires a POST call on the COMIT-rs HTTP API
+     * @property uriQuery: the GET parameters to pass if the action requires a GET call on the COMIT-rs HTTP API
+     * @property timeout: the time to allow the action to be executed
+     * @property state: a predicate passed on the test after the action is executed
+     * @property test: a test to be executed after the action is executed, the body of a swap request is passed only if `state` property is set
      *
      */
     actor: Actor;
@@ -47,7 +44,8 @@ interface ActionTrigger {
     requestBody?: AcceptRequestBody;
     uriQuery?: object;
     timeout?: number;
-    afterTest?: AfterTest;
+    state?: (state: any) => boolean;
+    test?: Test;
 }
 
 async function getAction(
@@ -183,17 +181,23 @@ export function createTests(
             }
         );
 
-        const afterTest = action.afterTest;
-        if (afterTest) {
-            it(afterTest.description, async function() {
-                if (afterTest.timeout) {
-                    this.timeout(afterTest.timeout);
+        const test = action.test;
+        if (test) {
+            it(test.description, async function() {
+                if (test.timeout) {
+                    this.timeout(test.timeout);
                 }
-                return afterTest.callback(
-                    swapLocations,
-                    [actionHref, actionDirective],
-                    actionExecutionResult
-                );
+
+                let body: any = null;
+
+                if (action.state) {
+                    body = (await action.actor.pollComitNodeUntil(
+                        swapLocations[action.actor.name],
+                        body => action.state(body.state)
+                    )) as HalResource;
+                }
+
+                return test.callback(body);
             });
         }
     }
