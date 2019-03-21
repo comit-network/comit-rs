@@ -33,7 +33,7 @@ fn fund_action(request: &Request, response: &Response) -> bitcoin::SendToAddress
     }
 }
 
-fn _refund_action(
+fn refund_action(
     request: &Request,
     response: &Response,
     beta_htlc_location: OutPoint,
@@ -112,6 +112,12 @@ impl Actions for bob::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
             (Funded { .. }, NotDeployed, _) => {
                 vec![bob::ActionKind::Fund(fund_action(&request, &response))]
             }
+            (_, Funded { htlc_location, .. }, _) => vec![bob::ActionKind::Refund(refund_action(
+                &request,
+                &response,
+                *htlc_location,
+                &*self.secret_source,
+            ))],
             _ => vec![],
         }
     }

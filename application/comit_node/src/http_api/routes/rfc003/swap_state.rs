@@ -56,7 +56,6 @@ pub enum HtlcState {
     Deployed,
     Funded,
     Redeemed,
-    #[allow(dead_code)]
     Refunded,
 }
 

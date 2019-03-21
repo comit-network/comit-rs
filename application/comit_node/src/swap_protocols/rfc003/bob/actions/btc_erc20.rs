@@ -45,7 +45,7 @@ pub fn fund_action(
     }
 }
 
-pub fn _refund_action(
+pub fn refund_action(
     request: &Request,
     beta_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
@@ -127,12 +127,18 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
                     secret,
                 ))]
             }
+
             (Funded { .. }, NotDeployed, _) => {
                 vec![bob::ActionKind::Deploy(deploy_action(&request, &response))]
             }
+
             (Funded { .. }, Deployed { htlc_location, .. }, _) => vec![bob::ActionKind::Fund(
                 fund_action(&request, &response, *htlc_location),
             )],
+            (_, Funded { htlc_location, .. }, _) => vec![bob::ActionKind::Refund(refund_action(
+                &request,
+                *htlc_location,
+            ))],
             _ => vec![],
         }
     }

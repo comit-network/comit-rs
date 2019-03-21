@@ -26,7 +26,7 @@ fn fund_action(request: &Request, response: &Response) -> ethereum::ContractDepl
     HtlcParams::new_beta_params(request, response).into()
 }
 
-fn _refund_action(
+fn refund_action(
     request: &Request,
     beta_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
@@ -111,6 +111,10 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
             (Funded { .. }, NotDeployed, _) => {
                 vec![bob::ActionKind::Fund(fund_action(&request, &response))]
             }
+            (_, Funded { htlc_location, .. }, _) => vec![bob::ActionKind::Refund(refund_action(
+                &request,
+                *htlc_location,
+            ))],
             _ => vec![],
         }
     }
