@@ -5,7 +5,7 @@ import { Actor } from "../../../lib/actor";
 import { Action, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, AfterTest, createTests } from "../../test_creator";
+import { createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
 const should = chai.should();
@@ -73,33 +73,35 @@ declare var global: HarnessGlobal;
         peer: bobComitNodeListen,
     };
 
-    const actions: ActionTrigger[] = [
-        new ActionTrigger({
+    const actions = [
+        {
             actor: bob,
             action: Action.Accept,
             payload: {
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
-                alpha_ledger_redeem_identity: null,
             },
-        }),
-        new ActionTrigger({
+        },
+        {
             actor: alice,
             action: Action.Fund,
-        }),
-        new ActionTrigger({
+        },
+        {
             actor: bob,
             action: Action.Fund,
-        }),
-        new ActionTrigger({
+        },
+        {
             actor: alice,
             action: Action.Redeem,
-            afterTest: new AfterTest(
-                "[alice] Should have received the beta asset after the redeem",
-                async function(swapLocations: { [key: string]: string }) {
-                    let body = (await alice.pollComitNodeUntil(
+            afterTest: {
+                description:
+                    "[alice] Should have received the beta asset after the redeem",
+                callback: async function(swapLocations: {
+                    [key: string]: string;
+                }) {
+                    await alice.pollComitNodeUntil(
                         swapLocations["alice"],
                         body => body.state.beta_ledger.status === "Redeemed"
-                    )) as SwapResponse;
+                    );
 
                     const aliceEthBalanceAfter = await ethereum.ethBalance(
                         aliceFinalAddress
@@ -110,16 +112,19 @@ declare var global: HarnessGlobal;
                     aliceEthBalanceAfter
                         .eq(aliceEthBalanceExpected)
                         .should.be.equal(true);
-                }
-            ),
-        }),
-        new ActionTrigger({
+                },
+            },
+        },
+        {
             actor: bob,
             action: Action.Redeem,
             parameters: "address=" + bobFinalAddress + "&fee_per_byte=20",
-            afterTest: new AfterTest(
-                "[bob] Should have received the alpha asset after the redeem",
-                async function(swapLocations: { [key: string]: string }) {
+            afterTest: {
+                description:
+                    "[bob] Should have received the alpha asset after the redeem",
+                callback: async function(swapLocations: {
+                    [key: string]: string;
+                }) {
                     let body = (await bob.pollComitNodeUntil(
                         swapLocations["bob"],
                         body => body.state.alpha_ledger.status === "Redeemed"
@@ -134,9 +139,9 @@ declare var global: HarnessGlobal;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                10000
-            ),
-        }),
+                timeout: 10000,
+            },
+        },
     ];
 
     describe("RFC003: Bitcoin for Ether", async () => {

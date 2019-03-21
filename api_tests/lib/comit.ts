@@ -3,8 +3,8 @@
 import { BtsieveForComitNodeConfig } from "./actor";
 
 export interface AcceptPayload {
-    beta_ledger_refund_identity: string;
-    alpha_ledger_redeem_identity: string;
+    beta_ledger_refund_identity?: string;
+    alpha_ledger_redeem_identity?: string;
 }
 
 export interface SwapResponse extends HalResource {

@@ -12,7 +12,7 @@ import { Actor } from "../lib/actor";
 
 const should = chai.should();
 
-export class AfterTest {
+interface AfterTest {
     /**
      * To be triggered once an action is executed
      *
@@ -25,16 +25,10 @@ export class AfterTest {
      */
     description: string;
     callback: any;
-    timeout: number;
-
-    constructor(description: string, callback: any, timeout?: number) {
-        this.description = description;
-        this.callback = callback;
-        this.timeout = timeout || 10000;
-    }
+    timeout?: number;
 }
 
-export class ActionTrigger {
+interface ActionTrigger {
     /**
      * Triggers an action and do the afterTest
      *
@@ -53,39 +47,6 @@ export class ActionTrigger {
     parameters?: string;
     timeout?: number;
     afterTest?: AfterTest;
-
-    constructor({
-        actor,
-        action,
-        timeout,
-        payload,
-        parameters,
-        afterTest,
-    }: ActionTrigger) {
-        this.actor = actor;
-        this.action = action;
-        this.timeout = timeout;
-        switch (getMethod(action)) {
-            case Method.Post: {
-                if (payload) {
-                    this.payload = payload;
-                }
-                break;
-            }
-            case Method.Get:
-                {
-                    if (parameters) {
-                        this.parameters = parameters;
-                    }
-                }
-                break;
-            default:
-                break;
-        }
-        if (afterTest) {
-            this.afterTest = afterTest;
-        }
-    }
 }
 
 async function getAction(
@@ -194,7 +155,7 @@ export function createTests(
                 action.action +
                 " action",
             async function() {
-                this.timeout(action.timeout);
+                this.timeout(action.timeout || 10000);
                 [actionHref, actionPayload] = await getAction(
                     action.actor,
                     swapLocations[action.actor.name],
