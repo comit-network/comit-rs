@@ -118,7 +118,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: Action.Redeem,
-            parameters: "address=" + bobFinalAddress + "&fee_per_byte=20",
+            uriQuery: { address: bobFinalAddress, fee_per_byte: 20 },
             afterTest: {
                 description:
                     "[bob] Should have received the alpha asset after the redeem",

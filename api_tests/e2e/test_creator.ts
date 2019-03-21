@@ -9,6 +9,7 @@ import {
 } from "../lib/comit";
 import * as chai from "chai";
 import { Actor } from "../lib/actor";
+import * as URI from "urijs";
 
 const should = chai.should();
 
@@ -44,7 +45,7 @@ interface ActionTrigger {
     actor: Actor;
     action: Action;
     payload?: AcceptPayload;
-    parameters?: string;
+    uriQuery?: object;
     timeout?: number;
     afterTest?: AfterTest;
 }
@@ -64,8 +65,10 @@ async function getAction(
     let href: string = body._links[actionTrigger.action].href;
     href.should.not.be.empty;
 
-    if (actionTrigger.parameters) {
-        href = href + "?" + actionTrigger.parameters;
+    if (actionTrigger.uriQuery) {
+        let hrefUri = new URI(href);
+        hrefUri.addQuery(actionTrigger.uriQuery);
+        href = hrefUri.toString();
     }
 
     if (getMethod(actionTrigger.action) === Method.Get) {
