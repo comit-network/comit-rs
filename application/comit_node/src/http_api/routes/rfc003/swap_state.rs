@@ -200,7 +200,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 fund_transaction,
                 refund_transaction,
             } => Self {
-                status: HtlcState::Redeemed,
+                status: HtlcState::Refunded,
                 htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
