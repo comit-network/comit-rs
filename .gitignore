@@ -11,6 +11,7 @@
 .idea/dictionaries
 .idea/httpRequests
 .idea/codeStyles
+.idea/misc.xml
 
 # Sensitive or high-churn files:
 .idea/**/dataSources/

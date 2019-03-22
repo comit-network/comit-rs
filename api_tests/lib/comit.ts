@@ -2,9 +2,9 @@
 
 import { BtsieveForComitNodeConfig } from "./actor";
 
-export interface AcceptPayload {
-    beta_ledger_refund_identity: string;
-    alpha_ledger_redeem_identity: string;
+export interface AcceptRequestBody {
+    beta_ledger_refund_identity?: string;
+    alpha_ledger_redeem_identity?: string;
 }
 
 export interface SwapResponse extends HalResource {
@@ -38,6 +38,62 @@ export interface Swap extends HalResource {
     parameters: any;
     protocol: string;
     status: string;
+}
+
+export interface Asset {
+    name: string;
+    quantity: string;
+    token_contract?: string;
+}
+
+export interface Ledger {
+    name: string;
+    network: string;
+}
+
+export interface SwapRequest {
+    alpha_ledger: Ledger;
+    beta_ledger: Ledger;
+    alpha_asset: Asset;
+    beta_asset: Asset;
+    beta_ledger_redeem_identity?: string;
+    alpha_ledger_refund_identity?: string;
+    alpha_expiry: number;
+    beta_expiry: number;
+    peer: string;
+}
+
+export enum Method {
+    Get,
+    Post,
+}
+
+export enum ActionKind {
+    Accept = "accept",
+    Decline = "decline",
+    Deploy = "deploy",
+    Fund = "fund",
+    Redeem = "redeem",
+    Refund = "refund",
+}
+
+export function getMethod(action: ActionKind): Method {
+    switch (action) {
+        case ActionKind.Accept:
+            return Method.Post;
+        case ActionKind.Decline:
+            return Method.Post;
+        case ActionKind.Deploy:
+            return Method.Get;
+        case ActionKind.Fund:
+            return Method.Get;
+        case ActionKind.Redeem:
+            return Method.Get;
+        case ActionKind.Refund:
+            return Method.Get;
+        default:
+            throw new Error("Method undefined for action " + action);
+    }
 }
 
 //**** Config files ****//

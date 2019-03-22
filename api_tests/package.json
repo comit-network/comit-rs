@@ -30,6 +30,7 @@
         "toml": "^2.3.3",
         "typedarray-to-buffer": "^3.1.5",
         "typescript": "^3.3.3333",
+        "urijs": "^1.19.1",
         "web3": "^1.0.0-beta.48"
     },
     "devDependencies": {
@@ -41,6 +42,7 @@
         "@types/mocha": "^5.2.6",
         "@types/node": "^11.11.0",
         "@types/scrypt": "^6.0.0",
+        "@types/urijs": "^1.15.38",
         "chai-bignumber": "^2.0.2",
         "chai-string": "^1.5.0",
         "ts-node": "^8.0.3"

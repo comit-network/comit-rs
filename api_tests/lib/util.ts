@@ -15,7 +15,7 @@ export async function sleep(time: number) {
     });
 }
 
-// Should go away with consolidation #767
+/// This is needed to use the global variable in TypeScript
 import Global = NodeJS.Global;
 
 export interface HarnessGlobal extends Global {

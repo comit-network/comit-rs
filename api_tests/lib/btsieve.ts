@@ -38,7 +38,7 @@ export class Btsieve {
         return "http://" + this.host + ":" + this.port;
     }
 
-    poll_until_matches(query_url: string) {
+    pollUntilMatches(query_url: string) {
         return new Promise((final_res, rej) => {
             chai.request(query_url)
                 .get("")
@@ -50,10 +50,11 @@ export class Btsieve {
                     if (res.body.matches.length !== 0) {
                         final_res(res.body);
                     } else {
-                        setTimeout(() => {
-                            this.poll_until_matches(query_url).then(result => {
-                                final_res(result);
-                            });
+                        setTimeout(async () => {
+                            const result = await this.pollUntilMatches(
+                                query_url
+                            );
+                            final_res(result);
                         }, 200);
                     }
                 });

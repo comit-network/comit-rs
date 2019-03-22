@@ -2,10 +2,10 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { AcceptPayload, Action, SwapResponse } from "../../../lib/comit";
-import { HarnessGlobal } from "../../../lib/util";
+import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { BN, toBN, toWei } from "web3-utils";
-
+import { HarnessGlobal } from "../../../lib/util";
+import { createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
 const should = chai.should();
@@ -13,260 +13,129 @@ chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
 
-const bob_initial_eth = "0.1";
-const alice_initial_eth = "11";
+(async function() {
+    const bobInitialEth = "0.1";
+    const aliceInitialEth = "11";
 
-const alice = new Actor("alice", global.config, global.test_root, {
-    ethConfig: global.ledgers_config.ethereum,
-    btcConfig: global.ledgers_config.bitcoin,
-});
-const bob = new Actor("bob", global.config, global.test_root, {
-    ethConfig: global.ledgers_config.ethereum,
-    btcConfig: global.ledgers_config.bitcoin,
-});
-
-const alice_final_address =
-    "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
-const bob_final_address = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
-const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
-
-const alpha_asset_quantity = toBN(toWei("10", "ether"));
-const beta_asset_quantity = 100000000;
-const beta_max_fee = 5000; // Max 5000 satoshis fee
-
-const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
-
-describe("RFC003: Ether for Bitcoin", () => {
-    before(async function() {
-        this.timeout(5000);
-        await bitcoin.ensureSegwit();
-        await alice.wallet.eth().fund(alice_initial_eth);
-        await alice.wallet.btc().fund(0.1);
-        await bob.wallet.eth().fund(bob_initial_eth);
-        await bob.wallet.btc().fund(10);
-        await bitcoin.generate();
+    const alice = new Actor("alice", global.config, global.test_root, {
+        ethConfig: global.ledgers_config.ethereum,
+        btcConfig: global.ledgers_config.bitcoin,
+    });
+    const bob = new Actor("bob", global.config, global.test_root, {
+        ethConfig: global.ledgers_config.ethereum,
+        btcConfig: global.ledgers_config.bitcoin,
     });
 
-    let swap_location: string;
-    let alice_swap_href: string;
+    const aliceFinalAddress =
+        "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
+    const bobFinalAddress = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
+    const bobComitNodeAddress = bob.comitNodeConfig.comit.comit_listen;
 
-    it("[Alice] Should be able to make first swap request via HTTP api", async () => {
-        await chai
-            .request(alice.comit_node_url())
-            .post("/swaps/rfc003")
-            .send({
-                alpha_ledger: {
-                    name: "Ethereum",
-                    network: "regtest",
+    const alphaAssetQuantity = toBN(toWei("10", "ether"));
+    const betaAssetQuantity = 100000000;
+    const betaMaxFee = 5000; // Max 5000 satoshis fee
+
+    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
+    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+
+    const initialUrl = "/swaps/rfc003";
+    const listUrl = "/swaps";
+
+    await bitcoin.ensureSegwit();
+    await alice.wallet.eth().fund(aliceInitialEth);
+    await alice.wallet.btc().fund(0.1);
+    await bob.wallet.eth().fund(bobInitialEth);
+    await bob.wallet.btc().fund(10);
+    await bitcoin.generate();
+    let bobEthBalanceBefore: BN = await ethereum.ethBalance(bobFinalAddress);
+
+    let swapRequest: SwapRequest = {
+        alpha_ledger: {
+            name: "Ethereum",
+            network: "regtest",
+        },
+        beta_ledger: {
+            name: "Bitcoin",
+            network: "regtest",
+        },
+        alpha_asset: {
+            name: "Ether",
+            quantity: alphaAssetQuantity.toString(),
+        },
+        beta_asset: {
+            name: "Bitcoin",
+            quantity: betaAssetQuantity.toString(),
+        },
+        alpha_ledger_refund_identity: alice.wallet.eth().address(),
+        alpha_expiry: alphaExpiry,
+        beta_expiry: betaExpiry,
+        peer: bobComitNodeAddress,
+    };
+
+    const actions = [
+        {
+            actor: bob,
+            action: ActionKind.Accept,
+            requestBody: {
+                alpha_ledger_redeem_identity: bobFinalAddress,
+            },
+            state: (state: any) => state.communication.status === "ACCEPTED",
+        },
+        {
+            actor: alice,
+            action: ActionKind.Fund,
+            state: (state: any) => state.alpha_ledger.status === "Funded",
+        },
+        {
+            actor: bob,
+            action: ActionKind.Fund,
+            state: (state: any) => state.beta_ledger.status === "Funded",
+        },
+        {
+            actor: alice,
+            action: ActionKind.Redeem,
+            uriQuery: { address: aliceFinalAddress, fee_per_byte: 20 },
+            state: (state: any) => state.beta_ledger.status === "Redeemed",
+            test: {
+                description:
+                    "[alice] Should have received the beta asset after the redeem",
+                callback: async (body: any) => {
+                    let redeemTxId = body.state.beta_ledger.redeem_tx;
+
+                    let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
+                        redeemTxId,
+                        aliceFinalAddress
+                    );
+                    const satoshiExpected = betaAssetQuantity - betaMaxFee;
+
+                    satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                beta_ledger: {
-                    name: "Bitcoin",
-                    network: "regtest",
+                timeout: 10000,
+            },
+        },
+        {
+            actor: bob,
+            action: ActionKind.Redeem,
+            state: (state: any) => state.alpha_ledger.status === "Redeemed",
+            test: {
+                description:
+                    "[bob] Should have received the alpha asset after the redeem",
+                callback: async () => {
+                    let ethBalanceAfter = await ethereum.ethBalance(
+                        bobFinalAddress
+                    );
+
+                    let ethBalanceExpected = bobEthBalanceBefore.add(
+                        alphaAssetQuantity
+                    );
+                    ethBalanceAfter.eq(ethBalanceExpected).should.equal(true);
                 },
-                alpha_asset: {
-                    name: "Ether",
-                    quantity: alpha_asset_quantity.toString(),
-                },
-                beta_asset: {
-                    name: "Bitcoin",
-                    quantity: beta_asset_quantity.toString(),
-                },
-                alpha_ledger_refund_identity: alice.wallet.eth().address(),
-                alpha_expiry: alpha_expiry,
-                beta_expiry: beta_expiry,
-                peer: bob_comit_node_address,
-            })
-            .then(res => {
-                res.should.have.status(201);
-                swap_location = res.header.location;
-                swap_location.should.be.a("string");
-                alice_swap_href = swap_location;
-            });
+            },
+        },
+    ];
+
+    describe("RFC003: Ether for Bitcoin", () => {
+        createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
-
-    it("[Alice] Should be in IN_PROGRESS and SENT after sending the swap request to Bob", async function() {
-        this.timeout(10000);
-        await alice.poll_comit_node_until(
-            alice_swap_href,
-            body =>
-                body.status === "IN_PROGRESS" &&
-                body.state.communication.status === "SENT"
-        );
-    });
-
-    let bob_swap_href: string;
-
-    it("[Bob] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-        let body = (await bob.poll_comit_node_until(
-            "/swaps",
-            body => body._embedded.swaps.length > 0
-        )) as SwapResponse;
-
-        let swap_embedded = body._embedded.swaps[0];
-        swap_embedded.protocol.should.equal("rfc003");
-        swap_embedded.status.should.equal("IN_PROGRESS");
-        let swap_link = swap_embedded._links;
-        swap_link.should.be.a("object");
-        bob_swap_href = swap_link.self.href;
-        bob_swap_href.should.be.a("string");
-    });
-
-    let bob_accept_href: string;
-
-    it("[Bob] Can get the accept action after Alice sends the swap request", async function() {
-        this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
-            bob_swap_href,
-            body => body._links.accept && body._links.decline
-        )) as SwapResponse;
-        bob_accept_href = body._links.accept.href;
-    });
-
-    it("[Bob] Can execute the accept action", async () => {
-        let bob_response: AcceptPayload = {
-            beta_ledger_refund_identity: null,
-            alpha_ledger_redeem_identity: bob_final_address,
-        };
-
-        let accept_res = await chai
-            .request(bob.comit_node_url())
-            .post(bob_accept_href)
-            .send(bob_response);
-
-        accept_res.should.have.status(200);
-    });
-
-    let alice_fund_action: Action;
-
-    it("[Alice] Can get the fund action after Bob accepts", async function() {
-        this.timeout(10000);
-        let body = (await alice.poll_comit_node_until(
-            alice_swap_href,
-            body => body._links.fund
-        )) as SwapResponse;
-        let alice_fund_href = body._links.fund.href;
-        let res = await chai
-            .request(alice.comit_node_url())
-            .get(alice_fund_href);
-        res.should.have.status(200);
-        alice_fund_action = res.body;
-    });
-
-    it("[Alice] Can execute the fund action", async () => {
-        alice_fund_action.payload.should.include.all.keys(
-            "data",
-            "amount",
-            "gas_limit",
-            "network"
-        );
-        await alice.do(alice_fund_action);
-    });
-
-    let bob_fund_action: Action;
-
-    it("[Bob] Can get the fund action after Alice funds", async function() {
-        this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
-            bob_swap_href,
-            body => body._links.fund
-        )) as SwapResponse;
-        let bob_fund_href = body._links.fund.href;
-        let res = await chai.request(bob.comit_node_url()).get(bob_fund_href);
-        res.should.have.status(200);
-        bob_fund_action = res.body;
-    });
-
-    it("[Bob] Can execute the fund action", async () => {
-        bob_fund_action.payload.should.include.all.keys(
-            "to",
-            "amount",
-            "network"
-        );
-        await bob.do(bob_fund_action);
-        await bitcoin.generate();
-    });
-
-    let alice_redeem_action: Action;
-
-    it("[Alice] Can get the redeem action after Bob funds", async function() {
-        this.timeout(10000);
-        let body = (await alice.poll_comit_node_until(
-            alice_swap_href,
-            body => body._links.redeem
-        )) as SwapResponse;
-        let alice_redeem_href = body._links.redeem.href;
-        let res = await chai
-            .request(alice.comit_node_url())
-            .get(
-                alice_redeem_href +
-                    "?address=" +
-                    alice_final_address +
-                    "&fee_per_byte=20"
-            );
-        res.should.have.status(200);
-        alice_redeem_action = res.body;
-    });
-
-    it("[Alice] Can execute the redeem action", async function() {
-        alice_redeem_action.payload.should.include.all.keys("hex", "network");
-        await alice.do(alice_redeem_action);
-        await bitcoin.generate();
-    });
-
-    it("[Alice] Should have received the beta asset after the redeem", async function() {
-        this.timeout(10000);
-        let body = (await alice.poll_comit_node_until(
-            alice_swap_href,
-            body => body.state.beta_ledger.status === "Redeemed"
-        )) as SwapResponse;
-        let alice_redeem_txid = body.state.beta_ledger.redeem_tx;
-
-        let alice_satoshi_received = await bitcoin.getFirstUtxoValueTransferredTo(
-            alice_redeem_txid,
-            alice_final_address
-        );
-        const alice_satoshi_expected = beta_asset_quantity - beta_max_fee;
-
-        alice_satoshi_received.should.be.at.least(alice_satoshi_expected);
-    });
-
-    let bob_redeem_action: Action;
-
-    it("[Bob] Can get the redeem action after Alice redeems", async function() {
-        this.timeout(10000);
-        let body = (await bob.poll_comit_node_until(
-            bob_swap_href,
-            body => body._links.redeem
-        )) as SwapResponse;
-        let bob_redeem_href = body._links.redeem.href;
-        let res = await chai.request(bob.comit_node_url()).get(bob_redeem_href);
-        res.should.have.status(200);
-        bob_redeem_action = res.body;
-    });
-
-    let bob_eth_balance_before: BN;
-
-    it("[Bob] Can execute the redeem action", async function() {
-        bob_redeem_action.payload.should.include.all.keys(
-            "contract_address",
-            "data",
-            "amount",
-            "gas_limit",
-            "network"
-        );
-        bob_eth_balance_before = await ethereum.ethBalance(bob_final_address);
-        await bob.do(bob_redeem_action);
-    });
-
-    it("[Bob] Should have received the alpha asset after the redeem", async function() {
-        let bob_eth_balance_after = await ethereum.ethBalance(
-            bob_final_address
-        );
-
-        let bob_eth_balance_expected = bob_eth_balance_before.add(
-            alpha_asset_quantity
-        );
-        bob_eth_balance_after.eq(bob_eth_balance_expected).should.equal(true);
-    });
-});
+    run();
+})();
