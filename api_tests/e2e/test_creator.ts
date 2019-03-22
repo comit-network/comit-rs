@@ -148,7 +148,6 @@ export async function createTests(
         let action = actions.shift();
         let actionHref: string = null;
         let actionDirective: Action = null;
-        let actionExecutionResult: any = null;
 
         it(
             "[" +
@@ -173,7 +172,7 @@ export async function createTests(
                 action.action +
                 " action",
             async function() {
-                actionExecutionResult = await executeAction(
+                await executeAction(
                     action.actor,
                     action,
                     actionHref,
@@ -185,7 +184,7 @@ export async function createTests(
         let body: any = null;
         if (action.state) {
             it(
-                "[" + action.actor.name + "] state is as expected",
+                "[" + action.actor.name + "] transitions to correct state",
                 async function() {
                     this.timeout(action.timeout || 10000);
                     body = (await action.actor.pollComitNodeUntil(
