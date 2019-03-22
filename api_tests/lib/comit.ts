@@ -18,7 +18,7 @@ export interface SwapResponse extends HalResource {
     status: string;
 }
 
-export interface ActionDirective {
+export interface Action {
     type: string;
     payload: any;
 }

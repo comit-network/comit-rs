@@ -1,7 +1,7 @@
 import {
     AcceptRequestBody,
     ActionKind,
-    ActionDirective,
+    Action,
     getMethod,
     HalResource,
     Method,
@@ -52,7 +52,7 @@ async function getAction(
     actor: Actor,
     location: string,
     actionTrigger: ActionTrigger
-): Promise<[string, ActionDirective]> {
+): Promise<[string, Action]> {
     location.should.not.be.empty;
 
     const body = (await actor.pollComitNodeUntil(
@@ -82,7 +82,7 @@ async function executeAction(
     actor: Actor,
     actionTrigger: ActionTrigger,
     actionHref?: string,
-    actionDirective?: ActionDirective
+    actionDirective?: Action
 ) {
     return (async function(method) {
         switch (method) {
@@ -147,7 +147,7 @@ export async function createTests(
     while (actions.length !== 0) {
         let action = actions.shift();
         let actionHref: string = null;
-        let actionDirective: ActionDirective = null;
+        let actionDirective: Action = null;
         let actionExecutionResult: any = null;
 
         it(

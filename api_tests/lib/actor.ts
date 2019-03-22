@@ -1,7 +1,7 @@
 import { WalletConfig, Wallet } from "./wallet";
 import * as chai from "chai";
 import {
-    ActionDirective,
+    Action,
     SwapResponse,
     ComitNodeConfig,
     MetaComitNodeConfig,
@@ -94,7 +94,7 @@ export class Actor {
         });
     }
 
-    do(action: ActionDirective) {
+    do(action: Action) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
