@@ -182,19 +182,19 @@ mod tests {
     fn can_deserialize_swap_request_body_with_port() {
         let body = r#"{
                 "alpha_ledger": {
-                    "name": "Bitcoin",
+                    "name": "bitcoin",
                     "network": "regtest"
                 },
                 "beta_ledger": {
-                    "name": "Ethereum",
+                    "name": "ethereum",
                     "network": "regtest"
                 },
                 "alpha_asset": {
-                    "name": "Bitcoin",
+                    "name": "bitcoin",
                     "quantity": "100000000"
                 },
                 "beta_asset": {
-                    "name": "Ether",
+                    "name": "ether",
                     "quantity": "10000000000000000000"
                 },
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
@@ -225,19 +225,19 @@ mod tests {
     fn can_deserialize_swap_request_body_without_port() {
         let body = r#"{
                 "alpha_ledger": {
-                    "name": "Bitcoin",
+                    "name": "bitcoin",
                     "network": "regtest"
                 },
                 "beta_ledger": {
-                    "name": "Ethereum",
+                    "name": "ethereum",
                     "network": "regtest"
                 },
                 "alpha_asset": {
-                    "name": "Bitcoin",
+                    "name": "bitcoin",
                     "quantity": "100000000"
                 },
                 "beta_asset": {
-                    "name": "Ether",
+                    "name": "ether",
                     "quantity": "10000000000000000000"
                 },
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",

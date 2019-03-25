@@ -11,17 +11,17 @@ chai.use(chaiHttp);
 const should = chai.should();
 declare var global: HarnessGlobal;
 
-const alpha_ledger_name = "Bitcoin";
+const alpha_ledger_name = "bitcoin";
 const alpha_ledger_network = "regtest";
 
-const beta_ledger_name = "Ethereum";
+const beta_ledger_name = "ethereum";
 const beta_ledger_network = "regtest";
 
-const alpha_asset_name = "Bitcoin";
+const alpha_asset_name = "bitcoin";
 const alpha_asset_reasonable_quantity = "100000000";
 const alpha_asset_stingy_quantity = "100";
 
-const beta_asset_name = "Ether";
+const beta_asset_name = "ether";
 const beta_asset_quantity = utils.toWei("10", "ether");
 
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -185,19 +185,19 @@ setTimeout(async function() {
                         _links: { self: { href: alice_reasonable_swap_href } },
                         parameters: {
                             alpha_asset: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 quantity: "100000000",
                             },
                             alpha_ledger: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 network: "regtest",
                             },
                             beta_asset: {
-                                name: "Ether",
+                                name: "ether",
                                 quantity: "10000000000000000000",
                             },
                             beta_ledger: {
-                                name: "Ethereum",
+                                name: "ethereum",
                                 network: "regtest",
                             },
                         },
@@ -209,19 +209,19 @@ setTimeout(async function() {
                         _links: { self: { href: alice_stingy_swap_href } },
                         parameters: {
                             alpha_asset: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 quantity: "100",
                             },
                             alpha_ledger: {
-                                name: "Bitcoin",
+                                name: "bitcoin",
                                 network: "regtest",
                             },
                             beta_asset: {
-                                name: "Ether",
+                                name: "ether",
                                 quantity: "10000000000000000000",
                             },
                             beta_ledger: {
-                                name: "Ethereum",
+                                name: "ethereum",
                                 network: "regtest",
                             },
                         },

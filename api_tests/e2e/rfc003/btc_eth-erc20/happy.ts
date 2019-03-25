@@ -61,19 +61,19 @@ declare var global: HarnessGlobal;
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
-            name: "Bitcoin",
+            name: "bitcoin",
             network: "regtest",
         },
         beta_ledger: {
-            name: "Ethereum",
+            name: "ethereum",
             network: "regtest",
         },
         alpha_asset: {
-            name: "Bitcoin",
+            name: "bitcoin",
             quantity: alphaAssetQuantity.toString(),
         },
         beta_asset: {
-            name: "ERC20",
+            name: "erc20",
             quantity: betaAssetQuantity.toString(),
             token_contract: tokenContractAddress,
         },

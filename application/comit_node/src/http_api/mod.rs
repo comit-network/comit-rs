@@ -37,7 +37,7 @@ pub struct Http<I>(pub I);
 
 impl_serialize_http!(Bitcoin { "network" => network });
 impl_from_http_ledger!(Bitcoin { network });
-impl_serialize_http!(BitcoinQuantity := "Bitcoin" { "quantity" });
+impl_serialize_http!(BitcoinQuantity := "bitcoin" { "quantity" });
 impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
 
 impl Serialize for Http<bitcoin_support::Transaction> {
@@ -60,13 +60,13 @@ impl Serialize for Http<bitcoin_support::PubkeyHash> {
 
 impl_serialize_http!(Ethereum { "network" => network });
 impl_from_http_ledger!(Ethereum { network });
-impl_serialize_http!(EtherQuantity := "Ether" { "quantity" });
-impl_serialize_http!(Erc20Token := "ERC20" { "quantity" => quantity, "token_contract" => token_contract });
+impl_serialize_http!(EtherQuantity := "ether" { "quantity" });
+impl_serialize_http!(Erc20Token := "erc20" { "quantity" => quantity, "token_contract" => token_contract });
 impl_from_http_quantity_asset!(EtherQuantity, Ether);
 
 impl FromHttpAsset for Erc20Token {
     fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
-        asset.is_asset("ERC20")?;
+        asset.is_asset("erc20")?;
 
         Ok(Erc20Token::new(
             asset.parameter("token_contract")?,
@@ -132,13 +132,13 @@ mod tests {
 
         assert_eq!(
             &bitcoin_serialized,
-            r#"{"name":"Bitcoin","quantity":"100000000"}"#
+            r#"{"name":"bitcoin","quantity":"100000000"}"#
         );
         assert_eq!(
             &ether_serialized,
-            r#"{"name":"Ether","quantity":"1000000000000000000"}"#
+            r#"{"name":"ether","quantity":"1000000000000000000"}"#
         );
-        assert_eq!(&pay_serialized, r#"{"name":"ERC20","quantity":"100000000000","token_contract":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"}"#);
+        assert_eq!(&pay_serialized, r#"{"name":"erc20","quantity":"100000000000","token_contract":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"}"#);
     }
 
     #[test]
@@ -154,11 +154,11 @@ mod tests {
 
         assert_eq!(
             &bitcoin_serialized,
-            r#"{"name":"Bitcoin","network":"regtest"}"#
+            r#"{"name":"bitcoin","network":"regtest"}"#
         );
         assert_eq!(
             &ethereum_serialized,
-            r#"{"name":"Ethereum","network":"regtest"}"#
+            r#"{"name":"ethereum","network":"regtest"}"#
         );
     }
 
