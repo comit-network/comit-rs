@@ -3,6 +3,7 @@ import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
+import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal, sleep } from "../../../lib/util";
 import { createTests } from "../../test_creator";
@@ -14,8 +15,13 @@ chai.use(chaiHttp);
 declare var global: HarnessGlobal;
 
 (async function() {
-    const bobInitialEth = "11";
-    const aliceInitialEth = "0.1";
+    const tobyWallet = new Wallet("toby", {
+        ethConfig: global.ledgers_config.ethereum,
+    });
+
+    const tobyInitialEth = "10";
+    const bobInitialEth = "5";
+    const bobInitialErc20 = toBN(toWei("10000", "ether"));
 
     const alice = new Actor("alice", global.config, global.test_root, {
         ethConfig: global.ledgers_config.ethereum,
@@ -26,13 +32,13 @@ declare var global: HarnessGlobal;
         btcConfig: global.ledgers_config.bitcoin,
     });
 
-    const aliceFinalAddress = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
+    const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bobFinalAddress =
         "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
-    const bobComitNodeListen = bob.comitNodeConfig.comit.comit_listen;
+    const bobComitNodeAddress = bob.comitNodeConfig.comit.comit_listen;
 
     const alphaAssetQuantity = 100000000;
-    const betaAssetQuantity = toBN(toWei("10", "ether"));
+    const betaAssetQuantity = toBN(toWei("5000", "ether"));
     const alphaMaxFee = 5000; // Max 5000 satoshis fee
 
     const alphaExpiry: number =
@@ -43,10 +49,16 @@ declare var global: HarnessGlobal;
     const listUrl = "/swaps";
 
     await bitcoin.ensureSegwit();
+    await tobyWallet.eth().fund(tobyInitialEth);
     await bob.wallet.eth().fund(bobInitialEth);
-    await alice.wallet.eth().fund(aliceInitialEth);
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
+    await alice.wallet.eth().fund("1");
+
+    let deployReceipt = await tobyWallet
+        .eth()
+        .deployErc20TokeContract(global.project_root);
+    let tokenContractAddress: string = deployReceipt.contractAddress;
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -62,14 +74,37 @@ declare var global: HarnessGlobal;
             quantity: alphaAssetQuantity.toString(),
         },
         beta_asset: {
-            name: "Ether",
+            name: "ERC20",
             quantity: betaAssetQuantity.toString(),
+            token_contract: tokenContractAddress,
         },
         beta_ledger_redeem_identity: aliceFinalAddress,
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
-        peer: bobComitNodeListen,
+        peer: bobComitNodeAddress,
     };
+
+    let bobWalletAddress = await bob.wallet.eth().address();
+
+    let mintReceipt = await ethereum.mintErc20Tokens(
+        tobyWallet.eth(),
+        tokenContractAddress,
+        bobWalletAddress,
+        bobInitialErc20
+    );
+    mintReceipt.status.should.equal(true);
+
+    let erc20Balance = await ethereum.erc20Balance(
+        bobWalletAddress,
+        tokenContractAddress
+    );
+
+    erc20Balance.eq(bobInitialErc20).should.equal(true);
+
+    let aliceErc20BalanceBefore: BN = await ethereum.erc20Balance(
+        aliceFinalAddress,
+        tokenContractAddress
+    );
 
     const actions = [
         {
@@ -87,19 +122,24 @@ declare var global: HarnessGlobal;
         },
         {
             actor: bob,
+            action: ActionKind.Deploy,
+            state: (state: any) => state.beta_ledger.status === "Deployed",
+        },
+        {
+            actor: bob,
             action: ActionKind.Fund,
             state: (state: any) => state.beta_ledger.status === "Funded",
             test: {
                 description:
                     "[bob] Should have less beta asset after the funding & Waiting for beta htlc to expire",
                 callback: async () => {
-                    const bobWeiBalanceAfter = await ethereum.ethBalance(
-                        bob.wallet.eth().address()
+                    let bobErc20BalanceAfter = await ethereum.erc20Balance(
+                        bob.wallet.eth().address(),
+                        tokenContractAddress
                     );
-                    const bobWeiBalanceInit = toWei(toBN(bobInitialEth));
 
-                    bobWeiBalanceAfter
-                        .lt(bobWeiBalanceInit)
+                    bobErc20BalanceAfter
+                        .lt(bobInitialErc20)
                         .should.be.equal(true);
 
                     while (Date.now() / 1000 < betaExpiry + 1) {
@@ -112,27 +152,25 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Refund,
-            state: (state: any) => {
-                return state.beta_ledger.status === "Refunded";
-            },
+            state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
                 description:
                     "[bob] Should have received the beta asset after the refund",
                 callback: async () => {
-                    const bobWeiBalanceAfter = await ethereum.ethBalance(
-                        bob.wallet.eth().address()
+                    let bobErc20BalanceAfter = await ethereum.erc20Balance(
+                        bob.wallet.eth().address(),
+                        tokenContractAddress
                     );
-                    const bobWeiBalanceInit = toWei(toBN(bobInitialEth));
 
-                    bobWeiBalanceAfter
-                        .eq(bobWeiBalanceInit)
+                    bobErc20BalanceAfter
+                        .eq(bobInitialErc20)
                         .should.be.equal(true);
                 },
             },
         },
     ];
 
-    describe("RFC003: Bitcoin for Ether - Ether (beta) refunded to Bob", async () => {
+    describe("RFC003: Bitcoin for ERC20 - ERC20 (beta) refunded to Bob", async () => {
         createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();

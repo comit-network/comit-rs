@@ -40,7 +40,7 @@ interface ActionTrigger {
      *
      */
     actor: Actor;
-    action: ActionKind;
+    action?: ActionKind;
     requestBody?: AcceptRequestBody;
     uriQuery?: object;
     timeout?: number;
@@ -49,13 +49,12 @@ interface ActionTrigger {
 }
 
 async function getAction(
-    actor: Actor,
     location: string,
     actionTrigger: ActionTrigger
 ): Promise<[string, Action]> {
     location.should.not.be.empty;
 
-    const body = (await actor.pollComitNodeUntil(
+    const body = (await actionTrigger.actor.pollComitNodeUntil(
         location,
         body => body._links[actionTrigger.action]
     )) as HalResource;
@@ -70,7 +69,9 @@ async function getAction(
     }
 
     if (getMethod(actionTrigger.action) === Method.Get) {
-        const res = await chai.request(actor.comit_node_url()).get(href);
+        const res = await chai
+            .request(actionTrigger.actor.comit_node_url())
+            .get(href);
         res.should.have.status(200);
         let payload = res.body;
         return [href, payload];
@@ -148,38 +149,38 @@ export async function createTests(
         let action = actions.shift();
         let actionHref: string = null;
         let actionDirective: Action = null;
+        if (action.action) {
+            it(
+                "[" +
+                    action.actor.name +
+                    "] Can get the " +
+                    action.action +
+                    " action",
+                async function() {
+                    this.timeout(action.timeout || 10000);
+                    [actionHref, actionDirective] = await getAction(
+                        swapLocations[action.actor.name],
+                        action
+                    );
+                }
+            );
 
-        it(
-            "[" +
-                action.actor.name +
-                "] Can get the " +
-                action.action +
-                " action",
-            async function() {
-                this.timeout(action.timeout || 10000);
-                [actionHref, actionDirective] = await getAction(
-                    action.actor,
-                    swapLocations[action.actor.name],
-                    action
-                );
-            }
-        );
-
-        it(
-            "[" +
-                action.actor.name +
-                "] Can execute the " +
-                action.action +
-                " action",
-            async function() {
-                await executeAction(
-                    action.actor,
-                    action,
-                    actionHref,
-                    actionDirective
-                );
-            }
-        );
+            it(
+                "[" +
+                    action.actor.name +
+                    "] Can execute the " +
+                    action.action +
+                    " action",
+                async function() {
+                    await executeAction(
+                        action.actor,
+                        action,
+                        actionHref,
+                        actionDirective
+                    );
+                }
+            );
+        }
 
         let body: any = null;
         if (action.state) {
