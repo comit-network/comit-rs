@@ -73,6 +73,16 @@ setTimeout(async function() {
             res.body.title.should.equal("swap-not-supported");
         });
 
+        it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps request for GET", async () => {
+            let res = await chai
+                .request(alice.comit_node_url())
+                .options("/swaps")
+                .set("Origin", "http://localhost:8080")
+                .set("Access-Control-Request-Headers", "content-type")
+                .set("Access-Control-Request-Method", "GET");
+            res.should.have.status(403);
+        });
+
         it("Returns 200 OK for preflight OPTIONS /swaps request for GET", async () => {
             let res = await chai
                 .request(alice.comit_node_url())
@@ -81,6 +91,16 @@ setTimeout(async function() {
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "GET");
             res.should.have.status(200);
+        });
+
+        it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps/rfc003 request for POST", async () => {
+            let res = await chai
+                .request(alice.comit_node_url())
+                .options("/swaps/rfc003")
+                .set("Origin", "http://localhost:8080")
+                .set("Access-Control-Request-Headers", "content-type")
+                .set("Access-Control-Request-Method", "POST");
+            res.should.have.status(403);
         });
 
         it("Returns 200 OK for preflight OPTIONS /swaps/rfc003 request for POST", async () => {
