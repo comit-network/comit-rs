@@ -41,7 +41,7 @@ fn fund_action(
     }
 }
 
-fn _refund_action(
+fn refund_action(
     request: &Request,
     alpha_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
@@ -100,6 +100,25 @@ impl Actions for alice::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
 
         use self::LedgerState::*;
         match (alpha_state, beta_state) {
+            (
+                Funded {
+                    htlc_location: alpha_htlc_location,
+                    ..
+                },
+                Funded {
+                    htlc_location: beta_htlc_location,
+                    ..
+                },
+            ) => vec![
+                alice::ActionKind::Redeem(redeem_action(
+                    &request,
+                    &response,
+                    *beta_htlc_location,
+                    self.secret_source.as_ref(),
+                    self.secret_source.secret(),
+                )),
+                alice::ActionKind::Refund(refund_action(&request, *alpha_htlc_location)),
+            ],
             (_, Funded { htlc_location, .. }) => vec![alice::ActionKind::Redeem(redeem_action(
                 &request,
                 &response,
@@ -112,6 +131,10 @@ impl Actions for alice::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
             )],
             (NotDeployed, NotDeployed) => vec![alice::ActionKind::Deploy(deploy_action(
                 &request, &response,
+            ))],
+            (Funded { htlc_location, .. }, _) => vec![alice::ActionKind::Refund(refund_action(
+                &request,
+                *htlc_location,
             ))],
             _ => vec![],
         }
