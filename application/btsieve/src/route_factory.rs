@@ -3,7 +3,7 @@ use crate::{
     query_result_repository::{QueryResult, QueryResultRepository},
     routes, web3,
 };
-use ethereum_types::H256;
+use ethereum_support::H256;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use url::Url;

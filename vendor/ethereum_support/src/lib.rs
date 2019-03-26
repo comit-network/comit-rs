@@ -41,3 +41,13 @@ pub struct TransactionAndReceipt {
     pub transaction: Transaction,
     pub receipt: TransactionReceipt,
 }
+
+/// Return `s` without the `0x` at the beginning of it, if any.
+// Taken from https://docs.rs/fixed-hash/0.2.2/fixed_hash/
+pub fn clean_0x(s: &str) -> &str {
+    if s.starts_with("0x") {
+        &s[2..]
+    } else {
+        s
+    }
+}
