@@ -77,7 +77,7 @@ declare var global: HarnessGlobal;
             name: "bitcoin",
             quantity: betaAssetQuantity.toString(),
         },
-        alpha_ledger_refund_identity: bobFinalAddress,
+        alpha_ledger_refund_identity: alice.wallet.eth().address(),
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
         peer: bobComitNodeAddress,
