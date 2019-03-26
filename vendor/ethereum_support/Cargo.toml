@@ -8,7 +8,7 @@ edition = "2018"
 bigdecimal = "0.0.15"
 byteorder = "1.2"
 lazy_static = "1"
-num = "0.1"
+num = "0.2"
 regex = "1.0"
 rlp = "0.2"
 secp256k1_support = { path = "../secp256k1_support" }
