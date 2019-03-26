@@ -3,7 +3,7 @@ use crate::{
     query_result_repository::{QueryResult, QueryResultRepository},
     route_factory::{QueryParams, ToHttpPayload},
 };
-use http_api_problem::{HttpApiProblem, HttpStatusCode};
+use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -42,11 +42,17 @@ impl From<Error> for HttpApiProblem {
     fn from(e: Error) -> Self {
         use self::Error::*;
         match e {
-            QuerySave => HttpApiProblem::with_title_and_type_from_status(500)
-                .set_detail("Failed to create new query"),
-            TransformToPayload => HttpApiProblem::with_title_and_type_from_status(500),
-            QueryNotFound => HttpApiProblem::with_title_and_type_from_status(404)
-                .set_detail("The requested query does not exist"),
+            QuerySave => HttpApiProblem::with_title_and_type_from_status(
+                HttpStatusCode::INTERNAL_SERVER_ERROR,
+            )
+            .set_detail("Failed to create new query"),
+            TransformToPayload => HttpApiProblem::with_title_and_type_from_status(
+                HttpStatusCode::INTERNAL_SERVER_ERROR,
+            ),
+            QueryNotFound => {
+                HttpApiProblem::with_title_and_type_from_status(HttpStatusCode::NOT_FOUND)
+                    .set_detail("The requested query does not exist")
+            }
         }
     }
 }
@@ -56,11 +62,11 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
         let code = err
             .http_api_problem
             .status
-            .unwrap_or(HttpStatusCode::InternalServerError);
+            .unwrap_or(HttpStatusCode::INTERNAL_SERVER_ERROR);
         let json = warp::reply::json(&err.http_api_problem);
         return Ok(warp::reply::with_status(
             json,
-            StatusCode::from_u16(code.to_u16()).unwrap(),
+            StatusCode::from_u16(code.as_u16()).unwrap(),
         ));
     }
     Err(rejection)

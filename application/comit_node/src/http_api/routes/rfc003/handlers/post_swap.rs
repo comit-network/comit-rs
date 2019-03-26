@@ -9,7 +9,7 @@ use crate::{
 };
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
-use http_api_problem::HttpApiProblem;
+use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use std::net::SocketAddr;
 
 pub fn handle_post_swap<A: AliceSpawner>(
@@ -44,8 +44,10 @@ pub fn handle_post_swap<A: AliceSpawner>(
                 serde_json::to_string(&body)
                     .expect("failed to serialize serde_json::Value as string ?!")
             );
-            return Err(HttpApiProblem::with_title_and_type_from_status(400)
-                .set_detail("The request body was malformed"));
+            return Err(HttpApiProblem::with_title_and_type_from_status(
+                HttpStatusCode::BAD_REQUEST,
+            )
+            .set_detail("The request body was malformed"));
         }
     };
 
