@@ -5,7 +5,6 @@ use crate::swap_protocols::{
         alice::{self, SwapCommunication},
         bitcoin,
         ethereum::{self, Erc20Htlc},
-        secret::Secret,
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Actions, LedgerState,
@@ -63,7 +62,6 @@ fn redeem_action(
     response: &Response,
     beta_htlc_location: OutPoint,
     secret_source: &dyn SecretSource,
-    secret: Secret,
 ) -> bitcoin::SpendOutput {
     let beta_asset = request.beta_asset;
     let htlc = bitcoin::Htlc::from(HtlcParams::new_beta_params(request, response));
@@ -73,7 +71,7 @@ fn redeem_action(
         output: PrimedInput::new(
             beta_htlc_location,
             beta_asset,
-            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
+            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret_source.secret()),
         ),
         network,
     }
@@ -122,7 +120,6 @@ impl Actions for alice::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
                 &response,
                 *htlc_location,
                 self.secret_source.as_ref(),
-                self.secret_source.secret(),
             )));
         }
         actions
