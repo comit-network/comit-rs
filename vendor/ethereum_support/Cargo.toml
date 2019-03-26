@@ -5,7 +5,7 @@ authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
-bigdecimal = "0.0.12"
+bigdecimal = "0.0.15"
 byteorder = "1.2"
 lazy_static = "1"
 num = "0.1"
