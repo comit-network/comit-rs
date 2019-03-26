@@ -40,7 +40,7 @@ setTimeout(async function() {
 
             let receipt = await tobyWallet
                 .eth()
-                .deployErc20TokeContract(global.project_root);
+                .deployErc20TokenContract(global.project_root);
             token_contract_address = receipt.contractAddress;
 
             await ethereum.mintErc20Tokens(

@@ -5,7 +5,7 @@ import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
-import { HarnessGlobal } from "../../../lib/util";
+import { HarnessGlobal, sleep } from "../../../lib/util";
 import { createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
@@ -32,8 +32,8 @@ declare var global: HarnessGlobal;
         btcConfig: global.ledgers_config.bitcoin,
     });
 
-    const aliceFinalAddress =
-        "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
+    const bobRefundAddress =
+        "bcrt1qc45uezve8vj8nds7ws0da8vfkpanqfxecem3xl7wcs3cdne0358q9zx9qg";
     const bobFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bobComitNodeAddress = bob.comitNodeConfig.comit.comit_listen;
     const alphaAssetQuantity = toBN(toWei("5000", "ether"));
@@ -41,8 +41,8 @@ declare var global: HarnessGlobal;
     const betaAssetQuantity = 100000000;
     const betaMaxFee = 5000; // Max 5000 satoshis fee
 
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alphaExpiry: number = Math.round(Date.now() / 1000) + 3; // Expires in 3 seconds
+    const betaExpiry: number = Math.round(Date.now() / 1000) + 1; // Expires in 1 seconds
 
     const initialUrl = "/swaps/rfc003";
     const listUrl = "/swaps";
@@ -61,49 +61,42 @@ declare var global: HarnessGlobal;
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
-            name: "ethereum",
+            name: "Ethereum",
             network: "regtest",
         },
         beta_ledger: {
-            name: "bitcoin",
+            name: "Bitcoin",
             network: "regtest",
         },
         alpha_asset: {
-            name: "erc20",
+            name: "ERC20",
             quantity: alphaAssetQuantity.toString(),
             token_contract: tokenContractAddress,
         },
         beta_asset: {
-            name: "bitcoin",
+            name: "Bitcoin",
             quantity: betaAssetQuantity.toString(),
         },
-        alpha_ledger_refund_identity: bobFinalAddress,
+        alpha_ledger_refund_identity: alice.wallet.eth().address(),
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
         peer: bobComitNodeAddress,
     };
 
-    let aliceWalletAddress = await alice.wallet.eth().address();
-
     let mintReceipt = await ethereum.mintErc20Tokens(
         tobyWallet.eth(),
         tokenContractAddress,
-        aliceWalletAddress,
+        alice.wallet.eth().address(),
         aliceInitialErc20
     );
     mintReceipt.status.should.equal(true);
 
     let erc20Balance = await ethereum.erc20Balance(
-        aliceWalletAddress,
+        alice.wallet.eth().address(),
         tokenContractAddress
     );
 
     erc20Balance.eq(aliceInitialErc20).should.equal(true);
-
-    let bobErc20BalanceBefore: BN = await ethereum.erc20Balance(
-        bobFinalAddress,
-        tokenContractAddress
-    );
 
     const actions = [
         {
@@ -124,61 +117,93 @@ declare var global: HarnessGlobal;
             actor: alice,
             action: ActionKind.Fund,
             state: (state: any) => state.alpha_ledger.status === "Funded",
+            test: {
+                description:
+                    "[alice] Should have less alpha asset after the funding",
+                callback: async () => {
+                    let erc20BalanceAfter = await ethereum.erc20Balance(
+                        alice.wallet.eth().address(),
+                        tokenContractAddress
+                    );
+                    erc20BalanceAfter
+                        .lt(aliceInitialErc20)
+                        .should.be.equal(true);
+                },
+            },
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: (state: any) => state.beta_ledger.status === "Funded",
+            state: (state: any) =>
+                state.alpha_ledger.status === "Funded" &&
+                state.beta_ledger.status === "Funded",
         },
         {
-            actor: alice,
-            action: ActionKind.Redeem,
-            uriQuery: { address: aliceFinalAddress, fee_per_byte: 20 },
-            state: (state: any) => state.beta_ledger.status === "Redeemed",
+            actor: bob,
+            test: {
+                description: "[bob] Is waiting for beta htlc to expire",
+                callback: async () => {
+                    while (Date.now() / 1000 < betaExpiry) {
+                        await sleep(200);
+                    }
+                },
+            },
+        },
+        {
+            actor: bob,
+            action: ActionKind.Refund,
+            uriQuery: { address: bobRefundAddress, fee_per_byte: 20 },
+            state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
                 description:
-                    "[alice] Should have received the beta asset after the redeem",
+                    "[bob] Should have received the beta asset after the refund",
                 callback: async (body: any) => {
-                    let redeemTxId = body.state.beta_ledger.redeem_tx;
+                    let refundTxId = body.state.beta_ledger.refund_tx;
 
                     let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
-                        redeemTxId,
-                        aliceFinalAddress
+                        refundTxId,
+                        bobRefundAddress
                     );
                     const satoshiExpected = betaAssetQuantity - betaMaxFee;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                timeout: 5000,
             },
         },
         {
-            actor: bob,
-            action: ActionKind.Redeem,
-            state: (state: any) => state.alpha_ledger.status === "Redeemed",
+            actor: alice,
+            test: {
+                description: "[alice] Is waiting for alpha htlc to expire",
+                callback: async () => {
+                    while (Date.now() / 1000 < alphaExpiry) {
+                        await sleep(200);
+                    }
+                },
+            },
+        },
+        {
+            actor: alice,
+            action: ActionKind.Refund,
+            state: (state: any) => state.alpha_ledger.status === "Refunded",
             test: {
                 description:
-                    "[bob] Should have received the alpha asset after the redeem",
+                    "[alice] Should have received the alpha asset after the refund",
                 callback: async () => {
                     let erc20BalanceAfter = await ethereum.erc20Balance(
-                        bobFinalAddress,
+                        alice.wallet.eth().address(),
                         tokenContractAddress
                     );
-
-                    let erc20BalanceExpected = bobErc20BalanceBefore.add(
-                        alphaAssetQuantity
-                    );
-
                     erc20BalanceAfter
-                        .eq(erc20BalanceExpected)
+                        .eq(aliceInitialErc20)
                         .should.be.equal(true);
                 },
                 timeout: 10000,
             },
+            timeout: 10000,
         },
     ];
 
-    describe("RFC003: ERC20 for Bitcoin", () => {
+    describe("RFC003: Ether for ERC20 - Both refunded", async () => {
         createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();

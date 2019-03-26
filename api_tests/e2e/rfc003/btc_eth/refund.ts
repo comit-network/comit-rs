@@ -92,7 +92,7 @@ declare var global: HarnessGlobal;
                 state.beta_ledger.status === "Funded",
             test: {
                 description:
-                    "[bob] Should have less beta asset after the funding & Waiting for beta htlc to expire",
+                    "[bob] Should have less beta asset after the funding",
                 callback: async () => {
                     const bobWeiBalanceAfter = await ethereum.ethBalance(
                         bob.wallet.eth().address()
@@ -102,12 +102,19 @@ declare var global: HarnessGlobal;
                     bobWeiBalanceAfter
                         .lt(bobWeiBalanceInit)
                         .should.be.equal(true);
-
+                },
+                timeout: 10000,
+            },
+        },
+        {
+            actor: bob,
+            test: {
+                description: "[bob] Is waiting for beta htlc to expire",
+                callback: async () => {
                     while (Date.now() / 1000 < betaExpiry) {
                         await sleep(200);
                     }
                 },
-                timeout: 10000,
             },
         },
         {
@@ -116,7 +123,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
                 description:
-                    "[bob] Should have received the beta asset after the refund & Waiting for alpha htlc to expire",
+                    "[bob] Should have received the beta asset after the refund",
                 callback: async () => {
                     const bobWeiBalanceAfter = await ethereum.ethBalance(
                         bob.wallet.eth().address()
@@ -126,7 +133,14 @@ declare var global: HarnessGlobal;
                     bobWeiBalanceAfter
                         .eq(bobWeiBalanceInit)
                         .should.be.equal(true);
-
+                },
+            },
+        },
+        {
+            actor: alice,
+            test: {
+                description: "[alice] Is waiting for alpha htlc to expire",
+                callback: async () => {
                     while (Date.now() / 1000 < alphaExpiry) {
                         await sleep(200);
                     }

@@ -57,7 +57,7 @@ declare var global: HarnessGlobal;
 
     let deployReceipt = await tobyWallet
         .eth()
-        .deployErc20TokeContract(global.project_root);
+        .deployErc20TokenContract(global.project_root);
     let tokenContractAddress: string = deployReceipt.contractAddress;
 
     let swapRequest: SwapRequest = {
@@ -131,7 +131,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.beta_ledger.status === "Funded",
             test: {
                 description:
-                    "[bob] Should have less beta asset after the funding & Waiting for beta htlc to expire",
+                    "[bob] Should have less beta asset after the funding",
                 callback: async () => {
                     let bobErc20BalanceAfter = await ethereum.erc20Balance(
                         bob.wallet.eth().address(),
@@ -141,12 +141,18 @@ declare var global: HarnessGlobal;
                     bobErc20BalanceAfter
                         .lt(bobInitialErc20)
                         .should.be.equal(true);
-
-                    while (Date.now() / 1000 < betaExpiry + 1) {
+                },
+            },
+        },
+        {
+            actor: bob,
+            test: {
+                description: "[bob] Is waiting for beta htlc to expire",
+                callback: async () => {
+                    while (Date.now() / 1000 < betaExpiry) {
                         await sleep(200);
                     }
                 },
-                timeout: 10000,
             },
         },
         {

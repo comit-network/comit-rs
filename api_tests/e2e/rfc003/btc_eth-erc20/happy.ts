@@ -56,7 +56,7 @@ declare var global: HarnessGlobal;
 
     let deployReceipt = await tobyWallet
         .eth()
-        .deployErc20TokeContract(global.project_root);
+        .deployErc20TokenContract(global.project_root);
     let tokenContractAddress: string = deployReceipt.contractAddress;
 
     let swapRequest: SwapRequest = {
