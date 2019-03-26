@@ -88,44 +88,25 @@ impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        match (alpha_state, beta_state) {
-            (
-                Funded {
-                    htlc_location: alpha_htlc_location,
-                    ..
-                },
-                Funded {
-                    htlc_location: beta_htlc_location,
-                    ..
-                },
-            ) => vec![
-                alice::ActionKind::Redeem(redeem_action(
-                    &request,
-                    *beta_htlc_location,
-                    self.secret_source.secret(),
-                )),
-                alice::ActionKind::Refund(refund_action(
-                    &request,
-                    &response,
-                    *alpha_htlc_location,
-                    &*self.secret_source,
-                )),
-            ],
-            (_, Funded { htlc_location, .. }) => vec![alice::ActionKind::Redeem(redeem_action(
-                &request,
-                *htlc_location,
-                self.secret_source.secret(),
-            ))],
-            (NotDeployed, NotDeployed) => {
-                vec![alice::ActionKind::Fund(fund_action(&request, &response))]
-            }
-            (Funded { htlc_location, .. }, _) => vec![alice::ActionKind::Refund(refund_action(
+
+        let mut actions = match alpha_state {
+            NotDeployed => vec![alice::ActionKind::Fund(fund_action(&request, &response))],
+            Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(refund_action(
                 &request,
                 &response,
                 *htlc_location,
                 &*self.secret_source,
             ))],
             _ => vec![],
+        };
+
+        if let Funded { htlc_location, .. } = beta_state {
+            actions.push(alice::ActionKind::Redeem(redeem_action(
+                &request,
+                *htlc_location,
+                self.secret_source.secret(),
+            )));
         }
+        actions
     }
 }

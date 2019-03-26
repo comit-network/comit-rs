@@ -99,44 +99,32 @@ impl Actions for alice::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        match (alpha_state, beta_state) {
-            (
-                Funded {
-                    htlc_location: alpha_htlc_location,
-                    ..
-                },
-                Funded {
-                    htlc_location: beta_htlc_location,
-                    ..
-                },
-            ) => vec![
-                alice::ActionKind::Redeem(redeem_action(
-                    &request,
-                    &response,
-                    *beta_htlc_location,
-                    self.secret_source.as_ref(),
-                    self.secret_source.secret(),
-                )),
-                alice::ActionKind::Refund(refund_action(&request, *alpha_htlc_location)),
-            ],
-            (_, Funded { htlc_location, .. }) => vec![alice::ActionKind::Redeem(redeem_action(
+
+        let mut actions = match alpha_state {
+            NotDeployed => vec![alice::ActionKind::Deploy(deploy_action(
+                &request, &response,
+            ))],
+            Deployed { htlc_location, .. } => vec![alice::ActionKind::Fund(fund_action(
+                &request,
+                &response,
+                *htlc_location,
+            ))],
+            Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(refund_action(
+                &request,
+                *htlc_location,
+            ))],
+            _ => vec![],
+        };
+
+        if let Funded { htlc_location, .. } = beta_state {
+            actions.push(alice::ActionKind::Redeem(redeem_action(
                 &request,
                 &response,
                 *htlc_location,
                 self.secret_source.as_ref(),
                 self.secret_source.secret(),
-            ))],
-            (Deployed { htlc_location, .. }, NotDeployed) => vec![alice::ActionKind::Fund(
-                fund_action(&request, &response, *htlc_location),
-            )],
-            (NotDeployed, NotDeployed) => vec![alice::ActionKind::Deploy(deploy_action(
-                &request, &response,
-            ))],
-            (Funded { htlc_location, .. }, _) => vec![alice::ActionKind::Refund(refund_action(
-                &request,
-                *htlc_location,
-            ))],
-            _ => vec![],
+            )));
         }
+        actions
     }
 }
