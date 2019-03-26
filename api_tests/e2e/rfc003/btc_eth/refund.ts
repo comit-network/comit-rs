@@ -175,7 +175,7 @@ declare var global: HarnessGlobal;
         },
     ];
 
-    describe("RFC003: Bitcoin for Ether - both refunded", async () => {
+    describe("RFC003: Bitcoin for Ether - Both refunded", async () => {
         createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();
