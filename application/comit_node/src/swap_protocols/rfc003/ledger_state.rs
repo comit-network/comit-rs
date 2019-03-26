@@ -1,7 +1,7 @@
 use crate::swap_protocols::rfc003::ledger::Ledger;
 
 #[derive(Clone, Debug, PartialEq, EnumDiscriminants)]
-#[strum_discriminants(name(HtlcState), derive(Debug, Serialize))]
+#[strum_discriminants(name(HtlcState), derive(Serialize))]
 pub enum LedgerState<L: Ledger> {
     NotDeployed,
     Deployed {
