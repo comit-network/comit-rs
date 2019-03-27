@@ -16,6 +16,7 @@ use btsieve::{
     RouteFactory,
 };
 use config::ConfigError;
+use directories;
 use ethereum_support::{
     web3::{
         self,
@@ -250,14 +251,21 @@ fn create_ethereum_routes(
 }
 
 fn load_settings() -> Result<Settings, ConfigError> {
-    let config_path = match var("BTSIEVE_CONFIG_PATH") {
-        Ok(value) => value,
-        Err(_) => "~/.config/btsieve".into(),
-    };
-    info!("Using settings located in {}", config_path);
-    let default_config = format!("{}/{}", config_path.trim(), "default");
-
-    Settings::create(default_config)
+    match directories::UserDirs::new() {
+        None => Err(config::ConfigError::Message(
+            "Unable to determine user's home directory".to_string(),
+        )),
+        Some(dirs) => {
+            let default_config = std::path::Path::join(dirs.home_dir(), ".config/btsieve");
+            let comit_config_path = var_or_default(
+                "BTSIEVE_CONFIG_PATH",
+                default_config.to_string_lossy().to_string(),
+            );
+            let default_config = format!("{}/{}", comit_config_path.trim(), "default");
+            let settings = Settings::create(default_config)?;
+            Ok(settings)
+        }
+    }
 }
 
 fn get_bitcoin_info(client: &BitcoinCoreClient) -> Result<BlockchainInfo, Error> {
@@ -291,4 +299,20 @@ fn get_ethereum_info(client: Arc<Web3<Http>>) -> Result<EthereumNetwork, Error> 
         });
     }
     Ok(network)
+}
+
+fn var_or_default(name: &str, default: String) -> String {
+    match var(name) {
+        Ok(value) => {
+            info!("Set {}={}", name, value);
+            value
+        }
+        Err(_) => {
+            eprintln!(
+                "{} is not set, falling back to default: '{}' ",
+                name, default
+            );
+            default
+        }
+    }
 }
