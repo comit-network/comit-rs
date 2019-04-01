@@ -5,8 +5,8 @@ mod eth_btc;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum ActionKind<Deploy, Fund, Redeem, Refund> {
-    Deploy(Deploy),
-    Fund(Fund),
-    Redeem(Redeem),
-    Refund(Refund),
+	Deploy(Deploy),
+	Fund(Fund),
+	Redeem(Redeem),
+	Refund(Refund),
 }

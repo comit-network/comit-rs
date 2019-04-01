@@ -21,8 +21,8 @@ mod routes;
 pub mod settings;
 
 pub use crate::{
-    in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
-    query_result_repository::*, route_factory::*, routes::*,
+	in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
+	query_result_repository::*, route_factory::*, routes::*,
 };
 pub use ethereum_support::web3;
 use std::{cmp::Ordering, sync::Arc};
@@ -35,13 +35,13 @@ pub struct QueryMatch(pub QueryId, pub String);
 type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
 
 impl From<u32> for QueryId {
-    fn from(item: u32) -> Self {
-        Self(item)
-    }
+	fn from(item: u32) -> Self {
+		Self(item)
+	}
 }
 
 impl PartialOrd for QueryMatch {
-    fn partial_cmp(&self, other: &QueryMatch) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
+	fn partial_cmp(&self, other: &QueryMatch) -> Option<Ordering> {
+		self.0.partial_cmp(&other.0)
+	}
 }

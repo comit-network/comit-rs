@@ -1,43 +1,43 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
 use bitcoin_support::{
-    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
+	Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
 use secp256k1_support::PublicKey;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {
-    pub network: Network,
+	pub network: Network,
 }
 
 impl Bitcoin {
-    pub fn new(network: Network) -> Self {
-        Bitcoin { network }
-    }
+	pub fn new(network: Network) -> Self {
+		Bitcoin { network }
+	}
 }
 
 impl Default for Bitcoin {
-    fn default() -> Self {
-        Bitcoin {
-            network: Network::Regtest,
-        }
-    }
+	fn default() -> Self {
+		Bitcoin {
+			network: Network::Regtest,
+		}
+	}
 }
 
 impl Ledger for Bitcoin {
-    type Quantity = BitcoinQuantity;
-    type TxId = TransactionId;
-    type Pubkey = PublicKey;
-    type Address = Address;
-    type Identity = PubkeyHash;
-    type Transaction = Transaction;
+	type Quantity = BitcoinQuantity;
+	type TxId = TransactionId;
+	type Pubkey = PublicKey;
+	type Address = Address;
+	type Identity = PubkeyHash;
+	type Transaction = Transaction;
 
-    fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
-        pubkeyhash.into_p2wpkh_address(self.network)
-    }
+	fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
+		pubkeyhash.into_p2wpkh_address(self.network)
+	}
 }
 
 impl From<Bitcoin> for LedgerKind {
-    fn from(bitcoin: Bitcoin) -> Self {
-        LedgerKind::Bitcoin(bitcoin)
-    }
+	fn from(bitcoin: Bitcoin) -> Self {
+		LedgerKind::Bitcoin(bitcoin)
+	}
 }

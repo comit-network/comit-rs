@@ -9,8 +9,8 @@ extern crate serde_derive;
 extern crate strum_macros;
 
 pub use crate::{
-    contract_address::*, erc20_quantity::*, erc20_token::*, ether_quantity::*, key::*, network::*,
-    u256_ext::*,
+	contract_address::*, erc20_quantity::*, erc20_token::*, ether_quantity::*, key::*, network::*,
+	u256_ext::*,
 };
 pub use extern_web3::{futures::Future, types::*};
 
@@ -23,21 +23,21 @@ mod network;
 mod u256_ext;
 
 pub mod web3 {
-    pub use extern_web3::{
-        api,
-        error::{Error, ErrorKind},
-        futures, types,
-    };
+	pub use extern_web3::{
+		api,
+		error::{Error, ErrorKind},
+		futures, types,
+	};
 
-    pub use extern_web3::Web3;
+	pub use extern_web3::Web3;
 
-    pub mod transports {
-        pub use extern_web3::transports::{EventLoopHandle, Http};
-    }
+	pub mod transports {
+		pub use extern_web3::transports::{EventLoopHandle, Http};
+	}
 }
 
 #[derive(Debug)]
 pub struct TransactionAndReceipt {
-    pub transaction: Transaction,
-    pub receipt: TransactionReceipt,
+	pub transaction: Transaction,
+	pub receipt: TransactionReceipt,
 }

@@ -5,65 +5,65 @@ use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
-    pub http_api: HttpApi,
-    pub bitcoin: Bitcoin,
-    pub ethereum: Ethereum,
+	pub http_api: HttpApi,
+	pub bitcoin: Bitcoin,
+	pub ethereum: Ethereum,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct HttpApi {
-    pub address_bind: IpAddr,
-    pub port_bind: u16,
-    #[serde(with = "serde::url")]
-    pub external_url: url::Url,
+	pub address_bind: IpAddr,
+	pub port_bind: u16,
+	#[serde(with = "serde::url")]
+	pub external_url: url::Url,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
-    pub zmq_endpoint: String,
-    #[serde(with = "serde::url")]
-    pub node_url: url::Url,
-    pub node_username: String,
-    pub node_password: String,
+	pub zmq_endpoint: String,
+	#[serde(with = "serde::url")]
+	pub node_url: url::Url,
+	pub node_username: String,
+	pub node_password: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Ethereum {
-    #[serde(with = "serde::url")]
-    pub node_url: url::Url,
-    #[serde(with = "serde::duration")]
-    pub poll_interval_secs: Duration,
+	#[serde(with = "serde::url")]
+	pub node_url: url::Url,
+	#[serde(with = "serde::duration")]
+	pub poll_interval_secs: Duration,
 }
 
 impl Settings {
-    pub fn create<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
-        let mut config = Config::new();
+	pub fn create<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
+		let mut config = Config::new();
 
-        let default_config_file = Path::new(&default_config);
+		let default_config_file = Path::new(&default_config);
 
-        // Start off by merging in the "default" configuration file
-        config.merge(File::from(default_config_file))?;
+		// Start off by merging in the "default" configuration file
+		config.merge(File::from(default_config_file))?;
 
-        // Add in a local configuration file
-        // This file shouldn't be checked in to git
-        config.merge(File::with_name("config/local").required(false))?;
+		// Add in a local configuration file
+		// This file shouldn't be checked in to git
+		config.merge(File::with_name("config/local").required(false))?;
 
-        // You can deserialize (and thus freeze) the entire configuration as
-        config.try_into()
-    }
+		// You can deserialize (and thus freeze) the entire configuration as
+		config.try_into()
+	}
 }
 
 #[cfg(test)]
 mod tests {
 
-    use super::*;
-    use spectral::prelude::*;
+	use super::*;
+	use spectral::prelude::*;
 
-    #[test]
-    fn can_read_default_config() {
-        let settings = Settings::create("./config/default.toml");
+	#[test]
+	fn can_read_default_config() {
+		let settings = Settings::create("./config/default.toml");
 
-        assert_that(&settings).is_ok();
-    }
+		assert_that(&settings).is_ok();
+	}
 
 }

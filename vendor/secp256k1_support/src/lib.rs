@@ -12,5 +12,5 @@ mod public_key;
 mod signature;
 
 lazy_static! {
-    pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
+	pub static ref SECP: Secp256k1<secp256k1::All> = Secp256k1::new();
 }

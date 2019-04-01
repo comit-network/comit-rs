@@ -7,5 +7,5 @@ pub mod peers;
 pub mod rfc003;
 
 pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
-    warp::reject::custom(HttpApiProblemStdError::from(problem))
+	warp::reject::custom(HttpApiProblemStdError::from(problem))
 }

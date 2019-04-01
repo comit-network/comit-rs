@@ -2,9 +2,9 @@ use crate::{btsieve, comit_client};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
-    SwapResponse(comit_client::RequestError),
-    Btsieve(btsieve::Error),
-    TimerError,
-    InsufficientFunding,
-    Internal(String),
+	SwapResponse(comit_client::RequestError),
+	Btsieve(btsieve::Error),
+	TimerError,
+	InsufficientFunding,
+	Internal(String),
 }

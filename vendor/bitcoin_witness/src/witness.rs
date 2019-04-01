@@ -3,11 +3,11 @@ use secp256k1_support::{KeyPair, PublicKey};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Witness {
-    Data(Vec<u8>),
-    Signature(KeyPair),
-    PublicKey(PublicKey),
-    Bool(bool),
-    PrevScript,
+	Data(Vec<u8>),
+	Signature(KeyPair),
+	PublicKey(PublicKey),
+	Bool(bool),
+	PrevScript,
 }
 
 /// In order to properly describe how to unlock an output you need
@@ -20,8 +20,8 @@ pub enum Witness {
 /// the locktime the transaction must use to pass CHECKLOCKTIMEVERIFY).
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnlockParameters {
-    pub witness: Vec<Witness>,
-    pub sequence: u32,
-    pub locktime: u32,
-    pub prev_script: Script,
+	pub witness: Vec<Witness>,
+	pub sequence: u32,
+	pub locktime: u32,
+	pub prev_script: Script,
 }

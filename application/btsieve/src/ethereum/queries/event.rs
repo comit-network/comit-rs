@@ -1,20 +1,20 @@
 use crate::{
-    ethereum::queries::{create_receipt_future, create_transaction_future, to_h256, PayloadKind},
-    query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, ToHttpPayload},
+	ethereum::queries::{create_receipt_future, create_transaction_future, to_h256, PayloadKind},
+	query_result_repository::QueryResult,
+	route_factory::{Error, QueryType, ToHttpPayload},
 };
 use ethbloom::Input;
 use ethereum_support::{
-    web3::{
-        transports::Http,
-        types::{TransactionReceipt, H256},
-        Web3,
-    },
-    Address, Block, Bytes, Transaction,
+	web3::{
+		transports::Http,
+		types::{TransactionReceipt, H256},
+		Web3,
+	},
+	Address, Block, Bytes, Transaction,
 };
 use futures::{
-    future::{self, Future},
-    stream::{FuturesOrdered, Stream},
+	future::{self, Future},
+	stream::{FuturesOrdered, Stream},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -22,7 +22,7 @@ struct Topic(H256);
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EventQuery {
-    event_matchers: Vec<EventMatcher>,
+	event_matchers: Vec<EventMatcher>,
 }
 
 /// Event Matcher work similar as web3 filters:
@@ -53,456 +53,456 @@ pub struct EventQuery {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct EventMatcher {
-    address: Option<Address>,
-    data: Option<Bytes>,
-    topics: Vec<Option<Topic>>,
+	address: Option<Address>,
+	data: Option<Bytes>,
+	topics: Vec<Option<Topic>>,
 }
 
 impl EventQuery {
-    pub fn matches_block(&self, block: &Block<Transaction>) -> bool {
-        self.event_matchers.iter().all(|log_matcher| {
-            log_matcher.topics.iter().all(|topic| {
-                topic.as_ref().map_or(true, |topic| {
-                    block.logs_bloom.contains_input(Input::Raw(&topic.0))
-                })
-            })
-        })
-    }
+	pub fn matches_block(&self, block: &Block<Transaction>) -> bool {
+		self.event_matchers.iter().all(|log_matcher| {
+			log_matcher.topics.iter().all(|topic| {
+				topic.as_ref().map_or(true, |topic| {
+					block.logs_bloom.contains_input(Input::Raw(&topic.0))
+				})
+			})
+		})
+	}
 
-    pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
-        self.event_matchers
-            .iter()
-            .all(|event_matcher| match event_matcher {
-                EventMatcher {
-                    address: None,
-                    data: None,
-                    topics,
-                } if topics.is_empty() => false,
-                EventMatcher {
-                    address,
-                    data,
-                    topics,
-                } => transaction_receipt.logs.iter().any(|tx_log| {
-                    if address
-                        .as_ref()
-                        .map_or(false, |address| address != &tx_log.address)
-                    {
-                        return false;
-                    }
+	pub fn matches_transaction_receipt(&self, transaction_receipt: TransactionReceipt) -> bool {
+		self.event_matchers
+			.iter()
+			.all(|event_matcher| match event_matcher {
+				EventMatcher {
+					address: None,
+					data: None,
+					topics,
+				} if topics.is_empty() => false,
+				EventMatcher {
+					address,
+					data,
+					topics,
+				} => transaction_receipt.logs.iter().any(|tx_log| {
+					if address
+						.as_ref()
+						.map_or(false, |address| address != &tx_log.address)
+					{
+						return false;
+					}
 
-                    if data.as_ref().map_or(false, |data| data != &tx_log.data) {
-                        return false;
-                    }
+					if data.as_ref().map_or(false, |data| data != &tx_log.data) {
+						return false;
+					}
 
-                    if tx_log.topics.len() == topics.len() {
-                        tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
-                            let topic = &topics[index];
-                            topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
-                        })
-                    } else {
-                        false
-                    }
-                }),
-            })
-    }
+					if tx_log.topics.len() == topics.len() {
+						tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
+							let topic = &topics[index];
+							topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
+						})
+					} else {
+						false
+					}
+				}),
+			})
+	}
 }
 
 impl QueryType for EventQuery {
-    fn route() -> &'static str {
-        "logs"
-    }
+	fn route() -> &'static str {
+		"logs"
+	}
 }
 
 #[derive(Deserialize, Derivative, Debug)]
 #[derivative(Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ReturnAs {
-    #[derivative(Default)]
-    TransactionId,
-    Transaction,
-    Receipt,
-    TransactionAndReceipt,
+	#[derivative(Default)]
+	TransactionId,
+	Transaction,
+	Receipt,
+	TransactionAndReceipt,
 }
 
 impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = Web3<Http>;
-    type Item = PayloadKind;
+	type Client = Web3<Http>;
+	type Item = PayloadKind;
 
-    fn to_http_payload(
-        &self,
-        return_as: &ReturnAs,
-        client: &Web3<Http>,
-    ) -> Result<Vec<Self::Item>, Error> {
-        let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
+	fn to_http_payload(
+		&self,
+		return_as: &ReturnAs,
+		client: &Web3<Http>,
+	) -> Result<Vec<Self::Item>, Error> {
+		let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
 
-        self.0
-            .iter()
-            .filter_map(to_h256)
-            .map(to_payload)
-            .collect::<FuturesOrdered<_>>()
-            .collect()
-            .wait()
-    }
+		self.0
+			.iter()
+			.filter_map(to_h256)
+			.map(to_payload)
+			.collect::<FuturesOrdered<_>>()
+			.collect()
+			.wait()
+	}
 }
 
 fn to_payload(
-    client: &Web3<Http>,
-    transaction_id: H256,
-    return_as: &ReturnAs,
+	client: &Web3<Http>,
+	transaction_id: H256,
+	return_as: &ReturnAs,
 ) -> Box<dyn Future<Item = PayloadKind, Error = Error>> {
-    let tx_future = create_transaction_future(client, transaction_id);
-    let receipt_future = create_receipt_future(client, transaction_id);
+	let tx_future = create_transaction_future(client, transaction_id);
+	let receipt_future = create_receipt_future(client, transaction_id);
 
-    match return_as {
-        ReturnAs::Transaction => {
-            Box::new(tx_future.map(|transaction| PayloadKind::Transaction { transaction }))
-        }
-        ReturnAs::Receipt => {
-            Box::new(receipt_future.map(|receipt| PayloadKind::Receipt { receipt }))
-        }
-        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
-        ReturnAs::TransactionAndReceipt => Box::new(tx_future.join(receipt_future).map(
-            move |(transaction, receipt)| PayloadKind::TransactionAndReceipt {
-                transaction,
-                receipt,
-            },
-        )),
-    }
+	match return_as {
+		ReturnAs::Transaction => {
+			Box::new(tx_future.map(|transaction| PayloadKind::Transaction { transaction }))
+		}
+		ReturnAs::Receipt => {
+			Box::new(receipt_future.map(|receipt| PayloadKind::Receipt { receipt }))
+		}
+		ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
+		ReturnAs::TransactionAndReceipt => Box::new(tx_future.join(receipt_future).map(
+			move |(transaction, receipt)| PayloadKind::TransactionAndReceipt {
+				transaction,
+				receipt,
+			},
+		)),
+	}
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::web3::types::{
-        Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256, U128, U256,
-    };
-    use spectral::prelude::*;
-    use std::str::FromStr;
+	use super::*;
+	use crate::web3::types::{
+		Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256, U128, U256,
+	};
+	use spectral::prelude::*;
+	use std::str::FromStr;
 
-    fn ethereum_block(bloom: H2048, transactions: Vec<Transaction>) -> Block<Transaction> {
-        Block {
-            hash: None,
-            parent_hash: H256::from(123),
-            uncles_hash: H256::from(123),
-            author: H160::from(7),
-            state_root: H256::from(123),
-            transactions_root: H256::from(123),
-            receipts_root: H256::from(123),
-            number: None,
-            gas_used: U256::from(0),
-            gas_limit: U256::from(0),
-            extra_data: Bytes::from(vec![]),
-            logs_bloom: bloom,
-            timestamp: U256::from(0),
-            difficulty: U256::from(0),
-            total_difficulty: U256::from(0),
-            seal_fields: vec![],
-            uncles: vec![],
-            transactions,
-            size: None,
-        }
-    }
+	fn ethereum_block(bloom: H2048, transactions: Vec<Transaction>) -> Block<Transaction> {
+		Block {
+			hash: None,
+			parent_hash: H256::from(123),
+			uncles_hash: H256::from(123),
+			author: H160::from(7),
+			state_root: H256::from(123),
+			transactions_root: H256::from(123),
+			receipts_root: H256::from(123),
+			number: None,
+			gas_used: U256::from(0),
+			gas_limit: U256::from(0),
+			extra_data: Bytes::from(vec![]),
+			logs_bloom: bloom,
+			timestamp: U256::from(0),
+			difficulty: U256::from(0),
+			total_difficulty: U256::from(0),
+			seal_fields: vec![],
+			uncles: vec![],
+			transactions,
+			size: None,
+		}
+	}
 
-    fn transaction(address: Address) -> Transaction {
-        Transaction {
-            hash: H256::from(0),
-            nonce: U256::from(0),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: H160::from(0),
-            to: Some(address),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
-        }
-    }
+	fn transaction(address: Address) -> Transaction {
+		Transaction {
+			hash: H256::from(0),
+			nonce: U256::from(0),
+			block_hash: None,
+			block_number: None,
+			transaction_index: None,
+			from: H160::from(0),
+			to: Some(address),
+			value: U256::from(0),
+			gas_price: U256::from(0),
+			gas: U256::from(0),
+			input: Bytes::from(vec![]),
+		}
+	}
 
-    fn log(address: Address, topics: Vec<H256>, data: Bytes) -> Log {
-        Log {
-            address,
-            topics,
-            data,
-            block_hash: Some(2.into()),
-            block_number: Some(1.into()),
-            transaction_hash: Some(3.into()),
-            transaction_index: Some(0.into()),
-            log_index: Some(0.into()),
-            transaction_log_index: Some(0.into()),
-            log_type: None,
-            removed: Some(false),
-        }
-    }
+	fn log(address: Address, topics: Vec<H256>, data: Bytes) -> Log {
+		Log {
+			address,
+			topics,
+			data,
+			block_hash: Some(2.into()),
+			block_number: Some(1.into()),
+			transaction_hash: Some(3.into()),
+			transaction_index: Some(0.into()),
+			log_index: Some(0.into()),
+			transaction_log_index: Some(0.into()),
+			log_type: None,
+			removed: Some(false),
+		}
+	}
 
-    fn transaction_receipt(logs: Vec<Log>) -> TransactionReceipt {
-        TransactionReceipt {
-            transaction_hash: H256::from(0),
-            transaction_index: U128::from(0),
-            block_hash: None,
-            block_number: None,
-            cumulative_gas_used: U256::from(0),
-            gas_used: U256::from(0),
-            contract_address: None,
-            logs,
-            status: None,
-        }
-    }
+	fn transaction_receipt(logs: Vec<Log>) -> TransactionReceipt {
+		TransactionReceipt {
+			transaction_hash: H256::from(0),
+			transaction_index: U128::from(0),
+			block_hash: None,
+			block_number: None,
+			cumulative_gas_used: U256::from(0),
+			gas_used: U256::from(0),
+			contract_address: None,
+			logs,
+			status: None,
+		}
+	}
 
-    const REDEEM_BLOOM: &str =
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000100\
-         000000000000000000000000000000000000000000000000000000000000000800000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000408000000000000\
-         000000000000000000000000000000000000000000000000000100000000040000000000000000000000000\
-         00000000000000000000000000000000000000000000000000000000000000000000000000000";
+	const REDEEM_BLOOM: &str =
+		"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+		 000000000000000000000000000000000000000000000000000000000000000000000000000000000000100\
+		 000000000000000000000000000000000000000000000000000000000000000800000000000000000000000\
+		 000000000000000000000000000000000000000000000000000000000000000000000000408000000000000\
+		 000000000000000000000000000000000000000000000000000100000000040000000000000000000000000\
+		 00000000000000000000000000000000000000000000000000000000000000000000000000000";
 
-    const EMPTY_BLOOM: &str =
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         00000000000000000000000000000000000000000000000000000000000000000000000000000";
+	const EMPTY_BLOOM: &str =
+		"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+		 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+		 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+		 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+		 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+		 00000000000000000000000000000000000000000000000000000000000000000000000000000";
 
-    const CONTRACT_ADDRESS: &str = "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59";
-    const REDEEM_LOG_MSG: &str =
-        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
-    const UNKNOWN_LOG_MSG: &str =
-        "0x0000000000000000000000000000000000000000000000000000000000000001";
+	const CONTRACT_ADDRESS: &str = "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59";
+	const REDEEM_LOG_MSG: &str =
+		"0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+	const UNKNOWN_LOG_MSG: &str =
+		"0x0000000000000000000000000000000000000000000000000000000000000001";
 
-    impl EventMatcher {
-        fn new() -> Self {
-            EventMatcher {
-                address: None,
-                data: None,
-                topics: vec![],
-            }
-        }
+	impl EventMatcher {
+		fn new() -> Self {
+			EventMatcher {
+				address: None,
+				data: None,
+				topics: vec![],
+			}
+		}
 
-        fn for_contract(mut self, address: Address) -> Self {
-            self.address = Some(address.into());
-            self
-        }
+		fn for_contract(mut self, address: Address) -> Self {
+			self.address = Some(address.into());
+			self
+		}
 
-        fn with_topics(mut self, topics: Vec<Option<Topic>>) -> Self {
-            self.topics = topics;
-            self
-        }
+		fn with_topics(mut self, topics: Vec<Option<Topic>>) -> Self {
+			self.topics = topics;
+			self
+		}
 
-        fn for_token_contract_with_transfer_topics() -> Self {
-            Self::new()
-                .for_contract(CONTRACT_ADDRESS.into())
-                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])
-        }
-    }
+		fn for_token_contract_with_transfer_topics() -> Self {
+			Self::new()
+				.for_contract(CONTRACT_ADDRESS.into())
+				.with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])
+		}
+	}
 
-    #[test]
-    fn given_a_block_with_bloom_filter_should_match_query() {
-        let tx = transaction(CONTRACT_ADDRESS.into());
-        let block = ethereum_block(H2048::from_str(REDEEM_BLOOM).unwrap(), vec![tx.clone()]);
+	#[test]
+	fn given_a_block_with_bloom_filter_should_match_query() {
+		let tx = transaction(CONTRACT_ADDRESS.into());
+		let block = ethereum_block(H2048::from_str(REDEEM_BLOOM).unwrap(), vec![tx.clone()]);
 
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+		let matcher = EventMatcher::for_token_contract_with_transfer_topics();
 
-        let query = EventQuery {
-            event_matchers: vec![matcher],
-        };
+		let query = EventQuery {
+			event_matchers: vec![matcher],
+		};
 
-        assert_that!(query.matches_block(&block)).is_true()
-    }
+		assert_that!(query.matches_block(&block)).is_true()
+	}
 
-    #[test]
-    fn given_a_block_without_bloom_filter_should_not_match_query() {
-        let tx = transaction(CONTRACT_ADDRESS.into());
-        let block = ethereum_block(H2048::from_str(EMPTY_BLOOM).unwrap(), vec![tx.clone()]);
+	#[test]
+	fn given_a_block_without_bloom_filter_should_not_match_query() {
+		let tx = transaction(CONTRACT_ADDRESS.into());
+		let block = ethereum_block(H2048::from_str(EMPTY_BLOOM).unwrap(), vec![tx.clone()]);
 
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+		let matcher = EventMatcher::for_token_contract_with_transfer_topics();
 
-        let query = EventQuery {
-            event_matchers: vec![matcher],
-        };
+		let query = EventQuery {
+			event_matchers: vec![matcher],
+		};
 
-        assert_that!(query.matches_block(&block)).is_false()
-    }
+		assert_that!(query.matches_block(&block)).is_false()
+	}
 
-    #[test]
-    fn given_a_transaction_receipt_should_match_query() {
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+	#[test]
+	fn given_a_transaction_receipt_should_match_query() {
+		let matcher = EventMatcher::for_token_contract_with_transfer_topics();
 
-        let query = EventQuery {
-            event_matchers: vec![matcher],
-        };
+		let query = EventQuery {
+			event_matchers: vec![matcher],
+		};
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![REDEEM_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
-        let receipt = transaction_receipt(vec![log]);
+		let log = log(
+			CONTRACT_ADDRESS.into(),
+			vec![REDEEM_LOG_MSG.into()],
+			Bytes(vec![]),
+		);
+		let receipt = transaction_receipt(vec![log]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_true()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_true()
+	}
 
-    #[test]
-    fn given_an_empty_transaction_receipt_should_not_match_query() {
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
+	#[test]
+	fn given_an_empty_transaction_receipt_should_not_match_query() {
+		let matcher = EventMatcher::for_token_contract_with_transfer_topics();
 
-        let query = EventQuery {
-            event_matchers: vec![matcher],
-        };
+		let query = EventQuery {
+			event_matchers: vec![matcher],
+		};
 
-        let receipt = transaction_receipt(vec![]);
+		let receipt = transaction_receipt(vec![]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+	}
 
-    #[test]
-    fn given_a_transaction_receipt_should_match_two_log_query() {
-        let query = EventQuery {
-            event_matchers: vec![
-                EventMatcher::for_token_contract_with_transfer_topics(),
-                EventMatcher::new()
-                    .for_contract(CONTRACT_ADDRESS.into())
-                    .with_topics(vec![Some(Topic(UNKNOWN_LOG_MSG.into()))]),
-            ],
-        };
+	#[test]
+	fn given_a_transaction_receipt_should_match_two_log_query() {
+		let query = EventQuery {
+			event_matchers: vec![
+				EventMatcher::for_token_contract_with_transfer_topics(),
+				EventMatcher::new()
+					.for_contract(CONTRACT_ADDRESS.into())
+					.with_topics(vec![Some(Topic(UNKNOWN_LOG_MSG.into()))]),
+			],
+		};
 
-        let log1 = log(
-            CONTRACT_ADDRESS.into(),
-            vec![REDEEM_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
-        let log2 = log(
-            CONTRACT_ADDRESS.into(),
-            vec![UNKNOWN_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
+		let log1 = log(
+			CONTRACT_ADDRESS.into(),
+			vec![REDEEM_LOG_MSG.into()],
+			Bytes(vec![]),
+		);
+		let log2 = log(
+			CONTRACT_ADDRESS.into(),
+			vec![UNKNOWN_LOG_MSG.into()],
+			Bytes(vec![]),
+		);
 
-        let receipt = transaction_receipt(vec![log1, log2]);
+		let receipt = transaction_receipt(vec![log1, log2]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_true()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_true()
+	}
 
-    #[test]
-    fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
-        let query = EventQuery {
-            event_matchers: vec![EventMatcher::new()
-                .for_contract(1.into())
-                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
-        };
+	#[test]
+	fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
+		let query = EventQuery {
+			event_matchers: vec![EventMatcher::new()
+				.for_contract(1.into())
+				.with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
+		};
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![REDEEM_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
-        let receipt = transaction_receipt(vec![log]);
+		let log = log(
+			CONTRACT_ADDRESS.into(),
+			vec![REDEEM_LOG_MSG.into()],
+			Bytes(vec![]),
+		);
+		let receipt = transaction_receipt(vec![log]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+	}
 
-    #[test]
-    fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
-        let query = EventQuery {
-            event_matchers: vec![EventMatcher::new()
-                .for_contract(1.into())
-                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
-        };
+	#[test]
+	fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
+		let query = EventQuery {
+			event_matchers: vec![EventMatcher::new()
+				.for_contract(1.into())
+				.with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
+		};
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![UNKNOWN_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
+		let log = log(
+			CONTRACT_ADDRESS.into(),
+			vec![UNKNOWN_LOG_MSG.into()],
+			Bytes(vec![]),
+		);
 
-        let receipt = transaction_receipt(vec![log]);
+		let receipt = transaction_receipt(vec![log]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+	}
 
-    #[test]
-    fn given_a_transfer_log_should_match_transfer_query() {
-        let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
-        let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
+	#[test]
+	fn given_a_transfer_log_should_match_transfer_query() {
+		let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
+		let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
 
-        let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: Some(Bytes::from(vec![1, 2, 3])),
-                topics: vec![
-                    Some(Topic(REDEEM_LOG_MSG.into())),
-                    Some(Topic(from_address.into())),
-                    Some(Topic(to_address.into())),
-                ],
-            }],
-        };
+		let query = EventQuery {
+			event_matchers: vec![EventMatcher {
+				address: Some(CONTRACT_ADDRESS.into()),
+				data: Some(Bytes::from(vec![1, 2, 3])),
+				topics: vec![
+					Some(Topic(REDEEM_LOG_MSG.into())),
+					Some(Topic(from_address.into())),
+					Some(Topic(to_address.into())),
+				],
+			}],
+		};
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![
-                REDEEM_LOG_MSG.into(),
-                from_address.into(),
-                to_address.into(),
-            ],
-            Bytes::from(vec![1, 2, 3]),
-        );
+		let log = log(
+			CONTRACT_ADDRESS.into(),
+			vec![
+				REDEEM_LOG_MSG.into(),
+				from_address.into(),
+				to_address.into(),
+			],
+			Bytes::from(vec![1, 2, 3]),
+		);
 
-        let receipt = transaction_receipt(vec![log]);
+		let receipt = transaction_receipt(vec![log]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_true()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_true()
+	}
 
-    #[test]
-    fn given_a_transfer_log_should_match_partial_topics_query() {
-        let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
-        let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
+	#[test]
+	fn given_a_transfer_log_should_match_partial_topics_query() {
+		let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
+		let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
 
-        let query = EventQuery {
-            event_matchers: vec![EventMatcher::new()
-                .for_contract(CONTRACT_ADDRESS.into())
-                .with_topics(vec![None, None, Some(Topic(to_address.into()))])],
-        };
+		let query = EventQuery {
+			event_matchers: vec![EventMatcher::new()
+				.for_contract(CONTRACT_ADDRESS.into())
+				.with_topics(vec![None, None, Some(Topic(to_address.into()))])],
+		};
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![
-                REDEEM_LOG_MSG.into(),
-                from_address.into(),
-                to_address.into(),
-            ],
-            Bytes::from(vec![1, 2, 3]),
-        );
+		let log = log(
+			CONTRACT_ADDRESS.into(),
+			vec![
+				REDEEM_LOG_MSG.into(),
+				from_address.into(),
+				to_address.into(),
+			],
+			Bytes::from(vec![1, 2, 3]),
+		);
 
-        let receipt = transaction_receipt(vec![log]);
+		let receipt = transaction_receipt(vec![log]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_true()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_true()
+	}
 
-    #[test]
-    fn given_a_transfer_log_should_not_match_short_query() {
-        let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
-        let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
+	#[test]
+	fn given_a_transfer_log_should_not_match_short_query() {
+		let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
+		let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
 
-        let query = EventQuery {
-            event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
-                data: None,
-                topics: vec![Some(Topic(to_address.into()))],
-            }],
-        };
+		let query = EventQuery {
+			event_matchers: vec![EventMatcher {
+				address: Some(CONTRACT_ADDRESS.into()),
+				data: None,
+				topics: vec![Some(Topic(to_address.into()))],
+			}],
+		};
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![
-                REDEEM_LOG_MSG.into(),
-                from_address.into(),
-                to_address.into(),
-            ],
-            Bytes::from(vec![1, 2, 3]),
-        );
+		let log = log(
+			CONTRACT_ADDRESS.into(),
+			vec![
+				REDEEM_LOG_MSG.into(),
+				from_address.into(),
+				to_address.into(),
+			],
+			Bytes::from(vec![1, 2, 3]),
+		);
 
-        let receipt = transaction_receipt(vec![log]);
+		let receipt = transaction_receipt(vec![log]);
 
-        assert_that!(query.matches_transaction_receipt(receipt)).is_false()
-    }
+		assert_that!(query.matches_transaction_receipt(receipt)).is_false()
+	}
 }

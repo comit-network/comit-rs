@@ -1,29 +1,29 @@
 #[macro_export]
 macro_rules! try_header {
-    ($e:expr) => {
-        header_internal!($e, {
-            let value = Default::default();
+	($e:expr) => {
+		header_internal!($e, {
+			let value = Default::default();
 
-            info!(
-                "Header was not present, falling back to default value: '{:?}'",
-                value
-            );
+			info!(
+				"Header was not present, falling back to default value: '{:?}'",
+				value
+				);
 
-            value
-        })
-    };
+			value
+			})
+	};
 }
 
 #[macro_export]
 macro_rules! header {
-    ($e:expr) => {
-        header_internal!($e, {
-            extern crate futures;
+	($e:expr) => {
+		header_internal!($e, {
+			extern crate futures;
 
-            info!("Header was not present, early returning with error response (SE00)!");
-            return Box::new(futures::future::ok(Response::new(Status::SE(0))));
-        })
-    };
+			info!("Header was not present, early returning with error response (SE00)!");
+			return Box::new(futures::future::ok(Response::new(Status::SE(0))));
+			})
+	};
 }
 
 #[macro_export]

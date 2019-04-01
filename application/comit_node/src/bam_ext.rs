@@ -2,11 +2,11 @@ use bam::json::Header;
 
 pub trait FromBamHeader
 where
-    Self: Sized,
+	Self: Sized,
 {
-    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error>;
+	fn from_bam_header(header: Header) -> Result<Self, serde_json::Error>;
 }
 
 pub trait ToBamHeader {
-    fn to_bam_header(&self) -> Result<Header, serde_json::Error>;
+	fn to_bam_header(&self) -> Result<Header, serde_json::Error>;
 }

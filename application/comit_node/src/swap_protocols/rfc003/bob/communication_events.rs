@@ -1,31 +1,31 @@
 use crate::swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        self,
-        events::{CommunicationEvents, ResponseFuture},
-        ledger::Ledger,
-    },
+	asset::Asset,
+	rfc003::{
+		self,
+		events::{CommunicationEvents, ResponseFuture},
+		ledger::Ledger,
+	},
 };
 
 #[derive(DebugStub)]
 pub struct BobToAlice<AL: Ledger, BL: Ledger> {
-    #[debug_stub = "ResponseFuture"]
-    response_future: Box<ResponseFuture<AL, BL>>,
+	#[debug_stub = "ResponseFuture"]
+	response_future: Box<ResponseFuture<AL, BL>>,
 }
 
 impl<AL: Ledger, BL: Ledger> BobToAlice<AL, BL> {
-    pub fn new(response_future: Box<ResponseFuture<AL, BL>>) -> Self {
-        Self { response_future }
-    }
+	pub fn new(response_future: Box<ResponseFuture<AL, BL>>) -> Self {
+		Self { response_future }
+	}
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> CommunicationEvents<AL, BL, AA, BA>
-    for BobToAlice<AL, BL>
+	for BobToAlice<AL, BL>
 {
-    fn request_responded(
-        &mut self,
-        _request: &rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> &mut ResponseFuture<AL, BL> {
-        &mut self.response_future
-    }
+	fn request_responded(
+		&mut self,
+		_request: &rfc003::messages::Request<AL, BL, AA, BA>,
+	) -> &mut ResponseFuture<AL, BL> {
+		&mut self.response_future
+	}
 }

@@ -3,24 +3,24 @@ use std::time::Duration;
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
-    D: Deserializer<'de>,
+	D: Deserializer<'de>,
 {
-    struct Visitor;
+	struct Visitor;
 
-    impl<'de> de::Visitor<'de> for Visitor {
-        type Value = Duration;
+	impl<'de> de::Visitor<'de> for Visitor {
+		type Value = Duration;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-            formatter.write_str("a duration in seconds")
-        }
+		fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+			formatter.write_str("a duration in seconds")
+		}
 
-        fn visit_u64<E>(self, value: u64) -> Result<Duration, E>
-        where
-            E: de::Error,
-        {
-            Ok(Duration::from_secs(value))
-        }
-    }
+		fn visit_u64<E>(self, value: u64) -> Result<Duration, E>
+		where
+			E: de::Error,
+		{
+			Ok(Duration::from_secs(value))
+		}
+	}
 
-    deserializer.deserialize_u64(Visitor)
+	deserializer.deserialize_u64(Visitor)
 }

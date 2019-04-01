@@ -6,3 +6,4 @@ use_field_init_shorthand = true
 format_doc_comments = true
 normalize_comments = true
 wrap_comments = true
+hard_tabs = true

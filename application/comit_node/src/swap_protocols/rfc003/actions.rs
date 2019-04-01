@@ -1,5 +1,5 @@
 pub trait Actions {
-    type ActionKind;
+	type ActionKind;
 
-    fn actions(&self) -> Vec<Self::ActionKind>;
+	fn actions(&self) -> Vec<Self::ActionKind>;
 }
