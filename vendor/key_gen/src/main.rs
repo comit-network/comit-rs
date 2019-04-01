@@ -1,3 +1,4 @@
+#![allow(clippy::print_stdout)]
 use bitcoin_support::{IntoP2wpkhAddress, Network, PrivateKey, PubkeyHash};
 use ethereum_support::ToEthereumAddress;
 use rand::OsRng;
@@ -5,7 +6,7 @@ use secp256k1_support::KeyPair;
 use std::env;
 
 fn main() {
-    let keypair = match env::args().skip(1).next() {
+    let keypair = match env::args().nth(1) {
         Some(existing_key) => KeyPair::from_secret_key_hex(existing_key.as_ref()).unwrap(),
         None => {
             let mut rng = OsRng::new().unwrap();
