@@ -5,10 +5,10 @@ pub mod transaction;
 pub use self::{block::BlockQuery, event::EventQuery, transaction::TransactionQuery};
 use crate::route_factory::Error;
 use ethereum_support::{
+    clean_0x,
     web3::{transports::Http, Web3},
-    Transaction, TransactionId, TransactionReceipt,
+    Transaction, TransactionId, TransactionReceipt, H256,
 };
-use ethereum_types::{clean_0x, H256};
 use futures::Future;
 
 fn to_h256<S: AsRef<str>>(tx_id: S) -> Option<H256> {
