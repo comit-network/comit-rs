@@ -11,7 +11,7 @@ use crate::{
 };
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
-use http_api_problem::HttpApiProblem;
+use http_api_problem::{HttpApiProblem, StatusCode};
 use rustic_hal::HalResource;
 use std::sync::Arc;
 
@@ -128,8 +128,10 @@ impl IntoResponseBody for bitcoin::SendToAddress {
             }
             _ => {
                 error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action does not take any query parameters"))
+                Err(
+                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+                        .set_detail("This action does not take any query parameters"),
+                )
             }
         }
     }
@@ -152,8 +154,10 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         Ok(transaction) => transaction,
                         Err(e) => {
                             error!("Could not sign Bitcoin transaction: {:?}", e);
-                            return Err(HttpApiProblem::with_title_and_type_from_status(500)
-                                .set_detail("Issue encountered when signing Bitcoin transaction"));
+                            return Err(HttpApiProblem::with_title_and_type_from_status(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                            )
+                            .set_detail("Issue encountered when signing Bitcoin transaction"));
                         }
                     };
                     match serialize_hex(&transaction) {
@@ -163,21 +167,23 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         }),
                         Err(e) => {
                             error!("Could not serialized signed Bitcoin transaction: {:?}", e);
-                            Err(
-                                HttpApiProblem::with_title_and_type_from_status(500).set_detail(
-                                    "Issue encountered when serializing Bitcoin transaction",
-                                ),
+                            Err(HttpApiProblem::with_title_and_type_from_status(
+                                StatusCode::INTERNAL_SERVER_ERROR,
                             )
+                            .set_detail("Issue encountered when serializing Bitcoin transaction"))
                         }
                     }
                 }
-                Err(_) => Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("fee-per-byte is not a valid float")),
+                Err(_) => Err(HttpApiProblem::with_title_and_type_from_status(
+                    StatusCode::BAD_REQUEST,
+                )
+                .set_detail("fee-per-byte is not a valid float")),
             },
             _ => {
                 error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: address and fee-per-byte.");
-                let mut problem = HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action requires additional query parameters");
+                let mut problem =
+                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+                        .set_detail("This action requires additional query parameters");
                 problem
                     .set_value(
                         "address",
@@ -224,8 +230,10 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             }),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::ContractDeploy action type. Expected: None.");
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action does not take any query parameters"))
+                Err(
+                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+                        .set_detail("This action does not take any query parameters"),
+                )
             }
         }
     }
@@ -253,8 +261,10 @@ impl IntoResponseBody for ethereum::SendTransaction {
             }),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");
-                Err(HttpApiProblem::with_title_and_type_from_status(400)
-                    .set_detail("This action does not take any query parameters"))
+                Err(
+                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+                        .set_detail("This action does not take any query parameters"),
+                )
             }
         }
     }
@@ -266,7 +276,9 @@ impl IntoResponseBody for () {
         _: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         error!("IntoResponseBody should not be called for the unit type");
-        Err(HttpApiProblem::with_title_and_type_from_status(500))
+        Err(HttpApiProblem::with_title_and_type_from_status(
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
     }
 }
 
@@ -310,7 +322,9 @@ where
             bob::ActionKind::Refund(payload) => payload.into_response_body(query_params),
             _ => {
                 error!("IntoResponseBody is not implemented for Accept/Decline");
-                Err(HttpApiProblem::with_title_and_type_from_status(500))
+                Err(HttpApiProblem::with_title_and_type_from_status(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                ))
             }
         }
     }

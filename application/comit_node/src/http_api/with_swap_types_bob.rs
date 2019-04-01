@@ -8,8 +8,10 @@ macro_rules! _match_role_bob {
                 type ROLE = bob::State<AL, BL, AA, BA>;
                 $fn()
             }
-            _ => Err(HttpApiProblem::with_title_and_type_from_status(400)
-                .set_detail("Requested action is not supported for this role")),
+            _ => Err(
+                HttpApiProblem::with_title_and_type_from_status(HttpStatusCode::BAD_REQUEST)
+                    .set_detail("Requested action is not supported for this role"),
+            ),
         }
     }};
 }
