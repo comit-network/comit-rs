@@ -26,7 +26,10 @@ use crate::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
     },
-    swap_protocols::ledger::{Bitcoin, Ethereum},
+    swap_protocols::{
+        ledger::{Bitcoin, Ethereum},
+        SwapProtocol,
+    },
 };
 use ::serde::{ser::SerializeStruct, Serialize, Serializer};
 use bitcoin_support::BitcoinQuantity;
@@ -99,6 +102,18 @@ impl Serialize for Http<bitcoin_support::OutPoint> {
         S: Serializer,
     {
         self.0.serialize(serializer)
+    }
+}
+
+impl Serialize for Http<SwapProtocol> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            SwapProtocol::Rfc003 => serializer.serialize_str("rfc003"),
+            SwapProtocol::Unknown(name) => serializer.serialize_str(name.as_str()),
+        }
     }
 }
 
