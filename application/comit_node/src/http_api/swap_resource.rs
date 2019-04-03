@@ -120,7 +120,14 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
                 },
             };
 
-            let hal_resource = HalResource::new(swap).with_link("self", swap_path(id));
+            let hal_resource = HalResource::new(swap)
+                .with_link("self", swap_path(id))
+                .with_link(
+                    "human-protocol-spec",
+                    String::from(
+                        "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
+                    ),
+                );
             let hal_resource = actions.into_iter().fold(hal_resource, |acc, action| {
                 let link = new_action_link(&id, action);
                 acc.with_link(action, link)
