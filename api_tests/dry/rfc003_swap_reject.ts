@@ -154,24 +154,6 @@ setTimeout(async function() {
                 });
         });
 
-        it("[Alice] Is able to GET the swap after POSTing it", async () => {
-            await chai
-                .request(alice.comit_node_url())
-                .get(alice_reasonable_swap_href)
-                .then(res => {
-                    res.should.have.status(200);
-
-                    let body = res.body;
-                    body.role.should.equal("Alice");
-                    body.status.should.equal("IN_PROGRESS");
-                    let parameters = body.parameters;
-                    parameters.should.be.a("object");
-                    parameters.alpha_asset.quantity.should.equal(
-                        alpha_asset_reasonable_quantity
-                    );
-                });
-        });
-
         it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
             await chai
                 .request(alice.comit_node_url())
