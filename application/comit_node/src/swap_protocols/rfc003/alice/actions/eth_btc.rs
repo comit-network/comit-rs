@@ -36,6 +36,7 @@ pub fn refund_action(
         gas_limit,
         amount: EtherQuantity::zero(),
         network,
+        valid_from: Some(request.alpha_expiry),
     }
 }
 
@@ -57,6 +58,7 @@ pub fn redeem_action(
             htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
         ),
         network,
+        valid_from: None,
     }
 }
 

@@ -146,17 +146,6 @@ declare var global: HarnessGlobal;
         },
         {
             actor: bob,
-            test: {
-                description: "Is waiting for beta htlc to expire",
-                callback: async () => {
-                    while (Date.now() / 1000 < betaExpiry) {
-                        await sleep(200);
-                    }
-                },
-            },
-        },
-        {
-            actor: bob,
             action: ActionKind.Refund,
             state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {

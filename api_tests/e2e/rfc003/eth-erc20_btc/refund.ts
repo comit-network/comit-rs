@@ -140,17 +140,6 @@ declare var global: HarnessGlobal;
         },
         {
             actor: bob,
-            test: {
-                description: "Is waiting for beta htlc to expire",
-                callback: async () => {
-                    while (Date.now() / 1000 < betaExpiry) {
-                        await sleep(200);
-                    }
-                },
-            },
-        },
-        {
-            actor: bob,
             action: ActionKind.Refund,
             uriQuery: { address: bobRefundAddress, fee_per_byte: 20 },
             state: (state: any) => state.beta_ledger.status === "Refunded",
@@ -167,17 +156,6 @@ declare var global: HarnessGlobal;
                     const satoshiExpected = betaAssetQuantity - betaMaxFee;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
-                },
-            },
-        },
-        {
-            actor: alice,
-            test: {
-                description: "Is waiting for alpha htlc to expire",
-                callback: async () => {
-                    while (Date.now() / 1000 < alphaExpiry) {
-                        await sleep(200);
-                    }
                 },
             },
         },

@@ -1,3 +1,4 @@
+use crate::swap_protocols::rfc003::Timestamp;
 use bitcoin_support::{Address, BitcoinQuantity, Network};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
 
@@ -13,6 +14,7 @@ pub struct SpendOutput {
     // Remember: One man's input is another man's output!
     pub output: PrimedInput,
     pub network: Network,
+    pub valid_from: Option<Timestamp>,
 }
 
 impl SpendOutput {

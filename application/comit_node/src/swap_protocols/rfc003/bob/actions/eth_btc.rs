@@ -50,6 +50,7 @@ fn refund_action(
             htlc.unlock_after_timeout(secret_source.secp256k1_refund()),
         ),
         network,
+        valid_from: Some(request.beta_expiry),
     }
 }
 
@@ -68,6 +69,7 @@ fn redeem_action(
         gas_limit,
         amount: EtherQuantity::from_wei(U256::zero()),
         network,
+        valid_from: None,
     }
 }
 

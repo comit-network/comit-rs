@@ -11,6 +11,7 @@ import * as toml from "toml";
 import * as fs from "fs";
 
 import chaiHttp = require("chai-http");
+import { sleep } from "./util";
 
 chai.use(chaiHttp);
 
@@ -94,7 +95,7 @@ export class Actor {
         });
     }
 
-    do(action: Action) {
+    async do(action: Action) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
@@ -111,6 +112,14 @@ export class Actor {
             case "bitcoin-broadcast-signed-transaction": {
                 let { hex } = action.payload;
 
+                let expiry = parseInt(action.payload.valid_from);
+                if (expiry) {
+                    while (Date.now() / 1000 < expiry) {
+                        console.log(Date.now() / 1000, expiry);
+                        await sleep(200);
+                    }
+                }
+
                 return bitcoin.sendRawTransaction(hex);
             }
             case "ethereum-deploy-contract": {
@@ -126,6 +135,14 @@ export class Actor {
                     "amount",
                     "gas_limit"
                 );
+
+                let expiry = parseInt(action.payload.valid_from);
+                if (expiry) {
+                    while (Date.now() / 1000 < expiry) {
+                        await sleep(200);
+                    }
+                }
+
                 let {
                     contract_address,
                     data,

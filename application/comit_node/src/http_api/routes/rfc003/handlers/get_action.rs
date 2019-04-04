@@ -5,7 +5,7 @@ use crate::{
     },
     swap_protocols::{
         metadata_store::Metadata,
-        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions},
+        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions, Timestamp},
         MetadataStore, SwapId,
     },
 };
@@ -76,6 +76,8 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: bitcoin_support::Network,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        valid_from: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: ethereum_support::Bytes,
@@ -89,6 +91,8 @@ pub enum ActionResponseBody {
         amount: EtherQuantity,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        valid_from: Option<Timestamp>,
     },
 }
 
@@ -149,6 +153,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
             } => match fee_per_byte.parse::<f64>() {
                 Ok(fee_per_byte) => {
                     let network = self.network;
+                    let valid_from = self.valid_from;
                     let transaction = self.spend_to(address).sign_with_rate(fee_per_byte);
                     let transaction = match transaction {
                         Ok(transaction) => transaction,
@@ -164,6 +169,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         Ok(hex) => Ok(ActionResponseBody::BitcoinBroadcastSignedTransaction {
                             hex,
                             network,
+                            valid_from,
                         }),
                         Err(e) => {
                             error!("Could not serialized signed Bitcoin transaction: {:?}", e);
@@ -250,6 +256,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
             amount,
             gas_limit,
             network,
+            valid_from,
         } = self;
         match query_params {
             GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumInvokeContract {
@@ -258,6 +265,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
                 amount,
                 gas_limit,
                 network,
+                valid_from,
             }),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");

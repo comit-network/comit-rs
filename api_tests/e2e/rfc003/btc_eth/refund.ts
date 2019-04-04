@@ -108,17 +108,6 @@ declare var global: HarnessGlobal;
         },
         {
             actor: bob,
-            test: {
-                description: "Is waiting for beta htlc to expire",
-                callback: async () => {
-                    while (Date.now() / 1000 < betaExpiry) {
-                        await sleep(200);
-                    }
-                },
-            },
-        },
-        {
-            actor: bob,
             action: ActionKind.Refund,
             state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
@@ -133,17 +122,6 @@ declare var global: HarnessGlobal;
                     bobWeiBalanceAfter
                         .eq(bobWeiBalanceInit)
                         .should.be.equal(true);
-                },
-            },
-        },
-        {
-            actor: alice,
-            test: {
-                description: "Is waiting for alpha htlc to expire",
-                callback: async () => {
-                    while (Date.now() / 1000 < alphaExpiry) {
-                        await sleep(200);
-                    }
                 },
             },
         },
