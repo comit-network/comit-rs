@@ -1,7 +1,7 @@
 import { Actor } from "../lib/actor";
 import * as util from "../lib/util";
 import * as chai from "chai";
-import { SwapResponse, SwapsResponse } from "../lib/comit";
+import { SwapResponse, SwapsResponse, Swap } from "../lib/comit";
 import * as utils from "web3-utils";
 import { HarnessGlobal } from "../lib/util";
 
@@ -154,24 +154,6 @@ setTimeout(async function() {
                 });
         });
 
-        it("[Alice] Is able to GET the swap after POSTing it", async () => {
-            await chai
-                .request(alice.comit_node_url())
-                .get(alice_reasonable_swap_href)
-                .then(res => {
-                    res.should.have.status(200);
-
-                    let body = res.body;
-                    body.role.should.equal("Alice");
-                    body.status.should.equal("IN_PROGRESS");
-                    let parameters = body.parameters;
-                    parameters.should.be.a("object");
-                    parameters.alpha_asset.quantity.should.equal(
-                        alpha_asset_reasonable_quantity
-                    );
-                });
-        });
-
         it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
             await chai
                 .request(alice.comit_node_url())
@@ -180,58 +162,21 @@ setTimeout(async function() {
                     res.should.have.status(200);
                     let embedded = res.body._embedded;
                     embedded.should.be.a("object");
-                    let swaps = embedded.swaps;
-                    let reasonable_swap_in_swaps = {
-                        _links: { self: { href: alice_reasonable_swap_href } },
-                        parameters: {
-                            alpha_asset: {
-                                name: "bitcoin",
-                                quantity: "100000000",
-                            },
-                            alpha_ledger: {
-                                name: "bitcoin",
-                                network: "regtest",
-                            },
-                            beta_asset: {
-                                name: "ether",
-                                quantity: "10000000000000000000",
-                            },
-                            beta_ledger: {
-                                name: "ethereum",
-                                network: "regtest",
-                            },
-                        },
-                        role: "Alice",
-                        protocol: "rfc003",
+                    let swaps = embedded.swaps.map((swap: Swap) => ({
+                        ...swap._links.self,
+                        status: swap.status,
+                    }));
+                    let reasonable_swap = {
+                        href: alice_reasonable_swap_href,
                         status: "IN_PROGRESS",
                     };
-                    let stingy_swap_in_swaps = {
-                        _links: { self: { href: alice_stingy_swap_href } },
-                        parameters: {
-                            alpha_asset: {
-                                name: "bitcoin",
-                                quantity: "100",
-                            },
-                            alpha_ledger: {
-                                name: "bitcoin",
-                                network: "regtest",
-                            },
-                            beta_asset: {
-                                name: "ether",
-                                quantity: "10000000000000000000",
-                            },
-                            beta_ledger: {
-                                name: "ethereum",
-                                network: "regtest",
-                            },
-                        },
-                        role: "Alice",
-                        protocol: "rfc003",
+                    let stingy_swap = {
+                        href: alice_stingy_swap_href,
                         status: "IN_PROGRESS",
                     };
                     swaps.should.have.deep.members([
-                        stingy_swap_in_swaps,
-                        reasonable_swap_in_swaps,
+                        stingy_swap,
+                        reasonable_swap,
                     ]);
                 });
         });

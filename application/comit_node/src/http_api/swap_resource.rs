@@ -1,9 +1,9 @@
 use crate::{
-    http_api::{route_factory::RFC003, routes::rfc003::action::ToAction, Http},
+    http_api::{routes::rfc003::action::ToAction, Http},
     swap_protocols::{
         asset::Asset,
         rfc003::{self, state_store::StateStore, Actions, Ledger},
-        Metadata, SwapId,
+        Metadata, SwapId, SwapProtocol,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -19,7 +19,7 @@ use serde::Serialize;
 )]
 pub struct SwapResource<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: Serialize> {
     pub role: String,
-    pub protocol: String,
+    pub protocol: Http<SwapProtocol>,
     pub status: SwapStatus,
     pub parameters: SwapParameters<AL, BL, AA, BA>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -107,7 +107,7 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
 
             let swap = SwapResource {
                 status,
-                protocol: RFC003.into(),
+                protocol: Http(SwapProtocol::Rfc003),
                 parameters,
                 role: format!("{}", metadata.role),
                 state: match include_state {
@@ -120,7 +120,14 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
                 },
             };
 
-            let hal_resource = HalResource::new(swap).with_link("self", swap_path(id));
+            let hal_resource = HalResource::new(swap)
+                .with_link("self", swap_path(id))
+                .with_link(
+                    "human-protocol-spec",
+                    String::from(
+                        "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
+                    ),
+                );
             let hal_resource = actions.into_iter().fold(hal_resource, |acc, action| {
                 let link = new_action_link(&id, action);
                 acc.with_link(action, link)

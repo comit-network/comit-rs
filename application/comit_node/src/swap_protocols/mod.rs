@@ -12,7 +12,7 @@ pub use self::{
 };
 
 #[derive(Debug)]
-pub enum SwapProtocols {
+pub enum SwapProtocol {
     Rfc003,
     Unknown(String),
 }

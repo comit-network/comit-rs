@@ -5,7 +5,7 @@ use crate::{
         asset::{Asset, AssetKind},
         ledger::LedgerKind,
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents, Ledger},
-        LedgerEventDependencies, SwapId, SwapProtocols,
+        LedgerEventDependencies, SwapId, SwapProtocol,
     },
 };
 use bam::{
@@ -26,11 +26,11 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
             "swap_protocol",
         ],
         move |mut request: ValidatedIncomingRequest| {
-            let protocol: SwapProtocols = header!(request
+            let protocol: SwapProtocol = header!(request
                 .take_header("swap_protocol")
-                .map(SwapProtocols::from_bam_header));
+                .map(SwapProtocol::from_bam_header));
             match protocol {
-                SwapProtocols::Rfc003 => {
+                SwapProtocol::Rfc003 => {
                     let swap_id = SwapId::default();
 
                     let alpha_ledger = header!(request
@@ -111,7 +111,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                         }
                     }
                 }
-                SwapProtocols::Unknown(protocol) => {
+                SwapProtocol::Unknown(protocol) => {
                     warn!(
                         "the swap protocol {} is currently not supported", protocol
                     );
