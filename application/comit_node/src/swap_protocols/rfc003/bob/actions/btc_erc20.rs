@@ -117,7 +117,8 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        match (alpha_state, beta_state, self.secret) {
+
+        let mut actions = match (alpha_state, beta_state, self.secret) {
             (Funded { htlc_location, .. }, _, Some(secret)) => {
                 vec![bob::ActionKind::Redeem(redeem_action(
                     &request,
@@ -127,19 +128,21 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
                     secret,
                 ))]
             }
-
             (Funded { .. }, NotDeployed, _) => {
                 vec![bob::ActionKind::Deploy(deploy_action(&request, &response))]
             }
-
             (Funded { .. }, Deployed { htlc_location, .. }, _) => vec![bob::ActionKind::Fund(
                 fund_action(&request, &response, *htlc_location),
             )],
-            (_, Funded { htlc_location, .. }, _) => vec![bob::ActionKind::Refund(refund_action(
+            _ => vec![],
+        };
+
+        if let Funded { htlc_location, .. } = beta_state {
+            actions.push(bob::ActionKind::Refund(refund_action(
                 &request,
                 *htlc_location,
-            ))],
-            _ => vec![],
+            )));
         }
+        actions
     }
 }
