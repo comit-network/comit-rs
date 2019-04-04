@@ -109,7 +109,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             test: {
-                description: "[bob] Is waiting for beta htlc to expire",
+                description: "Is waiting for beta htlc to expire",
                 callback: async () => {
                     while (Date.now() / 1000 < betaExpiry) {
                         await sleep(200);
@@ -123,7 +123,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
                 description:
-                    "[bob] Should have received the beta asset after the refund",
+                    "Should have received the beta asset after the refund",
                 callback: async () => {
                     const bobWeiBalanceAfter = await ethereum.ethBalance(
                         bob.wallet.eth().address()
@@ -139,7 +139,7 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             test: {
-                description: "[alice] Is waiting for alpha htlc to expire",
+                description: "Is waiting for alpha htlc to expire",
                 callback: async () => {
                     while (Date.now() / 1000 < alphaExpiry) {
                         await sleep(200);
@@ -159,7 +159,7 @@ declare var global: HarnessGlobal;
                 state.beta_ledger.status === "Refunded",
             test: {
                 description:
-                    "[alice] Should have received the alpha asset after the refund",
+                    "Should have received the alpha asset after the refund",
                 callback: async (body: any) => {
                     let refundTxId = body.state.alpha_ledger.refund_tx;
 

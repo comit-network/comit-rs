@@ -90,7 +90,7 @@ declare var global: HarnessGlobal;
             action: ActionKind.Fund,
             state: (state: any) => state.beta_ledger.status === "Funded",
             test: {
-                description: "[bob] Waiting for beta htlc to expire",
+                description: "Waiting for beta htlc to expire",
                 callback: async () => {
                     while (Date.now() / 1000 < betaExpiry + 1) {
                         await sleep(200);
@@ -109,7 +109,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
                 description:
-                    "[bob] Should have received the beta asset after the refund",
+                    "Should have received the beta asset after the refund",
                 callback: async (body: any) => {
                     let refundTxId = body.state.beta_ledger.refund_tx;
 

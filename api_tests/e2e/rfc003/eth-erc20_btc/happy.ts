@@ -137,7 +137,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.beta_ledger.status === "Redeemed",
             test: {
                 description:
-                    "[alice] Should have received the beta asset after the redeem",
+                    "Should have received the beta asset after the redeem",
                 callback: async (body: any) => {
                     let redeemTxId = body.state.beta_ledger.redeem_tx;
 
@@ -158,7 +158,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.alpha_ledger.status === "Redeemed",
             test: {
                 description:
-                    "[bob] Should have received the alpha asset after the redeem",
+                    "Should have received the alpha asset after the redeem",
                 callback: async () => {
                     let erc20BalanceAfter = await ethereum.erc20Balance(
                         bobFinalAddress,

@@ -198,13 +198,16 @@ export async function createTests(
 
         const test = action.test;
         if (test) {
-            it(test.description, async function() {
-                if (test.timeout) {
-                    this.timeout(test.timeout);
-                }
+            it(
+                "[" + action.actor.name + "] " + test.description,
+                async function() {
+                    if (test.timeout) {
+                        this.timeout(test.timeout);
+                    }
 
-                return test.callback(body);
-            });
+                    return test.callback(body);
+                }
+            );
         }
     }
 }
