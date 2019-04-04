@@ -47,7 +47,7 @@ pub fn handle_post_swap<A: AliceSpawner>(
             return Err(HttpApiProblem::with_title_and_type_from_status(
                 HttpStatusCode::BAD_REQUEST,
             )
-            .set_detail("The request body was malformed"));
+            .set_detail("The request body was malformed."));
         }
     };
 

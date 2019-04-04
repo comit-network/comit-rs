@@ -38,17 +38,20 @@ pub fn state_store() -> HttpApiProblem {
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 pub fn swap_not_found() -> HttpApiProblem {
-    HttpApiProblem::new("swap-not-found").set_status(StatusCode::NOT_FOUND)
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
+        .set_title("Swap not found.")
 }
 
 pub fn unsupported() -> HttpApiProblem {
-    HttpApiProblem::new("swap-not-supported").set_status(StatusCode::BAD_REQUEST)
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+        .set_title("Swap not supported.")
+        .set_detail("The requested combination of ledgers and assets is not supported.")
 }
 
 pub fn deserialize(e: &serde_json::Error) -> HttpApiProblem {
     error!("Failed to deserialize body: {:?}", e);
-    HttpApiProblem::new("invalid-body")
-        .set_status(StatusCode::BAD_REQUEST)
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+        .set_title("Invalid body.")
         .set_detail("Failed to deserialize given body.")
 }
 
@@ -60,17 +63,31 @@ pub fn serialize(e: serde_json::Error) -> HttpApiProblem {
 pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
     error!("{} not yet implemented", feature);
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+        .set_title("Feature not yet implemented.")
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
 pub fn action_already_done(action: Action) -> HttpApiProblem {
     error!("{} action has already been done", action);
-    HttpApiProblem::new("action-already-done").set_status(StatusCode::INTERNAL_SERVER_ERROR)
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+        .set_title("Action already done.")
 }
 
 pub fn invalid_action(action: Action) -> HttpApiProblem {
     error!("{} action is invalid for this swap", action);
-    HttpApiProblem::new("invalid-action").set_status(StatusCode::CONFLICT)
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
+        .set_title("Invalid action.")
+        .set_detail("Cannot perform requested action for this swap.")
+}
+
+pub fn unexpected_query_parameters(action: &str) -> HttpApiProblem {
+    error!(
+        "Unexpected GET parameters for an {} action type. Expected: None",
+        action
+    );
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+        .set_title("Unexpected query parameter(s).")
+        .set_detail("This action does not take any query parameters.")
 }
 
 impl From<state_store::Error> for HttpApiProblem {
@@ -90,8 +107,8 @@ impl From<metadata_store::Error> for HttpApiProblem {
 impl From<rfc003::state_machine::Error> for HttpApiProblem {
     fn from(e: rfc003::state_machine::Error) -> Self {
         error!("Protocol execution error: {:?}", e);
-        HttpApiProblem::new("protocol-execution-error")
-            .set_status(StatusCode::INTERNAL_SERVER_ERROR)
+        HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            .set_title("Protocol execution error.")
     }
 }
 
