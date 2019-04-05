@@ -12,7 +12,7 @@ failure = "0.1"
 [dev-dependencies]
 bitcoin_rpc_client = "0.5"
 bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
-env_logger = "0.5"
+env_logger = "0.6"
 hex = "0.3"
 spectral = "0.6"
 tc_bitcoincore_client = { path = "../tc_bitcoincore_client" }

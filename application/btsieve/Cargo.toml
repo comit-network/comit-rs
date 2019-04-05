@@ -38,7 +38,7 @@ version = "0.9"
 path = "../../vendor/ethereum_support"
 
 [dev-dependencies]
-env_logger = "0.5"
+env_logger = "0.6"
 hex = "0.3"
 rand = "0.3"
 spectral = "0.6"
