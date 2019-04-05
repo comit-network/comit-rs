@@ -14,7 +14,7 @@ pub struct SpendOutput {
     // Remember: One man's input is another man's output!
     pub output: PrimedInput,
     pub network: Network,
-    pub valid_from: Option<Timestamp>,
+    pub invalid_until: Option<Timestamp>,
 }
 
 impl SpendOutput {

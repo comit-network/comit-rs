@@ -112,7 +112,7 @@ export class Actor {
             case "bitcoin-broadcast-signed-transaction": {
                 let { hex } = action.payload;
 
-                let expiry = parseInt(action.payload.valid_from);
+                let expiry = parseInt(action.payload.invalid_until);
                 if (expiry) {
                     while (Date.now() / 1000 < expiry) {
                         console.log(Date.now() / 1000, expiry);
@@ -136,7 +136,7 @@ export class Actor {
                     "gas_limit"
                 );
 
-                let expiry = parseInt(action.payload.valid_from);
+                let expiry = parseInt(action.payload.invalid_until);
                 if (expiry) {
                     while (Date.now() / 1000 < expiry) {
                         await sleep(200);

@@ -23,7 +23,7 @@ pub struct SendTransaction {
     pub amount: EtherQuantity,
     pub gas_limit: U256,
     pub network: Network,
-    pub valid_from: Option<Timestamp>,
+    pub invalid_until: Option<Timestamp>,
 }
 
 impl From<HtlcParams<Ethereum, EtherQuantity>> for ContractDeploy {

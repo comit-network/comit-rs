@@ -67,7 +67,7 @@ pub trait IntoResponseBody {
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
-pub enum ActionResponseBody {
+pub enum ActionResponseKind {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
         amount: BitcoinQuantity,
@@ -76,8 +76,6 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: bitcoin_support::Network,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        valid_from: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: ethereum_support::Bytes,
@@ -91,9 +89,24 @@ pub enum ActionResponseBody {
         amount: EtherQuantity,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        valid_from: Option<Timestamp>,
     },
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ActionResponseBody {
+    #[serde(flatten)]
+    pub action_kind: ActionResponseKind,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invalid_until: Option<Timestamp>,
+}
+
+impl ActionResponseBody {
+    pub fn new(action_kind: ActionResponseKind) -> ActionResponseBody {
+        ActionResponseBody {
+            action_kind,
+            invalid_until: None,
+        }
+    }
 }
 
 #[derive(Serialize)]
@@ -124,11 +137,13 @@ impl IntoResponseBody for bitcoin::SendToAddress {
                     amount,
                     network,
                 } = self.clone();
-                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
-                    to,
-                    amount,
-                    network,
-                })
+                Ok(ActionResponseBody::new(
+                    ActionResponseKind::BitcoinSendAmountToAddress {
+                        to,
+                        amount,
+                        network,
+                    },
+                ))
             }
             _ => {
                 error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
@@ -153,7 +168,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
             } => match fee_per_byte.parse::<f64>() {
                 Ok(fee_per_byte) => {
                     let network = self.network;
-                    let valid_from = self.valid_from;
+                    let invalid_until = self.invalid_until;
                     let transaction = self.spend_to(address).sign_with_rate(fee_per_byte);
                     let transaction = match transaction {
                         Ok(transaction) => transaction,
@@ -166,10 +181,12 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         }
                     };
                     match serialize_hex(&transaction) {
-                        Ok(hex) => Ok(ActionResponseBody::BitcoinBroadcastSignedTransaction {
-                            hex,
-                            network,
-                            valid_from,
+                        Ok(hex) => Ok(ActionResponseBody {
+                            action_kind: ActionResponseKind::BitcoinBroadcastSignedTransaction {
+                                hex,
+                                network,
+                            },
+                            invalid_until,
                         }),
                         Err(e) => {
                             error!("Could not serialized signed Bitcoin transaction: {:?}", e);
@@ -228,12 +245,14 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             network,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumDeployContract {
-                data,
-                amount,
-                gas_limit,
-                network,
-            }),
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::new(
+                ActionResponseKind::EthereumDeployContract {
+                    data,
+                    amount,
+                    gas_limit,
+                    network,
+                },
+            )),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::ContractDeploy action type. Expected: None.");
                 Err(
@@ -256,16 +275,18 @@ impl IntoResponseBody for ethereum::SendTransaction {
             amount,
             gas_limit,
             network,
-            valid_from,
+            invalid_until,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumInvokeContract {
-                contract_address: to,
-                data,
-                amount,
-                gas_limit,
-                network,
-                valid_from,
+            GetActionQueryParams::None {} => Ok(ActionResponseBody {
+                action_kind: ActionResponseKind::EthereumInvokeContract {
+                    contract_address: to,
+                    data,
+                    amount,
+                    gas_limit,
+                    network,
+                },
+                invalid_until,
             }),
             _ => {
                 error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");
