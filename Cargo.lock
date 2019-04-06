@@ -450,7 +450,7 @@ dependencies = [
  "reqwest 0.9.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-hex 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hex 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustic_hal 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "serde 1.0.89 (registry+https://github.com/rust-lang/crates.io-index)",
