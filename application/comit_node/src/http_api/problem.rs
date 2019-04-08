@@ -80,14 +80,21 @@ pub fn invalid_action(action: Action) -> HttpApiProblem {
         .set_detail("Cannot perform requested action for this swap.")
 }
 
-pub fn unexpected_query_parameters(action: &str) -> HttpApiProblem {
+pub fn unexpected_query_parameters(
+    action: &str,
+    parameters: Vec<String>,
+) -> Result<HttpApiProblem, String> {
     error!(
-        "Unexpected GET parameters for an {} action type. Expected: None",
-        action
+        "Unexpected GET parameters {:?} for an {} action type. Expected: None",
+        parameters, action
     );
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+    let mut problem = HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
         .set_title("Unexpected query parameter(s).")
-        .set_detail("This action does not take any query parameters.")
+        .set_detail("This action does not take any query parameters.");
+
+    problem
+        .set_value("unexpected parameters", &parameters)
+        .map(|_| problem)
 }
 
 impl From<state_store::Error> for HttpApiProblem {

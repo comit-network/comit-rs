@@ -232,7 +232,9 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::ContractDeploy",
-            )),
+                vec!["address".into(), "fee_per_byte".into()],
+            )
+            .expect("parameter names are not reserved field names of HttpApiProblem")),
         }
     }
 }
@@ -259,7 +261,9 @@ impl IntoResponseBody for ethereum::SendTransaction {
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::SendTransaction",
-            )),
+                vec!["address".into(), "fee_per_byte".into()],
+            )
+            .expect("parameter names are not reserved field names of HttpApiProblem")),
         }
     }
 }
