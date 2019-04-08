@@ -69,7 +69,7 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
 
 pub fn action_already_done(action: Action) -> HttpApiProblem {
     error!("{} action has already been done", action);
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::GONE)
         .set_title("Action already done.")
 }
 
