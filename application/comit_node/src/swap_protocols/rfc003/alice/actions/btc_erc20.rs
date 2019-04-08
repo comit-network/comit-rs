@@ -8,7 +8,7 @@ use crate::swap_protocols::{
         secret::Secret,
         secret_source::SecretSource,
         state_machine::HtlcParams,
-        Actions, LedgerState,
+        Action, Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -47,7 +47,6 @@ fn refund_action(
             htlc.unlock_after_timeout(secret_source.secp256k1_refund()),
         ),
         network,
-        invalid_until: Some(request.alpha_expiry),
     }
 }
 
@@ -66,7 +65,6 @@ fn redeem_action(
         gas_limit,
         amount: EtherQuantity::zero(),
         network,
-        invalid_until: None,
     }
 }
 
@@ -78,7 +76,7 @@ impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
         bitcoin::SpendOutput,
     >;
 
-    fn actions(&self) -> Vec<Self::ActionKind> {
+    fn actions(&self) -> Vec<Action<Self::ActionKind>> {
         let (request, response) = match self.swap_communication {
             SwapCommunication::Accepted {
                 ref request,
@@ -92,22 +90,29 @@ impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
         use self::LedgerState::*;
 
         let mut actions = match alpha_state {
-            NotDeployed => vec![alice::ActionKind::Fund(fund_action(&request, &response))],
+            NotDeployed => {
+                vec![alice::ActionKind::Fund(fund_action(&request, &response)).into_action()]
+            }
             Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(refund_action(
                 &request,
                 &response,
                 *htlc_location,
                 &*self.secret_source,
-            ))],
+            ))
+            .into_action()
+            .with_invalid_until(request.alpha_expiry)],
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(alice::ActionKind::Redeem(redeem_action(
-                &request,
-                *htlc_location,
-                self.secret_source.secret(),
-            )));
+            actions.push(
+                alice::ActionKind::Redeem(redeem_action(
+                    &request,
+                    *htlc_location,
+                    self.secret_source.secret(),
+                ))
+                .into_action(),
+            );
         }
         actions
     }

@@ -1,6 +1,6 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::{problem, routes::rfc003::action::Action},
+    http_api::{problem, routes::rfc003::action::ActionName},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
@@ -20,7 +20,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: &S,
     id: SwapId,
-    action: Action,
+    action: ActionName,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
     use crate::swap_protocols::{Metadata, RoleKind};
@@ -32,7 +32,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
     with_swap_types_bob!(
         &metadata,
         (|| match action {
-            Action::Accept => serde_json::from_value::<BobAcceptBody>(body)
+            ActionName::Accept => serde_json::from_value::<BobAcceptBody>(body)
                 .map_err(|e| {
                     error!(
                         "Failed to deserialize body of accept response for swap {}: {:?}",
@@ -49,7 +49,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                         state
                             .actions()
                             .into_iter()
-                            .find_map(move |action| match action {
+                            .find_map(move |action| match action.inner {
                                 bob::ActionKind::Accept(accept) => Some(Ok(accept)),
                                 _ => None,
                             })
@@ -60,36 +60,38 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                         .accept(accept_body)
                         .map_err(|_| problem::action_already_done(action))
                 }),
-            Action::Decline => serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
-                .map_err(|e| {
-                    error!(
-                        "Failed to deserialize body of decline response for swap {}: {:?}",
-                        id, e
-                    );
-                    problem::deserialize(&e)
-                })
-                .and_then(move |decline_body| {
-                    let state = state_store
-                        .get::<ROLE>(id)?
-                        .ok_or_else(problem::state_store)?;
+            ActionName::Decline => {
+                serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
+                    .map_err(|e| {
+                        error!(
+                            "Failed to deserialize body of decline response for swap {}: {:?}",
+                            id, e
+                        );
+                        problem::deserialize(&e)
+                    })
+                    .and_then(move |decline_body| {
+                        let state = state_store
+                            .get::<ROLE>(id)?
+                            .ok_or_else(problem::state_store)?;
 
-                    let decline_action = {
-                        state
-                            .actions()
-                            .into_iter()
-                            .find_map(move |action| match action {
-                                bob::ActionKind::Decline(decline) => Some(Ok(decline)),
-                                _ => None,
-                            })
-                            .unwrap_or_else(|| Err(problem::invalid_action(action)))?
-                    };
+                        let decline_action = {
+                            state
+                                .actions()
+                                .into_iter()
+                                .find_map(move |action| match action.inner {
+                                    bob::ActionKind::Decline(decline) => Some(Ok(decline)),
+                                    _ => None,
+                                })
+                                .unwrap_or_else(|| Err(problem::invalid_action(action)))?
+                        };
 
-                    let reason = decline_body.reason;
+                        let reason = decline_body.reason;
 
-                    decline_action
-                        .decline(reason)
-                        .map_err(|_| problem::action_already_done(action))
-                }),
+                        decline_action
+                            .decline(reason)
+                            .map_err(|_| problem::action_already_done(action))
+                    })
+            }
             _ => Err(problem::invalid_action(action)),
         })
     )

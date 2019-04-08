@@ -11,7 +11,7 @@ use crate::swap_protocols::{
         secret::Secret,
         secret_source::SecretSource,
         state_machine::HtlcParams,
-        Actions, LedgerState,
+        Action, Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -40,7 +40,6 @@ fn refund_action(
         gas_limit,
         amount: EtherQuantity::zero(),
         network,
-        invalid_until: Some(request.beta_expiry),
     }
 }
 
@@ -62,7 +61,6 @@ fn redeem_action(
             htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
         ),
         network,
-        invalid_until: None,
     }
 }
 
@@ -76,7 +74,7 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
         ethereum::SendTransaction,
     >;
 
-    fn actions(&self) -> Vec<Self::ActionKind> {
+    fn actions(&self) -> Vec<Action<Self::ActionKind>> {
         let (request, response) = match &self.swap_communication {
             SwapCommunication::Proposed {
                 pending_response, ..
@@ -85,8 +83,10 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
                     bob::ActionKind::Accept(Accept::new(
                         pending_response.sender.clone(),
                         Arc::clone(&self.secret_source),
-                    )),
-                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
+                    ))
+                    .into_action(),
+                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone()))
+                        .into_action(),
                 ];
             }
             SwapCommunication::Accepted {
@@ -108,19 +108,21 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
                     *htlc_location,
                     self.secret_source.as_ref(),
                     secret,
-                ))]
+                ))
+                .into_action()]
             }
             (Funded { .. }, NotDeployed, _) => {
-                vec![bob::ActionKind::Fund(fund_action(&request, &response))]
+                vec![bob::ActionKind::Fund(fund_action(&request, &response)).into_action()]
             }
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(bob::ActionKind::Refund(refund_action(
-                &request,
-                *htlc_location,
-            )))
+            actions.push(
+                bob::ActionKind::Refund(refund_action(&request, *htlc_location))
+                    .into_action()
+                    .with_invalid_until(request.beta_expiry),
+            )
         }
 
         actions

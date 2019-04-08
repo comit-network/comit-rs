@@ -3,7 +3,6 @@ use crate::swap_protocols::{
     rfc003::{
         ethereum::{Erc20Htlc, EtherHtlc, Htlc},
         state_machine::HtlcParams,
-        Timestamp,
     },
 };
 use ethereum_support::{web3::types::U256, Address, Bytes, Erc20Token, EtherQuantity, Network};
@@ -23,7 +22,6 @@ pub struct SendTransaction {
     pub amount: EtherQuantity,
     pub gas_limit: U256,
     pub network: Network,
-    pub invalid_until: Option<Timestamp>,
 }
 
 impl From<HtlcParams<Ethereum, EtherQuantity>> for ContractDeploy {

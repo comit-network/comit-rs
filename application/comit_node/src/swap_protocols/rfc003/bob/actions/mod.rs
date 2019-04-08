@@ -6,7 +6,8 @@ mod eth_btc;
 use crate::{
     comit_client::{SwapDeclineReason, SwapReject},
     swap_protocols::rfc003::{
-        bob::ResponseSender, messages::ToAcceptResponseBody, secret_source::SecretSource, Ledger,
+        actions::Action, bob::ResponseSender, messages::ToAcceptResponseBody,
+        secret_source::SecretSource, Ledger,
     },
 };
 use std::sync::Arc;
@@ -19,6 +20,17 @@ pub enum ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Fund(Fund),
     Redeem(Redeem),
     Refund(Refund),
+}
+
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund>
+    ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
+{
+    fn into_action(self) -> Action<ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>> {
+        Action {
+            inner: self,
+            invalid_until: None,
+        }
+    }
 }
 
 #[derive(Clone)]

@@ -454,6 +454,8 @@ dependencies = [
  "serde_urlencoded 0.5.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "state_machine_future 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strum 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strum_macros 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
  "tc_web3_client 0.1.0",
  "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
