@@ -21,6 +21,8 @@ extern crate bam;
 extern crate futures;
 #[macro_use]
 extern crate binary_macros;
+#[macro_use]
+extern crate strum_macros;
 
 pub mod bam_api;
 pub mod bam_ext;
