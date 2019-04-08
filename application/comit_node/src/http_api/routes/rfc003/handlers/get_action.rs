@@ -92,12 +92,6 @@ pub enum ActionResponseBody {
     },
 }
 
-#[derive(Serialize)]
-struct MissingQueryParameter {
-    data_type: &'static str,
-    description: &'static str,
-}
-
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum GetActionQueryParams {
@@ -126,13 +120,11 @@ impl IntoResponseBody for bitcoin::SendToAddress {
                     network,
                 })
             }
-            _ => {
-                error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
-                Err(
-                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                        .set_detail("This action does not take any query parameters."),
-                )
-            }
+            _ => Err(problem::unexpected_query_parameters(
+                "bitcoin::SendToAddress",
+                vec!["address".into(), "fee_per_byte".into()],
+            )
+            .expect("parameter names are not reserved field names of HttpApiProblem")),
         }
     }
 }
@@ -181,32 +173,23 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                 .set_detail("Query parameter fee-per-byte is not a valid float.")),
             },
             _ => {
-                error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: address and fee-per-byte");
-                let mut problem =
-                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                        .set_title("Missing query parameter(s).")
-                        .set_detail("This action requires additional query parameters.");
-                problem
-                    .set_value(
-                        "address",
-                        &MissingQueryParameter {
+                Err(problem::missing_query_parameters("bitcoin::SpendOutput", vec![
+                    (
+                        "address".into(),
+                        &problem::MissingQueryParameter {
                             data_type: "string",
                             description: "The bitcoin address to where the funds should be sent.",
                         },
-                    )
-                    .expect("invalid use of HttpApiProblem");
-                problem
-                    .set_value(
-                        "fee_per_byte",
-                        &MissingQueryParameter {
+                    ),
+                    (
+                        "fee_per_byte".into(),
+                        &problem::MissingQueryParameter {
                             data_type: "float",
                             description:
                             "The fee-per-byte you want to pay for the redeem transaction in satoshis.",
                         },
                     )
-                    .expect("invalid use of HttpApiProblem");
-
-                Err(problem)
+                ]).expect("invalid use of HttpApiProblem"))
             }
         }
     }
