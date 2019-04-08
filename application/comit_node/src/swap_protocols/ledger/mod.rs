@@ -1,13 +1,12 @@
-use ::serde::{de::DeserializeOwned, Serialize};
-
-use std::fmt::Debug;
-
 mod bitcoin;
 mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
+
 use crate::http_api::ledger::FromHttpLedger;
-use std::hash::Hash;
+use ::serde::{de::DeserializeOwned, Serialize};
+use derivative::Derivative;
+use std::{fmt::Debug, hash::Hash};
 
 pub trait Ledger:
     Clone

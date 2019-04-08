@@ -19,6 +19,8 @@ use crate::{
 };
 use bam::{self, json, Status};
 use futures::Future;
+use log::{debug, error, info};
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Reason {

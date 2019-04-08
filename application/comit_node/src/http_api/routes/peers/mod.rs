@@ -1,4 +1,5 @@
 use crate::connection_pool::ConnectionPool;
+use serde::Serialize;
 use std::{net::SocketAddr, sync::Arc};
 use warp::{Rejection, Reply};
 

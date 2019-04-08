@@ -18,6 +18,7 @@ use futures::{
     future::{self, Either},
     Future,
 };
+use log::error;
 use std::sync::Arc;
 
 impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync> {

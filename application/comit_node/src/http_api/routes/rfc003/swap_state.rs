@@ -5,6 +5,7 @@ use crate::{
         rfc003::{self, alice, bob, Ledger, Timestamp},
     },
 };
+use log::warn;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

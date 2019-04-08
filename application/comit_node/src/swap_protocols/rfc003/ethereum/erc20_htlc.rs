@@ -2,6 +2,7 @@ use crate::swap_protocols::rfc003::{
     ethereum::{ByteCode, Htlc},
     SecretHash, Timestamp,
 };
+use binary_macros::{base16, base16_impl};
 use ethereum_support::{web3::types::Bytes, Address, Erc20Quantity, U256};
 
 #[derive(Debug, Clone)]

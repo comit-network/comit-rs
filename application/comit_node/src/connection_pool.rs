@@ -2,10 +2,12 @@ use crate::{
     bam_api::rfc003::swap_config, node_id::NodeId, swap_protocols::rfc003::bob::BobSpawner,
 };
 use bam::{self, json};
+use derivative::Derivative;
 use futures::{
     future::{self, Shared},
     Future,
 };
+use log::{debug, error, info, warn};
 use std::{
     collections::HashMap,
     io,

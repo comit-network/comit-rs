@@ -9,6 +9,7 @@ use crate::{
 };
 use core::time::Duration;
 use futures::{stream::Stream, Async};
+use log::{debug, error, info};
 use reqwest::{header::LOCATION, r#async::Client, StatusCode, Url};
 use serde::Deserialize;
 use tokio::prelude::future::Future;
@@ -27,6 +28,9 @@ pub struct BtsieveHttpClient {
 }
 
 mod payloads {
+
+    use serde::Deserialize;
+
     #[derive(Debug, Deserialize)]
     pub struct TransactionId<T> {
         pub id: T,

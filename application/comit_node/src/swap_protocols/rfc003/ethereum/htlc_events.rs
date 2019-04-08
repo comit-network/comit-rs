@@ -22,6 +22,7 @@ use futures::{
     future::{self, Either},
     Future,
 };
+use log::warn;
 use std::sync::Arc;
 
 // keccak256(Redeemed())

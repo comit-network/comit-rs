@@ -14,6 +14,7 @@ use bam::{
     Status,
 };
 use futures::future::{self, Future};
+use log::{error, warn};
 
 pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingRequest, Response> {
     Config::default().on_request(

@@ -1,9 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate log;
-
 use comit_node::{
     btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
     comit_server,
@@ -18,7 +15,8 @@ use comit_node::{
     },
 };
 use directories;
-use ethereum_support::*;
+use futures::Future;
+use log::{error, info};
 use std::{env::var, net::SocketAddr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298

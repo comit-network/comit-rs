@@ -7,7 +7,7 @@ use ethereum_support::{
     TransactionAndReceipt,
 };
 use futures::Future;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
 #[serde(untagged)]

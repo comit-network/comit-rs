@@ -1,4 +1,6 @@
 use crate::swap_protocols::{asset::AssetKind, LedgerKind};
+use failure::Fail;
+use log::trace;
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},

@@ -22,7 +22,9 @@ use crate::{
         },
     },
 };
+use derivative::Derivative;
 use futures::{future::Shared, sync::oneshot, Future};
+use log::{error, warn};
 use std::sync::{Arc, Mutex};
 
 #[allow(type_alias_bounds)]

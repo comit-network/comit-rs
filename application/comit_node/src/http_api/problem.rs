@@ -7,6 +7,8 @@ use crate::{
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
+use log::error;
+use serde::Serialize;
 use std::{error::Error, fmt};
 use warp::{Rejection, Reply};
 

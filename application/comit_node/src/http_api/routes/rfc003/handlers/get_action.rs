@@ -12,7 +12,9 @@ use crate::{
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode};
+use log::{error, trace};
 use rustic_hal::HalResource;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(

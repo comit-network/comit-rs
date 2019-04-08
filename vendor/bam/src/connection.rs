@@ -1,5 +1,6 @@
 use crate::api::{self, FrameHandler};
 use futures::{Future, Sink, Stream};
+use log::{trace, warn};
 use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};

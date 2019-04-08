@@ -1,5 +1,6 @@
 use bitcoin_support::{Address, BitcoinQuantity, Network};
 use bitcoin_witness::{PrimedInput, PrimedTransaction};
+use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct SendToAddress {

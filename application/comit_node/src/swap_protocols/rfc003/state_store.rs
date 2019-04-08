@@ -12,6 +12,7 @@ use crate::swap_protocols::{
     swap_id::SwapId,
 };
 use either::Either;
+use log::{error, warn};
 use std::{any::Any, collections::HashMap, hash::Hash, sync::Mutex};
 
 #[derive(Debug)]

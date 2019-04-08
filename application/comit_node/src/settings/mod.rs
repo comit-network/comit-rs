@@ -1,9 +1,9 @@
 mod serde;
 
 use crate::seed::Seed;
+use ::serde::Deserialize;
 use config::{Config, ConfigError, File};
 use log::LevelFilter;
-
 use std::{
     ffi::OsStr,
     net::{IpAddr, SocketAddr},

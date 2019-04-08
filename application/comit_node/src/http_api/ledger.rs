@@ -1,4 +1,4 @@
-use ::serde::{de::DeserializeOwned, Deserializer, Serialize};
+use ::serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, fmt};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

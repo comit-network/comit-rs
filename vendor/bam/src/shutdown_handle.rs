@@ -2,6 +2,7 @@ use futures::{
     sync::oneshot::{self, Sender},
     Future,
 };
+use log::debug;
 
 #[derive(Debug)]
 pub struct ShutdownHandle {

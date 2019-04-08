@@ -12,6 +12,7 @@ use futures::{
     sync::oneshot::{self, Sender},
     Future,
 };
+use log::{debug, error, warn};
 use serde_json::{self, Value as JsonValue};
 use std::{
     collections::HashMap,
