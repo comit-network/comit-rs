@@ -3,6 +3,7 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 name = "btsieve"
 version = "0.1.0"
+
 [dependencies]
 bitcoin_rpc_client = "0.5"
 byteorder = "1.2"
