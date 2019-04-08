@@ -123,8 +123,7 @@ impl IntoResponseBody for bitcoin::SendToAddress {
             _ => Err(problem::unexpected_query_parameters(
                 "bitcoin::SendToAddress",
                 vec!["address".into(), "fee_per_byte".into()],
-            )
-            .expect("parameter names are not reserved field names of HttpApiProblem")),
+            )),
         }
     }
 }
@@ -174,22 +173,19 @@ impl IntoResponseBody for bitcoin::SpendOutput {
             },
             _ => {
                 Err(problem::missing_query_parameters("bitcoin::SpendOutput", vec![
-                    (
-                        "address".into(),
+
                         &problem::MissingQueryParameter {
+                            name: "address",
                             data_type: "string",
                             description: "The bitcoin address to where the funds should be sent.",
                         },
-                    ),
-                    (
-                        "fee_per_byte".into(),
                         &problem::MissingQueryParameter {
+                            name: "fee_per_byte",
                             data_type: "float",
                             description:
                             "The fee-per-byte you want to pay for the redeem transaction in satoshis.",
                         },
-                    )
-                ]).expect("invalid use of HttpApiProblem"))
+                ])
             }
         }
     }
@@ -216,8 +212,7 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::ContractDeploy",
                 vec!["address".into(), "fee_per_byte".into()],
-            )
-            .expect("parameter names are not reserved field names of HttpApiProblem")),
+            )),
         }
     }
 }
@@ -245,8 +240,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::SendTransaction",
                 vec!["address".into(), "fee_per_byte".into()],
-            )
-            .expect("parameter names are not reserved field names of HttpApiProblem")),
+            )),
         }
     }
 }

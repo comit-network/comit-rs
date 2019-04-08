@@ -17,6 +17,7 @@ pub struct HttpApiProblemStdError {
 
 #[derive(Debug, Serialize)]
 pub struct MissingQueryParameter {
+    pub name: &'static str,
     pub data_type: &'static str,
     pub description: &'static str,
 }
@@ -86,10 +87,7 @@ pub fn invalid_action(action: Action) -> HttpApiProblem {
         .set_detail("Cannot perform requested action for this swap.")
 }
 
-pub fn unexpected_query_parameters(
-    action: &str,
-    parameters: Vec<String>,
-) -> Result<HttpApiProblem, String> {
+pub fn unexpected_query_parameters(action: &str, parameters: Vec<String>) -> HttpApiProblem {
     error!(
         "Unexpected GET parameters {:?} for a {} action type. Expected: none",
         parameters, action
@@ -100,31 +98,33 @@ pub fn unexpected_query_parameters(
 
     problem
         .set_value("unexpected_parameters", &parameters)
-        .map(|_| problem)
+        .expect("invalid use of HttpApiProblem");
+
+    problem
 }
 
 pub fn missing_query_parameters(
     action: &str,
-    parameters: Vec<(String, &MissingQueryParameter)>,
-) -> Result<HttpApiProblem, String> {
+    parameters: Vec<&MissingQueryParameter>,
+) -> HttpApiProblem {
     error!(
         "Unexpected GET parameters for a {} action type. Expected: {:?}",
         action,
         parameters
             .iter()
-            .map(|(name, _)| name)
-            .collect::<Vec<&String>>()
+            .map(|parameter| parameter.name)
+            .collect::<Vec<&str>>()
     );
 
     let mut problem = HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
         .set_title("Missing query parameter(s).")
         .set_detail("This action requires additional query parameters.");
 
-    for (name, parameter_description) in parameters {
-        problem.set_value(name.as_str(), parameter_description)?;
-    }
+    problem
+        .set_value("missing_parameters", &parameters)
+        .expect("invalid use of HttpApiProblem");
 
-    Ok(problem)
+    problem
 }
 
 impl From<state_store::Error> for HttpApiProblem {
