@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 testcontainers = "0.6"
-web3 = "0.5"
+web3 = "0.5.0"
