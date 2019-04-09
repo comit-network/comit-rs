@@ -81,7 +81,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
     let preflight_cors_route = warp::options().map(warp::reply);
 
     let cors = warp::cors()
-        .allow_origin("http://localhost:3000")
+        .allow_origin("http://localhost:8080")
         .allow_methods(vec!["GET", "POST"])
         .allow_headers(vec!["content-type"]);
 

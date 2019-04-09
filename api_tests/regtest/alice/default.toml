@@ -8,10 +8,10 @@ port=8000
 
 [comit_i]
 address="0.0.0.0"
-port=8181
+port=8080
 
 [btsieve]
-url = "http://localhost:8080"
+url = "http://localhost:8181"
 [btsieve.bitcoin]
 poll_interval_secs = 1
 network = "regtest"

@@ -1,5 +1,6 @@
 use comit_i::Asset;
-use http::{uri::PathAndQuery, StatusCode};
+use http::{uri::PathAndQuery, Response, StatusCode};
+use mime_guess::Mime;
 use std::{
     borrow::Cow,
     error::Error as StdError,
@@ -61,11 +62,18 @@ fn serve(path: Tail) -> Result<impl Reply, Rejection> {
         error!("Could not convert path {} to PathAndQuery: {:?}", path, e);
         Error::PathConversionFail
     })?;
+    let path = path_and_query.path();
 
-    let asset: Option<Cow<'static, [u8]>> = Asset::get(path_and_query.path());
+    let mut mime =
+        mime_guess::guess_mime_type_opt(path).unwrap_or("text/html".parse::<Mime>().unwrap());
+
+    let asset: Option<Cow<'static, [u8]>> = Asset::get(path);
 
     let file = asset
-        .or_else(|| Asset::get("index.html"))
+        .or_else(|| {
+            mime = "text/html".parse().unwrap();
+            Asset::get("index.html")
+        })
         .ok_or_else(|| Error::IndexHtmlMissing)?;
 
     let content = match file {
@@ -77,7 +85,12 @@ fn serve(path: Tail) -> Result<impl Reply, Rejection> {
         Error::Utf8ConversionFail
     })?;
 
-    Ok(warp::reply::html(content))
+    Ok(Response::builder()
+        .header(
+            "content-type",
+            format!("{}; charset=\"utf-8\"", mime.to_string()),
+        )
+        .body(content))
 }
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
