@@ -77,7 +77,7 @@ setTimeout(async function() {
             let res = await chai
                 .request(alice.comit_node_url())
                 .options("/swaps")
-                .set("Origin", "http://localhost:8080")
+                .set("Origin", "http://localhost:4000")
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "GET");
             res.should.have.status(403);
@@ -87,7 +87,7 @@ setTimeout(async function() {
             let res = await chai
                 .request(alice.comit_node_url())
                 .options("/swaps")
-                .set("Origin", "http://localhost:3000")
+                .set("Origin", "http://localhost:8080")
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "GET");
             res.should.have.status(200);
@@ -97,7 +97,7 @@ setTimeout(async function() {
             let res = await chai
                 .request(alice.comit_node_url())
                 .options("/swaps/rfc003")
-                .set("Origin", "http://localhost:8080")
+                .set("Origin", "http://localhost:4000")
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "POST");
             res.should.have.status(403);
@@ -107,7 +107,7 @@ setTimeout(async function() {
             let res = await chai
                 .request(alice.comit_node_url())
                 .options("/swaps/rfc003")
-                .set("Origin", "http://localhost:3000")
+                .set("Origin", "http://localhost:8080")
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "POST");
             res.should.have.status(200);
@@ -117,12 +117,12 @@ setTimeout(async function() {
             let res = await chai
                 .request(alice.comit_node_url())
                 .get("/swaps")
-                .set("Origin", "http://localhost:3000");
+                .set("Origin", "http://localhost:8080");
 
             res.should.have.status(200);
             res.should.have.header(
                 "access-control-allow-origin",
-                "http://localhost:3000"
+                "http://localhost:8080"
             );
         });
 

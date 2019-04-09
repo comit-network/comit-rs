@@ -120,6 +120,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
         state_store,
         protocol_dependencies,
         connection_pool,
+        auth_origin(&settings),
     );
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
@@ -154,6 +155,13 @@ fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::run
         let server = warp::serve(routes).bind(listen_addr);
 
         runtime.spawn(server);
+    }
+}
+
+fn auth_origin(settings: &ComitNodeSettings) -> String {
+    match &settings.comit_i {
+        Some(http_socket) => format!("http://localhost:{}", http_socket.port),
+        None => "http://localhost:8080".to_string(),
     }
 }
 
