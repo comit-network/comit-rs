@@ -23,11 +23,11 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
             "alpha_ledger",
             "beta_asset",
             "alpha_asset",
-            "swap_protocol",
+            "protocol",
         ],
         move |mut request: ValidatedIncomingRequest| {
             let protocol: SwapProtocol = header!(request
-                .take_header("swap_protocol")
+                .take_header("protocol")
                 .map(SwapProtocol::from_bam_header));
             match protocol {
                 SwapProtocol::Rfc003 => {
