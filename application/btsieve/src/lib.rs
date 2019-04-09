@@ -2,8 +2,6 @@
 #![deny(unsafe_code)]
 
 #[macro_use]
-extern crate debug_stub_derive;
-#[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate derivative;

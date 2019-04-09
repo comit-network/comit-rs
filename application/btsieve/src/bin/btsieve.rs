@@ -11,9 +11,9 @@ use bitcoin_support::Network as BitcoinNetwork;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
+    route_factory,
     settings::{self, Settings},
     InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
-    RouteFactory,
 };
 use config::ConfigError;
 use directories;
@@ -54,12 +54,10 @@ fn main() -> Result<(), failure::Error> {
 
     info!("Starting up with {:#?}", settings);
 
-    let route_factory = RouteFactory::new(settings.http_api.external_url);
-
-    let bitcoin_routes = create_bitcoin_routes(&mut runtime, &route_factory, settings.bitcoin)?;
+    let bitcoin_routes = create_bitcoin_routes(&mut runtime, settings.bitcoin)?;
 
     let (ethereum_routes, _event_loop_handle) =
-        create_ethereum_routes(&mut runtime, &route_factory, settings.ethereum)?;
+        create_ethereum_routes(&mut runtime, settings.ethereum)?;
 
     let routes = bitcoin_routes.or(ethereum_routes);
 
@@ -69,7 +67,6 @@ fn main() -> Result<(), failure::Error> {
 
 fn create_bitcoin_routes(
     runtime: &mut Runtime,
-    route_factory: &RouteFactory,
     settings: settings::Bitcoin,
 ) -> Result<BoxedFilter<(impl Reply,)>, Error> {
     let block_query_repository =
@@ -125,8 +122,8 @@ fn create_bitcoin_routes(
 
     let ledger_name = "bitcoin";
 
-    let transaction_routes = route_factory
-        .create::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
+    let transaction_routes =
+        route_factory::create::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
             transaction_query_repository,
             transaction_query_result_repository,
             Arc::clone(&client),
@@ -134,7 +131,7 @@ fn create_bitcoin_routes(
             network,
         );
 
-    let block_routes = route_factory.create::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
+    let block_routes = route_factory::create::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
         block_query_repository,
         block_query_result_repository,
         Arc::clone(&client),
@@ -147,7 +144,6 @@ fn create_bitcoin_routes(
 
 fn create_ethereum_routes(
     runtime: &mut Runtime,
-    route_factory: &RouteFactory,
     settings: settings::Ethereum,
 ) -> Result<(BoxedFilter<(impl Reply,)>, EventLoopHandle), Error> {
     let transaction_query_repository =
@@ -219,8 +215,8 @@ fn create_ethereum_routes(
 
     let ledger_name = "ethereum";
 
-    let transaction_routes = route_factory
-        .create::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
+    let transaction_routes =
+        route_factory::create::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
             transaction_query_repository,
             transaction_query_result_repository,
             Arc::clone(&web3_client),
@@ -228,7 +224,7 @@ fn create_ethereum_routes(
             network,
         );
 
-    let block_routes = route_factory.create::<ethereum::queries::block::ReturnAs, _, _, _, _>(
+    let block_routes = route_factory::create::<ethereum::queries::block::ReturnAs, _, _, _, _>(
         block_query_repository,
         block_query_result_repository,
         Arc::clone(&web3_client),
@@ -236,7 +232,7 @@ fn create_ethereum_routes(
         network,
     );
 
-    let bloom_routes = route_factory.create::<ethereum::queries::event::ReturnAs, _, _, _, _>(
+    let bloom_routes = route_factory::create::<ethereum::queries::event::ReturnAs, _, _, _, _>(
         log_query_repository,
         log_query_result_repository,
         Arc::clone(&web3_client),

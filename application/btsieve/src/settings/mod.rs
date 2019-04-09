@@ -14,8 +14,6 @@ pub struct Settings {
 pub struct HttpApi {
     pub address_bind: IpAddr,
     pub port_bind: u16,
-    #[serde(with = "serde::url")]
-    pub external_url: url::Url,
 }
 
 #[derive(Debug, Deserialize, Clone)]
