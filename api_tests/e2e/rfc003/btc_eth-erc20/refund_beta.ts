@@ -43,7 +43,7 @@ declare var global: HarnessGlobal;
 
     const alphaExpiry: number =
         new Date("2080-06-11T13:00:00Z").getTime() / 1000;
-    const betaExpiry: number = Math.round(Date.now() / 1000) + 2; // Expires in 2 seconds
+    const betaExpiry: number = Math.round(Date.now() / 1000) + 9;
 
     const initialUrl = "/swaps/rfc003";
     const listUrl = "/swaps";
@@ -130,8 +130,7 @@ declare var global: HarnessGlobal;
             action: ActionKind.Fund,
             state: (state: any) => state.beta_ledger.status === "Funded",
             test: {
-                description:
-                    "[bob] Should have less beta asset after the funding",
+                description: "Should have less beta asset after the funding",
                 callback: async () => {
                     let bobErc20BalanceAfter = await ethereum.erc20Balance(
                         bob.wallet.eth().address(),

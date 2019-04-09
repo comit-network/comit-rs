@@ -112,14 +112,6 @@ export class Actor {
             case "bitcoin-broadcast-signed-transaction": {
                 let { hex } = action.payload;
 
-                let expiry = parseInt(action.payload.invalid_until);
-                if (expiry) {
-                    while (Date.now() / 1000 < expiry) {
-                        console.log(Date.now() / 1000, expiry);
-                        await sleep(200);
-                    }
-                }
-
                 return bitcoin.sendRawTransaction(hex);
             }
             case "ethereum-deploy-contract": {
@@ -135,13 +127,6 @@ export class Actor {
                     "amount",
                     "gas_limit"
                 );
-
-                let expiry = parseInt(action.payload.invalid_until);
-                if (expiry) {
-                    while (Date.now() / 1000 < expiry) {
-                        await sleep(200);
-                    }
-                }
 
                 let {
                     contract_address,

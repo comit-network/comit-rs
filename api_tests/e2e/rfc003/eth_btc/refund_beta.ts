@@ -36,7 +36,7 @@ declare var global: HarnessGlobal;
     const betaMaxFee = 5000; // Max 5000 satoshis fee
 
     const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry: number = Math.round(Date.now() / 1000) + 2; // Expires in 2 seconds
+    const betaExpiry: number = Math.round(Date.now() / 1000) + 9;
 
     const initialUrl = "/swaps/rfc003";
     const listUrl = "/swaps";

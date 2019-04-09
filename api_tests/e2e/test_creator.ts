@@ -9,6 +9,7 @@ import {
 } from "../lib/comit";
 import * as chai from "chai";
 import { Actor } from "../lib/actor";
+import { sleep } from "../lib/util";
 import * as URI from "urijs";
 
 const should = chai.should();
@@ -79,27 +80,39 @@ async function getAction(
     return [href, null];
 }
 
+function seconds_until(time: number): number {
+    const diff = time - Math.floor(Date.now() / 1000);
+
+    if (diff > 0) {
+        return diff;
+    } else {
+        return 0;
+    }
+}
+
 async function executeAction(
     actor: Actor,
     actionTrigger: ActionTrigger,
     actionHref?: string,
     actionDirective?: Action
 ) {
-    return (async function(method) {
-        switch (method) {
-            case Method.Get:
-                return actor.do(actionDirective);
-            case Method.Post:
-                const res = await chai
-                    .request(actor.comit_node_url())
-                    .post(actionHref)
-                    .send(actionTrigger.requestBody);
-                res.should.have.status(200);
-                return res;
-            default:
-                throw new Error("Unexpected error: unknown method");
-        }
-    })(getMethod(actionTrigger.action));
+    const method = getMethod(actionTrigger.action);
+
+    switch (method) {
+        case Method.Get:
+            await actor.do(actionDirective);
+            break;
+        case Method.Post:
+            const res = await chai
+                .request(actor.comit_node_url())
+                .post(actionHref)
+                .send(actionTrigger.requestBody);
+
+            res.should.have.status(200);
+            break;
+        default:
+            throw new Error(`unknown method: ${method}`);
+    }
 }
 
 export async function createTests(
@@ -149,6 +162,7 @@ export async function createTests(
         let action = actions.shift();
         let actionHref: string = null;
         let actionDirective: Action = null;
+        const timeout = action.timeout || 10000;
         if (action.action) {
             it(
                 "[" +
@@ -157,7 +171,7 @@ export async function createTests(
                     action.action +
                     " action",
                 async function() {
-                    this.timeout(action.timeout || 10000);
+                    this.timeout(timeout);
                     [actionHref, actionDirective] = await getAction(
                         swapLocations[action.actor.name],
                         action
@@ -172,6 +186,20 @@ export async function createTests(
                     action.action +
                     " action",
                 async function() {
+                    if (actionDirective && actionDirective.invalid_until) {
+                        const to_wait =
+                            seconds_until(actionDirective.invalid_until) *
+                                1000 +
+                            1000; // Add an extra second for good measure
+                        console.log(
+                            `Waiting ${to_wait}ms for ${
+                                action.actor.name
+                            }'s  ‘${action.action}’ action to be ready`
+                        );
+                        this.timeout(to_wait + timeout);
+                        await sleep(to_wait);
+                    }
+
                     await executeAction(
                         action.actor,
                         action,
@@ -187,7 +215,7 @@ export async function createTests(
             it(
                 "[" + action.actor.name + "] transitions to correct state",
                 async function() {
-                    this.timeout(action.timeout || 10000);
+                    this.timeout(timeout);
                     body = (await action.actor.pollComitNodeUntil(
                         swapLocations[action.actor.name],
                         body => action.state(body.state)
