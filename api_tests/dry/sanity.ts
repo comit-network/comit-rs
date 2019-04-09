@@ -44,7 +44,7 @@ setTimeout(async function() {
             swaps.should.have.lengthOf(0);
         });
 
-        it("[Alice] Returns 400 swap-not-supported for an unsupported combination of parameters", async () => {
+        it("[Alice] Returns 400 Swap not supported for an unsupported combination of parameters", async () => {
             let res = await chai
                 .request(alice.comit_node_url())
                 .post("/swaps/rfc003")
@@ -70,7 +70,7 @@ setTimeout(async function() {
                     peer: "0.0.0.0",
                 });
             res.should.have.status(400);
-            res.body.title.should.equal("swap-not-supported");
+            res.body.title.should.equal("Swap not supported.");
         });
 
         it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps request for GET", async () => {
