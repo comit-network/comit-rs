@@ -427,12 +427,10 @@ dependencies = [
 name = "comit_i"
 version = "0.1.0"
 dependencies = [
- "http 0.1.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "reqwest 0.9.13 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-embed 4.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "unzip 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "warp 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
