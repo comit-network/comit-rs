@@ -92,12 +92,6 @@ pub enum ActionResponseBody {
     },
 }
 
-#[derive(Serialize)]
-struct MissingQueryParameter {
-    data_type: &'static str,
-    description: &'static str,
-}
-
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum GetActionQueryParams {
@@ -126,13 +120,10 @@ impl IntoResponseBody for bitcoin::SendToAddress {
                     network,
                 })
             }
-            _ => {
-                error!("Unexpected GET parameters for a bitcoin::SendToAddress action type. Expected: none.");
-                Err(
-                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                        .set_detail("This action does not take any query parameters"),
-                )
-            }
+            _ => Err(problem::unexpected_query_parameters(
+                "bitcoin::SendToAddress",
+                vec!["address".into(), "fee_per_byte".into()],
+            )),
         }
     }
 }
@@ -157,7 +148,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                             return Err(HttpApiProblem::with_title_and_type_from_status(
                                 StatusCode::INTERNAL_SERVER_ERROR,
                             )
-                            .set_detail("Issue encountered when signing Bitcoin transaction"));
+                            .set_detail("Issue encountered when signing Bitcoin transaction."));
                         }
                     };
                     match serialize_hex(&transaction) {
@@ -166,45 +157,35 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                             network,
                         }),
                         Err(e) => {
-                            error!("Could not serialized signed Bitcoin transaction: {:?}", e);
+                            error!("Could not serialize signed Bitcoin transaction: {:?}", e);
                             Err(HttpApiProblem::with_title_and_type_from_status(
                                 StatusCode::INTERNAL_SERVER_ERROR,
                             )
-                            .set_detail("Issue encountered when serializing Bitcoin transaction"))
+                            .set_detail("Issue encountered when serializing Bitcoin transaction."))
                         }
                     }
                 }
                 Err(_) => Err(HttpApiProblem::with_title_and_type_from_status(
                     StatusCode::BAD_REQUEST,
                 )
-                .set_detail("fee-per-byte is not a valid float")),
+                .set_title("Invalid query parameter.")
+                .set_detail("Query parameter fee-per-byte is not a valid float.")),
             },
             _ => {
-                error!("Unexpected GET parameters for a bitcoin::SpendOutput action type. Expected: address and fee-per-byte.");
-                let mut problem =
-                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                        .set_detail("This action requires additional query parameters");
-                problem
-                    .set_value(
-                        "address",
-                        &MissingQueryParameter {
+                Err(problem::missing_query_parameters("bitcoin::SpendOutput", vec![
+
+                        &problem::MissingQueryParameter {
+                            name: "address",
                             data_type: "string",
-                            description: "The bitcoin address to where the funds should be sent",
+                            description: "The bitcoin address to where the funds should be sent.",
                         },
-                    )
-                    .expect("invalid use of HttpApiProblem");
-                problem
-                    .set_value(
-                        "fee_per_byte",
-                        &MissingQueryParameter {
+                        &problem::MissingQueryParameter {
+                            name: "fee_per_byte",
                             data_type: "float",
                             description:
-                            "The fee-per-byte you want to pay for the redeem transaction in satoshis",
+                            "The fee-per-byte you want to pay for the redeem transaction in satoshis.",
                         },
-                    )
-                    .expect("invalid use of HttpApiProblem");
-
-                Err(problem)
+                ])
             }
         }
     }
@@ -228,13 +209,10 @@ impl IntoResponseBody for ethereum::ContractDeploy {
                 gas_limit,
                 network,
             }),
-            _ => {
-                error!("Unexpected GET parameters for an ethereum::ContractDeploy action type. Expected: None.");
-                Err(
-                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                        .set_detail("This action does not take any query parameters"),
-                )
-            }
+            _ => Err(problem::unexpected_query_parameters(
+                "ethereum::ContractDeploy",
+                vec!["address".into(), "fee_per_byte".into()],
+            )),
         }
     }
 }
@@ -259,13 +237,10 @@ impl IntoResponseBody for ethereum::SendTransaction {
                 gas_limit,
                 network,
             }),
-            _ => {
-                error!("Unexpected GET parameters for an ethereum::SendTransaction action. Expected: None.");
-                Err(
-                    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                        .set_detail("This action does not take any query parameters"),
-                )
-            }
+            _ => Err(problem::unexpected_query_parameters(
+                "ethereum::SendTransaction",
+                vec!["address".into(), "fee_per_byte".into()],
+            )),
         }
     }
 }

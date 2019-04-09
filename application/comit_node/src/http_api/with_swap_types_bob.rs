@@ -10,7 +10,7 @@ macro_rules! _match_role_bob {
             }
             _ => Err(
                 HttpApiProblem::with_title_and_type_from_status(HttpStatusCode::BAD_REQUEST)
-                    .set_detail("Requested action is not supported for this role"),
+                    .set_detail("Requested action is not supported for this role."),
             ),
         }
     }};

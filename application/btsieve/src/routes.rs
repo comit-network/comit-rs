@@ -44,13 +44,13 @@ impl From<Error> for HttpApiProblem {
         match e {
             QuerySave => {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .set_detail("Failed to create new query")
+                    .set_detail("Failed to create new query.")
             }
             TransformToPayload => {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             }
             QueryNotFound => HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
-                .set_detail("The requested query does not exist"),
+                .set_detail("The requested query does not exist."),
         }
     }
 }
