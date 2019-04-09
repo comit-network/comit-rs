@@ -62,8 +62,8 @@ fn serve(path: Tail) -> Result<impl Reply, Rejection> {
     })?;
     let path = path_and_query.path();
 
-    let mut mime =
-        mime_guess::guess_mime_type_opt(path).unwrap_or("text/html".parse::<Mime>().unwrap());
+    let mut mime = mime_guess::guess_mime_type_opt(path)
+        .unwrap_or_else(|| "text/html".parse::<Mime>().unwrap());
 
     let asset: Option<Cow<'static, [u8]>> = Asset::get(path);
 
