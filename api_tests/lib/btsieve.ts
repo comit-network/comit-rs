@@ -38,6 +38,10 @@ export class Btsieve {
         return "http://" + this.host + ":" + this.port;
     }
 
+    absoluteLocation(relative_location: string) {
+        return this.url() + relative_location;
+    }
+
     pollUntilMatches(query_url: string) {
         return new Promise((final_res, rej) => {
             chai.request(query_url)

@@ -16,6 +16,7 @@ use tokio::prelude::future::Future;
 #[derive(Debug, Clone)]
 pub struct BtsieveHttpClient {
     client: Client,
+    endpoint: Url,
     create_bitcoin_transaction_query_endpoint: Url,
     create_bitcoin_block_query_endpoint: Url,
     create_ethereum_transaction_query_endpoint: Url,
@@ -58,6 +59,7 @@ impl BtsieveHttpClient {
     ) -> Self {
         Self {
             client: Client::new(),
+            endpoint: endpoint.clone(),
             create_bitcoin_transaction_query_endpoint: endpoint
                 .join(format!("queries/bitcoin/{}/transactions", bitcoin_network).as_ref())
                 .expect("invalid url"),
@@ -85,6 +87,7 @@ impl BtsieveHttpClient {
     ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
         debug!("Creating {:?} at {}", query, create_endpoint);
 
+        let endpoint = self.endpoint.clone();
         let query_id = self
             .client
             .post(create_endpoint)
@@ -93,7 +96,7 @@ impl BtsieveHttpClient {
             .map_err(move |e| {
                 Error::FailedRequest(format!("Failed to create {:?} because {:?}", query, e))
             })
-            .and_then(|response| {
+            .and_then(move |response| {
                 if response.status() != StatusCode::CREATED {
                     if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
                         error!(
@@ -125,7 +128,7 @@ impl BtsieveHttpClient {
                         })
                     })
                     .and_then(|location| {
-                        Url::parse(location).map_err(|e| {
+                        endpoint.join(location).map_err(|e| {
                             Error::MalformedResponse(format!(
                                 "Failed to parse {} as URL: {:?}",
                                 location, e

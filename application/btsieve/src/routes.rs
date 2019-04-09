@@ -11,7 +11,6 @@ use std::{
     fmt::{self, Debug},
     sync::Arc,
 };
-use url::Url;
 use warp::{self, Rejection, Reply};
 
 #[derive(Debug)]
@@ -69,7 +68,6 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
-    external_url: Url,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
     network: &'static str,
@@ -80,12 +78,7 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
 
     match result {
         Ok(id) => {
-            let uri = external_url
-                .join(
-                    format!("/queries/{}/{}/{}/{}", ledger_name, network, query_type, id).as_str(),
-                )
-                .expect("Should be able to join urls")
-                .to_string();
+            let uri = format!("/queries/{}/{}/{}/{}", ledger_name, network, query_type, id);
             let reply = warp::reply::with_status(warp::reply(), warp::http::StatusCode::CREATED);
             Ok(warp::reply::with_header(reply, "Location", uri))
         }
