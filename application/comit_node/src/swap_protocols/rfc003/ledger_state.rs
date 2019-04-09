@@ -1,4 +1,5 @@
 use crate::swap_protocols::rfc003::ledger::Ledger;
+use strum_macros::EnumDiscriminants;
 
 #[derive(Clone, Debug, PartialEq, EnumDiscriminants)]
 #[strum_discriminants(
