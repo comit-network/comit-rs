@@ -446,6 +446,7 @@ dependencies = [
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "comit_i 0.1.0",
  "config 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",

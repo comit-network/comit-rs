@@ -51,6 +51,9 @@ path = "../../vendor/bitcoin_support"
 [dependencies.bitcoin_witness]
 path = "../../vendor/bitcoin_witness"
 
+[dependencies.comit_i]
+path = "../../vendor/comit_i"
+
 [dependencies.ethereum_support]
 path = "../../vendor/ethereum_support"
 

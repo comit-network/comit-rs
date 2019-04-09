@@ -3,7 +3,7 @@
 
 use comit_node::{
     btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
-    comit_server,
+    comit_i_routes, comit_server,
     connection_pool::ConnectionPool,
     http_api::route_factory,
     logging,
@@ -49,6 +49,8 @@ fn main() -> Result<(), failure::Error> {
     );
 
     spawn_comit_server(&settings, dependencies.clone(), &mut runtime);
+
+    spawn_comit_i_instance(&settings, &mut runtime);
 
     // Block the current thread.
     ::std::thread::park();
@@ -139,6 +141,20 @@ fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
             log::error!("ComitServer shutdown: {:?}", e);
         }),
     );
+}
+
+fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
+    if let Some(comit_i_settings) = &settings.comit_i {
+        let routes = comit_i_routes::create();
+
+        let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
+
+        info!("Starting comit-i HTTP server on {:?}", listen_addr);
+
+        let server = warp::serve(routes).bind(listen_addr);
+
+        runtime.spawn(server);
+    }
 }
 
 fn var_or_default(name: &str, default: String) -> String {

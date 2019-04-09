@@ -1,5 +1,5 @@
 use comit_i::Asset;
-use http::{uri::PathAndQuery, StatusCode};
+use http::uri::PathAndQuery;
 use std::{borrow::Cow, str::FromStr};
 use warp::{filters::path::Tail, Filter, Reply};
 
