@@ -1,6 +1,6 @@
 use std::fs::File;
 
-fn main() -> Result<(), std::io::Error> {
+fn main() {
     let version = include_str!("./version").trim();
 
     let url = format!(
@@ -13,6 +13,4 @@ fn main() -> Result<(), std::io::Error> {
     unzip::Unzipper::new(tmpfile, "./").unzip().unwrap();
 
     println!("cargo:rerun-if-changed={}", "./version");
-
-    Ok(())
 }

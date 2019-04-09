@@ -6,6 +6,8 @@ version = "0.1.0"
 
 [dependencies]
 rust-embed = "4.3"
+warp = "0.1"
+http = "0.1"
 
 [build-dependencies]
 unzip = "0.1"
