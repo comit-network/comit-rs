@@ -1,13 +1,15 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    routes, web3,
+    routes::{self, HttpApiProblemStdError},
+    web3,
 };
 use ethereum_support::H256;
+use routes::Error as RouteError;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use url::Url;
-use warp::{self, filters::BoxedFilter, Filter, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Rejection, Reply};
 
 #[derive(Debug)]
 pub enum Error {
@@ -43,68 +45,79 @@ pub struct QueryParams<R> {
     pub return_as: R,
 }
 
-impl RouteFactory {
-    pub fn new(external_url: Url) -> RouteFactory {
-        RouteFactory { external_url }
-    }
+pub fn create_endpoints<
+    R,
+    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
+    QR: QueryRepository<Q>,
+    QRR: QueryResultRepository<Q>,
+    C: 'static + Send + Sync,
+>(
+    external_url: Url,
+    query_repository: Arc<QR>,
+    query_result_repository: Arc<QRR>,
+    client: Arc<C>,
+    ledger_name: &'static str,
+    registered_network: &'static str,
+) -> BoxedFilter<(impl Reply,)>
+where
+    for<'de> R: Deserialize<'de>,
+    R: Send + Default + Debug + 'static,
+    QueryResult: ToHttpPayload<R, Client = C>,
+{
+    let route = Q::route();
 
-    pub fn create<
-        R,
-        Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
-        QR: QueryRepository<Q>,
-        QRR: QueryResultRepository<Q>,
-        C: 'static + Send + Sync,
-    >(
-        &self,
-        query_repository: Arc<QR>,
-        query_result_repository: Arc<QRR>,
-        client: Arc<C>,
-        ledger_name: &'static str,
-        network: &'static str,
-    ) -> BoxedFilter<(impl Reply,)>
-    where
-        for<'de> R: Deserialize<'de>,
-        R: Send + Default + Debug + 'static,
-        QueryResult: ToHttpPayload<R, Client = C>,
-    {
-        let route = Q::route();
+    // create the path
+    let path = warp::path("queries").and(warp::path(ledger_name));
 
-        let path = warp::path("queries")
-            .and(warp::path(ledger_name))
-            .and(warp::path(network))
-            .and(warp::path(&route));
+    // validate network function
+    let validate_network = warp::path::param::<String>().and_then(move |network| {
+        if network != registered_network {
+            error!("Invalid network passed: {:?}", network);
+            Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: RouteError::NetworkNotFound.into(),
+            }))
+        } else {
+            info!("All good, continue please!");
+            Ok(network)
+        }
+    });
 
-        let external_url = self.external_url.clone();
-        let external_url = warp::any().map(move || external_url.clone());
-        let query_repository = warp::any().map(move || Arc::clone(&query_repository));
-        let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
-        let client = warp::any().map(move || client.clone());
+    // concat with network and type of query
+    let path = path.and(validate_network).and(warp::path(&route));
 
-        let create = warp::post2()
-            .and(external_url.clone())
-            .and(query_repository.clone())
-            .and(warp::any().map(move || ledger_name))
-            .and(warp::any().map(move || network))
-            .and(warp::any().map(move || route))
-            .and(warp::body::json())
-            .and_then(routes::create_query);
+    let external_url = warp::any().map(move || external_url.clone());
+    let query_repository = warp::any().map(move || Arc::clone(&query_repository));
+    let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
+    let client = warp::any().map(move || client.clone());
 
-        let retrieve = warp::get2()
-            .and(query_repository.clone())
-            .and(query_result_repository.clone())
-            .and(client.clone())
-            .and(warp::path::param::<u32>())
-            .and(warp::query::<QueryParams<R>>())
-            .and_then(routes::retrieve_query);
+    let create = warp::post2()
+        .and(path)
+        .and(external_url.clone())
+        .and(query_repository.clone())
+        .and(warp::any().map(move || ledger_name))
+        .and(warp::any().map(move || route))
+        .and(warp::body::json())
+        .and_then(routes::create_query);
 
-        let delete = warp::delete2()
-            .and(query_repository)
-            .and(query_result_repository)
-            .and(warp::path::param::<u32>())
-            .and_then(routes::delete_query);
+    let retrieve = warp::get2()
+        .and(path)
+        .and(query_repository.clone())
+        .and(query_result_repository.clone())
+        .and(client.clone())
+        .and(warp::path::param::<u32>())
+        .and(warp::query::<QueryParams<R>>())
+        .and_then(routes::retrieve_query);
 
-        path.and(create.or(retrieve).or(delete))
-            .recover(routes::customize_error)
-            .boxed()
-    }
+    let delete = warp::delete2()
+        .and(path)
+        .and(query_repository)
+        .and(query_result_repository)
+        .and(warp::path::param::<u32>())
+        .and_then(routes::delete_query);
+
+    create
+        .or(retrieve)
+        .or(delete)
+        .recover(routes::customize_error)
+        .boxed()
 }

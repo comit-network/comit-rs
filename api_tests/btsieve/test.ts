@@ -62,6 +62,10 @@ setTimeout(async function() {
                         });
                 });
 
+                const to_address =
+                    "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
+                let location: string;
+
                 it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
                     return chai
                         .request(btsieve.url())
@@ -74,9 +78,6 @@ setTimeout(async function() {
                         });
                 });
 
-                const to_address =
-                    "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
-                let location: string;
                 it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
                     return chai
                         .request(btsieve.url())

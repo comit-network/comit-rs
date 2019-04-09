@@ -19,6 +19,8 @@ pub enum Error {
     QuerySave,
     TransformToPayload,
     QueryNotFound,
+    NetworkNotFound,
+    LedgerNotFound,
 }
 
 #[derive(Debug)]
@@ -51,6 +53,14 @@ impl From<Error> for HttpApiProblem {
             }
             QueryNotFound => HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
                 .set_detail("The requested query does not exist"),
+            NetworkNotFound => {
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
+                    .set_detail("The requested network id does not exist")
+            }
+            LedgerNotFound => {
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
+                    .set_detail("The requested ledger is not connected")
+            }
         }
     }
 }
@@ -69,10 +79,10 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
+    network: String,
     external_url: Url,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
-    network: &'static str,
     query_type: &'static str,
     query: Q,
 ) -> Result<impl Reply, Rejection> {
@@ -103,6 +113,7 @@ pub fn retrieve_query<
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
 >(
+    _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
     client: Arc<C>,
@@ -140,6 +151,7 @@ where
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn delete_query<Q: Send, QR: QueryRepository<Q>, QRR: QueryResultRepository<Q>>(
+    _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
     id: u32,

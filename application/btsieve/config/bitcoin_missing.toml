@@ -1,0 +1,8 @@
+[ethereum]
+node_url = "http://ethereum:8545"
+poll_interval_secs = 17
+
+[http_api]
+address_bind="0.0.0.0"
+port_bind=8080
+external_url="http://localhost:8080/"
