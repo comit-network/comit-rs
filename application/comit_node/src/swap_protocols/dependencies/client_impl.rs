@@ -128,7 +128,7 @@ fn build_swap_request<
         .with_header("beta_ledger", request.beta_ledger.into().to_bam_header()?)
         .with_header("alpha_asset", request.alpha_asset.into().to_bam_header()?)
         .with_header("beta_asset", request.beta_asset.into().to_bam_header()?)
-        .with_header("swap_protocol", SwapProtocol::Rfc003.to_bam_header()?)
+        .with_header("protocol", SwapProtocol::Rfc003.to_bam_header()?)
         .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
             AL,
             BL,
