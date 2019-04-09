@@ -12,7 +12,6 @@ use warp::{filters::BoxedFilter, path::Tail, Filter, Rejection, Reply};
 #[derive(Copy, Clone, Debug)]
 enum Error {
     IndexHtmlMissing,
-    Utf8ConversionFail,
     PathConversionFail,
 }
 
@@ -38,7 +37,6 @@ impl StdError for Error {
     fn description(&self) -> &str {
         match self {
             Error::IndexHtmlMissing => "index.html file not found",
-            Error::Utf8ConversionFail => "Content conversion to UTF-8 failed",
             Error::PathConversionFail => "Conversion of the path to PathAndQuery failed",
         }
     }
@@ -76,28 +74,15 @@ fn serve(path: Tail) -> Result<impl Reply, Rejection> {
         })
         .ok_or_else(|| Error::IndexHtmlMissing)?;
 
-    let content = match file {
-        Cow::Borrowed(s) => String::from_utf8(s.to_vec()),
-        Cow::Owned(s) => String::from_utf8(s.to_vec()),
-    }
-    .map_err(|e| {
-        error!("UTF8 conversion failure: {:?}", e);
-        Error::Utf8ConversionFail
-    })?;
-
     Ok(Response::builder()
-        .header(
-            "content-type",
-            format!("{}; charset=\"utf-8\"", mime.to_string()),
-        )
-        .body(content))
+        .header("content-type", mime.to_string())
+        .body(file))
 }
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(&err) = rejection.find_cause::<Error>() {
         let code = match err {
             Error::IndexHtmlMissing => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::Utf8ConversionFail => StatusCode::INTERNAL_SERVER_ERROR,
             Error::PathConversionFail => StatusCode::BAD_REQUEST,
         };
         let msg = err.to_string();
