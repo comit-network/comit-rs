@@ -4,6 +4,11 @@ edition = "2018"
 name = "comit_i"
 version = "0.1.0"
 
+[lib]
+# Cannot run doctest with rust-embed as the path to the folder in the derive macro is relative to the root
+# whereas doctest is run from inside the crate making the path invalid
+doctest = false
+
 [dependencies]
 rust-embed = "4.3"
 
