@@ -4,8 +4,8 @@ mod ethereum;
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
 
 use crate::http_api::ledger::FromHttpLedger;
-use ::serde::{de::DeserializeOwned, Serialize};
 use derivative::Derivative;
+use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, hash::Hash};
 
 pub trait Ledger:

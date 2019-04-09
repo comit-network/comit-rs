@@ -84,19 +84,19 @@ pub enum SwapRequestBodyKind {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, PartialIdentities> {
-    #[serde(with = "http_api::asset::serde")]
+    #[serde(with = "http_api::asset::serde_asset")]
     alpha_asset: AA,
-    #[serde(with = "http_api::asset::serde")]
+    #[serde(with = "http_api::asset::serde_asset")]
     beta_asset: BA,
-    #[serde(with = "http_api::ledger::serde")]
+    #[serde(with = "http_api::ledger::serde_ledger")]
     alpha_ledger: AL,
-    #[serde(with = "http_api::ledger::serde")]
+    #[serde(with = "http_api::ledger::serde_ledger")]
     beta_ledger: BL,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
-    #[serde(with = "http_api::serde::socket_addr")]
+    #[serde(with = "http_api::serde_socket_addr")]
     peer: SocketAddr,
 }
 

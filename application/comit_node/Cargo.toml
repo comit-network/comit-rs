@@ -35,6 +35,7 @@ strum = "0.15"
 strum_macros = { version = "0.15", features = ["verbose-display-name"] }
 tokio = "0.1"
 url = "1.7"
+url_serde = "0.2.0"
 warp = "0.1"
 hex-serde = "0.1.0"
 
