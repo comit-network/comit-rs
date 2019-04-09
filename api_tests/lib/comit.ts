@@ -20,6 +20,7 @@ export interface SwapResponse extends HalResource {
 
 export interface Action {
     type: string;
+    invalid_until?: number;
     payload: any;
 }
 

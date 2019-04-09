@@ -5,10 +5,9 @@ use crate::swap_protocols::{
         alice::{self, SwapCommunication},
         bitcoin,
         ethereum::{self, Erc20Htlc},
-        secret::Secret,
         secret_source::SecretSource,
         state_machine::HtlcParams,
-        Actions, LedgerState,
+        Action, Actions, LedgerState,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -41,7 +40,7 @@ fn fund_action(
     }
 }
 
-fn _refund_action(
+fn refund_action(
     request: &Request,
     alpha_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
@@ -63,7 +62,6 @@ fn redeem_action(
     response: &Response,
     beta_htlc_location: OutPoint,
     secret_source: &dyn SecretSource,
-    secret: Secret,
 ) -> bitcoin::SpendOutput {
     let beta_asset = request.beta_asset;
     let htlc = bitcoin::Htlc::from(HtlcParams::new_beta_params(request, response));
@@ -73,7 +71,7 @@ fn redeem_action(
         output: PrimedInput::new(
             beta_htlc_location,
             beta_asset,
-            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
+            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret_source.secret()),
         ),
         network,
     }
@@ -87,7 +85,7 @@ impl Actions for alice::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
         ethereum::SendTransaction,
     >;
 
-    fn actions(&self) -> Vec<Self::ActionKind> {
+    fn actions(&self) -> Vec<Action<Self::ActionKind>> {
         let (request, response) = match self.swap_communication {
             SwapCommunication::Accepted {
                 ref request,
@@ -99,21 +97,38 @@ impl Actions for alice::State<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity> {
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        match (alpha_state, beta_state) {
-            (_, Funded { htlc_location, .. }) => vec![alice::ActionKind::Redeem(redeem_action(
-                &request,
-                &response,
-                *htlc_location,
-                self.secret_source.as_ref(),
-                self.secret_source.secret(),
-            ))],
-            (Deployed { htlc_location, .. }, NotDeployed) => vec![alice::ActionKind::Fund(
-                fund_action(&request, &response, *htlc_location),
-            )],
-            (NotDeployed, NotDeployed) => vec![alice::ActionKind::Deploy(deploy_action(
-                &request, &response,
-            ))],
+
+        let mut actions = match alpha_state {
+            NotDeployed => {
+                vec![alice::ActionKind::Deploy(deploy_action(&request, &response)).into_action()]
+            }
+            Deployed { htlc_location, .. } => {
+                vec![
+                    alice::ActionKind::Fund(fund_action(&request, &response, *htlc_location))
+                        .into_action(),
+                ]
+            }
+            Funded { htlc_location, .. } => {
+                vec![
+                    alice::ActionKind::Refund(refund_action(&request, *htlc_location))
+                        .into_action()
+                        .with_invalid_until(request.alpha_expiry),
+                ]
+            }
             _ => vec![],
+        };
+
+        if let Funded { htlc_location, .. } = beta_state {
+            actions.push(
+                alice::ActionKind::Redeem(redeem_action(
+                    &request,
+                    &response,
+                    *htlc_location,
+                    self.secret_source.as_ref(),
+                ))
+                .into_action(),
+            );
         }
+        actions
     }
 }

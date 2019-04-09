@@ -5,7 +5,7 @@ import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
-import { HarnessGlobal } from "../../../lib/util";
+import { HarnessGlobal, sleep } from "../../../lib/util";
 import { createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
@@ -41,8 +41,9 @@ declare var global: HarnessGlobal;
     const betaAssetQuantity = toBN(toWei("5000", "ether"));
     const alphaMaxFee = 5000; // Max 5000 satoshis fee
 
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alphaExpiry: number =
+        new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const betaExpiry: number = Math.round(Date.now() / 1000) + 9;
 
     const initialUrl = "/swaps/rfc003";
     const listUrl = "/swaps";
@@ -128,55 +129,42 @@ declare var global: HarnessGlobal;
             actor: bob,
             action: ActionKind.Fund,
             state: (state: any) => state.beta_ledger.status === "Funded",
-        },
-        {
-            actor: alice,
-            action: ActionKind.Redeem,
-            state: (state: any) => state.beta_ledger.status === "Redeemed",
             test: {
-                description:
-                    "Should have received the beta asset after the redeem",
+                description: "Should have less beta asset after the funding",
                 callback: async () => {
-                    let aliceErc20BalanceAfter = await ethereum.erc20Balance(
-                        aliceFinalAddress,
+                    let bobErc20BalanceAfter = await ethereum.erc20Balance(
+                        bob.wallet.eth().address(),
                         tokenContractAddress
                     );
 
-                    let aliceErc20BalanceExpected = aliceErc20BalanceBefore.add(
-                        betaAssetQuantity
-                    );
-                    aliceErc20BalanceAfter
-                        .eq(aliceErc20BalanceExpected)
-                        .should.equal(true);
+                    bobErc20BalanceAfter
+                        .lt(bobInitialErc20)
+                        .should.be.equal(true);
                 },
-                timeout: 5000,
             },
         },
         {
             actor: bob,
-            action: ActionKind.Redeem,
-            uriQuery: { address: bobFinalAddress, fee_per_byte: 20 },
-            state: (state: any) => state.alpha_ledger.status === "Redeemed",
+            action: ActionKind.Refund,
+            state: (state: any) => state.beta_ledger.status === "Refunded",
             test: {
                 description:
-                    "Should have received the alpha asset after the redeem",
-                callback: async (body: any) => {
-                    let redeemTxId = body.state.alpha_ledger.redeem_tx;
-
-                    let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
-                        redeemTxId,
-                        bobFinalAddress
+                    "Should have received the beta asset after the refund",
+                callback: async () => {
+                    let bobErc20BalanceAfter = await ethereum.erc20Balance(
+                        bob.wallet.eth().address(),
+                        tokenContractAddress
                     );
-                    const satoshiExpected = alphaAssetQuantity - alphaMaxFee;
 
-                    satoshiReceived.should.be.at.least(satoshiExpected);
+                    bobErc20BalanceAfter
+                        .eq(bobInitialErc20)
+                        .should.be.equal(true);
                 },
-                timeout: 10000,
             },
         },
     ];
 
-    describe("RFC003: Bitcoin for ERC20", async () => {
+    describe("RFC003: Bitcoin for ERC20 - ERC20 (beta) refunded to Bob", async () => {
         createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
     });
     run();

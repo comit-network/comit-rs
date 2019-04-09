@@ -5,8 +5,9 @@ use std::{
     hash::Hash,
     sync::Mutex,
 };
+use strum_macros::StrumDisplay;
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, StrumDisplay)]
 pub enum RoleKind {
     Alice,
     Bob,

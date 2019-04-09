@@ -1,5 +1,5 @@
 use crate::{
-    http_api::routes::rfc003::action::Action,
+    http_api::routes::rfc003::action::ActionName,
     swap_protocols::{
         metadata_store,
         rfc003::{self, state_store},
@@ -74,13 +74,13 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
-pub fn action_already_done(action: Action) -> HttpApiProblem {
+pub fn action_already_done(action: ActionName) -> HttpApiProblem {
     error!("{} action has already been done", action);
     HttpApiProblem::with_title_and_type_from_status(StatusCode::GONE)
         .set_title("Action already done.")
 }
 
-pub fn invalid_action(action: Action) -> HttpApiProblem {
+pub fn invalid_action(action: ActionName) -> HttpApiProblem {
     error!("{} action is invalid for this swap", action);
     HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
         .set_title("Invalid action.")

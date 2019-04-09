@@ -5,7 +5,7 @@ mod swap_state;
 use crate::{
     http_api::{
         route_factory::swap_path,
-        routes::{into_rejection, rfc003::action::Action},
+        routes::{into_rejection, rfc003::action::ActionName},
     },
     swap_protocols::{
         rfc003::{alice::AliceSpawner, state_store::StateStore},
@@ -49,7 +49,7 @@ pub fn post_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
-    action: Action,
+    action: ActionName,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
     handle_post_action(
@@ -68,7 +68,7 @@ pub fn get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
-    action: Action,
+    action: ActionName,
     query_params: GetActionQueryParams,
 ) -> Result<impl Reply, Rejection> {
     handle_get_action(

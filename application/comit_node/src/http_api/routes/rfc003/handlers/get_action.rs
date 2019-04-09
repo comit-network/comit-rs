@@ -1,11 +1,11 @@
 use crate::{
     http_api::{
         problem,
-        routes::rfc003::action::{Action, ToAction},
+        routes::rfc003::action::{ActionName, ToActionName},
     },
     swap_protocols::{
         metadata_store::Metadata,
-        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions},
+        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions, Timestamp},
         MetadataStore, SwapId,
     },
 };
@@ -19,7 +19,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: Arc<S>,
     id: &SwapId,
-    action: Action,
+    action_name: ActionName,
     query_params: &GetActionQueryParams,
 ) -> Result<HalResource, HttpApiProblem> {
     let metadata = metadata_store
@@ -37,37 +37,48 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
             state
                 .actions()
                 .iter()
-                .find_map(|state_action| {
-                    if action == state_action.to_action() {
-                        Some(
-                            state_action
-                                .clone()
-                                .into_response_body(query_params.clone())
-                                .map(|body| {
-                                    trace!("Swap {}: Returning {:?} for {:?}", id, body, action);
-                                    HalResource::new(body)
-                                }),
-                        )
+                .find_map(|action| {
+                    if action_name == action.to_action_name() {
+                        let payload = action
+                            .inner
+                            .clone()
+                            .into_response_payload(query_params.clone());
+
+                        match payload {
+                            Ok(payload) => {
+                                trace!(
+                                    "Swap {}: Returning {:?} for {:?}",
+                                    id,
+                                    payload,
+                                    action_name
+                                );
+                                Some(Ok(HalResource::new(ActionResponseBody {
+                                    payload,
+                                    invalid_until: action.invalid_until,
+                                })))
+                            }
+                            Err(e) => Some(Err(e)),
+                        }
                     } else {
                         None
                     }
                 })
-                .unwrap_or_else(|| Err(problem::invalid_action(action)))
+                .unwrap_or_else(|| Err(problem::invalid_action(action_name)))
         })
     )
 }
 
-pub trait IntoResponseBody {
-    fn into_response_body(
+pub trait IntoResponsePayload {
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem>;
+    ) -> Result<ActionResponsePayload, HttpApiProblem>;
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
-pub enum ActionResponseBody {
+pub enum ActionResponsePayload {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
         amount: BitcoinQuantity,
@@ -92,6 +103,14 @@ pub enum ActionResponseBody {
     },
 }
 
+#[derive(Clone, Debug, Serialize)]
+pub struct ActionResponseBody {
+    #[serde(flatten)]
+    pub payload: ActionResponsePayload,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invalid_until: Option<Timestamp>,
+}
+
 #[derive(Clone, Deserialize, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum GetActionQueryParams {
@@ -102,19 +121,19 @@ pub enum GetActionQueryParams {
     None {},
 }
 
-impl IntoResponseBody for bitcoin::SendToAddress {
-    fn into_response_body(
+impl IntoResponsePayload for bitcoin::SendToAddress {
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
         match query_params {
             GetActionQueryParams::None {} => {
                 let bitcoin::SendToAddress {
                     to,
                     amount,
                     network,
-                } = self.clone();
-                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
+                } = self;
+                Ok(ActionResponsePayload::BitcoinSendAmountToAddress {
                     to,
                     amount,
                     network,
@@ -128,11 +147,11 @@ impl IntoResponseBody for bitcoin::SendToAddress {
     }
 }
 
-impl IntoResponseBody for bitcoin::SpendOutput {
-    fn into_response_body(
+impl IntoResponsePayload for bitcoin::SpendOutput {
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
         match query_params {
             GetActionQueryParams::BitcoinAddressAndFee {
                 address,
@@ -152,7 +171,7 @@ impl IntoResponseBody for bitcoin::SpendOutput {
                         }
                     };
                     match serialize_hex(&transaction) {
-                        Ok(hex) => Ok(ActionResponseBody::BitcoinBroadcastSignedTransaction {
+                        Ok(hex) => Ok(ActionResponsePayload::BitcoinBroadcastSignedTransaction {
                             hex,
                             network,
                         }),
@@ -191,11 +210,11 @@ impl IntoResponseBody for bitcoin::SpendOutput {
     }
 }
 
-impl IntoResponseBody for ethereum::ContractDeploy {
-    fn into_response_body(
+impl IntoResponsePayload for ethereum::ContractDeploy {
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
         let ethereum::ContractDeploy {
             data,
             amount,
@@ -203,7 +222,7 @@ impl IntoResponseBody for ethereum::ContractDeploy {
             network,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumDeployContract {
+            GetActionQueryParams::None {} => Ok(ActionResponsePayload::EthereumDeployContract {
                 data,
                 amount,
                 gas_limit,
@@ -217,11 +236,11 @@ impl IntoResponseBody for ethereum::ContractDeploy {
     }
 }
 
-impl IntoResponseBody for ethereum::SendTransaction {
-    fn into_response_body(
+impl IntoResponsePayload for ethereum::SendTransaction {
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
         let ethereum::SendTransaction {
             to,
             data,
@@ -230,7 +249,7 @@ impl IntoResponseBody for ethereum::SendTransaction {
             network,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumInvokeContract {
+            GetActionQueryParams::None {} => Ok(ActionResponsePayload::EthereumInvokeContract {
                 contract_address: to,
                 data,
                 amount,
@@ -245,58 +264,58 @@ impl IntoResponseBody for ethereum::SendTransaction {
     }
 }
 
-impl IntoResponseBody for () {
-    fn into_response_body(
+impl IntoResponsePayload for () {
+    fn into_response_payload(
         self,
         _: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
-        error!("IntoResponseBody should not be called for the unit type");
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+        error!("IntoResponsePayload should not be called for the unit type");
         Err(HttpApiProblem::with_title_and_type_from_status(
             StatusCode::INTERNAL_SERVER_ERROR,
         ))
     }
 }
 
-impl<Deploy, Fund, Redeem, Refund> IntoResponseBody
+impl<Deploy, Fund, Redeem, Refund> IntoResponsePayload
     for alice::ActionKind<Deploy, Fund, Redeem, Refund>
 where
-    Deploy: IntoResponseBody,
-    Fund: IntoResponseBody,
-    Redeem: IntoResponseBody,
-    Refund: IntoResponseBody,
+    Deploy: IntoResponsePayload,
+    Fund: IntoResponsePayload,
+    Redeem: IntoResponsePayload,
+    Refund: IntoResponsePayload,
 {
-    fn into_response_body(
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
         match self {
-            alice::ActionKind::Deploy(payload) => payload.into_response_body(query_params),
-            alice::ActionKind::Fund(payload) => payload.into_response_body(query_params),
-            alice::ActionKind::Redeem(payload) => payload.into_response_body(query_params),
-            alice::ActionKind::Refund(payload) => payload.into_response_body(query_params),
+            alice::ActionKind::Deploy(payload) => payload.into_response_payload(query_params),
+            alice::ActionKind::Fund(payload) => payload.into_response_payload(query_params),
+            alice::ActionKind::Redeem(payload) => payload.into_response_payload(query_params),
+            alice::ActionKind::Refund(payload) => payload.into_response_payload(query_params),
         }
     }
 }
 
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponseBody
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponsePayload
     for bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
 where
-    Deploy: IntoResponseBody,
-    Fund: IntoResponseBody,
-    Redeem: IntoResponseBody,
-    Refund: IntoResponseBody,
+    Deploy: IntoResponsePayload,
+    Fund: IntoResponsePayload,
+    Redeem: IntoResponsePayload,
+    Refund: IntoResponsePayload,
 {
-    fn into_response_body(
+    fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> Result<ActionResponsePayload, HttpApiProblem> {
         match self {
-            bob::ActionKind::Deploy(payload) => payload.into_response_body(query_params),
-            bob::ActionKind::Fund(payload) => payload.into_response_body(query_params),
-            bob::ActionKind::Redeem(payload) => payload.into_response_body(query_params),
-            bob::ActionKind::Refund(payload) => payload.into_response_body(query_params),
+            bob::ActionKind::Deploy(payload) => payload.into_response_payload(query_params),
+            bob::ActionKind::Fund(payload) => payload.into_response_payload(query_params),
+            bob::ActionKind::Redeem(payload) => payload.into_response_payload(query_params),
+            bob::ActionKind::Refund(payload) => payload.into_response_payload(query_params),
             _ => {
-                error!("IntoResponseBody is not implemented for Accept/Decline");
+                error!("IntoResponsePayload is not implemented for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(
                     StatusCode::INTERNAL_SERVER_ERROR,
                 ))

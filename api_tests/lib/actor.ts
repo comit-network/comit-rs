@@ -11,6 +11,7 @@ import * as toml from "toml";
 import * as fs from "fs";
 
 import chaiHttp = require("chai-http");
+import { sleep } from "./util";
 
 chai.use(chaiHttp);
 
@@ -94,7 +95,7 @@ export class Actor {
         });
     }
 
-    do(action: Action) {
+    async do(action: Action) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
@@ -126,6 +127,7 @@ export class Actor {
                     "amount",
                     "gas_limit"
                 );
+
                 let {
                     contract_address,
                     data,
