@@ -45,20 +45,19 @@ pub fn state_store() -> HttpApiProblem {
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 pub fn swap_not_found() -> HttpApiProblem {
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
-        .set_title("Swap not found.")
+    HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND)
 }
 
 pub fn unsupported() -> HttpApiProblem {
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-        .set_title("Swap not supported.")
+    HttpApiProblem::new("Swap not supported.")
+        .set_status(StatusCode::BAD_REQUEST)
         .set_detail("The requested combination of ledgers and assets is not supported.")
 }
 
 pub fn deserialize(e: &serde_json::Error) -> HttpApiProblem {
     error!("Failed to deserialize body: {:?}", e);
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-        .set_title("Invalid body.")
+    HttpApiProblem::new("Invalid body.")
+        .set_status(StatusCode::BAD_REQUEST)
         .set_detail("Failed to deserialize given body.")
 }
 
@@ -69,21 +68,20 @@ pub fn serialize(e: serde_json::Error) -> HttpApiProblem {
 
 pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
     error!("{} not yet implemented", feature);
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-        .set_title("Feature not yet implemented.")
+    HttpApiProblem::new("Feature not yet implemented.")
+        .set_status(StatusCode::INTERNAL_SERVER_ERROR)
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
 pub fn action_already_done(action: ActionName) -> HttpApiProblem {
     error!("{} action has already been done", action);
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::GONE)
-        .set_title("Action already done.")
+    HttpApiProblem::new("Action already done.").set_status(StatusCode::GONE)
 }
 
 pub fn invalid_action(action: ActionName) -> HttpApiProblem {
     error!("{} action is invalid for this swap", action);
-    HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
-        .set_title("Invalid action.")
+    HttpApiProblem::new("Invalid action.")
+        .set_status(StatusCode::CONFLICT)
         .set_detail("Cannot perform requested action for this swap.")
 }
 
@@ -92,13 +90,13 @@ pub fn unexpected_query_parameters(action: &str, parameters: Vec<String>) -> Htt
         "Unexpected GET parameters {:?} for a {} action type. Expected: none",
         parameters, action
     );
-    let mut problem = HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-        .set_title("Unexpected query parameter(s).")
+    let mut problem = HttpApiProblem::new("Unexpected query parameter(s).")
+        .set_status(StatusCode::BAD_REQUEST)
         .set_detail("This action does not take any query parameters.");
 
     problem
         .set_value("unexpected_parameters", &parameters)
-        .expect("invalid use of HttpApiProblem");
+        .expect("parameters will never fail to serialize");
 
     problem
 }
@@ -116,13 +114,13 @@ pub fn missing_query_parameters(
             .collect::<Vec<&str>>()
     );
 
-    let mut problem = HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-        .set_title("Missing query parameter(s).")
+    let mut problem = HttpApiProblem::new("Missing query parameter(s).")
+        .set_status(StatusCode::BAD_REQUEST)
         .set_detail("This action requires additional query parameters.");
 
     problem
         .set_value("missing_parameters", &parameters)
-        .expect("invalid use of HttpApiProblem");
+        .expect("parameters will never fail to serialize");
 
     problem
 }
