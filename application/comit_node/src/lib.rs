@@ -9,6 +9,7 @@ pub mod comit_i_routes;
 pub mod comit_server;
 pub mod connection_pool;
 pub mod http_api;
+pub mod libp2p_bam;
 pub mod logging;
 pub mod node_id;
 pub mod seed;

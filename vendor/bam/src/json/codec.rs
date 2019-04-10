@@ -1,12 +1,23 @@
 use crate::json;
 use bytes::BytesMut;
-use std::io;
+use std::{error::Error as StdError, fmt, io};
 use tokio_codec::{Decoder, Encoder};
 
 #[derive(Debug)]
 pub enum Error {
     Json(serde_json::Error),
     IO(io::Error),
+}
+
+impl StdError for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        match self {
+            Error::Json(e) => write!(f, "failed to decode JSON {:?}", e),
+            Error::IO(e) => write!(f, "IO error {:?}", e),
+        }
+    }
 }
 
 impl From<io::Error> for Error {
