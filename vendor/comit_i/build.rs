@@ -8,6 +8,7 @@ fn main() {
         version
     );
 
+    println!("Fetching {}", url);
     let mut tmpfile: File = tempfile::tempfile().unwrap();
     reqwest::get(&url).unwrap().copy_to(&mut tmpfile).unwrap();
     unzip::Unzipper::new(tmpfile, "./").unzip().unwrap();
