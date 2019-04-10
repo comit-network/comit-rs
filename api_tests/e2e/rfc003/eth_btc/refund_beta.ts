@@ -17,11 +17,11 @@ declare var global: HarnessGlobal;
     const bobInitialEth = "0.1";
     const aliceInitialEth = "11";
 
-    const alice = new Actor("alice", global.config, global.test_root, {
+    const alice = new Actor("alice", global.config, global.project_root, {
         ethConfig: global.ledgers_config.ethereum,
         btcConfig: global.ledgers_config.bitcoin,
     });
-    const bob = new Actor("bob", global.config, global.test_root, {
+    const bob = new Actor("bob", global.config, global.project_root, {
         ethConfig: global.ledgers_config.ethereum,
         btcConfig: global.ledgers_config.bitcoin,
     });
