@@ -65,6 +65,10 @@ export class Actor {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
+    web_gui_url() {
+        return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
+    }
+
     pollComitNodeUntil(
         location: string,
         predicate: (body: SwapResponse) => boolean
