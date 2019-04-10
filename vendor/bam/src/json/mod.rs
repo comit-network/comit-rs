@@ -3,8 +3,8 @@ mod frame;
 mod header;
 mod request;
 mod response;
-
-pub mod macros;
+#[macro_use]
+mod macros;
 pub mod status;
 
 pub use self::{codec::*, frame::*, header::Header, request::*, response::*, status::*};

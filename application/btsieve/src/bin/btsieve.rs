@@ -1,9 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate failure;
-
 use bitcoin_rpc_client::{rpc::BlockchainInfo, BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::Network as BitcoinNetwork;
 use btsieve::{
@@ -23,6 +20,7 @@ use ethereum_support::{
     },
     Network as EthereumNetwork,
 };
+use failure::Fail;
 use futures::{future::Future, stream::Stream};
 use std::{env::var, string::ToString, sync::Arc};
 use tokio::runtime::Runtime;

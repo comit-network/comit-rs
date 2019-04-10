@@ -1,5 +1,7 @@
 use bitcoin;
 use bitcoin_bech32;
+use serde::{Deserialize, Serialize};
+use strum_macros::IntoStaticStr;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash, IntoStaticStr)]
 #[serde(rename_all = "lowercase")]

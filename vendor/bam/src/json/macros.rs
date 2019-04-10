@@ -1,4 +1,4 @@
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! try_header {
     ($e:expr) => {
         header_internal!($e, {
@@ -14,7 +14,7 @@ macro_rules! try_header {
     };
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! header {
     ($e:expr) => {
         header_internal!($e, {

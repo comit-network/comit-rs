@@ -1,9 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate bam;
-
 pub mod bam_api;
 pub mod bam_ext;
 pub mod btsieve;

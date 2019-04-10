@@ -1,5 +1,6 @@
 use bam::{config::Config, json::*, *};
 use futures::future;
+use serde::Deserialize;
 
 pub fn config() -> Config<ValidatedIncomingRequest, Response> {
     Config::default().on_request(

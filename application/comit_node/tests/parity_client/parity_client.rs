@@ -8,6 +8,7 @@ use ethereum_support::{
     Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,
     H256, U256,
 };
+use lazy_static::lazy_static;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex},

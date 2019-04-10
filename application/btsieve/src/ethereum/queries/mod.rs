@@ -10,6 +10,7 @@ use ethereum_support::{
     Transaction, TransactionId, TransactionReceipt, H256,
 };
 use futures::Future;
+use serde::Serialize;
 
 fn to_h256<S: AsRef<str>>(tx_id: S) -> Option<H256> {
     let tx_id = tx_id.as_ref();

@@ -1,4 +1,5 @@
 use crate::api::{IntoFrame, ResponseFrameSource};
+use debug_stub_derive::DebugStub;
 use futures::{
     future,
     sync::mpsc::{self, UnboundedSender},

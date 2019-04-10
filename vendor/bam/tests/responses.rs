@@ -1,6 +1,4 @@
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 pub mod common;
 
 use crate::common::{say_hello::HelloResponseHeader, setup::start_server_with, *};
