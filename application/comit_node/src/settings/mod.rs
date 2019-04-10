@@ -19,7 +19,7 @@ pub struct ComitNodeSettings {
     pub btsieve: Btsieve,
     #[serde(with = "self::serde_log", default = "default_log")]
     pub log_level: LevelFilter,
-    pub comit_i: Option<HttpSocket>,
+    pub web_gui: Option<HttpSocket>,
 }
 
 fn default_log() -> LevelFilter {

@@ -17,6 +17,6 @@ network = "regtest"
 address="0.0.0.0"
 port=8000
 
-[comit_i]
+[web_gui]
 address="0.0.0.0"
 port=8080

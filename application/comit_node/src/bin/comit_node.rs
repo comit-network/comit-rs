@@ -145,7 +145,7 @@ fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
-    if let Some(comit_i_settings) = &settings.comit_i {
+    if let Some(comit_i_settings) = &settings.web_gui {
         let routes = comit_i_routes::create();
 
         let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
@@ -159,7 +159,7 @@ fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::run
 }
 
 fn auth_origin(settings: &ComitNodeSettings) -> String {
-    match &settings.comit_i {
+    match &settings.web_gui {
         Some(http_socket) => format!("http://localhost:{}", http_socket.port),
         None => "http://localhost:8080".to_string(),
     }
