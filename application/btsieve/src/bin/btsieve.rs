@@ -2,8 +2,6 @@
 #![deny(unsafe_code)]
 
 #[macro_use]
-extern crate log;
-#[macro_use]
 extern crate failure;
 
 use bitcoin_rpc_client::{rpc::BlockchainInfo, BitcoinCoreClient, BitcoinRpcApi};
@@ -52,7 +50,7 @@ fn main() -> Result<(), failure::Error> {
     let settings = load_settings()?;
     let mut runtime = tokio::runtime::Runtime::new()?;
 
-    info!("Starting up with {:#?}", settings);
+    log::info!("Starting up with {:#?}", settings);
 
     let bitcoin_routes = create_bitcoin_routes(&mut runtime, settings.bitcoin)?;
 
@@ -84,12 +82,12 @@ fn create_bitcoin_routes(
     );
 
     let blockchain_info = get_bitcoin_info(&bitcoin_rpc_client)?;
-    info!("Connected to Bitcoin: {:?}", blockchain_info);
+    log::info!("Connected to Bitcoin: {:?}", blockchain_info);
     let network = BitcoinNetwork::from(blockchain_info.chain).into();
 
-    trace!("Setting up bitcoin routes to {:?}", network);
+    log::trace!("Setting up bitcoin routes to {:?}", network);
 
-    info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
+    log::info!("Connect BitcoinZmqListener to {}", settings.zmq_endpoint);
 
     {
         let block_query_repository = Arc::clone(&block_query_repository);
@@ -155,7 +153,7 @@ fn create_ethereum_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    info!("Starting Ethereum Listener on {}", settings.node_url);
+    log::info!("Starting Ethereum Listener on {}", settings.node_url);
 
     let (event_loop, transport) =
         Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
@@ -163,7 +161,7 @@ fn create_ethereum_routes(
 
     let network = get_ethereum_info(web3_client.clone())?.into();
 
-    trace!("Setting up ethereum routes to {:?}", network);
+    log::trace!("Setting up ethereum routes to {:?}", network);
 
     {
         let block_query_repository = block_query_repository.clone();
@@ -268,7 +266,7 @@ fn get_bitcoin_info(client: &BitcoinCoreClient) -> Result<BlockchainInfo, Error>
     client
         .get_blockchain_info()
         .map_err(|error| {
-            error!(
+            log::error!(
                 "Could not retrieve network version from ledger Bitcoin: {:?}",
                 error
             );
@@ -277,7 +275,7 @@ fn get_bitcoin_info(client: &BitcoinCoreClient) -> Result<BlockchainInfo, Error>
             }
         })?
         .map_err(|error| {
-            error!("Could not connect to ledger Bitcoin: {:?}", error);
+            log::error!("Could not connect to ledger Bitcoin: {:?}", error);
             Error::ConnectionError {
                 ledger: String::from("Bitcoin"),
             }
@@ -286,7 +284,7 @@ fn get_bitcoin_info(client: &BitcoinCoreClient) -> Result<BlockchainInfo, Error>
 
 fn get_ethereum_info(client: Arc<Web3<Http>>) -> Result<EthereumNetwork, Error> {
     let network = client.net().version().wait()?;
-    trace!("Connected to ethereum {:?}", network);
+    log::trace!("Connected to ethereum {:?}", network);
     let network = EthereumNetwork::from_network_id(network);
     if network == EthereumNetwork::Unknown {
         return Err(Error::UnknownLedgerVersion {
@@ -300,7 +298,7 @@ fn get_ethereum_info(client: Arc<Web3<Http>>) -> Result<EthereumNetwork, Error> 
 fn var_or_default(name: &str, default: String) -> String {
     match var(name) {
         Ok(value) => {
-            info!("Set {}={}", name, value);
+            log::info!("Set {}={}", name, value);
             value
         }
         Err(_) => {

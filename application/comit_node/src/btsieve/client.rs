@@ -9,7 +9,6 @@ use crate::{
 };
 use core::time::Duration;
 use futures::{stream::Stream, Async};
-use log::{debug, error, info};
 use reqwest::{header::LOCATION, r#async::Client, StatusCode, Url};
 use serde::Deserialize;
 use tokio::prelude::future::Future;
@@ -89,7 +88,7 @@ impl BtsieveHttpClient {
         create_endpoint: Url,
         query: Q,
     ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
-        debug!("Creating {:?} at {}", query, create_endpoint);
+        log::debug!("Creating {:?} at {}", query, create_endpoint);
 
         let endpoint = self.endpoint.clone();
         let query_id = self
@@ -103,7 +102,7 @@ impl BtsieveHttpClient {
             .and_then(move |response| {
                 if response.status() != StatusCode::CREATED {
                     if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
-                        error!(
+                        log::error!(
                             "Failed to create query. btsieve returned: {}",
                             String::from_utf8(bytes.to_vec())
                                 .expect("btsieve returned non-utf8 error")
@@ -141,7 +140,7 @@ impl BtsieveHttpClient {
                     })
             })
             .inspect(|query_id| {
-                info!("Created new query at location {}", query_id);
+                log::info!("Created new query at location {}", query_id);
             })
             .map(QueryId::new);
 

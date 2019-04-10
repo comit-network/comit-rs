@@ -1,6 +1,5 @@
 use crate::swap_protocols::{asset::AssetKind, LedgerKind};
 use failure::Fail;
-use log::trace;
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
@@ -46,7 +45,7 @@ impl<K: Debug + Display + Hash + Eq + Clone + Send + Sync + 'static> MetadataSto
 {
     fn get(&self, key: &K) -> Result<Option<Metadata>, Error> {
         let metadata = self.metadata.lock().unwrap();
-        trace!("Fetched metadata of swap with id {}: {:?}", key, metadata);
+        log::trace!("Fetched metadata of swap with id {}: {:?}", key, metadata);
 
         Ok(metadata.get(&key).map(Clone::clone))
     }

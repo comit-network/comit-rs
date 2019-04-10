@@ -23,7 +23,6 @@ use crate::{
     },
 };
 use derivative::Derivative;
-use log::error;
 use std::sync::Arc;
 
 #[derive(Clone, Derivative)]
@@ -125,7 +124,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
                     }
                 }
             },
-            _ => error!("Tried to set a response after it's already set"),
+            _ => log::error!("Tried to set a response after it's already set"),
         }
     }
 

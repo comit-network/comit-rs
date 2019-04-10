@@ -2,7 +2,6 @@ use futures::{
     sync::oneshot::{self, Sender},
     Future,
 };
-use log::debug;
 
 #[derive(Debug)]
 pub struct ShutdownHandle {
@@ -13,7 +12,7 @@ impl Drop for ShutdownHandle {
     fn drop(&mut self) {
         let sender = self.sender.take().unwrap();
         if let Ok(()) = sender.send(()) {
-            debug!("Shut down server because handle is dropped.");
+            log::debug!("Shut down server because handle is dropped.");
         }
     }
 }

@@ -101,7 +101,7 @@ impl ParityClient {
             .unwrap()
             .unwrap();
 
-        debug!("Deploying the contract consumed {} gas", receipt.gas_used);
+        log::debug!("Deploying the contract consumed {} gas", receipt.gas_used);
 
         receipt.contract_address.unwrap()
     }
@@ -190,7 +190,7 @@ impl ParityClient {
             .unwrap()
             .unwrap();
 
-        debug!("Transaction Receipt: {:?}", receipt);
+        log::debug!("Transaction Receipt: {:?}", receipt);
 
         receipt
     }
@@ -240,7 +240,7 @@ impl ParityClient {
 
     fn increment_nonce(&self, nonce: &mut U256) {
         let next_nonce = *nonce + U256::from(1);
-        debug!("Nonce was incremented from {} to {}", nonce, next_nonce);
+        log::debug!("Nonce was incremented from {} to {}", nonce, next_nonce);
         *nonce = next_nonce;
     }
 }

@@ -14,7 +14,6 @@ use bam::{
     Status,
 };
 use futures::future::{self, Future};
-use log::{error, warn};
 
 pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingRequest, Response> {
     Config::default().on_request(
@@ -105,7 +104,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                             body!(request.take_body_as()),
                         ),
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
-                            warn!(
+                            log::warn!(
                                 "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
                             );
                             Box::new(future::ok(Response::new(Status::RE(21))))
@@ -113,7 +112,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                     }
                 }
                 SwapProtocol::Unknown(protocol) => {
-                    warn!(
+                    log::warn!(
                         "the swap protocol {} is currently not supported", protocol
                     );
                     Box::new(future::ok(Response::new(Status::RE(21))))
@@ -179,7 +178,7 @@ where
                         .expect("reason header shouldn't fail to serialize"),
                 ),
                 Err(_) => {
-                    warn!(
+                    log::warn!(
                         "Failed to receive from oneshot channel for swap {}",
                         swap_id
                     );
@@ -190,7 +189,7 @@ where
             Ok(response)
         })),
         Err(e) => {
-            error!("Unable to spawn Bob: {:?}", e);
+            log::error!("Unable to spawn Bob: {:?}", e);
             Box::new(future::ok(Response::new(Status::RE(0))))
         }
     }

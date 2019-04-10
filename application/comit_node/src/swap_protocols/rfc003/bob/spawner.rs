@@ -13,7 +13,6 @@ use crate::swap_protocols::{
 };
 use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
-use log::{error, info};
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -91,10 +90,10 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner for ProtocolDependencie
         tokio::spawn(
             state_machine_future
                 .map(move |outcome| {
-                    info!("Swap {} finished with {:?}", id, outcome);
+                    log::info!("Swap {} finished with {:?}", id, outcome);
                 })
                 .map_err(move |e| {
-                    error!("Swap {} failed with {:?}", id, e);
+                    log::error!("Swap {} failed with {:?}", id, e);
                 }),
         );
 

@@ -18,7 +18,6 @@ use futures::{
     future::{self, Either},
     Future,
 };
-use log::error;
 use std::sync::Arc;
 
 impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync> {
@@ -100,7 +99,7 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
                     .and_then(move |transaction| {
                         let secret = extract_secret(&transaction, &htlc_params.secret_hash)
                             .ok_or_else(|| {
-                                error!(
+                                log::error!(
                                     "Redeem transaction didn't have secret it in: {:?}",
                                     transaction
                                 );

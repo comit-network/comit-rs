@@ -14,6 +14,6 @@ pub enum PayloadKind {
 fn to_sha256d_hash<S: AsRef<str>>(id: S) -> Option<Sha256dHash> {
     let id = id.as_ref();
     Sha256dHash::from_hex(id)
-        .map_err(|e| warn!("skipping {} because it is invalid hex: {:?}", id, e))
+        .map_err(|e| log::warn!("skipping {} because it is invalid hex: {:?}", id, e))
         .ok()
 }

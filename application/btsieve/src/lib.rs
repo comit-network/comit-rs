@@ -5,8 +5,6 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate derivative;
-#[macro_use]
-extern crate log;
 
 pub mod bitcoin;
 pub mod ethereum;

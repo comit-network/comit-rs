@@ -1,6 +1,5 @@
 use crate::api::{self, FrameHandler};
 use futures::{Future, Sink, Stream};
-use log::{trace, warn};
 use std::{fmt::Debug, io};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_codec::{Decoder, Encoder};
@@ -30,16 +29,16 @@ pub fn new<
 
     stream
         .map_err(ClosedReason::CodecError)
-        .inspect(|frame| trace!("<--- Incoming {:?}", frame))
+        .inspect(|frame| log::trace!("<--- Incoming {:?}", frame))
         .and_then(move |frame| {
             // Some errors are non-fatal, keep going if we get these
             match incoming_frames.handle(frame) {
                 Err(crate::api::Error::UnexpectedResponse) => {
-                    warn!("Received unexpected response - ignoring it.");
+                    log::warn!("Received unexpected response - ignoring it.");
                     Ok(None)
                 }
                 Err(crate::api::Error::OutOfOrderRequest) => {
-                    warn!("Received out of order request - ignoring it.");
+                    log::warn!("Received out of order request - ignoring it.");
                     Ok(None)
                 }
                 Ok(result) => Ok(result),
@@ -56,7 +55,7 @@ pub fn new<
         })
         .buffer_unordered(std::usize::MAX)
         .select(outgoing_frames.map_err(|_| ClosedReason::InternalError))
-        .inspect(|frame| trace!("---> Outgoing {:?}", frame))
+        .inspect(|frame| log::trace!("---> Outgoing {:?}", frame))
         .forward(sink.sink_map_err(ClosedReason::CodecError))
         .map(|_| ())
 }

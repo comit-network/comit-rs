@@ -10,7 +10,6 @@ use crate::{
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
-use log::error;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -34,14 +33,17 @@ pub fn handle_post_swap<A: AliceSpawner>(
             alice_spawner.spawn(id, body.peer, Box::new(body))?
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
-            error!(
+            log::error!(
                 "Swapping {:?} for {:?} from {:?} to {:?} is not supported",
-                body.alpha_asset, body.beta_asset, body.alpha_ledger, body.beta_ledger
+                body.alpha_asset,
+                body.beta_asset,
+                body.alpha_ledger,
+                body.beta_ledger
             );
             return Err(problem::unsupported());
         }
         SwapRequestBodyKind::MalformedRequest(body) => {
-            error!(
+            log::error!(
                 "Malformed request body: {}",
                 serde_json::to_string(&body)
                     .expect("failed to serialize serde_json::Value as string ?!")

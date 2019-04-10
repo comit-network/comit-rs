@@ -5,7 +5,6 @@ use crate::{
         rfc003::{self, alice, bob, Ledger, Timestamp},
     },
 };
-use log::warn;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -227,10 +226,13 @@ impl SwapStatus {
                 SwapStatus::InProgress
             }
             (swap_communication_state, alpha_ledger, beta_ledger, error) => {
-                warn!(
+                log::warn!(
                     "Internal failure with swap communication state {:?},\
                      alpha ledger state {:?}, beta ledger state {:?} and error {:?}",
-                    swap_communication_state, alpha_ledger, beta_ledger, error
+                    swap_communication_state,
+                    alpha_ledger,
+                    beta_ledger,
+                    error
                 );
                 SwapStatus::InternalFailure
             }

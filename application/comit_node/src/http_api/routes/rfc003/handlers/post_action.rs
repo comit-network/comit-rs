@@ -14,7 +14,6 @@ use crate::{
 use bitcoin_support;
 use ethereum_support::{self, Erc20Token};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
-use log::{error, trace};
 use serde::Deserialize;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
@@ -26,7 +25,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
     use crate::swap_protocols::{Metadata, RoleKind};
-    trace!("accept action requested on {:?}", id);
+    log::trace!("accept action requested on {:?}", id);
     let metadata = metadata_store
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
@@ -36,9 +35,10 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
         (|| match action {
             ActionName::Accept => serde_json::from_value::<BobAcceptBody>(body)
                 .map_err(|e| {
-                    error!(
+                    log::error!(
                         "Failed to deserialize body of accept response for swap {}: {:?}",
-                        id, e
+                        id,
+                        e
                     );
                     problem::deserialize(&e)
                 })
@@ -65,9 +65,10 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
             ActionName::Decline => {
                 serde_json::from_value::<DeclineSwapRequestHttpBody>(body.clone())
                     .map_err(|e| {
-                        error!(
+                        log::error!(
                             "Failed to deserialize body of decline response for swap {}: {:?}",
-                            id, e
+                            id,
+                            e
                         );
                         problem::deserialize(&e)
                     })

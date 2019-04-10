@@ -77,7 +77,7 @@ impl GanacheClient {
             .unwrap()
             .unwrap();
 
-        debug!("Deploying the contract consumed {} gas", receipt.gas_used);
+        log::debug!("Deploying the contract consumed {} gas", receipt.gas_used);
 
         receipt.contract_address.unwrap()
     }

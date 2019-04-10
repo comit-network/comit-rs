@@ -12,7 +12,6 @@ use crate::{
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode};
-use log::{error, trace};
 use rustic_hal::HalResource;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -34,7 +33,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
             let state = state_store
                 .get::<ROLE>(id.clone())?
                 .ok_or_else(problem::state_store)?;
-            trace!("Retrieved state for {}: {:?}", id, state);
+            log::trace!("Retrieved state for {}: {:?}", id, state);
 
             state
                 .actions()
@@ -48,7 +47,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
 
                         match payload {
                             Ok(payload) => {
-                                trace!(
+                                log::trace!(
                                     "Swap {}: Returning {:?} for {:?}",
                                     id,
                                     payload,
@@ -165,7 +164,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                     let transaction = match transaction {
                         Ok(transaction) => transaction,
                         Err(e) => {
-                            error!("Could not sign Bitcoin transaction: {:?}", e);
+                            log::error!("Could not sign Bitcoin transaction: {:?}", e);
                             return Err(HttpApiProblem::with_title_and_type_from_status(
                                 StatusCode::INTERNAL_SERVER_ERROR,
                             )
@@ -178,7 +177,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                             network,
                         }),
                         Err(e) => {
-                            error!("Could not serialize signed Bitcoin transaction: {:?}", e);
+                            log::error!("Could not serialize signed Bitcoin transaction: {:?}", e);
                             Err(HttpApiProblem::with_title_and_type_from_status(
                                 StatusCode::INTERNAL_SERVER_ERROR,
                             )
@@ -271,7 +270,7 @@ impl IntoResponsePayload for () {
         self,
         _: GetActionQueryParams,
     ) -> Result<ActionResponsePayload, HttpApiProblem> {
-        error!("IntoResponsePayload should not be called for the unit type");
+        log::error!("IntoResponsePayload should not be called for the unit type");
         Err(HttpApiProblem::with_title_and_type_from_status(
             StatusCode::INTERNAL_SERVER_ERROR,
         ))
@@ -317,7 +316,7 @@ where
             bob::ActionKind::Redeem(payload) => payload.into_response_payload(query_params),
             bob::ActionKind::Refund(payload) => payload.into_response_payload(query_params),
             _ => {
-                error!("IntoResponsePayload is not implemented for Accept/Decline");
+                log::error!("IntoResponsePayload is not implemented for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(
                     StatusCode::INTERNAL_SERVER_ERROR,
                 ))

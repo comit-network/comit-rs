@@ -22,7 +22,6 @@ use futures::{
     future::{self, Either},
     Future,
 };
-use log::warn;
 use std::sync::Arc;
 
 // keccak256(Redeemed())
@@ -202,7 +201,7 @@ mod erc20 {
                               receipt,
                           }| {
                         receipt.logs.into_iter().find(|log| log.topics.contains(&TRANSFER_LOG_MSG.into())).ok_or_else(|| {
-                            warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
+                            log::warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
                             rfc003::Error::InsufficientFunding
                         }).map(|log| {
                             let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
