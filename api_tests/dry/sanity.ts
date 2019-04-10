@@ -11,7 +11,7 @@ const should = chai.should();
 
 declare var global: HarnessGlobal;
 
-const alice = new Actor("alice", global.config, global.test_root);
+const alice = new Actor("alice", global.config, global.project_root);
 
 // the `setTimeout` forces it to be added on the event loop
 // This is needed because there is no async call in the test

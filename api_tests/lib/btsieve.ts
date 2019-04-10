@@ -5,6 +5,9 @@ chai.use(chaiHttp);
 
 import { Transaction } from "web3-core";
 import { TransactionReceipt } from "web3-core";
+import * as toml from "toml";
+import * as fs from "fs";
+import { TestConfig } from "./actor";
 
 export interface IdMatchResponse {
     query: any;
@@ -21,7 +24,8 @@ export interface EthereumMatch {
     receipt: TransactionReceipt;
 }
 
-export interface BtsieveConfig {
+export interface MetaBtsieveConfig {
+    host: string;
     env: { [key: string]: string };
 }
 
@@ -29,9 +33,23 @@ export class Btsieve {
     host: string;
     port: number;
 
-    constructor(host: string, port: number) {
-        this.host = host;
-        this.port = port;
+    constructor(name: string, testConfig: TestConfig, root: string) {
+        const metaBtsieveConfig = testConfig.btsieve;
+        if (!metaBtsieveConfig) {
+            throw new Error("btsieve configuration is needed");
+        }
+
+        this.host = metaBtsieveConfig[name].host;
+        let btsieveConfig = toml.parse(
+            fs.readFileSync(
+                root +
+                    "/" +
+                    metaBtsieveConfig[name].env.BTSIEVE_CONFIG_PATH +
+                    "/default.toml",
+                "utf8"
+            )
+        );
+        this.port = btsieveConfig.http_api.port_bind;
     }
 
     url() {
