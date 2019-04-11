@@ -150,7 +150,7 @@ fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::run
 
         let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
 
-        info!("Starting comit-i HTTP server on {:?}", listen_addr);
+        log::info!("Starting comit-i HTTP server on {:?}", listen_addr);
 
         let server = warp::serve(routes).bind(listen_addr);
 
