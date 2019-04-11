@@ -7,11 +7,13 @@ use crate::{
         request::{UnknownMandatoryHeaders, UnvalidatedIncomingRequest, ValidatedIncomingRequest},
     },
 };
+use debug_stub_derive::DebugStub;
 use futures::{
     future,
     sync::oneshot::{self, Sender},
     Future,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 use std::{
     collections::HashMap,
@@ -59,7 +61,7 @@ impl ResponseFrameSource<json::Response> for JsonResponseSource {
         self.awaiting_responses.insert(frame_id, sender);
 
         Box::new(receiver.map_err(|_| {
-            warn!(
+            log::warn!(
                 "Sender of response future was unexpectedly dropped before response was received."
             )
         }))
@@ -104,21 +106,23 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
                     .get_awaiting_response(frame.id)
                     .ok_or(Error::UnexpectedResponse)?;
 
-                debug!(
+                log::debug!(
                     "attempting to deserialize payload '{:?}' of frame {} as RESPONSE",
-                    frame.payload, frame.id
+                    frame.payload,
+                    frame.id
                 );
 
                 let response = serde_json::from_value(frame.payload);
 
                 match response {
                     Ok(response) => {
-                        debug!("dispatching {:?} to stored handler", response);
+                        log::debug!("dispatching {:?} to stored handler", response);
                         sender.send(response).unwrap()
                     }
-                    Err(e) => error!(
+                    Err(e) => log::error!(
                         "payload of frame {} is not a well-formed RESPONSE: {:?}",
-                        frame.id, e
+                        frame.id,
+                        e
                     ),
                 }
 
@@ -130,13 +134,13 @@ impl FrameHandler<json::Frame> for JsonFrameHandler {
 }
 
 fn malformed_request(error: serde_json::Error) -> json::Response {
-    warn!("incoming request was malformed: {:?}", error);
+    log::warn!("incoming request was malformed: {:?}", error);
 
     json::Response::new(Status::SE(0))
 }
 
 fn unknown_request_type(request_type: &str) -> json::Response {
-    warn!("request type '{}' is unknown", request_type);
+    log::warn!("request type '{}' is unknown", request_type);
 
     json::Response::new(Status::SE(2))
 }

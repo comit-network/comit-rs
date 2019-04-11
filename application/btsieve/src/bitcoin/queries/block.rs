@@ -5,6 +5,8 @@ use crate::{
 };
 use bitcoin_rpc_client::BitcoinCoreClient;
 use bitcoin_support::MinedBlock;
+use derivative::Derivative;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BlockQuery {

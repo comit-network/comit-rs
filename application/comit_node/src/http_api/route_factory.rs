@@ -3,6 +3,7 @@ use crate::{
     http_api,
     swap_protocols::{rfc003::state_store, MetadataStore, ProtocolDependencies, SwapId},
 };
+use serde_json::json;
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 

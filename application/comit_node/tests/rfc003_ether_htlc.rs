@@ -1,11 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate lazy_static;
-
 pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;

@@ -3,6 +3,7 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 name = "btsieve"
 version = "0.1.0"
+
 [dependencies]
 bitcoin_rpc_client = "0.5"
 byteorder = "1.2"
@@ -24,6 +25,7 @@ serde_derive = "1"
 serde_json = "1"
 tokio = "0.1"
 url = "1.7"
+url_serde = "0.2.0"
 warp = "0.1"
 zmq-rs = "0.1"
 

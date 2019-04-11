@@ -26,23 +26,23 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
             "protocol",
         ],
         move |mut request: ValidatedIncomingRequest| {
-            let protocol: SwapProtocol = header!(request
+            let protocol: SwapProtocol = bam::header!(request
                 .take_header("protocol")
                 .map(SwapProtocol::from_bam_header));
             match protocol {
                 SwapProtocol::Rfc003 => {
                     let swap_id = SwapId::default();
 
-                    let alpha_ledger = header!(request
+                    let alpha_ledger = bam::header!(request
                         .take_header("alpha_ledger")
                         .map(LedgerKind::from_bam_header));
-                    let beta_ledger = header!(request
+                    let beta_ledger = bam::header!(request
                         .take_header("beta_ledger")
                         .map(LedgerKind::from_bam_header));
-                    let alpha_asset = header!(request
+                    let alpha_asset = bam::header!(request
                         .take_header("alpha_asset")
                         .map(AssetKind::from_bam_header));
-                    let beta_asset = header!(request
+                    let beta_asset = bam::header!(request
                         .take_header("beta_asset")
                         .map(AssetKind::from_bam_header));
 
@@ -59,7 +59,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                             beta_ledger,
                             alpha_asset,
                             beta_asset,
-                            body!(request.take_body_as()),
+                            bam::body!(request.take_body_as()),
                         ),
                         (
                             LedgerKind::Ethereum(alpha_ledger),
@@ -73,7 +73,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                             beta_ledger,
                             alpha_asset,
                             beta_asset,
-                            body!(request.take_body_as()),
+                            bam::body!(request.take_body_as()),
                         ),
                         (
                             LedgerKind::Bitcoin(alpha_ledger),
@@ -87,7 +87,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                             beta_ledger,
                             alpha_asset,
                             beta_asset,
-                            body!(request.take_body_as()),
+                            bam::body!(request.take_body_as()),
                         ),
                         (
                             LedgerKind::Ethereum(alpha_ledger),
@@ -101,10 +101,10 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                             beta_ledger,
                             alpha_asset,
                             beta_asset,
-                            body!(request.take_body_as()),
+                            bam::body!(request.take_body_as()),
                         ),
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
-                            warn!(
+                            log::warn!(
                                 "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
                             );
                             Box::new(future::ok(Response::new(Status::RE(21))))
@@ -112,7 +112,7 @@ pub fn swap_config<B: BobSpawner>(bob_spawner: B) -> Config<ValidatedIncomingReq
                     }
                 }
                 SwapProtocol::Unknown(protocol) => {
-                    warn!(
+                    log::warn!(
                         "the swap protocol {} is currently not supported", protocol
                     );
                     Box::new(future::ok(Response::new(Status::RE(21))))
@@ -178,7 +178,7 @@ where
                         .expect("reason header shouldn't fail to serialize"),
                 ),
                 Err(_) => {
-                    warn!(
+                    log::warn!(
                         "Failed to receive from oneshot channel for swap {}",
                         swap_id
                     );
@@ -189,7 +189,7 @@ where
             Ok(response)
         })),
         Err(e) => {
-            error!("Unable to spawn Bob: {:?}", e);
+            log::error!("Unable to spawn Bob: {:?}", e);
             Box::new(future::ok(Response::new(Status::RE(0))))
         }
     }

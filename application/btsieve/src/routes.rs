@@ -117,9 +117,11 @@ where
                 .map(|matches| RetrieveQueryResponse { query, matches })
                 .map(|response| warp::reply::json(&response))
                 .map_err(|e| {
-                    error!(
+                    log::error!(
                         "failed to transform result for query {} to payload {:?}: {:?}",
-                        id, query_params.return_as, e
+                        id,
+                        query_params.return_as,
+                        e
                     );
                     Error::TransformToPayload
                 })

@@ -1,9 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate log;
-
 use comit_node::{
     btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
     comit_server,
@@ -18,7 +15,7 @@ use comit_node::{
     },
 };
 use directories;
-use ethereum_support::*;
+use futures::Future;
 use std::{env::var, net::SocketAddr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -26,7 +23,7 @@ fn main() -> Result<(), failure::Error> {
     let settings = load_settings()?;
     logging::set_up_logging(&settings);
 
-    info!("Starting up with {:#?}", settings);
+    log::info!("Starting up with {:#?}", settings);
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
@@ -125,7 +122,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
-    info!("Starting HTTP server on {:?}", listen_addr);
+    log::info!("Starting HTTP server on {:?}", listen_addr);
 
     let server = warp::serve(routes).bind(listen_addr);
 
@@ -139,7 +136,7 @@ fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
 ) {
     runtime.spawn(
         comit_server::listen(settings.comit.comit_listen, protocol_dependencies).map_err(|e| {
-            error!("ComitServer shutdown: {:?}", e);
+            log::error!("ComitServer shutdown: {:?}", e);
         }),
     );
 }
@@ -147,7 +144,7 @@ fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
 fn var_or_default(name: &str, default: String) -> String {
     match var(name) {
         Ok(value) => {
-            info!("Set {}={}", name, value);
+            log::info!("Set {}={}", name, value);
             value
         }
         Err(_) => {

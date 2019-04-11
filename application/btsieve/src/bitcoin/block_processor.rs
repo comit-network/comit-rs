@@ -9,19 +9,19 @@ pub fn check_block_queries(
     block_queries: ArcQueryRepository<BlockQuery>,
     block: Block,
 ) -> impl Iterator<Item = QueryMatch> {
-    trace!("Processing {:?}", block);
+    log::trace!("Processing {:?}", block);
 
     let block_id = block.as_ref().bitcoin_hash().to_string();
 
     block_queries.all().filter_map(move |(query_id, query)| {
-        trace!("Matching query {:#?} against block {:#?}", query, block);
+        log::trace!("Matching query {:#?} against block {:#?}", query, block);
 
         let block = block.clone();
 
         if query.matches(&block) {
             let block_id = block_id.clone();
 
-            trace!("Query {:?} matches block {}", query_id, block_id);
+            log::trace!("Query {:?} matches block {}", query_id, block_id);
 
             Some(QueryMatch(query_id.into(), block_id))
         } else {
@@ -40,7 +40,7 @@ pub fn check_transaction_queries(
         .as_slice()
         .iter()
         .map(|transaction| {
-            trace!("Processing {:?}", transaction);
+            log::trace!("Processing {:?}", transaction);
 
             let transaction = transaction.clone();
             let transaction_id = transaction.txid().to_string();
@@ -48,7 +48,7 @@ pub fn check_transaction_queries(
             transaction_queries
                 .all()
                 .filter_map(move |(query_id, query)| {
-                    trace!(
+                    log::trace!(
                         "Matching query {:#?} against transaction {:#?}",
                         query,
                         &transaction
@@ -57,7 +57,7 @@ pub fn check_transaction_queries(
                     if query.matches(&transaction) {
                         let transaction_id = transaction_id.clone();
 
-                        trace!(
+                        log::trace!(
                             "Query {:?} matches transaction: {}",
                             query_id,
                             transaction_id

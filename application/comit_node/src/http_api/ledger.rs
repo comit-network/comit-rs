@@ -1,4 +1,4 @@
-use ::serde::{de::DeserializeOwned, Deserializer, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{collections::HashMap, fmt};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -115,7 +115,7 @@ impl FromHttpLedger for HttpLedger {
     }
 }
 
-pub mod serde {
+pub mod serde_ledger {
 
     use super::*;
 
@@ -123,7 +123,7 @@ pub mod serde {
     where
         D: Deserializer<'de>,
     {
-        use ::serde::{de::Error, Deserialize};
+        use serde::{de::Error, Deserialize};
         let ledger = HttpLedger::deserialize(deserializer)?;
 
         T::from_http_ledger(ledger).map_err(D::Error::custom)

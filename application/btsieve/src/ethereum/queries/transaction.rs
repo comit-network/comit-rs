@@ -3,6 +3,7 @@ use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
+use derivative::Derivative;
 use ethereum_support::{
     web3::{transports::Http, types::H256, Web3},
     Address, Bytes, Transaction,
@@ -11,6 +12,7 @@ use futures::{
     future::{self, Future},
     stream::{FuturesOrdered, Stream},
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct TransactionQuery {

@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 #[derive(Debug, Serialize, Clone, Default)]
 pub struct QueryResult(pub Vec<String>);
 

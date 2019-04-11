@@ -5,6 +5,7 @@ use crate::{
         header::{Header, Headers},
     },
 };
+use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

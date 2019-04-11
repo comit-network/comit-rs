@@ -4,7 +4,7 @@ pub mod with_swap_types;
 pub mod with_swap_types_bob;
 pub mod route_factory;
 pub mod routes;
-pub mod serde;
+pub mod serde_socket_addr;
 #[macro_use]
 pub mod ledger;
 #[macro_use]
@@ -31,9 +31,9 @@ use crate::{
         SwapProtocol,
     },
 };
-use ::serde::{ser::SerializeStruct, Serialize, Serializer};
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
+use serde::{ser::SerializeStruct, Serialize, Serializer};
 
 #[derive(Debug)]
 pub struct Http<I>(pub I);

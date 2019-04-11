@@ -1,9 +1,10 @@
-mod serde;
+mod serde_duration;
+mod serde_log;
 
 use crate::seed::Seed;
 use config::{Config, ConfigError, File};
 use log::LevelFilter;
-
+use serde::Deserialize;
 use std::{
     ffi::OsStr,
     net::{IpAddr, SocketAddr},
@@ -16,7 +17,7 @@ pub struct ComitNodeSettings {
     pub comit: Comit,
     pub http_api: HttpApi,
     pub btsieve: Btsieve,
-    #[serde(with = "serde::log_level", default = "default_log")]
+    #[serde(with = "self::serde_log", default = "default_log")]
     pub log_level: LevelFilter,
 }
 
@@ -39,7 +40,7 @@ pub struct HttpApi {
 
 #[derive(Debug, Deserialize)]
 pub struct Btsieve {
-    #[serde(with = "serde::url")]
+    #[serde(with = "url_serde")]
     pub url: url::Url,
     pub bitcoin: PollParameters,
     pub ethereum: PollParameters,
@@ -47,7 +48,7 @@ pub struct Btsieve {
 
 #[derive(Debug, Deserialize)]
 pub struct PollParameters {
-    #[serde(with = "serde::duration")]
+    #[serde(with = "self::serde_duration")]
     pub poll_interval_secs: Duration,
     pub network: String,
 }

@@ -1,5 +1,6 @@
 pub use self::{bitcoin::*, client::*, ethereum::*};
 use crate::swap_protocols::ledger::Ledger;
+use failure::Fail;
 use reqwest::Url;
 use serde::Serialize;
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};

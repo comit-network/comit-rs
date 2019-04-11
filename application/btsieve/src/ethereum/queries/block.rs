@@ -3,10 +3,12 @@ use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
+use derivative::Derivative;
 use ethereum_support::{
     web3::{transports::Http, types::U256, Web3},
     Block, Transaction,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct BlockQuery {

@@ -10,6 +10,7 @@ use ethereum_support::{
     Transaction, TransactionId, TransactionReceipt, H256,
 };
 use futures::Future;
+use serde::Serialize;
 
 fn to_h256<S: AsRef<str>>(tx_id: S) -> Option<H256> {
     let tx_id = tx_id.as_ref();
@@ -17,7 +18,7 @@ fn to_h256<S: AsRef<str>>(tx_id: S) -> Option<H256> {
     match hex::decode(clean_0x(tx_id)) {
         Ok(bytes) => Some(H256::from_slice(&bytes)),
         Err(e) => {
-            warn!("skipping {} because it is not valid hex: {:?}", tx_id, e);
+            log::warn!("skipping {} because it is not valid hex: {:?}", tx_id, e);
             None
         }
     }

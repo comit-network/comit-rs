@@ -1,5 +1,6 @@
 use bam::{config::Config, json::*, *};
 use futures::future;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct SayHelloToHeader {

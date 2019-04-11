@@ -1,6 +1,5 @@
 use ethereum_support::{EtherQuantity, U256};
-#[macro_use]
-extern crate lazy_static;
+use lazy_static::lazy_static;
 use std::{f64, str::FromStr};
 
 lazy_static! {

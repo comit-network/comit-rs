@@ -9,7 +9,7 @@ pub fn listen<T: MetadataStore<SwapId>, S: StateStore>(
     addr: SocketAddr,
     protocol_dependencies: ProtocolDependencies<T, S>,
 ) -> impl Future<Item = (), Error = io::Error> {
-    info!("ComitServer listening at {:?}", addr);
+    log::info!("ComitServer listening at {:?}", addr);
     let socket = TcpListener::bind(&addr).unwrap();
 
     socket.incoming().for_each(move |socket| {

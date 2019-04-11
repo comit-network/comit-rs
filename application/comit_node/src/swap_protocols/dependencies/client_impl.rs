@@ -19,6 +19,7 @@ use crate::{
 };
 use bam::{self, json, Status};
 use futures::Future;
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Reason {
@@ -54,27 +55,27 @@ impl<T: MetadataStore<SwapId>, S: StateStore> Client for ProtocolDependencies<T,
                     let request = build_swap_request(request)
                         .expect("constructing a bam::json::OutoingRequest should never fail!");
 
-                    debug!("Making swap request to {}: {:?}", node_id, request);
+                    log::debug!("Making swap request to {}: {:?}", node_id, request);
 
                     let response = client.lock().unwrap().send_request(request).then(
                         move |result| match result {
                             Ok(mut response) => match response.status() {
                                 Status::OK(_) => {
-                                    info!("{} accepted swap request: {:?}", node_id, response);
+                                    log::info!("{} accepted swap request: {:?}", node_id, response);
                                     match serde_json::from_value(response.body().clone()) {
                                         Ok(response) => Ok(Ok(response)),
                                         Err(_e) => Err(RequestError::InvalidResponse),
                                     }
                                 }
                                 Status::SE(20) => {
-                                    info!("{} declined swap request: {:?}", node_id, response);
+                                    log::info!("{} declined swap request: {:?}", node_id, response);
                                     Ok(Err({
                                         let reason = response
                                             .take_header("REASON")
                                             .map(SwapDeclineReason::from_bam_header)
                                             .map_or(Ok(None), |x| x.map(Some))
                                             .map_err(|e| {
-                                                error!(
+                                                log::error!(
                                                     "Could not deserialize header in response {:?}: {}",
                                                     response, e,
                                                 );
@@ -85,11 +86,11 @@ impl<T: MetadataStore<SwapId>, S: StateStore> Client for ProtocolDependencies<T,
                                     }))
                                 }
                                 Status::SE(_) => {
-                                    info!("{} rejected swap request: {:?}", node_id, response);
+                                    log::info!("{} rejected swap request: {:?}", node_id, response);
                                     Ok(Err(SwapReject::Rejected))
                                 }
                                 Status::RE(_) => {
-                                    error!(
+                                    log::error!(
                                         "{} rejected swap request because of an internal error: {:?}",
                                         node_id, response
                                     );
@@ -97,7 +98,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> Client for ProtocolDependencies<T,
                                 }
                             },
                             Err(e) => {
-                                error!("Unable to request over connection {:?}:{:?}", node_id, e);
+                                log::error!("Unable to request over connection {:?}:{:?}", node_id, e);
                                 Err(RequestError::Connection)
                             }
                         },

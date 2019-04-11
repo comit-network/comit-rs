@@ -3,6 +3,7 @@ use crate::{
     swap_protocols::{self, asset::Asset},
 };
 use futures::Future;
+use serde::{Deserialize, Serialize};
 use std::io;
 
 pub trait Client: Send + Sync + 'static {
