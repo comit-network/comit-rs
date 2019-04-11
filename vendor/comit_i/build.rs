@@ -9,9 +9,14 @@ fn main() {
     );
 
     println!("Fetching {}", url);
-    let mut tmpfile: File = tempfile::tempfile().unwrap();
-    reqwest::get(&url).unwrap().copy_to(&mut tmpfile).unwrap();
-    unzip::Unzipper::new(tmpfile, "./").unzip().unwrap();
+    let mut tmpfile: File = tempfile::tempfile().expect("Could not create temp file");
+    reqwest::get(&url)
+        .unwrap()
+        .copy_to(&mut tmpfile)
+        .expect("Could not download bundle");
+    unzip::Unzipper::new(tmpfile, "./")
+        .unzip()
+        .expect("Could not unzip bundle");
 
     println!("cargo:rerun-if-changed={}", "./version");
 }
