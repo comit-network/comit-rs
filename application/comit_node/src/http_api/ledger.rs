@@ -123,7 +123,7 @@ pub mod serde_ledger {
     where
         D: Deserializer<'de>,
     {
-        use serde::{de::Error, Deserialize};
+        use serde::de::Error;
         let ledger = HttpLedger::deserialize(deserializer)?;
 
         T::from_http_ledger(ledger).map_err(D::Error::custom)
