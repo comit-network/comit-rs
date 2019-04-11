@@ -1,8 +1,6 @@
-#![warn(unused_extern_crates, rust_2018_idioms)]
+#![warn(rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate debug_stub_derive;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
