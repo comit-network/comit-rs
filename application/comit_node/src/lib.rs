@@ -5,6 +5,7 @@ pub mod bam_api;
 pub mod bam_ext;
 pub mod btsieve;
 pub mod comit_client;
+pub mod comit_i_routes;
 pub mod comit_server;
 pub mod connection_pool;
 pub mod http_api;

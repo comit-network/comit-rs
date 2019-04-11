@@ -2,13 +2,13 @@ ledgers = ["bitcoin", "ethereum"]
 
 [comit_node.alice]
 host = "127.0.0.1"
-config_dir = "./regtest/alice/"
+config_dir = "./api_tests/regtest/alice/"
 
 [comit_node.bob]
 host = "127.0.0.1"
-config_dir = "./regtest/bob/"
+config_dir = "./api_tests/regtest/bob/"
 
 [btsieve.main.env]
-BTSIEVE_CONFIG_PATH = "./regtest/btsieve"
+BTSIEVE_CONFIG_PATH = "./api_tests/regtest/btsieve"
 ETHEREUM_POLLING_TIME_SEC = "1"
 RUST_LOG = "warn,btsieve=debug,warp=info"

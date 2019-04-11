@@ -15,10 +15,11 @@ use std::{
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
     pub comit: Comit,
-    pub http_api: HttpApi,
+    pub http_api: HttpSocket,
     pub btsieve: Btsieve,
     #[serde(with = "self::serde_log", default = "default_log")]
     pub log_level: LevelFilter,
+    pub web_gui: Option<HttpSocket>,
 }
 
 fn default_log() -> LevelFilter {
@@ -32,10 +33,9 @@ pub struct Comit {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct HttpApi {
+pub struct HttpSocket {
     pub address: IpAddr,
     pub port: u16,
-    pub logging: bool,
 }
 
 #[derive(Debug, Deserialize)]

@@ -91,6 +91,10 @@
       <sourceFolder url="file://$MODULE_DIR$/application/btsieve/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/application/btsieve/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/application/btsieve/benches" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/comit_i/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/comit_i/examples" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/comit_i/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/vendor/comit_i/benches" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/application/bitcoin_htlc/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/btsieve/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/comit_node/target" />
@@ -104,6 +108,7 @@
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_rpc_test_helpers/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_witness/target" />
+      <excludeFolder url="file://$MODULE_DIR$/vendor/comit_i/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/ethereum_support/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/event_store/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/ganache_rust_web3/target" />

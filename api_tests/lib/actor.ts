@@ -12,6 +12,7 @@ import * as fs from "fs";
 
 import chaiHttp = require("chai-http");
 import { sleep } from "./util";
+import { MetaBtsieveConfig } from "./btsieve";
 
 chai.use(chaiHttp);
 
@@ -21,6 +22,7 @@ export interface BtsieveForComitNodeConfig {
 
 export interface TestConfig {
     comit_node: { [key: string]: MetaComitNodeConfig };
+    btsieve: { [key: string]: MetaBtsieveConfig };
 }
 
 export class Actor {
@@ -61,6 +63,10 @@ export class Actor {
 
     comit_node_url() {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
+    }
+
+    web_gui_url() {
+        return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
     }
 
     pollComitNodeUntil(

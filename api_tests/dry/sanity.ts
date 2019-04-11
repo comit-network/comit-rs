@@ -11,7 +11,7 @@ const should = chai.should();
 
 declare var global: HarnessGlobal;
 
-const alice = new Actor("alice", global.config, global.test_root);
+const alice = new Actor("alice", global.config, global.project_root);
 
 // the `setTimeout` forces it to be added on the event loop
 // This is needed because there is no async call in the test
@@ -71,59 +71,6 @@ setTimeout(async function() {
                 });
             res.should.have.status(400);
             res.body.title.should.equal("Swap not supported.");
-        });
-
-        it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps request for GET", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
-                .options("/swaps")
-                .set("Origin", "http://localhost:8080")
-                .set("Access-Control-Request-Headers", "content-type")
-                .set("Access-Control-Request-Method", "GET");
-            res.should.have.status(403);
-        });
-
-        it("Returns 200 OK for preflight OPTIONS /swaps request for GET", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
-                .options("/swaps")
-                .set("Origin", "http://localhost:3000")
-                .set("Access-Control-Request-Headers", "content-type")
-                .set("Access-Control-Request-Method", "GET");
-            res.should.have.status(200);
-        });
-
-        it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps/rfc003 request for POST", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
-                .options("/swaps/rfc003")
-                .set("Origin", "http://localhost:8080")
-                .set("Access-Control-Request-Headers", "content-type")
-                .set("Access-Control-Request-Method", "POST");
-            res.should.have.status(403);
-        });
-
-        it("Returns 200 OK for preflight OPTIONS /swaps/rfc003 request for POST", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
-                .options("/swaps/rfc003")
-                .set("Origin", "http://localhost:3000")
-                .set("Access-Control-Request-Headers", "content-type")
-                .set("Access-Control-Request-Method", "POST");
-            res.should.have.status(200);
-        });
-
-        it("[Alice] Sets appropriate CORS headers", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
-                .get("/swaps")
-                .set("Origin", "http://localhost:3000");
-
-            res.should.have.status(200);
-            res.should.have.header(
-                "access-control-allow-origin",
-                "http://localhost:3000"
-            );
         });
 
         it("[Alice] Returns 400 bad request for malformed requests", async () => {

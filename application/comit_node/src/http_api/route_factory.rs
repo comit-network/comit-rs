@@ -17,6 +17,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
     state_store: Arc<S>,
     protocol_dependencies: ProtocolDependencies<T, S>,
     comit_connection_pool: Arc<ConnectionPool>,
+    origin_auth: String,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(RFC003));
@@ -81,7 +82,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
     let preflight_cors_route = warp::options().map(warp::reply);
 
     let cors = warp::cors()
-        .allow_origin("http://localhost:3000")
+        .allow_origin(origin_auth.as_str())
         .allow_methods(vec!["GET", "POST"])
         .allow_headers(vec!["content-type"]);
 

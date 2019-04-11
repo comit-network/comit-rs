@@ -7,6 +7,7 @@ members = [
     "vendor/bitcoin_rpc_test_helpers",
     "vendor/bitcoin_support",
     "vendor/bitcoin_witness",
+    "vendor/comit_i",
     "vendor/ethereum_support",
     "vendor/key_gen",
     "vendor/secp256k1_support",

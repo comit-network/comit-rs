@@ -3,7 +3,7 @@
 import * as bitcoin from "./lib/bitcoin";
 import { ChildProcess, execSync } from "child_process";
 import { spawn } from "child_process";
-import { BtsieveConfig } from "./lib/btsieve";
+import { MetaBtsieveConfig } from "./lib/btsieve";
 import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
 import * as toml from "toml";
@@ -144,7 +144,7 @@ class ComitRunner {
                 project_root + "/target/debug/comit_node",
                 [],
                 {
-                    cwd: test_root,
+                    cwd: project_root,
                     env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
                     stdio: [
                         "ignore",
@@ -194,7 +194,7 @@ class BtsieveRunner {
         this.running_btsieves = {};
     }
 
-    async ensureBtsievesRunning(btsieves: [string, BtsieveConfig][]) {
+    async ensureBtsievesRunning(btsieves: [string, MetaBtsieveConfig][]) {
         for (let [name, btsieve_config] of btsieves) {
             if (this.running_btsieves[name]) {
                 continue;
@@ -204,7 +204,7 @@ class BtsieveRunner {
                 project_root + "/target/debug/btsieve",
                 [],
                 {
-                    cwd: test_root,
+                    cwd: project_root,
                     env: btsieve_config.env,
                     stdio: [
                         "ignore",

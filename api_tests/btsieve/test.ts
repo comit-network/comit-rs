@@ -15,7 +15,7 @@ chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
 
-const btsieve = new Btsieve("localhost", 8080);
+const btsieve = new Btsieve("main", global.config, global.project_root);
 
 const tobyWallet = new Wallet("toby", {
     ethConfig: global.ledgers_config.ethereum,

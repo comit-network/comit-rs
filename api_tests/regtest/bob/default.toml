@@ -5,10 +5,10 @@ secret_seed = "1a1707bb54e5fb4deddd19f07adcb4f1e022ca7879e3c8348da8d4fa496ae8e2"
 [http_api]
 address="0.0.0.0"
 port=8010
-logging=true
 
 [btsieve]
-url = "http://localhost:8080"
+url = "http://localhost:8181"
+
 [btsieve.bitcoin]
 poll_interval_secs = 1
 network = "regtest"
