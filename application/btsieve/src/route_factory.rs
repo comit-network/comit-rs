@@ -9,7 +9,7 @@ use routes::Error as RouteError;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use url::Url;
-use warp::{self, filters::BoxedFilter, Filter, Rejection, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Debug)]
 pub enum Error {
@@ -17,11 +17,6 @@ pub enum Error {
     BitcoinRpcResponse(bitcoin_rpc_client::RpcError),
     Web3(web3::Error),
     MissingTransaction(H256),
-}
-
-#[derive(DebugStub)]
-pub struct RouteFactory {
-    external_url: Url,
 }
 
 pub trait QueryType {
@@ -51,7 +46,9 @@ pub fn create_endpoints<
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
+    F: 'static + Clone + Send + Sync,
 >(
+    is_connected: F,
     external_url: Url,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
@@ -60,6 +57,7 @@ pub fn create_endpoints<
     registered_network: &'static str,
 ) -> BoxedFilter<(impl Reply,)>
 where
+    F: Fn(Arc<C>) -> bool,
     for<'de> R: Deserialize<'de>,
     R: Send + Default + Debug + 'static,
     QueryResult: ToHttpPayload<R, Client = C>,
@@ -67,8 +65,24 @@ where
     let route = Q::route();
 
     // create the path
-    let path = warp::path("queries").and(warp::path(ledger_name));
+    let path = warp::path("queries");
 
+    let validate_ledger_connectivity = {
+        let client = Arc::clone(&client);
+
+        // validate network function
+        warp::path(ledger_name).and_then(move || {
+            let inner_client = Arc::clone(&client);
+            if is_connected(Arc::clone(&inner_client)) {
+                Ok(ledger_name)
+            } else {
+                error!("Ledger not connected: {:?}", ledger_name);
+                Err(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: RouteError::LedgerNotConnected.into(),
+                }))
+            }
+        })
+    };
     // validate network function
     let validate_network = warp::path::param::<String>().and_then(move |network| {
         if network != registered_network {
@@ -77,13 +91,15 @@ where
                 http_api_problem: RouteError::NetworkNotFound.into(),
             }))
         } else {
-            info!("All good, continue please!");
             Ok(network)
         }
     });
 
     // concat with network and type of query
-    let path = path.and(validate_network).and(warp::path(&route));
+    let path = path
+        .and(validate_ledger_connectivity)
+        .and(validate_network)
+        .and(warp::path(&route));
 
     let external_url = warp::any().map(move || external_url.clone());
     let query_repository = warp::any().map(move || Arc::clone(&query_repository));
@@ -91,16 +107,15 @@ where
     let client = warp::any().map(move || client.clone());
 
     let create = warp::post2()
-        .and(path)
+        .and(path.clone())
         .and(external_url.clone())
         .and(query_repository.clone())
-        .and(warp::any().map(move || ledger_name))
         .and(warp::any().map(move || route))
         .and(warp::body::json())
         .and_then(routes::create_query);
 
     let retrieve = warp::get2()
-        .and(path)
+        .and(path.clone())
         .and(query_repository.clone())
         .and(query_result_repository.clone())
         .and(client.clone())

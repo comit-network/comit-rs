@@ -14,7 +14,6 @@ use btsieve::{
     route_factory::create_endpoints,
     settings::{self, Settings},
     InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
-    RouteFactory,
 };
 use config::ConfigError;
 use directories;
@@ -128,20 +127,36 @@ fn create_bitcoin_routes(
         runtime.spawn(bitcoin_processor);
     }
 
+    let check_connectivity = move |client: Arc<BitcoinCoreClient>| -> bool {
+        match get_bitcoin_info(&client) {
+            Ok(info) => {
+                trace!("Bitcoin connection online: {:?} ", info);
+                true
+            }
+            Err(error) => {
+                error!("Bitcoin connection offline: {:?}", error);
+                false
+            }
+        }
+    };
+
     let client = Arc::new(bitcoin_rpc_client);
 
     let ledger_name = "bitcoin";
 
-    let transaction_routes = create_endpoints::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
-        external_url.clone(),
-        transaction_query_repository,
-        transaction_query_result_repository,
-        Arc::clone(&client),
-        ledger_name,
-        network,
-    );
+    let transaction_routes =
+        create_endpoints::<bitcoin::queries::transaction::ReturnAs, _, _, _, _, _>(
+            check_connectivity,
+            external_url.clone(),
+            transaction_query_repository,
+            transaction_query_result_repository,
+            Arc::clone(&client),
+            ledger_name,
+            network,
+        );
 
-    let block_routes = create_endpoints::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
+    let block_routes = create_endpoints::<bitcoin::queries::block::ReturnAs, _, _, _, _, _>(
+        check_connectivity,
         external_url.clone(),
         block_query_repository,
         block_query_result_repository,
@@ -227,16 +242,32 @@ fn create_ethereum_routes(
 
     let ledger_name = "ethereum";
 
-    let transaction_routes = create_endpoints::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
-        external_url.clone(),
-        transaction_query_repository,
-        transaction_query_result_repository,
-        Arc::clone(&web3_client),
-        ledger_name,
-        network,
-    );
+    let check_connectivity = |client: Arc<Web3<Http>>| -> bool {
+        match get_ethereum_info(client) {
+            Ok(info) => {
+                trace!("Ethereum connection online: {:?} ", info);
+                true
+            }
+            Err(error) => {
+                error!("Ethereum connection offline: {:?}", error);
+                false
+            }
+        }
+    };
 
-    let block_routes = create_endpoints::<ethereum::queries::block::ReturnAs, _, _, _, _>(
+    let transaction_routes =
+        create_endpoints::<ethereum::queries::transaction::ReturnAs, _, _, _, _, _>(
+            check_connectivity,
+            external_url.clone(),
+            transaction_query_repository,
+            transaction_query_result_repository,
+            Arc::clone(&web3_client),
+            ledger_name,
+            network,
+        );
+
+    let block_routes = create_endpoints::<ethereum::queries::block::ReturnAs, _, _, _, _, _>(
+        check_connectivity,
         external_url.clone(),
         block_query_repository,
         block_query_result_repository,
@@ -245,7 +276,8 @@ fn create_ethereum_routes(
         network,
     );
 
-    let bloom_routes = create_endpoints::<ethereum::queries::event::ReturnAs, _, _, _, _>(
+    let bloom_routes = create_endpoints::<ethereum::queries::event::ReturnAs, _, _, _, _, _>(
+        check_connectivity,
         external_url.clone(),
         log_query_repository,
         log_query_result_repository,
