@@ -1,4 +1,3 @@
-use comit_node::swap_protocols::rfc003::{SecretHash, Timestamp};
 use crypto::{digest::Digest, sha2::Sha256};
 use ethereum_support::{web3::types::Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
@@ -12,6 +11,7 @@ pub use self::{
     erc20_harness::{erc20_harness, Erc20HarnessParams},
     ether_harness::{ether_harness, EtherHarnessParams},
 };
+use blockchain_contracts::rfc003::{secret_hash::SecretHash, timestamp::Timestamp};
 
 pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
     let keypair = KeyPair::from_secret_key_hex(secret_key).unwrap();

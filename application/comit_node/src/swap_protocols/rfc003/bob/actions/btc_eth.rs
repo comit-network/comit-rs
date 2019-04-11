@@ -7,8 +7,7 @@ use crate::swap_protocols::{
             actions::{Accept, Decline},
             SwapCommunication,
         },
-        ethereum::{self, EtherHtlc},
-        secret::Secret,
+        ethereum,
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Action, Actions, LedgerState,
@@ -16,6 +15,7 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
+use blockchain_contracts::{ethereum::rfc003::EtherHtlc, rfc003::secret::Secret};
 use ethereum_support::{Bytes, EtherQuantity};
 use std::sync::Arc;
 

@@ -13,14 +13,11 @@ pub mod state_store;
 
 mod actions;
 mod actor_state;
+mod create_ledger_events;
 mod error;
 mod ledger;
 mod save_state;
-mod secret;
 mod secret_source;
-mod timestamp;
-
-mod create_ledger_events;
 
 pub use self::{
     actions::{Action, Actions},
@@ -30,7 +27,5 @@ pub use self::{
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     save_state::SaveState,
-    secret::{FromErr, RandomnessSource, Secret, SecretHash},
     secret_source::*,
-    timestamp::Timestamp,
 };

@@ -18,10 +18,11 @@ use crate::{
             save_state::SaveState,
             secret_source::SecretSource,
             state_machine::{Context, FutureSwapOutcome, Start, Swap},
-            ActorState, Secret,
+            ActorState,
         },
     },
 };
+use blockchain_contracts::rfc003::secret::Secret;
 use derivative::Derivative;
 use std::sync::Arc;
 

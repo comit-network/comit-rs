@@ -3,7 +3,10 @@ use crate::{
     htlc_harness::{new_account, SECRET},
     parity_client::ParityClient,
 };
-use comit_node::swap_protocols::rfc003::{ethereum::EtherHtlc, Secret, SecretHash, Timestamp};
+use blockchain_contracts::{
+    ethereum::rfc003::EtherHtlc,
+    rfc003::{secret::Secret, secret_hash::SecretHash, timestamp::Timestamp},
+};
 use ethereum_support::{
     web3::{transports::EventLoopHandle, types::Address},
     EtherQuantity,

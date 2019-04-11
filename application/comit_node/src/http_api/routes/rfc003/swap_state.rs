@@ -2,9 +2,10 @@ use crate::{
     http_api::{Http, SwapStatus},
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, alice, bob, Ledger, Timestamp},
+        rfc003::{self, alice, bob, Ledger},
     },
 };
+use blockchain_contracts::rfc003::timestamp::Timestamp;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]

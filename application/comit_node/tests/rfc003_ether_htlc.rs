@@ -8,7 +8,7 @@ pub mod parity_client;
 use crate::htlc_harness::{
     ether_harness, sleep_until, CustomSizeSecret, EtherHarnessParams, SECRET,
 };
-use comit_node::swap_protocols::rfc003::Timestamp;
+use blockchain_contracts::rfc003::timestamp::Timestamp;
 use ethereum_support::{Bytes, EtherQuantity, H256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;

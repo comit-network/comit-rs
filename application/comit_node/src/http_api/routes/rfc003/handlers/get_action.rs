@@ -5,11 +5,12 @@ use crate::{
     },
     swap_protocols::{
         metadata_store::Metadata,
-        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions, Timestamp},
+        rfc003::{alice, bitcoin, bob, ethereum, state_store::StateStore, Actions},
         MetadataStore, SwapId,
     },
 };
 use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
+use blockchain_contracts::rfc003::timestamp::Timestamp;
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode};
 use rustic_hal::HalResource;

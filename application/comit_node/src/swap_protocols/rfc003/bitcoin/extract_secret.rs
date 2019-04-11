@@ -1,5 +1,5 @@
-use crate::swap_protocols::rfc003::secret::{Secret, SecretHash};
 use bitcoin_support::Transaction;
+use blockchain_contracts::rfc003::{secret::Secret, secret_hash::SecretHash};
 
 pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
     transaction.input.iter().find_map(|txin| {

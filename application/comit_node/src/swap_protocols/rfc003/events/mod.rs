@@ -10,11 +10,10 @@ use crate::{
     comit_client::SwapReject,
     swap_protocols::{
         asset::Asset,
-        rfc003::{
-            self, ledger::Ledger, messages::AcceptResponseBody, state_machine::HtlcParams, Secret,
-        },
+        rfc003::{self, ledger::Ledger, messages::AcceptResponseBody, state_machine::HtlcParams},
     },
 };
+use blockchain_contracts::rfc003::secret::Secret;
 use serde::{Deserialize, Serialize};
 use tokio::{self, prelude::future::Either};
 

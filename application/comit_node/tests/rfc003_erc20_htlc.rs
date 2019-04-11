@@ -9,7 +9,7 @@ use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
     htlc_harness::{erc20_harness, sleep_until, CustomSizeSecret, Erc20HarnessParams, SECRET},
 };
-use comit_node::swap_protocols::rfc003::Timestamp;
+use blockchain_contracts::rfc003::timestamp::Timestamp;
 use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;

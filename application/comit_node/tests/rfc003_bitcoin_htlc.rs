@@ -14,7 +14,8 @@ use bitcoin_support::{
 use bitcoin_witness::{
     PrimedInput, PrimedTransaction, UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
 };
-use comit_node::swap_protocols::rfc003::{bitcoin::Htlc, Secret, SecretHash, Timestamp};
+use blockchain_contracts::rfc003::{secret::Secret, secret_hash::SecretHash, timestamp::Timestamp};
+use comit_node::swap_protocols::rfc003::bitcoin::Htlc;
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::str::FromStr;

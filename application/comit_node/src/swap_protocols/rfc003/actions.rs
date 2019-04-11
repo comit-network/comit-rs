@@ -1,4 +1,4 @@
-use crate::swap_protocols::rfc003::Timestamp;
+use blockchain_contracts::rfc003::timestamp::Timestamp;
 
 #[derive(Debug)]
 pub struct Action<ActionKind> {

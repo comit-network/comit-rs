@@ -1,10 +1,10 @@
-use crate::swap_protocols::rfc003::{Secret, SecretHash, Timestamp};
 use bitcoin_support::{
     opcodes::{All::*, OP_CLTV},
     script::Builder,
     Address, Network, PubkeyHash, Script,
 };
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
+use blockchain_contracts::rfc003::{secret::Secret, secret_hash::SecretHash, timestamp::Timestamp};
 use secp256k1_support::KeyPair;
 
 #[derive(Debug)]
@@ -158,6 +158,7 @@ fn create_htlc(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use blockchain_contracts::rfc003::secret_hash::SecretHash;
     use std::str::FromStr;
 
     // Secret: 12345678901234567890123456789012

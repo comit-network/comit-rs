@@ -50,3 +50,9 @@ impl Serialize for Erc20Quantity {
         serializer.serialize_str(format!("{}", self).as_str())
     }
 }
+
+impl From<Erc20Quantity> for U256 {
+    fn from(quantity: Erc20Quantity) -> U256 {
+        quantity.0
+    }
+}

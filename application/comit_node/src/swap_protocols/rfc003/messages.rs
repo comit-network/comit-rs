@@ -1,7 +1,8 @@
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{Ledger, SecretHash, SecretSource, Timestamp},
+    rfc003::{Ledger, SecretSource},
 };
+use blockchain_contracts::rfc003::{secret_hash::SecretHash, timestamp::Timestamp};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

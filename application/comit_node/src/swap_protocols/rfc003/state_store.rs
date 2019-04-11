@@ -256,10 +256,11 @@ mod tests {
         seed::Seed,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            rfc003::{alice, messages::Request, Secret, Timestamp},
+            rfc003::{alice, messages::Request},
         },
     };
     use bitcoin_support::BitcoinQuantity;
+    use blockchain_contracts::rfc003::{secret::Secret, timestamp::Timestamp};
     use ethereum_support::EtherQuantity;
     use spectral::prelude::*;
     use std::sync::Arc;

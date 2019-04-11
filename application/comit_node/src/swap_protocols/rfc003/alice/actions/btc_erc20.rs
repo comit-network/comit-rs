@@ -3,9 +3,7 @@ use crate::swap_protocols::{
     rfc003::{
         self,
         alice::{self, SwapCommunication},
-        bitcoin,
-        ethereum::{self, Erc20Htlc},
-        secret::Secret,
+        bitcoin, ethereum,
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Action, Actions, LedgerState,
@@ -13,6 +11,7 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
+use blockchain_contracts::{ethereum::rfc003::Erc20Htlc, rfc003::secret::Secret};
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 
 type Request = rfc003::messages::Request<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token>;

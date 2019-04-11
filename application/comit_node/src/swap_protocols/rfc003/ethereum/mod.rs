@@ -1,9 +1,8 @@
 mod actions;
-mod erc20_htlc;
-mod ether_htlc;
 pub mod htlc_events;
 
-pub use self::{actions::*, erc20_htlc::*, ether_htlc::*};
+pub use self::actions::*;
+use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc, Htlc};
 
 use crate::swap_protocols::{
     ledger::Ethereum,
@@ -20,10 +19,6 @@ impl Into<Bytes> for ByteCode {
     fn into(self) -> Bytes {
         Bytes(hex::decode(self.0).unwrap())
     }
-}
-
-pub trait Htlc {
-    fn compile_to_hex(&self) -> ByteCode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -70,7 +65,7 @@ impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
             htlc_params.redeem_identity,
             htlc_params.secret_hash,
             htlc_params.asset.token_contract,
-            htlc_params.asset.quantity,
+            htlc_params.asset.quantity.0,
         )
     }
 }

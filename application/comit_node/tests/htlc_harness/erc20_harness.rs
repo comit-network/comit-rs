@@ -3,7 +3,10 @@ use crate::{
     htlc_harness::{new_account, SECRET},
     parity_client::ParityClient,
 };
-use comit_node::swap_protocols::rfc003::{ethereum::Erc20Htlc, Secret, SecretHash, Timestamp};
+use blockchain_contracts::{
+    ethereum::rfc003::Erc20Htlc,
+    rfc003::{secret::Secret, secret_hash::SecretHash, timestamp::Timestamp},
+};
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -87,7 +90,7 @@ pub fn erc20_harness<D: Docker>(
         bob,
         params.htlc_secret_hash,
         token_contract,
-        Erc20Quantity(params.htlc_token_value),
+        Erc20Quantity(params.htlc_token_value).into(),
     );
 
     let tx_id = alice_client.deploy_htlc(erc20_htlc.clone(), U256::from(0));

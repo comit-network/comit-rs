@@ -10,10 +10,11 @@ use crate::{
             events::{self, Deployed, Funded, Redeemed, Refunded},
             ledger::Ledger,
             messages::AcceptResponseBody,
-            SaveState, SecretHash, Timestamp,
+            SaveState,
         },
     },
 };
+use blockchain_contracts::rfc003::{secret_hash::SecretHash, timestamp::Timestamp};
 use either::Either;
 use futures::{future, try_ready, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};

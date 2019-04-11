@@ -10,10 +10,10 @@ use crate::{
                 RedeemedOrRefundedFuture, Refunded,
             },
             state_machine::HtlcParams,
-            Secret,
         },
     },
 };
+use blockchain_contracts::rfc003::secret::Secret;
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
     TransactionAndReceipt,

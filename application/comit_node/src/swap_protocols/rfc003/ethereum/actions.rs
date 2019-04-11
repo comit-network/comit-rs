@@ -1,10 +1,5 @@
-use crate::swap_protocols::{
-    ledger::Ethereum,
-    rfc003::{
-        ethereum::{Erc20Htlc, EtherHtlc, Htlc},
-        state_machine::HtlcParams,
-    },
-};
+use crate::swap_protocols::{ledger::Ethereum, rfc003::state_machine::HtlcParams};
+use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc, Htlc};
 use ethereum_support::{web3::types::U256, Address, Bytes, Erc20Token, EtherQuantity, Network};
 use serde::Serialize;
 

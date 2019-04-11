@@ -2,9 +2,10 @@ use crate::{
     comit_client::SwapReject,
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, ledger_state::LedgerState, messages::*, secret::Secret, Ledger},
+        rfc003::{self, ledger_state::LedgerState, messages::*, Ledger},
     },
 };
+use blockchain_contracts::rfc003::secret::Secret;
 use std::fmt::Debug;
 
 pub trait ActorState: Debug + Clone + Send + Sync + 'static {

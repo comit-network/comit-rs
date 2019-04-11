@@ -1,8 +1,6 @@
 use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
-use comit_node::swap_protocols::rfc003::{
-    ethereum::{Htlc, Seconds},
-    SecretHash,
-};
+use blockchain_contracts::{ethereum::rfc003::Htlc, rfc003::secret_hash::SecretHash};
+use comit_node::swap_protocols::rfc003::ethereum::Seconds;
 use ethereum_support::{
     web3::{transports::Http, Web3},
     Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,

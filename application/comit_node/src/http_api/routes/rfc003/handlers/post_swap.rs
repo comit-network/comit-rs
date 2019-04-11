@@ -3,11 +3,12 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource, Timestamp},
+        rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource},
         SwapId,
     },
 };
 use bitcoin_support::BitcoinQuantity;
+use blockchain_contracts::rfc003::timestamp::Timestamp;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
@@ -181,6 +182,7 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 mod tests {
 
     use super::*;
+    use blockchain_contracts::rfc003::timestamp::Timestamp;
     use spectral::prelude::*;
     use std::net::{IpAddr, Ipv4Addr};
 
