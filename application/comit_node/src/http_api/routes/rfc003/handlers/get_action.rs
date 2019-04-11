@@ -205,7 +205,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                             description:
                             "The fee-per-byte you want to pay for the redeem transaction in satoshis.",
                         },
-                ])
+                ]))
             }
         }
     }
