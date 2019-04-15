@@ -16,13 +16,6 @@ dependencies = [
 ]
 
 # Overridden because: added dependencies
-[tasks.pre-ci-flow]
-workspace = false
-dependencies = [
-    "start-sccache",
-]
-
-# Overridden because: added dependencies
 [tasks.pre-build]
 workspace = false
 dependencies = [
@@ -42,7 +35,6 @@ dependencies = [
 [tasks.post-ci-flow]
 workspace = false
 dependencies = [
-    "stop-sccache",
     "clean-registry"
 ]
 
@@ -146,10 +138,10 @@ script = [
 '''
 ]
 
-[tasks.travis]
+[tasks.ci]
 workspace = false
 # Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache"  }
+env = { "RUST_TEST_THREADS" = "8" }
 run_task = "ci-flow"
 
 [tasks.clean-registry]
@@ -184,23 +176,6 @@ find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
     -depth 2 -type d -mtime +30d -exec rm -rf "{}" \;
 '''
 ]
-
-[tasks.start-sccache]
-description = "Setup & start sscache"
-workspace = false
-private = true
-install_script = ["which sccache || (unset RUSTC_WRAPPER; cargo install sccache)"]
-# Start sccache with limited cache size to avoid a constantly growing caches (and thus continuously slower builds)
-env = { "SCCACHE_CACHE_SIZE" = "400M" }
-command = "sccache"
-args = ["--start-server"]
-
-[tasks.stop-sccache]
-description = "Stop sscache"
-workspace = false
-private = true
-command = "sccache"
-args = ["--stop-server"]
 
 #############
 # api Tests #
