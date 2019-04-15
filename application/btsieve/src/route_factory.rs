@@ -40,15 +40,41 @@ pub struct QueryParams<R> {
     pub return_as: R,
 }
 
+pub fn create_errored_route(ledger_name: &'static str) -> BoxedFilter<(impl Reply,)> {
+    let path = warp::path("queries").and(warp::path(ledger_name));
+
+    let create = warp::post2().and(path).and_then(|| {
+        Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: RouteError::NetworkNotFound.into(),
+        }))
+    });
+
+    let retrieve = warp::get2().and(path).and_then(|| {
+        Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: RouteError::NetworkNotFound.into(),
+        }))
+    });
+
+    let delete = warp::delete2().and(path).and_then(|| {
+        Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: RouteError::NetworkNotFound.into(),
+        }))
+    });
+
+    create
+        .or(retrieve)
+        .or(delete)
+        .recover(routes::customize_error)
+        .boxed()
+}
+
 pub fn create_endpoints<
     R,
     Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
-    F: 'static + Clone + Send + Sync,
 >(
-    is_connected: F,
     external_url: Url,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
@@ -57,7 +83,6 @@ pub fn create_endpoints<
     registered_network: &'static str,
 ) -> BoxedFilter<(impl Reply,)>
 where
-    F: Fn(Arc<C>) -> bool,
     for<'de> R: Deserialize<'de>,
     R: Send + Default + Debug + 'static,
     QueryResult: ToHttpPayload<R, Client = C>,
@@ -67,22 +92,6 @@ where
     // create the path
     let path = warp::path("queries");
 
-    let validate_ledger_connectivity = {
-        let client = Arc::clone(&client);
-
-        // validate network function
-        warp::path(ledger_name).and_then(move || {
-            let inner_client = Arc::clone(&client);
-            if is_connected(Arc::clone(&inner_client)) {
-                Ok(ledger_name)
-            } else {
-                error!("Ledger not connected: {:?}", ledger_name);
-                Err(warp::reject::custom(HttpApiProblemStdError {
-                    http_api_problem: RouteError::LedgerNotConnected.into(),
-                }))
-            }
-        })
-    };
     // validate network function
     let validate_network = warp::path::param::<String>().and_then(move |network| {
         if network != registered_network {
@@ -97,7 +106,7 @@ where
 
     // concat with network and type of query
     let path = path
-        .and(validate_ledger_connectivity)
+        .and(warp::path(ledger_name))
         .and(validate_network)
         .and(warp::path(&route));
 
@@ -110,6 +119,7 @@ where
         .and(path.clone())
         .and(external_url.clone())
         .and(query_repository.clone())
+        .and(warp::any().map(move || ledger_name))
         .and(warp::any().map(move || route))
         .and(warp::body::json())
         .and_then(routes::create_query);
