@@ -51,6 +51,19 @@ setTimeout(async function() {
             );
         });
 
+        describe("btsieve", () => {
+            describe("Ping", () => {
+                it("btsieve should respond with found when pinged", async function() {
+                    return chai
+                        .request(btsieve.url())
+                        .get("/ping")
+                        .then(res => {
+                            res.should.have.status(200);
+                        });
+                });
+            });
+        });
+
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond not found when getting a non-existent bitcoin transaction query", async function() {

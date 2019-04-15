@@ -1,8 +1,8 @@
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
 import * as fs from "fs";
-import {sleep} from "./util";
-import {execSync, spawn} from "child_process";
+import { sleep } from "./util";
+import { execSync, spawn } from "child_process";
 
 const project_root: string = execSync("git rev-parse --show-toplevel", {
     encoding: "utf8",
@@ -90,16 +90,5 @@ export class LedgerRunner {
         }
         this.running_ledgers = {};
     }
-
-    static pauseLedger(ledger: string) {
-        console.log("Stopping ledgers: " + ledger);
-
-        execSync("docker-compose pause " + ledger, docker_compose_options);
-    }
-
-    static unpauseLedger(ledger: string) {
-        console.log("Stopping ledgers: " + ledger);
-
-        execSync("docker-compose unpause " + ledger, docker_compose_options);
-    }
+    
 }
