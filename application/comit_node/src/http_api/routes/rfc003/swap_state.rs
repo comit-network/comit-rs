@@ -34,7 +34,7 @@ pub struct SwapCommunication<AI, BI> {
 #[derive(Debug, Serialize)]
 #[serde(bound = "Http<T>: Serialize, Http<H>: Serialize")]
 pub struct LedgerState<H, T> {
-    status: HtlcState,
+    status: rfc003::HtlcState,
     htlc_location: Option<Http<H>>,
     deploy_tx: Option<Http<T>>,
     fund_tx: Option<Http<T>>,
@@ -48,16 +48,6 @@ pub enum SwapCommunicationState {
     Sent,
     Accepted,
     Rejected,
-}
-
-#[derive(Debug, Serialize)]
-pub enum HtlcState {
-    NotDeployed,
-    Deployed,
-    Funded,
-    Redeemed,
-    #[allow(dead_code)]
-    Refunded,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication<AL, BL, AA, BA>>
@@ -138,7 +128,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
 impl<H, T> Default for LedgerState<H, T> {
     fn default() -> Self {
         Self {
-            status: HtlcState::default(),
+            status: rfc003::HtlcState::default(),
             htlc_location: None,
             deploy_tx: None,
             fund_tx: None,
@@ -148,22 +138,23 @@ impl<H, T> Default for LedgerState<H, T> {
     }
 }
 
-impl Default for HtlcState {
+impl Default for rfc003::HtlcState {
     fn default() -> Self {
-        HtlcState::NotDeployed
+        rfc003::HtlcState::NotDeployed
     }
 }
 
 impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L::Transaction> {
     fn from(ledger_state: rfc003::LedgerState<L>) -> Self {
         use self::rfc003::LedgerState::*;
+        let status = ledger_state.clone().into();
         match ledger_state {
             NotDeployed => Self::default(),
             Deployed {
                 htlc_location,
                 deploy_transaction,
             } => Self {
-                status: HtlcState::Deployed,
+                status,
                 htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: None,
@@ -175,7 +166,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 deploy_transaction,
                 fund_transaction,
             } => Self {
-                status: HtlcState::Funded,
+                status,
                 htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
@@ -188,7 +179,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 fund_transaction,
                 redeem_transaction,
             } => Self {
-                status: HtlcState::Redeemed,
+                status,
                 htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
@@ -201,7 +192,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 fund_transaction,
                 refund_transaction,
             } => Self {
-                status: HtlcState::Redeemed,
+                status,
                 htlc_location: Some(Http(htlc_location)),
                 deploy_tx: Some(Http(deploy_transaction)),
                 fund_tx: Some(Http(fund_transaction)),
@@ -223,7 +214,8 @@ impl SwapStatus {
         let alpha_ledger = &alpha_ledger.status;
         let beta_ledger = &beta_ledger.status;
 
-        use self::{HtlcState::*, SwapCommunicationState::*};
+        use self::SwapCommunicationState::*;
+        use crate::swap_protocols::rfc003::HtlcState::*;
         match (swap_communication_state, alpha_ledger, beta_ledger, error) {
             (Rejected, _, _, None)
             | (Accepted, Redeemed, Refunded, None)
@@ -234,10 +226,13 @@ impl SwapStatus {
                 SwapStatus::InProgress
             }
             (swap_communication_state, alpha_ledger, beta_ledger, error) => {
-                warn!(
+                log::warn!(
                     "Internal failure with swap communication state {:?},\
                      alpha ledger state {:?}, beta ledger state {:?} and error {:?}",
-                    swap_communication_state, alpha_ledger, beta_ledger, error
+                    swap_communication_state,
+                    alpha_ledger,
+                    beta_ledger,
+                    error
                 );
                 SwapStatus::InternalFailure
             }

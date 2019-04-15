@@ -15,7 +15,7 @@ use crate::{
     },
 };
 use either::Either;
-use futures::{future, Async, Future};
+use futures::{future, try_ready, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{fmt, sync::Arc};
 

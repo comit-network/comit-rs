@@ -53,18 +53,18 @@ impl StateStore for InMemoryStateStore<SwapId> {
         let mut actor_state = match self.get::<A>(key) {
             Ok(Some(actor_state)) => actor_state,
             Ok(None) => {
-                warn!("Value not found for key {}", key);
+                log::warn!("Value not found for key {}", key);
                 return;
             }
             Err(_invalid_type) => {
-                warn!("Attempted to get state with wrong type for key {}", key);
+                log::warn!("Attempted to get state with wrong type for key {}", key);
                 return;
             }
         };
 
         match update {
             SS::Start(_) => {
-                warn!("Attempted to save Start state for key {}", key);
+                log::warn!("Attempted to save Start state for key {}", key);
                 return;
             }
             SS::Accepted(Accepted { swap }) => actor_state.set_response(Ok(AcceptResponseBody {
@@ -240,7 +240,7 @@ impl StateStore for InMemoryStateStore<SwapId> {
                 actor_state.set_secret(alpha_redeemed.secret);
             }
             SS::Error(ErrorState(e)) => {
-                error!("Internal failure: {:?}", e);
+                log::error!("Internal failure: {:?}", e);
                 return;
             }
         }

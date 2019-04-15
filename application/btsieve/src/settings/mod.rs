@@ -1,6 +1,7 @@
-mod serde;
+mod serde_duration;
 
 use config::{Config, ConfigError, File};
+use serde::Deserialize;
 use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
 #[derive(Debug, Deserialize, Clone)]
@@ -14,14 +15,12 @@ pub struct Settings {
 pub struct HttpApi {
     pub address_bind: IpAddr,
     pub port_bind: u16,
-    #[serde(with = "serde::url")]
-    pub external_url: url::Url,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
     pub zmq_endpoint: String,
-    #[serde(with = "serde::url")]
+    #[serde(with = "url_serde")]
     pub node_url: url::Url,
     pub node_username: String,
     pub node_password: String,
@@ -29,9 +28,9 @@ pub struct Bitcoin {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Ethereum {
-    #[serde(with = "serde::url")]
+    #[serde(with = "url_serde")]
     pub node_url: url::Url,
-    #[serde(with = "serde::duration")]
+    #[serde(with = "serde_duration")]
     pub poll_interval_secs: Duration,
 }
 

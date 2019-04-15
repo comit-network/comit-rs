@@ -2,6 +2,7 @@ use crate::{
     bam_api::rfc003::swap_config, node_id::NodeId, swap_protocols::rfc003::bob::BobSpawner,
 };
 use bam::{self, json};
+use derivative::Derivative;
 use futures::{
     future::{self, Shared},
     Future,
@@ -68,7 +69,7 @@ impl ConnectionPool {
         node_id: NodeId,
         bob_spawner: B,
     ) -> Box<dyn Future<Item = BamClient, Error = io::ErrorKind> + Send> {
-        debug!("Trying to get client for {}", node_id);
+        log::debug!("Trying to get client for {}", node_id);
         let mut connections = self.connections.write().unwrap();
         let existing_connection = connections
             .entry(node_id)
@@ -78,7 +79,7 @@ impl ConnectionPool {
 
         match *connection_state {
             ConnectionState::Disconnected => {
-                info!("No existing connection to {}. Trying to connect.", node_id);
+                log::info!("No existing connection to {}. Trying to connect.", node_id);
                 let client_future = Self::make_new_connection(
                     node_id,
                     Arc::clone(&existing_connection),
@@ -92,14 +93,14 @@ impl ConnectionPool {
                 Box::new(Self::add_to_waitlist(&waitlist))
             }
             ConnectionState::Connecting { ref waitlist } => {
-                debug!(
+                log::debug!(
                     "Already in the process of connecting to {}. Joining the waitlist.",
                     node_id
                 );
                 Box::new(Self::add_to_waitlist(waitlist))
             }
             ConnectionState::Connected { ref client } => {
-                debug!("Retrieved existing client for {}", node_id);
+                log::debug!("Retrieved existing client for {}", node_id);
                 Box::new(future::ok(Arc::clone(&client)))
             }
         }
@@ -141,7 +142,7 @@ impl ConnectionPool {
             // This shouldn't happen, but just set up the connection anyway.
             ConnectionState::Disconnected => match socket {
                 Ok(socket) => {
-                    info!("Successfully connected to {} while in the {:?} state", node_id, connection_state);
+                    log::info!("Successfully connected to {} while in the {:?} state", node_id, connection_state);
                     let client = Self::spawn_new_connection(
                         node_id,
                         Arc::clone(&connection_handle),
@@ -153,7 +154,7 @@ impl ConnectionPool {
                     Ok(client)
                 }
                 Err(e) => {
-                    error!("Failed to connect to {}: {:?}", node_id, e);
+                    log::error!("Failed to connect to {}: {:?}", node_id, e);
                     connection_state.transition_to_disconnected();
                     Err(e)
                 }
@@ -163,12 +164,12 @@ impl ConnectionPool {
                 // Forget about this new one and just use the old one.
                 match socket {
                     Ok(_socket) => {
-                        debug!("Successfully connected to {} but we already have an exsting connection", node_id);
+                        log::debug!("Successfully connected to {} but we already have an exsting connection", node_id);
                         // let the socket go out of scope and get dropped
                         Ok(Arc::clone(&client))
                     }
                     Err(e) => {
-                        error!("Failed to connect to {} (but we already have an existing connection): {:?} ",node_id, e);
+                        log::error!("Failed to connect to {} (but we already have an existing connection): {:?} ",node_id, e);
                         Ok(Arc::clone(&client))
                     }
                 }
@@ -181,7 +182,7 @@ impl ConnectionPool {
         let node_id = match socket.peer_addr() {
             Ok(node_id) => node_id,
             Err(e) => {
-                error!("Couldn't get peer address: {:?}", e);
+                log::error!("Couldn't get peer address: {:?}", e);
                 return;
             }
         };
@@ -205,10 +206,10 @@ impl ConnectionPool {
                 connection_state.transition_to_connected(&client);
             }
             ConnectionState::Connected { .. } => {
-                warn!("Ignoring incoming connection from {} because we already have a connection to them", node_id);
+                log::warn!("Ignoring incoming connection from {} because we already have a connection to them", node_id);
             }
             ConnectionState::Connecting { .. } => {
-                warn!(
+                log::warn!(
                     "Ignoring incoming connection from {} because we're already connecting",
                     node_id
                 );
@@ -223,7 +224,7 @@ impl ConnectionPool {
         bob_spawner: B,
         socket: S,
     ) -> BamClient {
-        info!("Established new connection to {}", node_id);
+        log::info!("Established new connection to {}", node_id);
 
         let (client, connection) = Self::set_up_bam_connection(socket, swap_config(bob_spawner));
 
@@ -234,15 +235,18 @@ impl ConnectionPool {
 
             match result {
                 Ok(_) => {
-                    info!(
+                    log::info!(
                         "Connection to {} was closed while it was in the {:?} state",
-                        node_id, final_connection_state
+                        node_id,
+                        final_connection_state
                     );
                 }
                 Err(e) => {
-                    error!(
+                    log::error!(
                         "Connection to {} prematurely closed while it was in the {:?} state: {:?}",
-                        node_id, final_connection_state, e
+                        node_id,
+                        final_connection_state,
+                        e
                     );
                 }
             }

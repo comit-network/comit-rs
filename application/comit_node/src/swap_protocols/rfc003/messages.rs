@@ -2,6 +2,7 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{Ledger, SecretHash, SecretSource, Timestamp},
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {

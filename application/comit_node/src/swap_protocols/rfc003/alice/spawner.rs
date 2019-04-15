@@ -95,10 +95,10 @@ impl<T: MetadataStore<SwapId>, S: StateStore> AliceSpawner for ProtocolDependenc
         tokio::spawn(
             swap_execution
                 .map(move |outcome| {
-                    info!("Swap {} finished with {:?}", id, outcome);
+                    log::info!("Swap {} finished with {:?}", id, outcome);
                 })
                 .map_err(move |e| {
-                    error!("Swap {} failed with {:?}", id, e);
+                    log::error!("Swap {} failed with {:?}", id, e);
                 }),
         );
 

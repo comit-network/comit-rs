@@ -6,6 +6,7 @@ use crate::swap_protocols::{
     },
 };
 use ethereum_support::{web3::types::U256, Address, Bytes, Erc20Token, EtherQuantity, Network};
+use serde::Serialize;
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct ContractDeploy {

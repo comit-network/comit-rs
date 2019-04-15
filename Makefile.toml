@@ -108,6 +108,10 @@ alias = "dry-tests-flow"
 workspace = false
 alias = "btsieve-tests-flow"
 
+[tasks.webgui]
+workspace = false
+alias = "webgui-tests-flow"
+
 [tasks.api]
 workspace = false
 alias = "api-tests-flow"
@@ -198,6 +202,13 @@ private = true
 command = "sccache"
 args = ["--stop-server"]
 
+#############
+# api Tests #
+[tasks.pre-api-tests]
+description = "Install/build dependencies for api tests"
+workspace = false
+private = true
+script = [ "( cd ./api_tests && yarn install; )" ]
 
 #####################
 # Dry api Test flow #
@@ -217,15 +228,31 @@ private = true
 script = [
 '''
 ./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts ./api_tests/dry/*.ts"
+  ./api_tests/harness.ts ./api_tests/dry/*.ts
 '''
 ]
 
-[tasks.pre-api-tests]
-description = "Install/build dependencies for api tests"
+#########################
+# WEb GUI api Test flow #
+[tasks.webgui-tests-flow]
+description = "Defines the web GUI tests flow."
+workspace = false
+dependencies = [
+    "build",
+    "pre-api-tests",
+    "webgui-tests"
+]
+
+[tasks.webgui-tests]
+description = "Runs tests to ensure that comit_node serves comit-i"
 workspace = false
 private = true
-script = [ "( cd ./api_tests && yarn install; )" ]
+script = [
+'''
+./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
+  ./api_tests/harness.ts ./api_tests/webgui/*.ts
+'''
+]
 
 #################
 # E2E Test flow #
@@ -304,6 +331,6 @@ script = [
 '''
 ./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
   ./api_tests/harness.ts \
-    ./api_tests/{dry,btsieve,e2e/*/*}/*.ts
+    ./api_tests/{dry,webgui,btsieve,e2e/*/*}/*.ts
 '''
 ]

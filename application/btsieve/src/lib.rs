@@ -1,13 +1,6 @@
 #![warn(rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate derivative;
-#[macro_use]
-extern crate log;
-
 pub mod bitcoin;
 pub mod ethereum;
 mod in_memory_query_repository;

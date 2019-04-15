@@ -15,7 +15,7 @@ pub fn check_block_queries(
     block_queries: ArcQueryRepository<BlockQuery>,
     block: Block<Transaction>,
 ) -> impl Iterator<Item = QueryMatch> {
-    trace!("Processing {:?}", block);
+    log::trace!("Processing {:?}", block);
 
     let block_id = block.hash.map(|block_hash| format!("{:x}", block_hash));
 
@@ -25,10 +25,10 @@ pub fn check_block_queries(
             block_id.clone().map(|block_id| (query_id, query, block_id))
         })
         .filter_map(move |(query_id, query, block_id)| {
-            trace!("Matching query {:#?} against block {:#?}", query, block);
+            log::trace!("Matching query {:#?} against block {:#?}", query, block);
 
             if query.matches(&block) {
-                trace!("Query {:?} matches block {:?}", query_id, block_id);
+                log::trace!("Query {:?} matches block {:?}", query_id, block_id);
                 Some(QueryMatch(query_id.into(), block_id.clone()))
             } else {
                 None
@@ -44,7 +44,7 @@ pub fn check_transaction_queries(
         .transactions
         .iter()
         .map(|transaction| {
-            trace!("Processing {:?}", transaction);
+            log::trace!("Processing {:?}", transaction);
 
             let transaction = transaction.clone();
             let transaction_id = format!("{:x}", transaction.hash);
@@ -52,14 +52,14 @@ pub fn check_transaction_queries(
             transaction_queries
                 .all()
                 .filter_map(move |(query_id, query)| {
-                    trace!(
+                    log::trace!(
                         "Matching query {:#?} against transaction {:#?}",
                         query,
                         &transaction
                     );
 
                     if query.matches(&transaction) {
-                        trace!(
+                        log::trace!(
                             "Query {:?} matches transaction {:?}",
                             query_id,
                             transaction_id
@@ -78,18 +78,18 @@ pub fn check_log_queries(
     client: Arc<Web3<Http>>,
     block: Block<Transaction>,
 ) -> impl Stream<Item = QueryMatch, Error = ()> {
-    trace!("Processing {:?}", block);
+    log::trace!("Processing {:?}", block);
 
     let block_id = block.hash.map(|block_id| format!("{:x}", block_id));
 
     let result_futures = log_queries
         .all()
         .filter(|(_, query)| {
-            trace!("Matching query {:#?} against block {:#?}", query, block);
+            log::trace!("Matching query {:#?} against block {:#?}", query, block);
             query.matches_block(&block)
         })
         .map(|(query_id, query)| {
-            trace!("Query {:?} matches block {:?}", query_id, block_id);
+            log::trace!("Query {:?} matches block {:?}", query_id, block_id);
 
             let client = Arc::clone(&client);
 
@@ -104,7 +104,7 @@ pub fn check_log_queries(
                             if query.matches_transaction_receipt(receipt.clone()) =>
                         {
                             let transaction_id = receipt.transaction_hash;
-                            trace!(
+                            log::trace!(
                                 "Transaction {:?} matches Query-ID: {:?}",
                                 transaction_id,
                                 query_id
@@ -116,9 +116,10 @@ pub fn check_log_queries(
                             )))
                         }
                         Err(e) => {
-                            error!(
+                            log::error!(
                                 "Could not retrieve transaction receipt for {}: {}",
-                                transaction_id, e
+                                transaction_id,
+                                e
                             );
                             Ok(None)
                         }

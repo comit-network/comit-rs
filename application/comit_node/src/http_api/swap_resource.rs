@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{routes::rfc003::action::ToAction, Http},
+    http_api::{routes::rfc003::action::ToActionName, Http},
     swap_protocols::{
         asset::Asset,
         rfc003::{self, state_store::StateStore, Actions, Ledger},
@@ -73,10 +73,7 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
     use crate::http_api::{
         problem,
         route_factory::swap_path,
-        routes::rfc003::{
-            action::{new_action_link, Action},
-            SwapState,
-        },
+        routes::rfc003::{action::new_action_link, SwapState},
     };
     use ethereum_support::Erc20Token;
 
@@ -96,11 +93,11 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
             // The macro takes advantage of not needing to specify whether it uses
             // alice::ActionKind::name() or bob::ActionKind::name()
             #[allow(clippy::redundant_closure)]
-            let actions: Vec<Action> = state
+            let actions = state
                 .actions()
                 .iter()
-                .map(|action| action.to_action())
-                .collect();
+                .map(|action| action.to_action_name())
+                .collect::<Vec<_>>();
             let error = state.error;
             let status =
                 SwapStatus::new::<AL, BL>(&communication, &alpha_ledger, &beta_ledger, &error);

@@ -10,6 +10,7 @@ use crate::{
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
+use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
 pub fn handle_post_swap<A: AliceSpawner>(
@@ -32,14 +33,17 @@ pub fn handle_post_swap<A: AliceSpawner>(
             alice_spawner.spawn(id, body.peer, Box::new(body))?
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
-            error!(
+            log::error!(
                 "Swapping {:?} for {:?} from {:?} to {:?} is not supported",
-                body.alpha_asset, body.beta_asset, body.alpha_ledger, body.beta_ledger
+                body.alpha_asset,
+                body.beta_asset,
+                body.alpha_ledger,
+                body.beta_ledger
             );
             return Err(problem::unsupported());
         }
         SwapRequestBodyKind::MalformedRequest(body) => {
-            error!(
+            log::error!(
                 "Malformed request body: {}",
                 serde_json::to_string(&body)
                     .expect("failed to serialize serde_json::Value as string ?!")
@@ -47,7 +51,7 @@ pub fn handle_post_swap<A: AliceSpawner>(
             return Err(HttpApiProblem::with_title_and_type_from_status(
                 HttpStatusCode::BAD_REQUEST,
             )
-            .set_detail("The request body was malformed"));
+            .set_detail("The request body was malformed."));
         }
     };
 
@@ -82,19 +86,19 @@ pub enum SwapRequestBodyKind {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, PartialIdentities> {
-    #[serde(with = "http_api::asset::serde")]
+    #[serde(with = "http_api::asset::serde_asset")]
     alpha_asset: AA,
-    #[serde(with = "http_api::asset::serde")]
+    #[serde(with = "http_api::asset::serde_asset")]
     beta_asset: BA,
-    #[serde(with = "http_api::ledger::serde")]
+    #[serde(with = "http_api::ledger::serde_ledger")]
     alpha_ledger: AL,
-    #[serde(with = "http_api::ledger::serde")]
+    #[serde(with = "http_api::ledger::serde_ledger")]
     beta_ledger: BL,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
-    #[serde(with = "http_api::serde::socket_addr")]
+    #[serde(with = "http_api::serde_socket_addr")]
     peer: SocketAddr,
 }
 

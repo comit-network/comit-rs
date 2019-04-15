@@ -22,6 +22,7 @@ use crate::{
         },
     },
 };
+use derivative::Derivative;
 use futures::{future::Shared, sync::oneshot, Future};
 use std::sync::{Arc, Mutex};
 
@@ -156,7 +157,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
                 pending_response, ..
             } => Some(Box::new(pending_response.response_future())),
             _ => {
-                warn!("Swap not in proposed state: {:?}", self);
+                log::warn!("Swap not in proposed state: {:?}", self);
                 None
             }
         }
@@ -185,7 +186,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
                     }
                 }
             },
-            _ => error!("Tried to set a response after it's already set"),
+            _ => log::error!("Tried to set a response after it's already set"),
         }
     }
 

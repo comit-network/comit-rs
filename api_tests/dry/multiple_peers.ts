@@ -30,13 +30,13 @@ const beta_asset_charlie_quantity = utils.toWei("20", "ether");
 const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
 const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-const alice = new Actor("alice", global.config, global.test_root, {
+const alice = new Actor("alice", global.config, global.project_root, {
     ethConfig: global.ledgers_config.ethereum,
 });
-const bob = new Actor("bob", global.config, global.test_root, {
+const bob = new Actor("bob", global.config, global.project_root, {
     ethConfig: global.ledgers_config.ethereum,
 });
-const charlie = new Actor("charlie", global.config, global.test_root, {
+const charlie = new Actor("charlie", global.config, global.project_root, {
     ethConfig: global.ledgers_config.ethereum,
 });
 

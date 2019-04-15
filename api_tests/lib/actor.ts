@@ -11,6 +11,8 @@ import * as toml from "toml";
 import * as fs from "fs";
 
 import chaiHttp = require("chai-http");
+import { sleep } from "./util";
+import { MetaBtsieveConfig } from "./btsieve";
 
 chai.use(chaiHttp);
 
@@ -20,6 +22,7 @@ export interface BtsieveForComitNodeConfig {
 
 export interface TestConfig {
     comit_node: { [key: string]: MetaComitNodeConfig };
+    btsieve: { [key: string]: MetaBtsieveConfig };
 }
 
 export class Actor {
@@ -62,6 +65,10 @@ export class Actor {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
+    web_gui_url() {
+        return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
+    }
+
     pollComitNodeUntil(
         location: string,
         predicate: (body: SwapResponse) => boolean
@@ -94,7 +101,7 @@ export class Actor {
         });
     }
 
-    do(action: Action) {
+    async do(action: Action) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
@@ -126,6 +133,7 @@ export class Actor {
                     "amount",
                     "gas_limit"
                 );
+
                 let {
                     contract_address,
                     data,

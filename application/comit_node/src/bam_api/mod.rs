@@ -20,8 +20,8 @@ fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
 impl FromBamHeader for LedgerKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "Bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
-            "Ethereum" => LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?)),
+            "bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
+            "ethereum" => LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?)),
             other => LedgerKind::Unknown(other.to_string()),
         })
     }
@@ -31,10 +31,10 @@ impl ToBamHeader for LedgerKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             LedgerKind::Bitcoin(bitcoin) => {
-                Header::with_str_value("Bitcoin").with_parameter("network", bitcoin.network)?
+                Header::with_str_value("bitcoin").with_parameter("network", bitcoin.network)?
             }
             LedgerKind::Ethereum(ethereum) => {
-                Header::with_str_value("Ethereum").with_parameter("network", ethereum.network)?
+                Header::with_str_value("ethereum").with_parameter("network", ethereum.network)?
             }
             unknown @ LedgerKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
@@ -62,9 +62,9 @@ impl ToBamHeader for SwapProtocol {
 impl FromBamHeader for AssetKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "Bitcoin" => AssetKind::Bitcoin(header.take_parameter("quantity")?),
-            "Ether" => AssetKind::Ether(header.take_parameter("quantity")?),
-            "ERC20" => AssetKind::Erc20(Erc20Token::new(
+            "bitcoin" => AssetKind::Bitcoin(header.take_parameter("quantity")?),
+            "ether" => AssetKind::Ether(header.take_parameter("quantity")?),
+            "erc20" => AssetKind::Erc20(Erc20Token::new(
                 header.take_parameter("address")?,
                 header.take_parameter("quantity")?,
             )),
@@ -77,12 +77,12 @@ impl ToBamHeader for AssetKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             AssetKind::Bitcoin(bitcoin) => {
-                Header::with_str_value("Bitcoin").with_parameter("quantity", bitcoin)?
+                Header::with_str_value("bitcoin").with_parameter("quantity", bitcoin)?
             }
             AssetKind::Ether(ether) => {
-                Header::with_str_value("Ether").with_parameter("quantity", ether)?
+                Header::with_str_value("ether").with_parameter("quantity", ether)?
             }
-            AssetKind::Erc20(erc20) => Header::with_str_value("ERC20")
+            AssetKind::Erc20(erc20) => Header::with_str_value("erc20")
                 .with_parameter("address", erc20.token_contract)?
                 .with_parameter("quantity", erc20.quantity)?,
             unknown @ AssetKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
@@ -130,7 +130,7 @@ mod tests {
 
         assert_eq!(
             header,
-            Header::with_str_value("ERC20")
+            Header::with_str_value("erc20")
                 .with_parameter("quantity", "100000000000000")?
                 .with_parameter("address", "0x0000000000000000000000000000000000000000")?
         );

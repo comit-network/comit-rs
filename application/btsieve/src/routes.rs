@@ -11,7 +11,6 @@ use std::{
     fmt::{self, Debug},
     sync::Arc,
 };
-use url::Url;
 use warp::{self, Rejection, Reply};
 
 #[derive(Debug)]
@@ -46,20 +45,20 @@ impl From<Error> for HttpApiProblem {
         match e {
             QuerySave => {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .set_detail("Failed to create new query")
+                    .set_detail("Failed to create new query.")
             }
             TransformToPayload => {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             }
             QueryNotFound => HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
-                .set_detail("The requested query does not exist"),
+                .set_detail("The requested query does not exist."),
             NetworkNotFound => {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
-                    .set_detail("The requested network id does not exist")
+                    .set_detail("The requested network id does not exist.")
             }
             LedgerNotConnected => {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::SERVICE_UNAVAILABLE)
-                    .set_detail("The requested ledger is not connected")
+                    .set_detail("The requested ledger is not connected.")
             }
         }
     }
@@ -80,7 +79,6 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 #[allow(clippy::needless_pass_by_value)]
 pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
     network: String,
-    external_url: Url,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
     query_type: &'static str,
@@ -90,12 +88,7 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
 
     match result {
         Ok(id) => {
-            let uri = external_url
-                .join(
-                    format!("/queries/{}/{}/{}/{}", ledger_name, network, query_type, id).as_str(),
-                )
-                .expect("Should be able to join urls")
-                .to_string();
+            let uri = format!("/queries/{}/{}/{}/{}", ledger_name, network, query_type, id);
             let reply = warp::reply::with_status(warp::reply(), warp::http::StatusCode::CREATED);
             Ok(warp::reply::with_header(reply, "Location", uri))
         }
@@ -135,9 +128,11 @@ where
                 .map(|matches| RetrieveQueryResponse { query, matches })
                 .map(|response| warp::reply::json(&response))
                 .map_err(|e| {
-                    error!(
-                        "failed to transform result for query {} to payload {:?}: {:?}",
-                        id, query_params.return_as, e
+                    log::error!(
+                        "failed to transform result for query {} to payload {:?}: {:?}.",
+                        id,
+                        query_params.return_as,
+                        e
                     );
                     Error::TransformToPayload
                 })

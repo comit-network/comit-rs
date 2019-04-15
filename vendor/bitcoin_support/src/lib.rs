@@ -1,11 +1,6 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate strum_macros;
-
 pub use bitcoin::{
     blockdata::{
         block::{Block, BlockHeader},

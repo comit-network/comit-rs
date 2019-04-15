@@ -1,10 +1,10 @@
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! try_header {
     ($e:expr) => {
         header_internal!($e, {
             let value = Default::default();
 
-            info!(
+            log::info!(
                 "Header was not present, falling back to default value: '{:?}'",
                 value
             );
@@ -14,13 +14,11 @@ macro_rules! try_header {
     };
 }
 
-#[macro_export]
+#[macro_export(local_inner_macros)]
 macro_rules! header {
     ($e:expr) => {
         header_internal!($e, {
-            extern crate futures;
-
-            info!("Header was not present, early returning with error response (SE00)!");
+            log::info!("Header was not present, early returning with error response (SE00)!");
             return Box::new(futures::future::ok(Response::new(Status::SE(0))));
         })
     };
@@ -32,10 +30,7 @@ macro_rules! body {
         match $e {
             Ok(body) => body,
             Err(e) => {
-
-                extern crate futures;
-
-                error!("Failed to deserialize body: {:?}", e);
+                log::error!("Failed to deserialize body: {:?}", e);
                 return Box::new(futures::future::ok(Response::new(Status::SE(0))));
             }
         }
@@ -48,10 +43,7 @@ macro_rules! header_internal {
         match $e {
             Some(Ok(header)) => header,
             Some(Err(e)) => {
-
-                extern crate futures;
-
-                error!("Failed to deserialize header: {:?}", e);
+                log::error!("Failed to deserialize header: {:?}", e);
                 return Box::new(futures::future::ok(Response::new(Status::SE(0))));
             },
             None => $none,

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 use uuid::{ParseError, Uuid};
 

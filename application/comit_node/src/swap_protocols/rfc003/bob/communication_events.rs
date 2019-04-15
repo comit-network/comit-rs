@@ -6,6 +6,7 @@ use crate::swap_protocols::{
         ledger::Ledger,
     },
 };
+use debug_stub_derive::DebugStub;
 
 #[derive(DebugStub)]
 pub struct BobToAlice<AL: Ledger, BL: Ledger> {

@@ -32,7 +32,7 @@ impl BitcoinQuery {
         BitcoinQuery::Transaction {
             to_address: None,
             from_outpoint: Some(htlc_location),
-            unlock_script: Some(vec![vec![0u8]]),
+            unlock_script: Some(vec![vec![]]),
         }
     }
 

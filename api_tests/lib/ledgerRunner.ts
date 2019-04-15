@@ -90,5 +90,4 @@ export class LedgerRunner {
         }
         this.running_ledgers = {};
     }
-    
 }

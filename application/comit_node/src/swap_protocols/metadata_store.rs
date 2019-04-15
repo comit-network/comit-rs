@@ -1,12 +1,14 @@
 use crate::swap_protocols::{asset::AssetKind, LedgerKind};
+use failure::Fail;
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
     hash::Hash,
     sync::Mutex,
 };
+use strum_macros::StrumDisplay;
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, Debug, StrumDisplay)]
 pub enum RoleKind {
     Alice,
     Bob,
@@ -43,7 +45,7 @@ impl<K: Debug + Display + Hash + Eq + Clone + Send + Sync + 'static> MetadataSto
 {
     fn get(&self, key: &K) -> Result<Option<Metadata>, Error> {
         let metadata = self.metadata.lock().unwrap();
-        trace!("Fetched metadata of swap with id {}: {:?}", key, metadata);
+        log::trace!("Fetched metadata of swap with id {}: {:?}", key, metadata);
 
         Ok(metadata.get(&key).map(Clone::clone))
     }

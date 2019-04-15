@@ -3,6 +3,7 @@ use crate::{
     http_api,
     swap_protocols::{rfc003::state_store, MetadataStore, ProtocolDependencies, SwapId},
 };
+use serde_json::json;
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
@@ -16,6 +17,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
     state_store: Arc<S>,
     protocol_dependencies: ProtocolDependencies<T, S>,
     comit_connection_pool: Arc<ConnectionPool>,
+    origin_auth: String,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(RFC003));
@@ -51,7 +53,9 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::routes::rfc003::action::Action>())
+        .and(warp::path::param::<
+            http_api::routes::rfc003::action::ActionName,
+        >())
         .and(warp::post2())
         .and(warp::path::end())
         .and(warp::body::json().or(empty_json_body).unify())
@@ -61,7 +65,9 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::routes::rfc003::action::Action>())
+        .and(warp::path::param::<
+            http_api::routes::rfc003::action::ActionName,
+        >())
         .and(warp::query::<http_api::routes::rfc003::GetActionQueryParams>())
         .and(warp::get2())
         .and(warp::path::end())
@@ -76,7 +82,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
     let preflight_cors_route = warp::options().map(warp::reply);
 
     let cors = warp::cors()
-        .allow_origin("http://localhost:3000")
+        .allow_origin(origin_auth.as_str())
         .allow_methods(vec!["GET", "POST"])
         .allow_headers(vec!["content-type"]);
 

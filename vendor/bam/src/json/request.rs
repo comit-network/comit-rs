@@ -5,7 +5,7 @@ use crate::{
         header::{Header, Headers},
     },
 };
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 use std::collections::HashSet;
 

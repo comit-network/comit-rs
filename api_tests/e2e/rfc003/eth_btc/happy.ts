@@ -17,11 +17,11 @@ declare var global: HarnessGlobal;
     const bobInitialEth = "0.1";
     const aliceInitialEth = "11";
 
-    const alice = new Actor("alice", global.config, global.test_root, {
+    const alice = new Actor("alice", global.config, global.project_root, {
         ethConfig: global.ledgers_config.ethereum,
         btcConfig: global.ledgers_config.bitcoin,
     });
-    const bob = new Actor("bob", global.config, global.test_root, {
+    const bob = new Actor("bob", global.config, global.project_root, {
         ethConfig: global.ledgers_config.ethereum,
         btcConfig: global.ledgers_config.bitcoin,
     });
@@ -98,7 +98,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.beta_ledger.status === "Redeemed",
             test: {
                 description:
-                    "[alice] Should have received the beta asset after the redeem",
+                    "Should have received the beta asset after the redeem",
                 callback: async (body: any) => {
                     let redeemTxId = body.state.beta_ledger.redeem_tx;
 
@@ -119,7 +119,7 @@ declare var global: HarnessGlobal;
             state: (state: any) => state.alpha_ledger.status === "Redeemed",
             test: {
                 description:
-                    "[bob] Should have received the alpha asset after the redeem",
+                    "Should have received the alpha asset after the redeem",
                 callback: async () => {
                     let ethBalanceAfter = await ethereum.ethBalance(
                         bobFinalAddress

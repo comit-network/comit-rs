@@ -1,5 +1,6 @@
 use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
+use serde::Deserialize;
 use std::fmt;
 
 pub const SEED_LENGTH: usize = 32;

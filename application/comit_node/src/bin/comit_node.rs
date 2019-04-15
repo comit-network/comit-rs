@@ -1,12 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate log;
-
 use comit_node::{
     btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
-    comit_server,
+    comit_i_routes, comit_server,
     connection_pool::ConnectionPool,
     http_api::route_factory,
     logging,
@@ -18,7 +15,7 @@ use comit_node::{
     },
 };
 use directories;
-use ethereum_support::*;
+use futures::Future;
 use std::{env::var, net::SocketAddr, sync::Arc};
 
 // TODO: Make a nice command line interface here (using StructOpt f.e.) see #298
@@ -26,7 +23,7 @@ fn main() -> Result<(), failure::Error> {
     let settings = load_settings()?;
     logging::set_up_logging(&settings);
 
-    info!("Starting up with {:#?}", settings);
+    log::info!("Starting up with {:#?}", settings);
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
@@ -52,6 +49,8 @@ fn main() -> Result<(), failure::Error> {
     );
 
     spawn_comit_server(&settings, dependencies.clone(), &mut runtime);
+
+    spawn_comit_i_instance(&settings, &mut runtime);
 
     // Block the current thread.
     ::std::thread::park();
@@ -121,11 +120,12 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
         state_store,
         protocol_dependencies,
         connection_pool,
+        auth_origin(&settings),
     );
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
-    info!("Starting HTTP server on {:?}", listen_addr);
+    log::info!("Starting HTTP server on {:?}", listen_addr);
 
     let server = warp::serve(routes).bind(listen_addr);
 
@@ -139,15 +139,36 @@ fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
 ) {
     runtime.spawn(
         comit_server::listen(settings.comit.comit_listen, protocol_dependencies).map_err(|e| {
-            error!("ComitServer shutdown: {:?}", e);
+            log::error!("ComitServer shutdown: {:?}", e);
         }),
     );
+}
+
+fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
+    if let Some(comit_i_settings) = &settings.web_gui {
+        let routes = comit_i_routes::create();
+
+        let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
+
+        log::info!("Starting comit-i HTTP server on {:?}", listen_addr);
+
+        let server = warp::serve(routes).bind(listen_addr);
+
+        runtime.spawn(server);
+    }
+}
+
+fn auth_origin(settings: &ComitNodeSettings) -> String {
+    match &settings.web_gui {
+        Some(http_socket) => format!("http://localhost:{}", http_socket.port),
+        None => "http://localhost:8080".to_string(),
+    }
 }
 
 fn var_or_default(name: &str, default: String) -> String {
     match var(name) {
         Ok(value) => {
-            info!("Set {}={}", name, value);
+            log::info!("Set {}={}", name, value);
             value
         }
         Err(_) => {

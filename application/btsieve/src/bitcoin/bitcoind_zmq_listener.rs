@@ -11,7 +11,7 @@ pub fn bitcoin_block_listener(endpoint: &str) -> Result<UnboundedReceiver<MinedB
     socket.set_subscribe(b"rawblock")?;
     socket.connect(endpoint)?;
 
-    info!(
+    log::info!(
         "Connecting to {} to subscribe to new Bitcoin blocks over ZeroMQ",
         socket.get_last_endpoint().unwrap()
     );
@@ -47,11 +47,11 @@ fn receive_block(socket: &mut Socket) -> Result<Option<MinedBlock>, zmq::Error> 
 
             match (deserialize(bytes.as_ref()), block_height) {
                 (Ok(block), Ok(height)) => {
-                    trace!("Got {:?}", block);
+                    log::trace!("Got {:?}", block);
                     Ok(Some(MinedBlock::new(block, height)))
                 }
                 (Ok(_), Err(e)) => {
-                    error!(
+                    log::error!(
                         "Got new block but failed to extract the height because {:?}",
                         e
                     );
@@ -59,13 +59,13 @@ fn receive_block(socket: &mut Socket) -> Result<Option<MinedBlock>, zmq::Error> 
                 }
 
                 (Err(e), _) => {
-                    error!("Got new block but failed to deserialize it because {:?}", e);
+                    log::error!("Got new block but failed to deserialize it because {:?}", e);
                     Ok(None)
                 }
             }
         }
         _ => {
-            error!("Unhandled message: {:?}", bytes);
+            log::error!("Unhandled message: {:?}", bytes);
             Ok(None)
         }
     }

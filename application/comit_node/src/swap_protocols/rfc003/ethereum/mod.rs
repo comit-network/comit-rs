@@ -1,16 +1,17 @@
-use crate::swap_protocols::{
-    ledger::Ethereum,
-    rfc003::{state_machine::HtlcParams, Ledger},
-};
-use ethereum_support::{web3::types::Address, Bytes, Erc20Token, EtherQuantity};
-use std::time::Duration;
-
 mod actions;
 mod erc20_htlc;
 mod ether_htlc;
 pub mod htlc_events;
 
 pub use self::{actions::*, erc20_htlc::*, ether_htlc::*};
+
+use crate::swap_protocols::{
+    ledger::Ethereum,
+    rfc003::{state_machine::HtlcParams, Ledger},
+};
+use ethereum_support::{web3::types::Address, Bytes, Erc20Token, EtherQuantity};
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct ByteCode(pub String);

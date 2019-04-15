@@ -1,4 +1,4 @@
-use ::serde::{de::DeserializeOwned, Deserializer, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
 use std::{collections::BTreeMap, fmt};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -99,7 +99,7 @@ impl FromHttpAsset for HttpAsset {
     }
 }
 
-pub mod serde {
+pub mod serde_asset {
 
     use super::*;
 
@@ -107,7 +107,7 @@ pub mod serde {
     where
         D: Deserializer<'de>,
     {
-        use ::serde::{de::Error, Deserialize};
+        use serde::de::Error;
         let asset = HttpAsset::deserialize(deserializer)?;
 
         T::from_http_asset(asset).map_err(D::Error::custom)

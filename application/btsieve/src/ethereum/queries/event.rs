@@ -3,6 +3,7 @@ use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
+use derivative::Derivative;
 use ethbloom::Input;
 use ethereum_support::{
     web3::{
@@ -16,6 +17,7 @@ use futures::{
     future::{self, Future},
     stream::{FuturesOrdered, Stream},
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 struct Topic(H256);

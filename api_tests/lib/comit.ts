@@ -20,6 +20,7 @@ export interface SwapResponse extends HalResource {
 
 export interface Action {
     type: string;
+    invalid_until?: number;
     payload: any;
 }
 
@@ -107,7 +108,8 @@ export interface MetaComitNodeConfig {
 /// The comit-rs config file
 export interface ComitNodeConfig {
     comit: { comit_listen: string; secret_seed: string };
-    http_api: { address: string; port: number; logging: boolean };
+    http_api: { address: string; port: number };
+    web_gui: { address: string; port: number };
     btsieve: {
         url: string;
         bitcoin: BtsieveForComitNodeConfig;
