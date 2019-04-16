@@ -22,12 +22,6 @@ const tobyWallet = new Wallet("toby", {
     btcConfig: global.ledgers_config.bitcoin,
 });
 
-const aliceWallet = new Wallet("alice", {
-    ethConfig: global.ledgers_config.ethereum,
-});
-
-const alice_wallet_address = aliceWallet.eth().address();
-
 setTimeout(async function() {
     describe("Test btsieve API - bitcoin", () => {
         let token_contract_address: string;
@@ -35,20 +29,6 @@ setTimeout(async function() {
             this.timeout(5000);
             await bitcoin.ensureSegwit();
             await tobyWallet.btc().fund(5);
-            await tobyWallet.eth().fund("20");
-            await aliceWallet.eth().fund("1");
-
-            let receipt = await tobyWallet
-                .eth()
-                .deployErc20TokenContract(global.project_root);
-            token_contract_address = receipt.contractAddress;
-
-            await ethereum.mintErc20Tokens(
-                tobyWallet.eth(),
-                token_contract_address,
-                alice_wallet_address,
-                10
-            );
         });
 
         describe("Bitcoin", () => {

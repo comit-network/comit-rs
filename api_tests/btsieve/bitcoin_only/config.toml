@@ -1,4 +1,4 @@
-ledgers = ["bitcoin", "ethereum"]
+ledgers = ["bitcoin"]
 
 [btsieve.main]
 host = "127.0.0.1"
