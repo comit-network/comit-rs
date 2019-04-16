@@ -5,7 +5,7 @@ use comit_node::{
     btsieve::BtsieveHttpClient,
     comit_i_routes,
     http_api::route_factory,
-    libp2p_bam, logging,
+    libp2p_bam, logging, network,
     settings::ComitNodeSettings,
     swap_protocols::{
         self,
@@ -63,9 +63,9 @@ fn main() -> Result<(), failure::Error> {
     let mut known_headers = HashMap::new();
     known_headers.insert("SWAP".into(), swap_headers);
 
-    let bam_behaviour = libp2p_bam::Bam::new(known_headers);
+    let bam_behaviour = libp2p_bam::BamBehaviour::new(known_headers);
 
-    let behaviour = libp2p_bam::Behaviour {
+    let behaviour = network::Behaviour {
         bam: bam_behaviour,
         mdns: libp2p::mdns::Mdns::new()?,
         bob: bob_protocol_dependencies,

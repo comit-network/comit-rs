@@ -5,11 +5,12 @@ use crate::{
 use std::sync::Arc;
 
 mod client_impl;
+mod server_impl;
 
 pub mod alice {
     use super::*;
     use crate::{
-        libp2p_bam::Behaviour,
+        network::Behaviour,
         swap_protocols::{rfc003::state_store::StateStore, swap_id::SwapId, MetadataStore},
     };
     use libp2p::{Swarm, Transport};
