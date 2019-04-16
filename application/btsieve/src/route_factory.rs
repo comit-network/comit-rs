@@ -129,8 +129,8 @@ where
 
     // concat with validators, ledger and network
     let path = path
-        .and(validate_ledger)
         .and(warp::path(ledger_name))
+        .and(validate_ledger)
         .and(validate_network)
         .and(warp::path(&route));
 
