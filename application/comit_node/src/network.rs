@@ -10,27 +10,61 @@ use crate::{
 };
 use bam::{
     self,
-    json::{Response, ValidatedIncomingRequest},
+    json::{OutgoingRequest, Response, ValidatedIncomingRequest},
     Status,
 };
 use futures::future::Future;
 use libp2p::{
     core::swarm::NetworkBehaviourEventProcess,
     mdns::{Mdns, MdnsEvent},
-    NetworkBehaviour,
+    NetworkBehaviour, PeerId,
+};
+use std::{
+    collections::{HashMap, HashSet},
+    convert::Infallible,
+    io,
 };
 use tokio::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct Behaviour<TSubstream, B> {
-    pub bam: BamBehaviour<TSubstream>,
-    pub mdns: Mdns<TSubstream>,
+    bam: BamBehaviour<TSubstream>,
+    mdns: Mdns<TSubstream>,
 
     #[behaviour(ignore)]
-    pub bob: B,
+    bob: B,
     #[behaviour(ignore)]
-    pub task_executor: TaskExecutor,
+    task_executor: TaskExecutor,
+}
+
+impl<TSubstream, B> Behaviour<TSubstream, B> {
+    pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
+        let mut swap_headers = HashSet::new();
+        swap_headers.insert("alpha_ledger".into());
+        swap_headers.insert("beta_ledger".into());
+        swap_headers.insert("alpha_asset".into());
+        swap_headers.insert("beta_asset".into());
+        swap_headers.insert("protocol".into());
+
+        let mut known_headers = HashMap::new();
+        known_headers.insert("SWAP".into(), swap_headers);
+
+        Ok(Self {
+            bam: BamBehaviour::new(known_headers),
+            mdns: Mdns::new()?,
+            bob,
+            task_executor,
+        })
+    }
+
+    pub fn send_request(
+        &mut self,
+        peer_id: PeerId,
+        request: OutgoingRequest,
+    ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
+        self.bam.send_request(peer_id, request)
+    }
 }
 
 impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<PendingIncomingRequest>
@@ -41,11 +75,15 @@ impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<PendingIncomingRequ
 
         let response = handle_request(&self.bob, request);
 
-        let future = response.and_then(|response| {
-            channel.send(response).unwrap();
+        let future = response
+            .and_then(|response| {
+                channel
+                    .send(response)
+                    .unwrap_or_else(|_| log::debug!("failed to send response through channel"));
 
-            Ok(())
-        });
+                Ok(())
+            })
+            .map_err(|_| unreachable!("error is Infallible"));
 
         self.task_executor.spawn(future);
     }
@@ -73,7 +111,7 @@ impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
 fn handle_request<B: BobSpawner>(
     bob: &B,
     mut request: ValidatedIncomingRequest,
-) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
+) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
     match request.request_type() {
         "SWAP" => {
             let protocol: SwapProtocol = bam::header!(request
@@ -167,7 +205,7 @@ fn handle_request<B: BobSpawner>(
                 }
             }
         }
-        unknown_request_type => unimplemented!(),
+        _unknown_request_type => unimplemented!(),
     }
 }
 
@@ -179,7 +217,7 @@ fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpa
     alpha_asset: AA,
     beta_asset: BA,
     body: rfc003::messages::RequestBody<AL, BL>,
-) -> Box<dyn Future<Item = Response, Error = ()> + Send + 'static>
+) -> Box<dyn Future<Item = Response, Error = Infallible> + Send + 'static>
 where
     LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
 {

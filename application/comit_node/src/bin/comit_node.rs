@@ -6,7 +6,8 @@ use comit_node::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
-    libp2p_bam, logging, network,
+    logging, network,
+    seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{
         self,
@@ -17,12 +18,8 @@ use comit_node::{
 };
 use directories;
 use futures::{stream, Future, Stream};
-use libp2p::{
-    identity::{self, ed25519},
-    PeerId,
-};
+use libp2p::identity::{self, ed25519};
 use std::{
-    collections::{HashMap, HashSet},
     env::var,
     net::SocketAddr,
     sync::{Arc, Mutex},
@@ -33,6 +30,8 @@ fn main() -> Result<(), failure::Error> {
     logging::set_up_logging(&settings);
 
     log::info!("Starting up with {:#?}", settings);
+
+    let mut runtime = tokio::runtime::Runtime::new()?;
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
@@ -45,34 +44,13 @@ fn main() -> Result<(), failure::Error> {
         seed: settings.comit.secret_seed,
     };
 
-    let mut runtime = tokio::runtime::Runtime::new()?;
+    let local_key_pair = derive_key_pair(&settings.comit.secret_seed);
 
-    let local_key = peer_id(&settings);
-    let local_peer_id = PeerId::from(local_key.public());
-    log::info!("Local peer id: {:?}", local_peer_id);
+    let transport = libp2p::build_development_transport(local_key_pair.clone());
+    let behaviour = network::Behaviour::new(bob_protocol_dependencies, runtime.executor())?;
 
-    let transport = libp2p::build_development_transport(local_key.clone());
+    let mut swarm = libp2p::Swarm::new(transport, behaviour, local_key_pair.public().into());
 
-    let mut swap_headers = HashSet::new();
-    swap_headers.insert("alpha_ledger".into());
-    swap_headers.insert("beta_ledger".into());
-    swap_headers.insert("alpha_asset".into());
-    swap_headers.insert("beta_asset".into());
-    swap_headers.insert("protocol".into());
-
-    let mut known_headers = HashMap::new();
-    known_headers.insert("SWAP".into(), swap_headers);
-
-    let bam_behaviour = libp2p_bam::BamBehaviour::new(known_headers);
-
-    let behaviour = network::Behaviour {
-        bam: bam_behaviour,
-        mdns: libp2p::mdns::Mdns::new()?,
-        bob: bob_protocol_dependencies,
-        task_executor: runtime.executor(),
-    };
-
-    let mut swarm = libp2p::Swarm::new(transport, behaviour, local_peer_id);
     libp2p::Swarm::listen_on(
         &mut swarm,
         format!("/ip4/0.0.0.0/tcp/{}", settings.comit.comit_listen.port())
@@ -113,8 +91,8 @@ fn main() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn peer_id(settings: &ComitNodeSettings) -> identity::Keypair {
-    let bytes = settings.comit.secret_seed.sha256_with_seed(&[b"NODE_ID"]);
+fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
+    let bytes = secret_seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())
 }

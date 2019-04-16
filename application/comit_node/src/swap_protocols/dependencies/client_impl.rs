@@ -61,7 +61,7 @@ where
             let mut swarm = self.lock().unwrap();
             log::debug!("Making swap request to {}: {:?}", node_id.clone(), request);
 
-            let response = swarm.bam.send_request(node_id.clone(), request);
+            let response = swarm.send_request(node_id.clone(), request);
 
             response
         };
