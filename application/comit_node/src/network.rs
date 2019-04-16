@@ -4,7 +4,10 @@ use crate::{
     swap_protocols::{bob, rfc003::state_store::StateStore, MetadataStore, SwapId},
 };
 use futures::future::Future;
-use libp2p::{mdns::Mdns, NetworkBehaviour};
+use libp2p::{
+    mdns::{Mdns, MdnsEvent},
+    NetworkBehaviour,
+};
 use tokio::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
@@ -42,9 +45,16 @@ impl<TSubstream, T, S> libp2p::core::swarm::NetworkBehaviourEventProcess<libp2p:
     for Behaviour<TSubstream, T, S>
 {
     fn inject_event(&mut self, event: libp2p::mdns::MdnsEvent) {
-        if let libp2p::mdns::MdnsEvent::Discovered(addresses) = event {
-            for (peer, address) in addresses {
-                log::debug!("discovered {:?} at {:?}", peer, address)
+        match event {
+            MdnsEvent::Discovered(addresses) => {
+                for (peer, address) in addresses {
+                    log::debug!("discovered {} at {}", peer, address)
+                }
+            }
+            MdnsEvent::Expired(addresses) => {
+                for (peer, address) in addresses {
+                    log::debug!("address {} of peer {} expired", address, peer)
+                }
             }
         }
     }
