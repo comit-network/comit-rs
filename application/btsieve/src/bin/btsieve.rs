@@ -55,8 +55,10 @@ fn main() -> Result<(), failure::Error> {
     let (ethereum_routes, _event_loop) = create_ethereum_routes(&mut runtime, settings.ethereum)?;
 
     let log = warp::log("btsieve::api");
+    let ping_200 = warp::path("ping").map(warp::reply);
+    let ping_route = warp::get2().and(ping_200);
 
-    let routes = bitcoin_routes.or(ethereum_routes).with(log);
+    let routes = ping_route.or(bitcoin_routes.or(ethereum_routes)).with(log);
 
     warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
     Ok(())

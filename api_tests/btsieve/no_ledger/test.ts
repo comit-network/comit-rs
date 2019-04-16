@@ -17,6 +17,19 @@ setTimeout(async function() {
             this.timeout(5000);
         });
 
+        describe("BTsieve", () => {
+            describe("Ping", () => {
+                it("btsieve ping should respond with 200", async function() {
+                    return chai
+                        .request(btsieve.url())
+                        .get("/ping")
+                        .then(res => {
+                            res.should.have.status(200);
+                        });
+                });
+            });
+        });
+
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
