@@ -76,7 +76,7 @@ pub fn create_endpoints<
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<C>,
+    client: Option<Arc<C>>,
     ledger_name: &'static str,
     registered_network: &'static str,
 ) -> BoxedFilter<(impl Reply,)>
@@ -90,6 +90,22 @@ where
     // create the path
     let path = warp::path("queries");
 
+    let client_option = client.clone();
+
+    // validate ledger function
+    let validate_ledger = warp::any().and_then(move || {
+        let client_option = client_option.clone();
+        client_option.map_or_else(
+            || {
+                log::error!("Ledger not connected: {:?}", ledger_name);
+                Err::<Arc<C>, _>(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: RouteError::LedgerNotConnected.into(),
+                }))
+            },
+            |client| Ok(client.clone()),
+        )
+    });
+
     // validate network function
     let validate_network = warp::path::param::<String>().and_then(move |network| {
         if network != registered_network {
@@ -102,15 +118,15 @@ where
         }
     });
 
-    // concat with network and type of query
+    // concat with validators, ledger and network
     let path = path
+        .and(validate_ledger)
         .and(warp::path(ledger_name))
         .and(validate_network)
         .and(warp::path(&route));
 
     let query_repository = warp::any().map(move || Arc::clone(&query_repository));
     let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
-    let client = warp::any().map(move || client.clone());
 
     let create = warp::post2()
         .and(path.clone())
@@ -124,7 +140,6 @@ where
         .and(path.clone())
         .and(query_repository.clone())
         .and(query_result_repository.clone())
-        .and(client.clone())
         .and(warp::path::param::<u32>())
         .and(warp::query::<QueryParams<R>>())
         .and_then(routes::retrieve_query);

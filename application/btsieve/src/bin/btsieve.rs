@@ -6,7 +6,7 @@ use bitcoin_support::Network as BitcoinNetwork;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
-    route_factory::{create_endpoints, create_errored_route},
+    route_factory,
     settings::{self, Settings},
     InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
@@ -50,33 +50,9 @@ fn main() -> Result<(), failure::Error> {
 
     log::info!("Starting up with {:#?}", settings);
 
-    let log = warp::log("btsieve::api");
-    let empty_200 = warp::path("ping").map(warp::reply);
-    let empty_route = warp::get2().and(empty_200);
+    let bitcoin_routes = create_bitcoin_routes(&mut runtime, settings.bitcoin)?;
 
-    let bitcoin_routes = match settings.bitcoin {
-        Some(bitcoin) => {
-            log::info!("Bitcoin configured");
-            let bitcoin_routes = create_bitcoin_routes(&mut runtime, bitcoin)?;
-            empty_route.or(bitcoin_routes)
-        }
-        None => {
-            log::info!("Bitcoin not connected - config not present");
-            empty_route.or(create_errored_route("bitcoin"))
-        }
-    };
-
-    let (ethereum_routes, _event_loops) = match settings.ethereum {
-        Some(bitcoin) => {
-            log::info!("Ethereum configured");
-            let (ethereum_routes, event_loop) = create_ethereum_routes(&mut runtime, bitcoin)?;
-            (empty_route.or(ethereum_routes), Some(event_loop))
-        }
-        None => {
-            log::info!("Ethereum not connected - config not present");
-            (empty_route.or(create_errored_route("ethereum")), None)
-        }
-    };
+    let (ethereum_routes, _event_loop) = create_ethereum_routes(&mut runtime, settings.ethereum)?;
 
     let routes = bitcoin_routes.or(ethereum_routes);
 
@@ -86,7 +62,7 @@ fn main() -> Result<(), failure::Error> {
 
 fn create_bitcoin_routes(
     runtime: &mut Runtime,
-    settings: settings::Bitcoin,
+    settings: Option<settings::Bitcoin>,
 ) -> Result<BoxedFilter<(impl Reply,)>, Error> {
     let block_query_repository =
         Arc::new(InMemoryQueryRepository::<bitcoin::BlockQuery>::default());
@@ -96,74 +72,81 @@ fn create_bitcoin_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    let bitcoin_rpc_client = bitcoin_rpc_client::BitcoinCoreClient::new(
-        settings.node_url.as_str(),
-        settings.node_username.as_str(),
-        settings.node_password.as_str(),
-    );
+    let (client, network) = if let Some(settings) = settings {
+        let bitcoin_rpc_client = bitcoin_rpc_client::BitcoinCoreClient::new(
+            settings.node_url.as_str(),
+            settings.node_username.as_str(),
+            settings.node_password.as_str(),
+        );
+        let blockchain_info = get_bitcoin_info(&bitcoin_rpc_client)?;
+        log::info!("Connected to Bitcoin: {:?}.", blockchain_info);
+        let network: &str = BitcoinNetwork::from(blockchain_info.chain).into();
 
-    let blockchain_info = get_bitcoin_info(&bitcoin_rpc_client)?;
-    log::info!("Connected to Bitcoin: {:?}.", blockchain_info);
-    let network = BitcoinNetwork::from(blockchain_info.chain).into();
+        log::trace!("Setting up bitcoin routes to {:?}.", network);
 
-    log::trace!("Setting up bitcoin routes to {:?}.", network);
+        log::info!("Connect BitcoinZmqListener to {}.", settings.zmq_endpoint);
 
-    log::info!("Connect BitcoinZmqListener to {}.", settings.zmq_endpoint);
+        {
+            let block_query_repository = Arc::clone(&block_query_repository);
+            let transaction_query_repository = Arc::clone(&transaction_query_repository);
 
-    {
-        let block_query_repository = Arc::clone(&block_query_repository);
-        let transaction_query_repository = Arc::clone(&transaction_query_repository);
+            let block_query_result_repository = Arc::clone(&block_query_result_repository);
+            let transaction_query_result_repository =
+                Arc::clone(&transaction_query_result_repository);
 
-        let block_query_result_repository = Arc::clone(&block_query_result_repository);
-        let transaction_query_result_repository = Arc::clone(&transaction_query_result_repository);
+            let blocks = bitcoin_block_listener(settings.zmq_endpoint.as_str())
+                .expect("Should return a Bitcoind received for MinedBlocks");
 
-        let blocks = bitcoin_block_listener(settings.zmq_endpoint.as_str())
-            .expect("Should return a Bitcoind received for MinedBlocks");
+            let bitcoin_processor = blocks.for_each(move |block| {
+                bitcoin::check_block_queries(block_query_repository.clone(), block.clone())
+                    .for_each(|QueryMatch(id, block_id)| {
+                        block_query_result_repository.add_result(id.0, block_id);
+                    });
 
-        let bitcoin_processor = blocks.for_each(move |block| {
-            bitcoin::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
-                |QueryMatch(id, block_id)| {
-                    block_query_result_repository.add_result(id.0, block_id);
-                },
-            );
-
-            bitcoin::check_transaction_queries(transaction_query_repository.clone(), block.clone())
+                bitcoin::check_transaction_queries(
+                    transaction_query_repository.clone(),
+                    block.clone(),
+                )
                 .for_each(|QueryMatch(id, block_id)| {
                     transaction_query_result_repository.add_result(id.0, block_id);
                 });
 
-            Ok(())
-        });
-        runtime.spawn(bitcoin_processor);
-    }
-
-    let client = Arc::new(bitcoin_rpc_client);
+                Ok(())
+            });
+            runtime.spawn(bitcoin_processor);
+        }
+        (Some(Arc::from(bitcoin_rpc_client)), network)
+    } else {
+        (None, "")
+    };
 
     let ledger_name = "bitcoin";
 
-    let transaction_routes = create_endpoints::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
-        transaction_query_repository,
-        transaction_query_result_repository,
-        Arc::clone(&client),
-        ledger_name,
-        network,
-    );
+    let transaction_routes =
+        route_factory::create_endpoints::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
+            transaction_query_repository,
+            transaction_query_result_repository,
+            client.clone(),
+            ledger_name,
+            network,
+        );
 
-    let block_routes = create_endpoints::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
-        block_query_repository,
-        block_query_result_repository,
-        Arc::clone(&client),
-        ledger_name,
-        network,
-    );
+    let block_routes =
+        route_factory::create_endpoints::<bitcoin::queries::block::ReturnAs, _, _, _, _>(
+            block_query_repository,
+            block_query_result_repository,
+            client,
+            ledger_name,
+            network,
+        );
 
     Ok(transaction_routes.or(block_routes).boxed())
 }
 
 fn create_ethereum_routes(
     runtime: &mut Runtime,
-    settings: settings::Ethereum,
-) -> Result<(BoxedFilter<(impl Reply,)>, EventLoopHandle), Error> {
+    settings: Option<settings::Ethereum>,
+) -> Result<(BoxedFilter<(impl Reply,)>, Option<EventLoopHandle>), Error> {
     let transaction_query_repository =
         Arc::new(InMemoryQueryRepository::<ethereum::TransactionQuery>::default());
     let block_query_repository =
@@ -173,89 +156,96 @@ fn create_ethereum_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    log::info!("Starting Ethereum Listener on {}", settings.node_url);
+    let (client, network, event_loop) = if let Some(settings) = settings {
+        log::info!("Starting Ethereum Listener on {}", settings.node_url);
 
-    let (event_loop, transport) =
-        Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
-    let web3_client = Arc::new(Web3::new(transport));
+        let (event_loop, transport) =
+            Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
+        let web3_client = Arc::new(Web3::new(transport));
 
-    let network = get_ethereum_info(web3_client.clone())?.into();
+        let network = get_ethereum_info(web3_client.clone())?.into();
 
-    log::trace!("Setting up ethereum routes to {:?}", network);
+        log::trace!("Setting up ethereum routes to {:?}", network);
 
-    {
-        let block_query_repository = block_query_repository.clone();
-        let transaction_query_repository = transaction_query_repository.clone();
-        let log_query_repository = log_query_repository.clone();
+        {
+            let block_query_repository = block_query_repository.clone();
+            let transaction_query_repository = transaction_query_repository.clone();
+            let log_query_repository = log_query_repository.clone();
 
-        let block_query_result_repository = block_query_result_repository.clone();
-        let transaction_query_result_repository = transaction_query_result_repository.clone();
-        let log_query_result_repository = log_query_result_repository.clone();
-
-        let web3_client = web3_client.clone();
-
-        let blocks = ethereum_block_listener(web3_client.clone(), settings.poll_interval_secs)
-            .expect("Should return a Web3 block poller");
-
-        let executor = runtime.executor();
-        let web3_processor = blocks.for_each(move |block| {
-            ethereum::check_block_queries(block_query_repository.clone(), block.clone()).for_each(
-                |QueryMatch(id, block_id)| {
-                    block_query_result_repository.add_result(id.0, block_id);
-                },
-            );
-
-            ethereum::check_transaction_queries(
-                transaction_query_repository.clone(),
-                block.clone(),
-            )
-            .for_each(|QueryMatch(id, transaction_id)| {
-                transaction_query_result_repository.add_result(id.0, transaction_id);
-            });
-
+            let block_query_result_repository = block_query_result_repository.clone();
+            let transaction_query_result_repository = transaction_query_result_repository.clone();
             let log_query_result_repository = log_query_result_repository.clone();
-            let log_query_future = ethereum::check_log_queries(
-                log_query_repository.clone(),
-                web3_client.clone(),
-                block,
-            )
-            .for_each(move |QueryMatch(id, transaction_id)| {
-                log_query_result_repository.add_result(id.0, transaction_id);
+
+            let web3_client = web3_client.clone();
+
+            let blocks = ethereum_block_listener(web3_client.clone(), settings.poll_interval_secs)
+                .expect("Should return a Web3 block poller");
+
+            let executor = runtime.executor();
+            let web3_processor = blocks.for_each(move |block| {
+                ethereum::check_block_queries(block_query_repository.clone(), block.clone())
+                    .for_each(|QueryMatch(id, block_id)| {
+                        block_query_result_repository.add_result(id.0, block_id);
+                    });
+
+                ethereum::check_transaction_queries(
+                    transaction_query_repository.clone(),
+                    block.clone(),
+                )
+                .for_each(|QueryMatch(id, transaction_id)| {
+                    transaction_query_result_repository.add_result(id.0, transaction_id);
+                });
+
+                let log_query_result_repository = log_query_result_repository.clone();
+                let log_query_future = ethereum::check_log_queries(
+                    log_query_repository.clone(),
+                    web3_client.clone(),
+                    block,
+                )
+                .for_each(move |QueryMatch(id, transaction_id)| {
+                    log_query_result_repository.add_result(id.0, transaction_id);
+                    Ok(())
+                });
+
+                executor.spawn(log_query_future);
                 Ok(())
             });
 
-            executor.spawn(log_query_future);
-            Ok(())
-        });
-
-        runtime.spawn(web3_processor);
-    }
+            runtime.spawn(web3_processor);
+        }
+        (Some(web3_client), network, Some(event_loop))
+    } else {
+        (None, "", None)
+    };
 
     let ledger_name = "ethereum";
 
-    let transaction_routes = create_endpoints::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
-        transaction_query_repository,
-        transaction_query_result_repository,
-        Arc::clone(&web3_client),
-        ledger_name,
-        network,
-    );
+    let transaction_routes =
+        route_factory::create_endpoints::<ethereum::queries::transaction::ReturnAs, _, _, _, _>(
+            transaction_query_repository,
+            transaction_query_result_repository,
+            client.clone(),
+            ledger_name,
+            network,
+        );
 
-    let block_routes = create_endpoints::<ethereum::queries::block::ReturnAs, _, _, _, _>(
-        block_query_repository,
-        block_query_result_repository,
-        Arc::clone(&web3_client),
-        ledger_name,
-        network,
-    );
+    let block_routes =
+        route_factory::create_endpoints::<ethereum::queries::block::ReturnAs, _, _, _, _>(
+            block_query_repository,
+            block_query_result_repository,
+            client.clone(),
+            ledger_name,
+            network,
+        );
 
-    let bloom_routes = create_endpoints::<ethereum::queries::event::ReturnAs, _, _, _, _>(
-        log_query_repository,
-        log_query_result_repository,
-        Arc::clone(&web3_client),
-        ledger_name,
-        network,
-    );
+    let bloom_routes =
+        route_factory::create_endpoints::<ethereum::queries::event::ReturnAs, _, _, _, _>(
+            log_query_repository,
+            log_query_result_repository,
+            client.clone(),
+            ledger_name,
+            network,
+        );
 
     Ok((
         transaction_routes.or(block_routes).or(bloom_routes).boxed(),
