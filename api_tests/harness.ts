@@ -184,6 +184,8 @@ async function run_tests(test_files: string[]) {
             }
             break;
         }
+
+        await btsieve_runner.stopBtsieves();
         node_runner.stopComitNodes();
     }
 
