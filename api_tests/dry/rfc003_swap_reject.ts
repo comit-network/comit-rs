@@ -6,41 +6,40 @@ import { expect } from "chai";
 import { Swap, SwapResponse, SwapsResponse } from "../lib/comit";
 import * as utils from "web3-utils";
 import chaiHttp = require("chai-http");
+import chaiSubset = require("chai-subset");
 
 chai.use(chaiHttp);
+chai.use(chaiSubset);
 chai.should();
 
 declare var global: HarnessGlobal;
 
-const alpha_ledger_name = "bitcoin";
-const alpha_ledger_network = "regtest";
+(async function() {
+    const alpha_ledger_name = "bitcoin";
+    const alpha_ledger_network = "regtest";
 
-const beta_ledger_name = "ethereum";
-const beta_ledger_network = "regtest";
+    const beta_ledger_name = "ethereum";
+    const beta_ledger_network = "regtest";
 
-const alpha_asset_name = "bitcoin";
-const alpha_asset_reasonable_quantity = "100000000";
-const alpha_asset_stingy_quantity = "100";
+    const alpha_asset_name = "bitcoin";
+    const alpha_asset_reasonable_quantity = "100000000";
+    const alpha_asset_stingy_quantity = "100";
 
-const beta_asset_name = "ether";
-const beta_asset_quantity = utils.toWei("10", "ether");
+    const beta_asset_name = "ether";
+    const beta_asset_quantity = utils.toWei("10", "ether");
 
-const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
+    const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-const alice = new Actor("alice", global.config, global.project_root, {
-    ethConfig: global.ledgers_config.ethereum,
-});
-const bob = new Actor("bob", global.config, global.project_root, {
-    ethConfig: global.ledgers_config.ethereum,
-});
-const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
+    const alice = new Actor("alice", global.config, global.project_root, {
+        ethConfig: global.ledgers_config.ethereum,
+    });
+    const bob = new Actor("bob", global.config, global.project_root, {
+        ethConfig: global.ledgers_config.ethereum,
+    });
+    const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+    const bob_comit_node_address = await bob.peerId();
 
-// the `setTimeout` forces it to be added on the event loop
-// This is needed because there is no async call in the test
-// And hence it does not get run without this `setTimeout`
-setTimeout(async function() {
     describe("SWAP request REJECTED", () => {
         let alice_reasonable_swap_href: string;
         it("[Alice] Should be able to make first swap request via HTTP api", async () => {
@@ -85,7 +84,11 @@ setTimeout(async function() {
                 .get("/peers")
                 .then(res => {
                     res.should.have.status(200);
-                    res.body.peers.should.eql([bob_comit_node_address]);
+                    res.body.peers.should.containSubset([
+                        {
+                            id: bob_comit_node_address,
+                        },
+                    ]);
                 });
         });
 
@@ -141,7 +144,11 @@ setTimeout(async function() {
                 .get("/peers")
                 .then(res => {
                     res.should.have.status(200);
-                    res.body.peers.should.eql([bob_comit_node_address]);
+                    res.body.peers.should.containSubset([
+                        {
+                            id: bob_comit_node_address,
+                        },
+                    ]);
                 });
         });
 
@@ -354,4 +361,4 @@ setTimeout(async function() {
     });
 
     run();
-}, 0);
+})();

@@ -31,9 +31,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
             addresses: HashMap::new(),
         }
     }
-}
 
-impl<TSubstream> BamBehaviour<TSubstream> {
     pub fn send_request(
         &mut self,
         peer_id: PeerId,
@@ -63,6 +61,13 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                 "Sender of response future was unexpectedly dropped before response was received."
             )
         }))
+    }
+
+    pub fn addresses(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
+        self.addresses
+            .clone()
+            .into_iter()
+            .map(|(peer, addresses)| (peer.clone(), addresses.clone()))
     }
 }
 

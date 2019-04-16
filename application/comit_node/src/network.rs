@@ -2,6 +2,7 @@ use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::SwapReject,
     libp2p_bam::{BamBehaviour, PendingIncomingRequest},
+    libp2p_ext::BamPeers,
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents},
@@ -17,14 +18,18 @@ use futures::future::Future;
 use libp2p::{
     core::swarm::NetworkBehaviourEventProcess,
     mdns::{Mdns, MdnsEvent},
-    NetworkBehaviour, PeerId,
+    Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
     io,
+    sync::Mutex,
 };
-use tokio::runtime::TaskExecutor;
+use tokio::{
+    prelude::{AsyncRead, AsyncWrite},
+    runtime::TaskExecutor,
+};
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -64,6 +69,22 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
         request: OutgoingRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         self.bam.send_request(peer_id, request)
+    }
+}
+
+impl<
+        TTransport: Transport + Send + 'static,
+        TSubstream: AsyncRead + AsyncWrite + Send + 'static,
+        B: BobSpawner + Send + 'static,
+    > BamPeers for Mutex<Swarm<TTransport, Behaviour<TSubstream, B>>>
+where
+    <TTransport as Transport>::Listener: Send,
+    <TTransport as Transport>::Error: Send,
+{
+    fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
+        let mut swarm = self.lock().unwrap();
+
+        Box::new(swarm.bam.addresses())
     }
 }
 

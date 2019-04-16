@@ -6,6 +6,7 @@ use comit_node::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
+    libp2p_ext::BamPeers,
     logging, network,
     seed::Seed,
     settings::ComitNodeSettings,
@@ -18,7 +19,10 @@ use comit_node::{
 };
 use directories;
 use futures::{stream, Future, Stream};
-use libp2p::identity::{self, ed25519};
+use libp2p::{
+    identity::{self, ed25519},
+    PeerId, Swarm,
+};
 use std::{
     env::var,
     net::SocketAddr,
@@ -45,46 +49,47 @@ fn main() -> Result<(), failure::Error> {
     };
 
     let local_key_pair = derive_key_pair(&settings.comit.secret_seed);
+    let local_peer_id = PeerId::from(local_key_pair.clone().public());
 
-    let transport = libp2p::build_development_transport(local_key_pair.clone());
+    let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::Behaviour::new(bob_protocol_dependencies, runtime.executor())?;
 
-    let mut swarm = libp2p::Swarm::new(transport, behaviour, local_key_pair.public().into());
+    let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
-    libp2p::Swarm::listen_on(
+    Swarm::listen_on(
         &mut swarm,
-        format!("/ip4/0.0.0.0/tcp/{}", settings.comit.comit_listen.port())
-            .parse()
-            .unwrap(),
+        format!("/ip4/0.0.0.0/tcp/{}", settings.comit.comit_listen.port()).parse()?,
     )?;
 
-    let shared_swarm = Arc::new(Mutex::new(swarm));
+    let swarm = Arc::new(Mutex::new(swarm));
 
     let alice_protocol_dependencies = swap_protocols::alice::ProtocolDependencies {
         ledger_events: btsieve_client.into(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
         seed: settings.comit.secret_seed,
-        client: shared_swarm.clone(),
+        client: Arc::clone(&swarm),
     };
-
-    let future = stream::poll_fn(move || shared_swarm.lock().unwrap().poll())
-        .for_each(|_| Ok(()))
-        .map_err(|e| {
-            log::error!("failed with {:?}", e);
-        });
-
-    runtime.spawn(future);
 
     spawn_warp_instance(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         alice_protocol_dependencies,
+        Arc::clone(&swarm),
+        local_peer_id,
         &mut runtime,
     );
 
     spawn_comit_i_instance(&settings, &mut runtime);
+
+    let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
+        .for_each(|_| Ok(()))
+        .map_err(|e| {
+            log::error!("failed with {:?}", e);
+        });
+
+    runtime.spawn(swarm_worker);
 
     // Block the current thread.
     ::std::thread::park();
@@ -127,11 +132,13 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
     )
 }
 
-fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client>(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, BP: BamPeers>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    get_bam_peers: Arc<BP>,
+    peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(
@@ -139,6 +146,8 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client>(
         state_store,
         protocol_dependencies,
         auth_origin(&settings),
+        get_bam_peers,
+        peer_id,
     );
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);

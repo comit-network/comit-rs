@@ -1,5 +1,5 @@
 use libp2p::PeerId;
-use serde::{de, export::fmt, Deserializer};
+use serde::{de, export::fmt, Deserializer, Serializer};
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<PeerId, D::Error>
 where
@@ -23,4 +23,8 @@ where
     }
 
     deserializer.deserialize_str(Visitor)
+}
+
+pub fn serialize<S: Serializer>(value: &PeerId, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&value.to_base58())
 }

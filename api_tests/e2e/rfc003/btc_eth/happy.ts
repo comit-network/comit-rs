@@ -29,7 +29,7 @@ declare var global: HarnessGlobal;
     const aliceFinalAddress = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
     const bobFinalAddress =
         "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
-    const bobComitNodeListen = bob.comitNodeConfig.comit.comit_listen;
+    const bobComitNode = await bob.peerId();
 
     const alphaAssetQuantity = 100000000;
     const betaAssetQuantity = toBN(toWei("10", "ether"));
@@ -70,7 +70,7 @@ declare var global: HarnessGlobal;
         beta_ledger_redeem_identity: aliceFinalAddress,
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
-        peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
+        peer: bobComitNode,
     };
 
     const actions = [
