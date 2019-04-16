@@ -3,6 +3,7 @@
 
 use comit_node::{
     btsieve::BtsieveHttpClient,
+    comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
     libp2p_bam, logging, network,
@@ -18,7 +19,7 @@ use directories;
 use futures::{stream, Future, Stream};
 use libp2p::{
     identity::{self, ed25519},
-    PeerId, Transport,
+    PeerId,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -26,7 +27,6 @@ use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
-use tokio::prelude::{AsyncRead, AsyncWrite};
 
 fn main() -> Result<(), failure::Error> {
     let settings = load_settings()?;
@@ -87,7 +87,7 @@ fn main() -> Result<(), failure::Error> {
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
         seed: settings.comit.secret_seed,
-        swarm: shared_swarm.clone(),
+        client: shared_swarm.clone(),
     };
 
     let future = stream::poll_fn(move || shared_swarm.lock().unwrap().poll())
@@ -149,26 +149,13 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
     )
 }
 
-fn spawn_warp_instance<
-    T: MetadataStore<SwapId>,
-    S: StateStore,
-    TTransport: Transport + Send + 'static,
-    TSubstream: AsyncWrite + AsyncRead + Send + 'static,
->(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<
-        T,
-        S,
-        TTransport,
-        TSubstream,
-    >,
+    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
     runtime: &mut tokio::runtime::Runtime,
-) where
-    <TTransport as Transport>::Listener: Send,
-    <TTransport as Transport>::Error: Send,
-{
+) {
     let routes = route_factory::create(
         metadata_store,
         state_store,

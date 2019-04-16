@@ -87,8 +87,6 @@ where
     }
 
     fn inject_connected(&mut self, peer_id: PeerId, endpoint: ConnectedPoint) {
-        // TODO: test if we need this!
-
         log::debug!("connected to {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {

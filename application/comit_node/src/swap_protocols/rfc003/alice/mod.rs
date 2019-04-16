@@ -56,7 +56,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         &self,
         alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
         beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
-        comit_client: C,
+        comit_client: Arc<C>,
         bob_id: NodeId,
         save_state: Arc<dyn SaveState<AL, BL, AA, BA>>,
     ) -> Box<FutureSwapOutcome<AL, BL, AA, BA>> {

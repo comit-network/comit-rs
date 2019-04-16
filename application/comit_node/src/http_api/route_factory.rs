@@ -1,11 +1,10 @@
 use crate::{
+    comit_client::Client,
     http_api,
     swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
 };
-use libp2p::Transport;
 use serde_json::json;
 use std::sync::Arc;
-use tokio::{io::AsyncRead, prelude::AsyncWrite};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";
@@ -13,26 +12,12 @@ pub fn swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, RFC003, id)
 }
 
-pub fn create<
-    T: MetadataStore<SwapId>,
-    S: state_store::StateStore,
-    TTransport: Transport + Send + 'static,
-    TSubstream: AsyncWrite + AsyncRead + Send + 'static,
->(
+pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<
-        T,
-        S,
-        TTransport,
-        TSubstream,
-    >,
+    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
     origin_auth: String,
-) -> BoxedFilter<(impl Reply,)>
-where
-    <TTransport as Transport>::Listener: Send,
-    <TTransport as Transport>::Error: Send,
-{
+) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(RFC003));
     let metadata_store = warp::any().map(move || metadata_store.clone());

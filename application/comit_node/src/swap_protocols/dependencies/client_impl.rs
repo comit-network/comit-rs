@@ -6,6 +6,7 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{Client, RequestError, SwapDeclineReason, SwapReject},
+    network::Behaviour,
     node_id::NodeId,
     swap_protocols::{
         self,
@@ -18,8 +19,9 @@ use crate::{
 };
 use bam::{self, json, Status};
 use futures::Future;
-use libp2p::Transport;
+use libp2p::{Swarm, Transport};
 use serde::Deserialize;
+use std::sync::Mutex;
 use tokio::{io::AsyncRead, prelude::AsyncWrite};
 
 #[derive(Debug, Deserialize)]
@@ -40,7 +42,7 @@ impl<
         S: StateStore,
         TTransport: Transport + Send + 'static,
         TSubstream: AsyncRead + AsyncWrite + Send + 'static,
-    > Client for swap_protocols::alice::ProtocolDependencies<T, S, TTransport, TSubstream>
+    > Client for Mutex<Swarm<TTransport, Behaviour<TSubstream, T, S>>>
 where
     <TTransport as Transport>::Listener: Send,
     <TTransport as Transport>::Error: Send,
@@ -59,7 +61,7 @@ where
             .expect("constructing a bam::json::OutoingRequest should never fail!");
 
         let response = {
-            let mut swarm = self.swarm.lock().unwrap();
+            let mut swarm = self.lock().unwrap();
             log::debug!("Making swap request to {}: {:?}", node_id.clone(), request);
 
             let response = swarm.bam.send_request(node_id.clone(), request);
