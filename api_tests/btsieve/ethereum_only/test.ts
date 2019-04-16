@@ -49,36 +49,6 @@ setTimeout(async function() {
             );
         });
 
-        describe("Bitcoin", () => {
-            describe("Transactions", () => {
-                before(async () => {});
-
-                it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
-                    return chai
-                        .request(btsieve.url())
-                        .get("/queries/bitcoin/regtest/transactions/1")
-                        .then(res => {
-                            res.should.have.status(503);
-                        });
-                });
-
-                const to_address =
-                    "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
-
-                it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
-                    return chai
-                        .request(btsieve.url())
-                        .post("/queries/bitcoin/regtest/transactions")
-                        .send({
-                            to_address: to_address,
-                        })
-                        .then(res => {
-                            res.should.have.status(503);
-                        });
-                });
-            });
-        });
-
         describe("Ethereum", () => {
             describe("Transactions", () => {
                 before(async () => {

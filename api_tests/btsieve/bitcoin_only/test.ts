@@ -247,37 +247,6 @@ setTimeout(async function() {
                 });
             });
         });
-
-        describe("Ethereum", () => {
-            describe("Transactions", () => {
-                before(async () => {
-                    await tobyWallet.eth().fund("10");
-                });
-
-                it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
-                    return chai
-                        .request(btsieve.url())
-                        .get("/queries/ethereum/regtest/transactions/1")
-                        .then(res => {
-                            res.should.have.status(503);
-                        });
-                });
-
-                const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-
-                it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
-                    return chai
-                        .request(btsieve.url())
-                        .post("/queries/ethereum/regtest/transactions")
-                        .send({
-                            to_address: to_address,
-                        })
-                        .then(res => {
-                            res.should.have.status(503);
-                        });
-                });
-            });
-        });
     });
 
     run();
