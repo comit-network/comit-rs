@@ -185,8 +185,8 @@ async function run_tests(test_files: string[]) {
             break;
         }
 
-        await btsieve_runner.stopBtsieves();
         node_runner.stopComitNodes();
+        await btsieve_runner.stopBtsieves();
     }
 
     clean_up();
