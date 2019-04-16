@@ -24,17 +24,17 @@ export class LedgerRunner {
     ) {
         this.running_ledgers = {};
         this.block_timers = {};
+        this.docker_cwd = project_root + "/api_tests/regtest";
+        this.log_dir = log_dir;
+
         this.ledgers_config = toml.parse(
             fs.readFileSync(ledgers_config_path, "utf8")
         );
 
-        this.docker_cwd = project_root + "/api_tests/regtest";
         this.docker_compose_options = {
             cwd: this.docker_cwd,
             encoding: "utf8",
         };
-
-        this.log_dir = log_dir;
     }
 
     async ensureLedgersRunning(ledgers: string[]) {
