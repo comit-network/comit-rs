@@ -1,14 +1,7 @@
-import * as bitcoin from "../../lib/bitcoin";
-import { Wallet } from "../../lib/wallet";
 import * as chai from "chai";
 import chaiHttp = require("chai-http");
-import * as ethereum from "../../lib/ethereum";
-import { HarnessGlobal, sleep } from "../../lib/util";
-import {
-    IdMatchResponse,
-    EthereumTransactionResponse,
-    Btsieve,
-} from "../../lib/btsieve";
+import { HarnessGlobal } from "../../lib/util";
+import { Btsieve } from "../../lib/btsieve";
 
 const should = chai.should();
 chai.use(chaiHttp);
@@ -17,46 +10,15 @@ declare var global: HarnessGlobal;
 
 const btsieve = new Btsieve("main", global.config, global.project_root);
 
-const tobyWallet = new Wallet("toby", {
-    ethConfig: global.ledgers_config.ethereum,
-    btcConfig: global.ledgers_config.bitcoin,
-});
-
-const aliceWallet = new Wallet("alice", {
-    ethConfig: global.ledgers_config.ethereum,
-});
-
-const alice_wallet_address = aliceWallet.eth().address();
-
 setTimeout(async function() {
     describe("Test btsieve API - no ledger connected", () => {
         let token_contract_address: string;
         before(async function() {
             this.timeout(5000);
-            await bitcoin.ensureSegwit();
-            await tobyWallet.btc().fund(5);
-            await tobyWallet.eth().fund("20");
-            await aliceWallet.eth().fund("1");
-
-            let receipt = await tobyWallet
-                .eth()
-                .deployErc20TokenContract(global.project_root);
-            token_contract_address = receipt.contractAddress;
-
-            await ethereum.mintErc20Tokens(
-                tobyWallet.eth(),
-                token_contract_address,
-                alice_wallet_address,
-                10
-            );
         });
 
         describe("Bitcoin", () => {
             describe("Transactions", () => {
-                before(async () => {
-                    await tobyWallet.eth().fund("10");
-                });
-
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
                     return chai
                         .request(btsieve.url())
@@ -85,10 +47,6 @@ setTimeout(async function() {
 
         describe("Ethereum", () => {
             describe("Transactions", () => {
-                before(async () => {
-                    await tobyWallet.eth().fund("10");
-                });
-
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
                     return chai
                         .request(btsieve.url())
