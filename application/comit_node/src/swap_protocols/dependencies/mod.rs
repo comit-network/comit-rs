@@ -5,7 +5,6 @@ use crate::{
 use std::sync::Arc;
 
 mod client_impl;
-mod server_impl;
 
 pub mod alice {
     use super::*;

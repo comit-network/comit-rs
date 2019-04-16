@@ -11,9 +11,7 @@ use crate::{
     swap_protocols::{
         self,
         asset::Asset,
-        metadata_store::MetadataStore,
-        rfc003::{self, state_store::StateStore},
-        swap_id::SwapId,
+        rfc003::{self, bob::BobSpawner},
         SwapProtocol,
     },
 };
@@ -38,11 +36,10 @@ type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003
 >;
 
 impl<
-        T: MetadataStore<SwapId>,
-        S: StateStore,
+        B: BobSpawner,
         TTransport: Transport + Send + 'static,
         TSubstream: AsyncRead + AsyncWrite + Send + 'static,
-    > Client for Mutex<Swarm<TTransport, Behaviour<TSubstream, T, S>>>
+    > Client for Mutex<Swarm<TTransport, Behaviour<TSubstream, B>>>
 where
     <TTransport as Transport>::Listener: Send,
     <TTransport as Transport>::Error: Send,

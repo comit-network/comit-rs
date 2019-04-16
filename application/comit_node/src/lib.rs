@@ -6,7 +6,6 @@ pub mod bam_ext;
 pub mod btsieve;
 pub mod comit_client;
 pub mod comit_i_routes;
-pub mod comit_server;
 pub mod http_api;
 pub mod libp2p_bam;
 pub mod logging;
