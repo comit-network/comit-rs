@@ -39,34 +39,6 @@ pub struct QueryParams<R> {
     pub return_as: R,
 }
 
-pub fn create_errored_route(ledger_name: &'static str) -> BoxedFilter<(impl Reply,)> {
-    let path = warp::path("queries").and(warp::path(ledger_name));
-
-    let create = warp::post2().and(path).and_then(|| {
-        Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: RouteError::NetworkNotFound.into(),
-        }))
-    });
-
-    let retrieve = warp::get2().and(path).and_then(|| {
-        Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: RouteError::NetworkNotFound.into(),
-        }))
-    });
-
-    let delete = warp::delete2().and(path).and_then(|| {
-        Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: RouteError::NetworkNotFound.into(),
-        }))
-    });
-
-    create
-        .or(retrieve)
-        .or(delete)
-        .recover(routes::customize_error)
-        .boxed()
-}
-
 pub fn create_endpoints<
     R,
     Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
