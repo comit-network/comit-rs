@@ -1,4 +1,3 @@
-import * as bitcoin from "../../lib/bitcoin";
 import { Wallet } from "../../lib/wallet";
 import * as chai from "chai";
 import chaiHttp = require("chai-http");
@@ -32,7 +31,7 @@ setTimeout(async function() {
     describe("Test btsieve API - ethereum", () => {
         let token_contract_address: string;
         before(async function() {
-            this.timeout(5000);
+            this.timeout(10000);
             await tobyWallet.eth().fund("20");
             await aliceWallet.eth().fund("1");
 
