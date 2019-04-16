@@ -12,11 +12,6 @@ const btsieve = new Btsieve("main", global.config, global.project_root);
 
 setTimeout(async function() {
     describe("Test btsieve API - no ledger connected", () => {
-        let token_contract_address: string;
-        before(async function() {
-            this.timeout(5000);
-        });
-
         describe("BTsieve", () => {
             describe("Ping", () => {
                 it("btsieve ping should respond with 200", async function() {

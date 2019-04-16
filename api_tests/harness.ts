@@ -2,7 +2,6 @@
 
 import { ChildProcess, execSync } from "child_process";
 import { spawn } from "child_process";
-import { MetaBtsieveConfig } from "./lib/btsieve";
 import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
 import * as toml from "toml";
@@ -29,25 +28,18 @@ const project_root: string = execSync("git rev-parse --show-toplevel", {
 }).trim();
 global.project_root = project_root;
 
-const docker_cwd = project_root + "/api_tests/regtest";
 const test_root = project_root + "/api_tests";
 global.test_root = test_root;
-
-const docker_compose_options = {
-    cwd: docker_cwd,
-    encoding: "utf8",
-};
-
-const ledgers_config = toml.parse(
-    fs.readFileSync(project_root + "/api_tests/regtest/ledgers.toml", "utf8")
-);
-global.ledgers_config = ledgers_config;
 
 const log_dir = project_root + "/api_tests/log";
 
 if (!fs.existsSync(log_dir)) {
     fs.mkdirSync(log_dir);
 }
+
+// ********************** //
+// Start services helpers //
+// ********************** //
 
 class ComitRunner {
     running_nodes: { [key: string]: ChildProcess };
@@ -116,7 +108,13 @@ class ComitRunner {
 }
 
 async function run_tests(test_files: string[]) {
-    let ledger_runner = new LedgerRunner();
+    let ledger_runner = new LedgerRunner(
+        project_root,
+        project_root + "/api_tests/regtest/ledgers.toml",
+        log_dir
+    );
+    global.ledgers_config = ledger_runner.getLedgersConfig();
+
     let node_runner = new ComitRunner();
     let btsieve_runner = new BtsieveRunner();
 
