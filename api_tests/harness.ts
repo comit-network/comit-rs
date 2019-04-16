@@ -7,7 +7,8 @@ import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
 import * as toml from "toml";
 import * as fs from "fs";
-import { LedgerRunner } from "./lib/ledgerRunner";
+import { LedgerRunner } from "./lib/ledger_runner";
+import { BtsieveRunner } from "./lib/btsieve_runner";
 
 const Mocha = require("mocha");
 const path = require("path");
@@ -111,49 +112,6 @@ class ComitRunner {
             }
             this.running_nodes = {};
         }
-    }
-}
-
-class BtsieveRunner {
-    running_btsieves: { [key: string]: ChildProcess };
-
-    constructor() {
-        this.running_btsieves = {};
-    }
-
-    async ensureBtsievesRunning(btsieves: [string, MetaBtsieveConfig][]) {
-        for (let [name, btsieve_config] of btsieves) {
-            if (this.running_btsieves[name]) {
-                continue;
-            }
-
-            this.running_btsieves[name] = await spawn(
-                project_root + "/target/debug/btsieve",
-                [],
-                {
-                    cwd: project_root,
-                    env: btsieve_config.env,
-                    stdio: [
-                        "ignore",
-                        fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
-                        fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
-                    ],
-                }
-            );
-        }
-    }
-
-    async stopBtsieves() {
-        let names = Object.keys(this.running_btsieves);
-
-        if (names.length > 0) {
-            console.log("Stopping Btsieve(s): " + names.join(", "));
-            for (let process of Object.values(this.running_btsieves)) {
-                process.kill();
-            }
-        }
-
-        this.running_btsieves = {};
     }
 }
 
