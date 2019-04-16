@@ -115,9 +115,9 @@ fn create_bitcoin_routes(
             });
             runtime.spawn(bitcoin_processor);
         }
-        (Some(Arc::from(bitcoin_rpc_client)), network)
+        (Some(Arc::from(bitcoin_rpc_client)), Some(network))
     } else {
-        (None, "")
+        (None, None)
     };
 
     let ledger_name = "bitcoin";
@@ -213,9 +213,9 @@ fn create_ethereum_routes(
 
             runtime.spawn(web3_processor);
         }
-        (Some(web3_client), network, Some(event_loop))
+        (Some(web3_client), Some(network), Some(event_loop))
     } else {
-        (None, "", None)
+        (None, None, None)
     };
 
     let ledger_name = "ethereum";

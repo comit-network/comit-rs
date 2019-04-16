@@ -78,7 +78,7 @@ pub fn create_endpoints<
     query_result_repository: Arc<QRR>,
     client: Option<Arc<C>>,
     ledger_name: &'static str,
-    registered_network: &'static str,
+    registered_network: Option<&'static str>,
 ) -> BoxedFilter<(impl Reply,)>
 where
     for<'de> R: Deserialize<'de>,
@@ -107,16 +107,25 @@ where
     });
 
     // validate network function
-    let validate_network = warp::path::param::<String>().and_then(move |network| {
-        if network != registered_network {
-            log::error!("Invalid network passed: {:?}", network);
-            Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
-                http_api_problem: RouteError::NetworkNotFound.into(),
-            }))
-        } else {
-            Ok(network)
-        }
-    });
+    let validate_network =
+        warp::path::param::<String>().and_then(move |network| match registered_network {
+            Some(registered_network) => {
+                if network != registered_network {
+                    log::error!("Invalid network passed: {:?}", network);
+                    Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+                        http_api_problem: RouteError::NetworkNotFound.into(),
+                    }))
+                } else {
+                    Ok(network)
+                }
+            }
+            None => {
+                log::error!("Ledger network not defined {:?}", ledger_name);
+                Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: RouteError::NetworkNotFound.into(),
+                }))
+            }
+        });
 
     // concat with validators, ledger and network
     let path = path
