@@ -36,7 +36,7 @@ impl<C: comit_client::Client, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>
         &mut self,
         request: &rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> &mut ResponseFuture<AL, BL> {
-        let bob_id = self.bob_id;
+        let bob_id = self.bob_id.clone();
         let (client, response_future) = (&self.client, &mut self.response_future);
         response_future.get_or_insert_with(|| {
             Box::new(

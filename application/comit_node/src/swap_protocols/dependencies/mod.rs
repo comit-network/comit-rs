@@ -1,33 +1,67 @@
 use crate::{
     btsieve::{QueryBitcoin, QueryEthereum},
-    connection_pool::ConnectionPool,
     seed::Seed,
 };
 use std::sync::Arc;
 
 mod client_impl;
 
-/// Represents the things you have access to when starting execution of a
-/// protocol
-#[allow(missing_debug_implementations)]
-pub struct ProtocolDependencies<T, S> {
-    pub ledger_events: LedgerEventDependencies,
-    pub metadata_store: Arc<T>,
-    pub state_store: Arc<S>,
-    pub connection_pool: Arc<ConnectionPool>,
-    pub seed: Seed,
-}
+pub mod alice {
+    use super::*;
+    use crate::{
+        libp2p_bam::Behaviour,
+        swap_protocols::{rfc003::state_store::StateStore, swap_id::SwapId, MetadataStore},
+    };
+    use libp2p::{Swarm, Transport};
+    use std::sync::Mutex;
+    use tokio::{io::AsyncRead, prelude::AsyncWrite};
 
-impl<T, S> Clone for ProtocolDependencies<T, S> {
-    fn clone(&self) -> Self {
-        ProtocolDependencies {
-            ledger_events: self.ledger_events.clone(),
-            metadata_store: Arc::clone(&self.metadata_store),
-            state_store: Arc::clone(&self.state_store),
-            connection_pool: Arc::clone(&self.connection_pool),
-            seed: self.seed,
+    #[allow(missing_debug_implementations)]
+    pub struct ProtocolDependencies<T, S, TTransport, TSubstream>
+    where
+        TTransport: Transport + Send + 'static,
+        TSubstream: AsyncRead + AsyncWrite + Send + 'static,
+        T: MetadataStore<SwapId>,
+        S: StateStore,
+    {
+        pub ledger_events: LedgerEventDependencies,
+        pub metadata_store: Arc<T>,
+        pub state_store: Arc<S>,
+        pub seed: Seed,
+        pub swarm: Arc<Mutex<Swarm<TTransport, Behaviour<TSubstream, T, S>>>>,
+    }
+
+    impl<T, S, TTransport, TSubstream> Clone for ProtocolDependencies<T, S, TTransport, TSubstream>
+    where
+        TTransport: Transport + Send + 'static,
+        TSubstream: AsyncRead + AsyncWrite + Send + 'static,
+        T: MetadataStore<SwapId>,
+        S: StateStore,
+    {
+        fn clone(&self) -> Self {
+            Self {
+                ledger_events: self.ledger_events.clone(),
+                metadata_store: Arc::clone(&self.metadata_store),
+                state_store: Arc::clone(&self.state_store),
+                seed: self.seed.clone(),
+                swarm: Arc::clone(&self.swarm),
+            }
         }
     }
+}
+
+pub mod bob {
+    use super::*;
+
+    #[allow(missing_debug_implementations)]
+    #[derive(Clone)]
+    pub struct ProtocolDependencies<T, S> {
+        pub ledger_events: LedgerEventDependencies,
+        pub metadata_store: Arc<T>,
+        pub state_store: Arc<S>,
+        pub seed: Seed,
+    }
+
 }
 
 #[allow(missing_debug_implementations)]

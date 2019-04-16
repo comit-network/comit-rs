@@ -79,6 +79,8 @@ class ComitRunner {
                 }
             );
 
+            await sleep(500);
+
             this.running_nodes[name].on(
                 "exit",
                 (code: number, signal: number) => {
@@ -90,7 +92,7 @@ class ComitRunner {
             );
         }
 
-        await sleep(500);
+        await sleep(2000);
     }
 
     stopComitNodes() {

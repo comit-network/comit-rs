@@ -1,12 +1,12 @@
 ledgers = ["bitcoin", "ethereum"]
 
-[comit_node.alice]
-host = "127.0.0.1"
-config_dir = "./api_tests/regtest/alice/"
-
 [comit_node.bob]
 host = "127.0.0.1"
 config_dir = "./api_tests/regtest/bob/"
+
+[comit_node.alice]
+host = "127.0.0.1"
+config_dir = "./api_tests/regtest/alice/"
 
 [btsieve.main.env]
 BTSIEVE_CONFIG_PATH = "./api_tests/regtest/btsieve"

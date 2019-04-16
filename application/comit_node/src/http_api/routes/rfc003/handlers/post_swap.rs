@@ -10,8 +10,8 @@ use crate::{
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
+use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
 
 pub fn handle_post_swap<A: AliceSpawner>(
     alice_spawner: &A,
@@ -21,16 +21,16 @@ pub fn handle_post_swap<A: AliceSpawner>(
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Token(body) => {
-            alice_spawner.spawn(id, body.peer, Box::new(body))?
+            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
-            alice_spawner.spawn(id, body.peer, Box::new(body))?
+            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinQuantity(body) => {
-            alice_spawner.spawn(id, body.peer, Box::new(body))?
+            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
         SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinQuantity(body) => {
-            alice_spawner.spawn(id, body.peer, Box::new(body))?
+            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
             log::error!(
@@ -98,8 +98,8 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, Partial
     beta_expiry: Timestamp,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
-    #[serde(with = "http_api::serde_socket_addr")]
-    peer: SocketAddr,
+    #[serde(with = "http_api::serde_peer_id")]
+    peer: PeerId,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -182,10 +182,9 @@ mod tests {
 
     use super::*;
     use spectral::prelude::*;
-    use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn can_deserialize_swap_request_body_with_port() {
+    fn can_deserialize_swap_request_body() {
         let body = r#"{
                 "alpha_ledger": {
                     "name": "bitcoin",
@@ -206,7 +205,7 @@ mod tests {
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 "alpha_expiry": 2000000000,
                 "beta_expiry": 2000000000,
-                "peer": "127.0.0.1:8002"
+                "peer": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
             }"#;
 
         let body = serde_json::from_str(body);
@@ -223,51 +222,9 @@ mod tests {
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 ),
             },
-            peer: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8002),
+            peer: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                .parse()
+                .unwrap(),
         })
     }
-
-    #[test]
-    fn can_deserialize_swap_request_body_without_port() {
-        let body = r#"{
-                "alpha_ledger": {
-                    "name": "bitcoin",
-                    "network": "regtest"
-                },
-                "beta_ledger": {
-                    "name": "ethereum",
-                    "network": "regtest"
-                },
-                "alpha_asset": {
-                    "name": "bitcoin",
-                    "quantity": "100000000"
-                },
-                "beta_asset": {
-                    "name": "ether",
-                    "quantity": "10000000000000000000"
-                },
-                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_expiry": 2000000000,
-                "beta_expiry": 2000000000,
-                "peer": "127.0.0.1"
-            }"#;
-
-        let body = serde_json::from_str(body);
-
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: ethereum_support::Address::from(
-                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                ),
-            },
-            peer: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9939),
-        })
-    }
-
 }

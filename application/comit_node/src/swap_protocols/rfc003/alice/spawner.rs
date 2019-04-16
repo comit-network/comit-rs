@@ -1,8 +1,9 @@
 use crate::{
     node_id::NodeId,
     swap_protocols::{
+        self,
         asset::Asset,
-        dependencies::{LedgerEventDependencies, ProtocolDependencies},
+        dependencies::LedgerEventDependencies,
         metadata_store::{self, Metadata, MetadataStore, RoleKind},
         rfc003::{
             alice,
@@ -15,7 +16,9 @@ use crate::{
 };
 use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
+use libp2p::Transport;
 use std::sync::Arc;
+use tokio::{io::AsyncRead, prelude::AsyncWrite};
 
 #[derive(Debug)]
 pub enum Error {
@@ -44,7 +47,16 @@ pub trait AliceSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore> AliceSpawner for ProtocolDependencies<T, S> {
+impl<
+        T: MetadataStore<SwapId>,
+        S: StateStore,
+        TTransport: Transport + Send + 'static,
+        TSubstream: AsyncRead + AsyncWrite + Send + 'static,
+    > AliceSpawner for swap_protocols::alice::ProtocolDependencies<T, S, TTransport, TSubstream>
+where
+    <TTransport as Transport>::Listener: Send,
+    <TTransport as Transport>::Error: Send,
+{
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,

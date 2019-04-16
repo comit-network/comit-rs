@@ -11,6 +11,7 @@ pub fn set_up_logging(settings: &ComitNodeSettings) {
         .level_for("tokio_reactor", LevelFilter::Info)
         .level_for("hyper", LevelFilter::Info)
         .level_for("warp", LevelFilter::Info)
+        .level_for("libp2p", LevelFilter::Trace)
         .chain(stdout())
         .apply()
         .unwrap();

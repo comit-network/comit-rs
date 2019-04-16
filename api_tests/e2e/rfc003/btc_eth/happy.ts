@@ -70,7 +70,7 @@ declare var global: HarnessGlobal;
         beta_ledger_redeem_identity: aliceFinalAddress,
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
-        peer: bobComitNodeListen,
+        peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
     };
 
     const actions = [

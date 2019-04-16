@@ -34,6 +34,8 @@ where
     fn upgrade_inbound(self, socket: Negotiated<TSocket>, _: Self::Info) -> Self::Future {
         let codec = json::JsonFrameCodec::default();
 
+        log::debug!("inbound connected upgraded to json-bam");
+
         futures::future::ok(codec.framed(socket))
     }
 }
@@ -49,6 +51,8 @@ where
     #[inline]
     fn upgrade_outbound(self, socket: Negotiated<TSocket>, _: Self::Info) -> Self::Future {
         let codec = json::JsonFrameCodec::default();
+
+        log::debug!("outbound connected upgraded to json-bam");
 
         futures::future::ok(codec.framed(socket))
     }

@@ -10,7 +10,6 @@ use crate::{
     swap_protocols::{
         self,
         asset::Asset,
-        dependencies::ProtocolDependencies,
         metadata_store::MetadataStore,
         rfc003::{self, state_store::StateStore},
         swap_id::SwapId,
@@ -19,7 +18,9 @@ use crate::{
 };
 use bam::{self, json, Status};
 use futures::Future;
+use libp2p::Transport;
 use serde::Deserialize;
+use tokio::{io::AsyncRead, prelude::AsyncWrite};
 
 #[derive(Debug, Deserialize)]
 pub struct Reason {
@@ -34,7 +35,16 @@ type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003
         > + Send,
 >;
 
-impl<T: MetadataStore<SwapId>, S: StateStore> Client for ProtocolDependencies<T, S> {
+impl<
+        T: MetadataStore<SwapId>,
+        S: StateStore,
+        TTransport: Transport + Send + 'static,
+        TSubstream: AsyncRead + AsyncWrite + Send + 'static,
+    > Client for swap_protocols::alice::ProtocolDependencies<T, S, TTransport, TSubstream>
+where
+    <TTransport as Transport>::Listener: Send,
+    <TTransport as Transport>::Error: Send,
+{
     fn send_rfc003_swap_request<
         AL: swap_protocols::rfc003::Ledger,
         BL: swap_protocols::rfc003::Ledger,
@@ -45,68 +55,70 @@ impl<T: MetadataStore<SwapId>, S: StateStore> Client for ProtocolDependencies<T,
         node_id: NodeId,
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
-        Box::new(
-            self.connection_pool
-                .client_for(node_id, self.clone())
-                .map_err(|e| {
-                    RequestError::Connecting(e)
-                })
-                .and_then(move |client| {
-                    let request = build_swap_request(request)
-                        .expect("constructing a bam::json::OutoingRequest should never fail!");
+        let request = build_swap_request(request)
+            .expect("constructing a bam::json::OutoingRequest should never fail!");
 
-                    log::debug!("Making swap request to {}: {:?}", node_id, request);
+        let response = {
+            let mut swarm = self.swarm.lock().unwrap();
+            log::debug!("Making swap request to {}: {:?}", node_id.clone(), request);
 
-                    let response = client.lock().unwrap().send_request(request).then(
-                        move |result| match result {
-                            Ok(mut response) => match response.status() {
-                                Status::OK(_) => {
-                                    log::info!("{} accepted swap request: {:?}", node_id, response);
-                                    match serde_json::from_value(response.body().clone()) {
-                                        Ok(response) => Ok(Ok(response)),
-                                        Err(_e) => Err(RequestError::InvalidResponse),
-                                    }
-                                }
-                                Status::SE(20) => {
-                                    log::info!("{} declined swap request: {:?}", node_id, response);
-                                    Ok(Err({
-                                        let reason = response
-                                            .take_header("REASON")
-                                            .map(SwapDeclineReason::from_bam_header)
-                                            .map_or(Ok(None), |x| x.map(Some))
-                                            .map_err(|e| {
-                                                log::error!(
-                                                    "Could not deserialize header in response {:?}: {}",
-                                                    response, e,
-                                                );
-                                                RequestError::InvalidResponse
-                                            })?;
+            let response = swarm.bam.send_request(node_id.clone(), request);
 
-                                        SwapReject::Declined { reason }
-                                    }))
-                                }
-                                Status::SE(_) => {
-                                    log::info!("{} rejected swap request: {:?}", node_id, response);
-                                    Ok(Err(SwapReject::Rejected))
-                                }
-                                Status::RE(_) => {
-                                    log::error!(
-                                        "{} rejected swap request because of an internal error: {:?}",
-                                        node_id, response
-                                    );
-                                    Err(RequestError::InternalError)
-                                }
-                            },
-                            Err(e) => {
-                                log::error!("Unable to request over connection {:?}:{:?}", node_id, e);
-                                Err(RequestError::Connection)
-                            }
-                        },
+            response
+        };
+
+        let response = response.then(move |result| match result {
+            Ok(mut response) => match response.status() {
+                Status::OK(_) => {
+                    log::info!("{} accepted swap request: {:?}", node_id.clone(), response);
+                    match serde_json::from_value(response.body().clone()) {
+                        Ok(response) => Ok(Ok(response)),
+                        Err(_e) => Err(RequestError::InvalidResponse),
+                    }
+                }
+                Status::SE(20) => {
+                    log::info!("{} declined swap request: {:?}", node_id.clone(), response);
+                    Ok(Err({
+                        let reason = response
+                            .take_header("REASON")
+                            .map(SwapDeclineReason::from_bam_header)
+                            .map_or(Ok(None), |x| x.map(Some))
+                            .map_err(|e| {
+                                log::error!(
+                                    "Could not deserialize header in response {:?}: {}",
+                                    response,
+                                    e,
+                                );
+                                RequestError::InvalidResponse
+                            })?;
+
+                        SwapReject::Declined { reason }
+                    }))
+                }
+                Status::SE(_) => {
+                    log::info!("{} rejected swap request: {:?}", node_id.clone(), response);
+                    Ok(Err(SwapReject::Rejected))
+                }
+                Status::RE(_) => {
+                    log::error!(
+                        "{} rejected swap request because of an internal error: {:?}",
+                        node_id.clone(),
+                        response
                     );
+                    Err(RequestError::InternalError)
+                }
+            },
+            Err(e) => {
+                log::error!(
+                    "Unable to request over connection {:?}:{:?}",
+                    node_id.clone(),
+                    e
+                );
+                Err(RequestError::Connection)
+            }
+        });
 
-                    Box::new(response)
-                }),
-        )
+        Box::new(response)
     }
 }
 
