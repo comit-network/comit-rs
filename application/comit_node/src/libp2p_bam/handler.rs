@@ -32,8 +32,8 @@ use tokio::{
 
 enum SocketState<TSubstream> {
     Disconnected,
-    Requested,
-    Waiting(Task),
+    SubstreamRequested,
+    WaitingForSubstream(Task),
     Connected(Framed<Negotiated<TSubstream>, JsonFrameCodec>),
 }
 
@@ -98,7 +98,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         let current_state =
             mem::replace(&mut self.network_socket, SocketState::Connected(protocol));
 
-        if let SocketState::Waiting(task) = current_state {
+        if let SocketState::WaitingForSubstream(task) = current_state {
             task.notify();
         }
     }
@@ -111,7 +111,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         let current_state =
             mem::replace(&mut self.network_socket, SocketState::Connected(protocol));
 
-        if let SocketState::Waiting(task) = current_state {
+        if let SocketState::WaitingForSubstream(task) = current_state {
             task.notify();
         }
     }
@@ -184,7 +184,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                     }
                     None => {
                         log::info!(target: "bam", "substream is closed, trying to reconnect");
-                        self.network_socket = SocketState::Requested;
+                        self.network_socket = SocketState::SubstreamRequested;
 
                         return Ok(Async::Ready(
                             ProtocolsHandlerEvent::OutboundSubstreamRequest {
@@ -196,7 +196,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                 }
             }
             SocketState::Disconnected => {
-                self.network_socket = SocketState::Requested;
+                self.network_socket = SocketState::SubstreamRequested;
 
                 return Ok(Async::Ready(
                     ProtocolsHandlerEvent::OutboundSubstreamRequest {
@@ -205,8 +205,8 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                     },
                 ));
             }
-            SocketState::Requested | SocketState::Waiting(_) => {
-                self.network_socket = SocketState::Waiting(task::current());
+            SocketState::SubstreamRequested | SocketState::WaitingForSubstream(_) => {
+                self.network_socket = SocketState::WaitingForSubstream(task::current());
 
                 return Ok(Async::NotReady);
             }
