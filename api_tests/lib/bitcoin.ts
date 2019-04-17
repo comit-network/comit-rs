@@ -127,7 +127,6 @@ export class BitcoinWallet {
 
     constructor(btcConfig: BtcConfig) {
         this.keypair = ECPair.makeRandom({ rng: test_rng });
-        // TODO: Use wallet instead of array to track Bitcoin UTXOs
         this.bitcoinUtxos = [];
         this._identity = payments.p2wpkh({
             pubkey: this.keypair.publicKey,
