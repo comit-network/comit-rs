@@ -42,7 +42,7 @@ if (!fs.existsSync(log_dir)) {
 // ********************** //
 
 class ComitRunner {
-    running_nodes: { [key: string]: ChildProcess };
+    private running_nodes: { [key: string]: ChildProcess };
 
     constructor() {
         this.running_nodes = {};
@@ -116,7 +116,11 @@ async function run_tests(test_files: string[]) {
     global.ledgers_config = ledger_runner.getLedgersConfig();
 
     let node_runner = new ComitRunner();
-    let btsieve_runner = new BtsieveRunner();
+    let btsieve_runner = new BtsieveRunner(
+        project_root,
+        project_root + "/target/debug/btsieve",
+        log_dir
+    );
 
     let clean_up = () => {};
 

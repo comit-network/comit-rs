@@ -10,8 +10,8 @@ const project_root: string = execSync("git rev-parse --show-toplevel", {
 const docker_cwd = project_root + "/api_tests/regtest";
 
 export class LedgerRunner {
-    running_ledgers: { [key: string]: boolean };
-    block_timers: { [key: string]: NodeJS.Timeout };
+    private running_ledgers: { [key: string]: boolean };
+    private readonly block_timers: { [key: string]: NodeJS.Timeout };
     private readonly docker_compose_options: { cwd: string; encoding: string };
     private readonly docker_cwd: string;
     private readonly log_dir: string;

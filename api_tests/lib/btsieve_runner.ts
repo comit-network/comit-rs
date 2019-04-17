@@ -1,18 +1,18 @@
-import { ChildProcess, execSync, spawn } from "child_process";
+import { ChildProcess, spawn } from "child_process";
 import { MetaBtsieveConfig } from "./btsieve";
 import * as fs from "fs";
 
-const project_root: string = execSync("git rev-parse --show-toplevel", {
-    encoding: "utf8",
-}).trim();
-
-const log_dir = project_root + "/api_tests/log";
-
 export class BtsieveRunner {
     running_btsieves: { [key: string]: ChildProcess };
+    private readonly log_dir: string;
+    private readonly btsive_bin: string;
+    private readonly project_root: string;
 
-    constructor() {
+    constructor(project_root: string, btsieve_bin: string, log_dir: string) {
         this.running_btsieves = {};
+        this.log_dir = log_dir;
+        this.btsive_bin = btsieve_bin;
+        this.project_root = project_root;
     }
 
     async ensureBtsievesRunning(btsieves: [string, MetaBtsieveConfig][]) {
@@ -23,19 +23,21 @@ export class BtsieveRunner {
                 continue;
             }
 
-            this.running_btsieves[name] = await spawn(
-                project_root + "/target/debug/btsieve",
-                [],
-                {
-                    cwd: project_root,
-                    env: btsieve_config.env,
-                    stdio: [
-                        "ignore",
-                        fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
-                        fs.openSync(log_dir + "/btsieve-" + name + ".log", "w"),
-                    ],
-                }
-            );
+            this.running_btsieves[name] = await spawn(this.btsive_bin, [], {
+                cwd: this.project_root,
+                env: btsieve_config.env,
+                stdio: [
+                    "ignore",
+                    fs.openSync(
+                        this.log_dir + "/btsieve-" + name + ".log",
+                        "w"
+                    ),
+                    fs.openSync(
+                        this.log_dir + "/btsieve-" + name + ".log",
+                        "w"
+                    ),
+                ],
+            });
         }
     }
 
