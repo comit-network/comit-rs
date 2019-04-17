@@ -1,4 +1,7 @@
-use crate::libp2p_bam::{BamHandler, PendingIncomingRequest, PendingOutgoingRequest};
+use crate::libp2p_bam::{
+    handler::{AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
+    BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
+};
 use bam::json::{OutgoingRequest, Response};
 use futures::{task, Async, Future};
 use libp2p::{
@@ -121,12 +124,27 @@ where
         }
     }
 
-    fn inject_node_event(&mut self, _: PeerId, event: PendingIncomingRequest) {
-        self.events
-            .push_back(NetworkBehaviourAction::GenerateEvent(event));
+    fn inject_node_event(&mut self, _: PeerId, event: InnerEvent) {
+        match event {
+            InnerEvent::IncomingRequest(pending_incoming_request) => {
+                self.events.push_back(NetworkBehaviourAction::GenerateEvent(
+                    pending_incoming_request,
+                ));
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+                if let Some(task) = &self.current_task {
+                    task.notify()
+                }
+            }
+            InnerEvent::IncomingResponse(PendingIncomingResponse { response, channel }) => {
+                let _ = channel.send(response);
+            }
+            InnerEvent::BadIncomingRequest(AutomaticallyGeneratedErrorResponse {
+                response,
+                channel,
+            }) => {
+                let _ = channel.send(response);
+            }
+            InnerEvent::Error => {}
         }
     }
 

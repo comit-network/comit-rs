@@ -94,9 +94,9 @@ impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<PendingIncomingRequ
     fn inject_event(&mut self, event: PendingIncomingRequest) {
         let PendingIncomingRequest { request, channel } = event;
 
-        let response = handle_request(&self.bob, request);
+        let generated_response = handle_request(&self.bob, request);
 
-        let future = response
+        let future = generated_response
             .and_then(|response| {
                 channel
                     .send(response)

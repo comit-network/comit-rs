@@ -10,6 +10,8 @@ use tokio::{
     prelude::*,
 };
 
+pub type BamStream<TSubstream> = Framed<Negotiated<TSubstream>, JsonFrameCodec>;
+
 #[derive(Clone, Debug)]
 pub struct BamConfig {}
 
@@ -22,16 +24,16 @@ impl UpgradeInfo for BamConfig {
     }
 }
 
-impl<TSocket> InboundUpgrade<TSocket> for BamConfig
+impl<TSubstream> InboundUpgrade<TSubstream> for BamConfig
 where
-    TSocket: AsyncRead + AsyncWrite,
+    TSubstream: AsyncRead + AsyncWrite,
 {
-    type Output = Framed<Negotiated<TSocket>, JsonFrameCodec>;
+    type Output = BamStream<TSubstream>;
     type Error = Infallible;
     type Future = FutureResult<Self::Output, Self::Error>;
 
     #[inline]
-    fn upgrade_inbound(self, socket: Negotiated<TSocket>, _: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, socket: Negotiated<TSubstream>, _: Self::Info) -> Self::Future {
         let codec = json::JsonFrameCodec::default();
 
         log::debug!("inbound connected upgraded to json-bam");
@@ -40,16 +42,16 @@ where
     }
 }
 
-impl<TSocket> OutboundUpgrade<TSocket> for BamConfig
+impl<TSubstream> OutboundUpgrade<TSubstream> for BamConfig
 where
-    TSocket: AsyncRead + AsyncWrite,
+    TSubstream: AsyncRead + AsyncWrite,
 {
-    type Output = Framed<Negotiated<TSocket>, JsonFrameCodec>;
+    type Output = BamStream<TSubstream>;
     type Error = Infallible;
     type Future = FutureResult<Self::Output, Self::Error>;
 
     #[inline]
-    fn upgrade_outbound(self, socket: Negotiated<TSocket>, _: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, socket: Negotiated<TSubstream>, _: Self::Info) -> Self::Future {
         let codec = json::JsonFrameCodec::default();
 
         log::debug!("outbound connected upgraded to json-bam");
