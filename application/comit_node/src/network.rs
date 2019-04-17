@@ -229,7 +229,11 @@ fn handle_request<B: BobSpawner>(
                 }
             }
         }
-        _unknown_request_type => unimplemented!(),
+        request_type => {
+            log::warn!("request type '{}' is unknown", request_type);
+
+            Box::new(futures::future::ok(Response::new(Status::SE(2))))
+        }
     }
 }
 
