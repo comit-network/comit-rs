@@ -49,7 +49,7 @@ pub struct BamHandler<TSubstream> {
     pending_outgoing_request_channels: HashMap<u32, oneshot::Sender<Response>>,
 
     next_incoming_id: u32,
-    pending_incoming_request_channels: HashMap<u32, oneshot::Receiver<Response>>,
+    pending_incoming_request_channels: Vec<(u32, oneshot::Receiver<Response>)>,
 }
 
 impl<TSubstream> BamHandler<TSubstream> {
@@ -61,7 +61,7 @@ impl<TSubstream> BamHandler<TSubstream> {
             next_outgoing_id: 0,
             pending_outgoing_request_channels: HashMap::new(),
             next_incoming_id: 0,
-            pending_incoming_request_channels: HashMap::new(),
+            pending_incoming_request_channels: Vec::new(),
         }
     }
 }
@@ -147,24 +147,24 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         >,
         Self::Error,
     > {
-        for (id, future) in self.pending_incoming_request_channels.iter_mut() {
-            match future.poll() {
-                Ok(Async::Ready(response)) => {
-                    let frame = response.into_frame(*id);
-                    self.pending_frames.push_back(frame);
-                }
-                Ok(Async::NotReady) => return Ok(Async::NotReady),
-                Err(e) => log::warn!("error while polling response for request {}: {:?}", id, e),
-            }
-        }
+        self.poll_response_futures();
 
         match &mut self.network_socket {
             SocketState::Connected(socket) => {
                 futures::try_ready!(socket.poll_complete());
 
                 while let Some(frame) = self.pending_frames.pop_front() {
+                    let message = if log::log_enabled!(target: "bam", log::Level::Trace) {
+                        format!("--> OUTGOING FRAME {:?}", frame)
+                    } else {
+                        format!("")
+                    };
+
                     match socket.start_send(frame) {
-                        Ok(AsyncSink::Ready) => futures::try_ready!(socket.poll_complete()),
+                        Ok(AsyncSink::Ready) => {
+                            log::trace!(target: "bam", "{}", message);
+                            futures::try_ready!(socket.poll_complete());
+                        }
                         Ok(AsyncSink::NotReady(pending_frame)) => {
                             self.pending_frames.push_front(pending_frame);
                             return Ok(Async::NotReady);
@@ -175,6 +175,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
                 match futures::try_ready!(socket.poll()) {
                     Some(frame) => {
+                        log::trace!(target: "bam", "<-- INCOMING FRAME {:?}", frame);
                         if let Some(request) = self.handle_frame(frame) {
                             return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(request)));
                         }
@@ -182,7 +183,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                         return Ok(Async::NotReady);
                     }
                     None => {
-                        log::info!("substream is closed, trying to reconnect");
+                        log::info!(target: "bam", "substream is closed, trying to reconnect");
                         self.network_socket = SocketState::Requested;
 
                         return Ok(Async::Ready(
@@ -214,6 +215,28 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 }
 
 impl<TSubstream> BamHandler<TSubstream> {
+    fn poll_response_futures(&mut self) {
+        let mut index = 0;
+        while index != self.pending_incoming_request_channels.len() {
+            let (frame_id, response_future) = &mut self.pending_incoming_request_channels[index];
+
+            match response_future.poll() {
+                Ok(Async::Ready(response)) => {
+                    let frame = response.into_frame(*frame_id);
+                    self.pending_frames.push_back(frame);
+                    self.pending_incoming_request_channels.remove(index)
+                }
+                Ok(Async::NotReady) => {
+                    index += 1;
+                }
+                Err(e) => {
+                    log::warn!(target: "bam", "polling response future for frame {} yielded an error", frame_id);
+                    self.pending_incoming_request_channels.remove(index)
+                }
+            }
+        }
+    }
+
     fn handle_frame(&mut self, frame: Frame) -> Option<PendingIncomingRequest> {
         match frame.frame_type.as_str() {
             "REQUEST" => self.handle_request(frame),
@@ -231,6 +254,7 @@ impl<TSubstream> BamHandler<TSubstream> {
     fn handle_request(&mut self, frame: Frame) -> Option<PendingIncomingRequest> {
         if frame.id < self.next_incoming_id {
             log::warn!(
+                target: "bam",
                 "received out-of-order request with id {}. next expected id was {}",
                 frame.id,
                 self.next_incoming_id
@@ -249,7 +273,7 @@ impl<TSubstream> BamHandler<TSubstream> {
                 let (sender, receiver) = oneshot::channel();
 
                 self.pending_incoming_request_channels
-                    .insert(frame.id, receiver);
+                    .push((frame.id, receiver));
 
                 return Some(PendingIncomingRequest {
                     request: validated_incoming_request,
@@ -274,17 +298,18 @@ impl<TSubstream> BamHandler<TSubstream> {
             Some(sender) => match response {
                 Ok(response) => sender.send(response).unwrap(),
                 Err(e) => log::error!(
+                    target: "bam",
                     "payload of frame {} is not a well-formed RESPONSE: {:?}",
                     frame.id,
                     e
                 ),
             },
-            None => log::warn!("received unexpected response with id {}", frame.id),
+            None => log::warn!(target: "bam","received unexpected response with id {}", frame.id),
         }
     }
 
     fn handle_unknown_frame(&mut self, frame: Frame) {
-        log::warn!("received frame with unknown type {}", frame.frame_type)
+        log::warn!(target: "bam","received frame with unknown type {}", frame.frame_type)
     }
 
     fn validate_request(
@@ -303,13 +328,13 @@ impl<TSubstream> BamHandler<TSubstream> {
 }
 
 fn malformed_request(error: serde_json::Error) -> Response {
-    log::warn!("incoming request was malformed: {:?}", error);
+    log::warn!(target: "bam", "incoming request was malformed: {:?}", error);
 
     Response::new(Status::SE(0))
 }
 
 fn unknown_request_type(request_type: &str) -> Response {
-    log::warn!("request type '{}' is unknown", request_type);
+    log::warn!(target: "bam", "request type '{}' is unknown", request_type);
 
     Response::new(Status::SE(2))
 }

@@ -53,7 +53,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
         });
 
         if let Some(task) = &self.current_task {
-            task.notify()
+            task.notify();
         }
 
         Box::new(receiver.map_err(|_| {
@@ -83,8 +83,6 @@ where
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
-        log::debug!("returning addresses for {}", peer_id);
-
         self.addresses
             .get(peer_id)
             .map(|addresses| addresses.clone())
@@ -92,7 +90,7 @@ where
     }
 
     fn inject_connected(&mut self, peer_id: PeerId, endpoint: ConnectedPoint) {
-        log::debug!("connected to {} at {:?}", peer_id, endpoint);
+        log::debug!(target: "bam", "connected to {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
             ConnectedPoint::Dialer { address } => address,
@@ -109,32 +107,41 @@ where
                 entry.insert(addresses);
             }
         }
+
+        if let Some(task) = &self.current_task {
+            task.notify()
+        }
     }
 
     fn inject_disconnected(&mut self, peer_id: &PeerId, endpoint: ConnectedPoint) {
-        log::debug!("disconnected from {} at {:?}", peer_id, endpoint);
+        log::debug!(target: "bam", "disconnected from {} at {:?}", peer_id, endpoint);
+
+        if let Some(task) = &self.current_task {
+            task.notify()
+        }
     }
 
     fn inject_node_event(&mut self, _: PeerId, event: PendingIncomingRequest) {
-        log::debug!("incoming request: {:?}", event.request);
-
         self.events
-            .push_back(NetworkBehaviourAction::GenerateEvent(event))
+            .push_back(NetworkBehaviourAction::GenerateEvent(event));
+
+        if let Some(task) = &self.current_task {
+            task.notify()
+        }
     }
 
     fn poll(
         &mut self,
         _params: &mut PollParameters<'_>,
     ) -> Async<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>> {
-        log::debug!("polling behaviour - {} pending events", self.events.len());
-
         match self.events.pop_front() {
             Some(event) => {
-                log::debug!("Emitting {:?}", event);
+                log::debug!(target: "bam", "emitting {:?}", event);
 
                 if let NetworkBehaviourAction::SendEvent { peer_id, .. } = &event {
                     if !self.addresses.contains_key(peer_id) {
                         log::info!(
+                            target: "bam",
                             "not yet connected to {}, cannot send message",
                             peer_id.clone()
                         );
@@ -149,7 +156,7 @@ where
                 return Async::Ready(event);
             }
             None => {
-                log::debug!("Currently no events, storing current task");
+                log::debug!(target: "bam", "Currently no events, storing current task");
 
                 self.current_task = Some(task::current());
                 return Async::NotReady;
