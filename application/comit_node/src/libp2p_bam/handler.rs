@@ -257,6 +257,14 @@ impl<TSubstream> BamHandler<TSubstream> {
     }
 
     fn handle_frame(&mut self, frame: Frame) -> InnerEvent {
+        match frame.frame_type.as_str() {
+            "REQUEST" => self.handle_request(frame),
+            "RESPONSE" => self.handle_response(frame),
+            _ => self.handle_unknown_frame(frame),
+        }
+    }
+
+    fn handle_request(&mut self, frame: Frame) -> InnerEvent {
         if frame.id < self.next_incoming_id {
             log::warn!(
                 target: "bam",
@@ -269,14 +277,6 @@ impl<TSubstream> BamHandler<TSubstream> {
 
         self.next_incoming_id = frame.id + 1;
 
-        match frame.frame_type.as_str() {
-            "REQUEST" => self.handle_request(frame),
-            "RESPONSE" => self.handle_response(frame),
-            _ => self.handle_unknown_frame(frame),
-        }
-    }
-
-    fn handle_request(&mut self, frame: Frame) -> InnerEvent {
         let request = serde_json::from_value(frame.payload)
             .map_err(malformed_request)
             .and_then(|request| self.validate_request(request));
