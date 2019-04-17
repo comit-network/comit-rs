@@ -85,7 +85,7 @@ where
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
         self.addresses
             .get(peer_id)
-            .map(|addresses| addresses.clone())
+            .cloned()
             .unwrap_or_else(Vec::new)
     }
 
@@ -153,13 +153,13 @@ where
                     }
                 }
 
-                return Async::Ready(event);
+                Async::Ready(event)
             }
             None => {
                 log::debug!(target: "bam", "Currently no events, storing current task");
 
                 self.current_task = Some(task::current());
-                return Async::NotReady;
+                Async::NotReady
             }
         }
     }

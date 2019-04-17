@@ -24,7 +24,7 @@ pub mod alice {
                 ledger_events: self.ledger_events.clone(),
                 metadata_store: Arc::clone(&self.metadata_store),
                 state_store: Arc::clone(&self.state_store),
-                seed: self.seed.clone(),
+                seed: self.seed,
                 client: Arc::clone(&self.client),
             }
         }

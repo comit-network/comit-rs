@@ -139,6 +139,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         KeepAlive::Forever
     }
 
+    #[allow(clippy::type_complexity)]
     fn poll(
         &mut self,
     ) -> Result<
@@ -157,7 +158,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                     let message = if log::log_enabled!(target: "bam", log::Level::Trace) {
                         format!("--> OUTGOING FRAME {:?}", frame)
                     } else {
-                        format!("")
+                        String::new()
                     };
 
                     match socket.start_send(frame) {
@@ -177,38 +178,38 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                     Some(frame) => {
                         log::trace!(target: "bam", "<-- INCOMING FRAME {:?}", frame);
                         if let Some(request) = self.handle_frame(frame) {
-                            return Ok(Async::Ready(ProtocolsHandlerEvent::Custom(request)));
+                            Ok(Async::Ready(ProtocolsHandlerEvent::Custom(request)))
+                        } else {
+                            Ok(Async::NotReady)
                         }
-
-                        return Ok(Async::NotReady);
                     }
                     None => {
                         log::info!(target: "bam", "substream is closed, trying to reconnect");
                         self.network_socket = SocketState::SubstreamRequested;
 
-                        return Ok(Async::Ready(
+                        Ok(Async::Ready(
                             ProtocolsHandlerEvent::OutboundSubstreamRequest {
                                 upgrade: BamConfig {},
                                 info: (),
                             },
-                        ));
+                        ))
                     }
                 }
             }
             SocketState::Disconnected => {
                 self.network_socket = SocketState::SubstreamRequested;
 
-                return Ok(Async::Ready(
+                Ok(Async::Ready(
                     ProtocolsHandlerEvent::OutboundSubstreamRequest {
                         upgrade: BamConfig {},
                         info: (),
                     },
-                ));
+                ))
             }
             SocketState::SubstreamRequested | SocketState::WaitingForSubstream(_) => {
                 self.network_socket = SocketState::WaitingForSubstream(task::current());
 
-                return Ok(Async::NotReady);
+                Ok(Async::NotReady)
             }
         }
     }
@@ -224,14 +225,14 @@ impl<TSubstream> BamHandler<TSubstream> {
                 Ok(Async::Ready(response)) => {
                     let frame = response.into_frame(*frame_id);
                     self.pending_frames.push_back(frame);
-                    self.pending_incoming_request_channels.remove(index)
+                    self.pending_incoming_request_channels.remove(index);
                 }
                 Ok(Async::NotReady) => {
                     index += 1;
                 }
-                Err(e) => {
+                Err(_) => {
                     log::warn!(target: "bam", "polling response future for frame {} yielded an error", frame_id);
-                    self.pending_incoming_request_channels.remove(index)
+                    self.pending_incoming_request_channels.remove(index);
                 }
             }
         }
@@ -275,16 +276,16 @@ impl<TSubstream> BamHandler<TSubstream> {
                 self.pending_incoming_request_channels
                     .push((frame.id, receiver));
 
-                return Some(PendingIncomingRequest {
+                Some(PendingIncomingRequest {
                     request: validated_incoming_request,
                     channel: sender,
-                });
+                })
             }
             Err(error_response) => {
                 let frame = error_response.into_frame(frame.id);
                 self.pending_frames.push_back(frame);
 
-                return None;
+                None
             }
         }
     }
