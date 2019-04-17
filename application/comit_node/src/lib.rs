@@ -8,7 +8,6 @@ pub mod comit_client;
 pub mod comit_i_routes;
 pub mod http_api;
 pub mod libp2p_bam;
-pub mod libp2p_ext;
 pub mod logging;
 pub mod network;
 pub mod node_id;

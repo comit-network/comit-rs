@@ -1,7 +1,7 @@
 use crate::{
     comit_client::Client,
     http_api,
-    libp2p_ext::BamPeers,
+    network::BamPeers,
     swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
 };
 use libp2p::PeerId;

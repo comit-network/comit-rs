@@ -6,8 +6,8 @@ use comit_node::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
-    libp2p_ext::BamPeers,
-    logging, network,
+    logging,
+    network::{self, BamPeers},
     seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{

@@ -1,4 +1,4 @@
-use crate::libp2p_ext::BamPeers;
+use crate::network::BamPeers;
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use std::sync::Arc;

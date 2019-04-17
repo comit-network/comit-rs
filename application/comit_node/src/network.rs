@@ -2,7 +2,6 @@ use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::SwapReject,
     libp2p_bam::{BamBehaviour, PendingIncomingRequest},
-    libp2p_ext::BamPeers,
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents},
@@ -70,6 +69,10 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         self.bam.send_request(peer_id, request)
     }
+}
+
+pub trait BamPeers: Send + Sync + 'static {
+    fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
 }
 
 impl<
