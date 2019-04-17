@@ -109,7 +109,7 @@ class ComitRunner {
 
 async function run_tests(test_files: string[]) {
     let ledger_runner = new LedgerRunner(
-        project_root,
+        project_root + "/api_tests/regtest/docker-compose.yml",
         project_root + "/api_tests/regtest/ledgers.toml",
         log_dir
     );
