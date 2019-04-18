@@ -42,7 +42,6 @@ where
             .into_action()],
             Funded { htlc_location, .. } => {
                 vec![alice::ActionKind::Refund(<(AL, AA)>::refund_action(
-                    request.alpha_asset,
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
