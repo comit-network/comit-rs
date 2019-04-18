@@ -7,7 +7,7 @@ use crate::swap_protocols::{
         ethereum::{self, EtherHtlc},
         secret_source::SecretSource,
         state_machine::HtlcParams,
-        Ledger, Secret,
+        Ledger,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -48,11 +48,9 @@ pub trait CreateActions<L: Ledger, A: Asset> {
     ) -> Self::RefundActionOutput;
 
     fn redeem_action(
-        alpha_asset: A,
         htlc_params: HtlcParams<L, A>,
-        alpha_htlc_location: L::HtlcLocation,
+        htlc_location: L::HtlcLocation,
         secret_source: &dyn SecretSource,
-        secret: Secret,
     ) -> Self::RedeemActionOutput;
 }
 
@@ -73,14 +71,14 @@ impl CreateActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
 
     fn refund_action(
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
-        alpha_htlc_location: OutPoint,
+        htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
     ) -> Self::RefundActionOutput {
         let htlc = bitcoin::Htlc::from(htlc_params.clone());
 
         bitcoin::SpendOutput {
             output: PrimedInput::new(
-                alpha_htlc_location,
+                htlc_location,
                 htlc_params.asset,
                 htlc.unlock_after_timeout(secret_source.secp256k1_refund()),
             ),
@@ -89,19 +87,17 @@ impl CreateActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
     }
 
     fn redeem_action(
-        asset: BitcoinQuantity,
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
         htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
-        secret: Secret,
     ) -> Self::RedeemActionOutput {
         let htlc = bitcoin::Htlc::from(htlc_params.clone());
 
         bitcoin::SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
-                asset,
-                htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
+                htlc_params.asset,
+                htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret_source.secret()),
             ),
             network: htlc_params.ledger.network,
         }
@@ -119,14 +115,14 @@ impl CreateActions<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
 
     fn refund_action(
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-        alpha_htlc_location: EthereumAddress,
+        htlc_location: EthereumAddress,
         _secret_source: &dyn SecretSource,
     ) -> Self::RefundActionOutput {
         let data = Bytes::default();
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         ethereum::SendTransaction {
-            to: alpha_htlc_location,
+            to: htlc_location,
             data,
             gas_limit,
             amount: EtherQuantity::zero(),
@@ -135,17 +131,15 @@ impl CreateActions<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
     }
 
     fn redeem_action(
-        _alpha_asset: EtherQuantity,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-        alpha_htlc_location: EthereumAddress,
-        _secret_source: &dyn SecretSource,
-        secret: Secret,
+        htlc_location: EthereumAddress,
+        secret_source: &dyn SecretSource,
     ) -> Self::RedeemActionOutput {
-        let data = Bytes::from(secret.raw_secret().to_vec());
+        let data = Bytes::from(secret_source.secret().raw_secret().to_vec());
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         ethereum::SendTransaction {
-            to: alpha_htlc_location,
+            to: htlc_location,
             data,
             gas_limit,
             amount: EtherQuantity::zero(),
