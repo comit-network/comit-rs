@@ -1,79 +1,26 @@
 use crate::swap_protocols::{
-    ledger::{Bitcoin, Ethereum},
+    asset::Asset,
     rfc003::{
-        self,
-        alice::{self, SwapCommunication},
-        bitcoin,
-        ethereum::{self, EtherHtlc},
-        secret::Secret,
-        secret_source::SecretSource,
+        alice::{self, actions::CreateActions, SwapCommunication},
         state_machine::HtlcParams,
-        Action, Actions, LedgerState,
+        Action, Actions, Ledger, LedgerState,
     },
 };
-use bitcoin_support::{BitcoinQuantity, OutPoint};
-use bitcoin_witness::PrimedInput;
-use ethereum_support::{Bytes, EtherQuantity, U256};
 
-type Request = rfc003::messages::Request<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>;
-type Response = rfc003::messages::AcceptResponseBody<Bitcoin, Ethereum>;
-
-pub fn fund_action(request: &Request, response: &Response) -> bitcoin::SendToAddress {
-    let to = HtlcParams::new_alpha_params(request, response).compute_address();
-    let amount = request.alpha_asset;
-    let network = request.alpha_ledger.network;
-
-    bitcoin::SendToAddress {
-        to,
-        amount,
-        network,
-    }
-}
-
-pub fn refund_action(
-    request: &Request,
-    response: &Response,
-    alpha_htlc_location: OutPoint,
-    secret_source: &dyn SecretSource,
-) -> bitcoin::SpendOutput {
-    let alpha_asset = request.alpha_asset;
-    let htlc = bitcoin::Htlc::from(HtlcParams::new_alpha_params(request, response));
-    let network = request.alpha_ledger.network;
-
-    bitcoin::SpendOutput {
-        output: PrimedInput::new(
-            alpha_htlc_location,
-            alpha_asset,
-            htlc.unlock_after_timeout(secret_source.secp256k1_refund()),
-        ),
-        network,
-    }
-}
-
-pub fn redeem_action(
-    request: &Request,
-    beta_htlc_location: ethereum_support::Address,
-    secret: Secret,
-) -> ethereum::SendTransaction {
-    let data = Bytes::from(secret.raw_secret().to_vec());
-    let gas_limit = EtherHtlc::tx_gas_limit();
-    let network = request.beta_ledger.network;
-
-    ethereum::SendTransaction {
-        to: beta_htlc_location,
-        data,
-        gas_limit,
-        amount: EtherQuantity::from_wei(U256::zero()),
-        network,
-    }
-}
-
-impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
+impl<AL, BL, AA, BA> Actions for alice::State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+    (AL, AA): CreateActions<AL, AA>,
+    (BL, BA): CreateActions<BL, BA>,
+{
     type ActionKind = alice::ActionKind<
         (),
-        bitcoin::SendToAddress,
-        ethereum::SendTransaction,
-        bitcoin::SpendOutput,
+        <(AL, AA) as CreateActions<AL, AA>>::FundActionOutput,
+        <(BL, BA) as CreateActions<BL, BA>>::RedeemActionOutput,
+        <(AL, AA) as CreateActions<AL, AA>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Action<Self::ActionKind>> {
@@ -89,25 +36,30 @@ impl Actions for alice::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>
 
         use self::LedgerState::*;
         let mut actions = match alpha_state {
-            NotDeployed => {
-                vec![alice::ActionKind::Fund(fund_action(&request, &response)).into_action()]
-            }
-            Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(refund_action(
-                &request,
-                &response,
-                *htlc_location,
-                &*self.secret_source,
+            NotDeployed => vec![alice::ActionKind::Fund(<(AL, AA)>::fund_action(
+                HtlcParams::new_alpha_params(request, response),
             ))
-            .into_action()
-            .with_invalid_until(request.alpha_expiry)],
+            .into_action()],
+            Funded { htlc_location, .. } => {
+                vec![alice::ActionKind::Refund(<(AL, AA)>::refund_action(
+                    request.alpha_asset,
+                    HtlcParams::new_alpha_params(request, response),
+                    htlc_location.clone(),
+                    &*self.secret_source,
+                ))
+                .into_action()
+                .with_invalid_until(request.alpha_expiry)]
+            }
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
             actions.push(
-                alice::ActionKind::Redeem(redeem_action(
-                    &request,
-                    *htlc_location,
+                alice::ActionKind::Redeem(<(BL, BA)>::redeem_action(
+                    request.beta_asset,
+                    HtlcParams::new_beta_params(request, response),
+                    htlc_location.clone(),
+                    &*self.secret_source,
                     self.secret_source.secret(),
                 ))
                 .into_action(),
