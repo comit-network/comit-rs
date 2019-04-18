@@ -1,7 +1,8 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        alice::{self, actions::CreateActions, SwapCommunication},
+        actions::CreateActions,
+        alice::{self, SwapCommunication},
         state_machine::HtlcParams,
         Action, Actions, Ledger, LedgerState,
     },

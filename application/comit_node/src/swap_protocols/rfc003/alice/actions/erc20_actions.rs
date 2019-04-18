@@ -2,7 +2,8 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        alice::{self, actions::CreateActions, SwapCommunication},
+        actions::CreateActions,
+        alice::{self, SwapCommunication},
         ethereum::{self, Erc20Htlc},
         secret::Secret,
         state_machine::HtlcParams,
