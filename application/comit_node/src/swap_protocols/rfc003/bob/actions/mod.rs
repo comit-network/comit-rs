@@ -1,4 +1,4 @@
-mod btc_erc20;
+mod erc20_actions;
 mod non_erc20_actions;
 
 use crate::{
