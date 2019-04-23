@@ -1,4 +1,5 @@
 use crate::swap_protocols::{
+    asset::Asset,
     ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::CreateActions,
@@ -10,21 +11,29 @@ use crate::swap_protocols::{
         },
         ethereum,
         state_machine::HtlcParams,
-        Action, Actions, LedgerState,
+        Action, Actions, Ledger, LedgerState,
     },
 };
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::EtherQuantity;
 use std::sync::Arc;
 
-impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
+impl<AL, BL, AA, BA> Actions for bob::State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+    (AL, AA): CreateActions<AL, AA>,
+    (BL, BA): CreateActions<BL, BA>,
+{
     type ActionKind = bob::ActionKind<
-        Accept<Bitcoin, Ethereum>,
-        Decline<Bitcoin, Ethereum>,
+        Accept<AL, BL>,
+        Decline<AL, BL>,
         (),
-        ethereum::ContractDeploy,
-        bitcoin::SpendOutput,
-        ethereum::SendTransaction,
+        <(BL, BA) as CreateActions<BL, BA>>::FundActionOutput,
+        <(AL, AA) as CreateActions<AL, AA>>::RedeemActionOutput,
+        <(BL, BA) as CreateActions<BL, BA>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Action<Self::ActionKind>> {
@@ -53,32 +62,27 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity> {
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => {
-                vec![
-                    bob::ActionKind::Redeem(<(Bitcoin, BitcoinQuantity)>::redeem_action(
+        let mut actions =
+            match (alpha_state, beta_state, self.secret) {
+                (Funded { htlc_location, .. }, _, Some(secret)) => {
+                    vec![bob::ActionKind::Redeem(<(AL, AA)>::redeem_action(
                         HtlcParams::new_alpha_params(request, response),
                         htlc_location.clone(),
-                        self.secret_source.as_ref(),
+                        &*self.secret_source,
                         secret,
                     ))
-                    .into_action(),
-                ]
-            }
-            (Funded { .. }, NotDeployed, _) => {
-                vec![
-                    bob::ActionKind::Fund(<(Ethereum, EtherQuantity)>::fund_action(
-                        HtlcParams::new_beta_params(request, response),
-                    ))
-                    .into_action(),
-                ]
-            }
-            _ => vec![],
-        };
+                    .into_action()]
+                }
+                (Funded { .. }, NotDeployed, _) => vec![bob::ActionKind::Fund(
+                    <(BL, BA)>::fund_action(HtlcParams::new_beta_params(request, response)),
+                )
+                .into_action()],
+                _ => vec![],
+            };
 
         if let Funded { htlc_location, .. } = beta_state {
             actions.push(
-                bob::ActionKind::Refund(<(Ethereum, EtherQuantity)>::refund_action(
+                bob::ActionKind::Refund(<(BL, BA)>::refund_action(
                     HtlcParams::new_beta_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
