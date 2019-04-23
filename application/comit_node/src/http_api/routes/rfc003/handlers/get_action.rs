@@ -9,7 +9,7 @@ use crate::{
         MetadataStore, SwapId,
     },
 };
-use bitcoin_support::{self, serialize::serialize_hex, BitcoinQuantity};
+use bitcoin_support::{self, serialize_hex, BitcoinQuantity};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode};
 use rustic_hal::HalResource;
@@ -171,19 +171,10 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                             .set_detail("Issue encountered when signing Bitcoin transaction."));
                         }
                     };
-                    match serialize_hex(&transaction) {
-                        Ok(hex) => Ok(ActionResponsePayload::BitcoinBroadcastSignedTransaction {
-                            hex,
-                            network,
-                        }),
-                        Err(e) => {
-                            log::error!("Could not serialize signed Bitcoin transaction: {:?}", e);
-                            Err(HttpApiProblem::with_title_and_type_from_status(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .set_detail("Issue encountered when serializing Bitcoin transaction."))
-                        }
-                    }
+                    Ok(ActionResponsePayload::BitcoinBroadcastSignedTransaction {
+                       hex: serialize_hex(&transaction),
+                       network,
+                })
                 }
                 Err(_) => Err(HttpApiProblem::with_title_and_type_from_status(
                     StatusCode::BAD_REQUEST,

@@ -8,16 +8,22 @@ pub use bitcoin::{
         script::{self, Script},
         transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },
-    network::serialize,
+    consensus::{deserialize, encode::serialize_hex, serialize},
     util::{
         bip143::SighashComponents,
         bip32::{self, ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
-        hash::{self, Hash160, Sha256dHash, Sha256dHash as TransactionId, Sha256dHash as BlockId},
-        privkey::Privkey as PrivateKey,
+        hash::BitcoinHash,
+        key::PrivateKey,
         Error,
     },
     Address,
 };
+
+pub use bitcoin_hashes::{
+    hash160::Hash as Hash160, hex::FromHex, sha256d::Hash as Sha256dHash, Hash,
+};
+pub use Sha256dHash as TransactionId;
+pub use Sha256dHash as BlockId;
 
 pub use crate::{
     blocks::*,

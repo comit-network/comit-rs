@@ -1,6 +1,6 @@
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{serialize::serialize_hex, Address, BitcoinQuantity, OutPoint, PrivateKey};
+use bitcoin_support::{serialize_hex, Address, BitcoinQuantity, OutPoint, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use secp256k1_support::KeyPair;
 use std::str::FromStr;
@@ -17,7 +17,7 @@ fn sign_with_rate() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair: KeyPair = private_key.secret_key().clone().into();
+    let keypair: KeyPair = private_key.key.clone().into();
 
     let (txid, vout) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
 
@@ -36,7 +36,7 @@ fn sign_with_rate() {
 
     let redeem_tx = primed_tx.sign_with_rate(rate).unwrap();
 
-    let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+    let redeem_tx_hex = serialize_hex(&redeem_tx);
 
     let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 

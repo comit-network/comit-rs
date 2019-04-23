@@ -1,4 +1,4 @@
-use bitcoin_support::{serialize::deserialize, MinedBlock};
+use bitcoin_support::{deserialize, MinedBlock};
 use byteorder::{LittleEndian, ReadBytesExt};
 use futures::sync::mpsc::{self, UnboundedReceiver};
 use std::{io::Cursor, thread};

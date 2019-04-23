@@ -1,16 +1,20 @@
-use crate::network::Network;
+use crate::{network::Network, Hash160};
 use bitcoin::{
-    util::{address::Payload, hash::Hash160},
+    util::{address::Payload, key::PublicKey as BitcoinPublicKey},
     Address,
 };
 use bitcoin_bech32;
+use bitcoin_hashes::Hash;
 use hex::{self, FromHex};
 use secp256k1_support::{KeyPair, PublicKey};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
-use std::fmt;
+use std::{
+    convert::TryFrom,
+    fmt::{self, Display},
+};
 
 pub trait IntoP2wpkhAddress {
     fn into_p2wpkh_address(self, network: Network) -> Address;
@@ -18,7 +22,13 @@ pub trait IntoP2wpkhAddress {
 
 impl IntoP2wpkhAddress for PublicKey {
     fn into_p2wpkh_address(self, network: Network) -> Address {
-        Address::p2wpkh(&self.into(), network.into())
+        Address::p2wpkh(
+            &BitcoinPublicKey {
+                compressed: true, // Only use for serialization
+                key: *self.inner(),
+            },
+            network.into(),
+        )
     }
 }
 
@@ -49,7 +59,11 @@ impl From<Hash160> for PubkeyHash {
 
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
-        PubkeyHash(Hash160::from_data(&public_key.inner().serialize()))
+        PubkeyHash(
+            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(
+                &public_key.inner().serialize(),
+            ),
+        )
     }
 }
 
@@ -59,17 +73,43 @@ impl From<KeyPair> for PubkeyHash {
     }
 }
 
-impl<'a> From<&'a [u8]> for PubkeyHash {
-    fn from(data: &'a [u8]) -> PubkeyHash {
-        PubkeyHash(Hash160::from(data))
+impl<'a> TryFrom<&'a [u8]> for PubkeyHash {
+    type Error = bitcoin_hashes::error::Error;
+
+    fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
+        Ok(PubkeyHash(Hash160::from_slice(value)?))
+    }
+}
+
+#[derive(Debug)]
+pub enum FromHexError {
+    HexConversion(hex::FromHexError),
+    HashConversion(bitcoin_hashes::error::Error),
+}
+
+impl From<hex::FromHexError> for FromHexError {
+    fn from(err: hex::FromHexError) -> Self {
+        FromHexError::HexConversion(err)
+    }
+}
+
+impl From<bitcoin_hashes::error::Error> for FromHexError {
+    fn from(err: bitcoin_hashes::error::Error) -> Self {
+        FromHexError::HashConversion(err)
+    }
+}
+
+impl Display for FromHexError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
+        write!(f, "{:?}", &self)
     }
 }
 
 impl FromHex for PubkeyHash {
-    type Error = hex::FromHexError;
+    type Error = FromHexError;
 
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
-        Ok(PubkeyHash::from(hex::decode(hex)?.as_ref()))
+        Ok(PubkeyHash::try_from(hex::decode(hex)?.as_ref())?)
     }
 }
 
@@ -122,14 +162,14 @@ impl Serialize for PubkeyHash {
     where
         S: Serializer,
     {
-        serializer.serialize_str(hex::encode(self.0.to_bytes()).as_str())
+        serializer.serialize_str(hex::encode(self.0.into_inner()).as_str())
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use bitcoin::util::privkey::Privkey as PrivateKey;
+    use crate::PrivateKey;
     use secp256k1_support::KeyPair;
     use std::str::FromStr;
 
@@ -137,12 +177,15 @@ mod test {
     fn correct_pubkeyhash_from_private_key() {
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
-        let keypair: KeyPair = private_key.secret_key().clone().into();
+        let keypair: KeyPair = private_key.key.clone().into();
         let pubkey_hash: PubkeyHash = keypair.public_key().into();
 
         assert_eq!(
             pubkey_hash,
-            PubkeyHash::from(&hex::decode("8bc513e458372a3b3bb05818d09550295ce15949").unwrap()[..])
+            PubkeyHash::try_from(
+                &hex::decode("8bc513e458372a3b3bb05818d09550295ce15949").unwrap()[..]
+            )
+            .unwrap()
         )
     }
 
@@ -151,7 +194,7 @@ mod test {
         // https://kimbatt.github.io/btc-address-generator/
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-        let keypair: KeyPair = private_key.secret_key().clone().into();
+        let keypair: KeyPair = private_key.key.clone().into();
         let address = keypair.public_key().into_p2wpkh_address(Network::Mainnet);
 
         assert_eq!(

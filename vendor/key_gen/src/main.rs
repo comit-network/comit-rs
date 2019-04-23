@@ -16,10 +16,16 @@ fn main() {
 
     let secret_key = keypair.secret_key();
     let public_key = keypair.public_key();
-    let mainnet_private_key =
-        PrivateKey::from_secret_key(secret_key, true, Network::Mainnet.into());
-    let testnet_private_key =
-        PrivateKey::from_secret_key(secret_key, true, Network::Testnet.into());
+    let mainnet_private_key = PrivateKey {
+        compressed: true,
+        network: Network::Mainnet.into(),
+        key: secret_key.clone(),
+    };
+    let testnet_private_key = PrivateKey {
+        compressed: true,
+        network: Network::Testnet.into(),
+        key: secret_key,
+    };
 
     println!("private_key: {}", hex::encode(&secret_key[..]));
     println!(

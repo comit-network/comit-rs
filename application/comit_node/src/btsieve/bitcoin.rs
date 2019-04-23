@@ -71,7 +71,7 @@ pub trait QueryBitcoin {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_support::{Address, OutPoint, Sha256dHash};
+    use bitcoin_support::{Address, FromHex, OutPoint, Sha256dHash};
     use std::str::FromStr;
 
     #[test]
