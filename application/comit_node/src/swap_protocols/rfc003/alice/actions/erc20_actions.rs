@@ -123,6 +123,7 @@ where
                     HtlcParams::new_beta_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
+                    self.secret_source.secret(),
                 ))
                 .into_action(),
             );

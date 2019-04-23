@@ -6,7 +6,7 @@ use crate::swap_protocols::{
         ethereum::{self, EtherHtlc},
         secret_source::SecretSource,
         state_machine::HtlcParams,
-        Ledger, Timestamp,
+        Ledger, Secret, Timestamp,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
@@ -51,6 +51,7 @@ pub trait CreateActions<L: Ledger, A: Asset> {
         htlc_params: HtlcParams<L, A>,
         htlc_location: L::HtlcLocation,
         secret_source: &dyn SecretSource,
+        secret: Secret,
     ) -> Self::RedeemActionOutput;
 }
 
@@ -90,6 +91,7 @@ impl CreateActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
         htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
+        secret: Secret,
     ) -> Self::RedeemActionOutput {
         let htlc = bitcoin::Htlc::from(htlc_params.clone());
 
@@ -97,7 +99,7 @@ impl CreateActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
             output: PrimedInput::new(
                 htlc_location,
                 htlc_params.asset,
-                htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret_source.secret()),
+                htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
             ),
             network: htlc_params.ledger.network,
         }
@@ -133,9 +135,10 @@ impl CreateActions<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
     fn redeem_action(
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         htlc_location: EthereumAddress,
-        secret_source: &dyn SecretSource,
+        _secret_source: &dyn SecretSource,
+        secret: Secret,
     ) -> Self::RedeemActionOutput {
-        let data = Bytes::from(secret_source.secret().raw_secret().to_vec());
+        let data = Bytes::from(secret.raw_secret().to_vec());
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         ethereum::SendTransaction {

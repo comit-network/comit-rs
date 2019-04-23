@@ -54,12 +54,13 @@ impl Actions for bob::State<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity> {
 
         use self::LedgerState::*;
         let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(_secret)) => {
+            (Funded { htlc_location, .. }, _, Some(secret)) => {
                 vec![
                     bob::ActionKind::Redeem(<(Ethereum, EtherQuantity)>::redeem_action(
                         HtlcParams::new_alpha_params(request, response),
                         htlc_location.clone(),
                         &*self.secret_source,
+                        secret,
                     ))
                     .into_action(),
                 ]
