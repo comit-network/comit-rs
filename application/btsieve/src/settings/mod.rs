@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn can_read_config_with_bitcoin_missing() -> Result<(), failure::Error> {
-        let settings = Settings::create("./config/bitcoin_missing.toml");
+        let settings = Settings::create("./config/ethereum_only.toml");
 
         let settings = settings?;
         assert_that(&settings.ethereum.is_some()).is_true();
@@ -78,7 +78,7 @@ mod tests {
 
     #[test]
     fn can_read_config_with_ethereum_missing() -> Result<(), failure::Error> {
-        let settings = Settings::create("./config/ethereum_missing.toml");
+        let settings = Settings::create("./config/bitcoin_only.toml");
 
         let settings = settings?;
         assert_that(&settings.ethereum.is_some()).is_false();

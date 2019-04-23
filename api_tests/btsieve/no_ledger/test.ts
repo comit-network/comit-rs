@@ -17,7 +17,7 @@ setTimeout(async function() {
                 it("btsieve ping should respond with 200", async function() {
                     return chai
                         .request(btsieve.url())
-                        .get("/ping")
+                        .get("/health")
                         .then(res => {
                             res.should.have.status(200);
                         });

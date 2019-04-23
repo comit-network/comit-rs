@@ -5,13 +5,13 @@ import * as fs from "fs";
 export class BtsieveRunner {
     running_btsieves: { [key: string]: ChildProcess };
     private readonly log_dir: string;
-    private readonly btsive_bin: string;
+    private readonly btsieve_bin: string;
     private readonly project_root: string;
 
     constructor(project_root: string, btsieve_bin: string, log_dir: string) {
         this.running_btsieves = {};
         this.log_dir = log_dir;
-        this.btsive_bin = btsieve_bin;
+        this.btsieve_bin = btsieve_bin;
         this.project_root = project_root;
     }
 
@@ -23,7 +23,7 @@ export class BtsieveRunner {
                 continue;
             }
 
-            this.running_btsieves[name] = await spawn(this.btsive_bin, [], {
+            this.running_btsieves[name] = await spawn(this.btsieve_bin, [], {
                 cwd: this.project_root,
                 env: btsieve_config.env,
                 stdio: [
