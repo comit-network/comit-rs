@@ -24,7 +24,7 @@ impl IntoP2wpkhAddress for PublicKey {
     fn into_p2wpkh_address(self, network: Network) -> Address {
         Address::p2wpkh(
             &BitcoinPublicKey {
-                compressed: true, // Only use for serialization
+                compressed: true, // Only used for serialization
                 key: *self.inner(),
             },
             network.into(),
