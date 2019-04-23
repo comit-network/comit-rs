@@ -22,6 +22,7 @@ where
     (AL, AA): CreateActions<AL, AA>,
     (BL, BA): CreateActions<BL, BA>,
 {
+    #[allow(clippy::type_complexity)]
     type ActionKind = bob::ActionKind<
         Accept<AL, BL>,
         Decline<AL, BL>,

@@ -17,6 +17,7 @@ where
     (AL, AA): CreateActions<AL, AA>,
     (BL, BA): CreateActions<BL, BA>,
 {
+    #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         (),
         <(AL, AA) as CreateActions<AL, AA>>::FundActionOutput,

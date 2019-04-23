@@ -22,6 +22,7 @@ where
     AA: Asset,
     (AL, AA): CreateActions<AL, AA>,
 {
+    #[allow(clippy::type_complexity)]
     type ActionKind = bob::ActionKind<
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
@@ -104,6 +105,7 @@ where
     BA: Asset,
     (BL, BA): CreateActions<BL, BA>,
 {
+    #[allow(clippy::type_complexity)]
     type ActionKind = bob::ActionKind<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,

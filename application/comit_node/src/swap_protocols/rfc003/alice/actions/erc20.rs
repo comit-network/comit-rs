@@ -17,6 +17,7 @@ where
     BA: Asset,
     (BL, BA): CreateActions<BL, BA>,
 {
+    #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         ethereum::ContractDeploy,
         ethereum::SendTransaction,
@@ -80,6 +81,7 @@ where
     AA: Asset,
     (AL, AA): CreateActions<AL, AA>,
 {
+    #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         (),
         <(AL, AA) as CreateActions<AL, AA>>::FundActionOutput,
