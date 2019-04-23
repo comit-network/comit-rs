@@ -1,21 +1,16 @@
 use crate::swap_protocols::{
     asset::Asset,
-    ledger::{Bitcoin, Ethereum},
     rfc003::{
         actions::CreateActions,
-        bitcoin,
         bob::{
             self,
             actions::{Accept, Decline},
             SwapCommunication,
         },
-        ethereum,
         state_machine::HtlcParams,
         Action, Actions, Ledger, LedgerState,
     },
 };
-use bitcoin_support::BitcoinQuantity;
-use ethereum_support::EtherQuantity;
 use std::sync::Arc;
 
 impl<AL, BL, AA, BA> Actions for bob::State<AL, BL, AA, BA>
