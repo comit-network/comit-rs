@@ -209,7 +209,7 @@ dependencies = [
 [[package]]
 name = "bitcoin_rpc_client"
 version = "0.6.0"
-source = "git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx-0.6#b2124c68d0544c5138895070c25176f9aed65d02"
+source = "git+https://github.com/coblox/bitcoinrpc-rust-client?branch=from-verboserawtx-to-bitcointx-0.6#505a9153395d887a0958ae246a5d3189bb2861f9"
 dependencies = [
  "base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
