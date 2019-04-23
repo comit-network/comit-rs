@@ -1,10 +1,10 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        actions::CreateActions,
+        actions::{non_erc20::CreateActions, Actions},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
-        Action, Actions, Ledger, LedgerState,
+        Action, Ledger, LedgerState,
     },
 };
 

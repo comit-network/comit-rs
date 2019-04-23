@@ -2,7 +2,7 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::CreateActions,
+        actions::{non_erc20::CreateActions, Actions},
         bob::{
             self,
             actions::{Accept, Decline},
@@ -10,7 +10,7 @@ use crate::swap_protocols::{
         },
         ethereum::{self, Erc20Htlc},
         state_machine::HtlcParams,
-        Action, Actions, Ledger, LedgerState, Secret,
+        Action, Ledger, LedgerState, Secret,
     },
 };
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity, Network};

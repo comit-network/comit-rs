@@ -1,14 +1,14 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        actions::CreateActions,
+        actions::{non_erc20::CreateActions, Actions},
         bob::{
             self,
             actions::{Accept, Decline},
             SwapCommunication,
         },
         state_machine::HtlcParams,
-        Action, Actions, Ledger, LedgerState,
+        Action, Ledger, LedgerState,
     },
 };
 use std::sync::Arc;

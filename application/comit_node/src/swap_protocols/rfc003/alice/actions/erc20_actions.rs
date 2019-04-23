@@ -2,12 +2,12 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::CreateActions,
+        actions::{non_erc20::CreateActions, Actions},
         alice::{self, SwapCommunication},
         ethereum::{self, Erc20Htlc},
         secret::Secret,
         state_machine::HtlcParams,
-        Action, Actions, Ledger, LedgerState,
+        Action, Ledger, LedgerState,
     },
 };
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity, Network};
