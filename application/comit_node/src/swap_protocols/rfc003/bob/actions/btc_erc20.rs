@@ -1,21 +1,20 @@
 use crate::swap_protocols::{
     ledger::{Bitcoin, Ethereum},
     rfc003::{
-        self, bitcoin,
+        self,
+        actions::CreateActions,
+        bitcoin,
         bob::{
             self,
             actions::{Accept, Decline},
             SwapCommunication,
         },
         ethereum::{self, Erc20Htlc},
-        secret::Secret,
-        secret_source::SecretSource,
         state_machine::HtlcParams,
         Action, Actions, LedgerState,
     },
 };
-use bitcoin_support::{BitcoinQuantity, OutPoint};
-use bitcoin_witness::PrimedInput;
+use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity};
 use std::sync::Arc;
 
@@ -62,27 +61,6 @@ pub fn refund_action(
     }
 }
 
-pub fn redeem_action(
-    request: &Request,
-    response: &Response,
-    alpha_htlc_location: OutPoint,
-    secret_source: &dyn SecretSource,
-    secret: Secret,
-) -> bitcoin::SpendOutput {
-    let alpha_asset = request.alpha_asset;
-    let htlc = bitcoin::Htlc::from(HtlcParams::new_alpha_params(request, response));
-    let network = request.alpha_ledger.network;
-
-    bitcoin::SpendOutput {
-        output: PrimedInput::new(
-            alpha_htlc_location,
-            alpha_asset,
-            htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
-        ),
-        network,
-    }
-}
-
 impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
     type ActionKind = bob::ActionKind<
         Accept<Bitcoin, Ethereum>,
@@ -121,15 +99,15 @@ impl Actions for bob::State<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token> {
         use self::LedgerState::*;
 
         let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => {
-                vec![bob::ActionKind::Redeem(redeem_action(
-                    &request,
-                    &response,
-                    *htlc_location,
-                    self.secret_source.as_ref(),
-                    secret,
-                ))
-                .into_action()]
+            (Funded { htlc_location, .. }, _, Some(_secret)) => {
+                vec![
+                    bob::ActionKind::Redeem(<(Bitcoin, BitcoinQuantity)>::redeem_action(
+                        HtlcParams::new_alpha_params(request, response),
+                        htlc_location.clone(),
+                        &*self.secret_source,
+                    ))
+                    .into_action(),
+                ]
             }
             (Funded { .. }, NotDeployed, _) => {
                 vec![bob::ActionKind::Deploy(deploy_action(&request, &response)).into_action()]
