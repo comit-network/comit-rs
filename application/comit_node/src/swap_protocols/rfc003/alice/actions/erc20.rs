@@ -2,70 +2,14 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::{non_erc20::CreateActions, Actions},
+        actions::{erc20, non_erc20::CreateActions, Actions},
         alice::{self, SwapCommunication},
-        ethereum::{self, Erc20Htlc},
-        secret::Secret,
+        ethereum,
         state_machine::HtlcParams,
         Action, Ledger, LedgerState,
     },
 };
-use ethereum_support::{Bytes, Erc20Token, EtherQuantity, Network};
-
-fn deploy_action(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> ethereum::ContractDeploy {
-    htlc_params.into()
-}
-
-fn fund_action(
-    htlc_params: HtlcParams<Ethereum, Erc20Token>,
-    to_erc20_contract: ethereum_support::Address,
-    htlc_location: ethereum_support::Address,
-) -> ethereum::SendTransaction {
-    let htlc = Erc20Htlc::from(htlc_params.clone());
-    let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-    let network = htlc_params.ledger.network;
-
-    ethereum::SendTransaction {
-        to: to_erc20_contract,
-        data: htlc.funding_tx_payload(htlc_location),
-        gas_limit,
-        amount: EtherQuantity::zero(),
-        network,
-    }
-}
-
-fn refund_action(
-    network: Network,
-    alpha_htlc_location: ethereum_support::Address,
-) -> ethereum::SendTransaction {
-    let data = Bytes::default();
-    let gas_limit = Erc20Htlc::tx_gas_limit();
-
-    ethereum::SendTransaction {
-        to: alpha_htlc_location,
-        data,
-        gas_limit,
-        amount: EtherQuantity::zero(),
-        network,
-    }
-}
-
-fn redeem_action(
-    network: Network,
-    beta_htlc_location: ethereum_support::Address,
-    secret: Secret,
-) -> ethereum::SendTransaction {
-    let data = Bytes::from(secret.raw_secret().to_vec());
-    let gas_limit = Erc20Htlc::tx_gas_limit();
-
-    ethereum::SendTransaction {
-        to: beta_htlc_location,
-        data,
-        gas_limit,
-        amount: EtherQuantity::zero(),
-        network,
-    }
-}
+use ethereum_support::Erc20Token;
 
 impl<BL, BA> Actions for alice::State<Ethereum, BL, Erc20Token, BA>
 where
@@ -93,29 +37,27 @@ where
 
         use self::LedgerState::*;
 
-        let mut actions = match alpha_state {
-            NotDeployed => {
-                vec![
-                    alice::ActionKind::Deploy(deploy_action(HtlcParams::new_alpha_params(
-                        request, response,
-                    )))
-                    .into_action(),
-                ]
-            }
-            Deployed { htlc_location, .. } => vec![alice::ActionKind::Fund(fund_action(
-                HtlcParams::new_alpha_params(request, response),
-                request.alpha_asset.token_contract,
-                *htlc_location,
-            ))
-            .into_action()],
-            Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(refund_action(
-                request.alpha_ledger.network,
-                *htlc_location,
-            ))
-            .into_action()
-            .with_invalid_until(request.alpha_expiry)],
-            _ => vec![],
-        };
+        let mut actions =
+            match alpha_state {
+                NotDeployed => vec![alice::ActionKind::Deploy(erc20::deploy_action(
+                    HtlcParams::new_alpha_params(request, response),
+                ))
+                .into_action()],
+                Deployed { htlc_location, .. } => {
+                    vec![alice::ActionKind::Fund(erc20::fund_action(
+                        HtlcParams::new_alpha_params(request, response),
+                        request.alpha_asset.token_contract,
+                        *htlc_location,
+                    ))
+                    .into_action()]
+                }
+                Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(
+                    erc20::refund_action(request.alpha_ledger.network, *htlc_location),
+                )
+                .into_action()
+                .with_invalid_until(request.alpha_expiry)],
+                _ => vec![],
+            };
 
         if let Funded { htlc_location, .. } = beta_state {
             actions.push(
@@ -177,10 +119,10 @@ where
 
         if let Funded { htlc_location, .. } = beta_state {
             actions.push(
-                alice::ActionKind::Redeem(redeem_action(
-                    request.beta_ledger.network,
+                alice::ActionKind::Redeem(erc20::redeem_action(
                     *htlc_location,
                     self.secret_source.secret(),
+                    request.beta_ledger.network,
                 ))
                 .into_action(),
             );
