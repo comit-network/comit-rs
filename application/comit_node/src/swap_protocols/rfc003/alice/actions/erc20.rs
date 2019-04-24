@@ -2,7 +2,7 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::{erc20, non_erc20::CreateActions, Actions},
+        actions::{erc20, Actions, OneStepFundActions},
         alice::{self, SwapCommunication},
         ethereum,
         state_machine::HtlcParams,
@@ -15,13 +15,13 @@ impl<BL, BA> Actions for alice::State<Ethereum, BL, Erc20Token, BA>
 where
     BL: Ledger,
     BA: Asset,
-    (BL, BA): CreateActions<BL, BA>,
+    (BL, BA): OneStepFundActions<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         ethereum::ContractDeploy,
         ethereum::SendTransaction,
-        <(BL, BA) as CreateActions<BL, BA>>::RedeemActionOutput,
+        <(BL, BA) as OneStepFundActions<BL, BA>>::RedeemActionOutput,
         ethereum::SendTransaction,
     >;
 
@@ -79,14 +79,14 @@ impl<AL, AA> Actions for alice::State<AL, Ethereum, AA, Erc20Token>
 where
     AL: Ledger,
     AA: Asset,
-    (AL, AA): CreateActions<AL, AA>,
+    (AL, AA): OneStepFundActions<AL, AA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         (),
-        <(AL, AA) as CreateActions<AL, AA>>::FundActionOutput,
+        <(AL, AA) as OneStepFundActions<AL, AA>>::FundActionOutput,
         ethereum::SendTransaction,
-        <(AL, AA) as CreateActions<AL, AA>>::RefundActionOutput,
+        <(AL, AA) as OneStepFundActions<AL, AA>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Action<Self::ActionKind>> {

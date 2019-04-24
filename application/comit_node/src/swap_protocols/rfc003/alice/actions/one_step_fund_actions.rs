@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        actions::{non_erc20::CreateActions, Actions},
+        actions::{Actions, OneStepFundActions},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
         Action, Ledger, LedgerState,
@@ -14,15 +14,15 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    (AL, AA): CreateActions<AL, AA>,
-    (BL, BA): CreateActions<BL, BA>,
+    (AL, AA): OneStepFundActions<AL, AA>,
+    (BL, BA): OneStepFundActions<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         (),
-        <(AL, AA) as CreateActions<AL, AA>>::FundActionOutput,
-        <(BL, BA) as CreateActions<BL, BA>>::RedeemActionOutput,
-        <(AL, AA) as CreateActions<AL, AA>>::RefundActionOutput,
+        <(AL, AA) as OneStepFundActions<AL, AA>>::FundActionOutput,
+        <(BL, BA) as OneStepFundActions<BL, BA>>::RedeemActionOutput,
+        <(AL, AA) as OneStepFundActions<AL, AA>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Action<Self::ActionKind>> {

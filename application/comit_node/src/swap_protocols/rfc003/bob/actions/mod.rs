@@ -1,5 +1,5 @@
 mod erc20;
-mod non_erc20;
+mod one_step_fund_actions;
 
 use crate::{
     comit_client::{SwapDeclineReason, SwapReject},

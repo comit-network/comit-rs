@@ -2,7 +2,7 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::{erc20, non_erc20::CreateActions, Actions},
+        actions::{erc20, Actions, OneStepFundActions},
         bob::{
             self,
             actions::{Accept, Decline},
@@ -20,7 +20,7 @@ impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, Erc20Token>
 where
     AL: Ledger,
     AA: Asset,
-    (AL, AA): CreateActions<AL, AA>,
+    (AL, AA): OneStepFundActions<AL, AA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = bob::ActionKind<
@@ -28,7 +28,7 @@ where
         Decline<AL, Ethereum>,
         ethereum::ContractDeploy,
         ethereum::SendTransaction,
-        <(AL, AA) as CreateActions<AL, AA>>::RedeemActionOutput,
+        <(AL, AA) as OneStepFundActions<AL, AA>>::RedeemActionOutput,
         ethereum::SendTransaction,
     >;
 
@@ -103,16 +103,16 @@ impl<BL, BA> Actions for bob::State<Ethereum, BL, Erc20Token, BA>
 where
     BL: Ledger,
     BA: Asset,
-    (BL, BA): CreateActions<BL, BA>,
+    (BL, BA): OneStepFundActions<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = bob::ActionKind<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
         (),
-        <(BL, BA) as CreateActions<BL, BA>>::FundActionOutput,
+        <(BL, BA) as OneStepFundActions<BL, BA>>::FundActionOutput,
         ethereum::SendTransaction,
-        <(BL, BA) as CreateActions<BL, BA>>::RefundActionOutput,
+        <(BL, BA) as OneStepFundActions<BL, BA>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Action<Self::ActionKind>> {
