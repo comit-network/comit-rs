@@ -17,9 +17,9 @@ pub fn fund_action(
     to_erc20_contract: ethereum_support::Address,
     beta_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
-    let htlc = Erc20Htlc::from(htlc_params.clone());
-    let gas_limit = Erc20Htlc::fund_tx_gas_limit();
     let network = htlc_params.ledger.network;
+    let htlc = Erc20Htlc::from(htlc_params);
+    let gas_limit = Erc20Htlc::fund_tx_gas_limit();
 
     ethereum::SendTransaction {
         to: to_erc20_contract,
