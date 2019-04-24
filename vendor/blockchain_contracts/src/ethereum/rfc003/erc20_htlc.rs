@@ -104,7 +104,7 @@ impl Erc20Htlc {
             )
             .replace(Self::CONTRACT_LENGTH_PLACEHOLDER, &code_length_as_hex);
 
-        deploy_header + &Self::CONTRACT_CODE_TEMPLATE
+        deploy_header + Self::CONTRACT_CODE_TEMPLATE
     }
 
     fn get_offset(name: &str, placeholder: &str) -> Offset {

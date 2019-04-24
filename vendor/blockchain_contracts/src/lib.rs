@@ -27,12 +27,13 @@ impl Display for Offset {
     }
 }
 
-pub fn print_table(mut offsets: Vec<Offset>) {
-    println!("Data\t\t\t\tStart\tEnd\tLength");
+pub fn format_table(mut offsets: Vec<Offset>) -> String {
+    let mut res = String::from("Data\t\t\t\tStart\tEnd\tLength");
     offsets.sort_unstable();
     for offset in offsets {
-        println!("{}", offset)
+        res = format!("{}\n{}", res, offset)
     }
+    res
 }
 
 impl Offset {
