@@ -83,7 +83,7 @@ impl EtherHtlc {
         Offset::new(
             name.into(),
             re_match.start() / 2,
-            re_match.end() / 2 - 1,
+            re_match.end() / 2,
             placeholder.len() / 2,
         )
     }
