@@ -307,7 +307,7 @@ script_runner = "bash"
 script = [
 '''
 ./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts ./api_tests/btsieve/*.ts
+  ./api_tests/harness.ts ./api_tests/btsieve/*/*.ts
 '''
 ]
 
@@ -331,6 +331,6 @@ script = [
 '''
 ./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
   ./api_tests/harness.ts \
-    ./api_tests/{dry,webgui,btsieve,e2e/*/*}/*.ts
+    ./api_tests/{dry,webgui,btsieve/*,e2e/*/*}/*.ts
 '''
 ]

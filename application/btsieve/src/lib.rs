@@ -1,4 +1,4 @@
-#![warn(unused_extern_crates, rust_2018_idioms)]
+#![warn(rust_2018_idioms)]
 #![deny(unsafe_code)]
 
 pub mod bitcoin;

@@ -1,9 +1,11 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    routes, web3,
+    routes::{self, HttpApiProblemStdError},
+    web3,
 };
 use ethereum_support::H256;
+use routes::Error as RouteError;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -37,7 +39,7 @@ pub struct QueryParams<R> {
     pub return_as: R,
 }
 
-pub fn create<
+pub fn create_endpoints<
     R,
     Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
     QR: QueryRepository<Q>,
@@ -46,9 +48,9 @@ pub fn create<
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<C>,
+    client: Option<Arc<C>>,
     ledger_name: &'static str,
-    network: &'static str,
+    registered_network: Option<&'static str>,
 ) -> BoxedFilter<(impl Reply,)>
 where
     for<'de> R: Deserialize<'de>,
@@ -57,38 +59,82 @@ where
 {
     let route = Q::route();
 
-    let path = warp::path("queries")
+    // create the path
+    let path = warp::path("queries");
+
+    let client_option = client.clone();
+
+    // validate ledger function
+    let validate_ledger = warp::any().and_then(move || {
+        let client_option = client_option.clone();
+        client_option.map_or_else(
+            || {
+                log::error!("Ledger not connected: {:?}", ledger_name);
+                Err::<Arc<C>, _>(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: RouteError::LedgerNotConnected.into(),
+                }))
+            },
+            |client| Ok(client.clone()),
+        )
+    });
+
+    // validate network function
+    let validate_network =
+        warp::path::param::<String>().and_then(move |network| match registered_network {
+            Some(registered_network) => {
+                if network != registered_network {
+                    log::error!("Invalid network passed: {:?}", network);
+                    Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+                        http_api_problem: RouteError::NetworkNotFound.into(),
+                    }))
+                } else {
+                    Ok(network)
+                }
+            }
+            None => {
+                log::error!("Ledger network not defined {:?}", ledger_name);
+                Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: RouteError::NetworkNotFound.into(),
+                }))
+            }
+        });
+
+    // concat with validators, ledger and network
+    let path = path
         .and(warp::path(ledger_name))
-        .and(warp::path(network))
+        .and(validate_ledger)
+        .and(validate_network)
         .and(warp::path(&route));
 
     let query_repository = warp::any().map(move || Arc::clone(&query_repository));
     let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
-    let client = warp::any().map(move || client.clone());
 
     let create = warp::post2()
+        .and(path.clone())
         .and(query_repository.clone())
         .and(warp::any().map(move || ledger_name))
-        .and(warp::any().map(move || network))
         .and(warp::any().map(move || route))
         .and(warp::body::json())
         .and_then(routes::create_query);
 
     let retrieve = warp::get2()
+        .and(path.clone())
         .and(query_repository.clone())
         .and(query_result_repository.clone())
-        .and(client.clone())
         .and(warp::path::param::<u32>())
         .and(warp::query::<QueryParams<R>>())
         .and_then(routes::retrieve_query);
 
     let delete = warp::delete2()
+        .and(path)
         .and(query_repository)
         .and(query_result_repository)
         .and(warp::path::param::<u32>())
         .and_then(routes::delete_query);
 
-    path.and(create.or(retrieve).or(delete))
+    create
+        .or(retrieve)
+        .or(delete)
         .recover(routes::customize_error)
         .boxed()
 }

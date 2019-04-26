@@ -18,6 +18,8 @@ pub enum Error {
     QuerySave,
     TransformToPayload,
     QueryNotFound,
+    NetworkNotFound,
+    LedgerNotConnected,
 }
 
 #[derive(Debug)]
@@ -50,6 +52,14 @@ impl From<Error> for HttpApiProblem {
             }
             QueryNotFound => HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
                 .set_detail("The requested query does not exist."),
+            NetworkNotFound => {
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::NOT_FOUND)
+                    .set_detail("The requested network id does not exist.")
+            }
+            LedgerNotConnected => {
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::SERVICE_UNAVAILABLE)
+                    .set_detail("The requested ledger is not connected.")
+            }
         }
     }
 }
@@ -67,10 +77,11 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn create_query<Q: Send, QR: QueryRepository<Q>>(
+pub fn create_query<Q: Send, QR: QueryRepository<Q>, C: 'static + Send + Sync>(
+    _client: Arc<C>,
+    network: String,
     query_repository: Arc<QR>,
     ledger_name: &'static str,
-    network: &'static str,
     query_type: &'static str,
     query: Q,
 ) -> Result<impl Reply, Rejection> {
@@ -96,9 +107,10 @@ pub fn retrieve_query<
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
 >(
+    client: Arc<C>,
+    _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Arc<C>,
     id: u32,
     query_params: QueryParams<R>,
 ) -> Result<impl Reply, Rejection>
@@ -113,12 +125,12 @@ where
             query_result_repository
                 .get(id)
                 .unwrap_or_default()
-                .to_http_payload(&query_params.return_as, client.as_ref())
+                .to_http_payload(&query_params.return_as, &client)
                 .map(|matches| RetrieveQueryResponse { query, matches })
                 .map(|response| warp::reply::json(&response))
                 .map_err(|e| {
                     log::error!(
-                        "failed to transform result for query {} to payload {:?}: {:?}",
+                        "failed to transform result for query {} to payload {:?}: {:?}.",
                         id,
                         query_params.return_as,
                         e
@@ -134,7 +146,14 @@ where
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn delete_query<Q: Send, QR: QueryRepository<Q>, QRR: QueryResultRepository<Q>>(
+pub fn delete_query<
+    Q: Send,
+    QR: QueryRepository<Q>,
+    QRR: QueryResultRepository<Q>,
+    C: 'static + Send + Sync,
+>(
+    _client: Arc<C>,
+    _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
     id: u32,

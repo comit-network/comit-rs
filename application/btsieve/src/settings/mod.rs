@@ -7,8 +7,8 @@ use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
     pub http_api: HttpApi,
-    pub bitcoin: Bitcoin,
-    pub ethereum: Ethereum,
+    pub bitcoin: Option<Bitcoin>,
+    pub ethereum: Option<Ethereum>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -63,6 +63,28 @@ mod tests {
         let settings = Settings::create("./config/default.toml");
 
         assert_that(&settings).is_ok();
+    }
+
+    #[test]
+    fn can_read_config_with_bitcoin_missing() -> Result<(), failure::Error> {
+        let settings = Settings::create("./config/ethereum_only.toml");
+
+        let settings = settings?;
+        assert_that(&settings.ethereum.is_some()).is_true();
+        assert_that(&settings.bitcoin.is_some()).is_false();
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_read_config_with_ethereum_missing() -> Result<(), failure::Error> {
+        let settings = Settings::create("./config/bitcoin_only.toml");
+
+        let settings = settings?;
+        assert_that(&settings.ethereum.is_some()).is_false();
+        assert_that(&settings.bitcoin.is_some()).is_true();
+
+        Ok(())
     }
 
 }
