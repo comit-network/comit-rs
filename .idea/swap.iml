@@ -104,6 +104,7 @@
       <excludeFolder url="file://$MODULE_DIR$/application/ethereum_wallet/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/ledger_query_service/target" />
       <excludeFolder url="file://$MODULE_DIR$/application/logging/target" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bam/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_rpc_test_helpers/target" />
       <excludeFolder url="file://$MODULE_DIR$/vendor/bitcoin_support/target" />
