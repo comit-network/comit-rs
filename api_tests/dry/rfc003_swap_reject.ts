@@ -227,7 +227,7 @@ setTimeout(async function() {
 
         let bob_decline_href_stingy: string;
 
-        it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
+        it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
             await chai
                 .request(bob.comit_node_url())
                 .get(bob_stingy_swap_href)
@@ -238,7 +238,38 @@ setTimeout(async function() {
                     body.status.should.equal("IN_PROGRESS");
                     body.parameters.should.be.a("object");
 
-                    let action_links = body._links;
+                    let state = body.state;
+                    state.should.be.a("object");
+
+                    state.alpha_ledger.should.be.a("object");
+                    state.beta_ledger.should.be.a("object");
+
+                    let communication = state.communication;
+                    communication.should.be.a("object");
+
+                    communication.status.should.equal("SENT");
+
+                    communication.alpha_expiry.should.be.a("number");
+                    should.not.exist(communication.alpha_redeem_identity);
+                    communication.alpha_refund_identity.should.be.a("string");
+
+                    communication.beta_expiry.should.be.a("number");
+                    communication.beta_redeem_identity.should.equal(
+                        alice_final_address
+                    );
+                    should.not.exist(communication.beta_refund_identity);
+                    communication.secret_hash.should.be.a("string");
+                });
+        });
+
+        it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
+            await chai
+                .request(bob.comit_node_url())
+                .get(bob_stingy_swap_href)
+                .then(res => {
+                    res.should.have.status(200);
+
+                    let action_links = res.body._links;
                     action_links.should.be.a("object");
                     action_links.accept.should.be.a("object");
                     action_links.accept.href.should.equal(

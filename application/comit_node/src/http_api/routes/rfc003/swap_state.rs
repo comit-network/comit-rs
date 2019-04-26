@@ -2,7 +2,7 @@ use crate::{
     http_api::{Http, SwapStatus},
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, alice, bob, Ledger, Timestamp},
+        rfc003::{self, alice, bob, Ledger, SecretHash, Timestamp},
     },
 };
 use serde::Serialize;
@@ -29,6 +29,7 @@ pub struct SwapCommunication<AI, BI> {
     beta_redeem_identity: Http<BI>,
     alpha_refund_identity: Http<AI>,
     beta_refund_identity: Option<Http<BI>>,
+    secret_hash: SecretHash,
 }
 
 #[derive(Debug, Serialize)]
@@ -64,6 +65,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
                 alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
+                secret_hash: request.secret_hash,
             },
             Accepted { request, response } => Self {
                 status: SwapCommunicationState::Accepted,
@@ -73,6 +75,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
                 alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
+                secret_hash: request.secret_hash,
             },
             Rejected { request, .. } => Self {
                 status: SwapCommunicationState::Rejected,
@@ -82,6 +85,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
                 alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
+                secret_hash: request.secret_hash,
             },
         }
     }
@@ -101,6 +105,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
                 alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
+                secret_hash: request.secret_hash,
             },
             Accepted { request, response } => Self {
                 status: SwapCommunicationState::Accepted,
@@ -110,6 +115,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
                 alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
+                secret_hash: request.secret_hash,
             },
             Rejected { request, .. } => Self {
                 status: SwapCommunicationState::Rejected,
@@ -119,6 +125,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
                 alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
                 beta_refund_identity: None,
+                secret_hash: request.secret_hash,
             },
         }
     }
