@@ -137,6 +137,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bigdecimal"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "num-bigint 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-integer 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "binary_macros"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -180,9 +190,9 @@ dependencies = [
 [[package]]
 name = "bitcoin_quantity"
 version = "0.1.0"
-source = "git+https://github.com/coblox/bitcoin-quantity#b8cd18554f57914aa8beb5baf217f77cb0c6eeff"
+source = "git+https://github.com/coblox/bitcoin-quantity#d5e9726343445f7a0bb22cee042e360c64fc9f5b"
 dependencies = [
- "bigdecimal 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bigdecimal 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3363,6 +3373,7 @@ dependencies = [
 "checksum base64 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "489d6c0ed21b11d038c31b6ceccca973e65d73ba3bd8ecb9a2babf5546164643"
 "checksum bech32 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ad20b907fd16610c3960c7fe9dae13dd243343409bab80299774c9a8b5d7bed8"
 "checksum bigdecimal 0.0.15 (registry+https://github.com/rust-lang/crates.io-index)" = "f73d2953c59932d4a0ac941bb5ccca17e324ddae9aa487353dc22f0aade2c4b4"
+"checksum bigdecimal 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "460825c9e21708024d67c07057cd5560e5acdccac85de0de624a81d3de51bacb"
 "checksum binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "d3c164dc375163e00f23ba3e2f9644f7c62145621f67c55500baac71a37cdd7f"
 "checksum binary_macros_impl 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5732223e917a7b7495e1df95d2c80e69278f944d4dc40a59d7931259a0fc5a41"
 "checksum bitcoin 0.14.2 (registry+https://github.com/rust-lang/crates.io-index)" = "804b37d4fcadce0ebf4cf87e0a60e71db95d5fac70d0c2cda8aae88a4d830d31"
