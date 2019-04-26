@@ -1,6 +1,5 @@
 use crate::rfc003::secret_hash::SecretHash;
 use crypto::{digest::Digest, sha2::Sha256};
-use rand::{Rng, ThreadRng};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
@@ -109,32 +108,9 @@ impl Serialize for Secret {
     }
 }
 
-pub trait RandomnessSource {
-    fn gen_random_bytes(&mut self, nbytes: usize) -> Vec<u8>;
-}
-
-impl RandomnessSource for ThreadRng {
-    fn gen_random_bytes(&mut self, nbytes: usize) -> Vec<u8> {
-        let mut buf: Vec<u8> = vec![0; nbytes];
-        self.fill_bytes(&mut buf);
-        buf
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::vec::Vec;
-
-    #[test]
-    fn gen_random_bytes_not_zeros() {
-        let mut rng = rand::thread_rng();
-
-        let empty_buf: Vec<u8> = vec![0; 32];
-        let buf = rng.gen_random_bytes(32);
-        assert_eq!(buf.len(), 32);
-        assert_ne!(buf, empty_buf);
-    }
 
     #[test]
     fn new_secret_hash_as_hex() {

@@ -30,7 +30,7 @@ pub use self::{
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     save_state::SaveState,
-    secret::{FromErr, RandomnessSource, Secret, SecretHash},
+    secret::{FromErr, Secret, SecretHash},
     secret_source::*,
     timestamp::Timestamp,
 };
