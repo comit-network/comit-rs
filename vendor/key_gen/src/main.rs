@@ -19,7 +19,7 @@ fn main() {
     let mainnet_private_key = PrivateKey {
         compressed: true,
         network: Network::Mainnet.into(),
-        key: secret_key.clone(),
+        key: secret_key,
     };
     let testnet_private_key = PrivateKey {
         compressed: true,
