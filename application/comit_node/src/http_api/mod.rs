@@ -123,10 +123,13 @@ mod tests {
         http_api::Http,
         swap_protocols::ledger::{Bitcoin, Ethereum},
     };
-    use bitcoin_support::{self, BitcoinQuantity, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
+    use bitcoin_support::{
+        self, BitcoinQuantity, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn,
+    };
     use ethereum_support::{
         self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
     };
+    use std::convert::TryFrom;
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -224,7 +227,7 @@ mod tests {
     fn http_identity_serializes_correctly_to_json() {
         let bitcoin_identity: Vec<u8> =
             hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
-        let bitcoin_identity = PubkeyHash::from(&bitcoin_identity[..]);
+        let bitcoin_identity = PubkeyHash::try_from(&bitcoin_identity[..]).unwrap();
         let ethereum_identity = H160::from(7);
 
         let bitcoin_identity = Http(bitcoin_identity);

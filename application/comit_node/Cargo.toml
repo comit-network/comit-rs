@@ -9,7 +9,7 @@ regex = "1"
 
 [dependencies]
 binary_macros = "0.6"
-bitcoin_rpc_client = "0.5"
+bitcoin_rpc_client = { git = "https://github.com/coblox/bitcoinrpc-rust-client", branch = "from-verboserawtx-to-bitcointx-0.6" }
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"

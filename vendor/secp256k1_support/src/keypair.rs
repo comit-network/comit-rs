@@ -26,7 +26,7 @@ impl fmt::Display for Error {
 
 impl KeyPair {
     pub fn new<R: Rng>(rng: &mut R) -> KeyPair {
-        SecretKey::new(&*super::SECP, rng).into()
+        SecretKey::new(rng).into()
     }
 
     pub fn secret_key(self) -> SecretKey {
@@ -38,7 +38,7 @@ impl KeyPair {
     }
 
     pub fn from_secret_key_slice(data: &[u8]) -> Result<KeyPair, Error> {
-        SecretKey::from_slice(&*super::SECP, data)
+        SecretKey::from_slice(data)
             .map(Into::into)
             .map_err(Error::Secp256k1)
     }

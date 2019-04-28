@@ -9,7 +9,7 @@ use crate::htlc_harness::{sleep_until, CustomSizeSecret};
 use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
-    serialize::serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
+    serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
 };
 use bitcoin_witness::{
     PrimedInput, PrimedTransaction, UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
@@ -52,11 +52,11 @@ fn fund_htlc(
 ) {
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let redeem_keypair: KeyPair = redeem_privkey.secret_key().clone().into();
+    let redeem_keypair: KeyPair = redeem_privkey.key.clone().into();
     let redeem_pubkey_hash: PubkeyHash = redeem_keypair.public_key().clone().into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
-    let refund_keypair: KeyPair = refund_privkey.secret_key().clone().into();
+    let refund_keypair: KeyPair = refund_privkey.key.clone().into();
     let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().clone().into();
     let refund_timestamp = Timestamp::now().plus(10);
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
@@ -121,7 +121,7 @@ fn redeem_htlc_with_secret() {
     }
     .sign_with_fee(fee);
 
-    let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+    let redeem_tx_hex = serialize_hex(&redeem_tx);
 
     let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
@@ -163,7 +163,7 @@ fn redeem_refund_htlc() {
     }
     .sign_with_fee(fee);
 
-    let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+    let redeem_tx_hex = serialize_hex(&redeem_tx);
     let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
     let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
@@ -216,7 +216,7 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
     }
     .sign_with_fee(fee);
 
-    let redeem_tx_hex = serialize_hex(&redeem_tx)?;
+    let redeem_tx_hex = serialize_hex(&redeem_tx);
 
     let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
@@ -260,7 +260,7 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
     }
     .sign_with_fee(fee);
 
-    let redeem_tx_hex = serialize_hex(&redeem_tx).unwrap();
+    let redeem_tx_hex = serialize_hex(&redeem_tx);
 
     let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 

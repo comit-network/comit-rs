@@ -2,7 +2,7 @@ use crate::{
     bitcoin::queries::{BlockQuery, TransactionQuery},
     ArcQueryRepository, QueryMatch,
 };
-use bitcoin_support::{serialize::BitcoinHash, MinedBlock as Block};
+use bitcoin_support::{BitcoinHash, MinedBlock as Block};
 use itertools::Itertools;
 
 pub fn check_block_queries(
