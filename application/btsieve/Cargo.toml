@@ -41,7 +41,7 @@ path = "../../vendor/ethereum_support"
 [dev-dependencies]
 env_logger = "0.6"
 hex = "0.3"
-rand = "0.3"
+rand = "0.6"
 spectral = "0.6"
 testcontainers = "0.6"
 
