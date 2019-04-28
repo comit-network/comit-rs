@@ -1,7 +1,7 @@
 use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{
-    self, Address, BitcoinQuantity, OutPoint, Script, SigHashType, SighashComponents, Transaction,
-    TxIn, TxOut, Weight,
+    self, Address, BitcoinQuantity, Hash, OutPoint, Script, SigHashType, SighashComponents,
+    Transaction, TxIn, TxOut, Weight,
 };
 use secp256k1_support::{DerSerializableSignature, Message};
 
@@ -88,7 +88,10 @@ impl PrimedTransaction {
                         &input_parameters.prev_script,
                         primed_input.value.satoshi(),
                     );
-                    let message_to_sign = Message::from(hash_to_sign.into_bytes());
+                    // `from` should be used instead of `from_slice` once `ThirtyTwoByteHash` is
+                    // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
+                    let message_to_sign = Message::from_slice(&hash_to_sign.into_inner())
+                        .expect("Should not fail because it is a hash");
                     let signature = keypair.sign_ecdsa(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_signature_der();
@@ -176,7 +179,7 @@ mod test {
     fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() -> Result<(), failure::Error> {
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
-        let keypair: KeyPair = private_key.secret_key().clone().into();
+        let keypair: KeyPair = private_key.key.clone().into();
         let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl")?;
         let txid = Sha256dHash::default();
 

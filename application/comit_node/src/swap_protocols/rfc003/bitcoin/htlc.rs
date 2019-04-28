@@ -1,6 +1,6 @@
 use crate::swap_protocols::rfc003::{Secret, SecretHash, Timestamp};
 use bitcoin_support::{
-    opcodes::{All::*, OP_CLTV},
+    opcodes::{all::*, OP_CLTV},
     script::Builder,
     Address, Network, PubkeyHash, Script,
 };
@@ -158,7 +158,7 @@ fn create_htlc(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
+    use std::{convert::TryFrom, str::FromStr};
 
     // Secret: 12345678901234567890123456789012
     // Secret hash: 51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c
@@ -185,8 +185,8 @@ mod tests {
         let sender_pubkey_hash: Vec<u8> =
             hex::decode("1925a274ac004373bb5429553bdb55c40e57b124").unwrap();
 
-        let recipient_pubkey_hash = PubkeyHash::from(&recipient_pubkey_hash[..]);
-        let sender_pubkey_hash = PubkeyHash::from(&sender_pubkey_hash[..]);
+        let recipient_pubkey_hash = PubkeyHash::try_from(&recipient_pubkey_hash[..]).unwrap();
+        let sender_pubkey_hash = PubkeyHash::try_from(&sender_pubkey_hash[..]).unwrap();
 
         let secret_hash = "51a488e06e9c69c555b8ad5e2c4629bb3135b96accd1f23451af75e06d3aee9c";
 

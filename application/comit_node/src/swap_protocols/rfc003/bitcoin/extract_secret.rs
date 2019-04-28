@@ -16,7 +16,7 @@ pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Op
 #[cfg(test)]
 mod test {
     use super::*;
-    use bitcoin_support::{serialize::deserialize, OutPoint, Script, Transaction, TxIn};
+    use bitcoin_support::{deserialize, OutPoint, Script, Transaction, TxIn};
     use spectral::prelude::*;
     use std::str::FromStr;
 

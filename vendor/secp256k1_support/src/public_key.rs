@@ -48,7 +48,6 @@ impl FromHex for PublicKey {
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
         Ok(PublicKey(
             secp256k1::PublicKey::from_slice(
-                &*super::SECP,
                 hex::decode(hex)
                     .map_err(PubkeyFromHexError::InvalidHex)?
                     .as_ref(),
@@ -101,13 +100,10 @@ mod test {
     #[test]
     fn pubkey_from_hex() {
         let pubkey = PublicKey(
-            secp256k1::PublicKey::from_slice(
-                &*super::super::SECP,
-                &[
-                    3, 23, 183, 225, 206, 31, 159, 148, 195, 42, 67, 115, 146, 41, 248, 140, 11, 3,
-                    51, 41, 111, 180, 110, 143, 114, 134, 88, 73, 198, 174, 52, 184, 78,
-                ],
-            )
+            secp256k1::PublicKey::from_slice(&[
+                3, 23, 183, 225, 206, 31, 159, 148, 195, 42, 67, 115, 146, 41, 248, 140, 11, 3, 51,
+                41, 111, 180, 110, 143, 114, 134, 88, 73, 198, 174, 52, 184, 78,
+            ])
             .unwrap(),
         );
 
