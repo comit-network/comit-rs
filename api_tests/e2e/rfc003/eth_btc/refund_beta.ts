@@ -41,7 +41,7 @@ declare var global: HarnessGlobal;
     const initialUrl = "/swaps/rfc003";
     const listUrl = "/swaps";
 
-    await bitcoin.ensureSegwit();
+    await bitcoin.ensureFunding();
     await alice.wallet.eth().fund(aliceInitialEth);
     await alice.wallet.btc().fund(0.1);
     await bob.wallet.eth().fund(bobInitialEth);

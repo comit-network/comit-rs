@@ -3,7 +3,7 @@ use crate::swap_protocols::{
     rfc003::{
         ethereum::{self, Erc20Htlc},
         state_machine::HtlcParams,
-        Secret,
+        Secret, Timestamp,
     },
 };
 use ethereum_support::{Bytes, Erc20Token, EtherQuantity, Network};
@@ -27,11 +27,13 @@ pub fn fund_action(
         gas_limit,
         amount: EtherQuantity::zero(),
         network,
+        min_block_timestamp: None,
     }
 }
 
 pub fn refund_action(
     network: Network,
+    expiry: Timestamp,
     beta_htlc_location: ethereum_support::Address,
 ) -> ethereum::SendTransaction {
     let data = Bytes::default();
@@ -43,6 +45,7 @@ pub fn refund_action(
         gas_limit,
         amount: EtherQuantity::zero(),
         network,
+        min_block_timestamp: Some(expiry),
     }
 }
 
@@ -60,5 +63,6 @@ pub fn redeem_action(
         gas_limit,
         amount: EtherQuantity::zero(),
         network,
+        min_block_timestamp: None,
     }
 }

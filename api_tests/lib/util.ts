@@ -15,6 +15,16 @@ export async function sleep(time: number) {
     });
 }
 
+export function seconds_until(time: number): number {
+    const diff = time - Math.floor(Date.now() / 1000);
+
+    if (diff > 0) {
+        return diff;
+    } else {
+        return 0;
+    }
+}
+
 /// This is needed to use the global variable in TypeScript
 import Global = NodeJS.Global;
 

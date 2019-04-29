@@ -40,10 +40,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                 .iter()
                 .find_map(|action| {
                     if action_name == action.to_action_name() {
-                        let payload = action
-                            .inner
-                            .clone()
-                            .into_response_payload(query_params.clone());
+                        let payload = action.clone().into_response_payload(query_params.clone());
 
                         match payload {
                             Ok(payload) => {
@@ -53,10 +50,7 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                                     payload,
                                     action_name
                                 );
-                                Some(Ok(HalResource::new(ActionResponseBody {
-                                    payload,
-                                    invalid_until: action.invalid_until,
-                                })))
+                                Some(Ok(HalResource::new(payload)))
                             }
                             Err(e) => Some(Err(e)),
                         }
@@ -73,13 +67,13 @@ pub trait IntoResponsePayload {
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem>;
+    ) -> Result<ActionResponseBody, HttpApiProblem>;
 }
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
-pub enum ActionResponsePayload {
+pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
         amount: BitcoinQuantity,
@@ -88,6 +82,7 @@ pub enum ActionResponsePayload {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: bitcoin_support::Network,
+        locktime: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: ethereum_support::Bytes,
@@ -101,15 +96,8 @@ pub enum ActionResponsePayload {
         amount: EtherQuantity,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
+        min_block_timestamp: Option<Timestamp>,
     },
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct ActionResponseBody {
-    #[serde(flatten)]
-    pub payload: ActionResponsePayload,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub invalid_until: Option<Timestamp>,
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -126,7 +114,7 @@ impl IntoResponsePayload for bitcoin::SendToAddress {
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
             GetActionQueryParams::None {} => {
                 let bitcoin::SendToAddress {
@@ -134,7 +122,7 @@ impl IntoResponsePayload for bitcoin::SendToAddress {
                     amount,
                     network,
                 } = self;
-                Ok(ActionResponsePayload::BitcoinSendAmountToAddress {
+                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
                     to,
                     amount,
                     network,
@@ -152,39 +140,35 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
             GetActionQueryParams::BitcoinAddressAndFee {
                 address,
                 fee_per_byte,
-            } => match fee_per_byte.parse::<f64>() {
-                Ok(fee_per_byte) => {
-                    let network = self.network;
-                    let transaction = self.spend_to(address).sign_with_rate(fee_per_byte);
-                    let transaction = match transaction {
-                        Ok(transaction) => transaction,
-                        Err(e) => {
-                            log::error!("Could not sign Bitcoin transaction: {:?}", e);
-                            return Err(HttpApiProblem::with_title_and_type_from_status(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .set_detail("Issue encountered when signing Bitcoin transaction."));
-                        }
-                    };
-                    Ok(ActionResponsePayload::BitcoinBroadcastSignedTransaction {
-                       hex: serialize_hex(&transaction),
-                       network,
+            } => {
+                let fee_per_byte = fee_per_byte.parse::<f64>().map_err(|_| {
+                    HttpApiProblem::new("Invalid query parameter.")
+                        .set_status(StatusCode::BAD_REQUEST)
+                        .set_detail("Query parameter fee-per-byte is not a valid float.")
+                })?;
+
+                let network = self.network;
+                let transaction = self.spend_to(address)
+                    .sign_with_rate(fee_per_byte)
+                    .map_err(|e| {
+                        log::error!("Could not sign Bitcoin transaction: {:?}", e);
+                        HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .set_detail("Issue encountered when signing Bitcoin transaction.")
+                    })?;
+
+                Ok(ActionResponseBody::BitcoinBroadcastSignedTransaction {
+                    hex: serialize_hex(&transaction),
+                    network,
+                    locktime: if transaction.lock_time == 0 { None } else { Some(transaction.lock_time.into()) }
                 })
-                }
-                Err(_) => Err(HttpApiProblem::with_title_and_type_from_status(
-                    StatusCode::BAD_REQUEST,
-                )
-                .set_title("Invalid query parameter.")
-                .set_detail("Query parameter fee-per-byte is not a valid float.")),
-            },
+            }
             _ => {
                 Err(problem::missing_query_parameters("bitcoin::SpendOutput", vec![
-
                         &problem::MissingQueryParameter {
                             name: "address",
                             data_type: "string",
@@ -206,7 +190,7 @@ impl IntoResponsePayload for ethereum::ContractDeploy {
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         let ethereum::ContractDeploy {
             data,
             amount,
@@ -214,7 +198,7 @@ impl IntoResponsePayload for ethereum::ContractDeploy {
             network,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponsePayload::EthereumDeployContract {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumDeployContract {
                 data,
                 amount,
                 gas_limit,
@@ -232,21 +216,23 @@ impl IntoResponsePayload for ethereum::SendTransaction {
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         let ethereum::SendTransaction {
             to,
             data,
             amount,
             gas_limit,
             network,
+            min_block_timestamp,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponsePayload::EthereumInvokeContract {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumInvokeContract {
                 contract_address: to,
                 data,
                 amount,
                 gas_limit,
                 network,
+                min_block_timestamp,
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::SendTransaction",
@@ -260,7 +246,7 @@ impl IntoResponsePayload for () {
     fn into_response_payload(
         self,
         _: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         log::error!("IntoResponsePayload should not be called for the unit type");
         Err(HttpApiProblem::with_title_and_type_from_status(
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -279,7 +265,7 @@ where
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         match self {
             alice::ActionKind::Deploy(payload) => payload.into_response_payload(query_params),
             alice::ActionKind::Fund(payload) => payload.into_response_payload(query_params),
@@ -300,7 +286,7 @@ where
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
-    ) -> Result<ActionResponsePayload, HttpApiProblem> {
+    ) -> Result<ActionResponseBody, HttpApiProblem> {
         match self {
             bob::ActionKind::Deploy(payload) => payload.into_response_payload(query_params),
             bob::ActionKind::Fund(payload) => payload.into_response_payload(query_params),

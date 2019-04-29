@@ -18,11 +18,35 @@ export interface SwapResponse extends HalResource {
     status: string;
 }
 
-export interface Action {
-    type: string;
-    invalid_until?: number;
-    payload: any;
-}
+export type Action =
+    | {
+          type: "bitcoin-send-amount-to-address";
+          payload: { to: string; amount: string; network: string };
+      }
+    | {
+          type: "bitcoin-broadcast-signed-transaction";
+          payload: { hex: string; network: string; locktime?: number };
+      }
+    | {
+          type: "ethereum-deploy-contract";
+          payload: {
+              data: string;
+              amount: string;
+              gas_limit: string;
+              network: string;
+          };
+      }
+    | {
+          type: "ethereum-invoke-contract";
+          payload: {
+              contract_address: string;
+              data: string;
+              amount: string;
+              gas_limit: string;
+              network: string;
+              min_block_timestamp?: number;
+          };
+      };
 
 export interface SwapsResponse extends HalResource {
     _embedded: {

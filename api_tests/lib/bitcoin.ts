@@ -20,11 +20,29 @@ export interface BtcConfig {
     rpc_port: number;
 }
 
+interface GetBlockchainInfoResponse {
+    mediantime: number;
+}
+
+interface VerboseRawTransactionResponse {
+    vout: {
+        scriptPubKey: {
+            addresses: string[];
+        };
+        value: number;
+    }[];
+}
+
+type HexRawTransactionResponse = string;
+
+type GetRawTransactionResponse =
+    | null
+    | HexRawTransactionResponse
+    | VerboseRawTransactionResponse;
+
 interface BitcoinRpcClient {
-    // TODO: Create Interface for Promise returned by RPC calls
-    // We should avoid to use `any` and instead create the interface
-    // of what is returned by the RPC calls
-    generate(num: number): Promise<any>;
+    generate(num: number): Promise<string[]>;
+    getBlockchainInfo(): Promise<GetBlockchainInfoResponse>;
 
     getBlockCount(): Promise<number>;
 
@@ -32,11 +50,11 @@ interface BitcoinRpcClient {
         txId: string,
         verbose?: boolean,
         blockHash?: string
-    ): Promise<any>;
+    ): Promise<GetRawTransactionResponse>;
 
-    sendToAddress(address: string, amount: number | string): Promise<any>;
+    sendToAddress(address: string, amount: number | string): Promise<string>;
 
-    sendRawTransaction(hexString: string): Promise<any>;
+    sendRawTransaction(hexString: string): Promise<string>;
 }
 
 interface Utxo {
@@ -75,25 +93,34 @@ export async function generate(num: number = 1) {
     return createBitcoinRpcClient(_bitcoinConfig).generate(num);
 }
 
+export async function getBlockchainInfo() {
+    return createBitcoinRpcClient(_bitcoinConfig).getBlockchainInfo();
+}
+
 module.exports.generate = generate;
 
-export async function ensureSegwit() {
+export async function ensureFunding() {
     const blockHeight = await createBitcoinRpcClient(
         _bitcoinConfig
     ).getBlockCount();
-    if (blockHeight < 432) {
-        await createBitcoinRpcClient(_bitcoinConfig).generate(432);
+    if (blockHeight < 101) {
+        await createBitcoinRpcClient(_bitcoinConfig).generate(
+            101 - blockHeight
+        );
     }
 }
 
-module.exports.ensureSegwit = ensureSegwit;
+module.exports.ensureSegwit = ensureFunding;
 
 export async function getFirstUtxoValueTransferredTo(
     txId: string,
     address: string
 ) {
     let satoshi = 0;
-    let tx = await _bitcoinRpcClient.getRawTransaction(txId, true);
+    let tx = (await _bitcoinRpcClient.getRawTransaction(
+        txId,
+        true
+    )) as VerboseRawTransactionResponse;
     let vout = tx.vout[0];
 
     if (
@@ -145,7 +172,9 @@ export class BitcoinWallet {
             this.identity().address,
             btcValue
         );
-        let raw_transaction = await _bitcoinRpcClient.getRawTransaction(txId);
+        let raw_transaction = (await _bitcoinRpcClient.getRawTransaction(
+            txId
+        )) as HexRawTransactionResponse;
         let transaction = Transaction.fromHex(raw_transaction);
         let entries: Out[] = transaction.outs;
         this.bitcoinUtxos.push(

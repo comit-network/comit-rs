@@ -11,7 +11,7 @@ import * as toml from "toml";
 import * as fs from "fs";
 
 import chaiHttp = require("chai-http");
-import { sleep } from "./util";
+import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
 
 chai.use(chaiHttp);
@@ -106,9 +106,7 @@ export class Actor {
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);
         }
-        let type = action.type;
-
-        switch (type) {
+        switch (action.type) {
             case "bitcoin-send-amount-to-address": {
                 action.payload.should.include.all.keys("to", "amount");
                 let { to, amount } = action.payload;
@@ -116,7 +114,36 @@ export class Actor {
                 return this.wallet.btc().sendToAddress(to, parseInt(amount));
             }
             case "bitcoin-broadcast-signed-transaction": {
-                let { hex } = action.payload;
+                action.payload.should.include.all.keys("hex", "locktime");
+
+                let fetchMedianTime = async () => {
+                    let blockchainInfo = await bitcoin.getBlockchainInfo();
+                    return blockchainInfo.mediantime;
+                };
+
+                let { hex, locktime } = action.payload;
+
+                // If it is equal, it is rejected by bitcoin-core :(
+                locktime += 1;
+
+                let medianTime = await fetchMedianTime();
+                let diff = locktime - medianTime;
+
+                if (locktime && diff > 0) {
+                    console.log(`Waiting for median time to pass %d`, locktime);
+
+                    while (diff > 0) {
+                        await sleep(1000);
+
+                        medianTime = await fetchMedianTime();
+                        diff = locktime - medianTime;
+
+                        console.log(
+                            `Current median time:            %d`,
+                            medianTime
+                        );
+                    }
+                }
 
                 return bitcoin.sendRawTransaction(hex);
             }
@@ -131,7 +158,8 @@ export class Actor {
                     "contract_address",
                     "data",
                     "amount",
-                    "gas_limit"
+                    "gas_limit",
+                    "min_block_timestamp"
                 );
 
                 let {
@@ -139,7 +167,22 @@ export class Actor {
                     data,
                     amount,
                     gas_limit,
+                    min_block_timestamp,
                 } = action.payload;
+
+                if (seconds_until(min_block_timestamp) > 0) {
+                    // Ethereum needs a buffer, otherwise the contract code is run but doesn't transfer any funds,
+                    // see https://github.com/comit-network/RFCs/issues/62
+                    let buffer = 2;
+                    let delay = seconds_until(min_block_timestamp) + buffer;
+
+                    console.log(
+                        `Waiting for %d seconds before action can be executed.`,
+                        delay
+                    );
+
+                    await sleep(delay * 1000);
+                }
 
                 return this.wallet
                     .eth()
@@ -151,7 +194,7 @@ export class Actor {
                     );
             }
             default:
-                throw Error("Action type " + type + " unsupported");
+                throw Error(`Action ${action} is not unsupported`);
         }
     }
 }

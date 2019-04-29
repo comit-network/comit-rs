@@ -27,7 +27,7 @@ setTimeout(async function() {
         let token_contract_address: string;
         before(async function() {
             this.timeout(5000);
-            await bitcoin.ensureSegwit();
+            await bitcoin.ensureFunding();
             await tobyWallet.btc().fund(5);
         });
 
