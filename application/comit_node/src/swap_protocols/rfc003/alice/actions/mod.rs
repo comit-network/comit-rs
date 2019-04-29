@@ -1,8 +1,7 @@
 use crate::swap_protocols::rfc003::actions::Action;
-mod btc_erc20;
-mod btc_eth;
-mod erc20_btc;
-mod eth_btc;
+
+mod erc20;
+mod generic_impl;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum ActionKind<Deploy, Fund, Redeem, Refund> {

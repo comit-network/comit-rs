@@ -1,7 +1,5 @@
-mod btc_erc20;
-mod btc_eth;
-mod erc20_btc;
-mod eth_btc;
+mod erc20;
+mod generic_impl;
 
 use crate::{
     comit_client::{SwapDeclineReason, SwapReject},
