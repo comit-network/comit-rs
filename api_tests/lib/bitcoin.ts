@@ -97,8 +97,6 @@ export async function getBlockchainInfo() {
     return createBitcoinRpcClient(_bitcoinConfig).getBlockchainInfo();
 }
 
-module.exports.generate = generate;
-
 export async function ensureFunding() {
     const blockHeight = await createBitcoinRpcClient(
         _bitcoinConfig
@@ -109,8 +107,6 @@ export async function ensureFunding() {
         );
     }
 }
-
-module.exports.ensureSegwit = ensureFunding;
 
 export async function getFirstUtxoValueTransferredTo(
     txId: string,
@@ -132,8 +128,6 @@ export async function getFirstUtxoValueTransferredTo(
 
     return satoshi;
 }
-
-module.exports.getFirstUtxoValueTransferredTo = getFirstUtxoValueTransferredTo;
 
 export async function sendRawTransaction(hexString: string) {
     return createBitcoinRpcClient(_bitcoinConfig).sendRawTransaction(hexString);
