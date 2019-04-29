@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     ledger::Ethereum,
     rfc003::{
-        actions::OneStepFundActions,
+        actions::{FundAction, RedeemAction, RefundAction},
         ethereum::{self, EtherHtlc},
         secret_source::SecretSource,
         state_machine::HtlcParams,
@@ -10,14 +10,15 @@ use crate::swap_protocols::{
 };
 use ethereum_support::{Address as EthereumAddress, Bytes, EtherQuantity};
 
-impl OneStepFundActions<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
+impl FundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
     type FundActionOutput = ethereum::ContractDeploy;
-    type RefundActionOutput = ethereum::SendTransaction;
-    type RedeemActionOutput = ethereum::SendTransaction;
 
     fn fund_action(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self::FundActionOutput {
         htlc_params.into()
     }
+}
+impl RefundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
+    type RefundActionOutput = ethereum::SendTransaction;
 
     fn refund_action(
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -35,6 +36,9 @@ impl OneStepFundActions<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
             network: htlc_params.ledger.network,
         }
     }
+}
+impl RedeemAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
+    type RedeemActionOutput = ethereum::SendTransaction;
 
     fn redeem_action(
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,

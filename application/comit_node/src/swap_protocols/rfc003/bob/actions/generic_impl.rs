@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        actions::{Actions, OneStepFundActions},
+        actions::{Actions, FundAction, RedeemAction, RefundAction},
         bob::{
             self,
             actions::{Accept, Decline},
@@ -19,17 +19,18 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    (AL, AA): OneStepFundActions<AL, AA>,
-    (BL, BA): OneStepFundActions<BL, BA>,
+    (BL, BA): FundAction<BL, BA>,
+    (AL, AA): RedeemAction<AL, AA>,
+    (BL, BA): RefundAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = bob::ActionKind<
         Accept<AL, BL>,
         Decline<AL, BL>,
         (),
-        <(BL, BA) as OneStepFundActions<BL, BA>>::FundActionOutput,
-        <(AL, AA) as OneStepFundActions<AL, AA>>::RedeemActionOutput,
-        <(BL, BA) as OneStepFundActions<BL, BA>>::RefundActionOutput,
+        <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
+        <(AL, AA) as RedeemAction<AL, AA>>::RedeemActionOutput,
+        <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Action<Self::ActionKind>> {

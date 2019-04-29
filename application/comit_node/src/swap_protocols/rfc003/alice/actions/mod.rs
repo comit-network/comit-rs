@@ -1,7 +1,7 @@
 use crate::swap_protocols::rfc003::actions::Action;
 
 mod erc20;
-mod one_step_fund_actions;
+mod generic_impl;
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub enum ActionKind<Deploy, Fund, Redeem, Refund> {

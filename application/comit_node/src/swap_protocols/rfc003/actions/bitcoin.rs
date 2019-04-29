@@ -1,17 +1,18 @@
 use crate::swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
-        actions::OneStepFundActions, bitcoin, secret_source::SecretSource,
-        state_machine::HtlcParams, Secret,
+        actions::{FundAction, RedeemAction, RefundAction},
+        bitcoin,
+        secret_source::SecretSource,
+        state_machine::HtlcParams,
+        Secret,
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
 
-impl OneStepFundActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
+impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
     type FundActionOutput = bitcoin::SendToAddress;
-    type RefundActionOutput = bitcoin::SpendOutput;
-    type RedeemActionOutput = bitcoin::SpendOutput;
 
     fn fund_action(htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
@@ -22,6 +23,10 @@ impl OneStepFundActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity)
             network: htlc_params.ledger.network,
         }
     }
+}
+
+impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
+    type RefundActionOutput = bitcoin::SpendOutput;
 
     fn refund_action(
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
@@ -39,6 +44,10 @@ impl OneStepFundActions<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity)
             network: htlc_params.ledger.network,
         }
     }
+}
+
+impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
+    type RedeemActionOutput = bitcoin::SpendOutput;
 
     fn redeem_action(
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
