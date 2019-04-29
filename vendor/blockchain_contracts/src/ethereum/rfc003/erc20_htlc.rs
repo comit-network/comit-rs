@@ -31,7 +31,7 @@ impl Erc20Htlc {
         "6000000000000000000000000000000000000006";
 
     const DEPLOY_HEADER_TEMPLATE: &'static str =
-        include_str!("./templates/out/erc20_deploy_header.asm.hex");
+        include_str!("./templates/out/deploy_header.asm.hex");
     const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
     const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
 

@@ -11,9 +11,8 @@ use std::{
 
 fn main() -> std::io::Result<()> {
     compile("./src/ethereum/rfc003/templates/ether_contract.asm")?;
-    compile("./src/ethereum/rfc003/templates/ether_deploy_header.asm")?;
+    compile("./src/ethereum/rfc003/templates/deploy_header.asm")?;
     compile("./src/ethereum/rfc003/templates/erc20_contract.asm")?;
-    compile("./src/ethereum/rfc003/templates/erc20_deploy_header.asm")?;
 
     Ok(())
 }
