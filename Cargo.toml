@@ -15,3 +15,6 @@ members = [
     "vendor/tc_web3_client",
     "vendor/noise_handshake"
 ]
+
+[replace]
+"bitcoin_rpc_client:0.6.0" = { git = "https://github.com/coblox/bitcoinrpc-rust-client", branch = "from-verboserawtx-to-bitcointx-0.6" }
