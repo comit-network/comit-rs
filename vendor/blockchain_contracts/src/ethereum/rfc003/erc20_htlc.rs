@@ -1,5 +1,5 @@
 use crate::{
-    ethereum::{rfc003::Htlc, ByteCode},
+    ethereum::ByteCode,
     rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
     Offset,
 };
@@ -140,10 +140,8 @@ impl Erc20Htlc {
             token_contract_address,
         ]
     }
-}
 
-impl Htlc for Erc20Htlc {
-    fn compile_to_hex(&self) -> ByteCode {
+    pub fn compile_to_hex(&self) -> ByteCode {
         let refund_timestamp = format!("{:0>8x}", u32::from(self.refund_timestamp));
         let redeem_address = format!("{:x}", self.redeem_address);
         let refund_address = format!("{:x}", self.refund_address);

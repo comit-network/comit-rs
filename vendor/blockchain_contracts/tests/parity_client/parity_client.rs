@@ -1,8 +1,5 @@
 use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
-use blockchain_contracts::{
-    ethereum::rfc003::Htlc,
-    rfc003::{seconds::Seconds, secret_hash::SecretHash},
-};
+use blockchain_contracts::rfc003::{seconds::Seconds, secret_hash::SecretHash};
 use ethereum_support::{
     web3::{transports::Http, Web3},
     Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,
@@ -196,14 +193,14 @@ impl ParityClient {
         receipt
     }
 
-    pub fn deploy_htlc(&self, htlc: impl Htlc, value: U256) -> H256 {
+    pub fn deploy_htlc(&self, data: Bytes, value: U256) -> H256 {
         self.sign_and_send(|nonce, gas_price| UnsignedTransaction {
             nonce,
             gas_price,
             gas_limit: U256::from(500_000),
             to: None,
             value,
-            data: Some(htlc.compile_to_hex().into()),
+            data: Some(data.clone()),
         })
     }
 

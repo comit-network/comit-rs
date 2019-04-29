@@ -79,7 +79,9 @@ pub fn ether_harness<D: Docker>(
             alice,
             bob,
             params.htlc_secret_hash,
-        ),
+        )
+        .compile_to_hex()
+        .into(),
         params.htlc_eth_value.wei(),
     );
 
