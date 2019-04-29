@@ -21,6 +21,8 @@ pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
 }
 
 pub const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
+pub const SECRET_HASH: &'static str =
+    "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec";
 
 #[derive(Debug)]
 pub struct CustomSizeSecret(pub Vec<u8>);
@@ -32,7 +34,7 @@ impl CustomSizeSecret {
 
         let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
         sha.result(&mut result);
-        SecretHash::from(result)
+        SecretHash::from_str(hex::encode(result).as_str()).unwrap()
     }
 }
 

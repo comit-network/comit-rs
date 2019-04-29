@@ -1,5 +1,3 @@
-use crate::rfc003::secret_hash::SecretHash;
-use crypto::{digest::Digest, sha2::Sha256};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
@@ -34,15 +32,6 @@ impl Secret {
         let vec = &vec[..Self::LENGTH];
         data.copy_from_slice(vec);
         Ok(Secret(data))
-    }
-
-    pub fn hash(&self) -> SecretHash {
-        let mut sha = Sha256::new();
-        sha.input(&self.0);
-
-        let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
-        sha.result(&mut result);
-        SecretHash::from(result)
     }
 
     pub fn raw_secret(&self) -> &[u8; Self::LENGTH] {
@@ -111,31 +100,6 @@ impl Serialize for Secret {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn new_secret_hash_as_hex() {
-        let bytes = b"hello world, you are beautiful!!";
-        let secret = Secret::from(*bytes);
-        assert_eq!(
-            secret.hash().to_string(),
-            "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
-        );
-    }
-
-    #[test]
-    fn secret_hash_should_be_displayed_as_hex() {
-        let bytes = b"hello world, you are beautiful!!";
-        let secret = Secret::from(*bytes);
-
-        let hash = secret.hash();
-
-        let formatted_hash = format!("{}", hash);
-
-        assert_eq!(
-            formatted_hash,
-            "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec"
-        )
-    }
 
     #[test]
     fn round_trip_secret_serialization() {

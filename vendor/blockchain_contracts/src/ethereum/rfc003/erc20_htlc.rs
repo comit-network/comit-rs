@@ -107,7 +107,7 @@ impl Erc20Htlc {
         deploy_header + Self::CONTRACT_CODE_TEMPLATE
     }
 
-    fn get_offset(name: &str, placeholder: &str) -> Offset {
+    fn offset(name: &str, placeholder: &str) -> Offset {
         let contract = Self::compile_template_to_hex();
 
         let re_match = Regex::new(placeholder)
@@ -122,15 +122,14 @@ impl Erc20Htlc {
         )
     }
 
-    pub fn get_all_offsets() -> Vec<Offset> {
-        let refund_timestamp =
-            Self::get_offset("Refund timestamp", Self::REFUND_TIMESTAMP_PLACEHOLDER);
-        let redeem_address = Self::get_offset("Redeem Address\t", Self::REDEEM_ADDRESS_PLACEHOLDER);
-        let refund_address = Self::get_offset("Refund Address\t", Self::REFUND_ADDRESS_PLACEHOLDER);
-        let secret_hash = Self::get_offset("Secret Hash\t\t", Self::SECRET_HASH_PLACEHOLDER);
-        let amount = Self::get_offset("Amount\t\t\t", Self::AMOUNT_PLACEHOLDER);
+    pub fn all_offsets() -> Vec<Offset> {
+        let refund_timestamp = Self::offset("Refund timestamp", Self::REFUND_TIMESTAMP_PLACEHOLDER);
+        let redeem_address = Self::offset("Redeem Address\t", Self::REDEEM_ADDRESS_PLACEHOLDER);
+        let refund_address = Self::offset("Refund Address\t", Self::REFUND_ADDRESS_PLACEHOLDER);
+        let secret_hash = Self::offset("Secret Hash\t\t", Self::SECRET_HASH_PLACEHOLDER);
+        let amount = Self::offset("Amount\t\t\t", Self::AMOUNT_PLACEHOLDER);
         let token_contract_address =
-            Self::get_offset("Token Contract\t", Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER);
+            Self::offset("Token Contract\t", Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER);
 
         vec![
             secret_hash,

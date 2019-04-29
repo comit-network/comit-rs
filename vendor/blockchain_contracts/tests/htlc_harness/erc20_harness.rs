@@ -1,11 +1,11 @@
 use crate::{
     ethereum_wallet::InMemoryWallet,
-    htlc_harness::{new_account, SECRET},
+    htlc_harness::{new_account, SECRET_HASH},
     parity_client::ParityClient,
 };
 use blockchain_contracts::{
     ethereum::rfc003::Erc20Htlc,
-    rfc003::{secret::Secret, secret_hash::SecretHash, timestamp::Timestamp},
+    rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
 };
 use ethereum_support::{
     web3::{
@@ -14,7 +14,7 @@ use ethereum_support::{
     },
     EtherQuantity,
 };
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -32,7 +32,7 @@ impl Default for Erc20HarnessParams {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_refund_timestamp: Timestamp::now().plus(10),
-            htlc_secret_hash: Secret::from_vec(SECRET).unwrap().hash(),
+            htlc_secret_hash: SecretHash::from_str(SECRET_HASH).unwrap(),
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
         }
