@@ -9,7 +9,7 @@ use crate::{
         MetadataStore, SwapId,
     },
 };
-use bitcoin_support::{self, serialize_hex, BitcoinQuantity};
+use bitcoin_support::{self, serialize_hex, BitcoinQuantity, Network, Transaction};
 use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode};
 use rustic_hal::HalResource;
@@ -82,7 +82,7 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: bitcoin_support::Network,
-        locktime: Option<Timestamp>,
+        min_median_time: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: ethereum_support::Bytes,
@@ -98,6 +98,25 @@ pub enum ActionResponseBody {
         network: ethereum_support::Network,
         min_block_timestamp: Option<Timestamp>,
     },
+}
+
+impl ActionResponseBody {
+    fn bitcoin_broadcast_signed_transaction(transaction: &Transaction, network: Network) -> Self {
+        let min_median_time = if transaction.lock_time == 0 {
+            None
+        } else {
+            // The first time a tx with lock_time can be broadcasted is when
+            // mediantime == locktime + 1
+            let min_median_time = transaction.lock_time + 1;
+            Some(Timestamp::from(min_median_time))
+        };
+
+        ActionResponseBody::BitcoinBroadcastSignedTransaction {
+            hex: serialize_hex(&transaction),
+            network,
+            min_median_time,
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Debug, PartialEq)]
@@ -161,11 +180,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                             .set_detail("Issue encountered when signing Bitcoin transaction.")
                     })?;
 
-                Ok(ActionResponseBody::BitcoinBroadcastSignedTransaction {
-                    hex: serialize_hex(&transaction),
-                    network,
-                    locktime: if transaction.lock_time == 0 { None } else { Some(transaction.lock_time.into()) }
-                })
+                Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(&transaction, network))
             }
             _ => {
                 Err(problem::missing_query_parameters("bitcoin::SpendOutput", vec![

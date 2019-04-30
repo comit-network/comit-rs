@@ -121,27 +121,29 @@ export class Actor {
                     return blockchainInfo.mediantime;
                 };
 
-                let { hex, locktime } = action.payload;
+                let { hex, min_median_time } = action.payload;
 
-                // If it is equal, it is rejected by bitcoin-core :(
-                locktime += 1;
+                if (min_median_time) {
+                    let medianTime = await fetchMedianTime();
+                    let diff = min_median_time - medianTime;
 
-                let medianTime = await fetchMedianTime();
-                let diff = locktime - medianTime;
-
-                if (locktime && diff > 0) {
-                    console.log(`Waiting for median time to pass %d`, locktime);
-
-                    while (diff > 0) {
-                        await sleep(1000);
-
-                        medianTime = await fetchMedianTime();
-                        diff = locktime - medianTime;
-
+                    if (diff > 0) {
                         console.log(
-                            `Current median time:            %d`,
-                            medianTime
+                            `Waiting for median time to pass %d`,
+                            min_median_time
                         );
+
+                        while (diff > 0) {
+                            await sleep(1000);
+
+                            medianTime = await fetchMedianTime();
+                            diff = min_median_time - medianTime;
+
+                            console.log(
+                                `Current median time:            %d`,
+                                medianTime
+                            );
+                        }
                     }
                 }
 
