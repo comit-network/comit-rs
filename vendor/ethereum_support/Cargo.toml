@@ -16,7 +16,7 @@ serde = { version = "1", features = ["derive"] }
 strum = "0.14.0"
 strum_macros = "0.14.0"
 tiny-keccak = "1.4"
-extern_web3 = { package = "web3", version = "0.5" }
+extern_web3 = { package = "web3", version = "0.6" }
 
 [dev-dependencies]
 hex = "0.3"

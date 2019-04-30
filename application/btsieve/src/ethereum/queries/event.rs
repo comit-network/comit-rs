@@ -178,6 +178,7 @@ mod tests {
     use crate::web3::types::{
         Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256, U128, U256,
     };
+    use ethbloom::Bloom;
     use spectral::prelude::*;
     use std::str::FromStr;
 
@@ -202,6 +203,8 @@ mod tests {
             uncles: vec![],
             transactions,
             size: None,
+            mix_hash: None,
+            nonce: None,
         }
     }
 
@@ -244,10 +247,11 @@ mod tests {
             block_hash: None,
             block_number: None,
             cumulative_gas_used: U256::from(0),
-            gas_used: U256::from(0),
+            gas_used: None,
             contract_address: None,
             logs,
             status: None,
+            logs_bloom: Bloom::default(),
         }
     }
 
