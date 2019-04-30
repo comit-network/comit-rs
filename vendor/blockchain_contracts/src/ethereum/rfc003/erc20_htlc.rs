@@ -5,7 +5,7 @@ use crate::{
 };
 use binary_macros::{base16, base16_impl};
 use ethereum_support::{Address, Bytes, U256};
-use regex::Regex;
+use regex::bytes::Regex;
 
 #[derive(Debug, Clone)]
 pub struct Erc20Htlc {
@@ -29,6 +29,18 @@ impl Erc20Htlc {
         "5000000000000000000000000000000000000000000000000000000000000005";
     const TOKEN_CONTRACT_ADDRESS_PLACEHOLDER: &'static str =
         "6000000000000000000000000000000000000006";
+
+    const SECRET_HASH_REGEX: &'static str =
+        r"\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01";
+    const EXPIRY_REGEX: &'static str = r"\x20\x00\x00\x02";
+    const REDEEM_ADDRESS_REGEX: &'static str =
+        r"\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03";
+    const REFUND_ADDRESS_REGEX: &'static str =
+        r"\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04";
+    const AMOUNT_REGEX: &'static str =
+        r"\x50\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x05";
+    const TOKEN_CONTRACT_ADDRESS_REGEX: &'static str =
+        r"\x60\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x06";
 
     const DEPLOY_HEADER_TEMPLATE: &'static str =
         include_str!("./templates/out/deploy_header.asm.hex");
@@ -107,33 +119,30 @@ impl Erc20Htlc {
         deploy_header + Self::CONTRACT_CODE_TEMPLATE
     }
 
-    fn offset(data_name: DataName, placeholder: &str) -> Offset {
-        let contract = Self::compile_template_to_hex();
+    fn offset(data_name: DataName, regex: &str) -> Offset {
+        let contract = hex::decode(Self::compile_template_to_hex())
+            .expect("contract is expected to be hex encoded");
 
-        let re_match = Regex::new(placeholder)
+        let re_match = Regex::new(regex)
             .expect("Could not create regex")
-            .find(contract.as_str())
-            .expect("Could not find placeholder in hex code");
+            .find(&contract)
+            .expect("Could not find regex in hex code");
         Offset::new(
             data_name,
-            re_match.start() / 2,
-            re_match.end() / 2,
-            placeholder.len() / 2,
+            re_match.start(),
+            re_match.end(),
+            re_match.end() - re_match.start(),
         )
     }
 
     pub fn all_offsets() -> Vec<Offset> {
-        let refund_timestamp = Self::offset(DataName::Expiry, Self::EXPIRY_PLACEHOLDER);
-        let redeem_address =
-            Self::offset(DataName::RedeemIdentity, Self::REDEEM_ADDRESS_PLACEHOLDER);
-        let refund_address =
-            Self::offset(DataName::RefundIdentity, Self::REFUND_ADDRESS_PLACEHOLDER);
-        let secret_hash = Self::offset(DataName::SecretHash, Self::SECRET_HASH_PLACEHOLDER);
-        let amount = Self::offset(DataName::TokenQuantity, Self::AMOUNT_PLACEHOLDER);
-        let token_contract_address = Self::offset(
-            DataName::TokenContract,
-            Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
-        );
+        let refund_timestamp = Self::offset(DataName::Expiry, Self::EXPIRY_REGEX);
+        let redeem_address = Self::offset(DataName::RedeemIdentity, Self::REDEEM_ADDRESS_REGEX);
+        let refund_address = Self::offset(DataName::RefundIdentity, Self::REFUND_ADDRESS_REGEX);
+        let secret_hash = Self::offset(DataName::SecretHash, Self::SECRET_HASH_REGEX);
+        let amount = Self::offset(DataName::TokenQuantity, Self::AMOUNT_REGEX);
+        let token_contract_address =
+            Self::offset(DataName::TokenContract, Self::TOKEN_CONTRACT_ADDRESS_REGEX);
 
         vec![
             secret_hash,
