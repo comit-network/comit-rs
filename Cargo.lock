@@ -334,6 +334,8 @@ dependencies = [
  "serde 1.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strum 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "strum_macros 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
  "tc_web3_client 0.1.0",
  "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -12,6 +12,9 @@ regex = "1.1"
 rust-crypto = "0.2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+strum = "0.14"
+strum_macros = "0.14"
+
 
 [dependencies.ethereum_support]
 path = "../../vendor/ethereum_support"

@@ -4,13 +4,16 @@
 #[macro_use]
 extern crate serde;
 
+#[macro_use]
+extern crate strum_macros;
+
 use std::cmp::Ordering;
 
 pub mod ethereum;
 pub mod rfc003;
 
-#[derive(Clone, Copy, Debug, Serialize)]
-#[serde(rename_all = "snake_case")]
+#[derive(Clone, Copy, Display, Debug, Serialize)]
+#[strum(serialize_all = "snake_case")]
 pub enum DataName {
     SecretHash,
     Expiry,
@@ -18,14 +21,6 @@ pub enum DataName {
     RefundIdentity,
     TokenQuantity,
     TokenContract,
-}
-
-impl DataName {
-    fn to_markdown(&self) -> String {
-        serde_json::to_string(&self)
-            .expect("serialisation cannot fail")
-            .replace("\"", "")
-    }
 }
 
 #[derive(Debug)]
@@ -58,10 +53,7 @@ impl Offset {
     fn row_format(&self) -> String {
         format!(
             "| `{}` | {}..{} | {} |",
-            self.data.to_markdown(),
-            self.start,
-            self.excluded_end,
-            self.length
+            self.data, self.start, self.excluded_end, self.length
         )
     }
 }
