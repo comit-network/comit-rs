@@ -4,46 +4,57 @@
 #[macro_use]
 extern crate serde;
 
-use std::{cmp::Ordering, fmt::Display};
+use std::cmp::Ordering;
 
 pub mod ethereum;
 pub mod rfc003;
 
-#[derive(Debug, Eq)]
-pub struct Offset {
-    data: String,
-    start: usize,
-    end: usize,
-    length: usize,
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DataName {
+    SecretHash,
+    Expiry,
+    RedeemIdentity,
+    RefundIdentity,
+    TokenQuantity,
+    TokenContract,
 }
 
-impl Display for Offset {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "{}\t{}\t\t{}\t{}",
-            self.data, self.start, self.end, self.length
-        )
-    }
+#[derive(Debug)]
+pub struct Offset {
+    start: usize,
+    excluded_end: usize,
+    length: usize,
+    data: DataName,
 }
 
 pub fn format_table(mut offsets: Vec<Offset>) -> String {
-    let mut res = String::from("Data\t\t\t\tStart\tEnd\tLength");
+    let mut res = String::from("| Data | Byte Range | Length (bytes) |\n|:--- |:--- |:--- |");
     offsets.sort_unstable();
     for offset in offsets {
-        res = format!("{}\n{}", res, offset)
+        res = format!("{}\n{}", res, offset.row_format())
     }
     res
 }
 
 impl Offset {
-    fn new(data: String, start: usize, end: usize, length: usize) -> Offset {
+    fn new(data: DataName, start: usize, excluded_end: usize, length: usize) -> Offset {
         Offset {
             data,
             start,
-            end,
+            excluded_end,
             length,
         }
+    }
+
+    fn row_format(&self) -> String {
+        format!(
+            "| `{}` | {}..{} | {} |",
+            serde_json::to_string(&self.data).expect("serialisation cannot fail"),
+            self.start,
+            self.excluded_end,
+            self.length
+        )
     }
 }
 
@@ -64,3 +75,5 @@ impl Ord for Offset {
         self.start.cmp(&other.start)
     }
 }
+
+impl Eq for Offset {}

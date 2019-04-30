@@ -1,7 +1,7 @@
 use crate::{
     ethereum::ByteCode,
     rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
-    Offset,
+    DataName, Offset,
 };
 use binary_macros::{base16, base16_impl};
 use ethereum_support::{Address, Bytes, U256};
@@ -22,7 +22,7 @@ impl Erc20Htlc {
         include_str!("./templates/out/erc20_contract.asm.hex");
     const SECRET_HASH_PLACEHOLDER: &'static str =
         "1000000000000000000000000000000000000000000000000000000000000001";
-    const REFUND_TIMESTAMP_PLACEHOLDER: &'static str = "20000002";
+    const EXPIRY_PLACEHOLDER: &'static str = "20000002";
     const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const AMOUNT_PLACEHOLDER: &'static str =
@@ -107,7 +107,7 @@ impl Erc20Htlc {
         deploy_header + Self::CONTRACT_CODE_TEMPLATE
     }
 
-    fn offset(name: &str, placeholder: &str) -> Offset {
+    fn offset(data_name: DataName, placeholder: &str) -> Offset {
         let contract = Self::compile_template_to_hex();
 
         let re_match = Regex::new(placeholder)
@@ -115,7 +115,7 @@ impl Erc20Htlc {
             .find(contract.as_str())
             .expect("Could not find placeholder in hex code");
         Offset::new(
-            name.into(),
+            data_name,
             re_match.start() / 2,
             re_match.end() / 2,
             placeholder.len() / 2,
@@ -123,13 +123,17 @@ impl Erc20Htlc {
     }
 
     pub fn all_offsets() -> Vec<Offset> {
-        let refund_timestamp = Self::offset("Refund timestamp", Self::REFUND_TIMESTAMP_PLACEHOLDER);
-        let redeem_address = Self::offset("Redeem Address\t", Self::REDEEM_ADDRESS_PLACEHOLDER);
-        let refund_address = Self::offset("Refund Address\t", Self::REFUND_ADDRESS_PLACEHOLDER);
-        let secret_hash = Self::offset("Secret Hash\t\t", Self::SECRET_HASH_PLACEHOLDER);
-        let amount = Self::offset("Amount\t\t\t", Self::AMOUNT_PLACEHOLDER);
-        let token_contract_address =
-            Self::offset("Token Contract\t", Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER);
+        let refund_timestamp = Self::offset(DataName::Expiry, Self::EXPIRY_PLACEHOLDER);
+        let redeem_address =
+            Self::offset(DataName::RedeemIdentity, Self::REDEEM_ADDRESS_PLACEHOLDER);
+        let refund_address =
+            Self::offset(DataName::RefundIdentity, Self::REFUND_ADDRESS_PLACEHOLDER);
+        let secret_hash = Self::offset(DataName::SecretHash, Self::SECRET_HASH_PLACEHOLDER);
+        let amount = Self::offset(DataName::TokenQuantity, Self::AMOUNT_PLACEHOLDER);
+        let token_contract_address = Self::offset(
+            DataName::TokenContract,
+            Self::TOKEN_CONTRACT_ADDRESS_PLACEHOLDER,
+        );
 
         vec![
             secret_hash,
@@ -151,7 +155,7 @@ impl Erc20Htlc {
         let amount = format!("{:0>64}", format!("{:x}", self.amount));
 
         let contract_code = Self::compile_template_to_hex()
-            .replace(Self::REFUND_TIMESTAMP_PLACEHOLDER, &refund_timestamp)
+            .replace(Self::EXPIRY_PLACEHOLDER, &refund_timestamp)
             .replace(Self::REDEEM_ADDRESS_PLACEHOLDER, &redeem_address)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash)

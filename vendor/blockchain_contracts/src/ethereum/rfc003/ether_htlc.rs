@@ -1,7 +1,7 @@
 use crate::{
     ethereum::ByteCode,
     rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
-    Offset,
+    DataName, Offset,
 };
 use ethereum_support::{Address, Bytes, U256};
 use regex::Regex;
@@ -17,7 +17,7 @@ pub struct EtherHtlc {
 impl EtherHtlc {
     pub const CONTRACT_CODE_TEMPLATE: &'static str =
         include_str!("./templates/out/ether_contract.asm.hex");
-    const REFUND_TIMESTAMP_PLACEHOLDER: &'static str = "20000002";
+    const EXPIRY_PLACEHOLDER: &'static str = "20000002";
     const REDEEM_ADDRESS_PLACEHOLDER: &'static str = "3000000000000000000000000000000000000003";
     const REFUND_ADDRESS_PLACEHOLDER: &'static str = "4000000000000000000000000000000000000004";
     const SECRET_HASH_PLACEHOLDER: &'static str =
@@ -73,7 +73,7 @@ impl EtherHtlc {
         deploy_header + &Self::CONTRACT_CODE_TEMPLATE.to_string()
     }
 
-    fn get_offset(name: &str, placeholder: &str) -> Offset {
+    fn get_offset(data_name: DataName, placeholder: &str) -> Offset {
         let contract = Self::compile_template_to_hex();
 
         let re_match = Regex::new(placeholder)
@@ -81,7 +81,7 @@ impl EtherHtlc {
             .find(contract.as_str())
             .expect("Could not find placeholder in hex code");
         Offset::new(
-            name.into(),
+            data_name,
             re_match.start() / 2,
             re_match.end() / 2,
             placeholder.len() / 2,
@@ -89,11 +89,12 @@ impl EtherHtlc {
     }
 
     pub fn get_all_offsets() -> Vec<Offset> {
-        let refund_timestamp =
-            Self::get_offset("Refund timestamp", Self::REFUND_TIMESTAMP_PLACEHOLDER);
-        let redeem_address = Self::get_offset("Redeem Address\t", Self::REDEEM_ADDRESS_PLACEHOLDER);
-        let refund_address = Self::get_offset("Refund Address\t", Self::REFUND_ADDRESS_PLACEHOLDER);
-        let secret_hash = Self::get_offset("Secret Hash\t\t", Self::SECRET_HASH_PLACEHOLDER);
+        let refund_timestamp = Self::get_offset(DataName::Expiry, Self::EXPIRY_PLACEHOLDER);
+        let redeem_address =
+            Self::get_offset(DataName::RedeemIdentity, Self::REDEEM_ADDRESS_PLACEHOLDER);
+        let refund_address =
+            Self::get_offset(DataName::RefundIdentity, Self::REFUND_ADDRESS_PLACEHOLDER);
+        let secret_hash = Self::get_offset(DataName::SecretHash, Self::SECRET_HASH_PLACEHOLDER);
 
         vec![
             secret_hash,
@@ -110,7 +111,7 @@ impl EtherHtlc {
         let secret_hash = format!("{:x}", self.secret_hash);
 
         let contract_code = Self::compile_template_to_hex()
-            .replace(Self::REFUND_TIMESTAMP_PLACEHOLDER, &refund_timestamp)
+            .replace(Self::EXPIRY_PLACEHOLDER, &refund_timestamp)
             .replace(Self::REDEEM_ADDRESS_PLACEHOLDER, &redeem_address)
             .replace(Self::REFUND_ADDRESS_PLACEHOLDER, &refund_address)
             .replace(Self::SECRET_HASH_PLACEHOLDER, &secret_hash);
@@ -157,7 +158,7 @@ mod tests {
 
         let compiled_code = htlc.compile_to_hex().0;
 
-        assert!(!compiled_code.contains(EtherHtlc::REFUND_TIMESTAMP_PLACEHOLDER));
+        assert!(!compiled_code.contains(EtherHtlc::EXPIRY_PLACEHOLDER));
         assert!(!compiled_code.contains(EtherHtlc::REDEEM_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(EtherHtlc::REFUND_ADDRESS_PLACEHOLDER));
         assert!(!compiled_code.contains(EtherHtlc::SECRET_HASH_PLACEHOLDER));
