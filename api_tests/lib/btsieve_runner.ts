@@ -41,7 +41,7 @@ export class BtsieveRunner {
         }
     }
 
-    async stopBtsieves() {
+    stopBtsieves() {
         let names = Object.keys(this.running_btsieves);
 
         if (names.length > 0) {

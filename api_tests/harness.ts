@@ -122,21 +122,23 @@ async function run_tests(test_files: string[]) {
         log_dir
     );
 
-    let clean_up = () => {};
-
-    process.once("SIGINT", () => {
+    process.on("SIGINT", () => {
         console.log("SIGINT RECEIEVED");
-        clean_up();
+        process.exit(0);
     });
 
-    clean_up = () => {
+    process.on("unhandledRejection", reason => {
+        console.error(reason);
+        process.exit(1);
+    });
+
+    process.on("exit", () => {
         console.log("cleaning up");
         btsieve_runner.stopBtsieves();
         node_runner.stopComitNodes();
         ledger_runner.stopLedgers();
         console.log("cleanup done");
-        process.exit();
-    };
+    });
 
     for (let test_file of test_files) {
         let test_dir = path.dirname(test_file);
@@ -144,14 +146,6 @@ async function run_tests(test_files: string[]) {
             fs.readFileSync(test_dir + "/config.toml", "utf8")
         );
         global.config = config;
-
-        const mocha = new Mocha({
-            bail: true,
-            ui: "bdd",
-            delay: true,
-        });
-
-        mocha.addFile(test_file);
 
         if (config.ledgers) {
             await ledger_runner.ensureLedgersRunning(config.ledgers);
@@ -169,29 +163,26 @@ async function run_tests(test_files: string[]) {
             );
         }
 
-        let test_finish = new Promise(res => {
-            mocha.run(async (failures: number) => {
-                res(failures);
-            });
+        let runTests = new Promise(res => {
+            new Mocha({ bail: true, ui: "bdd", delay: true })
+                .addFile(test_file)
+                .run((failures: number) => res(failures));
         });
 
-        let failures = await test_finish;
+        let failures = await runTests;
 
         if (failures) {
-            process.exitCode = 1;
             if (commander.dumpLogs || process.env.CARGO_MAKE_CI === "TRUE") {
                 execSync(`/bin/sh -c 'tail -n +1 ${test_root}/log/*.log'`, {
                     stdio: "inherit",
                 });
             }
-            break;
+            process.exit(1);
         }
 
         node_runner.stopComitNodes();
-        await btsieve_runner.stopBtsieves();
+        btsieve_runner.stopBtsieves();
     }
-
-    clean_up();
 }
 
 let test_files = commander.args;
