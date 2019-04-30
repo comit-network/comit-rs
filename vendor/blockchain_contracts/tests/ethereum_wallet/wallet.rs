@@ -1,6 +1,6 @@
 use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
 use ethereum_support::{Address, ToEthereumAddress};
-use secp256k1_support::{KeyPair, RecoverableSignature};
+use secp256k1_support::{KeyPair, Message, RecoverableSignature};
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;
@@ -27,8 +27,9 @@ impl InMemoryWallet {
 impl Wallet for InMemoryWallet {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a> {
         let hash: [u8; 32] = tx.hash(self.chain_id).into();
-
-        let signature = self.keypair.sign_ecdsa_recoverable(hash.into());
+        // `from_slice` can be replaced with `from` once https://github.com/rust-bitcoin/rust-secp256k1/issues/106 is done
+        let message = Message::from_slice(&hash).expect("Cannot fail as it is a [u8; 32]");
+        let signature = self.keypair.sign_ecdsa_recoverable(message);
 
         let (rec_id, signature) = RecoverableSignature::serialize_compact(&signature);
 
