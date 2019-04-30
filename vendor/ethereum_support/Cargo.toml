@@ -13,8 +13,8 @@ regex = "1.1"
 rlp = "0.2"
 secp256k1_support = { path = "../secp256k1_support" }
 serde = { version = "1", features = ["derive"] }
-strum = "0.14.0"
-strum_macros = "0.14.0"
+strum = "0.15"
+strum_macros = "0.15"
 tiny-keccak = "1.4"
 extern_web3 = { package = "web3", version = "0.6" }
 
