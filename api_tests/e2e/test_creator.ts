@@ -11,7 +11,7 @@ import * as chai from "chai";
 import { Actor } from "../lib/actor";
 import * as URI from "urijs";
 
-const should = chai.should();
+chai.should();
 
 interface Test {
     /**

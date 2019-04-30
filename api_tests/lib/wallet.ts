@@ -1,5 +1,5 @@
 import { BitcoinWallet, BtcConfig } from "./bitcoin";
-import { EthereumWallet, EthConfig } from "./ethereum";
+import { EthConfig, EthereumWallet } from "./ethereum";
 
 export interface WalletConfig {
     ethConfig?: EthConfig;

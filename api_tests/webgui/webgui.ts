@@ -4,11 +4,10 @@
 import { Actor } from "../lib/actor";
 import * as chai from "chai";
 import { HarnessGlobal } from "../lib/util";
-
 import chaiHttp = require("chai-http");
 
 chai.use(chaiHttp);
-const should = chai.should();
+chai.should();
 
 declare var global: HarnessGlobal;
 

@@ -15,7 +15,7 @@ export class BtsieveRunner {
         this.project_root = project_root;
     }
 
-    async ensureBtsievesRunning(btsieves: [string, MetaBtsieveConfig][]) {
+    ensureBtsievesRunning(btsieves: [string, MetaBtsieveConfig][]) {
         for (let [name, btsieve_config] of btsieves) {
             console.log("Starting Btsieve: " + name);
 
@@ -23,7 +23,7 @@ export class BtsieveRunner {
                 continue;
             }
 
-            this.running_btsieves[name] = await spawn(this.btsieve_bin, [], {
+            this.running_btsieves[name] = spawn(this.btsieve_bin, [], {
                 cwd: this.project_root,
                 env: btsieve_config.env,
                 stdio: [

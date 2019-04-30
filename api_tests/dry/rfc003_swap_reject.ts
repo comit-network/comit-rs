@@ -1,11 +1,11 @@
 import { Actor } from "../lib/actor";
 import * as util from "../lib/util";
-import * as chai from "chai";
-import { SwapResponse, SwapsResponse, Swap } from "../lib/comit";
-import * as utils from "web3-utils";
 import { HarnessGlobal } from "../lib/util";
-import chaiHttp = require("chai-http");
+import * as chai from "chai";
 import { expect } from "chai";
+import { Swap, SwapResponse, SwapsResponse } from "../lib/comit";
+import * as utils from "web3-utils";
+import chaiHttp = require("chai-http");
 
 chai.use(chaiHttp);
 chai.should();

@@ -1,18 +1,17 @@
-import { WalletConfig, Wallet } from "./wallet";
+import { Wallet, WalletConfig } from "./wallet";
 import * as chai from "chai";
 import {
     Action,
-    SwapResponse,
     ComitNodeConfig,
     MetaComitNodeConfig,
+    SwapResponse,
 } from "./comit";
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
 import * as fs from "fs";
-
-import chaiHttp = require("chai-http");
 import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
+import chaiHttp = require("chai-http");
 
 chai.use(chaiHttp);
 

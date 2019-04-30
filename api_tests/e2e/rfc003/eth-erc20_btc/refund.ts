@@ -2,14 +2,14 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
+import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
-import { BN, toBN, toWei } from "web3-utils";
-import { HarnessGlobal, sleep } from "../../../lib/util";
+import { toBN, toWei } from "web3-utils";
+import { HarnessGlobal } from "../../../lib/util";
 import { createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
-const should = chai.should();
+chai.should();
 chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;

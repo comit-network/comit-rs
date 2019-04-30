@@ -1,11 +1,11 @@
 import {
-    Transaction,
+    address,
     ECPair,
+    networks,
     Out,
     payments,
-    networks,
+    Transaction,
     TransactionBuilder,
-    address,
 } from "bitcoinjs-lib";
 import { test_rng } from "./util";
 

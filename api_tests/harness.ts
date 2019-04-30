@@ -1,7 +1,6 @@
 #!/usr/bin/env ./api_tests/node_modules/.bin/ts-node --project api_tests/tsconfig.json
 
-import { ChildProcess, execSync } from "child_process";
-import { spawn } from "child_process";
+import { ChildProcess, execSync, spawn } from "child_process";
 import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
 import * as toml from "toml";
@@ -152,7 +151,7 @@ async function run_tests(test_files: string[]) {
         }
 
         if (config.btsieve) {
-            await btsieve_runner.ensureBtsievesRunning(
+            btsieve_runner.ensureBtsievesRunning(
                 Object.entries(config.btsieve)
             );
         }
