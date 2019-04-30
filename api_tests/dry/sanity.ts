@@ -2,12 +2,11 @@
 // They are mostly about checking invalid request responses
 import { Actor } from "../lib/actor";
 import * as chai from "chai";
-import { HarnessGlobal, sleep } from "../lib/util";
-
+import { HarnessGlobal } from "../lib/util";
 import chaiHttp = require("chai-http");
 
 chai.use(chaiHttp);
-const should = chai.should();
+chai.should();
 
 declare var global: HarnessGlobal;
 

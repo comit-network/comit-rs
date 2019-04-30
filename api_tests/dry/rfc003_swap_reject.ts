@@ -4,11 +4,12 @@ import * as chai from "chai";
 import { SwapResponse, SwapsResponse, Swap } from "../lib/comit";
 import * as utils from "web3-utils";
 import { HarnessGlobal } from "../lib/util";
-
 import chaiHttp = require("chai-http");
+import { expect } from "chai";
 
 chai.use(chaiHttp);
-const should = chai.should();
+chai.should();
+
 declare var global: HarnessGlobal;
 
 const alpha_ledger_name = "bitcoin";
@@ -245,20 +246,23 @@ setTimeout(async function() {
                     state.beta_ledger.should.be.a("object");
 
                     let communication = state.communication;
-                    communication.should.be.a("object");
 
-                    communication.status.should.equal("SENT");
+                    expect(communication).to.be.a("object");
+                    expect(communication.status).to.equal("SENT");
 
-                    communication.alpha_expiry.should.be.a("number");
-                    should.not.exist(communication.alpha_redeem_identity);
-                    communication.alpha_refund_identity.should.be.a("string");
+                    expect(communication.alpha_expiry).to.be.a("number");
+                    expect(communication.alpha_redeem_identity).to.be.null;
+                    expect(communication.alpha_refund_identity).to.be.a(
+                        "string"
+                    );
 
-                    communication.beta_expiry.should.be.a("number");
-                    communication.beta_redeem_identity.should.equal(
+                    expect(communication.beta_expiry).to.be.a("number");
+                    expect(communication.beta_redeem_identity).to.equal(
                         alice_final_address
                     );
-                    should.not.exist(communication.beta_refund_identity);
-                    communication.secret_hash.should.be.a("string");
+                    expect(communication.beta_refund_identity).to.be.null;
+
+                    expect(communication.secret_hash).to.be.a("string");
                 });
         });
 
