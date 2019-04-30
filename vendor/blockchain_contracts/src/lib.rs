@@ -20,6 +20,14 @@ pub enum DataName {
     TokenContract,
 }
 
+impl DataName {
+    fn to_markdown(&self) -> String {
+        serde_json::to_string(&self)
+            .expect("serialisation cannot fail")
+            .replace("\"", "")
+    }
+}
+
 #[derive(Debug)]
 pub struct Offset {
     start: usize,
@@ -50,7 +58,7 @@ impl Offset {
     fn row_format(&self) -> String {
         format!(
             "| `{}` | {}..{} | {} |",
-            serde_json::to_string(&self.data).expect("serialisation cannot fail"),
+            self.data.to_markdown(),
             self.start,
             self.excluded_end,
             self.length
