@@ -182,6 +182,8 @@ async function run_tests(test_files: string[]) {
         node_runner.stopComitNodes();
         btsieve_runner.stopBtsieves();
     }
+
+    process.exit(0);
 }
 
 let test_files = commander.args;
