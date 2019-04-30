@@ -94,27 +94,27 @@ args = [
 
 [tasks.all]
 workspace = false
-alias = "dev-test-flow"
+extend = "dev-test-flow"
 
 [tasks.e2e]
 workspace = false
-alias = "e2e-tests-flow"
+extend = "e2e-tests-flow"
 
 [tasks.dry]
 workspace = false
-alias = "dry-tests-flow"
+extend = "dry-tests-flow"
 
 [tasks.btsieve]
 workspace = false
-alias = "btsieve-tests-flow"
+extend = "btsieve-tests-flow"
 
 [tasks.webgui]
 workspace = false
-alias = "webgui-tests-flow"
+extend = "webgui-tests-flow"
 
 [tasks.api]
 workspace = false
-alias = "api-tests-flow"
+extend = "api-tests-flow"
 
 ################
 # Custom tasks #
