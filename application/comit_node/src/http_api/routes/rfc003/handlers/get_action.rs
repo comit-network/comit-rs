@@ -112,7 +112,7 @@ impl ActionResponseBody {
         };
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: serialize_hex(&transaction),
+            hex: serialize_hex(transaction),
             network,
             min_median_time,
         }
