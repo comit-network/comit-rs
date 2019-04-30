@@ -114,7 +114,10 @@ export class Actor {
                 return this.wallet.btc().sendToAddress(to, parseInt(amount));
             }
             case "bitcoin-broadcast-signed-transaction": {
-                action.payload.should.include.all.keys("hex", "locktime");
+                action.payload.should.include.all.keys(
+                    "hex",
+                    "min_median_time"
+                );
 
                 let fetchMedianTime = async () => {
                     let blockchainInfo = await bitcoin.getBlockchainInfo();
