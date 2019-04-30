@@ -9,7 +9,7 @@ impl SecretHash {
 
 impl fmt::LowerHex for SecretHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.write_str(hex::encode(&self.0).as_str())
+        f.write_str(&self.0.to_lowercase())
     }
 }
 
@@ -36,6 +36,6 @@ impl FromStr for SecretHash {
                 got: vec.len(),
             });
         }
-        Ok(SecretHash(s.to_lowercase().to_string()))
+        Ok(SecretHash(s.to_string()))
     }
 }
