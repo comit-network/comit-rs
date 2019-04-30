@@ -83,6 +83,8 @@ mod tests {
             uncles: vec![],
             transactions: vec![],
             size: None,
+            mix_hash: None,
+            nonce: None,
         }
     }
 
