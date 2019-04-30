@@ -36,7 +36,7 @@ pub struct Offset {
     data: DataName,
 }
 
-pub fn format_table(mut offsets: Vec<Offset>) -> String {
+pub fn to_markdown(mut offsets: Vec<Offset>) -> String {
     let mut res = String::from("| Data | Byte Range | Length (bytes) |\n|:--- |:--- |:--- |");
     offsets.sort_unstable();
     for offset in offsets {
