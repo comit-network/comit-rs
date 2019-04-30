@@ -169,7 +169,7 @@ async function run_tests(test_files: string[]) {
             );
         }
 
-        let test_finish = new Promise((res, rej) => {
+        let test_finish = new Promise(res => {
             mocha.run(async (failures: number) => {
                 res(failures);
             });

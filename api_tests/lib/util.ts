@@ -10,7 +10,7 @@ export function test_rng() {
 }
 
 export async function sleep(time: number) {
-    return new Promise((res, rej) => {
+    return new Promise(res => {
         setTimeout(res, time);
     });
 }
