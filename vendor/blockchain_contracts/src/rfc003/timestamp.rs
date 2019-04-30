@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]

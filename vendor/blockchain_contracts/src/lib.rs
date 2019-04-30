@@ -1,13 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-#[macro_use]
-extern crate serde;
-
-#[macro_use]
-extern crate strum_macros;
-
+use serde::Serialize;
 use std::cmp::Ordering;
+use strum_macros::Display;
 
 pub mod ethereum;
 pub mod rfc003;
