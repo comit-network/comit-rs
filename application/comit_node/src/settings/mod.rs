@@ -3,18 +3,15 @@ mod serde_log;
 
 use crate::seed::Seed;
 use config::{Config, ConfigError, File};
+use libp2p::Multiaddr;
 use log::LevelFilter;
 use serde::Deserialize;
-use std::{
-    ffi::OsStr,
-    net::{IpAddr, SocketAddr},
-    path::Path,
-    time::Duration,
-};
+use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
 #[derive(Debug, Deserialize)]
 pub struct ComitNodeSettings {
     pub comit: Comit,
+    pub network: Network,
     pub http_api: HttpSocket,
     pub btsieve: Btsieve,
     #[serde(with = "self::serde_log", default = "default_log")]
@@ -28,8 +25,12 @@ fn default_log() -> LevelFilter {
 
 #[derive(Debug, Deserialize)]
 pub struct Comit {
-    pub comit_listen: SocketAddr,
     pub secret_seed: Seed,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Network {
+    pub listen: Vec<Multiaddr>,
 }
 
 #[derive(Debug, Deserialize)]

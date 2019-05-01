@@ -192,7 +192,7 @@ declare var global: HarnessGlobal;
         let bob_stingy_swap_href: string;
         let bob_reasonable_swap_href: string;
 
-        it("[Bob] Shows the swaps as Start in /swaps", async () => {
+        it("[Bob] Shows the swaps as IN_PROGRESS in /swaps", async () => {
             let body = (await bob.pollComitNodeUntil(
                 "/swaps",
                 body => body._embedded.swaps.length === 2

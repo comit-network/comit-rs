@@ -56,10 +56,9 @@ fn main() -> Result<(), failure::Error> {
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
-    Swarm::listen_on(
-        &mut swarm,
-        format!("/ip4/0.0.0.0/tcp/{}", settings.comit.comit_listen.port()).parse()?,
-    )?;
+    for addr in settings.network.listen.clone() {
+        Swarm::listen_on(&mut swarm, addr)?;
+    }
 
     let swarm = Arc::new(Mutex::new(swarm));
 

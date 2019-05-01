@@ -1,7 +1,10 @@
 [comit]
-remote_comit_node_url = "0.0.0.0:8010"
-comit_listen = "0.0.0.0:8011"
 secret_seed = "c1fd6fc5bde7fee2c2fb6d868dc0f40368051fede1d83f814839d562c210aa27"
+
+[network]
+listen = [
+    "/ip4/0.0.0.0/tcp/8011"
+]
 
 [btsieve]
 url = "http://localhost:8001"

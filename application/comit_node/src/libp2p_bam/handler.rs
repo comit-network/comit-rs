@@ -123,14 +123,10 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         &mut self,
         protocol: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
     ) {
-        let current_state = mem::replace(
+        mem::replace(
             &mut self.network_stream,
             SubstreamState::Connected(protocol),
         );
-
-        if let SubstreamState::WaitingForSubstream(task) = current_state {
-            task.notify();
-        }
     }
 
     fn inject_fully_negotiated_outbound(
