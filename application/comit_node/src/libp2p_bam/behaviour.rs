@@ -3,35 +3,54 @@ use crate::libp2p_bam::{
     BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
 };
 use bam::json::{OutgoingRequest, Response};
-use futures::{task, Async, Future};
+use futures::{
+    stream::Stream,
+    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    Async, Future,
+};
 use libp2p::{
     core::swarm::{ConnectedPoint, NetworkBehaviour, NetworkBehaviourAction, PollParameters},
     Multiaddr, PeerId,
 };
 use std::{
-    collections::{hash_map::Entry, vec_deque::VecDeque, HashMap, HashSet},
+    collections::{hash_map::Entry, HashMap, HashSet},
     marker::PhantomData,
 };
-use tokio::prelude::{task::Task, AsyncRead, AsyncWrite};
+use tokio::prelude::{AsyncRead, AsyncWrite};
+
+#[derive(Debug)]
+enum ConnectionState {
+    Connected {
+        addresses: HashSet<Multiaddr>,
+    },
+    Connecting {
+        pending_requests: Vec<PendingOutgoingRequest>,
+    },
+}
 
 #[derive(Debug)]
 pub struct BamBehaviour<TSubstream> {
     marker: PhantomData<TSubstream>,
 
-    events: VecDeque<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>>,
+    events_sender:
+        UnboundedSender<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>>,
+    events:
+        UnboundedReceiver<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>>,
+
     known_request_headers: HashMap<String, HashSet<String>>,
-    current_task: Option<Task>,
-    addresses: HashMap<PeerId, Vec<Multiaddr>>,
+    connections: HashMap<PeerId, ConnectionState>,
 }
 
 impl<TSubstream> BamBehaviour<TSubstream> {
     pub fn new(known_request_headers: HashMap<String, HashSet<String>>) -> Self {
+        let (sender, receiver) = mpsc::unbounded();
+
         Self {
             marker: PhantomData,
-            events: VecDeque::new(),
+            events_sender: sender,
+            events: receiver,
             known_request_headers,
-            current_task: None,
-            addresses: HashMap::new(),
+            connections: HashMap::new(),
         }
     }
 
@@ -47,16 +66,32 @@ impl<TSubstream> BamBehaviour<TSubstream> {
             channel: sender,
         };
 
-        self.events.push_back(NetworkBehaviourAction::DialPeer {
-            peer_id: peer_id.clone(),
-        });
-        self.events.push_back(NetworkBehaviourAction::SendEvent {
-            peer_id,
-            event: request,
-        });
+        match self.connections.entry(peer_id.clone()) {
+            Entry::Vacant(entry) => {
+                self.events_sender
+                    .unbounded_send(NetworkBehaviourAction::DialPeer { peer_id })
+                    .expect("we own the receiver");
+                entry.insert(ConnectionState::Connecting {
+                    pending_requests: vec![request],
+                });
+            }
+            Entry::Occupied(mut entry) => {
+                let connection_state = entry.get_mut();
 
-        if let Some(task) = &self.current_task {
-            task.notify();
+                match connection_state {
+                    ConnectionState::Connecting { pending_requests } => {
+                        pending_requests.push(request);
+                    }
+                    ConnectionState::Connected { .. } => {
+                        self.events_sender
+                            .unbounded_send(NetworkBehaviourAction::SendEvent {
+                                peer_id,
+                                event: request,
+                            })
+                            .expect("we own the receiver");
+                    }
+                }
+            }
         }
 
         Box::new(receiver.map_err(|_| {
@@ -67,10 +102,18 @@ impl<TSubstream> BamBehaviour<TSubstream> {
     }
 
     pub fn addresses(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
-        self.addresses
-            .clone()
-            .into_iter()
-            .map(|(peer, addresses)| (peer.clone(), addresses.clone()))
+        let addresses = self
+            .connections
+            .iter()
+            .map(|(peer, connection_state)| match connection_state {
+                ConnectionState::Connecting { .. } => (peer.clone(), vec![]),
+                ConnectionState::Connected { addresses } => {
+                    (peer.clone(), addresses.clone().into_iter().collect())
+                }
+            })
+            .collect::<Vec<_>>();
+
+        addresses.into_iter()
     }
 }
 
@@ -86,9 +129,14 @@ where
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
-        self.addresses
-            .get(peer_id)
-            .cloned()
+        self.addresses()
+            .find_map(|(candidate, addresses)| {
+                if &candidate == peer_id {
+                    Some(addresses)
+                } else {
+                    None
+                }
+            })
             .unwrap_or_else(Vec::new)
     }
 
@@ -100,40 +148,69 @@ where
             ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
         };
 
-        match self.addresses.entry(peer_id) {
-            Entry::Occupied(mut entry) => {
-                let addresses = entry.get_mut();
-                addresses.push(address)
+        match self.connections.entry(peer_id.clone()) {
+            Entry::Occupied(entry) => {
+                let connection_state = entry.remove();
+
+                match connection_state {
+                    ConnectionState::Connected { mut addresses } => {
+                        addresses.insert(address);
+                        self.connections
+                            .insert(peer_id.clone(), ConnectionState::Connected { addresses });
+                    }
+                    ConnectionState::Connecting { pending_requests } => {
+                        for request in pending_requests {
+                            self.events_sender
+                                .unbounded_send(NetworkBehaviourAction::SendEvent {
+                                    peer_id: peer_id.clone(),
+                                    event: request,
+                                })
+                                .expect("we own the receiver");
+                        }
+                        let mut addresses = HashSet::new();
+                        addresses.insert(address);
+
+                        self.connections
+                            .insert(peer_id, ConnectionState::Connected { addresses });
+                    }
+                }
             }
             Entry::Vacant(entry) => {
-                let addresses = vec![address];
-                entry.insert(addresses);
-            }
-        }
+                let mut addresses = HashSet::new();
+                addresses.insert(address);
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+                entry.insert(ConnectionState::Connected { addresses });
+            }
         }
     }
 
     fn inject_disconnected(&mut self, peer_id: &PeerId, endpoint: ConnectedPoint) {
         log::debug!(target: "bam", "disconnected from {} at {:?}", peer_id, endpoint);
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+        let address = match endpoint {
+            ConnectedPoint::Dialer { address } => address,
+            ConnectedPoint::Listener { send_back_addr, .. } => send_back_addr,
+        };
+
+        if let Some(ConnectionState::Connected { mut addresses }) = self.connections.remove(peer_id)
+        {
+            addresses.remove(&address);
+
+            if !addresses.is_empty() {
+                self.connections
+                    .insert(peer_id.clone(), ConnectionState::Connected { addresses });
+            }
         }
     }
 
     fn inject_node_event(&mut self, _: PeerId, event: InnerEvent) {
         match event {
             InnerEvent::IncomingRequest(pending_incoming_request) => {
-                self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    pending_incoming_request,
-                ));
-
-                if let Some(task) = &self.current_task {
-                    task.notify()
-                }
+                self.events_sender
+                    .unbounded_send(NetworkBehaviourAction::GenerateEvent(
+                        pending_incoming_request,
+                    ))
+                    .expect("we own the receiver");
             }
             InnerEvent::IncomingResponse(PendingIncomingResponse { response, channel }) => {
                 let _ = channel.send(response);
@@ -152,33 +229,9 @@ where
         &mut self,
         _params: &mut PollParameters<'_>,
     ) -> Async<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>> {
-        match self.events.pop_front() {
-            Some(event) => {
-                log::debug!(target: "bam", "emitting {:?}", event);
-
-                if let NetworkBehaviourAction::SendEvent { peer_id, .. } = &event {
-                    if !self.addresses.contains_key(peer_id) {
-                        log::info!(
-                            target: "bam",
-                            "not yet connected to {}, cannot send message",
-                            peer_id.clone()
-                        );
-
-                        self.events.push_back(event);
-
-                        self.current_task = Some(task::current());
-                        return Async::NotReady;
-                    }
-                }
-
-                Async::Ready(event)
-            }
-            None => {
-                log::debug!(target: "bam", "Currently no events, storing current task");
-
-                self.current_task = Some(task::current());
-                Async::NotReady
-            }
-        }
+        self.events
+            .poll()
+            .expect("unbounded channel can never fail")
+            .map(|item| item.expect("unbounded channel never ends"))
     }
 }
