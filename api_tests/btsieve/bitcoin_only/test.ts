@@ -1,16 +1,11 @@
 import * as bitcoin from "../../lib/bitcoin";
 import { Wallet } from "../../lib/wallet";
 import * as chai from "chai";
+import { HarnessGlobal } from "../../lib/util";
+import { Btsieve, IdMatchResponse } from "../../lib/btsieve";
 import chaiHttp = require("chai-http");
-import * as ethereum from "../../lib/ethereum";
-import { HarnessGlobal, sleep } from "../../lib/util";
-import {
-    IdMatchResponse,
-    EthereumTransactionResponse,
-    Btsieve,
-} from "../../lib/btsieve";
 
-const should = chai.should();
+chai.should();
 chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
@@ -24,10 +19,9 @@ const tobyWallet = new Wallet("toby", {
 
 setTimeout(async function() {
     describe("Test btsieve API - bitcoin", () => {
-        let token_contract_address: string;
         before(async function() {
             this.timeout(5000);
-            await bitcoin.ensureSegwit();
+            await bitcoin.ensureFunding();
             await tobyWallet.btc().fund(5);
         });
 
@@ -147,6 +141,8 @@ setTimeout(async function() {
                         });
                 });
 
+                const min_height = 200;
+                let location: string;
                 it("btsieve should respond not found when creating a bitcoin block query for an invalid network", async function() {
                     return chai
                         .request(btsieve.url())
@@ -159,8 +155,6 @@ setTimeout(async function() {
                         });
                 });
 
-                const min_height = 600;
-                let location: string;
                 it("btsieve should respond with location when creating a valid bitcoin block query", async function() {
                     return chai
                         .request(btsieve.url())

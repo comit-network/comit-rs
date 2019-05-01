@@ -1,7 +1,7 @@
 import {
     AcceptRequestBody,
-    ActionKind,
     Action,
+    ActionKind,
     getMethod,
     HalResource,
     Method,
@@ -9,10 +9,9 @@ import {
 } from "../lib/comit";
 import * as chai from "chai";
 import { Actor } from "../lib/actor";
-import { sleep } from "../lib/util";
 import * as URI from "urijs";
 
-const should = chai.should();
+chai.should();
 
 interface Test {
     /**
@@ -44,7 +43,6 @@ interface ActionTrigger {
     action?: ActionKind;
     requestBody?: AcceptRequestBody;
     uriQuery?: object;
-    timeout?: number;
     state?: (state: any) => boolean;
     test?: Test;
 }
@@ -78,16 +76,6 @@ async function getAction(
         return [href, payload];
     }
     return [href, null];
-}
-
-function seconds_until(time: number): number {
-    const diff = time - Math.floor(Date.now() / 1000);
-
-    if (diff > 0) {
-        return diff;
-    } else {
-        return 0;
-    }
 }
 
 async function executeAction(
@@ -162,66 +150,46 @@ export async function createTests(
         let action = actions.shift();
         let actionHref: string = null;
         let actionDirective: Action = null;
-        const timeout = action.timeout || 10000;
         if (action.action) {
-            it(
-                "[" +
-                    action.actor.name +
-                    "] Can get the " +
-                    action.action +
-                    " action",
-                async function() {
-                    this.timeout(timeout);
-                    [actionHref, actionDirective] = await getAction(
-                        swapLocations[action.actor.name],
-                        action
-                    );
-                }
-            );
+            it(`[${action.actor.name}] Can get the ${
+                action.action
+            } action`, async function() {
+                this.timeout(5000);
+                [actionHref, actionDirective] = await getAction(
+                    swapLocations[action.actor.name],
+                    action
+                );
+            });
 
-            it(
-                "[" +
-                    action.actor.name +
-                    "] Can execute the " +
-                    action.action +
-                    " action",
-                async function() {
-                    if (actionDirective && actionDirective.invalid_until) {
-                        const to_wait =
-                            seconds_until(actionDirective.invalid_until) *
-                                1000 +
-                            1000; // Add an extra second for good measure
-                        console.log(
-                            `Waiting ${to_wait}ms for ${
-                                action.actor.name
-                            }'s  ‘${action.action}’ action to be ready`
-                        );
-                        this.timeout(to_wait + timeout);
-                        await sleep(to_wait);
-                    }
-
-                    await executeAction(
-                        action.actor,
-                        action,
-                        actionHref,
-                        actionDirective
-                    );
+            it(`[${action.actor.name}] Can execute the ${
+                action.action
+            } action`, async function() {
+                if (action.action == ActionKind.Refund) {
+                    this.timeout(30000);
+                } else {
+                    this.timeout(5000);
                 }
-            );
+
+                await executeAction(
+                    action.actor,
+                    action,
+                    actionHref,
+                    actionDirective
+                );
+            });
         }
 
         let body: any = null;
         if (action.state) {
-            it(
-                "[" + action.actor.name + "] transitions to correct state",
-                async function() {
-                    this.timeout(timeout);
-                    body = (await action.actor.pollComitNodeUntil(
-                        swapLocations[action.actor.name],
-                        body => action.state(body.state)
-                    )) as HalResource;
-                }
-            );
+            it(`[${
+                action.actor.name
+            }] transitions to correct state`, async function() {
+                this.timeout(10000);
+                body = (await action.actor.pollComitNodeUntil(
+                    swapLocations[action.actor.name],
+                    body => action.state(body.state)
+                )) as HalResource;
+            });
         }
 
         const test = action.test;

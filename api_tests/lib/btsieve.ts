@@ -1,13 +1,11 @@
 import * as chai from "chai";
-
-import chaiHttp = require("chai-http");
-chai.use(chaiHttp);
-
-import { Transaction } from "web3-core";
-import { TransactionReceipt } from "web3-core";
+import { Transaction, TransactionReceipt } from "web3-core";
 import * as toml from "toml";
 import * as fs from "fs";
 import { TestConfig } from "./actor";
+import chaiHttp = require("chai-http");
+
+chai.use(chaiHttp);
 
 export interface IdMatchResponse {
     query: any;

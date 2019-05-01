@@ -1,9 +1,9 @@
 import * as chai from "chai";
-import chaiHttp = require("chai-http");
 import { HarnessGlobal } from "../../lib/util";
 import { Btsieve } from "../../lib/btsieve";
+import chaiHttp = require("chai-http");
 
-const should = chai.should();
+chai.should();
 chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;

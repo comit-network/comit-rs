@@ -1,17 +1,14 @@
-import { Actor, TestConfig } from "../lib/actor";
-import { EthConfig } from "../lib/ethereum";
+import { Actor } from "../lib/actor";
 import * as chai from "chai";
 import { SwapResponse } from "../lib/comit";
-import { BtcConfig } from "../lib/bitcoin";
 import * as utils from "web3-utils";
 import { HarnessGlobal } from "../lib/util";
-
 import chaiHttp = require("chai-http");
 
 declare var global: HarnessGlobal;
 
 chai.use(chaiHttp);
-const should = chai.should();
+chai.should();
 
 const alpha_ledger_name = "bitcoin";
 const alpha_ledger_network = "regtest";
@@ -41,7 +38,6 @@ const charlie = new Actor("charlie", global.config, global.project_root, {
 });
 
 const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const alice_comit_node_address = alice.comitNodeConfig.comit.comit_listen;
 const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
 const charlie_comit_node_address = charlie.comitNodeConfig.comit.comit_listen;
 

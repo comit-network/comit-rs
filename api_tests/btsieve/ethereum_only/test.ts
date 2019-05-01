@@ -1,15 +1,15 @@
 import { Wallet } from "../../lib/wallet";
 import * as chai from "chai";
-import chaiHttp = require("chai-http");
 import * as ethereum from "../../lib/ethereum";
 import { HarnessGlobal, sleep } from "../../lib/util";
 import {
-    IdMatchResponse,
-    EthereumTransactionResponse,
     Btsieve,
+    EthereumTransactionResponse,
+    IdMatchResponse,
 } from "../../lib/btsieve";
+import chaiHttp = require("chai-http");
 
-const should = chai.should();
+chai.should();
 chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;

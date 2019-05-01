@@ -1,7 +1,6 @@
 #!/usr/bin/env ./api_tests/node_modules/.bin/ts-node --project api_tests/tsconfig.json
 
-import { ChildProcess, execSync } from "child_process";
-import { spawn } from "child_process";
+import { ChildProcess, execSync, spawn } from "child_process";
 import { HarnessGlobal, sleep } from "./lib/util";
 import { MetaComitNodeConfig } from "./lib/comit";
 import * as toml from "toml";
@@ -122,21 +121,23 @@ async function run_tests(test_files: string[]) {
         log_dir
     );
 
-    let clean_up = () => {};
-
-    process.once("SIGINT", () => {
+    process.on("SIGINT", () => {
         console.log("SIGINT RECEIEVED");
-        clean_up();
+        process.exit(0);
     });
 
-    clean_up = () => {
+    process.on("unhandledRejection", reason => {
+        console.error(reason);
+        process.exit(1);
+    });
+
+    process.on("exit", () => {
         console.log("cleaning up");
         btsieve_runner.stopBtsieves();
         node_runner.stopComitNodes();
         ledger_runner.stopLedgers();
         console.log("cleanup done");
-        process.exit();
-    };
+    });
 
     for (let test_file of test_files) {
         let test_dir = path.dirname(test_file);
@@ -145,20 +146,12 @@ async function run_tests(test_files: string[]) {
         );
         global.config = config;
 
-        const mocha = new Mocha({
-            bail: true,
-            ui: "bdd",
-            delay: true,
-        });
-
-        mocha.addFile(test_file);
-
         if (config.ledgers) {
             await ledger_runner.ensureLedgersRunning(config.ledgers);
         }
 
         if (config.btsieve) {
-            await btsieve_runner.ensureBtsievesRunning(
+            btsieve_runner.ensureBtsievesRunning(
                 Object.entries(config.btsieve)
             );
         }
@@ -169,29 +162,28 @@ async function run_tests(test_files: string[]) {
             );
         }
 
-        let test_finish = new Promise((res, rej) => {
-            mocha.run(async (failures: number) => {
-                res(failures);
-            });
+        let runTests = new Promise(res => {
+            new Mocha({ bail: true, ui: "bdd", delay: true })
+                .addFile(test_file)
+                .run((failures: number) => res(failures));
         });
 
-        let failures = await test_finish;
+        let failures = await runTests;
 
         if (failures) {
-            process.exitCode = 1;
             if (commander.dumpLogs || process.env.CARGO_MAKE_CI === "TRUE") {
                 execSync(`/bin/sh -c 'tail -n +1 ${test_root}/log/*.log'`, {
                     stdio: "inherit",
                 });
             }
-            break;
+            process.exit(1);
         }
 
         node_runner.stopComitNodes();
-        await btsieve_runner.stopBtsieves();
+        btsieve_runner.stopBtsieves();
     }
 
-    clean_up();
+    process.exit(0);
 }
 
 let test_files = commander.args;

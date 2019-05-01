@@ -51,7 +51,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                         state
                             .actions()
                             .into_iter()
-                            .find_map(move |action| match action.inner {
+                            .find_map(move |action| match action {
                                 bob::ActionKind::Accept(accept) => Some(Ok(accept)),
                                 _ => None,
                             })
@@ -81,7 +81,7 @@ pub fn handle_post_action<T: MetadataStore<SwapId>, S: StateStore>(
                             state
                                 .actions()
                                 .into_iter()
-                                .find_map(move |action| match action.inner {
+                                .find_map(move |action| match action {
                                     bob::ActionKind::Decline(decline) => Some(Ok(decline)),
                                     _ => None,
                                 })

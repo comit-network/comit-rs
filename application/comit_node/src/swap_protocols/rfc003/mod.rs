@@ -23,7 +23,7 @@ mod timestamp;
 mod create_ledger_events;
 
 pub use self::{
-    actions::{Action, Actions},
+    actions::Actions,
     actor_state::ActorState,
     create_ledger_events::CreateLedgerEvents,
     error::Error,

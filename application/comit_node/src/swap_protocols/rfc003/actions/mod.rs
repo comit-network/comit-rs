@@ -1,6 +1,6 @@
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{secret_source::SecretSource, state_machine::HtlcParams, Ledger, Secret, Timestamp},
+    rfc003::{secret_source::SecretSource, state_machine::HtlcParams, Ledger, Secret},
 };
 
 pub mod bitcoin;
@@ -10,22 +10,7 @@ pub mod ether;
 pub trait Actions {
     type ActionKind;
 
-    fn actions(&self) -> Vec<Action<Self::ActionKind>>;
-}
-
-#[derive(Debug)]
-pub struct Action<ActionKind> {
-    pub invalid_until: Option<Timestamp>,
-    pub inner: ActionKind,
-}
-
-impl<ActionKind> Action<ActionKind> {
-    pub fn with_invalid_until(self, invalid_until: Timestamp) -> Self {
-        Action {
-            invalid_until: Some(invalid_until),
-            ..self
-        }
-    }
+    fn actions(&self) -> Vec<Self::ActionKind>;
 }
 
 pub trait FundAction<L: Ledger, A: Asset> {

@@ -6,7 +6,7 @@ use crate::swap_protocols::{
         alice::{self, SwapCommunication},
         ethereum,
         state_machine::HtlcParams,
-        Action, Ledger, LedgerState,
+        Ledger, LedgerState,
     },
 };
 use ethereum_support::Erc20Token;
@@ -25,7 +25,7 @@ where
         ethereum::SendTransaction,
     >;
 
-    fn actions(&self) -> Vec<Action<Self::ActionKind>> {
+    fn actions(&self) -> Vec<Self::ActionKind> {
         let (request, response) = match self.swap_communication {
             SwapCommunication::Accepted {
                 ref request,
@@ -38,38 +38,30 @@ where
 
         use self::LedgerState::*;
 
-        let mut actions =
-            match alpha_state {
-                NotDeployed => vec![alice::ActionKind::Deploy(erc20::deploy_action(
-                    HtlcParams::new_alpha_params(request, response),
-                ))
-                .into_action()],
-                Deployed { htlc_location, .. } => {
-                    vec![alice::ActionKind::Fund(erc20::fund_action(
-                        HtlcParams::new_alpha_params(request, response),
-                        request.alpha_asset.token_contract,
-                        *htlc_location,
-                    ))
-                    .into_action()]
-                }
-                Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(
-                    erc20::refund_action(request.alpha_ledger.network, *htlc_location),
-                )
-                .into_action()
-                .with_invalid_until(request.alpha_expiry)],
-                _ => vec![],
-            };
+        let mut actions = match alpha_state {
+            NotDeployed => vec![alice::ActionKind::Deploy(erc20::deploy_action(
+                HtlcParams::new_alpha_params(request, response),
+            ))],
+            Deployed { htlc_location, .. } => vec![alice::ActionKind::Fund(erc20::fund_action(
+                HtlcParams::new_alpha_params(request, response),
+                request.alpha_asset.token_contract,
+                *htlc_location,
+            ))],
+            Funded { htlc_location, .. } => vec![alice::ActionKind::Refund(erc20::refund_action(
+                request.alpha_ledger.network,
+                request.alpha_expiry,
+                *htlc_location,
+            ))],
+            _ => vec![],
+        };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(
-                alice::ActionKind::Redeem(<(BL, BA)>::redeem_action(
-                    HtlcParams::new_beta_params(request, response),
-                    htlc_location.clone(),
-                    &*self.secret_source,
-                    self.secret_source.secret(),
-                ))
-                .into_action(),
-            );
+            actions.push(alice::ActionKind::Redeem(<(BL, BA)>::redeem_action(
+                HtlcParams::new_beta_params(request, response),
+                htlc_location.clone(),
+                &*self.secret_source,
+                self.secret_source.secret(),
+            )));
         }
         actions
     }
@@ -90,7 +82,7 @@ where
         <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,
     >;
 
-    fn actions(&self) -> Vec<Action<Self::ActionKind>> {
+    fn actions(&self) -> Vec<Self::ActionKind> {
         let (request, response) = match self.swap_communication {
             SwapCommunication::Accepted {
                 ref request,
@@ -106,29 +98,23 @@ where
         let mut actions = match alpha_state {
             NotDeployed => vec![alice::ActionKind::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
-            ))
-            .into_action()],
+            ))],
             Funded { htlc_location, .. } => {
                 vec![alice::ActionKind::Refund(<(AL, AA)>::refund_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
-                ))
-                .into_action()
-                .with_invalid_until(request.alpha_expiry)]
+                ))]
             }
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(
-                alice::ActionKind::Redeem(erc20::redeem_action(
-                    *htlc_location,
-                    self.secret_source.secret(),
-                    request.beta_ledger.network,
-                ))
-                .into_action(),
-            );
+            actions.push(alice::ActionKind::Redeem(erc20::redeem_action(
+                *htlc_location,
+                self.secret_source.secret(),
+                request.beta_ledger.network,
+            )));
         }
         actions
     }

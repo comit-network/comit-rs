@@ -1,7 +1,7 @@
 use crate::{
     http_api::route_factory::swap_path,
     swap_protocols::{
-        rfc003::{alice, bob, Action},
+        rfc003::{alice, bob},
         SwapId,
     },
 };
@@ -27,11 +27,11 @@ pub trait ToActionName {
 }
 
 impl<Deploy, Fund, Redeem, Refund> ToActionName
-    for Action<alice::ActionKind<Deploy, Fund, Redeem, Refund>>
+    for alice::ActionKind<Deploy, Fund, Redeem, Refund>
 {
     fn to_action_name(&self) -> ActionName {
         use self::alice::ActionKind::*;
-        match self.inner {
+        match self {
             Deploy(_) => ActionName::Deploy,
             Fund(_) => ActionName::Fund,
             Redeem(_) => ActionName::Redeem,
@@ -41,11 +41,11 @@ impl<Deploy, Fund, Redeem, Refund> ToActionName
 }
 
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund> ToActionName
-    for Action<bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>>
+    for bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
 {
     fn to_action_name(&self) -> ActionName {
         use self::bob::ActionKind::*;
-        match self.inner {
+        match self {
             Accept(_) => ActionName::Accept,
             Decline(_) => ActionName::Decline,
             Deploy(_) => ActionName::Deploy,

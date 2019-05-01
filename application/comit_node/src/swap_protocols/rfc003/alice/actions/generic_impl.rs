@@ -4,7 +4,7 @@ use crate::swap_protocols::{
         actions::{Actions, FundAction, RedeemAction, RefundAction},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
-        Action, Ledger, LedgerState,
+        Ledger, LedgerState,
     },
 };
 
@@ -26,7 +26,7 @@ where
         <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,
     >;
 
-    fn actions(&self) -> Vec<Action<Self::ActionKind>> {
+    fn actions(&self) -> Vec<Self::ActionKind> {
         let (request, response) = match self.swap_communication {
             SwapCommunication::Accepted {
                 ref request,
@@ -41,30 +41,24 @@ where
         let mut actions = match alpha_state {
             NotDeployed => vec![alice::ActionKind::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
-            ))
-            .into_action()],
+            ))],
             Funded { htlc_location, .. } => {
                 vec![alice::ActionKind::Refund(<(AL, AA)>::refund_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
-                ))
-                .into_action()
-                .with_invalid_until(request.alpha_expiry)]
+                ))]
             }
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(
-                alice::ActionKind::Redeem(<(BL, BA)>::redeem_action(
-                    HtlcParams::new_beta_params(request, response),
-                    htlc_location.clone(),
-                    &*self.secret_source,
-                    self.secret_source.secret(),
-                ))
-                .into_action(),
-            );
+            actions.push(alice::ActionKind::Redeem(<(BL, BA)>::redeem_action(
+                HtlcParams::new_beta_params(request, response),
+                htlc_location.clone(),
+                &*self.secret_source,
+                self.secret_source.secret(),
+            )));
         }
         actions
     }

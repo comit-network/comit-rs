@@ -2,14 +2,14 @@ import * as bitcoin from "../../../lib/bitcoin";
 import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
-import { ActionKind, SwapRequest, SwapResponse } from "../../../lib/comit";
+import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
-import { BN, toBN, toWei } from "web3-utils";
-import { HarnessGlobal, sleep } from "../../../lib/util";
+import { toBN, toWei } from "web3-utils";
+import { HarnessGlobal } from "../../../lib/util";
 import { createTests } from "../../test_creator";
 import chaiHttp = require("chai-http");
 
-const should = chai.should();
+chai.should();
 chai.use(chaiHttp);
 
 declare var global: HarnessGlobal;
@@ -33,13 +33,10 @@ declare var global: HarnessGlobal;
     });
 
     const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bobFinalAddress =
-        "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
     const bobComitNodeAddress = bob.comitNodeConfig.comit.comit_listen;
 
     const alphaAssetQuantity = 100000000;
     const betaAssetQuantity = toBN(toWei("5000", "ether"));
-    const alphaMaxFee = 5000; // Max 5000 satoshis fee
 
     const alphaExpiry: number =
         new Date("2080-06-11T13:00:00Z").getTime() / 1000;
@@ -48,7 +45,7 @@ declare var global: HarnessGlobal;
     const initialUrl = "/swaps/rfc003";
     const listUrl = "/swaps";
 
-    await bitcoin.ensureSegwit();
+    await bitcoin.ensureFunding();
     await tobyWallet.eth().fund(tobyInitialEth);
     await bob.wallet.eth().fund(bobInitialEth);
     await alice.wallet.btc().fund(10);
@@ -100,11 +97,6 @@ declare var global: HarnessGlobal;
     );
 
     erc20Balance.eq(bobInitialErc20).should.equal(true);
-
-    let aliceErc20BalanceBefore: BN = await ethereum.erc20Balance(
-        aliceFinalAddress,
-        tokenContractAddress
-    );
 
     const actions = [
         {
