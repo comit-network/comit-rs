@@ -1,19 +1,20 @@
 [workspace]
 
 members = [
-    "application/comit_node",
     "application/btsieve",
+    "application/comit_node",
     "vendor/bam",
     "vendor/bitcoin_rpc_test_helpers",
     "vendor/bitcoin_support",
     "vendor/bitcoin_witness",
+    "vendor/blockchain_contracts",
     "vendor/comit_i",
     "vendor/ethereum_support",
     "vendor/key_gen",
+    "vendor/noise_handshake",
     "vendor/secp256k1_support",
     "vendor/tc_bitcoincore_client",
     "vendor/tc_web3_client",
-    "vendor/noise_handshake"
 ]
 
 [replace]
