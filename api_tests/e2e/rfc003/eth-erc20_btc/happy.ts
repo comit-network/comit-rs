@@ -110,7 +110,6 @@ declare var global: HarnessGlobal;
             actor: bob,
             action: ActionKind.Accept,
             requestBody: {
-                beta_ledger_refund_identity: bob.wallet.eth().address(),
                 alpha_ledger_redeem_identity: bobFinalAddress,
             },
             state: (state: any) => state.communication.status === "ACCEPTED",
