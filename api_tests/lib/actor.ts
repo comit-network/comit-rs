@@ -115,7 +115,7 @@ export class Actor {
             case "bitcoin-broadcast-signed-transaction": {
                 action.payload.should.include.all.keys(
                     "hex",
-                    "min_median_time"
+                    "min_median_block_time"
                 );
 
                 let fetchMedianTime = async () => {
@@ -123,27 +123,28 @@ export class Actor {
                     return blockchainInfo.mediantime;
                 };
 
-                let { hex, min_median_time } = action.payload;
+                let { hex, min_median_block_time } = action.payload;
 
-                if (min_median_time) {
-                    let medianTime = await fetchMedianTime();
-                    let diff = min_median_time - medianTime;
+                if (min_median_block_time) {
+                    let currentMedianBlockTime = await fetchMedianTime();
+                    let diff = min_median_block_time - currentMedianBlockTime;
 
                     if (diff > 0) {
                         console.log(
                             `Waiting for median time to pass %d`,
-                            min_median_time
+                            min_median_block_time
                         );
 
                         while (diff > 0) {
                             await sleep(1000);
 
-                            medianTime = await fetchMedianTime();
-                            diff = min_median_time - medianTime;
+                            currentMedianBlockTime = await fetchMedianTime();
+                            diff =
+                                min_median_block_time - currentMedianBlockTime;
 
                             console.log(
                                 `Current median time:            %d`,
-                                medianTime
+                                currentMedianBlockTime
                             );
                         }
                     }

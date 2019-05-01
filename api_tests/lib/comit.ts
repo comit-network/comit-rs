@@ -25,7 +25,11 @@ export type Action =
       }
     | {
           type: "bitcoin-broadcast-signed-transaction";
-          payload: { hex: string; network: string; min_median_time?: number };
+          payload: {
+              hex: string;
+              network: string;
+              min_median_block_time?: number;
+          };
       }
     | {
           type: "ethereum-deploy-contract";

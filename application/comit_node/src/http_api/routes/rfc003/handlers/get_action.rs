@@ -82,7 +82,7 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: bitcoin_support::Network,
-        min_median_time: Option<Timestamp>,
+        min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
         data: ethereum_support::Bytes,
@@ -102,19 +102,19 @@ pub enum ActionResponseBody {
 
 impl ActionResponseBody {
     fn bitcoin_broadcast_signed_transaction(transaction: &Transaction, network: Network) -> Self {
-        let min_median_time = if transaction.lock_time == 0 {
+        let min_median_block_time = if transaction.lock_time == 0 {
             None
         } else {
             // The first time a tx with lock_time can be broadcasted is when
             // mediantime == locktime + 1
-            let min_median_time = transaction.lock_time + 1;
-            Some(Timestamp::from(min_median_time))
+            let min_median_block_time = transaction.lock_time + 1;
+            Some(Timestamp::from(min_median_block_time))
         };
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
             hex: serialize_hex(transaction),
             network,
-            min_median_time,
+            min_median_block_time,
         }
     }
 }
