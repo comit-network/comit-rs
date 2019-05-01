@@ -175,14 +175,14 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                 futures::try_ready!(bam_stream.poll_complete());
 
                 while let Some(frame) = self.pending_frames.pop_front() {
-                    let message = build_outgoing_log_message(&frame);
+                    log::trace!(target: "bam", "--> OUTGOING FRAME {:?}", frame);
 
                     match bam_stream.start_send(frame) {
                         Ok(AsyncSink::Ready) => {
-                            log::trace!(target: "bam", "{}", message);
                             futures::try_ready!(bam_stream.poll_complete());
                         }
                         Ok(AsyncSink::NotReady(pending_frame)) => {
+                            log::trace!(target: "bam", "frame with id {} could be not sent due to sink being full", pending_frame.id);
                             self.pending_frames.push_front(pending_frame);
                             return Ok(Async::NotReady);
                         }
@@ -361,18 +361,4 @@ fn unknown_mandatory_headers(unknown_headers: UnknownMandatoryHeaders) -> Respon
         Header::with_value(unknown_headers)
             .expect("list of strings should serialize to serde_json::Value"),
     )
-}
-
-fn build_outgoing_log_message(frame: &Frame) -> String {
-    // This function only exists because we would have to clone every frame
-    // otherwise since the frame is gone once we successfully sent it.
-    // Hence we need to construct the message before we sent the frame.
-    // To avoid creating a message if the log level is disabled, we check for that
-    // before.
-
-    if log::log_enabled!(target: "bam", log::Level::Trace) {
-        format!("--> OUTGOING FRAME {:?}", frame)
-    } else {
-        String::new()
-    }
 }
