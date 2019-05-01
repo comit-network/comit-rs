@@ -99,7 +99,10 @@ impl ParityClient {
             .unwrap()
             .unwrap();
 
-        log::debug!("Deploying the contract consumed {} gas", receipt.gas_used);
+        log::debug!(
+            "Deploying the contract consumed {} gas",
+            receipt.gas_used.expect("Gas used is present")
+        );
 
         receipt.contract_address.unwrap()
     }
@@ -128,6 +131,7 @@ impl ParityClient {
 
         self.send_data(contract, Some(Bytes(hex::decode(payload).unwrap())))
             .gas_used
+            .expect("gas used is present")
     }
 
     pub fn token_balance_of(&self, contract: Address, address: Address) -> U256 {
