@@ -23,9 +23,9 @@ use std::{
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
     #[serde(rename = "type")]
-    frame_type: String,
-    id: u32,
-    payload: JsonValue,
+    pub frame_type: String,
+    pub id: u32,
+    pub payload: JsonValue,
 }
 
 impl Frame {

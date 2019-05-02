@@ -41,6 +41,8 @@ url = "1.7"
 url_serde = "0.2.0"
 warp = "0.1"
 hex-serde = "0.1.0"
+libp2p = "0.6.0"
+void = "1.0.2"
 
 [dependencies.bam]
 path = "../../vendor/bam"

@@ -2,21 +2,32 @@
 #![deny(unsafe_code)]
 
 use comit_node::{
-    btsieve::{BtsieveHttpClient, QueryBitcoin, QueryEthereum},
-    comit_i_routes, comit_server,
-    connection_pool::ConnectionPool,
+    btsieve::BtsieveHttpClient,
+    comit_client::Client,
+    comit_i_routes,
     http_api::route_factory,
     logging,
+    network::{self, BamPeers},
+    seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{
+        self,
         metadata_store::MetadataStore,
         rfc003::state_store::{InMemoryStateStore, StateStore},
-        InMemoryMetadataStore, ProtocolDependencies, SwapId,
+        InMemoryMetadataStore, SwapId,
     },
 };
 use directories;
-use futures::Future;
-use std::{env::var, net::SocketAddr, sync::Arc};
+use futures::{stream, Future, Stream};
+use libp2p::{
+    identity::{self, ed25519},
+    PeerId, Swarm,
+};
+use std::{
+    env::var,
+    net::SocketAddr,
+    sync::{Arc, Mutex},
+};
 
 fn main() -> Result<(), failure::Error> {
     let settings = load_settings()?;
@@ -24,36 +35,70 @@ fn main() -> Result<(), failure::Error> {
 
     log::info!("Starting up with {:#?}", settings);
 
+    let mut runtime = tokio::runtime::Runtime::new()?;
+
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let btsieve_client = create_btsieve_api_client(&settings);
-    let connection_pool = Arc::new(ConnectionPool::default());
-    let dependencies = create_dependencies(
-        &settings,
-        Arc::clone(&metadata_store),
-        Arc::clone(&state_store),
-        btsieve_client.clone(),
-        Arc::clone(&connection_pool),
-    );
 
-    let mut runtime = tokio::runtime::Runtime::new()?;
+    let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {
+        ledger_events: btsieve_client.clone().into(),
+        metadata_store: Arc::clone(&metadata_store),
+        state_store: Arc::clone(&state_store),
+        seed: settings.comit.secret_seed,
+    };
+
+    let local_key_pair = derive_key_pair(&settings.comit.secret_seed);
+    let local_peer_id = PeerId::from(local_key_pair.clone().public());
+
+    let transport = libp2p::build_development_transport(local_key_pair);
+    let behaviour = network::Behaviour::new(bob_protocol_dependencies, runtime.executor())?;
+
+    let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
+
+    for addr in settings.network.listen.clone() {
+        Swarm::listen_on(&mut swarm, addr)?;
+    }
+
+    let swarm = Arc::new(Mutex::new(swarm));
+
+    let alice_protocol_dependencies = swap_protocols::alice::ProtocolDependencies {
+        ledger_events: btsieve_client.into(),
+        metadata_store: Arc::clone(&metadata_store),
+        state_store: Arc::clone(&state_store),
+        seed: settings.comit.secret_seed,
+        client: Arc::clone(&swarm),
+    };
 
     spawn_warp_instance(
         &settings,
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
-        dependencies.clone(),
-        Arc::clone(&connection_pool),
+        alice_protocol_dependencies,
+        Arc::clone(&swarm),
+        local_peer_id,
         &mut runtime,
     );
 
-    spawn_comit_server(&settings, dependencies.clone(), &mut runtime);
-
     spawn_comit_i_instance(&settings, &mut runtime);
+
+    let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
+        .for_each(|_| Ok(()))
+        .map_err(|e| {
+            log::error!("failed with {:?}", e);
+        });
+
+    runtime.spawn(swarm_worker);
 
     // Block the current thread.
     ::std::thread::park();
     Ok(())
+}
+
+fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
+    let bytes = secret_seed.sha256_with_seed(&[b"NODE_ID"]);
+    let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
+    identity::Keypair::Ed25519(key.into())
 }
 
 fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
@@ -86,40 +131,22 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
     )
 }
 
-fn create_dependencies<
-    T: MetadataStore<SwapId>,
-    S: StateStore,
-    Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static,
->(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, BP: BamPeers>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    querier: Q,
-    connection_pool: Arc<ConnectionPool>,
-) -> ProtocolDependencies<T, S> {
-    ProtocolDependencies {
-        ledger_events: querier.into(),
-        metadata_store,
-        state_store,
-        connection_pool,
-        seed: settings.comit.secret_seed,
-    }
-}
-
-fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
-    settings: &ComitNodeSettings,
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    protocol_dependencies: ProtocolDependencies<T, S>,
-    connection_pool: Arc<ConnectionPool>,
+    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    get_bam_peers: Arc<BP>,
+    peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(
         metadata_store,
         state_store,
         protocol_dependencies,
-        connection_pool,
         auth_origin(&settings),
+        get_bam_peers,
+        peer_id,
     );
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
@@ -129,18 +156,6 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore>(
     let server = warp::serve(routes).bind(listen_addr);
 
     runtime.spawn(server);
-}
-
-fn spawn_comit_server<T: MetadataStore<SwapId>, S: StateStore>(
-    settings: &ComitNodeSettings,
-    protocol_dependencies: ProtocolDependencies<T, S>,
-    runtime: &mut tokio::runtime::Runtime,
-) {
-    runtime.spawn(
-        comit_server::listen(settings.comit.comit_listen, protocol_dependencies).map_err(|e| {
-            log::error!("ComitServer shutdown: {:?}", e);
-        }),
-    );
 }
 
 fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {

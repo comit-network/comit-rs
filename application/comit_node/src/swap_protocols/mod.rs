@@ -6,7 +6,7 @@ pub mod rfc003;
 pub mod metadata_store;
 
 pub use self::{
-    dependencies::*,
+    dependencies::{alice, bob, LedgerEventDependencies},
     ledger::{Ledger, LedgerKind},
     metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore, RoleKind},
 };

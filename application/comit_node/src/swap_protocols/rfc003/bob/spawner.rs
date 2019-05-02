@@ -1,6 +1,6 @@
 use crate::swap_protocols::{
     asset::Asset,
-    dependencies::{LedgerEventDependencies, ProtocolDependencies},
+    dependencies::{self, LedgerEventDependencies},
     metadata_store::{self, Metadata, MetadataStore, RoleKind},
     rfc003::{
         self, bob,
@@ -42,7 +42,9 @@ pub trait BobSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner for ProtocolDependencies<T, S> {
+impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
+    for dependencies::bob::ProtocolDependencies<T, S>
+{
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,

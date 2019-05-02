@@ -1,2 +1,3 @@
-use std::net::SocketAddr;
-pub type NodeId = SocketAddr;
+use libp2p::PeerId;
+
+pub type NodeId = PeerId;

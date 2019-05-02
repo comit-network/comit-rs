@@ -68,6 +68,12 @@ export class Actor {
         return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
     }
 
+    async peerId(): Promise<string> {
+        let response = await chai.request(this.comit_node_url()).get("/");
+
+        return response.body.id;
+    }
+
     pollComitNodeUntil(
         location: string,
         predicate: (body: SwapResponse) => boolean

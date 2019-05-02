@@ -1,8 +1,10 @@
 use crate::{
-    connection_pool::ConnectionPool,
+    comit_client::Client,
     http_api,
-    swap_protocols::{rfc003::state_store, MetadataStore, ProtocolDependencies, SwapId},
+    network::BamPeers,
+    swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
 };
+use libp2p::PeerId;
 use serde_json::json;
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -12,20 +14,22 @@ pub fn swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, RFC003, id)
 }
 
-pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
+pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, BP: BamPeers>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    protocol_dependencies: ProtocolDependencies<T, S>,
-    comit_connection_pool: Arc<ConnectionPool>,
+    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
     origin_auth: String,
+    get_bam_peers: Arc<BP>,
+    peer_id: PeerId,
 ) -> BoxedFilter<(impl Reply,)> {
     let path = warp::path(http_api::PATH);
     let rfc003 = path.and(warp::path(RFC003));
-    let metadata_store = warp::any().map(move || metadata_store.clone());
-    let state_store = warp::any().map(move || state_store.clone());
+    let metadata_store = warp::any().map(move || Arc::clone(&metadata_store));
+    let state_store = warp::any().map(move || Arc::clone(&state_store));
     let empty_json_body = warp::any().map(|| json!({}));
     let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
-    let comit_connection_pool = warp::any().map(move || comit_connection_pool.clone());
+    let get_bam_peers = warp::any().map(move || Arc::clone(&get_bam_peers));
+    let peer_id = warp::any().map(move || peer_id.clone());
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -73,11 +77,16 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .and(warp::path::end())
         .and_then(http_api::routes::rfc003::get_action);
 
-    let get_peers = warp::path("peers")
-        .and(comit_connection_pool.clone())
-        .and(warp::get2())
+    let get_peers = warp::get2()
+        .and(warp::path("peers"))
         .and(warp::path::end())
+        .and(get_bam_peers.clone())
         .and_then(http_api::routes::peers::get_peers);
+
+    let get_info = warp::get2()
+        .and(warp::path::end())
+        .and(peer_id.clone())
+        .and_then(http_api::routes::index::get_info);
 
     let preflight_cors_route = warp::options().map(warp::reply);
 
@@ -93,6 +102,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore>(
         .or(rfc003_get_action)
         .or(get_swaps)
         .or(get_peers)
+        .or(get_info)
         .with(warp::log("http"))
         .with(cors)
         .recover(http_api::unpack_problem)

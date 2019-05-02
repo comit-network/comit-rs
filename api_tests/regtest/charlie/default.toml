@@ -1,6 +1,10 @@
 [comit]
-comit_listen = "0.0.0.0:8021"
 secret_seed = "6b49ec1df23d124a16d6a12bd34476579e6e80cdcb97a5438cb76ac5c423c937"
+
+[network]
+listen = [
+    "/ip4/0.0.0.0/tcp/8021"
+]
 
 [http_api]
 address="0.0.0.0"

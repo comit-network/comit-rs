@@ -1,17 +1,30 @@
-use crate::connection_pool::ConnectionPool;
+use crate::network::BamPeers;
+use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
-use std::{net::SocketAddr, sync::Arc};
+use std::sync::Arc;
 use warp::{Rejection, Reply};
 
-#[derive(Debug, Serialize)]
-struct GetPeers {
-    pub peers: Vec<SocketAddr>,
+#[derive(Serialize, Debug)]
+pub struct PeersResource {
+    peers: Vec<Peer>,
 }
 
-pub fn get_peers(connection_pool: Arc<ConnectionPool>) -> Result<impl Reply, Rejection> {
-    let response = GetPeers {
-        peers: connection_pool.connected_addrs(),
-    };
+#[derive(Serialize, Debug)]
+pub struct Peer {
+    #[serde(with = "crate::http_api::serde_peer_id")]
+    id: PeerId,
+    endpoints: Vec<Multiaddr>,
+}
 
-    Ok(warp::reply::json(&response))
+#[allow(clippy::needless_pass_by_value)]
+pub fn get_peers<BP: BamPeers>(get_bam_peers: Arc<BP>) -> Result<impl Reply, Rejection> {
+    let peers = get_bam_peers
+        .bam_peers()
+        .map(|(peer, addresses)| Peer {
+            id: peer,
+            endpoints: addresses,
+        })
+        .collect();
+
+    Ok(warp::reply::json(&PeersResource { peers }))
 }

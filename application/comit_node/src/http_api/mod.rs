@@ -4,7 +4,7 @@ pub mod with_swap_types;
 pub mod with_swap_types_bob;
 pub mod route_factory;
 pub mod routes;
-pub mod serde_socket_addr;
+pub mod serde_peer_id;
 #[macro_use]
 pub mod ledger;
 #[macro_use]

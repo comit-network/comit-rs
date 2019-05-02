@@ -1,8 +1,10 @@
 use crate::{
+    comit_client::Client,
     node_id::NodeId,
     swap_protocols::{
+        self,
         asset::Asset,
-        dependencies::{LedgerEventDependencies, ProtocolDependencies},
+        dependencies::LedgerEventDependencies,
         metadata_store::{self, Metadata, MetadataStore, RoleKind},
         rfc003::{
             alice,
@@ -44,7 +46,9 @@ pub trait AliceSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore> AliceSpawner for ProtocolDependencies<T, S> {
+impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
+    for swap_protocols::alice::ProtocolDependencies<T, S, C>
+{
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
@@ -79,7 +83,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> AliceSpawner for ProtocolDependenc
             alice.new_state_machine(
                 ledger_events.create_ledger_events(),
                 ledger_events.create_ledger_events(),
-                self.clone(),
+                self.client.clone(),
                 bob_id,
                 Arc::new(sender),
             )

@@ -4,49 +4,48 @@ import { SwapResponse } from "../lib/comit";
 import * as utils from "web3-utils";
 import { HarnessGlobal } from "../lib/util";
 import chaiHttp = require("chai-http");
+import chaiSubset = require("chai-subset");
 
 declare var global: HarnessGlobal;
 
 chai.use(chaiHttp);
+chai.use(chaiSubset);
 chai.should();
 
-const alpha_ledger_name = "bitcoin";
-const alpha_ledger_network = "regtest";
+(async () => {
+    const alpha_ledger_name = "bitcoin";
+    const alpha_ledger_network = "regtest";
 
-const beta_ledger_name = "ethereum";
-const beta_ledger_network = "regtest";
+    const beta_ledger_name = "ethereum";
+    const beta_ledger_network = "regtest";
 
-const alpha_asset_name = "bitcoin";
-const alpha_asset_bob_quantity = "100000000";
-const alpha_asset_charlie_quantity = "200000000";
+    const alpha_asset_name = "bitcoin";
+    const alpha_asset_bob_quantity = "100000000";
+    const alpha_asset_charlie_quantity = "200000000";
 
-const beta_asset_name = "ether";
-const beta_asset_bob_quantity = utils.toWei("10", "ether");
-const beta_asset_charlie_quantity = utils.toWei("20", "ether");
+    const beta_asset_name = "ether";
+    const beta_asset_bob_quantity = utils.toWei("10", "ether");
+    const beta_asset_charlie_quantity = utils.toWei("20", "ether");
 
-const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
+    const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-const alice = new Actor("alice", global.config, global.project_root, {
-    ethConfig: global.ledgers_config.ethereum,
-});
-const bob = new Actor("bob", global.config, global.project_root, {
-    ethConfig: global.ledgers_config.ethereum,
-});
-const charlie = new Actor("charlie", global.config, global.project_root, {
-    ethConfig: global.ledgers_config.ethereum,
-});
+    const alice = new Actor("alice", global.config, global.project_root, {
+        ethConfig: global.ledgers_config.ethereum,
+    });
+    const bob = new Actor("bob", global.config, global.project_root, {
+        ethConfig: global.ledgers_config.ethereum,
+    });
+    const charlie = new Actor("charlie", global.config, global.project_root, {
+        ethConfig: global.ledgers_config.ethereum,
+    });
 
-const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-const bob_comit_node_address = bob.comitNodeConfig.comit.comit_listen;
-const charlie_comit_node_address = charlie.comitNodeConfig.comit.comit_listen;
+    const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+    const bob_comit_node_address = await bob.peerId();
+    const charlie_comit_node_address = await charlie.peerId();
 
-let alice_swap_with_charlie_href: string;
+    let alice_swap_with_charlie_href: string;
 
-// the `setTimeout` forces it to be added on the event loop
-// This is needed because there is no async call in the test
-// And hence it does not get run without this `setTimeout`
-setTimeout(async function() {
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
             let res = await chai
@@ -138,12 +137,16 @@ setTimeout(async function() {
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {
             let res = await chai.request(alice.comit_node_url()).get("/peers");
             res.should.have.status(200);
-            res.body.peers.should.have.deep.members([
-                charlie_comit_node_address,
-                bob_comit_node_address,
+            res.body.peers.should.have.containSubset([
+                {
+                    id: bob_comit_node_address,
+                },
+                {
+                    id: charlie_comit_node_address,
+                },
             ]);
         });
     });
 
     run();
-}, 0);
+})();

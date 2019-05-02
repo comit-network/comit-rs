@@ -11,8 +11,6 @@ use bam::json::Header;
 use ethereum_support::Erc20Token;
 use std::fmt;
 
-pub mod rfc003;
-
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
     serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
 }

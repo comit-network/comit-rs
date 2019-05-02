@@ -35,7 +35,7 @@ declare var global: HarnessGlobal;
     const aliceFinalAddress =
         "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
     const bobFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bobComitNodeAddress = bob.comitNodeConfig.comit.comit_listen;
+    const bobComitNodeAddress = await bob.peerId();
     const alphaAssetQuantity = toBN(toWei("5000", "ether"));
 
     const betaAssetQuantity = 100000000;
