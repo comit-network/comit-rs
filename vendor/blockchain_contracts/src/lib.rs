@@ -3,12 +3,12 @@
 
 use serde::Serialize;
 use std::cmp::Ordering;
-use strum_macros::Display;
+use strum_macros::StrumDisplay;
 
 pub mod ethereum;
 pub mod rfc003;
 
-#[derive(Clone, Copy, Display, Debug, Serialize)]
+#[derive(Clone, Copy, StrumDisplay, Debug, Serialize)]
 #[strum(serialize_all = "snake_case")]
 pub enum DataName {
     SecretHash,
