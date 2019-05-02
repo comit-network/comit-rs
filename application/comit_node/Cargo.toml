@@ -35,7 +35,7 @@ rustic_hal = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 strum = "0.15"
-strum_macros = { version = "0.15", features = ["verbose-display-name"] }
+strum_macros = "0.15"
 tokio = "0.1"
 url = "1.7"
 url_serde = "0.2.0"
