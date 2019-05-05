@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 bitcoin_rpc_client = "0.6"
 bitcoin_support = { path = "../bitcoin_support" }
-testcontainers = "0.6"
+testcontainers = "0.7"
 
