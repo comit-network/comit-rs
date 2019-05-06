@@ -352,7 +352,7 @@ version = "0.1.0"
 dependencies = [
  "bitcoin_rpc_client 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -387,7 +387,7 @@ dependencies = [
  "secp256k1_support 0.1.0",
  "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -474,7 +474,7 @@ dependencies = [
  "strum_macros 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
  "tc_web3_client 0.1.0",
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -512,7 +512,7 @@ dependencies = [
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_web3_client 0.1.0",
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -687,7 +687,7 @@ dependencies = [
  "strum_macros 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
  "tc_web3_client 0.1.0",
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3320,7 +3320,7 @@ name = "tc_bitcoincore_client"
 version = "0.1.0"
 dependencies = [
  "bitcoin_rpc_client 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3384,7 +3384,7 @@ dependencies = [
 
 [[package]]
 name = "tc_parity_parity"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3420,7 +3420,7 @@ dependencies = [
 name = "tc_web3_client"
 version = "0.1.0"
 dependencies = [
- "testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "web3 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -3458,7 +3458,7 @@ dependencies = [
 
 [[package]]
 name = "testcontainers"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "tc_cli_client 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3467,7 +3467,7 @@ dependencies = [
  "tc_dynamodb_local 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_elasticmq 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_generic 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tc_parity_parity 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tc_parity_parity 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_postgres 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_redis 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_trufflesuite_ganachecli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4619,14 +4619,14 @@ dependencies = [
 "checksum tc_dynamodb_local 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "14fbd21376f9d9375d58ec4bcea68a5fff28ad586ed927ed051e157593c5866e"
 "checksum tc_elasticmq 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "0d7a7c72c70913280a48186269583d5ead87b4e65d54d3feebf196a1909028b1"
 "checksum tc_generic 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "72c08ce4f1ded9804bd25a9e9732244e127dd8fb4ac723becf3cda5d23b4370d"
-"checksum tc_parity_parity 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "9835226596515e4724076660eb12965b9975b90759f83c0f88783c7169a71fc8"
+"checksum tc_parity_parity 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "85574a95877cb03c868ee42fe3deed4d1877bb736e2bd64bb9a3909f827ae04e"
 "checksum tc_postgres 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "db1a2a51cce74f015dfb92e3be92713ddb33ecb8ed30ffb6edcd2b45c754c3b3"
 "checksum tc_redis 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "90aeb54954cddcdbde909ae1c75b07748034a575e950e1c1b2e6936469670c91"
 "checksum tc_trufflesuite_ganachecli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6dd699da5eb16d85d634943f82fd83bda8134b38f10b8bf12b4f1420f3b532d2"
 "checksum tempfile 3.0.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b86c784c88d98c801132806dadd3819ed29d8600836c4088e855cdf3e178ed8a"
 "checksum termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "4096add70612622289f2fdcdbd5086dc81c1e2675e6ae58d6c4f62a16c6d7f2f"
 "checksum termion 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dde0593aeb8d47accea5392b39350015b5eccb12c0d98044d856983d89548dea"
-"checksum testcontainers 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4ef4e44942808344746ce05d97c00ef65c03445dbb6020ec0447cb7c1837fd67"
+"checksum testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "edef250e8b003a58f8adb51cd945dcd3923d15390f416307effe4318b7af9a82"
 "checksum thread-id 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a9539db560102d1cef46b8b78ce737ff0bb64e7e18d35b2a5688f7d097d0ff03"
 "checksum thread_local 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)" = "8576dbbfcaef9641452d5cf0df9b0e7eeab7694956dd33bb61515fb8f18cfdd5"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
