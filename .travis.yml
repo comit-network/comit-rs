@@ -6,6 +6,9 @@ cache:
   - "$HOME/.cache/sccache"
   - "$TRAVIS_BUILD_DIR/api_tests/node_modules"
 sudo: required
+os:
+  - linux
+  - osx
 addons:
   apt:
     sources:
@@ -17,6 +20,10 @@ addons:
     - libzmq3-dev
     - yarn
     - nodejs=10.*
+  homebrew:
+    packages:
+    - zmq
+    - yarn
 services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
