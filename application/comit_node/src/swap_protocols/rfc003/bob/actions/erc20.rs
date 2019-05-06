@@ -27,9 +27,9 @@ where
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
         ethereum::ContractDeploy,
-        ethereum::SendTransaction,
+        ethereum::CallContract,
         <(AL, AA) as RedeemAction<AL, AA>>::RedeemActionOutput,
-        ethereum::SendTransaction,
+        ethereum::CallContract,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -103,7 +103,7 @@ where
         Decline<Ethereum, BL>,
         (),
         <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
-        ethereum::SendTransaction,
+        ethereum::CallContract,
         <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,
     >;
 

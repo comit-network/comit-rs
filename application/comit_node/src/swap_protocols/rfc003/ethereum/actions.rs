@@ -18,10 +18,9 @@ pub struct ContractDeploy {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct SendTransaction {
+pub struct CallContract {
     pub to: Address,
     pub data: Bytes,
-    pub amount: EtherQuantity,
     pub gas_limit: U256,
     pub network: Network,
     pub min_block_timestamp: Option<Timestamp>,

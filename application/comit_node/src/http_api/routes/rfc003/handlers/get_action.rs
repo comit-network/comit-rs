@@ -90,10 +90,9 @@ pub enum ActionResponseBody {
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
     },
-    EthereumInvokeContract {
+    EthereumCallContract {
         contract_address: ethereum_support::Address,
         data: ethereum_support::Bytes,
-        amount: EtherQuantity,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
         min_block_timestamp: Option<Timestamp>,
@@ -227,24 +226,22 @@ impl IntoResponsePayload for ethereum::ContractDeploy {
     }
 }
 
-impl IntoResponsePayload for ethereum::SendTransaction {
+impl IntoResponsePayload for ethereum::CallContract {
     fn into_response_payload(
         self,
         query_params: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
-        let ethereum::SendTransaction {
+        let ethereum::CallContract {
             to,
             data,
-            amount,
             gas_limit,
             network,
             min_block_timestamp,
         } = self;
         match query_params {
-            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumInvokeContract {
+            GetActionQueryParams::None {} => Ok(ActionResponseBody::EthereumCallContract {
                 contract_address: to,
                 data,
-                amount,
                 gas_limit,
                 network,
                 min_block_timestamp,

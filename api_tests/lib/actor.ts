@@ -164,11 +164,10 @@ export class Actor {
 
                 return this.wallet.eth().deploy_contract(data, amount);
             }
-            case "ethereum-invoke-contract": {
+            case "ethereum-call-contract": {
                 action.payload.should.include.all.keys(
                     "contract_address",
                     "data",
-                    "amount",
                     "gas_limit",
                     "min_block_timestamp"
                 );
@@ -176,7 +175,6 @@ export class Actor {
                 let {
                     contract_address,
                     data,
-                    amount,
                     gas_limit,
                     min_block_timestamp,
                 } = action.payload;
@@ -197,12 +195,7 @@ export class Actor {
 
                 return this.wallet
                     .eth()
-                    .sendEthTransactionTo(
-                        contract_address,
-                        data,
-                        amount,
-                        gas_limit
-                    );
+                    .sendEthTransactionTo(contract_address, data, 0, gas_limit);
             }
             default:
                 throw Error(`Action ${action} is not unsupported`);
