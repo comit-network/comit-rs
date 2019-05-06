@@ -20,9 +20,9 @@ where
     #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
         ethereum::ContractDeploy,
-        ethereum::SendTransaction,
+        ethereum::CallContract,
         <(BL, BA) as RedeemAction<BL, BA>>::RedeemActionOutput,
-        ethereum::SendTransaction,
+        ethereum::CallContract,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -78,7 +78,7 @@ where
     type ActionKind = alice::ActionKind<
         (),
         <(AL, AA) as FundAction<AL, AA>>::FundActionOutput,
-        ethereum::SendTransaction,
+        ethereum::CallContract,
         <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,
     >;
 

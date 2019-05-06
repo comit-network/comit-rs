@@ -18,7 +18,7 @@ impl FundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
     }
 }
 impl RefundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
-    type RefundActionOutput = ethereum::SendTransaction;
+    type RefundActionOutput = ethereum::CallContract;
 
     fn refund_action(
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -28,18 +28,17 @@ impl RefundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
         let data = Bytes::default();
         let gas_limit = EtherHtlc::tx_gas_limit();
 
-        ethereum::SendTransaction {
+        ethereum::CallContract {
             to: htlc_location,
             data,
             gas_limit,
-            amount: EtherQuantity::zero(),
             network: htlc_params.ledger.network,
             min_block_timestamp: Some(htlc_params.expiry),
         }
     }
 }
 impl RedeemAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
-    type RedeemActionOutput = ethereum::SendTransaction;
+    type RedeemActionOutput = ethereum::CallContract;
 
     fn redeem_action(
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -50,11 +49,10 @@ impl RedeemAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
         let data = Bytes::from(secret.raw_secret().to_vec());
         let gas_limit = EtherHtlc::tx_gas_limit();
 
-        ethereum::SendTransaction {
+        ethereum::CallContract {
             to: htlc_location,
             data,
             gas_limit,
-            amount: EtherQuantity::zero(),
             network: htlc_params.ledger.network,
             min_block_timestamp: None,
         }
