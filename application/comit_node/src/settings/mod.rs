@@ -26,6 +26,7 @@ fn default_log() -> LevelFilter {
 #[derive(Debug, Deserialize)]
 pub struct Comit {
     pub secret_seed: Seed,
+    pub cors_header: Option<HttpSocket>,
 }
 
 #[derive(Debug, Deserialize)]

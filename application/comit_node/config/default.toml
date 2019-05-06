@@ -1,6 +1,10 @@
 [comit]
 secret_seed = "c1fd6fc5bde7fee2c2fb6d868dc0f40368051fede1d83f814839d562c210aa27"
 
+[comit.cors_header]
+address="0.0.0.0"
+port=8080
+
 [network]
 listen = [
     "/ip4/0.0.0.0/tcp/8011"

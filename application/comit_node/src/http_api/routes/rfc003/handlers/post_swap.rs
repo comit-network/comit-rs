@@ -132,6 +132,8 @@ pub struct UnsupportedSwapRequestBody {
     beta_ledger_redeem_identity: Option<String>,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
+    #[serde(with = "http_api::serde_peer_id")]
+    peer: PeerId,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
