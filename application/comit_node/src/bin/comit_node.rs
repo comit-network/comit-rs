@@ -50,6 +50,7 @@ fn main() -> Result<(), failure::Error> {
 
     let local_key_pair = derive_key_pair(&settings.comit.secret_seed);
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
+    log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::Behaviour::new(bob_protocol_dependencies, runtime.executor())?;
