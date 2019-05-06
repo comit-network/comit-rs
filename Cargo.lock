@@ -629,7 +629,7 @@ dependencies = [
 name = "comit_i"
 version = "0.1.0"
 dependencies = [
- "reqwest 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-embed 4.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "unzip 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -673,7 +673,7 @@ dependencies = [
  "pretty_env_logger 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustic_hal 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1493,7 +1493,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_derive 1.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2751,7 +2751,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "reqwest"
-version = "0.9.15"
+version = "0.9.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4549,7 +4549,7 @@ dependencies = [
 "checksum regex-syntax 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)" = "dcfd8681eebe297b81d98498869d4aae052137651ad7b96822f09ceb690d0a96"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
 "checksum rent_to_own 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "05a51ad2b1c5c710fa89e6b1631068dab84ed687bc6a5fe061ad65da3d0c25b2"
-"checksum reqwest 0.9.15 (registry+https://github.com/rust-lang/crates.io-index)" = "943b9f85622f53bcf71721e0996f23688e3942e51fc33766c2e24a959316767b"
+"checksum reqwest 0.9.16 (registry+https://github.com/rust-lang/crates.io-index)" = "ddcfd2c13c6af0f9c45a1086be3b9c68af79e4430b42790759e2d34cce2a6c60"
 "checksum ring 0.14.6 (registry+https://github.com/rust-lang/crates.io-index)" = "426bc186e3e95cac1e4a4be125a4aca7e84c2d616ffc02244eef36e2a60a093c"
 "checksum rlp 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "524c5ad554859785dfc8469df3ed5e0b5784d4d335877ed47c8d90fc0eb238fe"
 "checksum rlp 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "16d1effe9845d54f90e7be8420ee49e5c94623140b97ee4bc6fb5bfddb745720"
