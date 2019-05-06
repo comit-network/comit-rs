@@ -4,14 +4,14 @@ use crate::{
     parity_client::ParityClient,
 };
 use blockchain_contracts::{
-    ethereum::rfc003::EtherHtlc,
-    rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
+    ethereum::rfc003::{ether::SECRET_HASH_LENGTH, EtherHtlc},
+    rfc003::timestamp::Timestamp,
 };
 use ethereum_support::{
     web3::{transports::EventLoopHandle, types::Address},
     EtherQuantity,
 };
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -19,23 +19,26 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct EtherHarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_refund_timestamp: Timestamp,
-    pub htlc_secret_hash: SecretHash,
+    pub htlc_secret_hash: [u8; SECRET_HASH_LENGTH],
     pub htlc_eth_value: EtherQuantity,
 }
 
 impl Default for EtherHarnessParams {
     fn default() -> Self {
+        let mut secret_hash = [0; SECRET_HASH_LENGTH];
+        secret_hash.copy_from_slice(&hex::decode(SECRET_HASH).unwrap()[..SECRET_HASH_LENGTH]);
+
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_refund_timestamp: Timestamp::now().plus(10),
-            htlc_secret_hash: SecretHash::from_str(SECRET_HASH).unwrap(),
+            htlc_secret_hash: secret_hash,
             htlc_eth_value: EtherQuantity::from_eth(0.4),
         }
     }
 }
 
 impl EtherHarnessParams {
-    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
+    pub fn with_secret_hash(self, secret_hash: [u8; SECRET_HASH_LENGTH]) -> Self {
         Self {
             htlc_secret_hash: secret_hash,
             ..self
@@ -80,7 +83,7 @@ pub fn ether_harness<D: Docker>(
             bob,
             params.htlc_secret_hash,
         )
-        .compile_to_hex()
+        .unwrap()
         .into(),
         params.htlc_eth_value.wei(),
     );

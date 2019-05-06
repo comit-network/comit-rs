@@ -1,3 +1,4 @@
+use blockchain_contracts::ethereum::rfc003::ether::SECRET_HASH_LENGTH;
 use crypto::{digest::Digest, sha2::Sha256};
 use ethereum_support::{Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
@@ -28,13 +29,13 @@ pub const SECRET_HASH: &'static str =
 pub struct CustomSizeSecret(pub Vec<u8>);
 
 impl CustomSizeSecret {
-    pub fn hash(&self) -> SecretHash {
+    pub fn hash(&self) -> [u8; SECRET_HASH_LENGTH] {
         let mut sha = Sha256::new();
         sha.input(&self.0[..]);
 
         let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
         sha.result(&mut result);
-        SecretHash::from_str(hex::encode(result).as_str()).unwrap()
+        result
     }
 }
 

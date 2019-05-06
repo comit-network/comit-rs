@@ -1,5 +1,6 @@
 use std::{fmt, str::FromStr};
 
+// TODO: Replace with Vec<u8>
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SecretHash(String);
 
