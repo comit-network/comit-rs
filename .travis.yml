@@ -36,6 +36,17 @@ install:
       nvm install 10;
       nvm use 10;
 
+      mkdir -p $GOPATH/src/github.com/docker
+      git clone https://github.com/docker/distribution.git $GOPATH/src/github.com/docker/distribution
+      cd $GOPATH/src/github.com/docker/distribution
+
+      GOPATH=$(PWD)/Godeps/_workspace:$GOPATH make binaries
+      sudo mkdir -p /usr/local/libexec
+      sudo cp bin/registry /usr/local/libexec/registry
+
+      mkdir /Users/Shared/Registry
+      cp docs/osx/config.yml /Users/Shared/Registry/config.yml
+
       plutil -lint registry/recipes/osx/com.docker.registry.plist
       cp registry/recipes/osx/com.docker.registry.plist ~/Library/LaunchAgents/
       chmod 644 ~/Library/LaunchAgents/com.docker.registry.plist
