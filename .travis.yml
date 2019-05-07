@@ -30,14 +30,15 @@ services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
   - which cargo-make || cargo install --debug cargo-make
-  - ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
-  - which docker
   # The OSX image of Travis uses nvm instead of homebrew for managing node version
   - |
     if [ $TRAVIS_OS_NAME = osx ]; then
       nvm install 10;
       nvm use 10;
+
+      ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
     fi
+  - which docker
 script: cargo make travis
 notifications:
   email: false
