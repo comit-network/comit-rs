@@ -22,12 +22,14 @@ addons:
     - nodejs=10.*
   homebrew:
     packages:
-    - zmq
+    - node@10
     - yarn
+    - zmq
 services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
   - which cargo-make || cargo install --debug cargo-make
+before_script: node --version
 script: cargo make travis
 notifications:
   email: false
@@ -37,3 +39,4 @@ notifications:
     on_success: never
     on_failure: always
     on_pull_requests: true
+
