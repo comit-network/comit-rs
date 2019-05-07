@@ -37,7 +37,7 @@ install:
       # nvm use 10;
 
       ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
-      sudo dockerd
+      open /Applications/Docker.app
 
       docker run hello-world
     fi
