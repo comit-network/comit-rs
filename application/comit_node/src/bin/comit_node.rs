@@ -174,7 +174,7 @@ fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::run
 }
 
 fn auth_origin(settings: &ComitNodeSettings) -> String {
-    let auth_origin = match &settings.comit.cors_header {
+    let auth_origin = match &settings.web_gui {
         Some(http_socket) => format!("http://localhost:{}", http_socket.port),
         None => "http://localhost:3000".to_string(),
     };

@@ -10,10 +10,6 @@ listen = [
 address="0.0.0.0"
 port=8000
 
-[web_gui]
-address="0.0.0.0"
-port=8080
-
 [btsieve]
 url = "http://localhost:8181"
 
@@ -24,3 +20,7 @@ network = "regtest"
 [btsieve.ethereum]
 poll_interval_secs = 1
 network = "regtest"
+
+[web_gui]
+address="0.0.0.0"
+port=8080
