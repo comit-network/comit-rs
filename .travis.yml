@@ -28,41 +28,18 @@ addons:
       - docker
 services: docker
 install:
-  - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
-  - which cargo-make || cargo install --debug cargo-make
+  #- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
+  #- which cargo-make || cargo install --debug cargo-make
   # The OSX image of Travis uses nvm instead of homebrew for managing node version
   - |
     if [ $TRAVIS_OS_NAME = osx ]; then
-      nvm install 10;
-      nvm use 10;
-
-      export GOPATH=~/.go
-      mkdir -p $GOPATH/src/github.com/docker
-      git clone https://github.com/docker/distribution.git $GOPATH/src/github.com/docker/distribution
-      git clone https://github.com/docker/docker.github.io.git ~/src/github.com/docker/docker.github.io
-      cd $GOPATH/src/github.com/docker/distribution
-
-      GOPATH=$(PWD)/Godeps/_workspace:$GOPATH make binaries
-      sudo mkdir -p /usr/local/libexec
-      sudo cp bin/registry /usr/local/libexec/registry
-
-      mkdir /Users/Shared/Registry
-      cp ~/src/github.com/docker/docker.github.io/registry/recipes/osx/config.yml /Users/Shared/Registry/config.yml
-
-      plutil -lint ~/src/github.com/docker/docker.github.io/registry/recipes/osx/com.docker.registry.plist
-      cp ~/src/github.com/docker/docker.github.io/registry/recipes/osx/com.docker.registry.plist ~/Library/LaunchAgents/
-      chmod 644 ~/Library/LaunchAgents/com.docker.registry.plist
-
-      launchctl load ~/Library/LaunchAgents/com.docker.registry.plist
-
-      launchctl stop com.docker.registry
-      launchctl start com.docker.registry
-
-      launchctl unload ~/Library/LaunchAgents/com.docker.registry.plist
+      # nvm install 10;
+      # nvm use 10;
 
       ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
+      open --hide --background -a Docker
 
-      cd $TRAVIS_BUILD_DIR
+      docker run hello-world
     fi
   - which docker
 script: cargo make travis
