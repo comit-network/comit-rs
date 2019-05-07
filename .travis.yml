@@ -22,14 +22,13 @@ addons:
     - nodejs=10.*
   homebrew:
     packages:
-    - node@10
     - yarn
     - zmq
 services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
   - which cargo-make || cargo install --debug cargo-make
-  - which node
+  - if [ $TRAVIS_OS_NAME = osx ]; then nvm use node 10; fi # The OSX image of Travis uses nvm instead of homebrew for managing node version
 script: cargo make travis
 notifications:
   email: false
