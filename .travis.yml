@@ -28,7 +28,12 @@ services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
   - which cargo-make || cargo install --debug cargo-make
-  - if [ $TRAVIS_OS_NAME = osx ]; then nvm use node 10; fi # The OSX image of Travis uses nvm instead of homebrew for managing node version
+  # The OSX image of Travis uses nvm instead of homebrew for managing node version
+  - |
+    if [ $TRAVIS_OS_NAME = osx ]; then
+      nvm install node 10;
+      nvm use node 10;
+    fi
 script: cargo make travis
 notifications:
   email: false
