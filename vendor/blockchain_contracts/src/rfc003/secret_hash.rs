@@ -1,8 +1,7 @@
 use std::{fmt, str::FromStr};
 
-// TODO: Replace with Vec<u8>
 #[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct SecretHash(String);
+pub struct SecretHash(Vec<u8>);
 
 impl SecretHash {
     pub const LENGTH: usize = 32;
@@ -10,7 +9,7 @@ impl SecretHash {
 
 impl fmt::LowerHex for SecretHash {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        f.write_str(&self.0.to_lowercase())
+        f.write_str(hex::encode(&self.0).as_str())
     }
 }
 
@@ -37,6 +36,6 @@ impl FromStr for SecretHash {
                 got: vec.len(),
             });
         }
-        Ok(SecretHash(s.to_string()))
+        Ok(SecretHash(vec))
     }
 }
