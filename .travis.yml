@@ -28,8 +28,8 @@ addons:
       - docker
 services: docker
 install:
-  #- curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
-  #- which cargo-make || cargo install --debug cargo-make
+  - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
+  - which cargo-make || cargo install --debug cargo-make
   # The OSX image of Travis uses nvm instead of homebrew for managing node version
   - |
     if [ $TRAVIS_OS_NAME = osx ]; then
