@@ -36,6 +36,7 @@ install:
       nvm install 10;
       nvm use 10;
 
+      export GOPATH=~/.go
       mkdir -p $GOPATH/src/github.com/docker
       git clone https://github.com/docker/distribution.git $GOPATH/src/github.com/docker/distribution
       cd $GOPATH/src/github.com/docker/distribution
