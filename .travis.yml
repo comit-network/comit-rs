@@ -61,6 +61,8 @@ install:
       launchctl unload ~/Library/LaunchAgents/com.docker.registry.plist
 
       ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
+
+      cd $TRAVIS_BUILD_DIR
     fi
   - which docker
 script: cargo make travis
