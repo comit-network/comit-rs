@@ -39,6 +39,7 @@ install:
       export GOPATH=~/.go
       mkdir -p $GOPATH/src/github.com/docker
       git clone https://github.com/docker/distribution.git $GOPATH/src/github.com/docker/distribution
+      git clone https://github.com/docker/docker.github.io.git ~/src/github.com/docker/docker.github.io
       cd $GOPATH/src/github.com/docker/distribution
 
       GOPATH=$(PWD)/Godeps/_workspace:$GOPATH make binaries
@@ -46,10 +47,10 @@ install:
       sudo cp bin/registry /usr/local/libexec/registry
 
       mkdir /Users/Shared/Registry
-      cp docs/osx/config.yml /Users/Shared/Registry/config.yml
+      cp ~/src/github.com/docker/docker.github.io/registry/recipes/osx/config.yml /Users/Shared/Registry/config.yml
 
-      plutil -lint registry/recipes/osx/com.docker.registry.plist
-      cp registry/recipes/osx/com.docker.registry.plist ~/Library/LaunchAgents/
+      plutil -lint ~/src/github.com/docker/docker.github.io/registry/recipes/osx/com.docker.registry.plist
+      cp ~/src/github.com/docker/docker.github.io/registry/recipes/osx/com.docker.registry.plist ~/Library/LaunchAgents/
       chmod 644 ~/Library/LaunchAgents/com.docker.registry.plist
 
       launchctl load ~/Library/LaunchAgents/com.docker.registry.plist
