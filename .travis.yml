@@ -36,7 +36,7 @@ install:
       nvm install 10;
       nvm use 10;
 
-      ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
+      open --background -a Docker
     fi
   - which docker
 script: cargo make travis
