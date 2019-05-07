@@ -24,6 +24,8 @@ addons:
     packages:
     - yarn
     - zmq
+    casks:
+      - docker
 services: docker
 install:
   - curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
