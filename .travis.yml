@@ -36,7 +36,17 @@ install:
       nvm install 10;
       nvm use 10;
 
-      open --background -a Docker
+      plutil -lint registry/recipes/osx/com.docker.registry.plist
+      cp registry/recipes/osx/com.docker.registry.plist ~/Library/LaunchAgents/
+      chmod 644 ~/Library/LaunchAgents/com.docker.registry.plist
+
+      launchctl load ~/Library/LaunchAgents/com.docker.registry.plist
+
+      launchctl stop com.docker.registry
+      launchctl start com.docker.registry
+
+      launchctl unload ~/Library/LaunchAgents/com.docker.registry.plist
+
       ln -s /Applications/Docker.app/Contents/Resources/bin/docker /usr/local/bin/docker
     fi
   - which docker
