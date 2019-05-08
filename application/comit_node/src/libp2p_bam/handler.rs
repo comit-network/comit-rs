@@ -17,6 +17,7 @@ use futures::{
 use libp2p::core::{
     protocols_handler::{
         KeepAlive, ProtocolsHandler, ProtocolsHandlerEvent, ProtocolsHandlerUpgrErr,
+        SubstreamProtocol,
     },
     upgrade::Negotiated,
 };
@@ -163,16 +164,12 @@ impl<TSubstream> Advanced<TSubstream> {
 }
 
 impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
-    fn advance(
-        self,
-        protocol_config: BamProtocol,
-        known_headers: &HashMap<String, HashSet<String>>,
-    ) -> Advanced<TSubstream> {
+    fn advance(self, known_headers: &HashMap<String, HashSet<String>>) -> Advanced<TSubstream> {
         use self::SubstreamState::*;
         match self {
             OutPendingOpen { req } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                    upgrade: protocol_config,
+                    protocol: SubstreamProtocol::new(BamProtocol {}),
                     info: req,
                 })
             }
@@ -414,8 +411,8 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     type OutboundProtocol = BamProtocol;
     type OutboundOpenInfo = PendingOutgoingRequest;
 
-    fn listen_protocol(&self) -> Self::InboundProtocol {
-        BamProtocol {}
+    fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
+        SubstreamProtocol::new(BamProtocol {})
     }
 
     fn inject_fully_negotiated_inbound(
@@ -465,7 +462,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
-        KeepAlive::Forever
+        KeepAlive::Yes
     }
 
     fn poll(&mut self) -> Poll<BamHandlerEvent, Self::Error> {
@@ -478,7 +475,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
             loop {
                 let log_message = format!("transition from {}", substream_state);
 
-                let advanced = substream_state.advance(BamProtocol {}, &self.known_headers);
+                let advanced = substream_state.advance(&self.known_headers);
 
                 match advanced {
                     // The combination of new_state and no event is the only one we care about in
