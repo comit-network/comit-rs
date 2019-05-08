@@ -50,6 +50,7 @@ fn main() -> Result<(), failure::Error> {
 
     let local_key_pair = derive_key_pair(&settings.comit.secret_seed);
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
+    log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::Behaviour::new(bob_protocol_dependencies, runtime.executor())?;
@@ -173,10 +174,12 @@ fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::run
 }
 
 fn auth_origin(settings: &ComitNodeSettings) -> String {
-    match &settings.web_gui {
+    let auth_origin = match &settings.web_gui {
         Some(http_socket) => format!("http://localhost:{}", http_socket.port),
-        None => "http://localhost:8080".to_string(),
-    }
+        None => "http://localhost:3000".to_string(),
+    };
+    log::trace!("Auth origin enabled on: {}", auth_origin);
+    auth_origin
 }
 
 fn var_or_default(name: &str, default: String) -> String {

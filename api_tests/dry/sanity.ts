@@ -66,7 +66,7 @@ setTimeout(async function() {
                     beta_ledger_redeem_identity: "",
                     alpha_expiry: 123456789,
                     beta_expiry: 123456789,
-                    peer: "0.0.0.0",
+                    peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
                 });
             res.should.have.status(400);
             res.body.title.should.equal("Swap not supported.");

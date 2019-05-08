@@ -6,8 +6,13 @@ listen = [
     "/ip4/0.0.0.0/tcp/8011"
 ]
 
+[http_api]
+address="0.0.0.0"
+port=8000
+
 [btsieve]
 url = "http://localhost:8001"
+
 [btsieve.bitcoin]
 poll_interval_secs = 300
 network = "regtest"
@@ -15,10 +20,6 @@ network = "regtest"
 [btsieve.ethereum]
 poll_interval_secs = 20
 network = "regtest"
-
-[http_api]
-address="0.0.0.0"
-port=8000
 
 [web_gui]
 address="0.0.0.0"

@@ -120,12 +120,12 @@ impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
         match event {
             MdnsEvent::Discovered(addresses) => {
                 for (peer, address) in addresses {
-                    log::debug!("discovered {} at {}", peer, address)
+                    log::trace!("discovered {} at {}", peer, address)
                 }
             }
             MdnsEvent::Expired(addresses) => {
                 for (peer, address) in addresses {
-                    log::debug!("address {} of peer {} expired", address, peer)
+                    log::trace!("address {} of peer {} expired", address, peer)
                 }
             }
         }
