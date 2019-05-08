@@ -1,45 +1,39 @@
 use crate::rfc003::{secret_hash::SecretHash, timestamp::Timestamp};
 use binary_macros::{base16, base16_impl};
-use byteorder::{BigEndian, WriteBytesExt};
+use byteorder::{BigEndian, ByteOrder};
 use web3::types::{Address, Bytes, U256};
 
 pub mod rfc003;
 
-#[derive(Debug)]
-pub enum ToEvmError {
-    Io(std::io::Error),
-}
-
 pub trait EncodeToEvm {
-    fn encode_to_evm(&self) -> Result<Vec<u8>, ToEvmError>;
+    fn encode_to_evm(&self) -> Vec<u8>;
 }
 
 impl EncodeToEvm for SecretHash {
-    fn encode_to_evm(&self) -> Result<Vec<u8>, ToEvmError> {
-        Ok(self.clone().into())
+    fn encode_to_evm(&self) -> Vec<u8> {
+        self.clone().into()
     }
 }
 
 impl EncodeToEvm for Address {
-    fn encode_to_evm(&self) -> Result<Vec<u8>, ToEvmError> {
-        Ok(self.to_vec())
+    fn encode_to_evm(&self) -> Vec<u8> {
+        self.to_vec()
     }
 }
 
 impl EncodeToEvm for U256 {
-    fn encode_to_evm(&self) -> Result<Vec<u8>, ToEvmError> {
+    fn encode_to_evm(&self) -> Vec<u8> {
         let mut vec = vec![0; 32];
         self.to_big_endian(&mut vec);
-        Ok(vec)
+        vec
     }
 }
 
 impl EncodeToEvm for Timestamp {
-    fn encode_to_evm(&self) -> Result<Vec<u8>, ToEvmError> {
-        let mut vec = vec![];
-        vec.write_u32::<BigEndian>(self.clone().into())
-            .map_err(ToEvmError::Io)?;
-        Ok(vec)
+    fn encode_to_evm(&self) -> Vec<u8> {
+        let mut buf = [0; 4];
+        BigEndian::write_u32(&mut buf, self.clone().into());
+        buf.to_vec()
     }
 }
 

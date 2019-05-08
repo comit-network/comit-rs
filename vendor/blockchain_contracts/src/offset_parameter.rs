@@ -1,4 +1,4 @@
-use crate::ethereum::{EncodeToEvm, ToEvmError};
+use crate::ethereum::EncodeToEvm;
 use hex::FromHexError;
 use std::ops::Range;
 
@@ -10,7 +10,6 @@ pub struct OffsetParameter {
 
 #[derive(Debug)]
 pub enum Error {
-    ToEVM(ToEvmError),
     Length(usize, usize),
     FromHex(FromHexError),
 }
@@ -20,7 +19,7 @@ impl OffsetParameter {
     where
         T: EncodeToEvm,
     {
-        let value = value.encode_to_evm().map_err(Error::ToEVM)?;
+        let value = value.encode_to_evm();
 
         if value.len() != range.len() {
             return Err(Error::Length(value.len(), range.len()));
