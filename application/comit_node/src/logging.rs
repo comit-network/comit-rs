@@ -11,8 +11,8 @@ pub fn set_up_logging(settings: &ComitNodeSettings) {
         .level_for("tokio_reactor", LevelFilter::Info)
         .level_for("hyper", LevelFilter::Info)
         .level_for("warp", LevelFilter::Info)
-        .level_for("libp2p", LevelFilter::Debug)
-        .level_for("bam", LevelFilter::Trace)
+        .level_for("libp2p", LevelFilter::Debug) // the libp2p library
+        .level_for("sub-libp2p", LevelFilter::Debug) // the libp2p subsystem in our application
         .chain(stdout())
         .apply()
         .unwrap();
@@ -23,7 +23,8 @@ fn formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'
         .line()
         .map(|line| format!(":{}", line))
         .unwrap_or_else(String::new);
-    let path = record.file().unwrap_or_else(|| record.target());
+    //    let path = record.file().unwrap_or_else(|| record.target());
+    let path = record.target();
 
     out.finish(format_args!(
         "[{date}][{level}][{path}{line}] {message}",

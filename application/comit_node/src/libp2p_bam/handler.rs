@@ -1,4 +1,4 @@
-use crate::libp2p_bam::{protocol::BamConfig, BamStream};
+use crate::libp2p_bam::{protocol::BamProtocol, BamStream};
 use bam::{
     json::{
         Frame, Header, JsonFrameCodec, OutgoingRequest, Response, UnknownMandatoryHeaders,
@@ -8,11 +8,7 @@ use bam::{
 };
 use derivative::Derivative;
 use futures::{
-    sink::Sink,
-    stream::Stream,
-    sync::oneshot,
-    task::{self, Task},
-    Async, AsyncSink, Future, Poll,
+    sink::Sink, stream::Stream, sync::oneshot, task::Task, Async, AsyncSink, Future, Poll,
 };
 use libp2p::core::{
     protocols_handler::{
@@ -21,47 +17,322 @@ use libp2p::core::{
     upgrade::Negotiated,
 };
 use std::{
-    collections::{vec_deque::VecDeque, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     convert::Infallible,
-    mem,
 };
 use tokio::{
     codec::Framed,
     prelude::{AsyncRead, AsyncWrite},
 };
 
+#[derive(Derivative)]
+#[derivative(Debug)]
+/// State of an active substream, opened either by us or by the remote.
 enum SubstreamState<TSubstream> {
-    Disconnected,
-    SubstreamRequested,
-    WaitingForSubstream(Task),
-    Connected(BamStream<TSubstream>),
+    /// We haven't started opening the outgoing substream yet.
+    OutPendingOpen {
+        #[derivative(Debug = "ignore")]
+        req: PendingOutgoingRequest,
+    },
+    /// Waiting to send a message to the remote.
+    OutPendingSend {
+        #[derivative(Debug = "ignore")]
+        msg: Frame,
+        #[derivative(Debug = "ignore")]
+        response_sender: oneshot::Sender<Response>,
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// Waiting to flush the substream so that the data arrives to the remote.
+    OutPendingFlush {
+        #[derivative(Debug = "ignore")]
+        response_sender: oneshot::Sender<Response>,
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// Waiting for the answer to our message
+    OutWaitingAnswer {
+        #[derivative(Debug = "ignore")]
+        response_sender: oneshot::Sender<Response>,
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// The substream is being closed.
+    OutClosing {
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+
+    /// Waiting for a request from the remote.
+    InWaitingMessage {
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// Waiting for the user to send the response back to us.
+    InWaitingUser {
+        #[derivative(Debug = "ignore")]
+        response_receiver: oneshot::Receiver<Response>,
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// Waiting to send an answer back to the remote.
+    InPendingSend {
+        #[derivative(Debug = "ignore")]
+        msg: Frame,
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// Waiting to flush an answer back to the remote.
+    InPendingFlush {
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+    /// The substream is being closed.
+    InClosing {
+        #[derivative(Debug = "ignore")]
+        stream: BamStream<TSubstream>,
+    },
+}
+
+struct Advanced<TSubstream> {
+    /// The optional new state we transitioned to
+    new_state: Option<SubstreamState<TSubstream>>,
+    /// The optional event we generated as part of the transition
+    event: Option<BamHandlerEvent>,
+    /// Whether we should immediately re-poll the state after this
+    ///
+    /// We need this flag to ensure that we adhere to the `NotReady`-rule.
+    immediately_repoll: bool,
+}
+
+impl<TSubstream> Advanced<TSubstream> {
+    fn transition_to(new_state: SubstreamState<TSubstream>) -> Self {
+        Self {
+            new_state: Some(new_state),
+            event: None,
+            immediately_repoll: false,
+        }
+    }
+
+    fn emit_event(event: BamHandlerEvent) -> Self {
+        Self {
+            new_state: None,
+            event: Some(event),
+            immediately_repoll: false,
+        }
+    }
+
+    fn end() -> Self {
+        Self {
+            new_state: None,
+            event: None,
+            immediately_repoll: false,
+        }
+    }
+
+    fn with_repoll(self) -> Self {
+        Self {
+            immediately_repoll: true,
+            ..self
+        }
+    }
+}
+
+impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
+    fn advance(
+        self,
+        protocol_config: BamProtocol,
+        known_headers: &HashMap<String, HashSet<String>>,
+    ) -> Advanced<TSubstream> {
+        use self::SubstreamState::*;
+        match self {
+            OutPendingOpen { req } => Advanced {
+                new_state: None,
+                event: Some(ProtocolsHandlerEvent::OutboundSubstreamRequest {
+                    upgrade: protocol_config,
+                    info: req,
+                }),
+                immediately_repoll: false,
+            },
+            OutPendingSend {
+                msg,
+                response_sender,
+                mut stream,
+            } => match stream.start_send(msg) {
+                Ok(AsyncSink::Ready) => Advanced::transition_to(OutPendingFlush {
+                    response_sender,
+                    stream,
+                })
+                .with_repoll(),
+                Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(OutPendingSend {
+                    msg,
+                    response_sender,
+                    stream,
+                }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            OutPendingFlush {
+                response_sender,
+                mut stream,
+            } => match stream.poll_complete() {
+                Ok(Async::Ready(_)) => Advanced::transition_to(OutWaitingAnswer {
+                    response_sender,
+                    stream,
+                }),
+                Ok(Async::NotReady) => Advanced::transition_to(OutPendingFlush {
+                    response_sender,
+                    stream,
+                }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            OutWaitingAnswer {
+                response_sender,
+                mut stream,
+            } => match stream.poll() {
+                Ok(Async::Ready(Some(frame))) => {
+                    if frame.frame_type != "RESPONSE" {
+                        unimplemented!("emit error for wrong frame type")
+                    }
+
+                    let response = serde_json::from_value(frame.payload);
+
+                    let event = response
+                        .map(|response| {
+                            InnerEvent::IncomingResponse(PendingIncomingResponse {
+                                response,
+                                channel: response_sender,
+                            })
+                        })
+                        .unwrap_or_else(|deser_error| {
+                            log::error!(
+                                target: "bam",
+                                "payload of frame is not a well-formed RESPONSE: {:?}",
+                                deser_error
+                            );
+
+                            InnerEvent::BadIncomingResponse
+                        });
+
+                    Advanced {
+                        new_state: Some(OutClosing { stream }),
+                        event: Some(ProtocolsHandlerEvent::Custom(event)),
+                        immediately_repoll: false,
+                    }
+                }
+                Ok(Async::Ready(None)) => {
+                    log::debug!("stream closed unexpectedly");
+                    Advanced::end()
+                }
+                Ok(Async::NotReady) => Advanced::transition_to(OutWaitingAnswer {
+                    response_sender,
+                    stream,
+                }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            OutClosing { mut stream } => match stream.close() {
+                Ok(Async::Ready(_)) => Advanced::end(),
+                Ok(Async::NotReady) => Advanced::transition_to(OutClosing { stream }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            InWaitingMessage { mut stream } => match stream.poll() {
+                Ok(Async::Ready(Some(frame))) => {
+                    let request =
+                        serde_json::from_value::<UnvalidatedIncomingRequest>(frame.payload)
+                            .map_err(malformed_request)
+                            .and_then(|request| {
+                                known_headers
+                                    .get(request.request_type())
+                                    .ok_or_else(|| unknown_request_type(request.request_type()))
+                                    .and_then(|known_headers| {
+                                        request
+                                            .ensure_no_unknown_mandatory_headers(known_headers)
+                                            .map_err(unknown_mandatory_headers)
+                                    })
+                            });
+
+                    let (sender, receiver) = oneshot::channel();
+
+                    Advanced {
+                        new_state: Some(InWaitingUser {
+                            response_receiver: receiver,
+                            stream,
+                        }),
+                        event: Some(ProtocolsHandlerEvent::Custom(match request {
+                            Ok(request) => InnerEvent::IncomingRequest(PendingIncomingRequest {
+                                request,
+                                channel: sender,
+                            }),
+                            Err(response) => InnerEvent::BadIncomingRequest(
+                                AutomaticallyGeneratedErrorResponse {
+                                    response,
+                                    channel: sender,
+                                },
+                            ),
+                        })),
+                        immediately_repoll: false,
+                    }
+                }
+                Ok(Async::Ready(None)) => {
+                    log::debug!("stream closed unexpectedly");
+                    Advanced::end()
+                }
+                Ok(Async::NotReady) => Advanced::transition_to(InWaitingMessage { stream }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            InWaitingUser {
+                mut response_receiver,
+                stream,
+            } => match response_receiver.poll() {
+                Ok(Async::Ready(response)) => Advanced::transition_to(InPendingSend {
+                    msg: response.into_frame(),
+                    stream,
+                })
+                .with_repoll(),
+                Ok(Async::NotReady) => Advanced::transition_to(InWaitingUser {
+                    response_receiver,
+                    stream,
+                }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            InPendingSend { msg, mut stream } => match stream.start_send(msg) {
+                Ok(AsyncSink::Ready) => {
+                    Advanced::transition_to(InPendingFlush { stream }).with_repoll()
+                }
+                Ok(AsyncSink::NotReady(msg)) => {
+                    Advanced::transition_to(InPendingSend { msg, stream })
+                }
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            InPendingFlush { mut stream } => match stream.poll_complete() {
+                Ok(Async::Ready(_)) => Advanced::transition_to(InClosing { stream }),
+                Ok(Async::NotReady) => Advanced::transition_to(InPendingFlush { stream }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+            InClosing { mut stream } => match stream.close() {
+                Ok(Async::Ready(_)) => Advanced::end(),
+                Ok(Async::NotReady) => Advanced::transition_to(InClosing { stream }),
+                Err(_) => Advanced::emit_event(ProtocolsHandlerEvent::Custom(InnerEvent::Error)),
+            },
+        }
+    }
 }
 
 #[derive(Derivative)]
 #[derivative(Debug)]
 pub struct BamHandler<TSubstream> {
-    known_headers: HashMap<String, HashSet<String>>,
     #[derivative(Debug = "ignore")]
-    network_stream: SubstreamState<TSubstream>,
-    pending_frames: VecDeque<Frame>,
+    substreams: Vec<SubstreamState<TSubstream>>,
+    known_headers: HashMap<String, HashSet<String>>,
 
-    next_outgoing_id: u32,
-    pending_outgoing_request_channels: HashMap<u32, oneshot::Sender<Response>>,
-
-    next_incoming_id: u32,
-    pending_incoming_request_channels: Vec<(u32, oneshot::Receiver<Response>)>,
+    current_task: Option<Task>,
 }
 
 impl<TSubstream> BamHandler<TSubstream> {
     pub fn new(known_headers: HashMap<String, HashSet<String>>) -> Self {
         Self {
             known_headers,
-            pending_frames: VecDeque::new(),
-            network_stream: SubstreamState::Disconnected,
-            next_outgoing_id: 0,
-            pending_outgoing_request_channels: HashMap::new(),
-            next_incoming_id: 0,
-            pending_incoming_request_channels: Vec::new(),
+            substreams: Vec::new(),
+            current_task: None,
         }
     }
 }
@@ -95,6 +366,7 @@ pub enum InnerEvent {
     IncomingRequest(PendingIncomingRequest),
     IncomingResponse(PendingIncomingResponse),
     BadIncomingRequest(AutomaticallyGeneratedErrorResponse),
+    BadIncomingResponse,
 
     /// Error variant
     ///
@@ -104,56 +376,58 @@ pub enum InnerEvent {
     Error,
 }
 
-type BamHandlerEvent = ProtocolsHandlerEvent<BamConfig, (), InnerEvent>;
+type BamHandlerEvent = ProtocolsHandlerEvent<BamProtocol, PendingOutgoingRequest, InnerEvent>;
 
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = PendingOutgoingRequest;
     type OutEvent = InnerEvent;
     type Error = bam::json::Error;
     type Substream = TSubstream;
-    type InboundProtocol = BamConfig;
-    type OutboundProtocol = BamConfig;
-    type OutboundOpenInfo = ();
+    type InboundProtocol = BamProtocol;
+    type OutboundProtocol = BamProtocol;
+    type OutboundOpenInfo = PendingOutgoingRequest;
 
     fn listen_protocol(&self) -> Self::InboundProtocol {
-        BamConfig {}
+        BamProtocol {}
     }
 
     fn inject_fully_negotiated_inbound(
         &mut self,
-        protocol: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
+        stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
     ) {
-        mem::replace(
-            &mut self.network_stream,
-            SubstreamState::Connected(protocol),
-        );
+        self.substreams
+            .push(SubstreamState::InWaitingMessage { stream });
+
+        if let Some(task) = &self.current_task {
+            task.notify()
+        }
     }
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        protocol: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
-        _info: Self::OutboundOpenInfo,
+        stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
+        pending_incoming_request: Self::OutboundOpenInfo,
     ) {
-        let current_state = mem::replace(
-            &mut self.network_stream,
-            SubstreamState::Connected(protocol),
-        );
+        let PendingOutgoingRequest { request, channel } = pending_incoming_request;
 
-        if let SubstreamState::WaitingForSubstream(task) = current_state {
-            task.notify();
+        self.substreams.push(SubstreamState::OutPendingSend {
+            msg: request.into_frame(),
+            response_sender: channel,
+            stream,
+        });
+
+        if let Some(task) = &self.current_task {
+            task.notify()
         }
     }
 
     fn inject_event(&mut self, event: Self::InEvent) {
-        let PendingOutgoingRequest { request, channel } = event;
+        self.substreams
+            .push(SubstreamState::OutPendingOpen { req: event });
 
-        let frame = request.into_frame(self.next_outgoing_id);
-        self.pending_frames.push_back(frame);
-
-        self.pending_outgoing_request_channels
-            .insert(self.next_outgoing_id, channel);
-
-        self.next_outgoing_id += 1;
+        if let Some(task) = &self.current_task {
+            task.notify()
+        }
     }
 
     fn inject_dial_upgrade_error(
@@ -168,189 +442,80 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     }
 
     fn poll(&mut self) -> Poll<BamHandlerEvent, Self::Error> {
-        self.poll_response_futures();
+        // We remove each element from `substreams` one by one and add them back.
 
-        match &mut self.network_stream {
-            SubstreamState::Connected(bam_stream) => {
-                futures::try_ready!(bam_stream.poll_complete());
+        log::debug!("polling {} substreams", self.substreams.len());
 
-                while let Some(frame) = self.pending_frames.pop_front() {
-                    log::trace!(target: "bam", "--> OUTGOING FRAME {:?}", frame);
+        for n in (0..self.substreams.len()).rev() {
+            let mut substream_state = self.substreams.swap_remove(n);
 
-                    match bam_stream.start_send(frame) {
-                        Ok(AsyncSink::Ready) => {
-                            futures::try_ready!(bam_stream.poll_complete());
+            loop {
+                let log_message = format!("transition from {:?}", substream_state);
+
+                let advanced = substream_state.advance(BamProtocol {}, &self.known_headers);
+
+                match advanced {
+                    // The combination of new_state and no event is the only one we care about in
+                    // terms of immediate repolling because we would otherwise possibly return
+                    // `NotReady` and never be called again.
+                    Advanced {
+                        new_state: Some(new_state),
+                        event: None,
+                        immediately_repoll,
+                    } => {
+                        log::debug!(target: "sub-libp2p", "{} to {:?}", log_message, new_state);
+
+                        if immediately_repoll {
+                            substream_state = new_state;
+                            continue;
+                        } else {
+                            self.substreams.push(new_state);
+                            break;
                         }
-                        Ok(AsyncSink::NotReady(pending_frame)) => {
-                            log::trace!(target: "bam", "frame with id {} could be not sent due to sink being full", pending_frame.id);
-                            self.pending_frames.push_front(pending_frame);
-                            return Ok(Async::NotReady);
-                        }
-                        Err(e) => return Err(e),
+                    }
+                    Advanced {
+                        new_state: Some(new_state),
+                        event: Some(event),
+                        ..
+                    } => {
+                        log::debug!(target: "sub-libp2p", "{} to {:?}", log_message, new_state);
+                        self.substreams.push(new_state);
+                        log::debug!(target: "sub-libp2p", "emitting {:?}", event);
+                        return Ok(Async::Ready(event));
+                    }
+                    Advanced {
+                        new_state: None,
+                        event: Some(event),
+                        ..
+                    } => {
+                        log::debug!(target: "sub-libp2p", "emitting {:?}", event);
+                        return Ok(Async::Ready(event));
+                    }
+                    Advanced {
+                        new_state: None,
+                        event: None,
+                        ..
+                    } => {
+                        break;
                     }
                 }
-
-                match futures::try_ready!(bam_stream.poll()) {
-                    Some(frame) => {
-                        log::trace!(target: "bam", "<-- INCOMING FRAME {:?}", frame);
-
-                        let inner_event = self.handle_frame(frame);
-                        Ok(Async::Ready(ProtocolsHandlerEvent::Custom(inner_event)))
-                    }
-                    None => {
-                        log::info!(target: "bam", "substream is closed, trying to reconnect");
-                        self.network_stream = SubstreamState::SubstreamRequested;
-
-                        Ok(Async::Ready(
-                            ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                                upgrade: BamConfig {},
-                                info: (),
-                            },
-                        ))
-                    }
-                }
-            }
-            SubstreamState::Disconnected => {
-                self.network_stream = SubstreamState::SubstreamRequested;
-
-                Ok(Async::Ready(
-                    ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                        upgrade: BamConfig {},
-                        info: (),
-                    },
-                ))
-            }
-            SubstreamState::SubstreamRequested | SubstreamState::WaitingForSubstream(_) => {
-                self.network_stream = SubstreamState::WaitingForSubstream(task::current());
-
-                Ok(Async::NotReady)
             }
         }
-    }
-}
 
-impl<TSubstream> BamHandler<TSubstream> {
-    fn poll_response_futures(&mut self) {
-        let mut index = 0;
-        while index != self.pending_incoming_request_channels.len() {
-            let (frame_id, response_future) = &mut self.pending_incoming_request_channels[index];
+        self.current_task = Some(futures::task::current());
 
-            match response_future.poll() {
-                Ok(Async::Ready(response)) => {
-                    let frame = response.into_frame(*frame_id);
-                    self.pending_frames.push_back(frame);
-                    self.pending_incoming_request_channels.remove(index);
-                }
-                Ok(Async::NotReady) => {
-                    index += 1;
-                }
-                Err(_) => {
-                    log::warn!(target: "bam", "polling response future for frame {} yielded an error", frame_id);
-                    self.pending_incoming_request_channels.remove(index);
-                }
-            }
-        }
-    }
-
-    fn handle_frame(&mut self, frame: Frame) -> InnerEvent {
-        match frame.frame_type.as_str() {
-            "REQUEST" => self.handle_request(frame),
-            "RESPONSE" => self.handle_response(frame),
-            _ => self.handle_unknown_frame(frame),
-        }
-    }
-
-    fn handle_request(&mut self, frame: Frame) -> InnerEvent {
-        if frame.id < self.next_incoming_id {
-            log::warn!(
-                target: "bam",
-                "received out-of-order request with id {}. next expected id was {}",
-                frame.id,
-                self.next_incoming_id
-            );
-            return InnerEvent::Error;
-        }
-
-        self.next_incoming_id = frame.id + 1;
-
-        let request = serde_json::from_value(frame.payload)
-            .map_err(malformed_request)
-            .and_then(|request| self.validate_request(request));
-
-        let (sender, receiver) = oneshot::channel();
-
-        self.pending_incoming_request_channels
-            .push((frame.id, receiver));
-
-        match request {
-            Ok(request) => InnerEvent::IncomingRequest(PendingIncomingRequest {
-                request,
-                channel: sender,
-            }),
-            Err(response) => InnerEvent::BadIncomingRequest(AutomaticallyGeneratedErrorResponse {
-                response,
-                channel: sender,
-            }),
-        }
-    }
-
-    fn handle_response(&mut self, frame: Frame) -> InnerEvent {
-        let response = serde_json::from_value(frame.payload);
-
-        let maybe_request_channel = self.pending_outgoing_request_channels.remove(&frame.id);
-
-        match maybe_request_channel {
-            Some(sender) => match response {
-                Ok(response) => InnerEvent::IncomingResponse(PendingIncomingResponse {
-                    response,
-                    channel: sender,
-                }),
-                Err(e) => {
-                    log::error!(
-                        target: "bam",
-                        "payload of frame {} is not a well-formed RESPONSE: {:?}",
-                        frame.id,
-                        e
-                    );
-                    InnerEvent::Error
-                }
-            },
-            None => {
-                log::warn!(target: "bam","received unexpected response with id {}", frame.id);
-                InnerEvent::Error
-            }
-        }
-    }
-
-    fn handle_unknown_frame(&mut self, frame: Frame) -> InnerEvent {
-        log::warn!(target: "bam","received frame with unknown type {}", frame.frame_type);
-
-        InnerEvent::Error
-    }
-
-    fn validate_request(
-        &self,
-        request: UnvalidatedIncomingRequest,
-    ) -> Result<ValidatedIncomingRequest, Response> {
-        self.known_headers
-            .get(request.request_type())
-            .ok_or_else(|| unknown_request_type(request.request_type()))
-            .and_then(|known_headers| {
-                request
-                    .ensure_no_unknown_mandatory_headers(known_headers)
-                    .map_err(unknown_mandatory_headers)
-            })
+        Ok(Async::NotReady)
     }
 }
 
 fn malformed_request(error: serde_json::Error) -> Response {
-    log::warn!(target: "bam", "incoming request was malformed: {:?}", error);
+    log::warn!(target: "sub-libp2p", "incoming request was malformed: {:?}", error);
 
     Response::new(Status::SE(0))
 }
 
 fn unknown_request_type(request_type: &str) -> Response {
-    log::warn!(target: "bam", "request type '{}' is unknown", request_type);
+    log::warn!(target: "sub-libp2p", "request type '{}' is unknown", request_type);
 
     Response::new(Status::SE(2))
 }

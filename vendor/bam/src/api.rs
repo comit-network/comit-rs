@@ -19,7 +19,7 @@ where
 }
 
 pub trait IntoFrame<F> {
-    fn into_frame(self, id: u32) -> F;
+    fn into_frame(self) -> F;
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]
