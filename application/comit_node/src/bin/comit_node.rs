@@ -178,7 +178,7 @@ fn auth_origin(settings: &ComitNodeSettings) -> String {
         Some(http_socket) => format!("http://localhost:{}", http_socket.port),
         None => "http://localhost:3000".to_string(),
     };
-    log::info!("Auth origin enabled on: {}", auth_origin);
+    log::trace!("Auth origin enabled on: {}", auth_origin);
     auth_origin
 }
 
