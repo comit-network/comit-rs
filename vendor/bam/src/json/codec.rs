@@ -88,7 +88,7 @@ mod tests {
 
         assert!(codec.encode(frame, &mut bytes).is_ok());
 
-        let frame_bytes = br#"{"type":REQUEST","payload":null}"#.as_ref();
+        let frame_bytes = br#"{"type":"REQUEST","payload":null}"#.as_ref();
         let newline = b"\n".as_ref();
 
         let expected = [frame_bytes, newline].concat();
