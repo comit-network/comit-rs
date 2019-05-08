@@ -29,68 +29,51 @@ use tokio::{
     prelude::{AsyncRead, AsyncWrite},
 };
 
-#[derive(Derivative)]
-#[derivative(Debug)]
+#[derive(strum_macros::Display)]
+#[allow(missing_debug_implementations)]
 /// State of an active substream, opened either by us or by the remote.
 enum SubstreamState<TSubstream> {
     /// We haven't started opening the outgoing substream yet.
-    OutPendingOpen {
-        #[derivative(Debug = "ignore")]
-        req: PendingOutgoingRequest,
-    },
+    OutPendingOpen { req: PendingOutgoingRequest },
     /// Waiting to send a message to the remote.
     OutPendingSend {
-        #[derivative(Debug = "ignore")]
         msg: Frame,
-        #[derivative(Debug = "ignore")]
+
         response_sender: oneshot::Sender<Response>,
-        #[derivative(Debug = "ignore")]
+
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush the substream so that the data arrives to the remote.
     OutPendingFlush {
-        #[derivative(Debug = "ignore")]
         response_sender: oneshot::Sender<Response>,
-        #[derivative(Debug = "ignore")]
+
         stream: BamStream<TSubstream>,
     },
     /// Waiting for the answer to our message
     OutWaitingAnswer {
-        #[derivative(Debug = "ignore")]
         response_sender: oneshot::Sender<Response>,
-        #[derivative(Debug = "ignore")]
+
         stream: BamStream<TSubstream>,
     },
     /// Waiting for a request from the remote.
-    InWaitingMessage {
-        #[derivative(Debug = "ignore")]
-        stream: BamStream<TSubstream>,
-    },
+    InWaitingMessage { stream: BamStream<TSubstream> },
     /// Waiting for the user to send the response back to us.
     InWaitingUser {
-        #[derivative(Debug = "ignore")]
         response_receiver: oneshot::Receiver<Response>,
-        #[derivative(Debug = "ignore")]
+
         stream: BamStream<TSubstream>,
     },
     /// Waiting to send an answer back to the remote.
     InPendingSend {
-        #[derivative(Debug = "ignore")]
         msg: Frame,
-        #[derivative(Debug = "ignore")]
+
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush an answer back to the remote.
-    InPendingFlush {
-        #[derivative(Debug = "ignore")]
-        stream: BamStream<TSubstream>,
-    },
+    InPendingFlush { stream: BamStream<TSubstream> },
 
     /// The substream is being closed.
-    Closing {
-        #[derivative(Debug = "ignore")]
-        stream: BamStream<TSubstream>,
-    },
+    Closing { stream: BamStream<TSubstream> },
 }
 
 struct Advanced<TSubstream> {
@@ -367,11 +350,12 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
 #[derive(Derivative)]
 #[derivative(Debug)]
 pub struct BamHandler<TSubstream> {
-    #[derivative(Debug = "ignore")]
+    #[debug(ignore)]
     substreams: Vec<SubstreamState<TSubstream>>,
-    known_headers: HashMap<String, HashSet<String>>,
-
+    #[debug(ignore)]
     current_task: Option<Task>,
+
+    known_headers: HashMap<String, HashSet<String>>,
 }
 
 impl<TSubstream> BamHandler<TSubstream> {
@@ -497,7 +481,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
             let mut substream_state = self.substreams.swap_remove(n);
 
             loop {
-                let log_message = format!("transition from {:?}", substream_state);
+                let log_message = format!("transition from {}", substream_state);
 
                 let advanced = substream_state.advance(BamProtocol {}, &self.known_headers);
 
@@ -510,7 +494,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                         event: None,
                         immediately_repoll,
                     } => {
-                        log::debug!(target: "sub-libp2p", "{} to {:?}", log_message, new_state);
+                        log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
 
                         if immediately_repoll {
                             substream_state = new_state;
@@ -525,9 +509,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                         event: Some(event),
                         ..
                     } => {
-                        log::debug!(target: "sub-libp2p", "{} to {:?}", log_message, new_state);
+                        log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
                         self.substreams.push(new_state);
-                        log::debug!(target: "sub-libp2p", "emitting {:?}", event);
+                        log::trace!(target: "sub-libp2p", "emitting {:?}", event);
                         return Ok(Async::Ready(event));
                     }
                     Advanced {
@@ -535,7 +519,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
                         event: Some(event),
                         ..
                     } => {
-                        log::debug!(target: "sub-libp2p", "emitting {:?}", event);
+                        log::trace!(target: "sub-libp2p", "emitting {:?}", event);
                         return Ok(Async::Ready(event));
                     }
                     Advanced {
