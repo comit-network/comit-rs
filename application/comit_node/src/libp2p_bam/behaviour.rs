@@ -1,5 +1,5 @@
 use crate::libp2p_bam::{
-    handler::{AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
+    handler::{self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
     BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
 };
 use bam::json::{OutgoingRequest, Response};
@@ -221,11 +221,27 @@ where
             }) => {
                 let _ = channel.send(response);
             }
-            InnerEvent::Error => {
-                log::error!(target: "sub-libp2p", "error in communication with {:?}", peer);
+            InnerEvent::Error {
+                error: handler::Error::Stream(error),
+            } => {
+                log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
+            }
+            InnerEvent::Error {
+                error: handler::Error::DroppedResponseSender(_),
+            } => {
+                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?} - this is very likely a bug in your application", peer);
             }
             InnerEvent::BadIncomingResponse => {
                 log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
+            }
+            InnerEvent::UnexpectedFrameType {
+                bad_frame,
+                expected_type,
+            } => {
+                log::error!(target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
+            }
+            InnerEvent::UnexpectedEOF => {
+                log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
             }
         }
     }

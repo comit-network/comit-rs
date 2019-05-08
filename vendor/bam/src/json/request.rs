@@ -3,6 +3,7 @@ use crate::{
     json::{
         self,
         header::{Header, Headers},
+        FrameType,
     },
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -149,6 +150,6 @@ impl IntoFrame<json::Frame> for OutgoingRequest {
         // and JsonValues
         let payload = serde_json::to_value(self).unwrap();
 
-        json::Frame::new("REQUEST".into(), 0, payload)
+        json::Frame::new(FrameType::Request, payload)
     }
 }

@@ -3,6 +3,7 @@ use crate::{
     json::{
         frame::Frame,
         header::{Header, Headers},
+        FrameType,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,6 @@ impl IntoFrame<Frame> for Response {
         // and JsonValues
         let payload = serde_json::to_value(self).unwrap();
 
-        Frame::new("RESPONSE".into(), 0, payload)
+        Frame::new(FrameType::Response, payload)
     }
 }
