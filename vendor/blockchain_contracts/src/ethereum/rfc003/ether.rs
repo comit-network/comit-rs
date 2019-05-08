@@ -1,5 +1,5 @@
 use crate::{
-    offset_parameter::{Error, OffsetParameter},
+    offset_parameter::{apply_offsets, Error, OffsetParameter},
     rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
 };
 use std::ops::Range;
@@ -35,14 +35,9 @@ impl EtherHtlc {
             OffsetParameter::new(secret_hash, SECRET_HASH_RANGE)?,
         ];
 
-        let mut htlc = hex::decode(CONTRACT_TEMPLATE)
-            .expect("Ether rfc003 template file should be encoded in hex");
+        let data = apply_offsets(CONTRACT_TEMPLATE, offsets)?;
 
-        for offset in offsets {
-            htlc.splice(offset.range, offset.value);
-        }
-
-        Ok(EtherHtlc(htlc))
+        Ok(EtherHtlc(data))
     }
 }
 

@@ -1,10 +1,9 @@
 use crate::{
-    offset_parameter::{Error, OffsetParameter},
+    offset_parameter::{apply_offsets, Error, OffsetParameter},
     rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
 };
-use binary_macros::{base16, base16_impl};
 use std::ops::Range;
-use web3::types::{Address, Bytes, U256};
+use web3::types::{Address, U256};
 
 pub const SECRET_HASH_RANGE: Range<usize> = 53..85;
 pub const EXPIRY_RANGE: Range<usize> = 102..106;
@@ -16,14 +15,11 @@ pub const TOKEN_CONTRACT_RANGE: Range<usize> = 307..327;
 const CONTRACT_TEMPLATE: & str = "61014461000f6000396101446000f3361561005457602036141561006057602060006000376020602160206000600060026048f17f000000000000000000000000000000000000000000000000000000000000000060215114166100665760006000f35b426300000000106100a9575b60006000f35b7fb8cac300e37f03ad332e581dea21b2f0b84eaaadc184a295fef71e81f44a741360206000a17300000000000000000000000000000000000000006020526100ec565b7f5d26862916391bf49478b2f5103b0720a842b45ef145a268f2cd1fb2aed5517860006000a17300000000000000000000000000000000000000006020526100ec565b63a9059cbb6000527f0000000000000000000000000000000000000000000000000000000000000064604052602060606044601c6000730000000000000000000000000000000000000000620186a05a03f150602051ff";
 
 #[derive(Debug, Clone)]
-pub struct Erc20Htlc {
-    data: Vec<u8>,
-    token_quantity: U256,
-}
+pub struct Erc20Htlc(Vec<u8>);
 
 impl From<Erc20Htlc> for Vec<u8> {
     fn from(htlc: Erc20Htlc) -> Self {
-        htlc.data
+        htlc.0
     }
 }
 
@@ -44,32 +40,9 @@ impl Erc20Htlc {
             OffsetParameter::new(token_contract_address, TOKEN_CONTRACT_RANGE)?,
             OffsetParameter::new(token_quantity, TOKEN_QUANTITY_RANGE)?,
         ];
-        let mut data = hex::decode(CONTRACT_TEMPLATE)
-            .expect("Ether rfc003 template file should be encoded in hex");
+        let data = apply_offsets(CONTRACT_TEMPLATE, offsets)?;
 
-        for offset in offsets {
-            data.splice(offset.range, offset.value);
-        }
-
-        Ok(Erc20Htlc {
-            data,
-            token_quantity,
-        })
-    }
-
-    /// Constructs the payload for funding an `Erc20` HTLC located at the given
-    /// address.
-    pub fn funding_tx_payload(&self, htlc_contract_address: Address) -> Bytes {
-        let transfer_fn_abi = base16!("A9059CBB");
-        let htlc_contract_address = <[u8; 20]>::from(htlc_contract_address);
-        let amount = <[u8; 32]>::from(self.token_quantity);
-
-        let mut data = [0u8; 4 + 32 + 32];
-        data[..4].copy_from_slice(transfer_fn_abi);
-        data[16..36].copy_from_slice(&htlc_contract_address);
-        data[36..68].copy_from_slice(&amount);
-
-        Bytes::from(data.to_vec())
+        Ok(Erc20Htlc(data))
     }
 }
 
@@ -98,7 +71,7 @@ mod tests {
         )?;
 
         assert_eq!(
-            htlc.data.len(),             // This is a Vec<u8>
+            htlc.0.len(),                // This is a Vec<u8>
             CONTRACT_TEMPLATE.len() / 2, // This is hex
             "HTLC is the same length as template"
         );
@@ -118,7 +91,7 @@ mod tests {
         )
         .unwrap();
 
-        let compiled_code = htlc.data;
+        let compiled_code = htlc.0;
 
         let _re_match = Regex::new(SECRET_HASH_REGEX)
             .expect("Could not create regex")
