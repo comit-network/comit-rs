@@ -4,8 +4,8 @@ use crate::{
     parity_client::ParityClient,
 };
 use blockchain_contracts::{
-    ethereum::rfc003::{erc20::SECRET_HASH_LENGTH, Erc20Htlc},
-    rfc003::timestamp::Timestamp,
+    ethereum::rfc003::Erc20Htlc,
+    rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
 };
 use ethereum_support::{
     web3::{
@@ -14,7 +14,7 @@ use ethereum_support::{
     },
     EtherQuantity,
 };
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -22,20 +22,17 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct Erc20HarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_refund_timestamp: Timestamp,
-    pub htlc_secret_hash: [u8; SECRET_HASH_LENGTH],
+    pub htlc_secret_hash: SecretHash,
     pub alice_initial_tokens: U256,
     pub htlc_token_value: U256,
 }
 
 impl Default for Erc20HarnessParams {
     fn default() -> Self {
-        let mut secret_hash = [0; SECRET_HASH_LENGTH];
-        secret_hash.copy_from_slice(&hex::decode(SECRET_HASH).unwrap()[..SECRET_HASH_LENGTH]);
-
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_refund_timestamp: Timestamp::now().plus(10),
-            htlc_secret_hash: secret_hash,
+            htlc_secret_hash: SecretHash::from_str(SECRET_HASH).unwrap(),
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
         }
@@ -43,7 +40,7 @@ impl Default for Erc20HarnessParams {
 }
 
 impl Erc20HarnessParams {
-    pub fn with_secret_hash(self, secret_hash: [u8; SECRET_HASH_LENGTH]) -> Self {
+    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
         Self {
             htlc_secret_hash: secret_hash,
             ..self
@@ -91,7 +88,7 @@ pub fn erc20_harness<D: Docker>(
         params.htlc_refund_timestamp,
         alice,
         bob,
-        params.htlc_secret_hash,
+        params.htlc_secret_hash.into(),
         token_contract,
         params.htlc_token_value,
     )

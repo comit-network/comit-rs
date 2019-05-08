@@ -25,6 +25,18 @@ impl From<hex::FromHexError> for FromErr {
     }
 }
 
+impl From<[u8; SecretHash::LENGTH]> for SecretHash {
+    fn from(value: [u8; SecretHash::LENGTH]) -> SecretHash {
+        SecretHash(value.to_vec())
+    }
+}
+
+impl From<SecretHash> for Vec<u8> {
+    fn from(secret_hash: SecretHash) -> Self {
+        secret_hash.0.to_vec()
+    }
+}
+
 impl FromStr for SecretHash {
     type Err = FromErr;
 
