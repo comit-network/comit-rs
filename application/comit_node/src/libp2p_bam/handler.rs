@@ -29,6 +29,17 @@ use tokio::{
     prelude::{AsyncRead, AsyncWrite},
 };
 
+#[derive(Derivative)]
+#[derivative(Debug)]
+pub struct BamHandler<TSubstream> {
+    #[derivative(Debug = "ignore")]
+    substreams: Vec<SubstreamState<TSubstream>>,
+    #[derivative(Debug = "ignore")]
+    current_task: Option<Task>,
+
+    known_headers: HashMap<String, HashSet<String>>,
+}
+
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
 /// State of an active substream, opened either by us or by the remote.
@@ -38,21 +49,17 @@ enum SubstreamState<TSubstream> {
     /// Waiting to send a message to the remote.
     OutPendingSend {
         msg: Frame,
-
         response_sender: oneshot::Sender<Response>,
-
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush the substream so that the data arrives to the remote.
     OutPendingFlush {
         response_sender: oneshot::Sender<Response>,
-
         stream: BamStream<TSubstream>,
     },
     /// Waiting for the answer to our message
     OutWaitingAnswer {
         response_sender: oneshot::Sender<Response>,
-
         stream: BamStream<TSubstream>,
     },
     /// Waiting for a request from the remote.
@@ -60,13 +67,11 @@ enum SubstreamState<TSubstream> {
     /// Waiting for the user to send the response back to us.
     InWaitingUser {
         response_receiver: oneshot::Receiver<Response>,
-
         stream: BamStream<TSubstream>,
     },
     /// Waiting to send an answer back to the remote.
     InPendingSend {
         msg: Frame,
-
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush an answer back to the remote.
@@ -76,6 +81,7 @@ enum SubstreamState<TSubstream> {
     Closing { stream: BamStream<TSubstream> },
 }
 
+#[allow(missing_debug_implementations)]
 struct Advanced<TSubstream> {
     /// The optional new state we transitioned to
     new_state: Option<SubstreamState<TSubstream>>,
@@ -345,17 +351,6 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
             },
         }
     }
-}
-
-#[derive(Derivative)]
-#[derivative(Debug)]
-pub struct BamHandler<TSubstream> {
-    #[debug(ignore)]
-    substreams: Vec<SubstreamState<TSubstream>>,
-    #[debug(ignore)]
-    current_task: Option<Task>,
-
-    known_headers: HashMap<String, HashSet<String>>,
 }
 
 impl<TSubstream> BamHandler<TSubstream> {
