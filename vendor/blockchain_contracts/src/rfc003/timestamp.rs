@@ -5,6 +5,12 @@ use std::time::SystemTime;
 #[serde(transparent)]
 pub struct Timestamp(u32);
 
+#[derive(Debug)]
+pub enum ToVecError {
+    ValueTooLong,
+    Io(std::io::Error),
+}
+
 impl Timestamp {
     // This will work for the next 20 years
     #[allow(clippy::cast_possible_truncation)]

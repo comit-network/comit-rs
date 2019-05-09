@@ -1,7 +1,9 @@
-use blockchain_contracts::{
+use self::calculate_offsets::{
     ethereum::rfc003::{Erc20Htlc, EtherHtlc},
     to_markdown,
 };
+
+mod calculate_offsets;
 
 #[allow(clippy::print_stdout)]
 fn main() {

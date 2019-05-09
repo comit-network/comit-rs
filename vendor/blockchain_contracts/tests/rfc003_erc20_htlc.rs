@@ -9,7 +9,7 @@ use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
     htlc_harness::{erc20_harness, sleep_until, CustomSizeSecret, Erc20HarnessParams, SECRET},
 };
-use blockchain_contracts::rfc003::timestamp::Timestamp;
+use blockchain_contracts::{ethereum::transfer_erc20_tx_payload, rfc003::timestamp::Timestamp};
 use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
@@ -22,43 +22,61 @@ const REFUNDED_LOG_MSG: &str = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A2
 #[test]
 fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(1000));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(1000)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     // Check htlc funding
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Send correct secret to contract
     client.send_data(htlc_address, Some(Bytes(SECRET.to_vec())));
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(400));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, bob),
+        U256::from(400)
+    );
 }
 
 #[test]
 fn given_funded_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred() {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
 
     // fund erc20 htlc
@@ -66,31 +84,43 @@ fn given_funded_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Send correct secret to contract
     client.send_data(htlc_address, Some(Bytes(SECRET.to_vec())));
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(400));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, bob),
+        U256::from(400)
+    );
 }
 
 #[test]
 fn given_deployed_erc20_htlc_when_refunded_after_expiry_time_then_tokens_are_refunded() {
     let docker = Cli::default();
     let harness_params = Erc20HarnessParams::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
         erc20_harness(&docker, harness_params.clone());
 
     // Fund erc20 htlc
@@ -98,105 +128,134 @@ fn given_deployed_erc20_htlc_when_refunded_after_expiry_time_then_tokens_are_ref
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
 
     // Wait for the contract to expire
     sleep_until(harness_params.htlc_refund_timestamp);
     client.send_data(htlc_address, None);
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(1000));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(1000)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 }
 
 #[test]
 fn given_deployed_erc20_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_then_nothing_happens(
 ) {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
-        &docker,
-        Erc20HarnessParams {
-            htlc_refund_timestamp: Timestamp::now().plus(1000000),
-            ..Default::default()
-        },
-    );
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
+        erc20_harness(
+            &docker,
+            Erc20HarnessParams {
+                htlc_refund_timestamp: Timestamp::now().plus(1000000),
+                ..Default::default()
+            },
+        );
 
     // fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Don't wait for the timeout and don't send a secret
     client.send_data(htlc_address, None);
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
 }
 
 #[test]
 fn given_not_enough_tokens_when_redeemed_token_balances_dont_change() {
     let docker = Cli::default();
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
-        &docker,
-        Erc20HarnessParams {
-            alice_initial_tokens: U256::from(200),
-            ..Default::default()
-        },
-    );
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
+        erc20_harness(
+            &docker,
+            Erc20HarnessParams {
+                alice_initial_tokens: U256::from(200),
+                ..Default::default()
+            },
+        );
 
     // fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(200));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(200)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Send correct secret to contract
     client.send_data(htlc_address, Some(Bytes(SECRET.to_vec())));
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(200));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(200)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
     assert_eq!(client.get_contract_code(htlc_address), Bytes::default());
 }
 
 #[test]
 fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
     let docker = Cli::default();
-    let (_alice, _bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (_alice, _bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams::default());
 
     // Fund erc20 htlc
@@ -204,9 +263,9 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     // Send incorrect secret to contract
@@ -237,7 +296,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
 fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let docker = Cli::default();
     let harness_params = Erc20HarnessParams::default();
-    let (_alice, _bob, htlc_address, htlc, token, client, _handle, _container) =
+    let (_alice, _bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
         erc20_harness(&docker, harness_params.clone());
 
     // Fund erc20 htlc
@@ -245,9 +304,9 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     // Wait for the contract to expire
@@ -281,27 +340,31 @@ fn given_funded_erc20_htlc_when_redeemed_with_short_secret_then_tokens_should_no
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
     ]);
 
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
-        &docker,
-        Erc20HarnessParams::default().with_secret_hash(secret.hash()),
-    );
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
+        erc20_harness(
+            &docker,
+            Erc20HarnessParams::default().with_secret_hash(secret.hash()),
+        );
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Send short secret to contract
     client.send_data(
@@ -310,11 +373,14 @@ fn given_funded_erc20_htlc_when_redeemed_with_short_secret_then_tokens_should_no
     );
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 }
 
 #[test]
@@ -326,34 +392,47 @@ fn given_correct_zero_secret_htlc_should_redeem() {
     ];
     let secret = CustomSizeSecret(secret_vec.clone());
 
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
-        &docker,
-        Erc20HarnessParams::default().with_secret_hash(secret.hash()),
-    );
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
+        erc20_harness(
+            &docker,
+            Erc20HarnessParams::default().with_secret_hash(secret.hash()),
+        );
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Send short secret to contract
     client.send_data(htlc_address, Some(Bytes(secret_vec)));
 
-    assert_eq!(client.token_balance_of(token, htlc_address), U256::from(0));
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(400));
+    assert_eq!(
+        client.token_balance_of(token_contract, htlc_address),
+        U256::from(0)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(
+        client.token_balance_of(token_contract, bob),
+        U256::from(400)
+    );
 }
 
 #[test]
@@ -364,27 +443,31 @@ fn given_short_zero_secret_htlc_should_not_redeem() {
         0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
     ]);
 
-    let (alice, bob, htlc_address, htlc, token, client, _handle, _container) = erc20_harness(
-        &docker,
-        Erc20HarnessParams::default().with_secret_hash(secret.hash()),
-    );
+    let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
+        erc20_harness(
+            &docker,
+            Erc20HarnessParams::default().with_secret_hash(secret.hash()),
+        );
 
     // Fund erc20 htlc
     client.sign_and_send(|nonce, gas_price| UnsignedTransaction {
         nonce,
         gas_price,
         gas_limit: U256::from(100_000),
-        to: Some(token),
+        to: Some(token_contract),
         value: U256::from(0),
-        data: Some(htlc.funding_tx_payload(htlc_address)),
+        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
     });
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 
     // Send short secret to contract
     client.send_data(
@@ -396,9 +479,12 @@ fn given_short_zero_secret_htlc_should_not_redeem() {
     );
 
     assert_eq!(
-        client.token_balance_of(token, htlc_address),
+        client.token_balance_of(token_contract, htlc_address),
         U256::from(400)
     );
-    assert_eq!(client.token_balance_of(token, alice), U256::from(600));
-    assert_eq!(client.token_balance_of(token, bob), U256::from(0));
+    assert_eq!(
+        client.token_balance_of(token_contract, alice),
+        U256::from(600)
+    );
+    assert_eq!(client.token_balance_of(token_contract, bob), U256::from(0));
 }

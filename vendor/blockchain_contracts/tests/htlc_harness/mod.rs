@@ -34,7 +34,7 @@ impl CustomSizeSecret {
 
         let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
         sha.result(&mut result);
-        SecretHash::from_str(hex::encode(result).as_str()).unwrap()
+        SecretHash::from(result)
     }
 }
 

@@ -55,8 +55,8 @@ pub fn erc20_harness<D: Docker>(
     Address,
     Address,
     Address,
-    Erc20Htlc,
     Address,
+    U256,
     ParityClient,
     EventLoopHandle,
     Container<'_, D, ParityEthereum>,
@@ -88,19 +88,20 @@ pub fn erc20_harness<D: Docker>(
         params.htlc_refund_timestamp,
         alice,
         bob,
-        params.htlc_secret_hash,
+        params.htlc_secret_hash.into(),
         token_contract,
         params.htlc_token_value,
-    );
+    )
+    .expect("Compile the ERC20 HTLC");
 
-    let tx_id = alice_client.deploy_htlc(erc20_htlc.compile_to_hex().into(), U256::from(0));
+    let tx_id = alice_client.deploy_htlc(erc20_htlc.clone().into(), U256::from(0));
 
     (
         alice,
         bob,
         alice_client.get_contract_address(tx_id),
-        erc20_htlc,
         token_contract,
+        params.htlc_token_value,
         alice_client,
         event_loop,
         container,

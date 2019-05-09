@@ -1,4 +1,5 @@
-mod erc20_htlc;
-mod ether_htlc;
+pub mod erc20;
+pub mod ether;
 
-pub use self::{erc20_htlc::Erc20Htlc, ether_htlc::EtherHtlc};
+pub use erc20::Erc20Htlc;
+pub use ether::EtherHtlc;

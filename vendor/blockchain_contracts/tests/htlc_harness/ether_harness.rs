@@ -78,9 +78,9 @@ pub fn ether_harness<D: Docker>(
             params.htlc_refund_timestamp,
             alice,
             bob,
-            params.htlc_secret_hash,
+            params.htlc_secret_hash.into(),
         )
-        .compile_to_hex()
+        .unwrap()
         .into(),
         params.htlc_eth_value.wei(),
     );
