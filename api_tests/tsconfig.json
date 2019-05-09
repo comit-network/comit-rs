@@ -12,6 +12,7 @@
       "dom"
     ],
     "noUnusedLocals": true,
-    "noUnusedParameters": true
+    "noUnusedParameters": true,
+    "resolveJsonModule": true
   }
 }

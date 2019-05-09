@@ -1,16 +1,16 @@
-import { Actor } from "../lib/actor";
-import * as chai from "chai";
-import { SwapResponse } from "../lib/comit";
-import * as utils from "web3-utils";
-import { HarnessGlobal } from "../lib/util";
+import {Actor} from "../lib/actor";
+import {toWei} from "web3-utils";
+import {HarnessGlobal} from "../lib/util";
+import {expect, use, request} from "chai"
+import 'chai/register-should';
+import {EmbeddedRepresentationSubEntity} from "../gen/siren";
 import chaiHttp = require("chai-http");
 import chaiSubset = require("chai-subset");
 
 declare var global: HarnessGlobal;
 
-chai.use(chaiHttp);
-chai.use(chaiSubset);
-chai.should();
+use(chaiHttp);
+use(chaiSubset);
 
 (async () => {
     const alpha_ledger_name = "bitcoin";
@@ -24,8 +24,8 @@ chai.should();
     const alpha_asset_charlie_quantity = "200000000";
 
     const beta_asset_name = "ether";
-    const beta_asset_bob_quantity = utils.toWei("10", "ether");
-    const beta_asset_charlie_quantity = utils.toWei("20", "ether");
+    const beta_asset_bob_quantity = toWei("10", "ether");
+    const beta_asset_charlie_quantity = toWei("20", "ether");
 
     const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
     const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
@@ -48,8 +48,7 @@ chai.should();
 
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
+            let res = await request(alice.comit_node_url())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -78,8 +77,7 @@ chai.should();
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
+            let res = await request(alice.comit_node_url())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -103,35 +101,38 @@ chai.should();
                     beta_expiry: beta_expiry,
                     peer: charlie_comit_node_address,
                 });
+
             res.error.should.equal(false);
             res.should.have.status(201);
+
             const swap_location = res.header.location;
             swap_location.should.be.a("string");
             alice_swap_with_charlie_href = swap_location;
         });
 
-        it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
+        it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function () {
             return alice.pollComitNodeUntil(
                 alice_swap_with_charlie_href,
-                (body: SwapResponse) =>
-                    body.status === "IN_PROGRESS" &&
-                    body.state.communication.status === "SENT"
+                (body) =>
+                    body.properties.status === "IN_PROGRESS" &&
+                    body.properties.state.communication.status === "SENT"
             );
         });
 
         it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
             let body = (await charlie.pollComitNodeUntil(
                 "/swaps",
-                (body: SwapResponse) => body._embedded.swaps.length > 0
-            )) as SwapResponse;
+                (body) => body.entities.length > 0
+            ));
 
-            let swap_embedded = body._embedded.swaps[0];
-            swap_embedded.protocol.should.equal("rfc003");
-            swap_embedded.status.should.equal("IN_PROGRESS");
-            let swap_link = swap_embedded._links;
-            swap_link.should.be.a("object");
-            let swap_href = swap_link.self.href;
-            swap_href.should.be.a("string");
+            let swapEntity = body.entities[0] as EmbeddedRepresentationSubEntity;
+
+            expect(swapEntity.properties).to.have.property("protocol", "rfc003");
+            expect(swapEntity.properties).to.have.property("status", "IN_PROGRESS");
+
+            expect(swapEntity.links).containSubset({
+                class: (expectedValue: string[]) => expectedValue.includes("self")
+            })
         });
 
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {

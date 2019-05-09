@@ -4,7 +4,6 @@ import {
     Action,
     ComitNodeConfig,
     MetaComitNodeConfig,
-    SwapResponse,
 } from "./comit";
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
@@ -12,6 +11,7 @@ import * as fs from "fs";
 import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
 import chaiHttp = require("chai-http");
+import {Entity} from "../gen/siren";
 
 chai.use(chaiHttp);
 
@@ -76,8 +76,8 @@ export class Actor {
 
     pollComitNodeUntil(
         location: string,
-        predicate: (body: SwapResponse) => boolean
-    ) {
+        predicate: (body: Entity) => boolean
+    ) :Promise<Entity> {
         return new Promise((final_res, rej) => {
             chai.request(this.comit_node_url())
                 .get(location)

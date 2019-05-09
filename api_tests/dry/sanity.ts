@@ -1,7 +1,7 @@
 // These are stateless tests -- they don't require any state of the comit node and they don't change it
 // They are mostly about checking invalid request responses
 import { Actor } from "../lib/actor";
-import * as chai from "chai";
+import chai from "chai";
 import { HarnessGlobal } from "../lib/util";
 import chaiHttp = require("chai-http");
 
