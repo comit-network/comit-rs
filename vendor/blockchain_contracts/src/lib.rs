@@ -3,4 +3,3 @@
 
 pub mod ethereum;
 pub mod offset_parameter;
-pub mod rfc003;

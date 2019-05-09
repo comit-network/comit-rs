@@ -1,5 +1,4 @@
 use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
-use blockchain_contracts::rfc003::{seconds::Seconds, secret_hash::SecretHash};
 use ethereum_support::{
     web3::{transports::Http, Web3},
     Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,
@@ -16,15 +15,6 @@ pub struct ParityClient {
     client: Arc<Web3<Http>>,
     wallet: Arc<dyn Wallet>,
     nonce: Mutex<U256>,
-}
-
-#[derive(Clone, Debug)]
-pub struct EtherHtlcFundingParams {
-    pub refund_address: Address,
-    pub redeem_address: Address,
-    pub time_lock: Seconds,
-    pub amount: EtherQuantity,
-    pub secret_hash: SecretHash,
 }
 
 lazy_static! {

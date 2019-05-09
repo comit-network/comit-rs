@@ -1,12 +1,9 @@
 use crate::{
     ethereum_wallet::InMemoryWallet,
-    htlc_harness::{new_account, SECRET_HASH},
+    htlc_harness::{new_account, timestamp::Timestamp, SecretHash, SECRET_HASH},
     parity_client::ParityClient,
 };
-use blockchain_contracts::{
-    ethereum::rfc003::Erc20Htlc,
-    rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
-};
+use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
 use ethereum_support::{
     web3::{
         transports::EventLoopHandle,
@@ -14,7 +11,7 @@ use ethereum_support::{
     },
     EtherQuantity,
 };
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -32,7 +29,7 @@ impl Default for Erc20HarnessParams {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_refund_timestamp: Timestamp::now().plus(10),
-            htlc_secret_hash: SecretHash::from_str(SECRET_HASH).unwrap(),
+            htlc_secret_hash: SECRET_HASH,
             alice_initial_tokens: U256::from(1000),
             htlc_token_value: U256::from(400),
         }
@@ -85,14 +82,13 @@ pub fn erc20_harness<D: Docker>(
     alice_client.mint_tokens(token_contract, params.alice_initial_tokens, alice);
 
     let erc20_htlc = Erc20Htlc::new(
-        params.htlc_refund_timestamp,
+        params.htlc_refund_timestamp.into(),
         alice,
         bob,
         params.htlc_secret_hash.into(),
         token_contract,
         params.htlc_token_value,
-    )
-    .expect("Compile the ERC20 HTLC");
+    );
 
     let tx_id = alice_client.deploy_htlc(erc20_htlc.clone().into(), U256::from(0));
 

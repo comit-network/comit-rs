@@ -1,17 +1,21 @@
 use crypto::{digest::Digest, sha2::Sha256};
 use ethereum_support::{Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
+use hex_literal::hex;
 use secp256k1_support::KeyPair;
 use std::{str::FromStr, thread::sleep, time::Duration};
 
 mod erc20_harness;
 mod ether_harness;
+pub mod timestamp;
+
+pub type SecretHash = [u8; 32];
 
 pub use self::{
     erc20_harness::{erc20_harness, Erc20HarnessParams},
     ether_harness::{ether_harness, EtherHarnessParams},
 };
-use blockchain_contracts::rfc003::{secret_hash::SecretHash, timestamp::Timestamp};
+use timestamp::Timestamp;
 
 pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
     let keypair = KeyPair::from_secret_key_hex(secret_key).unwrap();
@@ -21,8 +25,8 @@ pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
 }
 
 pub const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
-pub const SECRET_HASH: &'static str =
-    "68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec";
+pub const SECRET_HASH: [u8; 32] =
+    hex!("68d627971643a6f97f27c58957826fcba853ec2077fd10ec6b93d8e61deb4cec");
 
 #[derive(Debug)]
 pub struct CustomSizeSecret(pub Vec<u8>);
@@ -32,7 +36,7 @@ impl CustomSizeSecret {
         let mut sha = Sha256::new();
         sha.input(&self.0[..]);
 
-        let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
+        let mut result: [u8; 32] = [0; 32];
         sha.result(&mut result);
         SecretHash::from(result)
     }

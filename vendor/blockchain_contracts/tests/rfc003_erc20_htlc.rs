@@ -7,9 +7,13 @@ pub mod parity_client;
 
 use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
-    htlc_harness::{erc20_harness, sleep_until, CustomSizeSecret, Erc20HarnessParams, SECRET},
+    htlc_harness::{
+        erc20_harness, sleep_until, timestamp::Timestamp, CustomSizeSecret, Erc20HarnessParams,
+        SECRET,
+    },
 };
-use blockchain_contracts::{ethereum::transfer_erc20_tx_payload, rfc003::timestamp::Timestamp};
+
+use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
@@ -42,7 +46,10 @@ fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     // Check htlc funding
@@ -86,7 +93,10 @@ fn given_funded_erc20_htlc_when_redeemed_with_secret_then_tokens_are_transferred
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(
@@ -130,7 +140,10 @@ fn given_deployed_erc20_htlc_when_refunded_after_expiry_time_then_tokens_are_ref
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(
@@ -178,7 +191,10 @@ fn given_deployed_erc20_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_t
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(
@@ -224,7 +240,10 @@ fn given_not_enough_tokens_when_redeemed_token_balances_dont_change() {
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(
@@ -265,7 +284,10 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     // Send incorrect secret to contract
@@ -306,7 +328,10 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     // Wait for the contract to expire
@@ -353,7 +378,10 @@ fn given_funded_erc20_htlc_when_redeemed_with_short_secret_then_tokens_should_no
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(
@@ -405,7 +433,10 @@ fn given_correct_zero_secret_htlc_should_redeem() {
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(
@@ -456,7 +487,10 @@ fn given_short_zero_secret_htlc_should_not_redeem() {
         gas_limit: U256::from(100_000),
         to: Some(token_contract),
         value: U256::from(0),
-        data: Some(transfer_erc20_tx_payload(token_amount, htlc_address)),
+        data: Some(Erc20Htlc::transfer_erc20_tx_payload(
+            token_amount,
+            htlc_address,
+        )),
     });
 
     assert_eq!(

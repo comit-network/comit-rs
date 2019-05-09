@@ -1,16 +1,15 @@
-use crate::{
-    offset_parameter::{apply_offsets, Error, OffsetParameter},
-    rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
-};
+use crate::offset_parameter::{apply_offsets, OffsetParameter};
 use std::ops::Range;
-use web3::types::Address;
+use web3::types::{Address, U256};
 
 pub const SECRET_HASH_RANGE: Range<usize> = 51..83;
 pub const EXPIRY_RANGE: Range<usize> = 99..103;
 pub const REDEEM_IDENTITY_RANGE: Range<usize> = 153..173;
 pub const REFUND_IDENTITY_RANGE: Range<usize> = 214..234;
 
-const CONTRACT_TEMPLATE: & str      = "6100dc61000f6000396100dc6000f336156051576020361415605c57602060006000376020602160206000600060026048f17f0000000000000000000000000000000000000000000000000000000000000000602151141660625760006000f35b42630000000010609f575b60006000f35b7fb8cac300e37f03ad332e581dea21b2f0b84eaaadc184a295fef71e81f44a741360206000a1730000000000000000000000000000000000000000ff5b7f5d26862916391bf49478b2f5103b0720a842b45ef145a268f2cd1fb2aed5517860006000a1730000000000000000000000000000000000000000ff";
+use hex_literal::hex;
+
+const CONTRACT_TEMPLATE: [u8;235] = hex!("6100dc61000f6000396100dc6000f336156051576020361415605c57602060006000376020602160206000600060026048f17f0000000000000000000000000000000000000000000000000000000000000000602151141660625760006000f35b42630000000010609f575b60006000f35b7fb8cac300e37f03ad332e581dea21b2f0b84eaaadc184a295fef71e81f44a741360206000a1730000000000000000000000000000000000000000ff5b7f5d26862916391bf49478b2f5103b0720a842b45ef145a268f2cd1fb2aed5517860006000a1730000000000000000000000000000000000000000ff");
 
 #[derive(Debug)]
 pub struct EtherHtlc(Vec<u8>);
@@ -23,21 +22,29 @@ impl From<EtherHtlc> for Vec<u8> {
 
 impl EtherHtlc {
     pub fn new(
-        expiry: Timestamp,
+        expiry: u32,
         refund_identity: Address,
         redeem_identity: Address,
-        secret_hash: SecretHash,
-    ) -> Result<EtherHtlc, Error> {
+        secret_hash: [u8; 32],
+    ) -> Self {
         let offsets = vec![
-            OffsetParameter::new(expiry, EXPIRY_RANGE)?,
-            OffsetParameter::new(refund_identity, REFUND_IDENTITY_RANGE)?,
-            OffsetParameter::new(redeem_identity, REDEEM_IDENTITY_RANGE)?,
-            OffsetParameter::new(secret_hash, SECRET_HASH_RANGE)?,
+            OffsetParameter::new(expiry, EXPIRY_RANGE).expect("always 4 bytes"),
+            OffsetParameter::new(refund_identity, REFUND_IDENTITY_RANGE).expect("always 20 bytes"),
+            OffsetParameter::new(redeem_identity, REDEEM_IDENTITY_RANGE).expect("always 20 bytes"),
+            OffsetParameter::new(&secret_hash[..], SECRET_HASH_RANGE).expect("always 32 bytes"),
         ];
 
-        let data = apply_offsets(CONTRACT_TEMPLATE, offsets)?;
+        let data = apply_offsets(&CONTRACT_TEMPLATE[..], offsets);
 
-        Ok(EtherHtlc(data))
+        EtherHtlc(data)
+    }
+
+    pub fn deployment_gas_limit(&self) -> U256 {
+        U256::from(121_800)
+    }
+
+    pub fn tx_gas_limit() -> U256 {
+        U256::from(100_000)
     }
 }
 
@@ -57,7 +64,7 @@ mod tests {
     #[test]
     fn compiled_contract_is_same_length_as_template() -> Result<(), Error> {
         let htlc = EtherHtlc::new(
-            Timestamp::from(3000000),
+            3000000,
             Address::default(),
             Address::default(),
             SecretHash::from(SECRET_HASH),
@@ -75,7 +82,7 @@ mod tests {
     #[test]
     fn given_input_data_when_compiled_should_contain_given_data() {
         let htlc = EtherHtlc::new(
-            Timestamp::from(2000000000),
+            2000000000,
             Address::default(),
             Address::default(),
             SecretHash::from(SECRET_HASH),
