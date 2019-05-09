@@ -88,10 +88,6 @@ struct Advanced<TSubstream> {
     new_state: Option<SubstreamState<TSubstream>>,
     /// The optional event we generated as part of the transition
     event: Option<BamHandlerEvent>,
-    /// Whether we should immediately re-poll the state after this
-    ///
-    /// We need this flag to ensure that we adhere to the `NotReady`-rule.
-    immediately_repoll: bool,
 }
 
 #[derive(Debug)]
@@ -117,7 +113,6 @@ impl<TSubstream> Advanced<TSubstream> {
         Self {
             new_state: Some(new_state),
             event: None,
-            immediately_repoll: false,
         }
     }
 
@@ -125,7 +120,6 @@ impl<TSubstream> Advanced<TSubstream> {
         Self {
             new_state: None,
             event: Some(event),
-            immediately_repoll: false,
         }
     }
 
@@ -135,7 +129,6 @@ impl<TSubstream> Advanced<TSubstream> {
         Self {
             new_state: Some(SubstreamState::Closing { stream }),
             event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::Error { error })),
-            immediately_repoll: false,
         }
     }
 
@@ -143,7 +136,6 @@ impl<TSubstream> Advanced<TSubstream> {
         Self {
             new_state: None,
             event: None,
-            immediately_repoll: false,
         }
     }
 
@@ -151,14 +143,6 @@ impl<TSubstream> Advanced<TSubstream> {
         Self {
             new_state: Some(SubstreamState::Closing { stream }),
             event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::UnexpectedEOF)),
-            immediately_repoll: false,
-        }
-    }
-
-    fn with_repoll(self) -> Self {
-        Self {
-            immediately_repoll: true,
-            ..self
         }
     }
 }
@@ -178,11 +162,11 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                 response_sender,
                 mut stream,
             } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => Advanced::transition_to(OutPendingFlush {
+                Ok(AsyncSink::Ready) => OutPendingFlush {
                     response_sender,
                     stream,
-                })
-                .with_repoll(),
+                }
+                .advance(known_headers),
                 Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(OutPendingSend {
                     msg,
                     response_sender,
@@ -219,7 +203,6 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                                     expected_type,
                                 },
                             )),
-                            immediately_repoll: false,
                         };
                     }
 
@@ -243,7 +226,6 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                     Advanced {
                         new_state: Some(Closing { stream }),
                         event: Some(ProtocolsHandlerEvent::Custom(event)),
-                        immediately_repoll: false,
                     }
                 }
                 Ok(Async::Ready(None)) => Advanced::closed_unexpectedly(stream),
@@ -265,7 +247,6 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                                     expected_type,
                                 },
                             )),
-                            immediately_repoll: false,
                         };
                     }
 
@@ -304,7 +285,6 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                                 },
                             ),
                         })),
-                        immediately_repoll: false,
                     }
                 }
                 Ok(Async::Ready(None)) => Advanced::closed_unexpectedly(stream),
@@ -315,11 +295,11 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                 mut response_receiver,
                 stream,
             } => match response_receiver.poll() {
-                Ok(Async::Ready(response)) => Advanced::transition_to(InPendingSend {
+                Ok(Async::Ready(response)) => InPendingSend {
                     msg: response.into_frame(),
                     stream,
-                })
-                .with_repoll(),
+                }
+                .advance(known_headers),
                 Ok(Async::NotReady) => Advanced::transition_to(InWaitingUser {
                     response_receiver,
                     stream,
@@ -327,9 +307,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                 Err(error) => Advanced::error(stream, error),
             },
             InPendingSend { msg, mut stream } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => {
-                    Advanced::transition_to(InPendingFlush { stream }).with_repoll()
-                }
+                Ok(AsyncSink::Ready) => InPendingFlush { stream }.advance(known_headers),
                 Ok(AsyncSink::NotReady(msg)) => {
                     Advanced::transition_to(InPendingSend { msg, stream })
                 }
@@ -470,58 +448,43 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
         // We remove each element from `substreams` one by one and add them back.
         for n in (0..self.substreams.len()).rev() {
-            let mut substream_state = self.substreams.swap_remove(n);
+            let substream_state = self.substreams.swap_remove(n);
 
-            loop {
-                let log_message = format!("transition from {}", substream_state);
+            let log_message = format!("transition from {}", substream_state);
 
-                let advanced = substream_state.advance(&self.known_headers);
+            let advanced = substream_state.advance(&self.known_headers);
 
-                match advanced {
-                    // The combination of new_state and no event is the only one we care about in
-                    // terms of immediate repolling because we would otherwise possibly return
-                    // `NotReady` and never be called again.
-                    Advanced {
-                        new_state: Some(new_state),
-                        event: None,
-                        immediately_repoll,
-                    } => {
-                        log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
-
-                        if immediately_repoll {
-                            substream_state = new_state;
-                            continue;
-                        } else {
-                            self.substreams.push(new_state);
-                            break;
-                        }
-                    }
-                    Advanced {
-                        new_state: Some(new_state),
-                        event: Some(event),
-                        ..
-                    } => {
-                        log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
-                        self.substreams.push(new_state);
-                        log::trace!(target: "sub-libp2p", "emitting {:?}", event);
-                        return Ok(Async::Ready(event));
-                    }
-                    Advanced {
-                        new_state: None,
-                        event: Some(event),
-                        ..
-                    } => {
-                        log::trace!(target: "sub-libp2p", "emitting {:?}", event);
-                        return Ok(Async::Ready(event));
-                    }
-                    Advanced {
-                        new_state: None,
-                        event: None,
-                        ..
-                    } => {
-                        break;
-                    }
+            match advanced {
+                Advanced {
+                    new_state: Some(new_state),
+                    event: None,
+                } => {
+                    log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
+                    self.substreams.push(new_state);
                 }
+                Advanced {
+                    new_state: Some(new_state),
+                    event: Some(event),
+                    ..
+                } => {
+                    log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
+                    self.substreams.push(new_state);
+                    log::trace!(target: "sub-libp2p", "emitting {:?}", event);
+                    return Ok(Async::Ready(event));
+                }
+                Advanced {
+                    new_state: None,
+                    event: Some(event),
+                    ..
+                } => {
+                    log::trace!(target: "sub-libp2p", "emitting {:?}", event);
+                    return Ok(Async::Ready(event));
+                }
+                Advanced {
+                    new_state: None,
+                    event: None,
+                    ..
+                } => {}
             }
         }
 
