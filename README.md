@@ -37,10 +37,16 @@ Contains crates specific to our application. Can depend on libraries located in 
 ## Build & Run
 
 1. `cargo build` (do `export SOLC_BIN=/usr/bin/solc` if `solc` is installed locally)
-2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` to wherever the config file is located.
-3. `./target/release/comit_node`
-4. TODO: similar documentation for `btsieve`
+2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` as folder path to where the `default.toml` is located.
+3. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/btsieve` or set `BTSIEVE_CONFIG_PATH` as folder path to where the `default.toml` is located
+4. startup bitcoin node (port to be set according to btsieve configuration)
+5. startup ethereum node (port to be set according to btsieve configuration)
+6. startup btsieve: `cargo run --bin btsieve`
+7. startup comit_node: `cargo run --bin comit_node`
 
+Once the comit node was started the user interface is served as specified in the comit_node configuration file, default is `localhost:8008`.
+
+In order to do a swap you will have to start two comit nodes. 
 
 ## Setup testing/dev environment
 
