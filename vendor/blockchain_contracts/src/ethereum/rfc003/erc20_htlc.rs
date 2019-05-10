@@ -1,5 +1,4 @@
 use crate::offset_parameter::{apply_offsets, OffsetParameter};
-use binary_macros::{base16, base16_impl};
 use hex_literal::hex;
 use std::ops::Range;
 use web3::types::{Address, Bytes, U256};
@@ -59,12 +58,12 @@ impl Erc20Htlc {
 
     /// Constructs the payload to transfer `Erc20` tokens to a `to_address`
     pub fn transfer_erc20_tx_payload(token_quantity: U256, to_address: Address) -> Bytes {
-        let transfer_fn_abi = base16!("A9059CBB");
+        let transfer_fn_abi = hex!("A9059CBB");
         let to_address = <[u8; 20]>::from(to_address);
         let amount = <[u8; 32]>::from(token_quantity);
 
         let mut data = [0u8; 4 + 32 + 32];
-        data[..4].copy_from_slice(transfer_fn_abi);
+        data[..4].copy_from_slice(&transfer_fn_abi);
         data[16..36].copy_from_slice(&to_address);
         data[36..68].copy_from_slice(&amount);
 

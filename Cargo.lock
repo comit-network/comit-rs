@@ -451,7 +451,6 @@ dependencies = [
 name = "blockchain_contracts"
 version = "0.1.0"
 dependencies = [
- "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_client 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
