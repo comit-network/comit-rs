@@ -75,11 +75,12 @@ impl Decoder for JsonFrameCodec {
 mod tests {
 
     use super::*;
+    use crate::json::FrameType;
     use spectral::prelude::*;
 
     #[test]
     fn should_encode_frame_to_bytes() {
-        let frame = json::Frame::new("FOO".into(), 0, serde_json::Value::Null);
+        let frame = json::Frame::new(FrameType::Request, serde_json::Value::Null);
 
         let mut codec = JsonFrameCodec::default();
 
@@ -87,7 +88,7 @@ mod tests {
 
         assert!(codec.encode(frame, &mut bytes).is_ok());
 
-        let frame_bytes = br#"{"type":"FOO","id":0,"payload":null}"#.as_ref();
+        let frame_bytes = br#"{"type":"REQUEST","payload":null}"#.as_ref();
         let newline = b"\n".as_ref();
 
         let expected = [frame_bytes, newline].concat();
@@ -97,7 +98,7 @@ mod tests {
 
     #[test]
     fn should_decode_bytes_to_frame() {
-        let frame_bytes = br#"{"type":"FOO","id":0,"payload":null}"#.as_ref();
+        let frame_bytes = br#"{"type":"RESPONSE","payload":null}"#.as_ref();
         let newline = b"\n".as_ref();
 
         let mut codec = JsonFrameCodec::default();
@@ -105,7 +106,7 @@ mod tests {
         let mut bytes = BytesMut::new();
         bytes.extend([frame_bytes, newline].concat());
 
-        let expected_frame = json::Frame::new("FOO".into(), 0, serde_json::Value::Null);
+        let expected_frame = json::Frame::new(FrameType::Response, serde_json::Value::Null);
 
         assert_that(&codec.decode(&mut bytes))
             .is_ok()
@@ -115,8 +116,8 @@ mod tests {
 
     #[test]
     fn given_not_enough_bytes_should_wait_for_more() {
-        let frame_bytes = br#"{"type":"FOO","#.as_ref();
-        let remaining_bytes = br#""id":0,"payload":null}"#.as_ref();
+        let frame_bytes = br#"{"type":"REQUEST","#.as_ref();
+        let remaining_bytes = br#""payload":null}"#.as_ref();
 
         let mut codec = JsonFrameCodec::default();
 
@@ -133,7 +134,7 @@ mod tests {
 
     #[test]
     fn given_two_frames_in_a_row_should_decode_both() {
-        let frame_bytes = br#"{"type":"FOO","id":0,"payload":null}"#.as_ref();
+        let frame_bytes = br#"{"type":"RESPONSE","payload":null}"#.as_ref();
         let newline = b"\n".as_ref();
 
         let mut codec = JsonFrameCodec::default();
@@ -144,7 +145,7 @@ mod tests {
         let first = codec.decode(&mut bytes);
         let second = codec.decode(&mut bytes);
 
-        let expected_frame = json::Frame::new("FOO".into(), 0, serde_json::Value::Null);
+        let expected_frame = json::Frame::new(FrameType::Response, serde_json::Value::Null);
 
         assert_that(&first)
             .is_ok()

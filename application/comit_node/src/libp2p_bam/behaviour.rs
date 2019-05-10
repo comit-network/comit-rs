@@ -1,5 +1,5 @@
 use crate::libp2p_bam::{
-    handler::{AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
+    handler::{self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
     BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
 };
 use bam::json::{OutgoingRequest, Response};
@@ -141,7 +141,7 @@ where
     }
 
     fn inject_connected(&mut self, peer_id: PeerId, endpoint: ConnectedPoint) {
-        log::debug!(target: "bam", "connected to {} at {:?}", peer_id, endpoint);
+        log::debug!(target: "sub-libp2p", "connected to {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
             ConnectedPoint::Dialer { address } => address,
@@ -185,7 +185,7 @@ where
     }
 
     fn inject_disconnected(&mut self, peer_id: &PeerId, endpoint: ConnectedPoint) {
-        log::debug!(target: "bam", "disconnected from {} at {:?}", peer_id, endpoint);
+        log::debug!(target: "sub-libp2p", "disconnected from {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
             ConnectedPoint::Dialer { address } => address,
@@ -203,7 +203,7 @@ where
         }
     }
 
-    fn inject_node_event(&mut self, _: PeerId, event: InnerEvent) {
+    fn inject_node_event(&mut self, peer: PeerId, event: InnerEvent) {
         match event {
             InnerEvent::IncomingRequest(pending_incoming_request) => {
                 self.events_sender
@@ -221,7 +221,33 @@ where
             }) => {
                 let _ = channel.send(response);
             }
-            InnerEvent::Error => {}
+            InnerEvent::Error {
+                error: handler::Error::Stream(error),
+            } => {
+                log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
+            }
+            InnerEvent::Error {
+                error: handler::Error::DroppedResponseSender(_),
+            } => {
+                // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
+                // SWAP REQUEST. A dropped `Sender` therefore is either a bug in
+                // the application or the application consciously does not want to answer the
+                // SWAP REQUEST. In either way, we should signal this to the remote peer by
+                // closing the substream.
+                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
+            }
+            InnerEvent::BadIncomingResponse => {
+                log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
+            }
+            InnerEvent::UnexpectedFrameType {
+                bad_frame,
+                expected_type,
+            } => {
+                log::error!(target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
+            }
+            InnerEvent::UnexpectedEOF => {
+                log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
+            }
         }
     }
 

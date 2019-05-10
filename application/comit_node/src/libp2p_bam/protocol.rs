@@ -12,19 +12,19 @@ use tokio::{
 
 pub type BamStream<TSubstream> = Framed<Negotiated<TSubstream>, JsonFrameCodec>;
 
-#[derive(Clone, Debug)]
-pub struct BamConfig {}
+#[derive(Clone, Copy, Debug)]
+pub struct BamProtocol {}
 
-impl UpgradeInfo for BamConfig {
+impl UpgradeInfo for BamProtocol {
     type Info = &'static [u8];
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(b"/bam/1.0.0")
+        iter::once(b"/bam/json/1.0.0")
     }
 }
 
-impl<TSubstream> InboundUpgrade<TSubstream> for BamConfig
+impl<TSubstream> InboundUpgrade<TSubstream> for BamProtocol
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
@@ -39,7 +39,7 @@ where
     }
 }
 
-impl<TSubstream> OutboundUpgrade<TSubstream> for BamConfig
+impl<TSubstream> OutboundUpgrade<TSubstream> for BamProtocol
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
