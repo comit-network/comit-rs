@@ -154,7 +154,10 @@
           "properties": {
             "deploy_tx": {
               "$id": "#/properties/state/properties/alpha_ledger/properties/deploy_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "description": "The transaction ID of the deployment transaction on the alpha ledger.",
               "default": null,
               "examples": [
@@ -164,7 +167,10 @@
             },
             "fund_tx": {
               "$id": "#/properties/state/properties/alpha_ledger/properties/fund_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The transaction ID of the funding transaction on the alpha ledger.",
               "default": null,
               "examples": [
@@ -174,7 +180,11 @@
             },
             "htlc_location": {
               "$id": "#/properties/state/properties/alpha_ledger/properties/htlc_location",
-              "type": ["string", "object", "null"],
+              "type": [
+                "string",
+                "object",
+                "null"
+              ],
               "title": "The _location_ of the HTLC. The data structure describing this is different depending on the ledger.",
               "default": null,
               "examples": [
@@ -187,7 +197,10 @@
             },
             "redeem_tx": {
               "$id": "#/properties/state/properties/alpha_ledger/properties/redeem_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The transaction ID of the redeem transaction on the alpha ledger.",
               "default": null,
               "examples": [
@@ -197,7 +210,10 @@
             },
             "refund_tx": {
               "$id": "#/properties/state/properties/alpha_ledger/properties/refund_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The transaction ID of the refund transaction on the alpha ledger.",
               "default": null,
               "examples": [
@@ -207,7 +223,13 @@
             },
             "status": {
               "$id": "#/properties/state/properties/alpha_ledger/properties/status",
-              "enum": ["NotDeployed", "Deployed", "Funded", "Redeemed", "Refunded"],
+              "enum": [
+                "NotDeployed",
+                "Deployed",
+                "Funded",
+                "Redeemed",
+                "Refunded"
+              ],
               "description": "The status of the HTLC on the alpha ledger.",
               "default": "",
               "examples": [
@@ -231,7 +253,10 @@
           "properties": {
             "deploy_tx": {
               "$id": "#/properties/state/properties/beta_ledger/properties/deploy_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "description": "The transaction ID of the deployment transaction on the beta ledger.",
               "default": null,
               "examples": [
@@ -241,7 +266,10 @@
             },
             "fund_tx": {
               "$id": "#/properties/state/properties/beta_ledger/properties/fund_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The transaction ID of the funding transaction on the beta ledger.",
               "default": null,
               "examples": [
@@ -251,7 +279,11 @@
             },
             "htlc_location": {
               "$id": "#/properties/state/properties/beta_ledger/properties/htlc_location",
-              "type": ["string", "object", "null"],
+              "type": [
+                "string",
+                "object",
+                "null"
+              ],
               "title": "The _location_ of the HTLC. The data structure describing this is different depending on the ledger.",
               "default": null,
               "examples": [
@@ -264,7 +296,10 @@
             },
             "redeem_tx": {
               "$id": "#/properties/state/properties/beta_ledger/properties/redeem_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The transaction ID of the redeem transaction on the beta ledger.",
               "default": null,
               "examples": [
@@ -274,7 +309,10 @@
             },
             "refund_tx": {
               "$id": "#/properties/state/properties/beta_ledger/properties/refund_tx",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The transaction ID of the refund transaction on the beta ledger.",
               "default": null,
               "examples": [
@@ -284,7 +322,13 @@
             },
             "status": {
               "$id": "#/properties/state/properties/beta_ledger/properties/status",
-              "enum": ["NotDeployed", "Deployed", "Funded", "Redeemed", "Refunded"],
+              "enum": [
+                "NotDeployed",
+                "Deployed",
+                "Funded",
+                "Redeemed",
+                "Refunded"
+              ],
               "description": "The status of the HTLC on the beta ledger.",
               "default": "",
               "examples": [
@@ -318,7 +362,10 @@
             },
             "alpha_redeem_identity": {
               "$id": "#/properties/state/properties/communication/properties/alpha_redeem_identity",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The identity used for redeeming in the HTLC on the alpha ledger.",
               "default": null,
               "examples": [
@@ -327,7 +374,10 @@
             },
             "alpha_refund_identity": {
               "$id": "#/properties/state/properties/communication/properties/alpha_refund_identity",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The identity used for refunding in the HTLC on the alpha ledger.",
               "default": null,
               "examples": [
@@ -344,7 +394,10 @@
             },
             "beta_redeem_identity": {
               "$id": "#/properties/state/properties/communication/properties/beta_redeem_identity",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The identity used for redeeming in the HTLC on the beta ledger.",
               "default": null,
               "examples": [
@@ -353,7 +406,10 @@
             },
             "beta_refund_identity": {
               "$id": "#/properties/state/properties/communication/properties/beta_refund_identity",
-              "type": ["string", "null"],
+              "type": [
+                "string",
+                "null"
+              ],
               "title": "The identity used for refunding in the HTLC on the beta ledger.",
               "default": null,
               "examples": [
@@ -370,7 +426,11 @@
             },
             "status": {
               "$id": "#/properties/state/properties/communication/properties/status",
-              "enum": ["SENT", "ACCEPTED", "REJECTED"],
+              "enum": [
+                "SENT",
+                "ACCEPTED",
+                "REJECTED"
+              ],
               "title": "The Status Schema",
               "examples": [
                 "SENT"
@@ -380,6 +440,5 @@
         }
       }
     }
-  }
   }
 }

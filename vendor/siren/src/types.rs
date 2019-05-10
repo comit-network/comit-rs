@@ -1,7 +1,9 @@
+use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
 #[readonly::make]
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Derivative)]
+#[derivative(Default)]
 pub struct Entity {
     /// Describes the nature of an entity's content based on the current
     /// representation. Possible values are implementation-dependent and should
@@ -12,6 +14,7 @@ pub struct Entity {
     /// Siren, this is an object such as { "name": "Kevin", "age": 30 }.
     /// Optional.
     #[serde(default)]
+    #[derivative(Default(value = "serde_json::Value::Object(serde_json::Map::new())"))]
     pub properties: serde_json::Value,
     /// A collection of related sub-entities. If a sub-entity contains an href
     /// value, it should be treated as an embedded link. Clients may choose to
@@ -36,7 +39,7 @@ pub struct Entity {
     #[serde(default)]
     pub actions: Vec<Action>,
     /// Descriptive text about the entity. Optional.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
 
@@ -120,7 +123,7 @@ pub struct EntityLink {
     #[serde(default)]
     pub class: Vec<String>,
     /// Descriptive text about the entity. Optional.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// Defines the relationship of the sub-entity to its parent, per Web
     /// Linking (RFC5988) and Link Relations. MUST be a non-empty array of
@@ -131,7 +134,7 @@ pub struct EntityLink {
     pub href: String,
     /// Defines media type of the linked sub-entity, per Web Linking
     /// (RFC5988). Optional.
-    #[serde(rename = "type")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub _type: Option<String>,
 }
 
@@ -149,11 +152,11 @@ pub struct NavigationalLink {
     /// The URI of the linked resource. Required.
     pub href: String,
     /// Text describing the nature of a link. Optional.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// Defines media type of the linked resource, per Web Linking (RFC5988).
     /// Optional.
-    #[serde(rename = "type")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub _type: Option<String>,
 }
 
@@ -191,11 +194,12 @@ pub struct Action {
     /// The URI of the action. Required.
     pub href: String,
     /// Descriptive text about the action. Optional.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     /// The encoding type for the request. When omitted and the fields attribute
     /// exists, the default value is application/x-www-form-urlencoded.
     /// Optional.
-    #[serde(rename = "type")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub _type: Option<String>,
     /// A collection of fields, expressed as an array of objects in JSON Siren
     /// such as { "fields" : [{ ... }] }. See Fields. Optional.
@@ -228,12 +232,14 @@ pub struct Field {
     /// When missing, the default value is text. Serialization of these fields
     /// will depend on the value of the action's type attribute. See type
     /// under Actions, above. Optional.
-    #[serde(rename = "type")]
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
     pub _type: Option<String>,
     /// A value assigned to the field. Optional.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
     /// Textual annotation of a field. Clients may use this as a label.
     /// Optional.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 }
 

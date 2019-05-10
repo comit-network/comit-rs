@@ -1,21 +1,22 @@
-import {Actor} from "../lib/actor";
-import {HarnessGlobal} from "../lib/util";
-import chai from "chai";
-import {expect} from "chai";
-import utils from "web3-utils";
-import {EmbeddedRepresentationSubEntity, Entity} from "../gen/siren";
-import sirenJsonSchema from "../siren.schema.json";
-import swapPropertiesJsonSchema from "../swap.schema.json";
+import { Actor } from "../lib/actor";
+import { HarnessGlobal } from "../lib/util";
+import { expect, use, request, tv4 } from "chai";
+import "chai/register-should";
+import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
+import * as sirenJsonSchema from "../siren.schema.json";
+import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import chaiHttp = require("chai-http");
 import chaiJsonSchema = require("chai-json-schema");
+import { toWei } from "web3-utils";
 
-chai.use(chaiHttp);
-chai.use(chaiJsonSchema);
-chai.should();
+use(chaiHttp);
+use(chaiJsonSchema);
+
+tv4.addSchema("http://sirenspec.org/schema", sirenJsonSchema);
 
 declare var global: HarnessGlobal;
 
-(async function () {
+(async function() {
     const alpha_ledger_name = "bitcoin";
     const alpha_ledger_network = "regtest";
 
@@ -26,7 +27,7 @@ declare var global: HarnessGlobal;
     const alpha_asset_quantity = "100000000";
 
     const beta_asset_name = "ether";
-    const beta_asset_quantity = utils.toWei("10", "ether");
+    const beta_asset_quantity = toWei("10", "ether");
 
     const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
     const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
@@ -41,10 +42,8 @@ declare var global: HarnessGlobal;
     const bob_comit_node_address = await bob.peerId();
 
     describe("Response shape", () => {
-
         before(async () => {
-            let res = await chai
-                .request(alice.comit_node_url())
+            let res = await request(alice.comit_node_url())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -73,54 +72,61 @@ declare var global: HarnessGlobal;
             res.should.have.status(201);
         });
 
-        it('[Alice] Response for GET /swaps is a valid siren document', async () => {
+        it("[Alice] Response for GET /swaps is a valid siren document", async () => {
+            let res = await request(alice.comit_node_url()).get("/swaps");
 
-            let res = await chai.request(alice.comit_node_url()).get("/swaps");
-
-            expect(res.body).should.be.jsonSchema(sirenJsonSchema);
+            expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
-        it('[Bob] Response for GET /swaps is a valid siren document', async () => {
+        it("[Bob] Response for GET /swaps is a valid siren document", async () => {
+            let res = await request(bob.comit_node_url()).get("/swaps");
 
-            let res = await chai.request(bob.comit_node_url()).get("/swaps");
-
-            expect(res.body).should.be.jsonSchema(sirenJsonSchema);
+            expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
-        it('[Alice] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema', async () => {
+        it("[Alice] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
+            let swapsEntity = await alice.pollComitNodeUntil(
+                "/swaps",
+                body => body.entities.length > 0
+            );
 
-            let swapsResponse = await chai.request(alice.comit_node_url()).get("/swaps");
-            let swapsEntity = swapsResponse.body as Entity;
+            let selfLink = (swapsEntity
+                .entities[0] as EmbeddedRepresentationSubEntity).links.find(
+                (link: Link) => link.rel.includes("self")
+            ).href;
 
-            expect(swapsEntity.entities).to.have.length.greaterThan(0);
-
-
-            let selfLink = (swapsEntity.entities[0] as EmbeddedRepresentationSubEntity).links.find(link => link.class.includes("self")).href;
-
-            let swapResponse = await chai.request(alice.comit_node_url()).get(selfLink);
+            let swapResponse = await request(alice.comit_node_url()).get(
+                selfLink
+            );
             let swapEntity = swapResponse.body as Entity;
 
-            expect(swapEntity).should.be.jsonSchema(sirenJsonSchema);
-            expect(swapEntity.properties).should.be.jsonSchema(swapPropertiesJsonSchema);
+            expect(swapEntity).to.be.jsonSchema(sirenJsonSchema);
+            expect(swapEntity.properties).to.be.jsonSchema(
+                swapPropertiesJsonSchema
+            );
         });
 
-        it('[Bob] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema', async () => {
+        it("[Bob] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
+            let swapsEntity = await bob.pollComitNodeUntil(
+                "/swaps",
+                body => body.entities.length > 0
+            );
 
-            let swapsResponse = await chai.request(bob.comit_node_url()).get("/swaps");
-            let swapsEntity = swapsResponse.body as Entity;
+            let selfLink = (swapsEntity
+                .entities[0] as EmbeddedRepresentationSubEntity).links.find(
+                (link: Link) => link.rel.includes("self")
+            ).href;
 
-            expect(swapsEntity.entities).to.have.length.greaterThan(0);
-
-
-            let selfLink = (swapsEntity.entities[0] as EmbeddedRepresentationSubEntity).links.find(link => link.class.includes("self")).href;
-
-            let swapResponse = await chai.request(bob.comit_node_url()).get(selfLink);
+            let swapResponse = await request(bob.comit_node_url()).get(
+                selfLink
+            );
             let swapEntity = swapResponse.body as Entity;
 
-            expect(swapEntity).should.be.jsonSchema(sirenJsonSchema);
-            expect(swapEntity.properties).should.be.jsonSchema(swapPropertiesJsonSchema);
+            expect(swapEntity).to.be.jsonSchema(sirenJsonSchema);
+            expect(swapEntity.properties).to.be.jsonSchema(
+                swapPropertiesJsonSchema
+            );
         });
-
     });
 
     run();
