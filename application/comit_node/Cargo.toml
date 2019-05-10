@@ -75,6 +75,9 @@ version = "0.2"
 [dependencies.tc_bitcoincore_client]
 path = "../../vendor/tc_bitcoincore_client"
 
+[dependencies.blockchain_contracts]
+path = "../../vendor/blockchain_contracts"
+
 [dependencies.uuid]
 features = ["serde", "v4"]
 version = "0.6"

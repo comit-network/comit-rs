@@ -175,6 +175,12 @@ impl FromStr for Secret {
     }
 }
 
+impl From<SecretHash> for [u8; 32] {
+    fn from(secret_hash: SecretHash) -> [u8; 32] {
+        secret_hash.0
+    }
+}
+
 impl<'de> Deserialize<'de> for Secret {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where

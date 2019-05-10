@@ -1,26 +1,7 @@
 use comit_node::swap_protocols::rfc003::{SecretHash, Timestamp};
 use crypto::{digest::Digest, sha2::Sha256};
-use ethereum_support::{web3::types::Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
-use secp256k1_support::KeyPair;
 use std::{str::FromStr, thread::sleep, time::Duration};
-
-mod erc20_harness;
-mod ether_harness;
-
-pub use self::{
-    erc20_harness::{erc20_harness, Erc20HarnessParams},
-    ether_harness::{ether_harness, EtherHarnessParams},
-};
-
-pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
-    let keypair = KeyPair::from_secret_key_hex(secret_key).unwrap();
-    let address = keypair.public_key().to_ethereum_address();
-
-    (keypair, address)
-}
-
-pub const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
 
 #[derive(Debug)]
 pub struct CustomSizeSecret(pub Vec<u8>);
