@@ -1,20 +1,19 @@
 use crate::calculate_offsets::{DataName, Offset};
 use regex::bytes::Regex;
 
-pub const CONTRACT_CODE_TEMPLATE: &'static str =
-    include_str!("./templates/out/ether_contract.asm.hex");
+pub const CONTRACT_CODE_TEMPLATE: &str = include_str!("./templates/out/ether_contract.asm.hex");
 
-const EXPIRY_REGEX: &'static str = r"\x20\x00\x00\x02";
-const REDEEM_ADDRESS_REGEX: &'static str =
+const EXPIRY_REGEX: &str = r"\x20\x00\x00\x02";
+const REDEEM_ADDRESS_REGEX: &str =
     r"\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x03";
-const REFUND_ADDRESS_REGEX: &'static str =
+const REFUND_ADDRESS_REGEX: &str =
     r"\x40\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x04";
-const SECRET_HASH_REGEX: &'static str =
+const SECRET_HASH_REGEX: &str =
     r"\x10\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01";
 
-const DEPLOY_HEADER_TEMPLATE: &'static str = include_str!("./templates/out/deploy_header.asm.hex");
-const CONTRACT_START_POSITION_PLACEHOLDER: &'static str = "1001";
-const CONTRACT_LENGTH_PLACEHOLDER: &'static str = "2002";
+const DEPLOY_HEADER_TEMPLATE: &str = include_str!("./templates/out/deploy_header.asm.hex");
+const CONTRACT_START_POSITION_PLACEHOLDER: &str = "1001";
+const CONTRACT_LENGTH_PLACEHOLDER: &str = "2002";
 
 pub fn compile_template_to_hex() -> String {
     let code_length = CONTRACT_CODE_TEMPLATE.len() / 2; // In hex, each byte is two chars

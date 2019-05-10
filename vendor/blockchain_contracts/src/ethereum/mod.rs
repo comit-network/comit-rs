@@ -30,7 +30,7 @@ impl EncodeToEvm for U256 {
 impl EncodeToEvm for u32 {
     fn encode_to_evm(&self) -> Vec<u8> {
         let mut buf = [0; 4];
-        BigEndian::write_u32(&mut buf, self.clone());
+        BigEndian::write_u32(&mut buf, *self);
         buf.to_vec()
     }
 }

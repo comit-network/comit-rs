@@ -20,7 +20,7 @@ pub fn fund_action(
     ethereum::CallContract {
         to: to_erc20_contract,
         data: Erc20Htlc::transfer_erc20_tx_payload(
-            htlc_params.asset.quantity.0.clone(),
+            htlc_params.asset.quantity.0,
             beta_htlc_location,
         ),
         gas_limit,
