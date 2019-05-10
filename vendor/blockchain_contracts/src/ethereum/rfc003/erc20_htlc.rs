@@ -86,23 +86,21 @@ mod tests {
     const SECRET_HASH_REGEX: &'static str = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01";
 
     #[test]
-    fn compiled_contract_is_same_length_as_template() -> Result<(), Error> {
+    fn compiled_contract_is_same_length_as_template() {
         let htlc = Erc20Htlc::new(
             3000000,
             Address::default(),
             Address::default(),
-            SecretHash::from(SECRET_HASH),
+            SECRET_HASH,
             Address::default(),
             U256::from(100),
-        )?;
-
-        assert_eq!(
-            htlc.0.len(),                // This is a Vec<u8>
-            CONTRACT_TEMPLATE.len() / 2, // This is hex
-            "HTLC is the same length as template"
         );
 
-        Ok(())
+        assert_eq!(
+            htlc.0.len(),
+            CONTRACT_TEMPLATE.len(),
+            "HTLC is the same length as template"
+        );
     }
 
     #[test]
@@ -111,11 +109,10 @@ mod tests {
             2000000000,
             Address::default(),
             Address::default(),
-            SecretHash::from(SECRET_HASH),
+            SECRET_HASH,
             Address::default(),
             U256::from(100),
-        )
-        .unwrap();
+        );
 
         let compiled_code = htlc.0;
 
