@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
-use uuid::{ParseError, Uuid};
+use uuid::{parser::ParseError, Uuid};
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SwapId(pub Uuid);
