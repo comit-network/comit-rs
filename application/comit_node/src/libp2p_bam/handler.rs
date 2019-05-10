@@ -77,7 +77,6 @@ enum SubstreamState<TSubstream> {
     },
     /// Waiting to flush an answer back to the remote.
     InPendingFlush { stream: BamStream<TSubstream> },
-
     /// The substream is being closed.
     Closing { stream: BamStream<TSubstream> },
 }
@@ -452,39 +451,16 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
             let log_message = format!("transition from {}", substream_state);
 
-            let advanced = substream_state.advance(&self.known_headers);
+            let Advanced { new_state, event } = substream_state.advance(&self.known_headers);
 
-            match advanced {
-                Advanced {
-                    new_state: Some(new_state),
-                    event: None,
-                } => {
-                    log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
-                    self.substreams.push(new_state);
-                }
-                Advanced {
-                    new_state: Some(new_state),
-                    event: Some(event),
-                    ..
-                } => {
-                    log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
-                    self.substreams.push(new_state);
-                    log::trace!(target: "sub-libp2p", "emitting {:?}", event);
-                    return Ok(Async::Ready(event));
-                }
-                Advanced {
-                    new_state: None,
-                    event: Some(event),
-                    ..
-                } => {
-                    log::trace!(target: "sub-libp2p", "emitting {:?}", event);
-                    return Ok(Async::Ready(event));
-                }
-                Advanced {
-                    new_state: None,
-                    event: None,
-                    ..
-                } => {}
+            if let Some(new_state) = new_state {
+                log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
+                self.substreams.push(new_state);
+            }
+
+            if let Some(event) = event {
+                log::trace!(target: "sub-libp2p", "emitting {:?}", event);
+                return Ok(Async::Ready(event));
             }
         }
 
