@@ -492,7 +492,7 @@ dependencies = [
  "bitcoin_rpc_client 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_support 0.1.0",
  "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "config 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "config 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "directories 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -654,7 +654,7 @@ dependencies = [
  "bitcoin_witness 0.1.0",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "comit_i 0.1.0",
- "config 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "config 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "debug_stub_derive 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "directories 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -706,7 +706,7 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "lazy_static 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4420,7 +4420,7 @@ dependencies = [
 "checksum clear_on_drop 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "97276801e127ffb46b66ce23f35cc96bd454fa311294bced4bbace7baa8b1d17"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
 "checksum colored 1.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6e9a455e156a4271e12fd0246238c380b1e223e3736663c7a18ed8b6362028a9"
-"checksum config 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3e82d07fac0a5eeaa9d959b5194d01bb66e414665f547416958d2b430f8f4852"
+"checksum config 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "f9107d78ed62b3fa5a86e7d18e647abed48cfd8f8fab6c72f4cdb982d196f7e6"
 "checksum constant_time_eq 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8ff012e225ce166d4422e0e78419d901719760f62ae2b7969ca6b564d1b54a9e"
 "checksum cookie 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1465f8134efa296b4c19db34d909637cb2bf0f7aaf21299e23e18fa29ac557cf"
 "checksum cookie_store 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "b0d2f2ecb21dce00e2453268370312978af9b8024020c7a37ae2cc6dbbe64685"
