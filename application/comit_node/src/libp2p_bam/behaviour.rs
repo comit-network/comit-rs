@@ -229,7 +229,12 @@ where
             InnerEvent::Error {
                 error: handler::Error::DroppedResponseSender(_),
             } => {
-                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?} - this is very likely a bug in your application", peer);
+                // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
+                // SWAP REQUEST. A dropped `Sender` therefore is either a bug in
+                // the application or the application consciously does not want to answer the
+                // SWAP REQUEST. In either way, we should signal this to the remote peer by
+                // closing the substream.
+                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
             }
             InnerEvent::BadIncomingResponse => {
                 log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
