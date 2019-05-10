@@ -1,8 +1,0 @@
-{
-  "type" : "RESPONSE",
-  "id" : 10,
-  "payload" : {
-    "body" : 420,
-    "status" : "OK00"
-  }
-}
