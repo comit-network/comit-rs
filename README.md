@@ -44,7 +44,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 6. startup btsieve: `cargo run --bin btsieve`
 7. startup comit_node: `cargo run --bin comit_node`
 
-Once the comit node was started the user interface is served as specified in the comit_node configuration file, default is `localhost:8008`.
+If the `[web_gui]` section is specified in the configuration the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once the commit node started up (served at `localhost:8080` as default).
 
 In order to do a swap you will have to start two comit nodes. 
 
