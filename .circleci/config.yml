@@ -5,25 +5,38 @@ jobs:
     machine:
       image: ubuntu-1604:201903-01
       docker_layer_caching: true
+    environment:
+      # TODO remove the variable definition from Makefile.toml once travis is retired
+      RUST_TEST_THREADS: "8"
     steps:
       - checkout
-      - restore_cache:
-          key: dependency-cache-{{ checksum "Cargo.lock" }}
       - setup_system
       - setup_nodejs
       - setup_rust
+      - run:
+          name: Updating PATH and Define Environment Variable at Runtime
+          # Define variables that need interpolation
+          # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
+          command: |
+            echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
       - print_current_versions
+      - run:
+          name: Check formatting
+          command: cargo make check-rs-format
+      - restore_cache:
+          key: dependency-cache-{{ checksum "Cargo.lock" }}
       - run:
           name: Build using cargo make
           command: |
             source $HOME/.cargo/env
             cargo --version
-            cargo make ci
+            cargo make travis
       - save_cache:
           key: dependency-cache-{{ checksum "Cargo.lock" }}
           paths:
             - "~/.cargo"
             - "./target"
+            - "./api_tests/node_modules"
 
 
 commands:
