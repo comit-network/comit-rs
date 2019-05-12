@@ -5,7 +5,7 @@ authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
-bigdecimal = "0.0.15"
+bigdecimal = "0.1.0"
 bitcoin = { version = "0.18", features = ["use-serde"] }
 bitcoin_hashes = "0.3.2"
 bitcoin-bech32 = "0.9"
