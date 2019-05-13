@@ -68,7 +68,7 @@ impl Entity {
                 properties: value,
                 ..self
             }),
-            _ => return Err(EntityBuilderError::NotAnObject),
+            _ => Err(EntityBuilderError::NotAnObject),
         }
     }
 
