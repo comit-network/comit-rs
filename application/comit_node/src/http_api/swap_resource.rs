@@ -64,7 +64,7 @@ pub enum IncludeState {
     No,
 }
 
-pub fn new_rfc003_siren_entity<S: StateStore>(
+pub fn build_rfc003_siren_entity<S: StateStore>(
     state_store: &S,
     id: SwapId,
     metadata: Metadata,

@@ -1,7 +1,7 @@
 use crate::{
     http_api::{
         problem,
-        swap_resource::{new_rfc003_siren_entity, IncludeState},
+        swap_resource::{build_rfc003_siren_entity, IncludeState},
     },
     swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
 };
@@ -16,5 +16,5 @@ pub fn handle_get_swap<T: MetadataStore<SwapId>, S: StateStore>(
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
 
-    new_rfc003_siren_entity(state_store, id, metadata, IncludeState::Yes)
+    build_rfc003_siren_entity(state_store, id, metadata, IncludeState::Yes)
 }
