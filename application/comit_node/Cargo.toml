@@ -47,6 +47,9 @@ warp = "0.1"
 [dependencies.bam]
 path = "../../vendor/bam"
 
+[dependencies.siren]
+path = "../../vendor/siren"
+
 [dependencies.bitcoin_rpc_test_helpers]
 path = "../../vendor/bitcoin_rpc_test_helpers"
 

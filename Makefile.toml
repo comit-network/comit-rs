@@ -208,7 +208,7 @@ args = ["--stop-server"]
 description = "Install/build dependencies for api tests"
 workspace = false
 private = true
-script = [ "( cd ./api_tests && yarn install; )" ]
+script = [ "( cd ./api_tests && yarn install; yarn run gen; )" ]
 
 #####################
 # Dry api Test flow #

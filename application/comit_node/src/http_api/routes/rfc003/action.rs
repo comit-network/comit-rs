@@ -5,7 +5,6 @@ use crate::{
         SwapId,
     },
 };
-use rustic_hal::HalLink;
 use std::{
     fmt::{Display, Formatter},
     str::FromStr,
@@ -95,7 +94,6 @@ impl Display for ActionName {
     }
 }
 
-pub fn new_action_link(id: &SwapId, action: ActionName) -> HalLink {
-    let route = format!("{}/{}", swap_path(*id), action);
-    route.into()
+pub fn new_action_link(id: &SwapId, action: ActionName) -> String {
+    format!("{}/{}", swap_path(*id), action)
 }

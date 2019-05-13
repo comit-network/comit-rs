@@ -6,7 +6,7 @@
     "scripts": {
         "check": "tsc --noEmit",
         "check-watch": "tsc --watch --noEmit",
-        "test": "harness.js"
+        "gen": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts"
     },
     "engines": {
         "node": "^10.14"
@@ -14,11 +14,14 @@
     "author": "CoBloX Team",
     "license": "ISC",
     "dependencies": {
+        "@types/chai-json-schema": "^1.4.4",
         "bignumber.js": "^7.2.1",
         "bitcoin-core": "^2.0.0",
         "bitcoinjs-lib": "^4.0.2",
         "chai": "^4.2.0",
+        "chai-each": "^0.0.1",
         "chai-http": "^4.2.0",
+        "chai-json-schema": "^1.5.0",
         "commander": "^2.19.0",
         "ethereumjs-tx": "^1.3.7",
         "ethereumjs-util": "^5.2.0",
@@ -47,6 +50,7 @@
         "chai-bignumber": "^2.0.2",
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
+        "json-schema-to-typescript": "^6.1.3",
         "ts-node": "^8.0.3"
     },
     "prettier": {

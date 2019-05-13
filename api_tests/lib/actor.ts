@@ -1,19 +1,15 @@
 import { Wallet, WalletConfig } from "./wallet";
-import * as chai from "chai";
-import {
-    Action,
-    ComitNodeConfig,
-    MetaComitNodeConfig,
-    SwapResponse,
-} from "./comit";
+import { use, request } from "chai";
+import { Action, ComitNodeConfig, MetaComitNodeConfig } from "./comit";
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
 import * as fs from "fs";
 import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
+import { Entity } from "../gen/siren";
 import chaiHttp = require("chai-http");
 
-chai.use(chaiHttp);
+use(chaiHttp);
 
 export interface BtsieveForComitNodeConfig {
     poll_interval_secs: number;
@@ -69,30 +65,26 @@ export class Actor {
     }
 
     async peerId(): Promise<string> {
-        let response = await chai.request(this.comit_node_url()).get("/");
+        let response = await request(this.comit_node_url()).get("/");
 
         return response.body.id;
     }
 
     pollComitNodeUntil(
         location: string,
-        predicate: (body: SwapResponse) => boolean
-    ) {
+        predicate: (body: Entity) => boolean
+    ): Promise<Entity> {
         return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url())
+            request(this.comit_node_url())
                 .get(location)
                 .end((err, res) => {
                     if (err) {
                         return rej(err);
                     }
                     res.should.have.status(200);
-                    let body = Object.assign(
-                        { _links: {}, _embedded: {} },
-                        res.body
-                    );
 
-                    if (predicate(body)) {
-                        final_res(body);
+                    if (predicate(res.body)) {
+                        final_res(res.body);
                     } else {
                         setTimeout(async () => {
                             const result = await this.pollComitNodeUntil(

@@ -7,17 +7,6 @@ export interface AcceptRequestBody {
     alpha_ledger_redeem_identity?: string;
 }
 
-export interface SwapResponse extends HalResource {
-    parameters: any;
-    role: string;
-    state: {
-        alpha_ledger: any;
-        beta_ledger: any;
-        communication: any;
-    };
-    status: string;
-}
-
 export type Action =
     | {
           type: "bitcoin-send-amount-to-address";
@@ -51,18 +40,7 @@ export type Action =
           };
       };
 
-export interface SwapsResponse extends HalResource {
-    _embedded: {
-        swaps: Swap[];
-    };
-}
-
-export interface HalResource {
-    _links: any;
-    _embedded: any;
-}
-
-export interface Swap extends HalResource {
+export interface Swap {
     parameters: any;
     protocol: string;
     status: string;
