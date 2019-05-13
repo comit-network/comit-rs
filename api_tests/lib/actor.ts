@@ -1,15 +1,15 @@
 import { Wallet, WalletConfig } from "./wallet";
-import * as chai from "chai";
+import { use, request } from "chai";
 import { Action, ComitNodeConfig, MetaComitNodeConfig } from "./comit";
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
 import * as fs from "fs";
 import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
-import chaiHttp = require("chai-http");
 import { Entity } from "../gen/siren";
+import chaiHttp = require("chai-http");
 
-chai.use(chaiHttp);
+use(chaiHttp);
 
 export interface BtsieveForComitNodeConfig {
     poll_interval_secs: number;
@@ -65,7 +65,7 @@ export class Actor {
     }
 
     async peerId(): Promise<string> {
-        let response = await chai.request(this.comit_node_url()).get("/");
+        let response = await request(this.comit_node_url()).get("/");
 
         return response.body.id;
     }
@@ -75,7 +75,7 @@ export class Actor {
         predicate: (body: Entity) => boolean
     ): Promise<Entity> {
         return new Promise((final_res, rej) => {
-            chai.request(this.comit_node_url())
+            request(this.comit_node_url())
                 .get(location)
                 .end((err, res) => {
                     if (err) {

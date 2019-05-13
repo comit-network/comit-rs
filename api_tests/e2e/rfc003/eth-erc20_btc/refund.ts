@@ -1,16 +1,13 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { createTests } from "../../test_creator";
-import chaiHttp = require("chai-http");
-
-chai.should();
-chai.use(chaiHttp);
+import { ActionTrigger, createTests } from "../../test_creator";
+import "chai/register-should";
+import "../../../lib/setupChai"
 
 declare var global: HarnessGlobal;
 
@@ -98,7 +95,7 @@ declare var global: HarnessGlobal;
 
     erc20Balance.eq(aliceInitialErc20).should.equal(true);
 
-    const actions = [
+    const actions: ActionTrigger[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
@@ -106,17 +103,17 @@ declare var global: HarnessGlobal;
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
                 alpha_ledger_redeem_identity: bobFinalAddress,
             },
-            state: (state: any) => state.communication.status === "ACCEPTED",
+            state: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Deploy,
-            state: (state: any) => state.alpha_ledger.status === "Deployed",
+            state: state => state.alpha_ledger.status === "Deployed",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: (state: any) => state.alpha_ledger.status === "Funded",
+            state: state => state.alpha_ledger.status === "Funded",
             test: {
                 description:
                     "[alice] Should have less alpha asset after the funding",
@@ -134,7 +131,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: (state: any) =>
+            state: state =>
                 state.alpha_ledger.status === "Funded" &&
                 state.beta_ledger.status === "Funded",
         },
@@ -142,11 +139,11 @@ declare var global: HarnessGlobal;
             actor: bob,
             action: ActionKind.Refund,
             uriQuery: { address: bobRefundAddress, fee_per_byte: 20 },
-            state: (state: any) => state.beta_ledger.status === "Refunded",
+            state: state => state.beta_ledger.status === "Refunded",
             test: {
                 description:
                     "Should have received the beta asset after the refund",
-                callback: async (body: any) => {
+                callback: async body => {
                     let refundTxId = body.state.beta_ledger.refund_tx;
 
                     let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
@@ -162,7 +159,7 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             action: ActionKind.Refund,
-            state: (state: any) => state.alpha_ledger.status === "Refunded",
+            state: state => state.alpha_ledger.status === "Refunded",
             test: {
                 description:
                     "Should have received the alpha asset after the refund",
@@ -177,7 +174,6 @@ declare var global: HarnessGlobal;
                 },
                 timeout: 10000,
             },
-            timeout: 10000,
         },
     ];
 

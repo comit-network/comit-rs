@@ -1,19 +1,11 @@
 import { Actor } from "../lib/actor";
 import { HarnessGlobal, sleep } from "../lib/util";
-import { expect, use, request } from "chai";
+import { expect, request } from "chai";
 import "chai/register-should";
 import { EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import chaiHttp = require("chai-http");
-import chaiSubset = require("chai-subset");
-import chaiEach = require("chai-each");
-import chaiJsonSchema = require("chai-json-schema");
 import { toWei } from "web3-utils";
-
-use(chaiHttp);
-use(chaiSubset);
-use(chaiEach);
-use(chaiJsonSchema);
+import "../lib/setupChai";
 
 declare var global: HarnessGlobal;
 

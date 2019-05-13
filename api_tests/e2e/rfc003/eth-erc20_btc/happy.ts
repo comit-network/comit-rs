@@ -1,16 +1,13 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { createTests } from "../../test_creator";
-import chaiHttp = require("chai-http");
-
-chai.should();
-chai.use(chaiHttp);
+import { ActionTrigger, createTests } from "../../test_creator";
+import "chai/register-should";
+import "../../../lib/setupChai"
 
 declare var global: HarnessGlobal;
 
@@ -105,39 +102,39 @@ declare var global: HarnessGlobal;
         tokenContractAddress
     );
 
-    const actions = [
+    const actions: ActionTrigger[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
             requestBody: {
                 alpha_ledger_redeem_identity: bobFinalAddress,
             },
-            state: (state: any) => state.communication.status === "ACCEPTED",
+            state: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Deploy,
-            state: (state: any) => state.alpha_ledger.status === "Deployed",
+            state: state => state.alpha_ledger.status === "Deployed",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: (state: any) => state.alpha_ledger.status === "Funded",
+            state: state => state.alpha_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: (state: any) => state.beta_ledger.status === "Funded",
+            state: state => state.beta_ledger.status === "Funded",
         },
         {
             actor: alice,
             action: ActionKind.Redeem,
             uriQuery: { address: aliceFinalAddress, fee_per_byte: 20 },
-            state: (state: any) => state.beta_ledger.status === "Redeemed",
+            state: state => state.beta_ledger.status === "Redeemed",
             test: {
                 description:
                     "Should have received the beta asset after the redeem",
-                callback: async (body: any) => {
+                callback: async body => {
                     let redeemTxId = body.state.beta_ledger.redeem_tx;
 
                     let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
@@ -154,7 +151,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Redeem,
-            state: (state: any) => state.alpha_ledger.status === "Redeemed",
+            state: state => state.alpha_ledger.status === "Redeemed",
             test: {
                 description:
                     "Should have received the alpha asset after the redeem",

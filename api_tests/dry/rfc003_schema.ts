@@ -1,18 +1,12 @@
 import { Actor } from "../lib/actor";
 import { HarnessGlobal } from "../lib/util";
-import { expect, use, request, tv4 } from "chai";
+import { expect, request } from "chai";
 import "chai/register-should";
+import "../lib/setupChai";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import chaiHttp = require("chai-http");
-import chaiJsonSchema = require("chai-json-schema");
 import { toWei } from "web3-utils";
-
-use(chaiHttp);
-use(chaiJsonSchema);
-
-tv4.addSchema("http://sirenspec.org/schema", sirenJsonSchema);
 
 declare var global: HarnessGlobal;
 

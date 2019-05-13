@@ -1,16 +1,12 @@
 import { Actor } from "../lib/actor";
 import { toWei } from "web3-utils";
 import { HarnessGlobal } from "../lib/util";
-import { expect, use, request } from "chai";
+import { expect, request } from "chai";
+import "../lib/setupChai";
 import "chai/register-should";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
-import chaiHttp = require("chai-http");
-import chaiSubset = require("chai-subset");
 
 declare var global: HarnessGlobal;
-
-use(chaiHttp);
-use(chaiSubset);
 
 (async () => {
     const alpha_ledger_name = "bitcoin";
@@ -72,6 +68,7 @@ use(chaiSubset);
                     beta_expiry: beta_expiry,
                     peer: bob_comit_node_address,
                 });
+
             res.error.should.equal(false);
             res.should.have.status(201);
         });
@@ -136,7 +133,6 @@ use(chaiSubset);
                 "status",
                 "IN_PROGRESS"
             );
-
             expect(swapEntity.links).containSubset([
                 {
                     rel: (expectedValue: string[]) =>
@@ -147,6 +143,7 @@ use(chaiSubset);
 
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {
             let res = await request(alice.comit_node_url()).get("/peers");
+
             res.should.have.status(200);
             res.body.peers.should.have.containSubset([
                 {

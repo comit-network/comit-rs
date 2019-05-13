@@ -1,11 +1,11 @@
-import * as chai from "chai";
+import { use, request } from "chai";
 import { Transaction, TransactionReceipt } from "web3-core";
 import * as toml from "toml";
 import * as fs from "fs";
 import { TestConfig } from "./actor";
 import chaiHttp = require("chai-http");
 
-chai.use(chaiHttp);
+use(chaiHttp);
 
 export interface IdMatchResponse {
     query: any;
@@ -60,7 +60,7 @@ export class Btsieve {
 
     pollUntilMatches(query_url: string) {
         return new Promise((final_res, rej) => {
-            chai.request(query_url)
+            request(query_url)
                 .get("")
                 .end((err, res) => {
                     if (err) {
