@@ -1,4 +1,4 @@
-mod fill_contract_slice;
+mod fit_into_placeholder_slice;
 pub mod rfc003;
 
-pub use fill_contract_slice::{FillContractSlice, SecretHash};
+pub use fit_into_placeholder_slice::{FitIntoPlaceholderSlice, SecretHash};

@@ -1,4 +1,4 @@
-use crate::ethereum::{FillContractSlice, SecretHash};
+use crate::ethereum::{FitIntoPlaceholderSlice, SecretHash};
 use hex_literal::hex;
 use web3::types::{Address, Bytes, U256};
 
@@ -24,12 +24,12 @@ impl Erc20Htlc {
         token_quantity: U256,
     ) -> Self {
         let mut contract = CONTRACT_TEMPLATE.to_vec();
-        expiry.fill_contract_slice(&mut contract[102..106]);
-        refund_identity.fill_contract_slice(&mut contract[224..244]);
-        redeem_identity.fill_contract_slice(&mut contract[157..177]);
-        SecretHash(secret_hash).fill_contract_slice(&mut contract[53..85]);
-        token_contract_address.fill_contract_slice(&mut contract[307..327]);
-        token_quantity.fill_contract_slice(&mut contract[261..293]);
+        expiry.fit_into_placeholder_slice(&mut contract[102..106]);
+        refund_identity.fit_into_placeholder_slice(&mut contract[224..244]);
+        redeem_identity.fit_into_placeholder_slice(&mut contract[157..177]);
+        SecretHash(secret_hash).fit_into_placeholder_slice(&mut contract[53..85]);
+        token_contract_address.fit_into_placeholder_slice(&mut contract[307..327]);
+        token_quantity.fit_into_placeholder_slice(&mut contract[261..293]);
 
         Erc20Htlc(contract)
     }
