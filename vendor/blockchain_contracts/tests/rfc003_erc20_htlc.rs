@@ -8,8 +8,7 @@ pub mod parity_client;
 use crate::{
     ethereum_wallet::transaction::UnsignedTransaction,
     htlc_harness::{
-        erc20_harness, sleep_until, timestamp::Timestamp, CustomSizeSecret, Erc20HarnessParams,
-        SECRET,
+        erc20_harness, sleep_until, CustomSizeSecret, Erc20HarnessParams, Timestamp, SECRET,
     },
 };
 

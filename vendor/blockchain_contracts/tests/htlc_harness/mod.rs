@@ -7,13 +7,13 @@ use std::{str::FromStr, thread::sleep, time::Duration};
 
 mod erc20_harness;
 mod ether_harness;
-pub mod timestamp;
+mod timestamp;
 
 pub use self::{
     erc20_harness::{erc20_harness, Erc20HarnessParams},
     ether_harness::{ether_harness, EtherHarnessParams},
+    timestamp::Timestamp,
 };
-use timestamp::Timestamp;
 
 pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
     let keypair = KeyPair::from_secret_key_hex(secret_key).unwrap();
