@@ -24,17 +24,28 @@ jobs:
           name: Check formatting
           command: cargo make check-rs-format
       - restore_cache:
-          key: dependency-cache-{{ checksum "Cargo.lock" }}
+          key: dependency-rs-sccache
+      - restore_cache:
+          key: dependency-rs-cache-{{ checksum "Cargo.lock" }}
+      - restore_cache:
+          key: dependency-js-cache-{{ checksum "./api_tests/package.json" }}
       - run:
           name: Build using cargo make
           command: |
             cargo --version
             cargo make travis
       - save_cache:
-          key: dependency-cache-{{ checksum "Cargo.lock" }}
+          key: dependency-rs-sccache
+          paths:
+            - "~/.cache/sccache"
+      - save_cache:
+          key: dependency-rs-cache-{{ checksum "Cargo.lock" }}
           paths:
             - "~/.cargo"
             - "./target"
+      - save_cache:
+          key: dependency-js-cache-{{ checksum "./api_tests/package.json" }}
+          paths:
             - "./api_tests/node_modules"
 
 
