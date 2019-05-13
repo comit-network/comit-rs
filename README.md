@@ -30,13 +30,10 @@ Contains crates specific to our application. Can depend on libraries located in 
 3. Install SSL libraries
    - Ubuntu/Debian: `apt install libssl-dev`
    - Mac ([Homebrew](https://brew.sh/)) `brew install openssl`
-4. `solc` is currently needed to build (will be deprecated). 2 choices:
-   - Install `docker`
-   - OR install `solc`
 
 ## Build & Run
 
-1. `cargo build` (do `export SOLC_BIN=/usr/bin/solc` if `solc` is installed locally)
+1. `cargo build`
 2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` to wherever the config file is located.
 3. `./target/release/comit_node`
 4. TODO: similar documentation for `btsieve`
