@@ -18,7 +18,7 @@ const DEPLOY_HEADER_TEMPLATE: &str = include_str!("./templates/out/deploy_header
 const CONTRACT_START_POSITION_PLACEHOLDER: &str = "1001";
 const CONTRACT_LENGTH_PLACEHOLDER: &str = "2002";
 
-pub fn compile_template_to_hex() -> String {
+pub fn contract_template() -> String {
     let code_length = CONTRACT_CODE_TEMPLATE.len() / 2; // In hex, each byte is two chars
 
     let code_length_as_hex = format!("{:0>4x}", code_length);
@@ -36,7 +36,7 @@ pub fn compile_template_to_hex() -> String {
 
 fn offset(data_name: DataName, regex: &str) -> Offset {
     let contract =
-        hex::decode(compile_template_to_hex()).expect("contract is expected to be hex encoded");
+        hex::decode(contract_template()).expect("contract is expected to be hex encoded");
 
     let re_match = Regex::new(regex)
         .expect("Could not create regex")

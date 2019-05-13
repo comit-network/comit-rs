@@ -11,7 +11,7 @@ fn main() {
 
     {
         println!("** Ether on Ethereum **");
-        let contract = ether_offsets::compile_template_to_hex();
+        let contract = ether_offsets::contract_template();
         println!("Contract template:\n {}", contract);
         let offsets = ether_offsets::get_all_offsets();
         println!("{}", to_markdown(offsets));
@@ -19,7 +19,7 @@ fn main() {
 
     {
         println!("** ERC20 on Ethereum **");
-        let contract = erc20_offsets::compile_template_to_hex();
+        let contract = erc20_offsets::contract_template();
         println!("Contract template:\n {}", contract);
         let offsets = erc20_offsets::all_offsets();
         println!("{}", to_markdown(offsets));
