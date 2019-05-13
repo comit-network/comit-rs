@@ -1,0 +1,98 @@
+version: 2.1
+jobs:
+  build:
+    working_directory: ~/comit
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    environment:
+      # TODO remove the variable definition from Makefile.toml once travis is retired
+      RUST_TEST_THREADS: "8"
+    steps:
+      - checkout
+      - setup_system
+      - setup_nodejs
+      - setup_rust
+      - run:
+          name: Updating PATH and Define Environment Variable at Runtime
+          # Define variables that need interpolation
+          # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
+          command: |
+            echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
+      - print_current_versions
+      - run:
+          name: Check formatting
+          command: cargo make check-rs-format
+      - restore_cache:
+          key: dependency-rs-sccache
+      - restore_cache:
+          key: dependency-rs-cache-{{ checksum "Cargo.lock" }}
+      - restore_cache:
+          key: dependency-js-cache-{{ checksum "./api_tests/package.json" }}
+      - run:
+          name: Build using cargo make
+          command: |
+            cargo --version
+            cargo make travis
+      - save_cache:
+          key: dependency-rs-sccache
+          paths:
+            - "~/.cache/sccache"
+      - save_cache:
+          key: dependency-rs-cache-{{ checksum "Cargo.lock" }}
+          paths:
+            - "~/.cargo"
+            - "./target"
+      - save_cache:
+          key: dependency-js-cache-{{ checksum "./api_tests/package.json" }}
+          paths:
+            - "./api_tests/node_modules"
+
+
+commands:
+  setup_system:
+    steps:
+       - run:
+           name:  "Setup system environment"
+           command: |
+             wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+             curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+             sudo apt-get update
+             sudo apt-get install -y libzmq3-dev
+  setup_nodejs:
+    steps:
+       - run:
+           name:  "Install nodejs"
+           command: |
+             set +e
+             curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.5/install.sh | bash
+             export NVM_DIR="/opt/circleci/.nvm"
+             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+             nvm install v10.14.2
+             nvm alias default v10.14.2
+
+             # Each step uses the same `$BASH_ENV`, so need to modify it
+             echo 'export NVM_DIR="/opt/circleci/.nvm"' >> $BASH_ENV
+             echo "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"" >> $BASH_ENV
+             sudo apt-get install yarn
+  setup_rust:
+    steps:
+       - run:
+           name:  "Setup rust environment"
+           command: |
+             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
+             which cargo-make || cargo install --debug cargo-make
+  print_current_versions:
+    steps:
+      - run:
+          name: "Prints version for rust, etc"
+          command: |
+             echo 'node --version' $(node --version)
+             echo 'yarn --version' $(yarn --version)
+             echo 'rustc --version' $(rustc --version)
+             echo 'cargo --version' $(cargo --version)
+             echo "pwd $(pwd)"
+             echo "whomai $(whoami)"
+             echo "CARGO_HOME" $CARGO_HOME
+             echo "RUSTUP_HOME" $RUSTUP_HOME

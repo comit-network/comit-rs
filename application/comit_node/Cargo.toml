@@ -77,13 +77,13 @@ path = "../../vendor/blockchain_contracts"
 
 [dependencies.uuid]
 features = ["serde", "v4"]
-version = "0.6"
+version = "0.7"
 
 [dev-dependencies]
 lazy_static = "1"
 maplit = "1"
 memsocket = "0.1"
-pretty_env_logger = "0.2"
+pretty_env_logger = "0.3"
 spectral = "0.6"
 tiny-keccak = "1.4"
 testcontainers = "0.7"
