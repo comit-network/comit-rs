@@ -1,11 +1,5 @@
-use crate::offset_parameter::{apply_offsets, OffsetParameter};
-use std::ops::Range;
+use crate::ethereum::{FillContractSlice, SecretHash};
 use web3::types::{Address, U256};
-
-pub const SECRET_HASH_RANGE: Range<usize> = 51..83;
-pub const EXPIRY_RANGE: Range<usize> = 99..103;
-pub const REDEEM_IDENTITY_RANGE: Range<usize> = 153..173;
-pub const REFUND_IDENTITY_RANGE: Range<usize> = 214..234;
 
 use hex_literal::hex;
 
@@ -28,16 +22,13 @@ impl EtherHtlc {
         redeem_identity: Address,
         secret_hash: [u8; 32],
     ) -> Self {
-        let offsets = vec![
-            OffsetParameter::new(expiry, EXPIRY_RANGE).expect("always 4 bytes"),
-            OffsetParameter::new(refund_identity, REFUND_IDENTITY_RANGE).expect("always 20 bytes"),
-            OffsetParameter::new(redeem_identity, REDEEM_IDENTITY_RANGE).expect("always 20 bytes"),
-            OffsetParameter::new(&secret_hash[..], SECRET_HASH_RANGE).expect("always 32 bytes"),
-        ];
+        let mut contract = CONTRACT_TEMPLATE.to_vec();
+        expiry.fill_contract_slice(&mut contract[99..103]);
+        refund_identity.fill_contract_slice(&mut contract[214..234]);
+        redeem_identity.fill_contract_slice(&mut contract[153..173]);
+        SecretHash(secret_hash).fill_contract_slice(&mut contract[51..83]);
 
-        let data = apply_offsets(&CONTRACT_TEMPLATE[..], offsets);
-
-        EtherHtlc(data)
+        EtherHtlc(contract)
     }
 
     pub fn deployment_gas_limit(&self) -> U256 {

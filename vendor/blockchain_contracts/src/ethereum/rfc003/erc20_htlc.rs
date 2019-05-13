@@ -1,14 +1,6 @@
-use crate::offset_parameter::{apply_offsets, OffsetParameter};
+use crate::ethereum::{FillContractSlice, SecretHash};
 use hex_literal::hex;
-use std::ops::Range;
 use web3::types::{Address, Bytes, U256};
-
-pub const SECRET_HASH_RANGE: Range<usize> = 53..85;
-pub const EXPIRY_RANGE: Range<usize> = 102..106;
-pub const REDEEM_IDENTITY_RANGE: Range<usize> = 157..177;
-pub const REFUND_IDENTITY_RANGE: Range<usize> = 224..244;
-pub const TOKEN_QUANTITY_RANGE: Range<usize> = 261..293;
-pub const TOKEN_CONTRACT_RANGE: Range<usize> = 307..327;
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-009-SWAP-Basic-ERC20.md#contract
 const CONTRACT_TEMPLATE: [u8;339] = hex!("61014461000f6000396101446000f3361561005457602036141561006057602060006000376020602160206000600060026048f17f000000000000000000000000000000000000000000000000000000000000000060215114166100665760006000f35b426300000000106100a9575b60006000f35b7fb8cac300e37f03ad332e581dea21b2f0b84eaaadc184a295fef71e81f44a741360206000a17300000000000000000000000000000000000000006020526100ec565b7f5d26862916391bf49478b2f5103b0720a842b45ef145a268f2cd1fb2aed5517860006000a17300000000000000000000000000000000000000006020526100ec565b63a9059cbb6000527f0000000000000000000000000000000000000000000000000000000000000064604052602060606044601c6000730000000000000000000000000000000000000000620186a05a03f150602051ff");
@@ -31,18 +23,15 @@ impl Erc20Htlc {
         token_contract_address: Address,
         token_quantity: U256,
     ) -> Self {
-        let offsets = vec![
-            OffsetParameter::new(expiry, EXPIRY_RANGE).expect("always 4 bytes"),
-            OffsetParameter::new(refund_identity, REFUND_IDENTITY_RANGE).expect("always 20 bytes"),
-            OffsetParameter::new(redeem_identity, REDEEM_IDENTITY_RANGE).expect("always 20 bytes"),
-            OffsetParameter::new(&secret_hash[..], SECRET_HASH_RANGE).expect("always 32 bytes"),
-            OffsetParameter::new(token_contract_address, TOKEN_CONTRACT_RANGE)
-                .expect("always 20 bytes"),
-            OffsetParameter::new(token_quantity, TOKEN_QUANTITY_RANGE).expect("always 32 bytes"),
-        ];
-        let data = apply_offsets(&CONTRACT_TEMPLATE[..], offsets);
+        let mut contract = CONTRACT_TEMPLATE.to_vec();
+        expiry.fill_contract_slice(&mut contract[102..106]);
+        refund_identity.fill_contract_slice(&mut contract[224..244]);
+        redeem_identity.fill_contract_slice(&mut contract[157..177]);
+        SecretHash(secret_hash).fill_contract_slice(&mut contract[53..85]);
+        token_contract_address.fill_contract_slice(&mut contract[307..327]);
+        token_quantity.fill_contract_slice(&mut contract[261..293]);
 
-        Erc20Htlc(data)
+        Erc20Htlc(contract)
     }
 
     pub fn deployment_gas_limit(&self) -> U256 {

@@ -2,4 +2,3 @@
 #![deny(unsafe_code)]
 
 pub mod ethereum;
-pub mod offset_parameter;
