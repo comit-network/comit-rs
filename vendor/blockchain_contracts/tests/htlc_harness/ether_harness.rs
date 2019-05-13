@@ -1,6 +1,6 @@
 use crate::{
     ethereum_wallet::InMemoryWallet,
-    htlc_harness::{new_account, timestamp::Timestamp, SecretHash, SECRET_HASH},
+    htlc_harness::{new_account, timestamp::Timestamp, SECRET_HASH},
     parity_client::ParityClient,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
@@ -16,7 +16,7 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct EtherHarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_refund_timestamp: Timestamp,
-    pub htlc_secret_hash: SecretHash,
+    pub htlc_secret_hash: [u8; 32],
     pub htlc_eth_value: EtherQuantity,
 }
 
@@ -32,7 +32,7 @@ impl Default for EtherHarnessParams {
 }
 
 impl EtherHarnessParams {
-    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
+    pub fn with_secret_hash(self, secret_hash: [u8; 32]) -> Self {
         Self {
             htlc_secret_hash: secret_hash,
             ..self

@@ -9,8 +9,6 @@ mod erc20_harness;
 mod ether_harness;
 pub mod timestamp;
 
-pub type SecretHash = [u8; 32];
-
 pub use self::{
     erc20_harness::{erc20_harness, Erc20HarnessParams},
     ether_harness::{ether_harness, EtherHarnessParams},
@@ -32,13 +30,14 @@ pub const SECRET_HASH: [u8; 32] =
 pub struct CustomSizeSecret(pub Vec<u8>);
 
 impl CustomSizeSecret {
-    pub fn hash(&self) -> SecretHash {
+    pub fn hash(&self) -> [u8; 32] {
         let mut sha = Sha256::new();
         sha.input(&self.0[..]);
 
-        let mut result: [u8; 32] = [0; 32];
+        let mut result = [0; 32];
         sha.result(&mut result);
-        SecretHash::from(result)
+
+        result
     }
 }
 
