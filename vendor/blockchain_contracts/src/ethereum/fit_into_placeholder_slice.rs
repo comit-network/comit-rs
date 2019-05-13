@@ -11,15 +11,15 @@ impl FitIntoPlaceholderSlice for Address {
     }
 }
 
-impl FitIntoPlaceholderSlice for U256 {
+impl FitIntoPlaceholderSlice for TokenQuantity {
     fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
-        self.to_big_endian(buf);
+        self.0.to_big_endian(buf);
     }
 }
 
-impl FitIntoPlaceholderSlice for u32 {
+impl FitIntoPlaceholderSlice for Timestamp {
     fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
-        BigEndian::write_u32(buf, self);
+        BigEndian::write_u32(buf, self.0);
     }
 }
 
@@ -31,3 +31,9 @@ impl FitIntoPlaceholderSlice for SecretHash {
 
 #[derive(Debug)]
 pub struct SecretHash(pub [u8; 32]);
+
+#[derive(Debug)]
+pub struct Timestamp(pub u32);
+
+#[derive(Debug)]
+pub struct TokenQuantity(pub U256);
