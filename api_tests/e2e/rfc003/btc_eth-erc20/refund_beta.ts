@@ -7,7 +7,7 @@ import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { ActionTrigger, createTests } from "../../test_creator";
 import "chai/register-should";
-import "../../../lib/setupChai"
+import "../../../lib/setupChai";
 
 declare var global: HarnessGlobal;
 

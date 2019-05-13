@@ -6,7 +6,7 @@ import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { ActionTrigger, createTests } from "../../test_creator";
 import "chai/register-should";
-import "../../../lib/setupChai"
+import "../../../lib/setupChai";
 
 declare var global: HarnessGlobal;
 
@@ -136,7 +136,8 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the alpha asset after the refund",
                 callback: async body => {
-                    let refundTxId = body.state.alpha_ledger.refund_tx;
+                    let refundTxId =
+                        body.properties.state.alpha_ledger.refund_tx;
 
                     let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
                         refundTxId,

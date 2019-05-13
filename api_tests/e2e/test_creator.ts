@@ -5,11 +5,12 @@ import {
     getMethod,
     Method,
 } from "../lib/comit";
-import { request } from "chai";
+import { request, expect } from "chai";
 import { Actor } from "../lib/actor";
 import * as URI from "urijs";
 import "chai/register-should";
 import "../lib/setupChai";
+import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 
 export interface Test {
     /**
@@ -53,11 +54,16 @@ async function getAction(
 
     const body = await actionTrigger.actor.pollComitNodeUntil(
         location,
-        body => body._links[actionTrigger.action]
+        body =>
+            body.links.findIndex(link =>
+                link.rel.includes(actionTrigger.action)
+            ) != -1
     );
 
-    let href: string = body._links[actionTrigger.action].href;
-    href.should.not.be.empty;
+    let href = body.links.find(link => link.rel.includes(actionTrigger.action))
+        .href;
+
+    expect(href).to.not.be.empty;
 
     if (actionTrigger.uriQuery) {
         let hrefUri = new URI(href);
@@ -127,19 +133,22 @@ export async function createTests(
     );
 
     it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
-        let body = await bob.pollComitNodeUntil(
+        let swapsEntity = await bob.pollComitNodeUntil(
             listUrl,
-            body => body._embedded.swaps.length > 0
+            body => body.entities.length > 0
         );
 
-        const swapEmbedded = body._embedded.swaps[0];
-        swapEmbedded.protocol.should.equal("rfc003");
-        swapEmbedded.status.should.equal("IN_PROGRESS");
-        const swapLink = swapEmbedded._links;
-        swapLink.should.be.a("object");
-        const swapLocation: string = swapLink.self.href;
-        swapLocation.should.not.be.empty;
-        swapLocations["bob"] = swapLocation;
+        let swapEntity = swapsEntity
+            .entities[0] as EmbeddedRepresentationSubEntity;
+
+        expect(swapEntity.properties).to.have.property("protocol", "rfc003");
+        expect(swapEntity.properties).to.have.property("status", "IN_PROGRESS");
+
+        let selfLink = swapEntity.links.find(link => link.rel.includes("self"));
+
+        expect(selfLink).to.not.be.undefined;
+
+        swapLocations["bob"] = selfLink.href;
     });
 
     while (actions.length !== 0) {
@@ -183,7 +192,7 @@ export async function createTests(
                 this.timeout(10000);
                 body = await action.actor.pollComitNodeUntil(
                     swapLocations[action.actor.name],
-                    body => action.state(body.state)
+                    body => action.state(body.properties.state)
                 );
             });
         }

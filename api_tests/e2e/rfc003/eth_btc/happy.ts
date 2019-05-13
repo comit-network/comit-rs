@@ -6,7 +6,7 @@ import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { ActionTrigger, createTests } from "../../test_creator";
 import "chai/register-should";
-import "../../../lib/setupChai"
+import "../../../lib/setupChai";
 
 declare var global: HarnessGlobal;
 
@@ -97,7 +97,8 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the beta asset after the redeem",
                 callback: async body => {
-                    let redeemTxId = body.state.beta_ledger.redeem_tx;
+                    let redeemTxId =
+                        body.properties.state.beta_ledger.redeem_tx;
 
                     let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
                         redeemTxId,
