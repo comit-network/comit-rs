@@ -6,8 +6,8 @@ use crate::{
         Metadata, SwapId, SwapProtocol,
     },
 };
+use http::StatusCode;
 use http_api_problem::HttpApiProblem;
-use rustic_hal::HalResource;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -64,12 +64,12 @@ pub enum IncludeState {
     No,
 }
 
-pub fn new_rfc003_hal_swap_resource<S: StateStore>(
+pub fn build_rfc003_siren_entity<S: StateStore>(
     state_store: &S,
     id: SwapId,
     metadata: Metadata,
     include_state: IncludeState,
-) -> Result<HalResource, HttpApiProblem> {
+) -> Result<siren::Entity, HttpApiProblem> {
     use crate::http_api::{
         problem,
         route_factory::swap_path,
@@ -117,20 +117,26 @@ pub fn new_rfc003_hal_swap_resource<S: StateStore>(
                 },
             };
 
-            let hal_resource = HalResource::new(swap)
-                .with_link("self", swap_path(id))
-                .with_link(
-                    "human-protocol-spec",
-                    String::from(
-                        "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
-                    ),
-                );
-            let hal_resource = actions.into_iter().fold(hal_resource, |acc, action| {
+            let entity = siren::Entity::default()
+                .with_properties(swap)
+                .map_err(|e| {
+                    log::error!("failed to set properties of entity: {:?}", e);
+                    HttpApiProblem::with_title_and_type_from_status(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                    )
+                })?
+                .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
+                .with_link(siren::NavigationalLink::new(
+                    &["human-protocol-spec"],
+                    "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
+                ));
+
+            let entity = actions.into_iter().fold(entity, |acc, action| {
                 let link = new_action_link(&id, action);
-                acc.with_link(action, link)
+                acc.with_link(siren::NavigationalLink::new(&[action], link))
             });
 
-            Ok(hal_resource)
+            Ok(entity)
         })
     )
 }

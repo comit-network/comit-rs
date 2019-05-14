@@ -3,17 +3,16 @@ import {
     Action,
     ActionKind,
     getMethod,
-    HalResource,
     Method,
-    SwapsResponse,
 } from "../lib/comit";
-import * as chai from "chai";
+import { request, expect } from "chai";
 import { Actor } from "../lib/actor";
 import * as URI from "urijs";
+import "chai/register-should";
+import "../lib/setupChai";
+import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 
-chai.should();
-
-interface Test {
+export interface Test {
     /**
      * To be triggered once an action is executed
      *
@@ -22,11 +21,11 @@ interface Test {
      * @property timeout: if set, overrides the Mocha default timeout.
      */
     description: string;
-    callback: any;
+    callback: (body: any) => Promise<void>;
     timeout?: number;
 }
 
-interface ActionTrigger {
+export interface ActionTrigger {
     /**
      * Triggers an action and do the callback
      *
@@ -53,13 +52,18 @@ async function getAction(
 ): Promise<[string, Action]> {
     location.should.not.be.empty;
 
-    const body = (await actionTrigger.actor.pollComitNodeUntil(
+    const body = await actionTrigger.actor.pollComitNodeUntil(
         location,
-        body => body._links[actionTrigger.action]
-    )) as HalResource;
+        body =>
+            body.links.findIndex(link =>
+                link.rel.includes(actionTrigger.action)
+            ) != -1
+    );
 
-    let href: string = body._links[actionTrigger.action].href;
-    href.should.not.be.empty;
+    let href = body.links.find(link => link.rel.includes(actionTrigger.action))
+        .href;
+
+    expect(href).to.not.be.empty;
 
     if (actionTrigger.uriQuery) {
         let hrefUri = new URI(href);
@@ -68,9 +72,9 @@ async function getAction(
     }
 
     if (getMethod(actionTrigger.action) === Method.Get) {
-        const res = await chai
-            .request(actionTrigger.actor.comit_node_url())
-            .get(href);
+        const res = await request(actionTrigger.actor.comit_node_url()).get(
+            href
+        );
         res.should.have.status(200);
         let payload = res.body;
         return [href, payload];
@@ -91,8 +95,7 @@ async function executeAction(
             await actor.do(actionDirective);
             break;
         case Method.Post:
-            const res = await chai
-                .request(actor.comit_node_url())
+            const res = await request(actor.comit_node_url())
                 .post(actionHref)
                 .send(actionTrigger.requestBody);
 
@@ -119,8 +122,7 @@ export async function createTests(
         "[alice] Should be able to make a request via HTTP api to " +
             initialUrl,
         async () => {
-            let res: ChaiHttp.Response = await chai
-                .request(alice.comit_node_url())
+            let res: ChaiHttp.Response = await request(alice.comit_node_url())
                 .post(initialUrl)
                 .send(initialRequest);
             res.should.have.status(201);
@@ -131,19 +133,22 @@ export async function createTests(
     );
 
     it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
-        let body = (await bob.pollComitNodeUntil(
+        let swapsEntity = await bob.pollComitNodeUntil(
             listUrl,
-            body => body._embedded.swaps.length > 0
-        )) as SwapsResponse;
+            body => body.entities.length > 0
+        );
 
-        const swapEmbedded = body._embedded.swaps[0];
-        swapEmbedded.protocol.should.equal("rfc003");
-        swapEmbedded.status.should.equal("IN_PROGRESS");
-        const swapLink = swapEmbedded._links;
-        swapLink.should.be.a("object");
-        const swapLocation: string = swapLink.self.href;
-        swapLocation.should.not.be.empty;
-        swapLocations["bob"] = swapLocation;
+        let swapEntity = swapsEntity
+            .entities[0] as EmbeddedRepresentationSubEntity;
+
+        expect(swapEntity.properties).to.have.property("protocol", "rfc003");
+        expect(swapEntity.properties).to.have.property("status", "IN_PROGRESS");
+
+        let selfLink = swapEntity.links.find(link => link.rel.includes("self"));
+
+        expect(selfLink).to.not.be.undefined;
+
+        swapLocations["bob"] = selfLink.href;
     });
 
     while (actions.length !== 0) {
@@ -185,10 +190,10 @@ export async function createTests(
                 action.actor.name
             }] transitions to correct state`, async function() {
                 this.timeout(10000);
-                body = (await action.actor.pollComitNodeUntil(
+                body = await action.actor.pollComitNodeUntil(
                     swapLocations[action.actor.name],
-                    body => action.state(body.state)
-                )) as HalResource;
+                    body => action.state(body.properties.state)
+                );
             });
         }
 

@@ -1,16 +1,13 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as chai from "chai";
 import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { createTests } from "../../test_creator";
-import chaiHttp = require("chai-http");
-
-chai.should();
-chai.use(chaiHttp);
+import { ActionTrigger, createTests } from "../../test_creator";
+import "chai/register-should";
+import "../../../lib/setupChai";
 
 declare var global: HarnessGlobal;
 
@@ -98,29 +95,29 @@ declare var global: HarnessGlobal;
 
     erc20Balance.eq(bobInitialErc20).should.equal(true);
 
-    const actions = [
+    const actions: ActionTrigger[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
             requestBody: {
                 beta_ledger_refund_identity: bob.wallet.eth().address(),
             },
-            state: (state: any) => state.communication.status === "ACCEPTED",
+            state: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: (state: any) => state.alpha_ledger.status === "Funded",
+            state: state => state.alpha_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Deploy,
-            state: (state: any) => state.beta_ledger.status === "Deployed",
+            state: state => state.beta_ledger.status === "Deployed",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: (state: any) => state.beta_ledger.status === "Funded",
+            state: state => state.beta_ledger.status === "Funded",
             test: {
                 description: "Should have less beta asset after the funding",
                 callback: async () => {
@@ -138,7 +135,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Refund,
-            state: (state: any) => state.beta_ledger.status === "Refunded",
+            state: state => state.beta_ledger.status === "Refunded",
             test: {
                 description:
                     "Should have received the beta asset after the refund",

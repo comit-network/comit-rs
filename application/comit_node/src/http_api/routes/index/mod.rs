@@ -6,7 +6,6 @@ use crate::{
     swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
 };
 use libp2p::PeerId;
-use rustic_hal::HalResource;
 use serde::Serialize;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
@@ -29,8 +28,11 @@ pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
 ) -> Result<impl Reply, Rejection> {
     handle_get_swaps(metadata_store.as_ref(), state_store.as_ref())
         .map(|swaps| {
-            let response = HalResource::new("").with_resources("swaps", swaps);
-            Ok(warp::reply::json(&response))
+            Ok(warp::reply::with_header(
+                warp::reply::json(&swaps),
+                "content-type",
+                "application/vnd.siren+json",
+            ))
         })
         .map_err(into_rejection)
 }
