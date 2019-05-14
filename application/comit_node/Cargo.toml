@@ -4,9 +4,6 @@ name = "comit_node"
 version = "0.1.0"
 edition = "2018"
 
-[build-dependencies]
-regex = "1"
-
 [dependencies]
 binary_macros = "0.6"
 bitcoin_rpc_client = "0.6"
@@ -77,6 +74,9 @@ version = "0.2"
 
 [dependencies.tc_bitcoincore_client]
 path = "../../vendor/tc_bitcoincore_client"
+
+[dependencies.blockchain_contracts]
+path = "../../vendor/blockchain_contracts"
 
 [dependencies.uuid]
 features = ["serde", "v4"]

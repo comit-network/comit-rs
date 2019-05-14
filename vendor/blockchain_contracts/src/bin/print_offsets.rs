@@ -1,5 +1,5 @@
 use self::calculate_offsets::{
-    ethereum::rfc003::{Erc20Htlc, EtherHtlc},
+    ethereum::rfc003::{erc20_offsets, ether_offsets},
     to_markdown,
 };
 
@@ -11,17 +11,17 @@ fn main() {
 
     {
         println!("** Ether on Ethereum **");
-        let contract = EtherHtlc::compile_template_to_hex();
+        let contract = ether_offsets::contract_template();
         println!("Contract template:\n {}", contract);
-        let offsets = EtherHtlc::get_all_offsets();
+        let offsets = ether_offsets::get_all_offsets();
         println!("{}", to_markdown(offsets));
     }
 
     {
         println!("** ERC20 on Ethereum **");
-        let contract = Erc20Htlc::compile_template_to_hex();
+        let contract = erc20_offsets::contract_template();
         println!("Contract template:\n {}", contract);
-        let offsets = Erc20Htlc::all_offsets();
+        let offsets = erc20_offsets::all_offsets();
         println!("{}", to_markdown(offsets));
     }
 }

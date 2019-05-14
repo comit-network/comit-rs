@@ -5,9 +5,9 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
-binary_macros = "0.6"
 byteorder = "1.3"
 hex = "0.3"
+hex-literal = "0.2"
 rand = "0.4"
 regex = "1.1"
 rust-crypto = "0.2"

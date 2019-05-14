@@ -1,14 +1,13 @@
 mod actions;
-mod erc20_htlc;
-mod ether_htlc;
 pub mod htlc_events;
 
-pub use self::{actions::*, erc20_htlc::*, ether_htlc::*};
+pub use self::actions::*;
 
 use crate::swap_protocols::{
     ledger::Ethereum,
     rfc003::{state_machine::HtlcParams, Ledger},
 };
+use blockchain_contracts::ethereum::rfc003::{erc20_htlc::Erc20Htlc, ether_htlc::EtherHtlc};
 use ethereum_support::{web3::types::Address, Bytes, Erc20Token, EtherQuantity};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -48,38 +47,35 @@ impl Ledger for Ethereum {
 impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
     fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
         EtherHtlc::new(
-            htlc_params.expiry,
+            htlc_params.expiry.into(),
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
-            htlc_params.secret_hash,
+            htlc_params.secret_hash.into(),
         )
     }
 }
 
 impl HtlcParams<Ethereum, EtherQuantity> {
     pub fn bytecode(&self) -> Bytes {
-        EtherHtlc::from(self.clone()).compile_to_hex().into()
+        EtherHtlc::from(self.clone()).into()
     }
 }
 
 impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
     fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
         Erc20Htlc::new(
-            htlc_params.expiry,
+            htlc_params.expiry.into(),
             htlc_params.refund_identity,
             htlc_params.redeem_identity,
-            htlc_params.secret_hash,
+            htlc_params.secret_hash.into(),
             htlc_params.asset.token_contract,
-            htlc_params.asset.quantity,
+            htlc_params.asset.quantity.0,
         )
     }
 }
 
 impl HtlcParams<Ethereum, Erc20Token> {
     pub fn bytecode(&self) -> Bytes {
-        Erc20Htlc::from(self.clone()).compile_to_hex().into()
-    }
-    pub fn funding_tx_payload(&self, htlc_location: Address) -> Bytes {
-        Erc20Htlc::from(self.clone()).funding_tx_payload(htlc_location)
+        Erc20Htlc::from(self.clone()).into()
     }
 }

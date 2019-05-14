@@ -2,12 +2,13 @@ use crate::swap_protocols::{
     ledger::Ethereum,
     rfc003::{
         actions::{FundAction, RedeemAction, RefundAction},
-        ethereum::{self, EtherHtlc},
+        ethereum,
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Secret,
     },
 };
+use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use ethereum_support::{Address as EthereumAddress, Bytes, EtherQuantity};
 
 impl FundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {

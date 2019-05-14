@@ -1,9 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-pub mod ethereum_wallet;
-pub mod htlc_harness;
-pub mod parity_client;
+mod htlc_harness;
 
 use crate::htlc_harness::{sleep_until, CustomSizeSecret};
 use bitcoin_rpc_client::*;

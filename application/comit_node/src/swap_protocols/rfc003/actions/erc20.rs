@@ -1,11 +1,8 @@
 use crate::swap_protocols::{
     ledger::Ethereum,
-    rfc003::{
-        ethereum::{self, Erc20Htlc},
-        state_machine::HtlcParams,
-        Secret, Timestamp,
-    },
+    rfc003::{ethereum, state_machine::HtlcParams, Secret, Timestamp},
 };
+use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 use ethereum_support::{Bytes, Erc20Token, Network};
 
 pub fn deploy_action(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> ethereum::ContractDeploy {
@@ -18,12 +15,14 @@ pub fn fund_action(
     beta_htlc_location: ethereum_support::Address,
 ) -> ethereum::CallContract {
     let network = htlc_params.ledger.network;
-    let htlc = Erc20Htlc::from(htlc_params);
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
 
     ethereum::CallContract {
         to: to_erc20_contract,
-        data: htlc.funding_tx_payload(beta_htlc_location),
+        data: Erc20Htlc::transfer_erc20_tx_payload(
+            htlc_params.asset.quantity.0,
+            beta_htlc_location,
+        ),
         gas_limit,
         network,
         min_block_timestamp: None,

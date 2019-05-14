@@ -1,17 +1,14 @@
 use crate::{
     ethereum_wallet::InMemoryWallet,
-    htlc_harness::{new_account, SECRET_HASH},
+    htlc_harness::{new_account, timestamp::Timestamp, SECRET_HASH},
     parity_client::ParityClient,
 };
-use blockchain_contracts::{
-    ethereum::rfc003::EtherHtlc,
-    rfc003::{secret_hash::SecretHash, timestamp::Timestamp},
-};
+use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 use ethereum_support::{
     web3::{transports::EventLoopHandle, types::Address},
     EtherQuantity,
 };
-use std::{str::FromStr, sync::Arc};
+use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 
@@ -19,7 +16,7 @@ use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
 pub struct EtherHarnessParams {
     pub alice_initial_ether: EtherQuantity,
     pub htlc_refund_timestamp: Timestamp,
-    pub htlc_secret_hash: SecretHash,
+    pub htlc_secret_hash: [u8; 32],
     pub htlc_eth_value: EtherQuantity,
 }
 
@@ -28,14 +25,14 @@ impl Default for EtherHarnessParams {
         Self {
             alice_initial_ether: EtherQuantity::from_eth(1.0),
             htlc_refund_timestamp: Timestamp::now().plus(10),
-            htlc_secret_hash: SecretHash::from_str(SECRET_HASH).unwrap(),
+            htlc_secret_hash: SECRET_HASH,
             htlc_eth_value: EtherQuantity::from_eth(0.4),
         }
     }
 }
 
 impl EtherHarnessParams {
-    pub fn with_secret_hash(self, secret_hash: SecretHash) -> Self {
+    pub fn with_secret_hash(self, secret_hash: [u8; 32]) -> Self {
         Self {
             htlc_secret_hash: secret_hash,
             ..self
@@ -75,12 +72,11 @@ pub fn ether_harness<D: Docker>(
 
     let tx_id = alice_client.deploy_htlc(
         EtherHtlc::new(
-            params.htlc_refund_timestamp,
+            params.htlc_refund_timestamp.into(),
             alice,
             bob,
             params.htlc_secret_hash.into(),
         )
-        .unwrap()
         .into(),
         params.htlc_eth_value.wei(),
     );
