@@ -3,21 +3,10 @@ extern crate regex;
 use regex::Regex;
 use std::{
     env::var,
-    fs::{DirBuilder, File},
-    io::Write,
-    path::Path,
     process::{Command, Stdio},
 };
 
-fn main() -> std::io::Result<()> {
-    compile("./src/bin/calculate_offsets/ethereum/rfc003/templates/ether_contract.asm")?;
-    compile("./src/bin/calculate_offsets/ethereum/rfc003/templates/deploy_header.asm")?;
-    compile("./src/bin/calculate_offsets/ethereum/rfc003/templates/erc20_contract.asm")?;
-
-    Ok(())
-}
-
-fn compile(file_path: &'static str) -> std::io::Result<()> {
+pub fn compile(file_path: &'static str) -> std::io::Result<String> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -37,6 +26,7 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
                 .arg("--assemble")
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
+                .stderr(Stdio::null())
                 .spawn()?
         }
     };
@@ -55,19 +45,7 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
 
     let hexcode = captures.name("hexcode").unwrap();
 
-    let path = Path::new(file_path);
-    let folder = path.parent().unwrap().to_str().unwrap();
-    let folder = format!("{}/out", folder);
-    let file_name = path.file_name().unwrap().to_str().unwrap();
-
-    DirBuilder::new().recursive(true).create(&folder).unwrap();
-
-    let mut file = File::create(format!("{}/{}.hex", folder, file_name).as_str())?;
-    file.write_all(hexcode.as_str().as_bytes())?;
-
-    println!("cargo:rerun-if-changed={}", file_path);
-
-    Ok(())
+    Ok(hexcode.as_str().to_string())
 }
 
 fn check_bin_in_path(bin: &str) {
