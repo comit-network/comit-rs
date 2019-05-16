@@ -8,9 +8,26 @@ pub mod comit_client;
 pub mod comit_i_routes;
 pub mod http_api;
 pub mod libp2p_bam;
+pub mod load_settings;
 pub mod logging;
 pub mod network;
 pub mod node_id;
 pub mod seed;
 pub mod settings;
 pub mod swap_protocols;
+
+fn var_or_default(name: &str, default: String) -> String {
+    match std::env::var(name) {
+        Ok(value) => {
+            log::info!("Set {}={}", name, value);
+            value
+        }
+        Err(_) => {
+            eprintln!(
+                "{} is not set, falling back to default: '{}' ",
+                name, default
+            );
+            default
+        }
+    }
+}
