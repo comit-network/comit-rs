@@ -6,7 +6,7 @@ use bitcoin_support::Network as BitcoinNetwork;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
-    route_factory,
+    logging, route_factory,
     settings::{self, Settings},
     InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
@@ -43,9 +43,9 @@ impl From<web3::Error> for Error {
 }
 
 fn main() -> Result<(), failure::Error> {
-    let _ = pretty_env_logger::try_init();
-
     let settings = load_settings()?;
+    logging::set_up_logging(&settings);
+
     let mut runtime = tokio::runtime::Runtime::new()?;
 
     log::info!("Starting up with {:#?}", settings);
