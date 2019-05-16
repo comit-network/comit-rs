@@ -4,8 +4,7 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
-        "check": "tsc --noEmit",
-        "check-watch": "tsc --watch --noEmit",
+        "check": "tsc",
         "gen": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts"
     },
     "engines": {
@@ -32,6 +31,7 @@
         "toml": "^2.3.3",
         "typedarray-to-buffer": "^3.1.5",
         "typescript": "^3.3.3333",
+        "uri.js": "^0.1.3",
         "urijs": "^1.19.1",
         "web3": "^1.0.0-beta.48"
     },

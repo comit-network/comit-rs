@@ -11,13 +11,13 @@ const bitcoin = require("bitcoinjs-lib");
 const ethutil = require("ethereumjs-util");
 
 let _web3Client: any;
-let _ethConfig: EthConfig;
+let _ethConfig: EthereumNodeConfig;
 
-export interface EthConfig {
+export interface EthereumNodeConfig {
     rpc_url: string;
 }
 
-function createWeb3Client(ethConfig: EthConfig) {
+function createWeb3Client(ethConfig: EthereumNodeConfig) {
     if (!ethConfig && _web3Client) {
         throw new Error("ethereum configuration is needed");
     }
@@ -30,20 +30,31 @@ function createWeb3Client(ethConfig: EthConfig) {
     return _web3Client;
 }
 
-module.exports.createClient = (ethConfig: EthConfig) => {
-    return createWeb3Client(ethConfig);
-};
-
 export async function ethBalance(address: string) {
     const balance: string = await _web3Client.eth.getBalance(address);
     return utils.toBN(balance);
 }
 
-module.exports.ethBalance = async function(address: string) {
-    return ethBalance(address);
-};
+export async function erc20Balance(
+    tokenHolderAddress: string,
+    contractAddress: string
+) {
+    const function_identifier = "70a08231";
 
-const function_identifier = "40c10f19";
+    const padded_address = tokenHolderAddress
+        .replace(/^0x/, "")
+        .padStart(64, "0");
+    const payload = "0x" + function_identifier + padded_address;
+
+    const tx = {
+        from: tokenHolderAddress,
+        to: contractAddress,
+        data: payload,
+    };
+
+    let hex_balance = await _web3Client.eth.call(tx);
+    return utils.toBN(hex_balance);
+}
 
 export async function mintErc20Tokens(
     ownerWallet: EthereumWallet,
@@ -51,6 +62,8 @@ export async function mintErc20Tokens(
     to_address: string,
     amount: BN | string | number
 ) {
+    const functionIdentifier = "40c10f19";
+
     to_address = to_address.replace(/^0x/, "").padStart(64, "0");
 
     if (typeof amount === "string" || typeof amount === "number") {
@@ -61,7 +74,7 @@ export async function mintErc20Tokens(
         .numberToHex(amount)
         .replace(/^0x/, "")
         .padStart(64, "0");
-    const payload = "0x" + function_identifier + to_address + hexAmount;
+    const payload = "0x" + functionIdentifier + to_address + hexAmount;
 
     return ownerWallet.sendEthTransactionTo(contract_address, payload, "0x0");
 }
@@ -72,7 +85,7 @@ export class EthereumWallet {
     keypair: ECPair;
     _address: string;
 
-    constructor(ethConfig: EthConfig) {
+    constructor(ethConfig: EthereumNodeConfig) {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this._address =
             "0x" +
@@ -84,11 +97,19 @@ export class EthereumWallet {
         return this._address;
     }
 
-    async fund(ethAmount: string) {
+    ethBalance() {
+        return ethBalance(this._address);
+    }
+
+    erc20Balance(contractAddress: string) {
+        return erc20Balance(this._address, contractAddress);
+    }
+
+    async fund(ether: string) {
         const parity_dev_account = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
         const parity_dev_password = "";
 
-        const weiAmount = utils.toWei(ethAmount, "ether");
+        const weiAmount = utils.toWei(ether, "ether");
         const weiAmountBN = utils.toBN(weiAmount);
 
         const tx = {
@@ -176,26 +197,3 @@ export class EthereumWallet {
         return _web3Client.eth.sendSignedTransaction(hex);
     }
 }
-
-export async function erc20Balance(
-    tokenHolderAddress: string,
-    contractAddress: string
-) {
-    const function_identifier = "70a08231";
-
-    const padded_address = tokenHolderAddress
-        .replace(/^0x/, "")
-        .padStart(64, "0");
-    const payload = "0x" + function_identifier + padded_address;
-
-    const tx = {
-        from: tokenHolderAddress,
-        to: contractAddress,
-        data: payload,
-    };
-
-    let hex_balance = await _web3Client.eth.call(tx);
-    return utils.toBN(hex_balance);
-}
-
-module.exports.erc20Balance = erc20Balance;

@@ -7,7 +7,7 @@ export interface AcceptRequestBody {
     alpha_ledger_redeem_identity?: string;
 }
 
-export type Action =
+export type LedgerAction =
     | {
           type: "bitcoin-send-amount-to-address";
           payload: { to: string; amount: string; network: string };

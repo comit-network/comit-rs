@@ -1,33 +1,32 @@
-import { BitcoinWallet, BtcConfig } from "./bitcoin";
-import { EthConfig, EthereumWallet } from "./ethereum";
+import { BitcoinWallet, BitcoinNodeConfig } from "./bitcoin";
+import { EthereumNodeConfig, EthereumWallet } from "./ethereum";
 
 export interface WalletConfig {
-    ethConfig?: EthConfig;
-    btcConfig?: BtcConfig;
+    ethereumNodeConfig?: EthereumNodeConfig;
+    bitcoinNodeConfig?: BitcoinNodeConfig;
+
+    addressForIncomingBitcoinPayments?: string;
 }
 
 export class Wallet {
     owner: string;
-    _config: WalletConfig;
     _ethWallet: EthereumWallet;
     _btcWallet: BitcoinWallet;
 
     constructor(owner: string, config: WalletConfig) {
         this.owner = owner;
-        this._config = config;
+        this._ethWallet = new EthereumWallet(config.ethereumNodeConfig);
+        this._btcWallet = new BitcoinWallet(
+            config.bitcoinNodeConfig,
+            config.addressForIncomingBitcoinPayments
+        );
     }
 
     eth() {
-        if (!this._ethWallet) {
-            this._ethWallet = new EthereumWallet(this._config.ethConfig);
-        }
         return this._ethWallet;
     }
 
     btc() {
-        if (!this._btcWallet) {
-            this._btcWallet = new BitcoinWallet(this._config.btcConfig);
-        }
         return this._btcWallet;
     }
 }

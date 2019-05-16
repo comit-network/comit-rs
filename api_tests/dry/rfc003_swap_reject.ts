@@ -27,10 +27,10 @@ declare var global: HarnessGlobal;
     const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
     const alice = new Actor("alice", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
     });
     const bob = new Actor("bob", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
     });
     const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bob_comit_node_address = await bob.peerId();
@@ -218,17 +218,17 @@ declare var global: HarnessGlobal;
 
             let body = res.body as Entity;
 
-            expect(body.links).containSubset([
+            expect(body.actions).containSubset([
                 {
-                    rel: (expected: string[]) => expected.includes("accept"),
+                    name: "accept",
                 },
                 {
-                    rel: (expected: string[]) => expected.includes("decline"),
+                    name: "decline",
                 },
             ]);
 
-            bob_decline_href_stingy = body.links.find(link =>
-                link.rel.includes("decline")
+            bob_decline_href_stingy = body.actions.find(
+                action => action.name === "decline"
             ).href;
         });
 

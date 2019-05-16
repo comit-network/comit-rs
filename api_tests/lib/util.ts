@@ -1,6 +1,6 @@
 import { TestConfig } from "./actor";
-import { BtcConfig } from "./bitcoin";
-import { EthConfig } from "./ethereum";
+import { BitcoinNodeConfig } from "./bitcoin";
+import { EthereumNodeConfig } from "./ethereum";
 
 let _test_rng_counter = 0;
 
@@ -31,8 +31,8 @@ import Global = NodeJS.Global;
 export interface HarnessGlobal extends Global {
     config: TestConfig;
     ledgers_config: {
-        bitcoin: BtcConfig;
-        ethereum: EthConfig;
+        bitcoin: BitcoinNodeConfig;
+        ethereum: EthereumNodeConfig;
     };
     test_root: string;
     project_root: string;

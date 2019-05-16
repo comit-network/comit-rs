@@ -13,40 +13,30 @@ declare var global: HarnessGlobal;
 
 (async function() {
     const tobyWallet = new Wallet("toby", {
-        ethConfig: global.ledgers_config.ethereum,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
     });
-
-    const tobyInitialEth = "10";
-    const bobInitialEth = "5";
-    const bobInitialErc20 = toBN(toWei("10000", "ether"));
-
     const alice = new Actor("alice", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
-        btcConfig: global.ledgers_config.bitcoin,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
+        bitcoinNodeConfig: global.ledgers_config.bitcoin,
     });
     const bob = new Actor("bob", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
-        btcConfig: global.ledgers_config.bitcoin,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
+        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+        addressForIncomingBitcoinPayments:
+            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
     });
 
-    const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bobFinalAddress =
-        "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
-    const bobComitNodeAddress = await bob.peerId();
-
+    const bobInitialErc20 = toBN(toWei("10000", "ether"));
     const alphaAssetQuantity = 100000000;
     const betaAssetQuantity = toBN(toWei("5000", "ether"));
-    const alphaMaxFee = 5000; // Max 5000 satoshis fee
+    const maxFeeInSatoshi = 5000;
 
     const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
     const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-    const initialUrl = "/swaps/rfc003";
-    const listUrl = "/swaps";
-
     await bitcoin.ensureFunding();
-    await tobyWallet.eth().fund(tobyInitialEth);
-    await bob.wallet.eth().fund(bobInitialEth);
+    await tobyWallet.eth().fund("10");
+    await bob.wallet.eth().fund("5");
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
     await alice.wallet.eth().fund("1");
@@ -74,10 +64,10 @@ declare var global: HarnessGlobal;
             quantity: betaAssetQuantity.toString(),
             token_contract: tokenContractAddress,
         },
-        beta_ledger_redeem_identity: aliceFinalAddress,
+        beta_ledger_redeem_identity: alice.wallet.eth().address(),
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
-        peer: bobComitNodeAddress,
+        peer: await bob.peerId(),
     };
 
     let bobWalletAddress = await bob.wallet.eth().address();
@@ -97,18 +87,14 @@ declare var global: HarnessGlobal;
 
     erc20Balance.eq(bobInitialErc20).should.equal(true);
 
-    let aliceErc20BalanceBefore: BN = await ethereum.erc20Balance(
-        aliceFinalAddress,
-        tokenContractAddress
-    );
+    let aliceErc20BalanceBefore: BN = await alice.wallet
+        .eth()
+        .erc20Balance(tokenContractAddress);
 
     const actions: ActionTrigger[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
-            requestBody: {
-                beta_ledger_refund_identity: bob.wallet.eth().address(),
-            },
             state: state => state.communication.status === "ACCEPTED",
         },
         {
@@ -134,10 +120,9 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the beta asset after the redeem",
                 callback: async () => {
-                    let aliceErc20BalanceAfter = await ethereum.erc20Balance(
-                        aliceFinalAddress,
-                        tokenContractAddress
-                    );
+                    let aliceErc20BalanceAfter = await alice.wallet
+                        .eth()
+                        .erc20Balance(tokenContractAddress);
 
                     let aliceErc20BalanceExpected = aliceErc20BalanceBefore.add(
                         betaAssetQuantity
@@ -146,13 +131,12 @@ declare var global: HarnessGlobal;
                         .eq(aliceErc20BalanceExpected)
                         .should.equal(true);
                 },
-                timeout: 5000,
+                timeoutOverride: 5000,
             },
         },
         {
             actor: bob,
             action: ActionKind.Redeem,
-            uriQuery: { address: bobFinalAddress, fee_per_byte: 20 },
             state: state => state.alpha_ledger.status === "Redeemed",
             test: {
                 description:
@@ -161,21 +145,28 @@ declare var global: HarnessGlobal;
                     let redeemTxId =
                         body.properties.state.alpha_ledger.redeem_tx;
 
-                    let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
-                        redeemTxId,
-                        bobFinalAddress
-                    );
-                    const satoshiExpected = alphaAssetQuantity - alphaMaxFee;
+                    let satoshiReceived = await bob.wallet
+                        .btc()
+                        .moneyReceivedInTx(redeemTxId);
+                    const satoshiExpected =
+                        alphaAssetQuantity - maxFeeInSatoshi;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                timeout: 10000,
+                timeoutOverride: 10000,
             },
         },
     ];
 
     describe("RFC003: Bitcoin for ERC20", async () => {
-        createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
+        createTests(
+            alice,
+            bob,
+            actions,
+            "/swaps/rfc003",
+            "/swaps",
+            swapRequest
+        );
     });
     run();
 })();
