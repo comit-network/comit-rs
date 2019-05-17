@@ -61,10 +61,9 @@ class ComitRunner {
 
             this.running_nodes[name] = await spawn(
                 project_root + "/target/debug/comit_node",
-                [],
+                ["--config", comit_config.config_dir],
                 {
                     cwd: project_root,
-                    env: { COMIT_NODE_CONFIG_PATH: comit_config.config_dir },
                     stdio: [
                         "ignore",
                         fs.openSync(
