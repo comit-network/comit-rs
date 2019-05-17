@@ -10,7 +10,7 @@ version = "0.1.0"
 doctest = false
 
 [dependencies]
-rust-embed = "4.3"
+rust-embed = "4.4"
 
 [build-dependencies]
 unzip = "0.1"
