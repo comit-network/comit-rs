@@ -23,9 +23,10 @@ fn var_or_default(name: &str, default: String) -> String {
             value
         }
         Err(_) => {
-            eprintln!(
+            log::warn!(
                 "{} is not set, falling back to default: '{}' ",
-                name, default
+                name,
+                default
             );
             default
         }

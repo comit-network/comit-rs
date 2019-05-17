@@ -64,7 +64,6 @@ class ComitRunner {
                 ["--config", comit_config.config_dir],
                 {
                     cwd: project_root,
-                    env: null,
                     stdio: [
                         "ignore",
                         fs.openSync(
