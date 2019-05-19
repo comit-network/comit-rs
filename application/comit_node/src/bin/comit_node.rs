@@ -6,6 +6,7 @@ use comit_node::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
+    load_settings::{load_settings, Opt},
     logging,
     network::{self, BamPeers},
     seed::Seed,
@@ -17,20 +18,21 @@ use comit_node::{
         InMemoryMetadataStore, SwapId,
     },
 };
-use directories;
 use futures::{stream, Future, Stream};
 use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
 use std::{
-    env::var,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
+use structopt::StructOpt;
 
 fn main() -> Result<(), failure::Error> {
-    let settings = load_settings()?;
+    let opt = Opt::from_args();
+
+    let settings = load_settings(opt)?;
     logging::set_up_logging(&settings);
 
     log::info!("Starting up with {:#?}", settings);
@@ -102,26 +104,6 @@ fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
-    match directories::UserDirs::new() {
-        None => Err(config::ConfigError::Message(
-            "Unable to determine user's home directory".to_string(),
-        )),
-        Some(dirs) => {
-            let default_config = std::path::Path::join(dirs.home_dir(), ".config/comit_node");
-            let comit_config_path = var_or_default(
-                "COMIT_NODE_CONFIG_PATH",
-                default_config.to_string_lossy().to_string(),
-            );
-            let run_mode_config = var_or_default("RUN_MODE", "development".into());
-            let default_config = format!("{}/{}", comit_config_path.trim(), "default");
-            let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
-            let settings = ComitNodeSettings::create(default_config, run_mode_config)?;
-            Ok(settings)
-        }
-    }
-}
-
 fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient {
     BtsieveHttpClient::new(
         &settings.btsieve.url,
@@ -180,20 +162,4 @@ fn auth_origin(settings: &ComitNodeSettings) -> String {
     };
     log::trace!("Auth origin enabled on: {}", auth_origin);
     auth_origin
-}
-
-fn var_or_default(name: &str, default: String) -> String {
-    match var(name) {
-        Ok(value) => {
-            log::info!("Set {}={}", name, value);
-            value
-        }
-        Err(_) => {
-            eprintln!(
-                "{} is not set, falling back to default: '{}' ",
-                name, default
-            );
-            default
-        }
-    }
 }
