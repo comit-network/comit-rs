@@ -1,9 +1,8 @@
-pub mod calculate_offsets;
-pub mod offset;
-pub mod offsets;
-
 mod compile_contract;
-mod contract_config;
+pub mod contract;
+mod metadata;
+pub mod offset;
+mod placeholder_config;
 
 #[derive(Debug)]
 pub enum Error {

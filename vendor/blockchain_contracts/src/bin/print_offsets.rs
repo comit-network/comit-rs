@@ -1,23 +1,31 @@
 mod calculate_offsets;
 
-use self::calculate_offsets::ethereum::rfc003::{
-    calculate_offsets::calculate_offsets, offset::to_markdown, Error,
-};
+use self::calculate_offsets::ethereum::rfc003::{offset::to_markdown, Error};
+use crate::calculate_offsets::ethereum::rfc003::contract::Contract;
 
 #[allow(clippy::print_stdout)]
-fn main() {
+fn main() -> Result<(), Error> {
     println!("### RFC003 ###");
 
-    print_offsets("ether");
-    print_offsets("erc20");
+    print_offsets("ether")?;
+    print_offsets("erc20")?;
+
+    Ok(())
 }
 
-fn print_offsets(asset: &'static str) -> Result<(), Error> {
-    let offsets = calculate_offsets(asset)?;
+#[allow(clippy::print_stdout)]
+fn print_offsets(dir: &'static str) -> Result<(), Error> {
+    let contract = Contract::compile_from_directory_and_load_placeholder_config(dir)?;
 
-    println!("** {} on {} **", offsets.asset_name, offsets.ledger_name);
-    println!("Contract template:\n {}", offsets.contract);
-    println!("{}", to_markdown(offsets.offsets));
+    let offsets = contract.calculate_offsets()?;
+    let metadata = contract.meta_data;
+
+    println!(
+        "** {} on {} **",
+        &metadata.asset_name, &metadata.ledger_name
+    );
+    println!("Contract template:\n {}", metadata.contract_hex);
+    println!("{}", to_markdown(offsets));
 
     Ok(())
 }
