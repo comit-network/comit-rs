@@ -40,20 +40,21 @@ pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
                 .iter()
                 .find_map(|action| {
                     if action_name == action.to_action_name() {
-                        let payload = action.clone().into_response_payload(query_params.clone());
-
-                        match payload {
-                            Ok(payload) => {
+                        let payload = action
+                            .clone()
+                            .into_response_payload(query_params.clone())
+                            .map(|payload| {
                                 log::trace!(
                                     "Swap {}: Returning {:?} for {:?}",
                                     id,
                                     payload,
                                     action_name
                                 );
-                                Some(Ok(HalResource::new(payload)))
-                            }
-                            Err(e) => Some(Err(e)),
-                        }
+
+                                HalResource::new(payload)
+                            });
+
+                        Some(payload)
                     } else {
                         None
                     }
