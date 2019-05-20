@@ -1,12 +1,11 @@
 extern crate regex;
-
 use regex::Regex;
 use std::{
     env::var,
     process::{Command, Stdio},
 };
 
-pub fn compile(file_path: &'static str) -> std::io::Result<String> {
+pub fn compile(file_path: &str) -> std::io::Result<Vec<u8>> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -15,6 +14,7 @@ pub fn compile(file_path: &'static str) -> std::io::Result<String> {
             .arg("-")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::null())
             .spawn()?,
         Err(_) => {
             check_bin_in_path("docker");
@@ -45,7 +45,7 @@ pub fn compile(file_path: &'static str) -> std::io::Result<String> {
 
     let hexcode = captures.name("hexcode").unwrap();
 
-    Ok(hexcode.as_str().to_string())
+    Ok(hex::decode(hexcode.as_str()).unwrap())
 }
 
 fn check_bin_in_path(bin: &str) {

@@ -16,6 +16,7 @@ serde_json = "1.0"
 strum = "0.15"
 strum_macros = "0.15"
 web3 = "0.6"
+itertools = "0.8.0"
 
 [dependencies.ethereum_support]
 path = "../../vendor/ethereum_support"

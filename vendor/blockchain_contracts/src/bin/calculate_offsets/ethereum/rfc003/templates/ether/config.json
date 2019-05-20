@@ -1,0 +1,22 @@
+{
+  "ledger_name": "Ethereum",
+  "asset_name": "Ether",
+  "placeholders": [
+    {
+      "name": "secret_hash",
+      "replace_pattern": "1000000000000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "name": "refund_timestamp",
+      "replace_pattern": "20000002"
+    },
+    {
+      "name": "redeem_address",
+      "replace_pattern": "3000000000000000000000000000000000000003"
+    },
+    {
+      "name": "refund_address",
+      "replace_pattern": "4000000000000000000000000000000000000004"
+    }
+  ]
+}

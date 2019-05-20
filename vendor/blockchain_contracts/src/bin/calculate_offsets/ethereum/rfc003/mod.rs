@@ -1,4 +1,32 @@
-pub mod erc20_offsets;
-pub mod ether_offsets;
+pub mod calculate_offsets;
+pub mod offset;
+pub mod offsets;
 
-mod compile;
+mod compile_contract;
+mod contract_config;
+
+#[derive(Debug)]
+pub enum Error {
+    IO(std::io::Error),
+    Hex(hex::FromHexError),
+    PlaceholderNotFound,
+    MalformedConfig(serde_json::Error),
+}
+
+impl From<hex::FromHexError> for Error {
+    fn from(e: hex::FromHexError) -> Self {
+        Error::Hex(e)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::IO(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::MalformedConfig(e)
+    }
+}
