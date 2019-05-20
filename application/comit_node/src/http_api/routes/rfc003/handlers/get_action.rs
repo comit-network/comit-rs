@@ -14,7 +14,7 @@ use ethereum_support::{self, Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode};
 use rustic_hal::HalResource;
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc};
 
 pub fn handle_get_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
@@ -255,15 +255,12 @@ impl IntoResponsePayload for ethereum::CallContract {
     }
 }
 
-impl IntoResponsePayload for () {
+impl IntoResponsePayload for Infallible {
     fn into_response_payload(
         self,
         _: GetActionQueryParams,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
-        log::error!("IntoResponsePayload should not be called for the unit type");
-        Err(HttpApiProblem::with_title_and_type_from_status(
-            StatusCode::INTERNAL_SERVER_ERROR,
-        ))
+        unreachable!("how did you manage to construct Infallible?")
     }
 }
 

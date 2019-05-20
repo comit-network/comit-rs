@@ -7,6 +7,7 @@ use crate::swap_protocols::{
         Ledger, LedgerState,
     },
 };
+use std::convert::Infallible;
 
 impl<AL, BL, AA, BA> Actions for alice::State<AL, BL, AA, BA>
 where
@@ -20,7 +21,7 @@ where
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
-        (),
+        Infallible,
         <(AL, AA) as FundAction<AL, AA>>::FundActionOutput,
         <(BL, BA) as RedeemAction<BL, BA>>::RedeemActionOutput,
         <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,

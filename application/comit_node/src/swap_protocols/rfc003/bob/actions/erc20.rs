@@ -14,7 +14,7 @@ use crate::swap_protocols::{
     },
 };
 use ethereum_support::Erc20Token;
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc};
 
 impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, Erc20Token>
 where
@@ -101,7 +101,7 @@ where
     type ActionKind = bob::ActionKind<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
-        (),
+        Infallible,
         <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
         ethereum::CallContract,
         <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,

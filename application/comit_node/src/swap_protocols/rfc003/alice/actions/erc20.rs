@@ -10,6 +10,7 @@ use crate::swap_protocols::{
     },
 };
 use ethereum_support::Erc20Token;
+use std::convert::Infallible;
 
 impl<BL, BA> Actions for alice::State<Ethereum, BL, Erc20Token, BA>
 where
@@ -76,7 +77,7 @@ where
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = alice::ActionKind<
-        (),
+        Infallible,
         <(AL, AA) as FundAction<AL, AA>>::FundActionOutput,
         ethereum::CallContract,
         <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,

@@ -11,7 +11,7 @@ use crate::swap_protocols::{
         Ledger, LedgerState,
     },
 };
-use std::sync::Arc;
+use std::{convert::Infallible, sync::Arc};
 
 impl<AL, BL, AA, BA> Actions for bob::State<AL, BL, AA, BA>
 where
@@ -27,7 +27,7 @@ where
     type ActionKind = bob::ActionKind<
         Accept<AL, BL>,
         Decline<AL, BL>,
-        (),
+        Infallible,
         <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
         <(AL, AA) as RedeemAction<AL, AA>>::RedeemActionOutput,
         <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,
