@@ -1,16 +1,19 @@
-pub mod method {
+pub mod option_method {
 
-    pub fn serialize<S>(method: &http::Method, serializer: S) -> Result<S::Ok, S::Error>
+    pub fn serialize<S>(method: &Option<http::Method>, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(method.as_ref())
+        match method {
+            Some(method) => serializer.serialize_str(method.as_ref()),
+            None => serializer.serialize_none(),
+        }
     }
 
     struct MethodVisitor;
 
     impl<'de> serde::de::Visitor<'de> for MethodVisitor {
-        type Value = http::Method;
+        type Value = Option<http::Method>;
 
         fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
             write!(formatter, "an HTTP method")
@@ -20,14 +23,21 @@ pub mod method {
         where
             E: serde::de::Error,
         {
-            v.parse().map_err(E::custom)
+            v.parse().map_err(E::custom).map(Some)
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(None)
         }
     }
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<http::Method, D::Error>
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<http::Method>, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        deserializer.deserialize_string(MethodVisitor)
+        deserializer.deserialize_any(MethodVisitor)
     }
 }

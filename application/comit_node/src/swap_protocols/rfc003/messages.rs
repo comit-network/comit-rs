@@ -36,9 +36,9 @@ pub trait ToRequest<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     fn to_request(&self, secret_source: &dyn SecretSource) -> Request<AL, BL, AA, BA>;
 }
 
-pub trait ToAcceptResponseBody<AL: Ledger, BL: Ledger> {
-    fn to_accept_response_body(
-        &self,
+pub trait IntoAcceptResponseBody<AL: Ledger, BL: Ledger> {
+    fn into_accept_response_body(
+        self,
         secret_source: &dyn SecretSource,
     ) -> AcceptResponseBody<AL, BL>;
 }

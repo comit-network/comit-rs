@@ -45,22 +45,27 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_action<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn accept_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
-    action: ActionName,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_action(
-        metadata_store.as_ref(),
-        state_store.as_ref(),
-        id,
-        action,
-        body,
-    )
-    .map(|_| warp::reply())
-    .map_err(into_rejection)
+    handle_accept_action(metadata_store.as_ref(), state_store.as_ref(), id, body)
+        .map(|_| warp::reply())
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn decline_action<T: MetadataStore<SwapId>, S: StateStore>(
+    metadata_store: Arc<T>,
+    state_store: Arc<S>,
+    id: SwapId,
+    body: serde_json::Value,
+) -> Result<impl Reply, Rejection> {
+    handle_decline_action(metadata_store.as_ref(), state_store.as_ref(), id, body)
+        .map(|_| warp::reply())
+        .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]

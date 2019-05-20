@@ -41,7 +41,8 @@ macro_rules! with_swap_types_bob {
                 #[allow(dead_code)]
                 type BA = EtherQuantity;
                 #[allow(dead_code)]
-                type BobAcceptBody = OnlyRefund<BL>;
+                type BobAcceptBody =
+                    crate::http_api::routes::rfc003::handlers::accept::OnlyRefund<BL>;
 
                 _match_role_bob!(role, $fn)
             }
@@ -61,7 +62,8 @@ macro_rules! with_swap_types_bob {
                 #[allow(dead_code)]
                 type BA = Erc20Token;
                 #[allow(dead_code)]
-                type BobAcceptBody = OnlyRefund<BL>;
+                type BobAcceptBody =
+                    crate::http_api::routes::rfc003::handlers::accept::OnlyRefund<BL>;
 
                 _match_role_bob!(role, $fn)
             }
@@ -81,7 +83,8 @@ macro_rules! with_swap_types_bob {
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
                 #[allow(dead_code)]
-                type BobAcceptBody = OnlyRedeem<AL>;
+                type BobAcceptBody =
+                    crate::http_api::routes::rfc003::handlers::accept::OnlyRedeem<AL>;
 
                 _match_role_bob!(role, $fn)
             }
@@ -101,7 +104,8 @@ macro_rules! with_swap_types_bob {
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
                 #[allow(dead_code)]
-                type BobAcceptBody = OnlyRedeem<AL>;
+                type BobAcceptBody =
+                    crate::http_api::routes::rfc003::handlers::accept::OnlyRedeem<AL>;
 
                 _match_role_bob!(role, $fn)
             }

@@ -1,8 +1,8 @@
 use crate::{
-    http_api::{routes::rfc003::action::ToActionName, Http},
+    http_api::Http,
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, state_store::StateStore, Actions, Ledger},
+        rfc003::{self, state_store::StateStore, Ledger},
         Metadata, SwapId, SwapProtocol,
     },
 };
@@ -70,11 +70,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     metadata: Metadata,
     include_state: IncludeState,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    use crate::http_api::{
-        problem,
-        route_factory::swap_path,
-        routes::rfc003::{action::new_action_link, SwapState},
-    };
+    use crate::http_api::{problem, route_factory::swap_path, routes::rfc003::SwapState};
     use ethereum_support::Erc20Token;
 
     with_swap_types!(
@@ -90,14 +86,6 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             let beta_ledger = state.beta_ledger_state.clone().into();
             let parameters = SwapParameters::from(state.clone().request());
 
-            // The macro takes advantage of not needing to specify whether it uses
-            // alice::ActionKind::name() or bob::ActionKind::name()
-            #[allow(clippy::redundant_closure)]
-            let actions = state
-                .actions()
-                .iter()
-                .map(|action| action.to_action_name())
-                .collect::<Vec<_>>();
             let error = state.error;
             let status =
                 SwapStatus::new::<AL, BL>(&communication, &alpha_ledger, &beta_ledger, &error);
@@ -132,10 +120,10 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                     "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
                 ));
 
-            let entity = actions.into_iter().fold(entity, |acc, action| {
-                let link = new_action_link(&id, action);
-                acc.with_link(siren::NavigationalLink::new(&[action], link))
-            });
+            //            let entity = actions.into_iter().fold(entity, |acc, action| {
+            //                let link = new_action_link(&id, action);
+            //                acc.with_link(siren::NavigationalLink::new(&[action], link))
+            //            });
 
             Ok(entity)
         })

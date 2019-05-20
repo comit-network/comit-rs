@@ -178,7 +178,6 @@ impl NavigationalLink {
     }
 }
 
-#[readonly::make]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Action {
     /// A string that identifies the action to be performed. Action names MUST
@@ -195,8 +194,8 @@ pub struct Action {
     /// values may be GET, PUT, POST, DELETE, or PATCH. As new methods are
     /// introduced, this list can be extended. If this attribute is omitted, GET
     /// should be assumed. Optional.
-    #[serde(default = "default_method", with = "crate::http_serde::method")]
-    pub method: http::Method,
+    #[serde(with = "crate::http_serde::option_method")]
+    pub method: Option<http::Method>,
     /// The URI of the action. Required.
     pub href: String,
     /// Descriptive text about the action. Optional.
@@ -213,11 +212,6 @@ pub struct Action {
     pub fields: Vec<Field>,
 }
 
-fn default_method() -> http::Method {
-    http::Method::GET
-}
-
-#[readonly::make]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Field {
     /// A name describing the control. Field names MUST be unique within the set

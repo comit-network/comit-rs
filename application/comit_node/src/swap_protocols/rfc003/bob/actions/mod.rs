@@ -4,7 +4,7 @@ mod generic_impl;
 use crate::{
     comit_client::{SwapDeclineReason, SwapReject},
     swap_protocols::rfc003::{
-        bob::ResponseSender, messages::ToAcceptResponseBody, secret_source::SecretSource, Ledger,
+        bob::ResponseSender, messages::IntoAcceptResponseBody, secret_source::SecretSource, Ledger,
     },
 };
 use std::sync::Arc;
@@ -35,14 +35,14 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
             secret_source,
         }
     }
-    pub fn accept<P: ToAcceptResponseBody<AL, BL>>(&self, partial_response: P) -> Result<(), ()> {
+    pub fn accept<P: IntoAcceptResponseBody<AL, BL>>(&self, partial_response: P) -> Result<(), ()> {
         let mut sender = self.sender.lock().unwrap();
 
         match sender.take() {
             Some(sender) => {
                 sender
                     .send(Ok(
-                        partial_response.to_accept_response_body(self.secret_source.as_ref())
+                        partial_response.into_accept_response_body(self.secret_source.as_ref())
                     ))
                     .expect("Action shouldn't outlive BobToAlice");
                 Ok(())

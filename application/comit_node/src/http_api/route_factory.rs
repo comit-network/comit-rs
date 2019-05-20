@@ -5,7 +5,6 @@ use crate::{
     swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
 };
 use libp2p::PeerId;
-use serde_json::json;
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
@@ -26,7 +25,6 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     let rfc003 = path.and(warp::path(RFC003));
     let metadata_store = warp::any().map(move || Arc::clone(&metadata_store));
     let state_store = warp::any().map(move || Arc::clone(&state_store));
-    let empty_json_body = warp::any().map(|| json!({}));
     let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
     let get_bam_peers = warp::any().map(move || Arc::clone(&get_bam_peers));
     let peer_id = warp::any().map(move || peer_id.clone());
@@ -53,17 +51,25 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
         .and(state_store.clone())
         .and_then(http_api::routes::index::get_swaps);
 
-    let rfc003_post_action = rfc003
+    let rfc003_accept_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<
-            http_api::routes::rfc003::action::ActionName,
-        >())
-        .and(warp::post2())
+        .and(warp::path::path("accept"))
         .and(warp::path::end())
-        .and(warp::body::json().or(empty_json_body).unify())
-        .and_then(http_api::routes::rfc003::post_action);
+        .and(warp::post2())
+        .and(warp::body::json())
+        .and_then(http_api::routes::rfc003::accept_action);
+
+    let rfc003_decline_action = rfc003
+        .and(metadata_store.clone())
+        .and(state_store.clone())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path::path("decline"))
+        .and(warp::path::end())
+        .and(warp::post2())
+        .and(warp::body::json())
+        .and_then(http_api::routes::rfc003::decline_action);
 
     let rfc003_get_action = rfc003
         .and(metadata_store.clone())
@@ -98,7 +104,8 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     preflight_cors_route
         .or(rfc003_get_swap)
         .or(rfc003_post_swap)
-        .or(rfc003_post_action)
+        .or(rfc003_accept_action)
+        .or(rfc003_decline_action)
         .or(rfc003_get_action)
         .or(get_swaps)
         .or(get_peers)
