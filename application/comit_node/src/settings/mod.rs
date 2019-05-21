@@ -23,6 +23,7 @@ pub struct ComitNodeSettings {
     pub http_api: HttpSocket,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
+    #[serde(default = "default_log_levels")]
     pub log_levels: LogLevels,
 }
 
@@ -73,6 +74,12 @@ pub struct LogLevels {
 
 fn default_log() -> LevelFilter {
     LevelFilter::Debug
+}
+
+fn default_log_levels() -> LogLevels {
+    LogLevels {
+        comit_node: default_log(),
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
