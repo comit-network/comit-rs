@@ -6,7 +6,6 @@ import { use, request, expect } from "chai";
 import { HarnessGlobal } from "../lib/util";
 import "chai/register-should";
 import chaiHttp = require("chai-http");
-const requestPromise = require("request-promise-native");
 
 use(chaiHttp);
 
@@ -78,20 +77,16 @@ setTimeout(async function() {
         });
 
         it("[David] returns comit_node http api settings on /config/comit_node.js for GET", async function() {
-            const res = await requestPromise.get(
-                david.web_gui_url() +
-                    "/config/comitNode.js?callback=callbackFunctionName",
-                {
-                    resolveWithFullResponse: true,
-                }
-            );
+            let res = await request(david.web_gui_url())
+                .get("/config/comitNode.js?callback=callbackFunctionName")
+                .set("Accept", "application/javascript")
+                .buffer(true);
 
-            res.should.have.property("statusCode", 200);
-            res.should.have.property("body");
-            const body: string = res.body;
+            res.should.have.status(200);
+            const body: string = res.text;
             expect(body).to.match(/^function callbackFunctionName/);
 
-            let fn = eval("(" + res.body + ")");
+            let fn = eval("(" + body + ")");
             let connDetails = fn();
             expect(connDetails).to.have.property("host", "127.0.0.1");
             expect(connDetails).to.have.property("port", 8000);
