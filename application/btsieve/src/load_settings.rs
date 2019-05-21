@@ -26,8 +26,11 @@ pub fn load_settings(opt: Opt) -> Result<Settings, ConfigError> {
 }
 
 fn validate_path(path: PathBuf) -> Result<PathBuf, ConfigError> {
-    match std::fs::metadata(path.clone()) {
-        Ok(metadata) => {
+    std::fs::metadata(path.clone())
+        .map_err(|err| {
+            ConfigError::Message(format!("Cannot access config path {:?}: {:?}", path, err))
+        })
+        .and_then(|metadata| {
             if metadata.is_dir() {
                 Ok(path)
             } else {
@@ -36,10 +39,5 @@ fn validate_path(path: PathBuf) -> Result<PathBuf, ConfigError> {
                     path
                 )))
             }
-        }
-        Err(e) => Err(ConfigError::Message(format!(
-            "Cannot access config path {:?}: {:?}",
-            path, e
-        ))),
-    }
+        })
 }
