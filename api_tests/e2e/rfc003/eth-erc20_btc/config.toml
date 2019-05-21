@@ -10,4 +10,4 @@ config_dir = "./api_tests/regtest/bob/"
 
 [btsieve.main]
 config_dir = "./api_tests/regtest/btsieve"
-env = { ETHEREUM_POLLING_TIME_SEC = "1", RUST_LOG = "warn,btsieve=debug,warp=info" }
+env = { RUST_LOG = "warn,btsieve=debug,warp=info" }
