@@ -54,10 +54,10 @@ impl Contract {
             .collect()
     }
 
-    fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-        haystack
-            .windows(needle.len())
-            .position(|window| window == needle)
+    fn find_subsequence(contract_template: &[u8], placeholder: &[u8]) -> Option<usize> {
+        contract_template
+            .windows(placeholder.len())
+            .position(|window| window == placeholder)
     }
 }
 
