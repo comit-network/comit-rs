@@ -8,7 +8,7 @@ listen = [
 
 [http_api]
 address="0.0.0.0"
-port=8000
+port=8123
 
 [btsieve]
 url = "http://localhost:8181"

@@ -89,7 +89,7 @@ setTimeout(async function() {
             let fn = eval("(" + body + ")");
             let connDetails = fn();
             expect(connDetails).to.have.property("host", "127.0.0.1");
-            expect(connDetails).to.have.property("port", 8000);
+            expect(connDetails).to.have.property("port", 8123);
         });
     });
 
