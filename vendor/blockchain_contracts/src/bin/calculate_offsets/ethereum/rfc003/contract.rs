@@ -36,24 +36,22 @@ impl Contract {
     }
 
     pub fn calculate_offsets(&self) -> Result<Vec<Offset>, Error> {
-        let mut offsets: Vec<Offset> = Vec::new();
-
-        for placeholder in &self.placeholder_config.placeholders {
-            let decoded_placeholder = hex::decode(&placeholder.replace_pattern)?;
-            let start_pos = Self::find_subsequence(&self.bytes[..], &decoded_placeholder[..])
-                .ok_or(Error::PlaceholderNotFound)?;
-            let end_pos = start_pos + decoded_placeholder.len();
-            let offset = Offset::new(
-                placeholder.name.to_owned(),
-                start_pos,
-                end_pos,
-                decoded_placeholder.len(),
-            );
-
-            offsets.push(offset);
-        }
-
-        Ok(offsets)
+        self.placeholder_config
+            .placeholders
+            .iter()
+            .map(|placeholder| {
+                let decoded_placeholder = hex::decode(&placeholder.replace_pattern)?;
+                let start_pos = Self::find_subsequence(&self.bytes[..], &decoded_placeholder[..])
+                    .ok_or(Error::PlaceholderNotFound)?;
+                let end_pos = start_pos + decoded_placeholder.len();
+                Ok(Offset::new(
+                    placeholder.name.to_owned(),
+                    start_pos,
+                    end_pos,
+                    decoded_placeholder.len(),
+                ))
+            })
+            .collect()
     }
 
     fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
