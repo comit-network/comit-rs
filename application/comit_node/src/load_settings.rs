@@ -72,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn no_config_provided__should_start_fine() {
+    fn no_config_provided_should_start_fine() {
         let opt = Opt { config_path: None };
         let result = load_settings(opt);
         assert_that(&result).is_ok();

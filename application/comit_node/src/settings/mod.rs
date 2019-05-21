@@ -67,12 +67,6 @@ impl Default for ComitNodeSettings {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
-pub struct LogLevels {
-    #[serde(with = "self::serde_log", default = "default_log")]
-    pub comit_node: LevelFilter,
-}
-
 fn default_log() -> LevelFilter {
     LevelFilter::Debug
 }
@@ -81,6 +75,12 @@ fn default_log_levels() -> LogLevels {
     LogLevels {
         comit_node: default_log(),
     }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct LogLevels {
+    #[serde(with = "self::serde_log", default = "default_log")]
+    pub comit_node: LevelFilter,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -176,12 +176,8 @@ impl ComitNodeSettings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap_protocols::rfc003::SecretSource;
     use spectral::prelude::*;
-    use std::{
-        env,
-        fs::{self, File},
-    };
+    use std::{env, fs};
 
     fn comit_settings() -> Result<ComitNodeSettings, ConfigError> {
         ComitNodeSettings::read("./config/default.toml")
@@ -205,7 +201,7 @@ mod tests {
 
     #[test]
     fn config_folder_does_not_exist_will_create_folder_and_config_file() {
-        let mut tmp_dir = env::temp_dir();
+        let tmp_dir = env::temp_dir();
         let config_path = Path::join(&tmp_dir, "i_am_invincible");
         let config_file = "default.toml";
         if config_path.exists() {
