@@ -8,7 +8,7 @@ use log::LevelFilter;
 use serde::Deserialize;
 use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ComitNodeSettings {
     pub comit: Comit,
     pub network: Network,
@@ -23,23 +23,23 @@ fn default_log() -> LevelFilter {
     LevelFilter::Debug
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Comit {
     pub secret_seed: Seed,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct HttpSocket {
     pub address: IpAddr,
     pub port: u16,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct Btsieve {
     #[serde(with = "url_serde")]
     pub url: url::Url,
@@ -47,7 +47,7 @@ pub struct Btsieve {
     pub ethereum: PollParameters,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct PollParameters {
     #[serde(with = "self::serde_duration")]
     pub poll_interval_secs: Duration,

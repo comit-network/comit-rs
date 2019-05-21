@@ -2,7 +2,7 @@
 // They are system tests that checks that comit-i can be accessed and that comit-i can connect to comit_node
 // Functional tests on the GUI should only be ran in the comit-i repo!
 import { Actor } from "../lib/actor";
-import { use, request } from "chai";
+import { use, request, expect } from "chai";
 import { HarnessGlobal } from "../lib/util";
 import "chai/register-should";
 import chaiHttp = require("chai-http");
@@ -74,6 +74,22 @@ setTimeout(async function() {
             let res = await request(david.web_gui_url()).get("/");
 
             res.should.have.status(200);
+        });
+
+        it("[David] returns comit_node http api settings on /config/comit_node.js for GET", async function() {
+            let res = await request(david.web_gui_url())
+                .get("/config/comitNode.js?callback=callbackFunctionName")
+                .set("Accept", "application/javascript")
+                .buffer(true);
+
+            res.should.have.status(200);
+            const body: string = res.text;
+            expect(body).to.match(/^function callbackFunctionName/);
+
+            let fn = eval("(" + body + ")");
+            let connDetails = fn();
+            expect(connDetails).to.have.property("host", "127.0.0.1");
+            expect(connDetails).to.have.property("port", 8123);
         });
     });
 

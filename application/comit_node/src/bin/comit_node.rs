@@ -83,7 +83,7 @@ fn main() -> Result<(), failure::Error> {
         &mut runtime,
     );
 
-    spawn_comit_i_instance(&settings, &mut runtime);
+    spawn_comit_i_instance(settings, &mut runtime);
 
     let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
         .for_each(|_| Ok(()))
@@ -141,9 +141,9 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, BP: B
     runtime.spawn(server);
 }
 
-fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
+fn spawn_comit_i_instance(settings: ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
     if let Some(comit_i_settings) = &settings.web_gui {
-        let routes = comit_i_routes::create();
+        let routes = comit_i_routes::create(settings.clone());
 
         let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
 
