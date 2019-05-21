@@ -27,9 +27,6 @@ Contains crates specific to our application. Can depend on libraries located in 
 2. Install libzmq:
    - Ubuntu/Debian: `apt install libzmq3-dev`
    - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
-3. Install SSL libraries
-   - Ubuntu/Debian: `apt install libssl-dev`
-   - Mac ([Homebrew](https://brew.sh/)) `brew install openssl`
 
 ## Build & Run
 
