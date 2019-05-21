@@ -19,7 +19,7 @@ fn print_offsets<S: AsRef<OsStr>>(template_folder: S) -> Result<(), Error> {
     let contract = Contract::compile(template_folder)?;
 
     let offsets = contract.placeholder_offsets()?;
-    let metadata = contract.meta_data;
+    let metadata = contract.meta_data();
 
     println!("{}", metadata.to_markdown());
     println!("{}", to_markdown(offsets));

@@ -8,7 +8,6 @@ use std::{ffi::OsStr, path::PathBuf};
 pub struct Contract {
     bytes: Vec<u8>,
     placeholder_config: PlaceholderConfig,
-    pub meta_data: Metadata,
 }
 
 impl Contract {
@@ -20,16 +19,9 @@ impl Contract {
         let placeholder_config =
             PlaceholderConfig::from_file(concat_path(&template_folder, "config.json"))?;
 
-        let meta_data = Metadata {
-            ledger_name: placeholder_config.ledger_name.to_owned(),
-            asset_name: placeholder_config.asset_name.to_owned(),
-            contract_hex: hex::encode(bytes.to_owned()),
-        };
-
         Ok(Self {
             bytes,
             placeholder_config,
-            meta_data,
         })
     }
 
@@ -50,6 +42,14 @@ impl Contract {
                 ))
             })
             .collect()
+    }
+
+    pub fn meta_data(&self) -> Metadata {
+        Metadata {
+            ledger_name: self.placeholder_config.ledger_name.to_owned(),
+            asset_name: self.placeholder_config.asset_name.to_owned(),
+            contract_hex: hex::encode(self.bytes.to_owned()),
+        }
     }
 
     fn find_subsequence(contract_template: &[u8], placeholder: &[u8]) -> Option<usize> {
