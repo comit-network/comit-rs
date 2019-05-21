@@ -3,11 +3,7 @@ use crate::calculate_offsets::ethereum::rfc003::{
     compile_contract::compile, metadata::Metadata, offset::Offset,
     placeholder_config::PlaceholderConfig, Error,
 };
-
-const TEMPLATE_FOLDER: &str = "./src/bin/calculate_offsets/ethereum/rfc003/templates/";
-const CONTRACT_FILE: &str = "contract.asm";
-const HEADER_FILE: &str = "deploy_header.asm";
-const CONFIG_FILE: &str = "config.json";
+use std::{ffi::OsStr, path::PathBuf};
 
 pub struct Contract {
     bytes: Vec<u8>,
@@ -16,14 +12,15 @@ pub struct Contract {
 }
 
 impl Contract {
-    pub fn compile_from_directory_and_load_placeholder_config(
-        dir: &'static str,
+    pub fn compile_from_directory_and_load_placeholder_config<S: AsRef<OsStr>>(
+        template_folder: S,
     ) -> Result<Contract, Error> {
-        let mut bytes = compile(&get_header_file_path())?;
-        let mut contract_body = compile(&get_contract_file_path(dir))?;
+        let mut bytes = compile(concat_path(&template_folder, "deploy_header.asm"))?;
+        let mut contract_body = compile(concat_path(&template_folder, "contract.asm"))?;
         bytes.append(&mut contract_body);
 
-        let placeholder_config = PlaceholderConfig::from_file(&get_config_file_path(dir))?;
+        let placeholder_config =
+            PlaceholderConfig::from_file(concat_path(&template_folder, "config.json"))?;
 
         let meta_data = Metadata::new(
             placeholder_config.ledger_name.to_owned(),
@@ -66,14 +63,6 @@ impl Contract {
     }
 }
 
-fn get_contract_file_path(asset: &'static str) -> String {
-    TEMPLATE_FOLDER.to_owned() + asset + "/" + CONTRACT_FILE
-}
-
-fn get_header_file_path() -> String {
-    TEMPLATE_FOLDER.to_owned() + HEADER_FILE
-}
-
-fn get_config_file_path(asset: &'static str) -> String {
-    TEMPLATE_FOLDER.to_owned() + asset + "/" + CONFIG_FILE
+fn concat_path<S: AsRef<OsStr>>(folder: S, file: &str) -> PathBuf {
+    [OsStr::new(&folder), OsStr::new(file)].iter().collect()
 }

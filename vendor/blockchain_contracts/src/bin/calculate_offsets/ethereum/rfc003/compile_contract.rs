@@ -2,10 +2,11 @@ use crate::calculate_offsets::ethereum::rfc003::Error::{self, CaptureSolcBytecod
 use regex::Regex;
 use std::{
     env::var,
+    ffi::OsStr,
     process::{Command, Stdio},
 };
 
-pub fn compile(file_path: &str) -> Result<Vec<u8>, Error> {
+pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -31,7 +32,7 @@ pub fn compile(file_path: &str) -> Result<Vec<u8>, Error> {
         }
     };
 
-    let mut file = ::std::fs::File::open(file_path)?;
+    let mut file = ::std::fs::File::open(OsStr::new(&file_path))?;
 
     ::std::io::copy(&mut file, solc.stdin.as_mut().unwrap())?;
 
