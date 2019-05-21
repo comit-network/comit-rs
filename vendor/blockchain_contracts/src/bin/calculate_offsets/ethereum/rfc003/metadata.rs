@@ -5,11 +5,10 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    pub fn new(ledger_name: String, asset_name: String, contract_hex: String) -> Metadata {
-        Metadata {
-            ledger_name,
-            asset_name,
-            contract_hex,
-        }
+    pub fn to_markdown(&self) -> String {
+        format!(
+            "** {} on {} **\nContract template:\n {}",
+            self.asset_name, self.ledger_name, self.contract_hex
+        )
     }
 }

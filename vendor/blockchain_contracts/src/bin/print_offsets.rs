@@ -1,7 +1,7 @@
 mod calculate_offsets;
 
-use self::calculate_offsets::ethereum::rfc003::{offset::to_markdown, Error};
-use crate::calculate_offsets::ethereum::rfc003::contract::Contract;
+use self::calculate_offsets::ethereum::rfc003::Error;
+use crate::calculate_offsets::ethereum::rfc003::{contract::Contract, offset::to_markdown};
 use std::ffi::OsStr;
 
 #[allow(clippy::print_stdout)]
@@ -16,16 +16,12 @@ fn main() -> Result<(), Error> {
 
 #[allow(clippy::print_stdout)]
 fn print_offsets<S: AsRef<OsStr>>(template_folder: S) -> Result<(), Error> {
-    let contract = Contract::compile_from_directory_and_load_placeholder_config(template_folder)?;
+    let contract = Contract::compile(template_folder)?;
 
-    let offsets = contract.calculate_offsets()?;
+    let offsets = contract.placeholder_offsets()?;
     let metadata = contract.meta_data;
 
-    println!(
-        "** {} on {} **",
-        &metadata.asset_name, &metadata.ledger_name
-    );
-    println!("Contract template:\n {}", metadata.contract_hex);
+    println!("{}", metadata.to_markdown());
     println!("{}", to_markdown(offsets));
 
     Ok(())

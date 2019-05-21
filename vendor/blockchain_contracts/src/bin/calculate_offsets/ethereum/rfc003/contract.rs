@@ -12,9 +12,7 @@ pub struct Contract {
 }
 
 impl Contract {
-    pub fn compile_from_directory_and_load_placeholder_config<S: AsRef<OsStr>>(
-        template_folder: S,
-    ) -> Result<Contract, Error> {
+    pub fn compile<S: AsRef<OsStr>>(template_folder: S) -> Result<Contract, Error> {
         let mut bytes = compile(concat_path(&template_folder, "deploy_header.asm"))?;
         let mut contract_body = compile(concat_path(&template_folder, "contract.asm"))?;
         bytes.append(&mut contract_body);
@@ -22,11 +20,11 @@ impl Contract {
         let placeholder_config =
             PlaceholderConfig::from_file(concat_path(&template_folder, "config.json"))?;
 
-        let meta_data = Metadata::new(
-            placeholder_config.ledger_name.to_owned(),
-            placeholder_config.ledger_name.to_owned(),
-            hex::encode(bytes.to_owned()),
-        );
+        let meta_data = Metadata {
+            ledger_name: placeholder_config.ledger_name.to_owned(),
+            asset_name: placeholder_config.asset_name.to_owned(),
+            contract_hex: hex::encode(bytes.to_owned()),
+        };
 
         Ok(Self {
             bytes,
@@ -35,7 +33,7 @@ impl Contract {
         })
     }
 
-    pub fn calculate_offsets(&self) -> Result<Vec<Offset>, Error> {
+    pub fn placeholder_offsets(&self) -> Result<Vec<Offset>, Error> {
         self.placeholder_config
             .placeholders
             .iter()
