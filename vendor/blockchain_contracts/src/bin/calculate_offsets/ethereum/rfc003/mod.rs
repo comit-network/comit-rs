@@ -10,6 +10,8 @@ pub enum Error {
     Hex(hex::FromHexError),
     PlaceholderNotFound,
     MalformedConfig(serde_json::Error),
+    CaptureSolcBytecode,
+    MalformedRegex(regex::Error),
 }
 
 impl From<hex::FromHexError> for Error {
@@ -27,5 +29,11 @@ impl From<std::io::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Error::MalformedConfig(e)
+    }
+}
+
+impl From<regex::Error> for Error {
+    fn from(e: regex::Error) -> Self {
+        Error::MalformedRegex(e)
     }
 }

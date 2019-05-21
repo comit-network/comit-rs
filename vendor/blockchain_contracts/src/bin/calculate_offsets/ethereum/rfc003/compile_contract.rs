@@ -1,10 +1,11 @@
+use crate::calculate_offsets::ethereum::rfc003::Error::{self, CaptureSolcBytecode};
 use regex::Regex;
 use std::{
     env::var,
     process::{Command, Stdio},
 };
 
-pub fn compile(file_path: &str) -> std::io::Result<Vec<u8>> {
+pub fn compile(file_path: &str) -> Result<Vec<u8>, Error> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -36,15 +37,16 @@ pub fn compile(file_path: &str) -> std::io::Result<Vec<u8>> {
 
     let output = solc.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let regex = Regex::new(r"\nBinary representation:\n(?P<hexcode>.+)\n").unwrap();
+    let regex = Regex::new(r"\nBinary representation:\n(?P<hexcode>.+)\n")?;
 
     let captures = regex
         .captures(stdout.as_str())
         .expect("Regex didn't match!");
 
-    let hexcode = captures.name("hexcode").unwrap();
+    let hexcode = captures.name("hexcode").ok_or(CaptureSolcBytecode)?;
+    let bytes = hex::decode(hexcode.as_str())?;
 
-    Ok(hex::decode(hexcode.as_str()).unwrap())
+    Ok(bytes)
 }
 
 fn check_bin_in_path(bin: &str) {
