@@ -28,6 +28,7 @@ where
     deserializer.deserialize_str(Visitor)
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub fn serialize<S: Serializer>(value: &LevelFilter, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&value.to_string())
 }
