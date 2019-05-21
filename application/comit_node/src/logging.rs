@@ -6,7 +6,7 @@ use std::{fmt::Arguments, io::stdout};
 pub fn set_up_logging(settings: &ComitNodeSettings) {
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
-        .level(settings.log_level)
+        .level(settings.log_levels.comit_node)
         .level_for("tokio_core::reactor", LevelFilter::Info)
         .level_for("tokio_reactor", LevelFilter::Info)
         .level_for("hyper", LevelFilter::Info)

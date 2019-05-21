@@ -1,10 +1,10 @@
 use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const SEED_LENGTH: usize = 32;
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
 
 impl fmt::Debug for Seed {
