@@ -23,8 +23,7 @@ pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
             )),
             Some(dirs) => {
                 let config_path = Path::join(dirs.home_dir(), ".config/comit_node");
-                let default_config = Path::join(&config_path, "default");
-                ComitNodeSettings::create_with_default(default_config)
+                ComitNodeSettings::create_with_default(config_path, "default.toml")
             }
         },
     }
@@ -73,7 +72,7 @@ mod tests {
     }
 
     #[test]
-    fn no_config_provided_generates_file() {
+    fn no_config_provided__should_start_fine() {
         let opt = Opt { config_path: None };
         let result = load_settings(opt);
         assert_that(&result).is_ok();

@@ -9,6 +9,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
+    fs,
     io::Write,
     net::{IpAddr, Ipv4Addr},
     path::{Path, PathBuf},
@@ -16,7 +17,7 @@ use std::{
 };
 use url::Url;
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct ComitNodeSettings {
     pub comit: Comit,
     pub network: Network,
@@ -114,37 +115,45 @@ pub struct PollParameters {
 }
 
 impl ComitNodeSettings {
-    pub fn create_with_default(default_config: PathBuf) -> Result<Self, ConfigError> {
-        match std::fs::metadata(default_config.clone()) {
-            Ok(metadata) => {
-                if metadata.is_file() {
-                    log::warn!(
-                        "Config files exists, loading config from: {:?}",
-                        default_config
-                    );
-                    Self::read(default_config)
-                } else {
-                    Err(ConfigError::Message(format!(
-                        "Cannot create default config at: {:?}",
-                        default_config
-                    )))
-                }
-            }
+    pub fn create_with_default(path: PathBuf, file_name: &str) -> Result<Self, ConfigError> {
+        if !path.exists() {
+            log::warn!(
+                "Config path does not exist, creating folders recursively: {:?}",
+                path
+            );
+            fs::create_dir_all(path.clone()).map_err(|error| {
+                ConfigError::Message(format!("Could not create folders: {:?}: {:?}", path, error))
+            })?;
+        }
 
-            Err(_) => {
-                let defaults = ComitNodeSettings::default();
-                let toml_string = toml::to_string(&defaults).unwrap();
+        let default_config = path.join(file_name);
 
-                let mut file = std::fs::File::create(default_config.clone()).unwrap();
-                file.write_all(toml_string.as_bytes()).map_err(|error| {
-                    ConfigError::Message(format!(
-                        "Could not write to file: {:?}: {:?}",
-                        default_config, error
-                    ))
-                })?;
-                Ok(defaults)
+        if default_config.exists() {
+            if default_config.is_file() {
+                log::warn!(
+                    "Config files exists, loading config from: {:?}",
+                    default_config
+                );
+                return Self::read(default_config);
+            } else {
+                return Err(ConfigError::Message(format!(
+                    "Config file exists but is not a file: {:?}",
+                    default_config
+                )));
             }
         }
+
+        let default_settings = ComitNodeSettings::default();
+        let toml_string = toml::to_string(&default_settings).unwrap();
+
+        let mut file = std::fs::File::create(default_config.clone()).unwrap();
+        file.write_all(toml_string.as_bytes()).map_err(|error| {
+            ConfigError::Message(format!(
+                "Could not write to file: {:?}: {:?}",
+                default_config, error
+            ))
+        })?;
+        Ok(default_settings)
     }
 
     pub fn read<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
@@ -195,21 +204,21 @@ mod tests {
     }
 
     #[test]
-    fn can_create_default_settings() {
+    fn config_folder_does_not_exist_will_create_folder_and_config_file() {
         let mut tmp_dir = env::temp_dir();
-
-        let config_path = Path::join(&tmp_dir, "default.toml");
-        match std::fs::metadata(config_path.clone()) {
-            Ok(metadata) => {
-                if metadata.is_file() {
-                    fs::remove_file(config_path.clone()).unwrap();
-                }
+        let config_path = Path::join(&tmp_dir, "i_am_invincible");
+        let config_file = "default.toml";
+        if config_path.exists() {
+            if config_path.clone().join(config_file).exists() {
+                let default_config_file = config_path.clone().join(config_file);
+                fs::remove_file(default_config_file).unwrap();
             }
-            Err(_) => (),
-        };
+            fs::remove_dir(config_path.clone()).unwrap();
+        }
 
-        let default_settings = ComitNodeSettings::create_with_default(config_path.clone());
-        let settings = ComitNodeSettings::read(config_path);
+        let default_settings =
+            ComitNodeSettings::create_with_default(config_path.clone(), config_file.clone());
+        let settings = ComitNodeSettings::read(config_path.join(config_file));
 
         assert_that(&default_settings).is_ok();
         assert_that(&settings).is_ok();
