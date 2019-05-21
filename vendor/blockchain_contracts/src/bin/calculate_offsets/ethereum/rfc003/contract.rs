@@ -67,16 +67,13 @@ impl Contract {
 }
 
 fn get_contract_file_path(asset: &'static str) -> String {
-    let file_path = TEMPLATE_FOLDER.to_owned() + asset + "/" + CONTRACT_FILE;
-    file_path
+    TEMPLATE_FOLDER.to_owned() + asset + "/" + CONTRACT_FILE
 }
 
 fn get_header_file_path() -> String {
-    let file_path = TEMPLATE_FOLDER.to_owned() + HEADER_FILE;
-    file_path
+    TEMPLATE_FOLDER.to_owned() + HEADER_FILE
 }
 
 fn get_config_file_path(asset: &'static str) -> String {
-    let file_path = TEMPLATE_FOLDER.to_owned() + asset + "/" + CONFIG_FILE;
-    file_path
+    TEMPLATE_FOLDER.to_owned() + asset + "/" + CONFIG_FILE
 }
