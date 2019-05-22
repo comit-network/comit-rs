@@ -30,7 +30,7 @@ pub fn to_markdown(offsets: Vec<Offset>) -> String {
     let mut res = String::from("| Name | Byte Range | Length (bytes) |\n|:--- |:--- |:--- |");
     for offset in offsets
         .iter()
-        .sorted_by(|a, b| Ord::cmp(&b.start, &a.start))
+        .sorted_by(|a, b| Ord::cmp(&a.start, &b.start))
     {
         res = format!("{}\n{}", res, offset.row_format())
     }
