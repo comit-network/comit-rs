@@ -107,7 +107,7 @@ declare var global: HarnessGlobal;
                     let redeemTxId =
                         body.properties.state.alpha_ledger.redeem_tx;
 
-                    let satoshiReceived = bob.wallet
+                    let satoshiReceived = await bob.wallet
                         .btc()
                         .moneyReceivedInTx(redeemTxId);
                     const satoshiExpected =

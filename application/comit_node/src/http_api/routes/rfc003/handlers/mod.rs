@@ -1,13 +1,16 @@
 mod accept;
 mod decline;
-mod get_action;
+mod deploy_fund_refund_redeem;
 mod get_swap;
 mod post_swap;
 
 pub use self::{
     accept::handle_accept_action,
     decline::handle_decline_action,
-    get_action::{handle_get_action, GetActionQueryParams},
+    deploy_fund_refund_redeem::{
+        handle_deploy_action, handle_fund_action, handle_redeem_action, handle_refund_action,
+        ActionExecutionParameters,
+    },
     get_swap::handle_get_swap,
     post_swap::{handle_post_swap, OnlyRedeem, OnlyRefund, SwapRequestBodyKind},
 };

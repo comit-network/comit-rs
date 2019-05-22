@@ -17,7 +17,7 @@ export interface EthereumNodeConfig {
     rpc_url: string;
 }
 
-function createWeb3Client(ethConfig: EthereumNodeConfig) {
+function createWeb3Client(ethConfig?: EthereumNodeConfig) {
     if (!ethConfig && _web3Client) {
         throw new Error("ethereum configuration is needed");
     }

@@ -21,8 +21,8 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     get_bam_peers: Arc<BP>,
     peer_id: PeerId,
 ) -> BoxedFilter<(impl Reply,)> {
-    let path = warp::path(http_api::PATH);
-    let rfc003 = path.and(warp::path(RFC003));
+    let swaps = warp::path(http_api::PATH);
+    let rfc003 = swaps.and(warp::path(RFC003));
     let metadata_store = warp::any().map(move || Arc::clone(&metadata_store));
     let state_store = warp::any().map(move || Arc::clone(&state_store));
     let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
@@ -44,7 +44,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
         .and(warp::path::end())
         .and_then(http_api::routes::rfc003::get_swap);
 
-    let get_swaps = path
+    let get_swaps = swaps
         .and(warp::get2())
         .and(warp::path::end())
         .and(metadata_store.clone())
@@ -71,17 +71,53 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
         .and(warp::body::json())
         .and_then(http_api::routes::rfc003::decline_action);
 
-    let rfc003_get_action = rfc003
+    let rfc003_deploy_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<
-            http_api::routes::rfc003::action::ActionName,
-        >())
-        .and(warp::query::<http_api::routes::rfc003::GetActionQueryParams>())
-        .and(warp::get2())
+        .and(warp::path::path("deploy"))
         .and(warp::path::end())
-        .and_then(http_api::routes::rfc003::get_action);
+        .and(warp::get2())
+        .and(warp::query::<
+            http_api::routes::rfc003::ActionExecutionParameters,
+        >())
+        .and_then(http_api::routes::rfc003::deploy_action);
+
+    let rfc003_fund_action = rfc003
+        .and(metadata_store.clone())
+        .and(state_store.clone())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path::path("fund"))
+        .and(warp::path::end())
+        .and(warp::get2())
+        .and(warp::query::<
+            http_api::routes::rfc003::ActionExecutionParameters,
+        >())
+        .and_then(http_api::routes::rfc003::fund_action);
+
+    let rfc003_refund_action = rfc003
+        .and(metadata_store.clone())
+        .and(state_store.clone())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path::path("refund"))
+        .and(warp::path::end())
+        .and(warp::get2())
+        .and(warp::query::<
+            http_api::routes::rfc003::ActionExecutionParameters,
+        >())
+        .and_then(http_api::routes::rfc003::refund_action);
+
+    let rfc003_redeem_action = rfc003
+        .and(metadata_store.clone())
+        .and(state_store.clone())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path::path("redeem"))
+        .and(warp::path::end())
+        .and(warp::get2())
+        .and(warp::query::<
+            http_api::routes::rfc003::ActionExecutionParameters,
+        >())
+        .and_then(http_api::routes::rfc003::redeem_action);
 
     let get_peers = warp::get2()
         .and(warp::path("peers"))
@@ -106,7 +142,10 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
         .or(rfc003_post_swap)
         .or(rfc003_accept_action)
         .or(rfc003_decline_action)
-        .or(rfc003_get_action)
+        .or(rfc003_deploy_action)
+        .or(rfc003_fund_action)
+        .or(rfc003_refund_action)
+        .or(rfc003_redeem_action)
         .or(get_swaps)
         .or(get_peers)
         .or(get_info)

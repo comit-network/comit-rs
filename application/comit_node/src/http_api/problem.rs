@@ -1,9 +1,6 @@
-use crate::{
-    http_api::routes::rfc003::action::ActionName,
-    swap_protocols::{
-        metadata_store,
-        rfc003::{self, state_store},
-    },
+use crate::swap_protocols::{
+    metadata_store,
+    rfc003::{self, state_store},
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -74,12 +71,12 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
-pub fn action_already_done(action: ActionName) -> HttpApiProblem {
+pub fn action_already_done(action: &str) -> HttpApiProblem {
     log::error!("{} action has already been done", action);
     HttpApiProblem::new("Action already done.").set_status(StatusCode::GONE)
 }
 
-pub fn invalid_action(action: ActionName) -> HttpApiProblem {
+pub fn invalid_action(action: &str) -> HttpApiProblem {
     log::error!("{} action is invalid for this swap", action);
     HttpApiProblem::new("Invalid action.")
         .set_status(StatusCode::CONFLICT)
@@ -108,7 +105,7 @@ pub fn missing_query_parameters(
     parameters: Vec<&MissingQueryParameter>,
 ) -> HttpApiProblem {
     log::error!(
-        "Unexpected GET parameters for a {} action type. Expected: {:?}",
+        "Missing GET parameters for a {} action type. Expected: {:?}",
         action,
         parameters
             .iter()

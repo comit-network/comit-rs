@@ -66,12 +66,12 @@ interface Utxo {
 let _bitcoinRpcClient: BitcoinRpcClient;
 let _bitcoinConfig: BitcoinNodeConfig;
 
-export function init(btcConfig: BitcoinNodeConfig) {
+export function init(btcConfig?: BitcoinNodeConfig) {
     console.log("Initiating bitcoin");
     createBitcoinRpcClient(btcConfig);
 }
 
-function createBitcoinRpcClient(btcConfig: BitcoinNodeConfig) {
+function createBitcoinRpcClient(btcConfig?: BitcoinNodeConfig) {
     if (!btcConfig && !_bitcoinConfig) {
         throw new Error("bitcoin configuration is needed");
     }

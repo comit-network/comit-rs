@@ -15,11 +15,17 @@ export class Wallet {
 
     constructor(owner: string, config: WalletConfig) {
         this.owner = owner;
-        this._ethWallet = new EthereumWallet(config.ethereumNodeConfig);
-        this._btcWallet = new BitcoinWallet(
-            config.bitcoinNodeConfig,
-            config.addressForIncomingBitcoinPayments
-        );
+
+        if (config.ethereumNodeConfig) {
+            this._ethWallet = new EthereumWallet(config.ethereumNodeConfig);
+        }
+
+        if (config.bitcoinNodeConfig) {
+            this._btcWallet = new BitcoinWallet(
+                config.bitcoinNodeConfig,
+                config.addressForIncomingBitcoinPayments
+            );
+        }
     }
 
     eth() {

@@ -1,7 +1,7 @@
 use crate::{
     http_api::{
         problem,
-        routes::rfc003::action::{ActionName, ToSirenAction},
+        routes::rfc003::action::{new_action_link, ToSirenAction},
     },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
@@ -24,23 +24,11 @@ pub struct OnlyRedeem<L: Ledger> {
     pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl IntoAcceptResponseBody<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
-    fn into_accept_response_body(
-        self,
-        secret_source: &dyn SecretSource,
-    ) -> AcceptResponseBody<Ethereum, Bitcoin> {
-        AcceptResponseBody {
-            alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity: secret_source.secp256k1_refund().into(),
-        }
-    }
-}
-
 impl ToSirenAction for bob::Accept<Ethereum, Bitcoin> {
-    fn to_siren_action(&self, name: String, href: String) -> siren::Action {
+    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         siren::Action {
-            name,
-            href,
+            name: "accept".to_owned(),
+            href: new_action_link(id, "accept"),
             method: Some(http::Method::POST),
             _type: Some("application/json".to_owned()),
             fields: vec![siren::Field {
@@ -56,28 +44,28 @@ impl ToSirenAction for bob::Accept<Ethereum, Bitcoin> {
     }
 }
 
+impl IntoAcceptResponseBody<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
+    fn into_accept_response_body(
+        self,
+        secret_source: &dyn SecretSource,
+    ) -> AcceptResponseBody<Ethereum, Bitcoin> {
+        AcceptResponseBody {
+            alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
+            beta_ledger_refund_identity: secret_source.secp256k1_refund().into(),
+        }
+    }
+}
+
 #[derive(Deserialize, Clone, Debug)]
 pub struct OnlyRefund<L: Ledger> {
     pub beta_ledger_refund_identity: L::Identity,
 }
 
-impl IntoAcceptResponseBody<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
-    fn into_accept_response_body(
-        self,
-        secret_source: &dyn SecretSource,
-    ) -> AcceptResponseBody<Bitcoin, Ethereum> {
-        AcceptResponseBody {
-            beta_ledger_refund_identity: self.beta_ledger_refund_identity,
-            alpha_ledger_redeem_identity: secret_source.secp256k1_redeem().into(),
-        }
-    }
-}
-
 impl ToSirenAction for bob::Accept<Bitcoin, Ethereum> {
-    fn to_siren_action(&self, name: String, href: String) -> siren::Action {
+    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         siren::Action {
-            name,
-            href,
+            name: "accept".to_owned(),
+            href: new_action_link(id, "accept"),
             method: Some(http::Method::POST),
             _type: Some("application/json".to_owned()),
             fields: vec![siren::Field {
@@ -89,6 +77,18 @@ impl ToSirenAction for bob::Accept<Bitcoin, Ethereum> {
             }],
             class: vec![],
             title: None,
+        }
+    }
+}
+
+impl IntoAcceptResponseBody<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
+    fn into_accept_response_body(
+        self,
+        secret_source: &dyn SecretSource,
+    ) -> AcceptResponseBody<Bitcoin, Ethereum> {
+        AcceptResponseBody {
+            beta_ledger_refund_identity: self.beta_ledger_refund_identity,
+            alpha_ledger_redeem_identity: secret_source.secp256k1_redeem().into(),
         }
     }
 }
@@ -129,12 +129,12 @@ pub fn handle_accept_action<T: MetadataStore<SwapId>, S: StateStore>(
                             bob::ActionKind::Accept(accept) => Some(Ok(accept)),
                             _ => None,
                         })
-                        .unwrap_or_else(|| Err(problem::invalid_action(ActionName::Accept)))?
+                        .unwrap_or_else(|| Err(problem::invalid_action("accept")))?
                 };
 
                 accept_action
                     .accept(accept_body)
-                    .map_err(|_| problem::action_already_done(ActionName::Accept))
+                    .map_err(|_| problem::action_already_done("accept"))
             }))
     )
 }

@@ -5,11 +5,13 @@ macro_rules! _match_role {
         match $role {
             RoleKind::Alice => {
                 #[allow(dead_code)]
+                use crate::swap_protocols::rfc003::alice::ActionKind::*;
                 type ROLE = alice::State<AL, BL, AA, BA>;
                 $fn()
             }
             RoleKind::Bob => {
                 #[allow(dead_code)]
+                use crate::swap_protocols::rfc003::bob::ActionKind::*;
                 type ROLE = bob::State<AL, BL, AA, BA>;
                 $fn()
             }

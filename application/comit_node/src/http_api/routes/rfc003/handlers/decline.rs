@@ -1,6 +1,6 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::{problem, routes::rfc003::action::ActionName},
+    http_api::problem,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{state_store::StateStore, Actions},
@@ -53,14 +53,14 @@ pub fn handle_decline_action<T: MetadataStore<SwapId>, S: StateStore>(
                             bob::ActionKind::Decline(decline) => Some(Ok(decline)),
                             _ => None,
                         })
-                        .unwrap_or_else(|| Err(problem::invalid_action(ActionName::Decline)))?
+                        .unwrap_or_else(|| Err(problem::invalid_action("decline")))?
                 };
 
                 let reason = decline_body.reason;
 
                 decline_action
                     .decline(reason)
-                    .map_err(|_| problem::action_already_done(ActionName::Decline))
+                    .map_err(|_| problem::action_already_done("decline"))
             }))
     )
 }

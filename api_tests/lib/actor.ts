@@ -1,5 +1,5 @@
 import { Wallet, WalletConfig } from "./wallet";
-import { use, request } from "chai";
+import { use, request, expect } from "chai";
 import { LedgerAction, ComitNodeConfig, MetaComitNodeConfig } from "./comit";
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
@@ -8,6 +8,7 @@ import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
 import { Action, Entity } from "../gen/siren";
 import chaiHttp = require("chai-http");
+import URI from "urijs";
 
 use(chaiHttp);
 
@@ -100,15 +101,31 @@ export class Actor {
     async doComitAction(action: Action) {
         let { url, body, method } = this.buildRequestFromAction(action);
 
-        let requestFn = request(this.comit_node_url());
-        let responsePromise = requestFn(method, url).send(body);
+        let agent = request(this.comit_node_url());
+        let response;
 
-        let response = await responsePromise;
+        // let's ditch this stupid HTTP library ASAP to avoid this ...
+        switch (method) {
+            case "GET": {
+                response = await agent.get(url).send(body);
+                break;
+            }
+            case "POST": {
+                response = await agent.post(url).send(body);
+                break;
+            }
+        }
+
+        expect(response).to.have.status(200);
 
         // We should check against our own content type here to describe "LedgerActions"
         // Don't take it literally but something like `application/vnd.comit-ledger-action+json`
-        // For now, checking for `application/json` should do the job as well because accept & decline don't return a body
-        if (response.type === "application/json") {
+        // For now, checking for `application/json` + the fields should do the job as well because accept & decline don't return a body
+        if (
+            response.type === "application/json" &&
+            response.body.type &&
+            response.body.payload
+        ) {
             let body = response.body as LedgerAction;
 
             return this.doLedgerAction(body);
@@ -143,22 +160,20 @@ export class Actor {
             }
         }
 
-        if (action.type !== "application/json") {
-            throw new Error(
-                "Warning: only 'application/json' action type is supported, use at your own risk."
-            );
-        }
-
         const method = action.method || "GET";
         if (method === "GET") {
             return {
                 method,
-                url: URI(action.href)
-                    .query(URI.buildQuery(data))
-                    .toString(),
+                url: new URI(action.href).query(data).toString(),
                 body: {},
             };
         } else {
+            if (action.type !== "application/json") {
+                throw new Error(
+                    "Only application/json is supported for non-GET requests."
+                );
+            }
+
             return {
                 method,
                 url: action.href,

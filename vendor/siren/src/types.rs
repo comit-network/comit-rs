@@ -84,6 +84,12 @@ impl Entity {
         self
     }
 
+    pub fn with_action(mut self, action: Action) -> Self {
+        self.actions.push(action);
+
+        self
+    }
+
     pub fn push_sub_entity(&mut self, sub_entity: SubEntity) {
         self.entities.push(sub_entity);
     }

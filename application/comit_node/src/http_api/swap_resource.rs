@@ -1,8 +1,8 @@
 use crate::{
-    http_api::Http,
+    http_api::{routes::rfc003::action::ToSirenAction, Http},
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, state_store::StateStore, Ledger},
+        rfc003::{self, state_store::StateStore, Actions, Ledger},
         Metadata, SwapId, SwapProtocol,
     },
 };
@@ -85,6 +85,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             let alpha_ledger = state.alpha_ledger_state.clone().into();
             let beta_ledger = state.beta_ledger_state.clone().into();
             let parameters = SwapParameters::from(state.clone().request());
+            let actions = state.clone().actions();
 
             let error = state.error;
             let status =
@@ -120,10 +121,10 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                     "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
                 ));
 
-            //            let entity = actions.into_iter().fold(entity, |acc, action| {
-            //                let link = new_action_link(&id, action);
-            //                acc.with_link(siren::NavigationalLink::new(&[action], link))
-            //            });
+            let entity = actions.into_iter().fold(entity, |acc, action_kind| {
+                let action = action_kind.to_siren_action(&id);
+                acc.with_action(action)
+            });
 
             Ok(entity)
         })
