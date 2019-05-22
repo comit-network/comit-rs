@@ -2,8 +2,7 @@ ledgers = ["ethereum"]
 
 [btsieve.main]
 host = "127.0.0.1"
+config_dir = "./api_tests/regtest/btsieve/ethereum_only"
 
 [btsieve.main.env]
-BTSIEVE_CONFIG_PATH = "./api_tests/regtest/btsieve/ethereum_only"
-ETHEREUM_POLLING_TIME_SEC = "1"
 RUST_LOG = "btsieve=debug,warp=debug,btsieve::api"

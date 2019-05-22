@@ -24,6 +24,7 @@ export interface EthereumMatch {
 
 export interface MetaBtsieveConfig {
     host: string;
+    config_dir: string;
     env: { [key: string]: string };
 }
 
@@ -42,7 +43,7 @@ export class Btsieve {
             fs.readFileSync(
                 root +
                     "/" +
-                    metaBtsieveConfig[name].env.BTSIEVE_CONFIG_PATH +
+                    metaBtsieveConfig[name].config_dir +
                     "/default.toml",
                 "utf8"
             )

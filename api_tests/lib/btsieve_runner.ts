@@ -23,21 +23,25 @@ export class BtsieveRunner {
                 continue;
             }
 
-            this.running_btsieves[name] = spawn(this.btsieve_bin, [], {
-                cwd: this.project_root,
-                env: btsieve_config.env,
-                stdio: [
-                    "ignore",
-                    fs.openSync(
-                        this.log_dir + "/btsieve-" + name + ".log",
-                        "w"
-                    ),
-                    fs.openSync(
-                        this.log_dir + "/btsieve-" + name + ".log",
-                        "w"
-                    ),
-                ],
-            });
+            this.running_btsieves[name] = spawn(
+                this.btsieve_bin,
+                ["--config", btsieve_config.config_dir],
+                {
+                    cwd: this.project_root,
+                    env: btsieve_config.env,
+                    stdio: [
+                        "ignore",
+                        fs.openSync(
+                            this.log_dir + "/btsieve-" + name + ".log",
+                            "w"
+                        ),
+                        fs.openSync(
+                            this.log_dir + "/btsieve-" + name + ".log",
+                            "w"
+                        ),
+                    ],
+                }
+            );
         }
     }
 

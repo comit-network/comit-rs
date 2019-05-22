@@ -6,12 +6,10 @@ use bitcoin_support::Network as BitcoinNetwork;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
-    logging, route_factory,
-    settings::{self, Settings},
-    InMemoryQueryRepository, InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
+    load_settings::{load_settings, Opt},
+    logging, route_factory, settings, InMemoryQueryRepository, InMemoryQueryResultRepository,
+    QueryMatch, QueryResultRepository,
 };
-use config::ConfigError;
-use directories;
 use ethereum_support::{
     web3::{
         self,
@@ -22,7 +20,8 @@ use ethereum_support::{
 };
 use failure::Fail;
 use futures::{future::Future, stream::Stream};
-use std::{env::var, string::ToString, sync::Arc};
+use std::{string::ToString, sync::Arc};
+use structopt::StructOpt;
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
@@ -43,7 +42,9 @@ impl From<web3::Error> for Error {
 }
 
 fn main() -> Result<(), failure::Error> {
-    let settings = load_settings()?;
+    let opt = Opt::from_args();
+
+    let settings = load_settings(opt)?;
     logging::set_up_logging(&settings);
 
     let mut runtime = tokio::runtime::Runtime::new()?;
@@ -257,24 +258,6 @@ fn create_ethereum_routes(
     ))
 }
 
-fn load_settings() -> Result<Settings, ConfigError> {
-    match directories::UserDirs::new() {
-        None => Err(config::ConfigError::Message(
-            "Unable to determine user's home directory".to_string(),
-        )),
-        Some(dirs) => {
-            let default_config = std::path::Path::join(dirs.home_dir(), ".config/btsieve");
-            let comit_config_path = var_or_default(
-                "BTSIEVE_CONFIG_PATH",
-                default_config.to_string_lossy().to_string(),
-            );
-            let default_config = format!("{}/{}", comit_config_path.trim(), "default");
-            let settings = Settings::create(default_config)?;
-            Ok(settings)
-        }
-    }
-}
-
 fn get_bitcoin_info(client: &BitcoinCoreClient) -> Result<BlockchainInfo, Error> {
     client
         .get_blockchain_info()
@@ -306,20 +289,4 @@ fn get_ethereum_info(client: Arc<Web3<Http>>) -> Result<EthereumNetwork, Error> 
         });
     }
     Ok(network)
-}
-
-fn var_or_default(name: &str, default: String) -> String {
-    match var(name) {
-        Ok(value) => {
-            log::info!("Set {}={}", name, value);
-            value
-        }
-        Err(_) => {
-            eprintln!(
-                "{} is not set, falling back to default: '{}' ",
-                name, default
-            );
-            default
-        }
-    }
 }
