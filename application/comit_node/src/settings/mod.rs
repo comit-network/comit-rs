@@ -115,53 +115,68 @@ pub struct PollParameters {
 }
 
 impl ComitNodeSettings {
-    pub fn create_with_default(path: PathBuf, file_name: &str) -> Result<Self, ConfigError> {
-        if !path.exists() {
+    pub fn create_with_default(config_file: PathBuf) -> Result<Self, ConfigError> {
+        if config_file.exists() {
             log::warn!(
-                "Config path does not exist, creating directories recursively: {:?}",
-                path
+                "Config files exists, loading config from: {:?}",
+                config_file
             );
-            fs::create_dir_all(path.clone()).map_err(|error| {
-                ConfigError::Message(format!("Could not create folders: {:?}: {:?}", path, error))
-            })?;
+            return Self::read(config_file);
         }
 
-        let default_config = path.join(file_name);
-
-        if default_config.exists() {
-            if default_config.is_file() {
-                log::warn!(
-                    "Config files exists, loading config from: {:?}",
-                    default_config
-                );
-                return Self::read(default_config);
-            } else {
-                return Err(ConfigError::Message(format!(
-                    "Config file exists but is not a file: {:?}",
-                    default_config
-                )));
-            }
-        }
+        ComitNodeSettings::verify_directory_exists(&config_file)?;
 
         let default_settings = ComitNodeSettings::default();
+
+        ComitNodeSettings::write_to_file(config_file, &default_settings)?;
+
+        Ok(default_settings)
+    }
+
+    fn write_to_file(
+        config_file: PathBuf,
+        default_settings: &ComitNodeSettings,
+    ) -> Result<(), ConfigError> {
         let toml_string = toml::to_string(&default_settings).map_err(|error| {
             ConfigError::Message(format!("Could not serialize config: {:?}", error))
         })?;
-
-        let mut file = std::fs::File::create(default_config.clone()).map_err(|error| {
+        let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
             ConfigError::Message(format!(
                 "Could not create config file: {:?} {:?}",
-                default_config, error
+                config_file, error
             ))
         })?;
-
         file.write_all(toml_string.as_bytes()).map_err(|error| {
             ConfigError::Message(format!(
                 "Could not write to file: {:?}: {:?}",
-                default_config, error
+                config_file, error
             ))
-        })?;
-        Ok(default_settings)
+        })
+    }
+
+    fn verify_directory_exists(config_file: &PathBuf) -> Result<(), ConfigError> {
+        match config_file.parent() {
+            None => {
+                log::trace!("Config path is root path");
+                Ok(())
+            }
+            Some(path) => {
+                if !path.exists() {
+                    log::warn!(
+                        "Config path does not exist, creating directories recursively: {:?}",
+                        path
+                    );
+                    fs::create_dir_all(path.clone()).map_err(|error| {
+                        ConfigError::Message(format!(
+                            "Could not create folders: {:?}: {:?}",
+                            path, error
+                        ))
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+        }
     }
 
     pub fn read<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
@@ -211,10 +226,12 @@ mod tests {
 
         delete_tmp_files(&config_path, config_file);
 
+        let config_file_incl_path = config_path.clone().join(config_file.clone());
         let default_settings =
-            ComitNodeSettings::create_with_default(config_path.clone(), config_file.clone());
-        let settings = ComitNodeSettings::read(config_path.join(config_file));
-        delete_tmp_files(&config_path, config_file);
+            ComitNodeSettings::create_with_default(config_file_incl_path.clone());
+        let settings = ComitNodeSettings::read(config_file_incl_path.clone());
+
+        delete_tmp_files(&config_path, &config_file);
 
         assert_that(&default_settings).is_ok();
         assert_that(&settings).is_ok();

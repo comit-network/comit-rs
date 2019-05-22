@@ -22,8 +22,8 @@ pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
                 "Unable to determine user's home directory".to_string(),
             )),
             Some(dirs) => {
-                let config_path = Path::join(dirs.home_dir(), ".config/comit_node");
-                ComitNodeSettings::create_with_default(config_path, "default.toml")
+                let config_path = Path::join(dirs.home_dir(), ".config/comit_node/default.toml");
+                ComitNodeSettings::create_with_default(config_path)
             }
         },
     }
