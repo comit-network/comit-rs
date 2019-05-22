@@ -57,7 +57,7 @@ impl Default for ComitNodeSettings {
                 },
             },
             web_gui: Some(HttpSocket {
-                address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8080,
             }),
             log_levels: LogLevels {
