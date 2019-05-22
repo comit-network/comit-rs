@@ -1,4 +1,4 @@
-use crate::calculate_offsets::ethereum::rfc003::Error::{self, CaptureSolcBytecode};
+use crate::calculate_offsets::ethereum::rfc003::Error;
 use regex::Regex;
 use std::{
     env::var,
@@ -44,7 +44,7 @@ pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
         .captures(stdout.as_str())
         .expect("Regex didn't match!");
 
-    let hexcode = captures.name("hexcode").ok_or(CaptureSolcBytecode)?;
+    let hexcode = captures.name("hexcode").ok_or(Error::CaptureSolcBytecode)?;
     let bytes = hex::decode(hexcode.as_str())?;
 
     Ok(bytes)
