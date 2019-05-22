@@ -72,6 +72,12 @@ impl Entity {
         }
     }
 
+    pub fn with_class_member(mut self, class_member: String) -> Self {
+        self.class.push(class_member);
+
+        self
+    }
+
     pub fn with_link(mut self, link: NavigationalLink) -> Self {
         self.links.push(link);
 
@@ -253,21 +259,21 @@ mod tests {
         let siren_document = r#"
         {
           "class": [ "order" ],
-          "properties": { 
-              "orderNumber": 42, 
+          "properties": {
+              "orderNumber": 42,
               "itemCount": 3,
               "status": "pending"
           },
           "entities": [
-            { 
-              "class": [ "items", "collection" ], 
-              "rel": [ "http://x.io/rels/order-items" ], 
+            {
+              "class": [ "items", "collection" ],
+              "rel": [ "http://x.io/rels/order-items" ],
               "href": "http://api.x.io/orders/42/items"
             },
             {
               "class": [ "info", "customer" ],
-              "rel": [ "http://x.io/rels/customer" ], 
-              "properties": { 
+              "rel": [ "http://x.io/rels/customer" ],
+              "properties": {
                 "customerId": "pj123",
                 "name": "Peter Joseph"
               },
