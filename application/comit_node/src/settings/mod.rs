@@ -219,18 +219,6 @@ mod tests {
         assert_that(&default_settings).is_ok();
         assert_that(&settings).is_ok();
         assert_that(&default_settings.unwrap()).is_equal_to(&settings.unwrap());
-
-        delete_tmp_files(&config_path, config_file);
-    }
-
-    fn delete_tmp_files(config_path: &PathBuf, config_file: &str) {
-        if config_path.exists() {
-            if config_path.clone().join(config_file).exists() {
-                let default_config_file = config_path.clone().join(config_file);
-                fs::remove_file(default_config_file).unwrap();
-            }
-            fs::remove_dir(config_path.clone()).unwrap();
-        }
     }
 
     fn delete_tmp_files(config_path: &PathBuf, config_file: &str) {
