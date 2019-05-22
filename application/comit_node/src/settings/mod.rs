@@ -144,9 +144,17 @@ impl ComitNodeSettings {
         }
 
         let default_settings = ComitNodeSettings::default();
-        let toml_string = toml::to_string(&default_settings).unwrap();
+        let toml_string = toml::to_string(&default_settings).map_err(|error| {
+            ConfigError::Message(format!("Could not serialize config: {:?}", error))
+        })?;
 
-        let mut file = std::fs::File::create(default_config.clone()).unwrap();
+        let mut file = std::fs::File::create(default_config.clone()).map_err(|error| {
+            ConfigError::Message(format!(
+                "Could not create config file: {:?} {:?}",
+                default_config, error
+            ))
+        })?;
+
         file.write_all(toml_string.as_bytes()).map_err(|error| {
             ConfigError::Message(format!(
                 "Could not write to file: {:?}: {:?}",
@@ -163,10 +171,6 @@ impl ComitNodeSettings {
 
         // Start off by merging in the "default" configuration file
         config.merge(File::from(default_config_file))?;
-
-        // Add in a local configuration file
-        // This file shouldn't be checked in to git
-        config.merge(File::with_name("config/local").required(false))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()
