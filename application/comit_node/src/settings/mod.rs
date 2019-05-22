@@ -118,7 +118,7 @@ impl ComitNodeSettings {
     pub fn create_with_default(path: PathBuf, file_name: &str) -> Result<Self, ConfigError> {
         if !path.exists() {
             log::warn!(
-                "Config path does not exist, creating folders recursively: {:?}",
+                "Config path does not exist, creating directories recursively: {:?}",
                 path
             );
             fs::create_dir_all(path.clone()).map_err(|error| {
