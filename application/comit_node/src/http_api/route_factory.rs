@@ -28,6 +28,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
     let get_bam_peers = warp::any().map(move || Arc::clone(&get_bam_peers));
     let peer_id = warp::any().map(move || peer_id.clone());
+    let empty_json_body = warp::any().map(|| serde_json::json!({}));
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -51,73 +52,18 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
         .and(state_store.clone())
         .and_then(http_api::routes::index::get_swaps);
 
-    let rfc003_accept_action = rfc003
-        .and(metadata_store.clone())
-        .and(state_store.clone())
+    let rfc003_action = warp::method()
+        .and(rfc003)
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::path("accept"))
+        .and(warp::path::param::<http_api::routes::rfc003::Action>())
         .and(warp::path::end())
-        .and(warp::post2())
-        .and(warp::body::json())
-        .and_then(http_api::routes::rfc003::accept_action);
-
-    let rfc003_decline_action = rfc003
-        .and(metadata_store.clone())
-        .and(state_store.clone())
-        .and(warp::path::param::<SwapId>())
-        .and(warp::path::path("decline"))
-        .and(warp::path::end())
-        .and(warp::post2())
-        .and(warp::body::json())
-        .and_then(http_api::routes::rfc003::decline_action);
-
-    let rfc003_deploy_action = rfc003
-        .and(metadata_store.clone())
-        .and(state_store.clone())
-        .and(warp::path::param::<SwapId>())
-        .and(warp::path::path("deploy"))
-        .and(warp::path::end())
-        .and(warp::get2())
         .and(warp::query::<
             http_api::routes::rfc003::ActionExecutionParameters,
         >())
-        .and_then(http_api::routes::rfc003::deploy_action);
-
-    let rfc003_fund_action = rfc003
         .and(metadata_store.clone())
         .and(state_store.clone())
-        .and(warp::path::param::<SwapId>())
-        .and(warp::path::path("fund"))
-        .and(warp::path::end())
-        .and(warp::get2())
-        .and(warp::query::<
-            http_api::routes::rfc003::ActionExecutionParameters,
-        >())
-        .and_then(http_api::routes::rfc003::fund_action);
-
-    let rfc003_refund_action = rfc003
-        .and(metadata_store.clone())
-        .and(state_store.clone())
-        .and(warp::path::param::<SwapId>())
-        .and(warp::path::path("refund"))
-        .and(warp::path::end())
-        .and(warp::get2())
-        .and(warp::query::<
-            http_api::routes::rfc003::ActionExecutionParameters,
-        >())
-        .and_then(http_api::routes::rfc003::refund_action);
-
-    let rfc003_redeem_action = rfc003
-        .and(metadata_store.clone())
-        .and(state_store.clone())
-        .and(warp::path::param::<SwapId>())
-        .and(warp::path::path("redeem"))
-        .and(warp::path::end())
-        .and(warp::get2())
-        .and(warp::query::<
-            http_api::routes::rfc003::ActionExecutionParameters,
-        >())
-        .and_then(http_api::routes::rfc003::redeem_action);
+        .and(warp::body::json().or(empty_json_body).unify())
+        .and_then(http_api::routes::rfc003::action);
 
     let get_peers = warp::get2()
         .and(warp::path("peers"))
@@ -140,12 +86,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     preflight_cors_route
         .or(rfc003_get_swap)
         .or(rfc003_post_swap)
-        .or(rfc003_accept_action)
-        .or(rfc003_decline_action)
-        .or(rfc003_deploy_action)
-        .or(rfc003_fund_action)
-        .or(rfc003_refund_action)
-        .or(rfc003_redeem_action)
+        .or(rfc003_action)
         .or(get_swaps)
         .or(get_peers)
         .or(get_info)

@@ -191,8 +191,6 @@ declare var global: HarnessGlobal;
             ).href;
         });
 
-        let bob_decline_href_stingy: string;
-
         it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
             let res = await request(bob.comit_node_url()).get(
                 bob_stingy_swap_href
@@ -222,20 +220,28 @@ declare var global: HarnessGlobal;
                     name: "decline",
                 },
             ]);
-
-            bob_decline_href_stingy = body.actions.find(
-                action => action.name === "decline"
-            ).href;
         });
 
-        it("[Bob] Can execute a decline action providing a reason", async () => {
-            let bob_response = {
-                reason: "BadRate",
-            };
+        it("[Bob] Can execute a decline action", async () => {
+            let bob = new Actor(
+                "bob",
+                global.config,
+                global.project_root,
+                null,
+                {
+                    reason: "BadRate",
+                }
+            );
 
-            let decline_res = await request(bob.comit_node_url())
-                .post(bob_decline_href_stingy)
-                .send(bob_response);
+            let res = await request(bob.comit_node_url()).get(
+                bob_stingy_swap_href
+            );
+            let body = res.body as Entity;
+
+            let decline = body.actions.find(
+                action => action.name === "decline"
+            );
+            let decline_res = await bob.doComitAction(decline);
 
             decline_res.should.have.status(200);
         });
@@ -257,18 +263,17 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Can execute a decline action, without providing a reason", async () => {
+            let bob = new Actor("bob", global.config, global.project_root);
+
             let res = await request(bob.comit_node_url()).get(
                 bob_reasonable_swap_href
             );
-
             let body = res.body as Entity;
 
-            let decline = body.actions.find(action => action.name === "decline")
-                .href;
-
-            let decline_res = await request(bob.comit_node_url())
-                .post(decline)
-                .send({});
+            let decline = body.actions.find(
+                action => action.name === "decline"
+            );
+            let decline_res = await bob.doComitAction(decline);
 
             decline_res.should.have.status(200);
         });

@@ -1,9 +1,12 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::problem,
+    http_api::{
+        problem,
+        routes::rfc003::{new_action_link, ToSirenAction},
+    },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::{state_store::StateStore, Actions},
+        rfc003::{bob, state_store::StateStore, Actions, Ledger},
         MetadataStore, SwapId,
     },
 };
@@ -15,6 +18,26 @@ use serde::Deserialize;
 #[derive(Debug, Deserialize)]
 pub struct DeclineSwapRequestHttpBody {
     pub reason: Option<SwapDeclineReason>,
+}
+
+impl<AL: Ledger, BL: Ledger> ToSirenAction for bob::Decline<AL, BL> {
+    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
+        siren::Action {
+            name: "decline".to_owned(),
+            href: new_action_link(id, "decline"),
+            method: Some(http::Method::POST),
+            _type: Some("application/json".to_owned()),
+            fields: vec![siren::Field {
+                name: "reason".to_owned(),
+                class: vec![],
+                _type: Some("text".to_owned()),
+                value: None,
+                title: None,
+            }],
+            class: vec![],
+            title: None,
+        }
+    }
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]

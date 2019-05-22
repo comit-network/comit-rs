@@ -148,6 +148,8 @@ impl From<rfc003::state_machine::Error> for HttpApiProblem {
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = rejection.find_cause::<HttpApiProblemStdError>() {
+        log::debug!(target: "http-api", "HTTP request got rejected, returning HttpApiProblem response: {:?}", err);
+
         let code = err
             .inner
             .status

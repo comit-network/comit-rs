@@ -1,4 +1,4 @@
-pub mod action;
+mod action;
 mod handlers;
 mod swap_state;
 
@@ -13,7 +13,12 @@ use hyper::header;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
 
-pub use self::{handlers::*, swap_state::*};
+pub use self::{
+    action::{new_action_link, Action, ListRequiredFields, ToSirenAction},
+    handlers::*,
+    swap_state::*,
+};
+use http_api_problem::HttpApiProblem;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
@@ -42,73 +47,45 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn accept_action<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn action<T: MetadataStore<SwapId>, S: StateStore>(
+    method: http::Method,
+    id: SwapId,
+    action: Action,
+    query_params: ActionExecutionParameters,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    id: SwapId,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_accept_action(metadata_store.as_ref(), state_store.as_ref(), id, body)
-        .map(|_| warp::reply())
-        .map_err(into_rejection)
-}
+    let metadata_store = metadata_store.as_ref();
+    let state_store = state_store.as_ref();
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn decline_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    id: SwapId,
-    body: serde_json::Value,
-) -> Result<impl Reply, Rejection> {
-    handle_decline_action(metadata_store.as_ref(), state_store.as_ref(), id, body)
-        .map(|_| warp::reply())
-        .map_err(into_rejection)
-}
+    let result = match action {
+        Action::Accept if method == http::Method::POST => {
+            handle_accept_action(metadata_store, state_store, id, body).map(|_| None)
+        }
+        Action::Decline if method == http::Method::POST => {
+            handle_decline_action(metadata_store, state_store, id, body).map(|_| None)
+        }
+        Action::Deploy if method == http::Method::GET => {
+            handle_deploy_action(metadata_store, state_store, &id, &query_params).map(Some)
+        }
+        Action::Fund if method == http::Method::GET => {
+            handle_fund_action(metadata_store, state_store, &id, &query_params).map(Some)
+        }
+        Action::Refund if method == http::Method::GET => {
+            handle_refund_action(metadata_store, state_store, &id, &query_params).map(Some)
+        }
+        Action::Redeem if method == http::Method::GET => {
+            handle_redeem_action(metadata_store, state_store, &id, &query_params).map(Some)
+        }
+        action => {
+            log::debug!(target: "http-api", "Attempt to invoke {} action with http method {}, which is an invalid combination.", action, method);
+            Err(HttpApiProblem::new("Invalid action invocation")
+                .set_status(http::StatusCode::METHOD_NOT_ALLOWED))
+        }
+    };
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn deploy_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    id: SwapId,
-    query_params: ActionExecutionParameters,
-) -> Result<impl Reply, Rejection> {
-    handle_deploy_action(metadata_store.as_ref(), state_store, &id, &query_params)
-        .map(|swap_resource| warp::reply::json(&swap_resource))
-        .map_err(into_rejection)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn fund_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    id: SwapId,
-    query_params: ActionExecutionParameters,
-) -> Result<impl Reply, Rejection> {
-    handle_fund_action(metadata_store.as_ref(), state_store, &id, &query_params)
-        .map(|swap_resource| warp::reply::json(&swap_resource))
-        .map_err(into_rejection)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn refund_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    id: SwapId,
-    query_params: ActionExecutionParameters,
-) -> Result<impl Reply, Rejection> {
-    handle_refund_action(metadata_store.as_ref(), state_store, &id, &query_params)
-        .map(|swap_resource| warp::reply::json(&swap_resource))
-        .map_err(into_rejection)
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub fn redeem_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    id: SwapId,
-    query_params: ActionExecutionParameters,
-) -> Result<impl Reply, Rejection> {
-    handle_redeem_action(metadata_store.as_ref(), state_store, &id, &query_params)
-        .map(|swap_resource| warp::reply::json(&swap_resource))
+    result
+        .map(|body| warp::reply::json(&body))
         .map_err(into_rejection)
 }

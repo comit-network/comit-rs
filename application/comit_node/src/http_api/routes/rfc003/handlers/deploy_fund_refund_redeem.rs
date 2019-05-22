@@ -17,7 +17,7 @@ use std::{convert::Infallible, sync::Arc};
 
 pub fn handle_deploy_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
-    state_store: Arc<S>,
+    state_store: &S,
     id: &SwapId,
     query_params: &ActionExecutionParameters,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
@@ -49,7 +49,7 @@ pub fn handle_deploy_action<T: MetadataStore<SwapId>, S: StateStore>(
 }
 pub fn handle_fund_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
-    state_store: Arc<S>,
+    state_store: &S,
     id: &SwapId,
     query_params: &ActionExecutionParameters,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
@@ -81,7 +81,7 @@ pub fn handle_fund_action<T: MetadataStore<SwapId>, S: StateStore>(
 }
 pub fn handle_refund_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
-    state_store: Arc<S>,
+    state_store: &S,
     id: &SwapId,
     query_params: &ActionExecutionParameters,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
@@ -113,7 +113,7 @@ pub fn handle_refund_action<T: MetadataStore<SwapId>, S: StateStore>(
 }
 pub fn handle_redeem_action<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
-    state_store: Arc<S>,
+    state_store: &S,
     id: &SwapId,
     query_params: &ActionExecutionParameters,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
@@ -441,6 +441,7 @@ impl<Accept, Decline, Deploy, Fund, Redeem, Refund> ToSirenAction
     for bob::ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund>
 where
     Accept: ToSirenAction,
+    Decline: ToSirenAction,
     Deploy: ListRequiredFields,
     Fund: ListRequiredFields,
     Redeem: ListRequiredFields,
@@ -452,17 +453,7 @@ where
             bob::ActionKind::Fund(_) => ("fund", Fund::list_required_fields()),
             bob::ActionKind::Redeem(_) => ("redeem", Redeem::list_required_fields()),
             bob::ActionKind::Refund(_) => ("refund", Refund::list_required_fields()),
-            bob::ActionKind::Decline(_) => {
-                return siren::Action {
-                    name: "decline".to_owned(),
-                    href: new_action_link(id, "decline"),
-                    method: Some(http::Method::POST),
-                    _type: Some("application/json".to_owned()),
-                    fields: vec![],
-                    class: vec![],
-                    title: None,
-                }
-            }
+            bob::ActionKind::Decline(decline) => return decline.to_siren_action(id),
             bob::ActionKind::Accept(accept) => return accept.to_siren_action(id),
         };
 

@@ -13,6 +13,7 @@ pub fn set_up_logging(settings: &ComitNodeSettings) {
         .level_for("warp", LevelFilter::Info)
         .level_for("libp2p", LevelFilter::Debug) // the libp2p library
         .level_for("sub-libp2p", LevelFilter::Debug) // the libp2p subsystem in our application
+        .level_for("http-api", LevelFilter::Debug) // the http-api of our application
         .chain(stdout())
         .apply()
         .unwrap();

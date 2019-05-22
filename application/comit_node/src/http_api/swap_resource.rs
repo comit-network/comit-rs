@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{routes::rfc003::action::ToSirenAction, Http},
+    http_api::{routes::rfc003::ToSirenAction, Http},
     swap_protocols::{
         asset::Asset,
         rfc003::{self, state_store::StateStore, Actions, Ledger},

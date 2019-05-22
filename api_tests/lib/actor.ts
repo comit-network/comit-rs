@@ -21,19 +21,27 @@ export interface TestConfig {
     btsieve: { [key: string]: MetaBtsieveConfig };
 }
 
+/// If declined, what is the reason?
+interface DeclineConfig {
+    reason: string;
+}
+
 export class Actor {
     name: string;
     host: string;
     wallet: Wallet;
     comitNodeConfig: ComitNodeConfig;
+    private _declineConfig: DeclineConfig;
 
     constructor(
         name: string,
         testConfig?: TestConfig,
         root?: string,
-        walletConfig?: WalletConfig
+        walletConfig?: WalletConfig,
+        declineConfig?: DeclineConfig
     ) {
         this.name = name;
+        this._declineConfig = declineConfig;
         if (testConfig) {
             const metaComitNodeConfig = testConfig.comit_node[name];
             if (!metaComitNodeConfig) {
@@ -123,6 +131,7 @@ export class Actor {
         // For now, checking for `application/json` + the fields should do the job as well because accept & decline don't return a body
         if (
             response.type === "application/json" &&
+            response.body &&
             response.body.type &&
             response.body.payload
         ) {
@@ -130,7 +139,7 @@ export class Actor {
 
             return this.doLedgerAction(body);
         } else {
-            return Promise.resolve({});
+            return Promise.resolve(response);
         }
     }
 
@@ -158,6 +167,10 @@ export class Actor {
             ) {
                 data[field.name] = this.wallet.btc().getNewAddress();
             }
+        }
+
+        if (action.name == "decline" && this._declineConfig) {
+            data[action.fields[0].name] = this._declineConfig.reason;
         }
 
         const method = action.method || "GET";
