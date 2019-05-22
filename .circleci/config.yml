@@ -6,93 +6,96 @@ jobs:
       image: ubuntu-1604:201903-01
       docker_layer_caching: true
     environment:
-      # TODO remove the variable definition from Makefile.toml once travis is retired
       RUST_TEST_THREADS: "8"
     steps:
       - checkout
       - setup_system
-      - setup_nodejs
-      - setup_rust
-      - run:
-          name: Updating PATH and Define Environment Variable at Runtime
-          # Define variables that need interpolation
-          # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
-          command: |
-            echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
       - print_current_versions
-      - run:
-          name: Check formatting
-          command: cargo make check-rs-format
-      - restore_cache:
-          key: dependency-rs-sccache
-      - restore_cache:
-          key: dependency-rs-cache-{{ checksum "Cargo.lock" }}
-      - restore_cache:
-          key: dependency-js-cache-{{ checksum "./api_tests/package.json" }}
+      - restore_caches
+      - setup_rust
+
       - run:
           name: Build using cargo make
-          command: |
-            cargo --version
-            cargo make travis
-      - save_cache:
-          key: dependency-rs-sccache
-          paths:
-            - "~/.cache/sccache"
-      - save_cache:
-          key: dependency-rs-cache-{{ checksum "Cargo.lock" }}
-          paths:
-            - "~/.cargo"
-            - "./target"
-      - save_cache:
-          key: dependency-js-cache-{{ checksum "./api_tests/package.json" }}
-          paths:
-            - "./api_tests/node_modules"
+          command: cargo make ci
 
+      - store_artifacts:
+          path: api_tests/log
+
+      - save_caches
 
 commands:
   setup_system:
     steps:
-       - run:
-           name:  "Setup system environment"
-           command: |
-             wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-             curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-             sudo apt-get update
-             sudo apt-get install -y libzmq3-dev
-  setup_nodejs:
-    steps:
-       - run:
-           name:  "Install nodejs"
-           command: |
-             set +e
-             curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.5/install.sh | bash
-             export NVM_DIR="/opt/circleci/.nvm"
-             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-             nvm install v10.14.2
-             nvm alias default v10.14.2
-
-             # Each step uses the same `$BASH_ENV`, so need to modify it
-             echo 'export NVM_DIR="/opt/circleci/.nvm"' >> $BASH_ENV
-             echo "[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"" >> $BASH_ENV
-             sudo apt-get install yarn
+      - run:
+          name:  "Setup system environment"
+          command: |
+            rm -rf /opt/circleci/.nvm
+            curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+            curl -sL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
+            echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+            echo "deb https://deb.nodesource.com/node_10.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_10.list
+            sudo apt-get update
+            sudo apt-get install -y nodejs=10.* yarn libzmq3-dev
   setup_rust:
     steps:
-       - run:
-           name:  "Setup rust environment"
-           command: |
-             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
-             which cargo-make || cargo install --debug cargo-make
+      - run:
+          name:  "Setup rust environment"
+          command: |
+            curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
+
+            # Define variables that need interpolation
+            # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
+
+            echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
+            which cargo-make || cargo install cargo-make
   print_current_versions:
     steps:
       - run:
           name: "Prints version for rust, etc"
           command: |
-             echo 'node --version' $(node --version)
-             echo 'yarn --version' $(yarn --version)
-             echo 'rustc --version' $(rustc --version)
-             echo 'cargo --version' $(cargo --version)
-             echo "pwd $(pwd)"
-             echo "whomai $(whoami)"
-             echo "CARGO_HOME" $CARGO_HOME
-             echo "RUSTUP_HOME" $RUSTUP_HOME
+            echo 'node --version' $(node --version)
+            echo 'yarn --version' $(yarn --version)
+            echo 'rustc --version' $(rustc --version)
+            echo 'cargo --version' $(cargo --version)
+            echo "pwd $(pwd)"
+            echo "whomai $(whoami)"
+            echo "CARGO_HOME" $CARGO_HOME
+            echo "RUSTUP_HOME" $RUSTUP_HOME
+  restore_caches:
+    steps:
+      - restore_cache:
+          keys:
+            - rustup-{{ checksum "rust-toolchain" }}
+            # We don't want multiple toolchains to pile up in our cache, so only restore the ones we actually use.
+      - restore_cache:
+          keys:
+            - cargo-{{ .Branch }}
+            - cargo
+      - restore_cache:
+          keys:
+            - target-folder-{{ checksum "Cargo.lock" }}
+            # We don't want the target folder to blow up over time, hence we only download the cache if it exactly matches `Cargo.lock`
+      - restore_cache:
+          keys:
+            - yarn-packages-v1-{{ .Branch }}-{{ checksum "api_tests/yarn.lock" }}
+            - yarn-packages-v1-{{ .Branch }}-
+            - yarn-packages-v1-
+  save_caches:
+    steps:
+      - save_cache:
+          paths:
+            - ~/.rustup
+          key: rustup-{{ checksum "rust-toolchain" }}
+      - save_cache:
+          paths:
+            - ~/.cargo
+          key: cargo-{{ .Branch }}
+      - save_cache:
+          key: target-folder-{{ checksum "Cargo.lock" }}
+          paths:
+            - "./target"
+      - save_cache:
+          paths:
+            - ~/.cache/yarn
+            - api_tests/node_modules
+          key: yarn-packages-v1-{{ .Branch }}-{{ checksum "api_tests/yarn.lock" }}

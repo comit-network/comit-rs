@@ -16,13 +16,6 @@ dependencies = [
 ]
 
 # Overridden because: added dependencies
-[tasks.pre-ci-flow]
-workspace = false
-dependencies = [
-    "start-sccache",
-]
-
-# Overridden because: added dependencies
 [tasks.pre-build]
 workspace = false
 dependencies = [
@@ -36,14 +29,6 @@ dependencies = [
 workspace = false
 dependencies = [
     "api",
-]
-
-# Overridden because: added dependencies
-[tasks.post-ci-flow]
-workspace = false
-dependencies = [
-    "stop-sccache",
-    "clean-registry"
 ]
 
 # Overridden because: added workspace
@@ -75,6 +60,8 @@ git config core.hooksPath .githooks
 
 # Overridden because: we want to fail if there are warnings (-D warn)
 [tasks.clippy]
+dependencies = []
+install_crate = { rustup_component_name = "clippy", binary = "cargo-clippy", test_arg = "--help" }
 workspace = false
 args = [
     "clippy",
@@ -149,61 +136,9 @@ script = [
 '''
 ]
 
-[tasks.travis]
+[tasks.ci]
 workspace = false
-# Even though we only have 2 cores on Travis, we mostly wait for containers in our tests. Doing that in parallel saves us some time! (8 is just an arbitrary number!)
-env = { "RUST_TEST_THREADS" = "8", "RUSTC_WRAPPER" = "${HOME}/.cargo/bin/sccache"  }
 run_task = "ci-flow"
-
-[tasks.clean-registry]
-# The cargo registry cache grows continuously over time, making our build take longer and longer because it is cached on S3.
-# This command removes everything that is older than 30 days, thus keeping only very recent libraries.
-description = "Delete old files from the cargo registry cache."
-workspace = false
-private = true
-mac_alias = "clean-registry-mac"
-linux_alias = "clean-registry-linux"
-
-[tasks.clean-registry-linux]
-condition = { platforms = ["linux"] }
-workspace = false
-private = true
-ignore_errors = true
-script = [
-'''
-find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
-    -mindepth 2 -type d -ctime 30 -exec rm -rf "{}" \;
-'''
-]
-
-[tasks.clean-registry-mac]
-condition = { platforms = ["mac"] }
-workspace = false
-private = true
-ignore_errors = true
-script = [
-'''
-find $HOME/.cargo/registry/src $HOME/.cargo/registry/cache \
-    -depth 2 -type d -mtime +30d -exec rm -rf "{}" \;
-'''
-]
-
-[tasks.start-sccache]
-description = "Setup & start sscache"
-workspace = false
-private = true
-install_script = ["which sccache || (unset RUSTC_WRAPPER; cargo install sccache)"]
-# Start sccache with limited cache size to avoid a constantly growing caches (and thus continuously slower builds)
-env = { "SCCACHE_CACHE_SIZE" = "400M" }
-command = "sccache"
-args = ["--start-server"]
-
-[tasks.stop-sccache]
-description = "Stop sscache"
-workspace = false
-private = true
-command = "sccache"
-args = ["--stop-server"]
 
 #############
 # api Tests #
