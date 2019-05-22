@@ -60,4 +60,12 @@ mod tests {
             seed2.sha256_with_seed(&[b"foo"])
         );
     }
+
+    #[test]
+    fn test_two_random_seeds_are_different() {
+        let random1 = Seed::new_random().unwrap();
+        let random2 = Seed::new_random().unwrap();
+
+        assert_ne!(random1, random2);
+    }
 }
