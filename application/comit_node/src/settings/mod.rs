@@ -30,8 +30,8 @@ pub struct ComitNodeSettings {
 
 impl Default for ComitNodeSettings {
     fn default() -> Self {
-        let listen = "/ip4/0.0.0.0/tcp/8011".parse().unwrap();
-        let url = Url::parse("http://localhost:8001").unwrap();
+        let comit_listen = "/ip4/0.0.0.0/tcp/8011".parse().unwrap();
+        let btsieve_url = Url::parse("http://localhost:8181").unwrap();
         let data = rand::thread_rng().gen::<[u8; 32]>();
 
         ComitNodeSettings {
@@ -39,14 +39,14 @@ impl Default for ComitNodeSettings {
                 secret_seed: Seed::from(data),
             },
             network: Network {
-                listen: vec![listen],
+                listen: vec![comit_listen],
             },
             http_api: HttpSocket {
-                address: IpAddr::V4(Ipv4Addr::LOCALHOST),
+                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8000,
             },
             btsieve: Btsieve {
-                url,
+                url: btsieve_url,
                 bitcoin: PollParameters {
                     poll_interval_secs: Duration::from_secs(300),
                     network: "regtest".into(),
@@ -204,13 +204,8 @@ mod tests {
         let tmp_dir = env::temp_dir();
         let config_path = Path::join(&tmp_dir, "i_am_invincible");
         let config_file = "default.toml";
-        if config_path.exists() {
-            if config_path.clone().join(config_file).exists() {
-                let default_config_file = config_path.clone().join(config_file);
-                fs::remove_file(default_config_file).unwrap();
-            }
-            fs::remove_dir(config_path.clone()).unwrap();
-        }
+
+        delete_tmp_files(&config_path, config_file);
 
         let default_settings =
             ComitNodeSettings::create_with_default(config_path.clone(), config_file.clone());
@@ -218,7 +213,18 @@ mod tests {
 
         assert_that(&default_settings).is_ok();
         assert_that(&settings).is_ok();
-
         assert_that(&default_settings.unwrap()).is_equal_to(&settings.unwrap());
+
+        delete_tmp_files(&config_path, config_file);
+    }
+
+    fn delete_tmp_files(config_path: &PathBuf, config_file: &str) {
+        if config_path.exists() {
+            if config_path.clone().join(config_file).exists() {
+                let default_config_file = config_path.clone().join(config_file);
+                fs::remove_file(default_config_file).unwrap();
+            }
+            fs::remove_dir(config_path.clone()).unwrap();
+        }
     }
 }
