@@ -1,23 +1,12 @@
-extern crate regex;
-
+use crate::calculate_offsets::ethereum::rfc003::Error;
 use regex::Regex;
 use std::{
     env::var,
-    fs::{DirBuilder, File},
-    io::Write,
-    path::Path,
+    ffi::OsStr,
     process::{Command, Stdio},
 };
 
-fn main() -> std::io::Result<()> {
-    compile("./src/bin/calculate_offsets/ethereum/rfc003/templates/ether_contract.asm")?;
-    compile("./src/bin/calculate_offsets/ethereum/rfc003/templates/deploy_header.asm")?;
-    compile("./src/bin/calculate_offsets/ethereum/rfc003/templates/erc20_contract.asm")?;
-
-    Ok(())
-}
-
-fn compile(file_path: &'static str) -> std::io::Result<()> {
+pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
     let solc_bin = var("SOLC_BIN");
 
     let mut solc = match solc_bin {
@@ -26,6 +15,7 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
             .arg("-")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
+            .stderr(Stdio::null())
             .spawn()?,
         Err(_) => {
             check_bin_in_path("docker");
@@ -37,37 +27,27 @@ fn compile(file_path: &'static str) -> std::io::Result<()> {
                 .arg("--assemble")
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
+                .stderr(Stdio::null())
                 .spawn()?
         }
     };
 
-    let mut file = ::std::fs::File::open(file_path)?;
+    let mut file = ::std::fs::File::open(OsStr::new(&file_path))?;
 
     ::std::io::copy(&mut file, solc.stdin.as_mut().unwrap())?;
 
     let output = solc.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout).unwrap();
-    let regex = Regex::new(r"\nBinary representation:\n(?P<hexcode>.+)\n").unwrap();
+    let regex = Regex::new(r"\nBinary representation:\n(?P<hexcode>.+)\n")?;
 
     let captures = regex
         .captures(stdout.as_str())
         .expect("Regex didn't match!");
 
-    let hexcode = captures.name("hexcode").unwrap();
+    let hexcode = captures.name("hexcode").ok_or(Error::CaptureSolcBytecode)?;
+    let bytes = hex::decode(hexcode.as_str())?;
 
-    let path = Path::new(file_path);
-    let folder = path.parent().unwrap().to_str().unwrap();
-    let folder = format!("{}/out", folder);
-    let file_name = path.file_name().unwrap().to_str().unwrap();
-
-    DirBuilder::new().recursive(true).create(&folder).unwrap();
-
-    let mut file = File::create(format!("{}/{}.hex", folder, file_name).as_str())?;
-    file.write_all(hexcode.as_str().as_bytes())?;
-
-    println!("cargo:rerun-if-changed={}", file_path);
-
-    Ok(())
+    Ok(bytes)
 }
 
 fn check_bin_in_path(bin: &str) {

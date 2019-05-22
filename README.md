@@ -27,16 +27,10 @@ Contains crates specific to our application. Can depend on libraries located in 
 2. Install libzmq:
    - Ubuntu/Debian: `apt install libzmq3-dev`
    - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
-3. Install SSL libraries
-   - Ubuntu/Debian: `apt install libssl-dev`
-   - Mac ([Homebrew](https://brew.sh/)) `brew install openssl`
-4. `solc` is currently needed to build (will be deprecated). 2 choices:
-   - Install `docker`
-   - OR install `solc`
 
 ## Build & Run
 
-1. `cargo build` (do `export SOLC_BIN=/usr/bin/solc` if `solc` is installed locally)
+1. `cargo build`
 2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or pass `--config <config_path>` with `<config_path>` as the folder path to where the `default.toml` is located.
 3. Put a [`default.toml`](application/btsieve/config/default.toml) config file into `~/.config/btsieve` or set `BTSIEVE_CONFIG_PATH` as folder path to where the `default.toml` is located
 4. startup bitcoin node (port to be set according to btsieve configuration)

@@ -1,27 +1,28 @@
-use self::calculate_offsets::{
-    ethereum::rfc003::{erc20_offsets, ether_offsets},
-    to_markdown,
-};
-
 mod calculate_offsets;
 
+use self::calculate_offsets::ethereum::rfc003::Error;
+use crate::calculate_offsets::ethereum::rfc003::{contract::Contract, offset::to_markdown};
+use std::ffi::OsStr;
+
 #[allow(clippy::print_stdout)]
-fn main() {
+fn main() -> Result<(), Error> {
     println!("### RFC003 ###");
 
-    {
-        println!("** Ether on Ethereum **");
-        let contract = ether_offsets::contract_template();
-        println!("Contract template:\n {}", contract);
-        let offsets = ether_offsets::get_all_offsets();
-        println!("{}", to_markdown(offsets));
-    }
+    print_offsets("./src/bin/calculate_offsets/ethereum/rfc003/templates/ether/")?;
+    print_offsets("./src/bin/calculate_offsets/ethereum/rfc003/templates/erc20/")?;
 
-    {
-        println!("** ERC20 on Ethereum **");
-        let contract = erc20_offsets::contract_template();
-        println!("Contract template:\n {}", contract);
-        let offsets = erc20_offsets::all_offsets();
-        println!("{}", to_markdown(offsets));
-    }
+    Ok(())
+}
+
+#[allow(clippy::print_stdout)]
+fn print_offsets<S: AsRef<OsStr>>(template_folder: S) -> Result<(), Error> {
+    let contract = Contract::compile(template_folder)?;
+
+    let offsets = contract.placeholder_offsets()?;
+    let metadata = contract.meta_data();
+
+    println!("{}", metadata.to_markdown());
+    println!("{}", to_markdown(offsets));
+
+    Ok(())
 }
