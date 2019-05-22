@@ -115,22 +115,12 @@ pub struct PollParameters {
 }
 
 impl ComitNodeSettings {
-    pub fn create_with_default(config_file: PathBuf) -> Result<Self, ConfigError> {
-        if config_file.exists() {
-            log::warn!(
-                "Config files exists, loading config from: {:?}",
-                config_file
-            );
-            return Self::read(config_file);
-        }
-
+    pub fn write_to(self, config_file: PathBuf) -> Result<Self, ConfigError> {
         ComitNodeSettings::verify_directory_exists(&config_file)?;
 
-        let default_settings = ComitNodeSettings::default();
+        ComitNodeSettings::write_to_file(config_file, &self)?;
 
-        ComitNodeSettings::write_to_file(config_file, &default_settings)?;
-
-        Ok(default_settings)
+        Ok(self)
     }
 
     fn write_to_file(
@@ -162,7 +152,7 @@ impl ComitNodeSettings {
             }
             Some(path) => {
                 if !path.exists() {
-                    log::warn!(
+                    log::debug!(
                         "Config path does not exist, creating directories recursively: {:?}",
                         path
                     );
@@ -227,8 +217,10 @@ mod tests {
         delete_tmp_files(&config_path, config_file);
 
         let config_file_incl_path = config_path.clone().join(config_file.clone());
-        let default_settings =
-            ComitNodeSettings::create_with_default(config_file_incl_path.clone());
+
+        let default_settings = ComitNodeSettings::default();
+
+        let default_settings = default_settings.write_to(config_file_incl_path.clone());
         let settings = ComitNodeSettings::read(config_file_incl_path.clone());
 
         delete_tmp_files(&config_path, &config_file);

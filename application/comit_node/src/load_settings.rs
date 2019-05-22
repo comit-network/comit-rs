@@ -23,7 +23,11 @@ pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
             )),
             Some(dirs) => {
                 let config_path = Path::join(dirs.home_dir(), ".config/comit_node/default.toml");
-                ComitNodeSettings::create_with_default(config_path)
+                if config_path.exists() {
+                    ComitNodeSettings::read(config_path)
+                } else {
+                    ComitNodeSettings::default().write_to(config_path)
+                }
             }
         },
     }
