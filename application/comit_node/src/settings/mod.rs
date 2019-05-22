@@ -5,7 +5,6 @@ use crate::seed::Seed;
 use config::{Config, ConfigError, File};
 use libp2p::Multiaddr;
 use log::LevelFilter;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -32,12 +31,10 @@ impl Default for ComitNodeSettings {
     fn default() -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/8011".parse().unwrap();
         let btsieve_url = Url::parse("http://localhost:8181").unwrap();
-        let data = rand::thread_rng().gen::<[u8; 32]>();
+        let seed = Seed::new_random().unwrap();
 
         ComitNodeSettings {
-            comit: Comit {
-                secret_seed: Seed::from(data),
-            },
+            comit: Comit { secret_seed: seed },
             network: Network {
                 listen: vec![comit_listen],
             },
@@ -156,7 +153,7 @@ impl ComitNodeSettings {
                         "Config path does not exist, creating directories recursively: {:?}",
                         path
                     );
-                    fs::create_dir_all(path.clone()).map_err(|error| {
+                    fs::create_dir_all(path).map_err(|error| {
                         ConfigError::Message(format!(
                             "Could not create folders: {:?}: {:?}",
                             path, error

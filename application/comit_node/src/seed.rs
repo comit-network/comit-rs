@@ -1,5 +1,6 @@
 use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
+use rand::{rngs::OsRng, Rng};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -26,6 +27,13 @@ impl Seed {
         let mut result = [0u8; SEED_LENGTH];
         sha.result(&mut result);
         result
+    }
+
+    pub fn new_random() -> Result<Seed, rand::Error> {
+        let mut rng = OsRng::new()?;
+        let mut arr = [0u8; 32];
+        rng.try_fill(&mut arr[..])?;
+        Ok(Seed(arr))
     }
 }
 
