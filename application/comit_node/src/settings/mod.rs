@@ -29,9 +29,12 @@ pub struct ComitNodeSettings {
 
 impl Default for ComitNodeSettings {
     fn default() -> Self {
-        let comit_listen = "/ip4/0.0.0.0/tcp/8011".parse().unwrap();
-        let btsieve_url = Url::parse("http://localhost:8181").unwrap();
-        let seed = Seed::new_random().unwrap();
+        let comit_listen = "/ip4/0.0.0.0/tcp/8011"
+            .parse()
+            .expect("comit_node listen address could not be parsed");
+        let btsieve_url =
+            Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
+        let seed = Seed::new_random().expect("Could not generate random seed");
 
         ComitNodeSettings {
             comit: Comit { secret_seed: seed },
