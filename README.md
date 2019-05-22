@@ -31,7 +31,7 @@ Contains crates specific to our application. Can depend on libraries located in 
 ## Build & Run
 
 1. `cargo build`
-2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or set `COMIT_NODE_CONFIG_PATH` as folder path to where the `default.toml` is located.
+2. Put a [`default.toml`](application/comit_node/config/default.toml) config file into `~/.config/comit_node` or pass `--config <config_path>` with `<config_path>` as the folder path to where the `default.toml` is located.
 3. Put a [`default.toml`](application/btsieve/config/default.toml) config file into `~/.config/btsieve` or set `BTSIEVE_CONFIG_PATH` as folder path to where the `default.toml` is located
 4. startup bitcoin node (port to be set according to btsieve configuration)
 5. startup ethereum node (port to be set according to btsieve configuration)

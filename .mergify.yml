@@ -1,8 +1,8 @@
 pull_request_rules:
-  - name: merge on CI success and one approval
+  - name: merge on CI success and 2 approvals
     conditions:
       - "status-success=Travis CI - Pull Request"
-      - "#approved-reviews-by>=1"
+      - "#approved-reviews-by>=2"
       - label!=work-in-progress
       - label!=blocked
       - label=automagically-mergify-this

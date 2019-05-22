@@ -7,9 +7,10 @@ version = "0.1.0"
 [dependencies]
 bitcoin_rpc_client = "0.6"
 byteorder = "1.2"
-directories = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
 debug_stub_derive = "0.3"
 derivative = "1"
+directories = "1.0"
 ethbloom = "0.5"
 failure = "0.1"
 futures = "0.1"
@@ -22,6 +23,7 @@ log = "0.4"
 pretty_env_logger = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+structopt = "0.2"
 tokio = "0.1"
 url = "1.7"
 url_serde = "0.2.0"
@@ -37,6 +39,10 @@ version = "0.9"
 
 [dependencies.ethereum_support]
 path = "../../vendor/ethereum_support"
+
+[dependencies.fern]
+features = ["colored"]
+version = "0.5"
 
 [dev-dependencies]
 env_logger = "0.6"

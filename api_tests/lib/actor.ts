@@ -40,12 +40,11 @@ export class Actor {
             }
 
             this.host = metaComitNodeConfig.host;
+
+            const envConfigDir = metaComitNodeConfig.config_dir;
             this.comitNodeConfig = toml.parse(
                 fs.readFileSync(
-                    root +
-                        "/" +
-                        metaComitNodeConfig.config_dir +
-                        "/default.toml",
+                    root + "/" + envConfigDir + "/default.toml",
                     "utf8"
                 )
             );

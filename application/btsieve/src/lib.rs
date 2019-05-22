@@ -5,6 +5,8 @@ pub mod bitcoin;
 pub mod ethereum;
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;
+pub mod load_settings;
+pub mod logging;
 mod query_repository;
 mod query_result_repository;
 pub mod route_factory;

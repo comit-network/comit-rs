@@ -6,6 +6,7 @@ use comit_node::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
+    load_settings::{load_settings, Opt},
     logging,
     network::{self, BamPeers},
     seed::Seed,
@@ -17,20 +18,21 @@ use comit_node::{
         InMemoryMetadataStore, SwapId,
     },
 };
-use directories;
 use futures::{stream, Future, Stream};
 use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
 use std::{
-    env::var,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
+use structopt::StructOpt;
 
 fn main() -> Result<(), failure::Error> {
-    let settings = load_settings()?;
+    let opt = Opt::from_args();
+
+    let settings = load_settings(opt)?;
     logging::set_up_logging(&settings);
 
     log::info!("Starting up with {:#?}", settings);
@@ -81,7 +83,7 @@ fn main() -> Result<(), failure::Error> {
         &mut runtime,
     );
 
-    spawn_comit_i_instance(&settings, &mut runtime);
+    spawn_comit_i_instance(settings, &mut runtime);
 
     let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
         .for_each(|_| Ok(()))
@@ -100,26 +102,6 @@ fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
     let bytes = secret_seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())
-}
-
-fn load_settings() -> Result<ComitNodeSettings, config::ConfigError> {
-    match directories::UserDirs::new() {
-        None => Err(config::ConfigError::Message(
-            "Unable to determine user's home directory".to_string(),
-        )),
-        Some(dirs) => {
-            let default_config = std::path::Path::join(dirs.home_dir(), ".config/comit_node");
-            let comit_config_path = var_or_default(
-                "COMIT_NODE_CONFIG_PATH",
-                default_config.to_string_lossy().to_string(),
-            );
-            let run_mode_config = var_or_default("RUN_MODE", "development".into());
-            let default_config = format!("{}/{}", comit_config_path.trim(), "default");
-            let run_mode_config = format!("{}/{}", comit_config_path.trim(), run_mode_config);
-            let settings = ComitNodeSettings::create(default_config, run_mode_config)?;
-            Ok(settings)
-        }
-    }
 }
 
 fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient {
@@ -159,9 +141,9 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, BP: B
     runtime.spawn(server);
 }
 
-fn spawn_comit_i_instance(settings: &ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
+fn spawn_comit_i_instance(settings: ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
     if let Some(comit_i_settings) = &settings.web_gui {
-        let routes = comit_i_routes::create();
+        let routes = comit_i_routes::create(settings.clone());
 
         let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
 
@@ -180,20 +162,4 @@ fn auth_origin(settings: &ComitNodeSettings) -> String {
     };
     log::trace!("Auth origin enabled on: {}", auth_origin);
     auth_origin
-}
-
-fn var_or_default(name: &str, default: String) -> String {
-    match var(name) {
-        Ok(value) => {
-            log::info!("Set {}={}", name, value);
-            value
-        }
-        Err(_) => {
-            eprintln!(
-                "{} is not set, falling back to default: '{}' ",
-                name, default
-            );
-            default
-        }
-    }
 }
