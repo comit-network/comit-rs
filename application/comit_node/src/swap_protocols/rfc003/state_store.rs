@@ -256,7 +256,8 @@ mod tests {
         seed::Seed,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            rfc003::{alice, messages::Request, Secret, Timestamp},
+            rfc003::{alice, messages::Request, Secret},
+            Timestamp,
         },
     };
     use bitcoin_support::BitcoinQuantity;

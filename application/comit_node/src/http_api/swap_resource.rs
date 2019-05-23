@@ -1,8 +1,11 @@
 use crate::{
-    http_api::{routes::rfc003::ToSirenAction, Http},
+    http_api::{
+        action::ToSirenAction, problem, route_factory::swap_path, routes::rfc003::SwapState, Http,
+    },
     swap_protocols::{
+        actions::Actions,
         asset::Asset,
-        rfc003::{self, state_store::StateStore, Actions, Ledger},
+        rfc003::{self, state_store::StateStore, Ledger},
         Metadata, SwapId, SwapProtocol,
     },
 };
@@ -70,9 +73,6 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     metadata: Metadata,
     include_state: IncludeState,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    use crate::http_api::{problem, route_factory::swap_path, routes::rfc003::SwapState};
-    use ethereum_support::Erc20Token;
-
     with_swap_types!(
         &metadata,
         (|| {

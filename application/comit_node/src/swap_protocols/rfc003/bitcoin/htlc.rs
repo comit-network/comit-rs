@@ -1,4 +1,7 @@
-use crate::swap_protocols::rfc003::{Secret, SecretHash, Timestamp};
+use crate::swap_protocols::{
+    rfc003::{Secret, SecretHash},
+    Timestamp,
+};
 use bitcoin_support::{
     opcodes::{all::*, OP_CLTV},
     script::Builder,

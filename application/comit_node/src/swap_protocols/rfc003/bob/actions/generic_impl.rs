@@ -1,12 +1,9 @@
 use crate::swap_protocols::{
+    actions::Actions,
     asset::Asset,
     rfc003::{
-        actions::{Actions, FundAction, RedeemAction, RefundAction},
-        bob::{
-            self,
-            actions::{Accept, Decline},
-            SwapCommunication,
-        },
+        actions::{Accept, ActionKind, Decline, FundAction, RedeemAction, RefundAction},
+        bob::{self, SwapCommunication},
         state_machine::HtlcParams,
         Ledger, LedgerState,
     },
@@ -24,7 +21,7 @@ where
     (BL, BA): RefundAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = bob::ActionKind<
+    type ActionKind = ActionKind<
         Accept<AL, BL>,
         Decline<AL, BL>,
         Infallible,
@@ -39,11 +36,11 @@ where
                 pending_response, ..
             } => {
                 return vec![
-                    bob::ActionKind::Accept(Accept::new(
+                    ActionKind::Accept(Accept::new(
                         pending_response.sender.clone(),
                         Arc::clone(&self.secret_source),
                     )),
-                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
+                    ActionKind::Decline(Decline::new(pending_response.sender.clone())),
                 ];
             }
             SwapCommunication::Accepted {
@@ -59,21 +56,21 @@ where
         use self::LedgerState::*;
         let mut actions = match (alpha_state, beta_state, self.secret) {
             (Funded { htlc_location, .. }, _, Some(secret)) => {
-                vec![bob::ActionKind::Redeem(<(AL, AA)>::redeem_action(
+                vec![ActionKind::Redeem(<(AL, AA)>::redeem_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
                     secret,
                 ))]
             }
-            (Funded { .. }, NotDeployed, _) => vec![bob::ActionKind::Fund(
-                <(BL, BA)>::fund_action(HtlcParams::new_beta_params(request, response)),
-            )],
+            (Funded { .. }, NotDeployed, _) => vec![ActionKind::Fund(<(BL, BA)>::fund_action(
+                HtlcParams::new_beta_params(request, response),
+            ))],
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(bob::ActionKind::Refund(<(BL, BA)>::refund_action(
+            actions.push(ActionKind::Refund(<(BL, BA)>::refund_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,

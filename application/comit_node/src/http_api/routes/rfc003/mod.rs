@@ -3,22 +3,24 @@ mod handlers;
 mod swap_state;
 
 use crate::{
-    http_api::{route_factory::swap_path, routes::into_rejection},
+    http_api::{
+        action::ActionExecutionParameters, route_factory::swap_path, routes::into_rejection,
+    },
     swap_protocols::{
         rfc003::{alice::AliceSpawner, state_store::StateStore},
         MetadataStore, SwapId,
     },
 };
+use http_api_problem::HttpApiProblem;
 use hyper::header;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
 
 pub use self::{
-    action::{new_action_link, Action, ListRequiredFields, ToSirenAction},
+    action::{new_action_link, Action},
     handlers::*,
     swap_state::*,
 };
-use http_api_problem::HttpApiProblem;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(

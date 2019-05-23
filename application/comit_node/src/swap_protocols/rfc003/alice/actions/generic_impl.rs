@@ -1,7 +1,8 @@
 use crate::swap_protocols::{
+    actions::Actions,
     asset::Asset,
     rfc003::{
-        actions::{Actions, FundAction, RedeemAction, RefundAction},
+        actions::{Accept, ActionKind, Decline, FundAction, RedeemAction, RefundAction},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
         Ledger, LedgerState,
@@ -20,7 +21,9 @@ where
     (BL, BA): RedeemAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = alice::ActionKind<
+    type ActionKind = ActionKind<
+        Accept<AL, BL>,
+        Decline<BL, BL>,
         Infallible,
         <(AL, AA) as FundAction<AL, AA>>::FundActionOutput,
         <(BL, BA) as RedeemAction<BL, BA>>::RedeemActionOutput,
@@ -40,21 +43,19 @@ where
 
         use self::LedgerState::*;
         let mut actions = match alpha_state {
-            NotDeployed => vec![alice::ActionKind::Fund(<(AL, AA)>::fund_action(
+            NotDeployed => vec![ActionKind::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
-            Funded { htlc_location, .. } => {
-                vec![alice::ActionKind::Refund(<(AL, AA)>::refund_action(
-                    HtlcParams::new_alpha_params(request, response),
-                    htlc_location.clone(),
-                    &*self.secret_source,
-                ))]
-            }
+            Funded { htlc_location, .. } => vec![ActionKind::Refund(<(AL, AA)>::refund_action(
+                HtlcParams::new_alpha_params(request, response),
+                htlc_location.clone(),
+                &*self.secret_source,
+            ))],
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(alice::ActionKind::Redeem(<(BL, BA)>::redeem_action(
+            actions.push(ActionKind::Redeem(<(BL, BA)>::redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,

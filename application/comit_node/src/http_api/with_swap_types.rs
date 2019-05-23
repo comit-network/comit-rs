@@ -5,13 +5,11 @@ macro_rules! _match_role {
         match $role {
             RoleKind::Alice => {
                 #[allow(dead_code)]
-                use crate::swap_protocols::rfc003::alice::ActionKind::*;
                 type ROLE = alice::State<AL, BL, AA, BA>;
                 $fn()
             }
             RoleKind::Bob => {
                 #[allow(dead_code)]
-                use crate::swap_protocols::rfc003::bob::ActionKind::*;
                 type ROLE = bob::State<AL, BL, AA, BA>;
                 $fn()
             }
@@ -27,7 +25,7 @@ macro_rules! with_swap_types {
             RoleKind,
         };
         use bitcoin_support::BitcoinQuantity;
-        use ethereum_support::EtherQuantity;
+        use ethereum_support::{Erc20Token, EtherQuantity};
         let metadata = $metadata;
 
         use crate::swap_protocols::{asset::AssetKind, LedgerKind};

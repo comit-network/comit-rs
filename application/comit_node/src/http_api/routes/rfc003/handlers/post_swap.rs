@@ -3,8 +3,8 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource, Timestamp},
-        SwapId,
+        rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource},
+        SwapId, Timestamp,
     },
 };
 use bitcoin_support::BitcoinQuantity;

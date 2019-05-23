@@ -1,8 +1,9 @@
 use crate::swap_protocols::{
+    actions::bitcoin::{SendToAddress, SpendOutput},
     ledger::Bitcoin,
     rfc003::{
         actions::{FundAction, RedeemAction, RefundAction},
-        bitcoin,
+        bitcoin::Htlc,
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Secret,
@@ -12,12 +13,12 @@ use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
 
 impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
-    type FundActionOutput = bitcoin::SendToAddress;
+    type FundActionOutput = SendToAddress;
 
     fn fund_action(htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
 
-        bitcoin::SendToAddress {
+        SendToAddress {
             to,
             amount: htlc_params.asset,
             network: htlc_params.ledger.network,
@@ -26,16 +27,16 @@ impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
 }
 
 impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
-    type RefundActionOutput = bitcoin::SpendOutput;
+    type RefundActionOutput = SpendOutput;
 
     fn refund_action(
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
         htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
     ) -> Self::RefundActionOutput {
-        let htlc = bitcoin::Htlc::from(htlc_params.clone());
+        let htlc = Htlc::from(htlc_params.clone());
 
-        bitcoin::SpendOutput {
+        SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
                 htlc_params.asset,
@@ -47,7 +48,7 @@ impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
 }
 
 impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
-    type RedeemActionOutput = bitcoin::SpendOutput;
+    type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
         htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
@@ -55,9 +56,9 @@ impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         secret_source: &dyn SecretSource,
         secret: Secret,
     ) -> Self::RedeemActionOutput {
-        let htlc = bitcoin::Htlc::from(htlc_params.clone());
+        let htlc = Htlc::from(htlc_params.clone());
 
-        bitcoin::SpendOutput {
+        SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
                 htlc_params.asset,

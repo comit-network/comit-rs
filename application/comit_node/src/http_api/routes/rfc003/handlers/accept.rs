@@ -1,17 +1,15 @@
 use crate::{
-    http_api::{
-        problem,
-        routes::rfc003::action::{new_action_link, ToSirenAction},
-    },
+    http_api::{action::ToSirenAction, problem, routes::rfc003::action::new_action_link},
     swap_protocols::{
+        actions::Actions,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            bob,
+            actions::{Accept, ActionKind},
             messages::{AcceptResponseBody, IntoAcceptResponseBody},
             state_store::StateStore,
-            Actions, Ledger, SecretSource,
+            Ledger, SecretSource,
         },
-        MetadataStore, SwapId,
+        Metadata, MetadataStore, RoleKind, SwapId,
     },
 };
 use bitcoin_support;
@@ -24,7 +22,7 @@ pub struct OnlyRedeem<L: Ledger> {
     pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl ToSirenAction for bob::Accept<Ethereum, Bitcoin> {
+impl ToSirenAction for Accept<Ethereum, Bitcoin> {
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         siren::Action {
             name: "accept".to_owned(),
@@ -61,7 +59,7 @@ pub struct OnlyRefund<L: Ledger> {
     pub beta_ledger_refund_identity: L::Identity,
 }
 
-impl ToSirenAction for bob::Accept<Bitcoin, Ethereum> {
+impl ToSirenAction for Accept<Bitcoin, Ethereum> {
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         siren::Action {
             name: "accept".to_owned(),
@@ -100,7 +98,6 @@ pub fn handle_accept_action<T: MetadataStore<SwapId>, S: StateStore>(
     id: SwapId,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
-    use crate::swap_protocols::{Metadata, RoleKind};
     let metadata = metadata_store
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
@@ -126,7 +123,7 @@ pub fn handle_accept_action<T: MetadataStore<SwapId>, S: StateStore>(
                         .actions()
                         .into_iter()
                         .find_map(move |action| match action {
-                            bob::ActionKind::Accept(accept) => Some(Ok(accept)),
+                            ActionKind::Accept(accept) => Some(Ok(accept)),
                             _ => None,
                         })
                         .unwrap_or_else(|| Err(problem::invalid_action("accept")))?

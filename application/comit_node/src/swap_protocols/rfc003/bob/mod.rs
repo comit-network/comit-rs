@@ -2,11 +2,7 @@ pub mod actions;
 mod communication_events;
 mod spawner;
 
-pub use self::{
-    actions::{Accept, ActionKind, Decline},
-    communication_events::*,
-    spawner::*,
-};
+pub use self::{communication_events::*, spawner::*};
 
 use crate::{
     comit_client::SwapReject,
@@ -14,6 +10,7 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
+            actions::{Accept, Decline},
             events::{LedgerEvents, ResponseFuture},
             ledger::Ledger,
             ledger_state::LedgerState,

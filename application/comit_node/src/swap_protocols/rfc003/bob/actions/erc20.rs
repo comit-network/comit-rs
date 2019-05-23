@@ -1,14 +1,10 @@
 use crate::swap_protocols::{
+    actions::{ethereum, Actions},
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::{erc20, Actions, FundAction, RedeemAction, RefundAction},
-        bob::{
-            self,
-            actions::{Accept, Decline},
-            SwapCommunication,
-        },
-        ethereum,
+        actions::{erc20, Accept, ActionKind, Decline, FundAction, RedeemAction, RefundAction},
+        bob::{self, SwapCommunication},
         state_machine::HtlcParams,
         Ledger, LedgerState,
     },
@@ -23,7 +19,7 @@ where
     (AL, AA): RedeemAction<AL, AA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = bob::ActionKind<
+    type ActionKind = ActionKind<
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
         ethereum::ContractDeploy,
@@ -38,11 +34,11 @@ where
                 pending_response, ..
             } => {
                 return vec![
-                    bob::ActionKind::Accept(Accept::new(
+                    ActionKind::Accept(Accept::new(
                         pending_response.sender.clone(),
                         Arc::clone(&self.secret_source),
                     )),
-                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
+                    ActionKind::Decline(Decline::new(pending_response.sender.clone())),
                 ];
             }
             SwapCommunication::Accepted {
@@ -59,18 +55,18 @@ where
 
         let mut actions = match (alpha_state, beta_state, self.secret) {
             (Funded { htlc_location, .. }, _, Some(secret)) => {
-                vec![bob::ActionKind::Redeem(<(AL, AA)>::redeem_action(
+                vec![ActionKind::Redeem(<(AL, AA)>::redeem_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
                     secret,
                 ))]
             }
-            (Funded { .. }, NotDeployed, _) => vec![bob::ActionKind::Deploy(erc20::deploy_action(
+            (Funded { .. }, NotDeployed, _) => vec![ActionKind::Deploy(erc20::deploy_action(
                 HtlcParams::new_beta_params(request, response),
             ))],
             (Funded { .. }, Deployed { htlc_location, .. }, _) => {
-                vec![bob::ActionKind::Fund(erc20::fund_action(
+                vec![ActionKind::Fund(erc20::fund_action(
                     HtlcParams::new_beta_params(request, response),
                     request.beta_asset.token_contract,
                     *htlc_location,
@@ -80,7 +76,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(bob::ActionKind::Refund(erc20::refund_action(
+            actions.push(ActionKind::Refund(erc20::refund_action(
                 request.beta_ledger.network,
                 request.beta_expiry,
                 *htlc_location,
@@ -98,7 +94,7 @@ where
     (BL, BA): RefundAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = bob::ActionKind<
+    type ActionKind = ActionKind<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
         Infallible,
@@ -113,11 +109,11 @@ where
                 pending_response, ..
             } => {
                 return vec![
-                    bob::ActionKind::Accept(Accept::new(
+                    ActionKind::Accept(Accept::new(
                         pending_response.sender.clone(),
                         Arc::clone(&self.secret_source),
                     )),
-                    bob::ActionKind::Decline(Decline::new(pending_response.sender.clone())),
+                    ActionKind::Decline(Decline::new(pending_response.sender.clone())),
                 ];
             }
             SwapCommunication::Accepted {
@@ -132,17 +128,17 @@ where
 
         use self::LedgerState::*;
         let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => vec![bob::ActionKind::Redeem(
+            (Funded { htlc_location, .. }, _, Some(secret)) => vec![ActionKind::Redeem(
                 erc20::redeem_action(*htlc_location, secret, request.alpha_ledger.network),
             )],
-            (Funded { .. }, NotDeployed, _) => vec![bob::ActionKind::Fund(
-                <(BL, BA)>::fund_action(HtlcParams::new_beta_params(request, response)),
-            )],
+            (Funded { .. }, NotDeployed, _) => vec![ActionKind::Fund(<(BL, BA)>::fund_action(
+                HtlcParams::new_beta_params(request, response),
+            ))],
             _ => vec![],
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(bob::ActionKind::Refund(<(BL, BA)>::refund_action(
+            actions.push(ActionKind::Refund(<(BL, BA)>::refund_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,

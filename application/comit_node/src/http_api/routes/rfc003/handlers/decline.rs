@@ -1,13 +1,15 @@
 use crate::{
     comit_client::SwapDeclineReason,
-    http_api::{
-        problem,
-        routes::rfc003::{new_action_link, ToSirenAction},
-    },
+    http_api::{action::ToSirenAction, problem, routes::rfc003::new_action_link},
     swap_protocols::{
+        actions::Actions,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{bob, state_store::StateStore, Actions, Ledger},
-        MetadataStore, SwapId,
+        rfc003::{
+            actions::{ActionKind, Decline},
+            state_store::StateStore,
+            Ledger,
+        },
+        Metadata, MetadataStore, RoleKind, SwapId,
     },
 };
 use bitcoin_support;
@@ -20,7 +22,7 @@ pub struct DeclineSwapRequestHttpBody {
     pub reason: Option<SwapDeclineReason>,
 }
 
-impl<AL: Ledger, BL: Ledger> ToSirenAction for bob::Decline<AL, BL> {
+impl<AL: Ledger, BL: Ledger> ToSirenAction for Decline<AL, BL> {
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         siren::Action {
             name: "decline".to_owned(),
@@ -47,7 +49,6 @@ pub fn handle_decline_action<T: MetadataStore<SwapId>, S: StateStore>(
     id: SwapId,
     body: serde_json::Value,
 ) -> Result<(), HttpApiProblem> {
-    use crate::swap_protocols::{Metadata, RoleKind};
     let metadata = metadata_store
         .get(&id)?
         .ok_or_else(problem::swap_not_found)?;
@@ -73,7 +74,7 @@ pub fn handle_decline_action<T: MetadataStore<SwapId>, S: StateStore>(
                         .actions()
                         .into_iter()
                         .find_map(move |action| match action {
-                            bob::ActionKind::Decline(decline) => Some(Ok(decline)),
+                            ActionKind::Decline(decline) => Some(Ok(decline)),
                             _ => None,
                         })
                         .unwrap_or_else(|| Err(problem::invalid_action("decline")))?

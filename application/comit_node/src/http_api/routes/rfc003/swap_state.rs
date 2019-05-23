@@ -2,7 +2,8 @@ use crate::{
     http_api::{Http, SwapStatus},
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, alice, bob, Ledger, SecretHash, Timestamp},
+        rfc003::{self, alice, bob, Ledger, SecretHash},
+        Timestamp,
     },
 };
 use serde::Serialize;

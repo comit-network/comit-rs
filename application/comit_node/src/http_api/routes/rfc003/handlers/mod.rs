@@ -9,7 +9,6 @@ pub use self::{
     decline::handle_decline_action,
     deploy_fund_refund_redeem::{
         handle_deploy_action, handle_fund_action, handle_redeem_action, handle_refund_action,
-        ActionExecutionParameters,
     },
     get_swap::handle_get_swap,
     post_swap::{handle_post_swap, OnlyRedeem, OnlyRefund, SwapRequestBodyKind},
