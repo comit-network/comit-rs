@@ -121,8 +121,8 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                     "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
                 ));
 
-            let entity = actions.into_iter().fold(entity, |acc, action_kind| {
-                let action = action_kind.to_siren_action(&id);
+            let entity = actions.into_iter().fold(entity, |acc, action| {
+                let action = action.to_siren_action(&id);
                 acc.with_action(action)
             });
 

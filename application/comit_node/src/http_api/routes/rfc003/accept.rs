@@ -1,13 +1,12 @@
 use crate::{
-    http_api::{action::ToSirenAction, route_factory::new_action_link},
+    http_api::action::ListRequiredFields,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
-            actions::{Accept, ActionKind},
+            actions::Accept,
             messages::{AcceptResponseBody, IntoAcceptResponseBody},
             Ledger, SecretSource,
         },
-        SwapId,
     },
 };
 use serde::Deserialize;
@@ -17,23 +16,15 @@ pub struct OnlyRedeem<L: Ledger> {
     pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl ToSirenAction for Accept<Ethereum, Bitcoin> {
-    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
-        siren::Action {
-            name: "accept".to_owned(),
-            href: new_action_link(id, "accept"),
-            method: Some(http::Method::from(ActionKind::Accept)),
-            _type: Some("application/json".to_owned()),
-            fields: vec![siren::Field {
-                name: "alpha_ledger_redeem_identity".to_owned(),
-                class: vec!["ethereum".to_owned(), "address".to_owned()],
-                _type: Some("text".to_owned()),
-                value: None,
-                title: None,
-            }],
-            class: vec![],
+impl ListRequiredFields for Accept<Ethereum, Bitcoin> {
+    fn list_required_fields() -> Vec<siren::Field> {
+        vec![siren::Field {
+            name: "alpha_ledger_redeem_identity".to_owned(),
+            class: vec!["ethereum".to_owned(), "address".to_owned()],
+            _type: Some("text".to_owned()),
+            value: None,
             title: None,
-        }
+        }]
     }
 }
 
@@ -54,23 +45,15 @@ pub struct OnlyRefund<L: Ledger> {
     pub beta_ledger_refund_identity: L::Identity,
 }
 
-impl ToSirenAction for Accept<Bitcoin, Ethereum> {
-    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
-        siren::Action {
-            name: "accept".to_owned(),
-            href: new_action_link(id, "accept"),
-            method: Some(http::Method::from(ActionKind::Accept)),
-            _type: Some("application/json".to_owned()),
-            fields: vec![siren::Field {
-                name: "beta_ledger_refund_identity".to_owned(),
-                class: vec!["ethereum".to_owned(), "address".to_owned()],
-                _type: Some("text".to_owned()),
-                value: None,
-                title: None,
-            }],
-            class: vec![],
+impl ListRequiredFields for Accept<Bitcoin, Ethereum> {
+    fn list_required_fields() -> Vec<siren::Field> {
+        vec![siren::Field {
+            name: "beta_ledger_refund_identity".to_owned(),
+            class: vec!["ethereum".to_owned(), "address".to_owned()],
+            _type: Some("text".to_owned()),
+            value: None,
             title: None,
-        }
+        }]
     }
 }
 

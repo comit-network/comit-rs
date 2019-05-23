@@ -18,6 +18,7 @@ use crate::{
     },
 };
 use http_api_problem::HttpApiProblem;
+use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
 pub fn handle_action<T: MetadataStore<SwapId>, S: StateStore>(
@@ -110,7 +111,7 @@ where
             Action::Redeem(payload) => payload.into_response_payload(query_params),
             Action::Refund(payload) => payload.into_response_payload(query_params),
             Action::Accept(_) | Action::Decline(_) => {
-                log::error!("IntoResponsePayload is not available for Accept/Decline");
+                log::error!(target: "http-api", "IntoResponsePayload is not available for Accept/Decline");
                 Err(HttpApiProblem::with_title_and_type_from_status(
                     http::StatusCode::INTERNAL_SERVER_ERROR,
                 ))
@@ -122,28 +123,41 @@ where
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund> ToSirenAction
     for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
 where
-    Accept: ToSirenAction,
-    Decline: ToSirenAction,
-    Deploy: ListRequiredFields,
-    Fund: ListRequiredFields,
-    Redeem: ListRequiredFields,
-    Refund: ListRequiredFields,
+    Accept: ListRequiredFields + Debug,
+    Decline: ListRequiredFields + Debug,
+    Deploy: ListRequiredFields + Debug,
+    Fund: ListRequiredFields + Debug,
+    Redeem: ListRequiredFields + Debug,
+    Refund: ListRequiredFields + Debug,
 {
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
-        let (name, fields) = match self {
-            Action::Deploy(_) => ("deploy", Deploy::list_required_fields()),
-            Action::Fund(_) => ("fund", Fund::list_required_fields()),
-            Action::Redeem(_) => ("redeem", Redeem::list_required_fields()),
-            Action::Refund(_) => ("refund", Refund::list_required_fields()),
-            Action::Decline(decline) => return decline.to_siren_action(id),
-            Action::Accept(accept) => return accept.to_siren_action(id),
+        let action_kind = ActionKind::from(self);
+        let method = http::Method::from(action_kind);
+        let name = action_kind.to_string();
+
+        let media_type = match method {
+            // GET + DELETE cannot have a body
+            http::Method::GET => "application/x-www-form-urlencoded",
+            http::Method::DELETE => "application/x-www-form-urlencoded",
+            _ => "application/json",
         };
 
+        let fields = match self {
+            Action::Accept(_) => Accept::list_required_fields(),
+            Action::Decline(_) => Decline::list_required_fields(),
+            Action::Deploy(_) => Deploy::list_required_fields(),
+            Action::Fund(_) => Fund::list_required_fields(),
+            Action::Redeem(_) => Redeem::list_required_fields(),
+            Action::Refund(_) => Refund::list_required_fields(),
+        };
+
+        log::debug!(target: "http-api", "Creating siren::Action from {:?} with HTTP method: {}, Media-Type: {}, Name: {}, Fields: {:?}", self, method, media_type, name, fields);
+
         siren::Action {
-            name: name.to_owned(),
-            href: new_action_link(id, name),
-            method: Some(http::Method::from(ActionKind::from(self))),
-            _type: Some("application/x-www-form-urlencoded".to_owned()),
+            href: new_action_link(id, &name),
+            name,
+            method: Some(method),
+            _type: Some(media_type.to_owned()),
             fields,
             class: vec![],
             title: None,

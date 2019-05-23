@@ -56,11 +56,12 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Refund(Refund),
 }
 
-#[derive(Clone)]
-#[allow(missing_debug_implementations)]
+#[derive(Clone, derivative::Derivative)]
+#[derivative(Debug)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
-    #[allow(clippy::type_complexity)]
+    #[derivative(Debug = "ignore")]
     sender: ResponseSender<AL, BL>,
+    #[derivative(Debug = "ignore")]
     secret_source: Arc<dyn SecretSource>,
 }
 
@@ -89,18 +90,18 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     }
 }
 
-#[derive(Clone)]
-#[allow(missing_debug_implementations)]
+#[derive(Clone, derivative::Derivative)]
+#[derivative(Debug)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
-    #[allow(clippy::type_complexity)]
+    #[derivative(Debug = "ignore")]
     sender: ResponseSender<AL, BL>,
 }
 
 impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
-    #[allow(clippy::type_complexity)]
     pub fn new(sender: ResponseSender<AL, BL>) -> Self {
         Self { sender }
     }
+
     pub fn decline(&self, reason: Option<SwapDeclineReason>) -> Result<(), ()> {
         let mut sender = self.sender.lock().unwrap();
         match sender.take() {
@@ -113,4 +114,21 @@ impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
             None => Err(()),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn action_kind_serializes_into_lowercase_str() {
+        assert_eq!(format!("{}", ActionKind::Accept), "accept".to_string());
+        assert_eq!(format!("{}", ActionKind::Decline), "decline".to_string());
+        assert_eq!(format!("{}", ActionKind::Fund), "fund".to_string());
+        assert_eq!(format!("{}", ActionKind::Refund), "refund".to_string());
+        assert_eq!(format!("{}", ActionKind::Redeem), "redeem".to_string());
+        assert_eq!(format!("{}", ActionKind::Deploy), "deploy".to_string());
+    }
+
 }
