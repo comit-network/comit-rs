@@ -14,6 +14,22 @@ use crate::{
 };
 use std::sync::Arc;
 
+/// Defines the set of actions available in the RFC003 protocol
+#[derive(Debug, strum_macros::EnumDiscriminants)]
+#[strum_discriminants(
+    name(ActionKind),
+    derive(Display, EnumString),
+    strum(serialize_all = "snake_case")
+)]
+pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
+    Accept(Accept),
+    Decline(Decline),
+    Deploy(Deploy),
+    Fund(Fund),
+    Redeem(Redeem),
+    Refund(Refund),
+}
+
 pub trait FundAction<L: Ledger, A: Asset> {
     type FundActionOutput;
 
@@ -39,21 +55,6 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
         secret_source: &dyn SecretSource,
         secret: Secret,
     ) -> Self::RedeemActionOutput;
-}
-
-#[derive(Debug, strum_macros::EnumDiscriminants)]
-#[strum_discriminants(
-    name(ActionKind),
-    derive(Display, EnumString),
-    strum(serialize_all = "snake_case")
-)]
-pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
-    Accept(Accept),
-    Decline(Decline),
-    Deploy(Deploy),
-    Fund(Fund),
-    Redeem(Redeem),
-    Refund(Refund),
 }
 
 #[derive(Clone, derivative::Derivative)]
