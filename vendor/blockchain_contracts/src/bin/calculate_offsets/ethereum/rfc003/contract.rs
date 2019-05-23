@@ -7,7 +7,7 @@ use crate::calculate_offsets::ethereum::rfc003::{
     Error,
 };
 use byteorder::{BigEndian, ByteOrder};
-use std::{ffi::OsStr, path::PathBuf};
+use std::{convert::TryFrom, ffi::OsStr, path::PathBuf};
 
 pub struct Contract {
     bytes: Vec<u8>,
@@ -77,7 +77,7 @@ impl Contract {
         let header_slice =
             &mut header[header_placeholder_offset.start..header_placeholder_offset.excluded_end];
 
-        BigEndian::write_u16(header_slice, value as u16);
+        BigEndian::write_u16(header_slice, u16::try_from(value)?);
 
         Ok(())
     }
