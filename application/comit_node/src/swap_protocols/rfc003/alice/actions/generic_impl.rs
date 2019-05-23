@@ -2,7 +2,7 @@ use crate::swap_protocols::{
     actions::Actions,
     asset::Asset,
     rfc003::{
-        actions::{Accept, ActionKind, Decline, FundAction, RedeemAction, RefundAction},
+        actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
         Ledger, LedgerState,
@@ -21,7 +21,7 @@ where
     (BL, BA): RedeemAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = ActionKind<
+    type ActionKind = Action<
         Accept<AL, BL>,
         Decline<BL, BL>,
         Infallible,
@@ -43,10 +43,10 @@ where
 
         use self::LedgerState::*;
         let mut actions = match alpha_state {
-            NotDeployed => vec![ActionKind::Fund(<(AL, AA)>::fund_action(
+            NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
-            Funded { htlc_location, .. } => vec![ActionKind::Refund(<(AL, AA)>::refund_action(
+            Funded { htlc_location, .. } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,
@@ -55,7 +55,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(ActionKind::Redeem(<(BL, BA)>::redeem_action(
+            actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,

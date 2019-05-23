@@ -77,7 +77,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
         &metadata,
         (|| {
             let state = state_store
-                .get::<ROLE>(id)?
+                .get::<ROLE>(&id)?
                 .ok_or_else(problem::state_store)?;
 
             // TODO: Implement From<actor::State> for SwapOutcome

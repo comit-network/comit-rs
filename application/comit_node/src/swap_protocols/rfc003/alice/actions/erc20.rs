@@ -3,7 +3,7 @@ use crate::swap_protocols::{
     asset::Asset,
     ledger::Ethereum,
     rfc003::{
-        actions::{erc20, Accept, ActionKind, Decline, FundAction, RedeemAction, RefundAction},
+        actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
         Ledger, LedgerState,
@@ -19,7 +19,7 @@ where
     (BL, BA): RedeemAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = ActionKind<
+    type ActionKind = Action<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
         ethereum::ContractDeploy,
@@ -42,15 +42,15 @@ where
         use self::LedgerState::*;
 
         let mut actions = match alpha_state {
-            NotDeployed => vec![ActionKind::Deploy(erc20::deploy_action(
+            NotDeployed => vec![Action::Deploy(erc20::deploy_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
-            Deployed { htlc_location, .. } => vec![ActionKind::Fund(erc20::fund_action(
+            Deployed { htlc_location, .. } => vec![Action::Fund(erc20::fund_action(
                 HtlcParams::new_alpha_params(request, response),
                 request.alpha_asset.token_contract,
                 *htlc_location,
             ))],
-            Funded { htlc_location, .. } => vec![ActionKind::Refund(erc20::refund_action(
+            Funded { htlc_location, .. } => vec![Action::Refund(erc20::refund_action(
                 request.alpha_ledger.network,
                 request.alpha_expiry,
                 *htlc_location,
@@ -59,7 +59,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(ActionKind::Redeem(<(BL, BA)>::redeem_action(
+            actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,
@@ -78,7 +78,7 @@ where
     (AL, AA): RefundAction<AL, AA>,
 {
     #[allow(clippy::type_complexity)]
-    type ActionKind = ActionKind<
+    type ActionKind = Action<
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
         Infallible,
@@ -101,10 +101,10 @@ where
         use self::LedgerState::*;
 
         let mut actions = match alpha_state {
-            NotDeployed => vec![ActionKind::Fund(<(AL, AA)>::fund_action(
+            NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
-            Funded { htlc_location, .. } => vec![ActionKind::Refund(<(AL, AA)>::refund_action(
+            Funded { htlc_location, .. } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,
@@ -113,7 +113,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(ActionKind::Redeem(erc20::redeem_action(
+            actions.push(Action::Redeem(erc20::redeem_action(
                 *htlc_location,
                 self.secret_source.secret(),
                 request.beta_ledger.network,

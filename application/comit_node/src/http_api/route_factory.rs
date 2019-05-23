@@ -9,8 +9,13 @@ use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";
+
 pub fn swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, RFC003, id)
+}
+
+pub fn new_action_link(id: &SwapId, action: &str) -> String {
+    format!("{}/{}", swap_path(*id), action)
 }
 
 pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, BP: BamPeers>(
@@ -55,7 +60,9 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     let rfc003_action = warp::method()
         .and(rfc003)
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<http_api::routes::rfc003::Action>())
+        .and(warp::path::param::<
+            swap_protocols::rfc003::actions::ActionKind,
+        >())
         .and(warp::path::end())
         .and(warp::query::<http_api::action::ActionExecutionParameters>())
         .and(metadata_store.clone())

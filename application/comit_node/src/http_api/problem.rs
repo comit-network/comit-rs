@@ -1,6 +1,6 @@
 use crate::swap_protocols::{
     metadata_store,
-    rfc003::{self, state_store},
+    rfc003::{self, actions::ActionKind, state_store},
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -52,7 +52,7 @@ pub fn unsupported() -> HttpApiProblem {
         .set_detail("The requested combination of ledgers and assets is not supported.")
 }
 
-pub fn deserialize(e: &serde_json::Error) -> HttpApiProblem {
+pub fn deserialize(e: serde_json::Error) -> HttpApiProblem {
     log::error!("Failed to deserialize body: {:?}", e);
     HttpApiProblem::new("Invalid body.")
         .set_status(StatusCode::BAD_REQUEST)
@@ -71,12 +71,12 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
-pub fn action_already_done(action: &str) -> HttpApiProblem {
+pub fn action_already_done(action: ActionKind) -> HttpApiProblem {
     log::error!("{} action has already been done", action);
     HttpApiProblem::new("Action already done.").set_status(StatusCode::GONE)
 }
 
-pub fn invalid_action(action: &str) -> HttpApiProblem {
+pub fn invalid_action(action: ActionKind) -> HttpApiProblem {
     log::error!("{} action is invalid for this swap", action);
     HttpApiProblem::new("Invalid action.")
         .set_status(StatusCode::CONFLICT)

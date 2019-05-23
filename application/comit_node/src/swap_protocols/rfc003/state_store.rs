@@ -21,8 +21,8 @@ pub enum Error {
 
 pub trait StateStore: Send + Sync + 'static {
     fn insert<A: ActorState>(&self, key: SwapId, value: A);
-    fn get<A: ActorState>(&self, key: SwapId) -> Result<Option<A>, Error>;
-    fn update<A: ActorState>(&self, key: SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>);
+    fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, Error>;
+    fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>);
 }
 
 #[derive(Default, Debug)]
@@ -36,9 +36,9 @@ impl StateStore for InMemoryStateStore<SwapId> {
         states.insert(key, Box::new(value));
     }
 
-    fn get<A: ActorState>(&self, key: SwapId) -> Result<Option<A>, Error> {
+    fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, Error> {
         let states = self.states.lock().unwrap();
-        match states.get(&key) {
+        match states.get(key) {
             Some(state) => match state.downcast_ref::<A>() {
                 Some(state) => Ok(Some(state.clone())),
                 None => Err(Error::InvalidType),
@@ -47,7 +47,7 @@ impl StateStore for InMemoryStateStore<SwapId> {
         }
     }
 
-    fn update<A: ActorState>(&self, key: SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
+    fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
         use self::{LedgerState::*, SwapStates as SS};
 
         let mut actor_state = match self.get::<A>(key) {
@@ -245,7 +245,7 @@ impl StateStore for InMemoryStateStore<SwapId> {
             }
         }
 
-        self.insert(key, actor_state)
+        self.insert(key.clone(), actor_state)
     }
 }
 
@@ -297,7 +297,7 @@ mod tests {
         );
 
         let res = state_store
-            .get::<alice::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(id)
+            .get::<alice::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(&id)
             .unwrap();
         assert_that(&res).contains_value(state);
     }

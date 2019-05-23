@@ -1,7 +1,5 @@
 #[macro_use]
 pub mod with_swap_types;
-#[macro_use]
-pub mod with_swap_types_bob;
 pub mod route_factory;
 pub mod routes;
 pub mod serde_peer_id;

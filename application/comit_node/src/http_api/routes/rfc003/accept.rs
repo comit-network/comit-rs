@@ -1,20 +1,15 @@
 use crate::{
-    http_api::{action::ToSirenAction, problem, routes::rfc003::action::new_action_link},
+    http_api::{action::ToSirenAction, route_factory::new_action_link},
     swap_protocols::{
-        actions::Actions,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             actions::{Accept, ActionKind},
             messages::{AcceptResponseBody, IntoAcceptResponseBody},
-            state_store::StateStore,
             Ledger, SecretSource,
         },
-        Metadata, MetadataStore, RoleKind, SwapId,
+        SwapId,
     },
 };
-use bitcoin_support;
-use ethereum_support::{self, Erc20Token};
-use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::Deserialize;
 
 #[derive(Deserialize, Clone, Debug)]
@@ -27,7 +22,7 @@ impl ToSirenAction for Accept<Ethereum, Bitcoin> {
         siren::Action {
             name: "accept".to_owned(),
             href: new_action_link(id, "accept"),
-            method: Some(http::Method::POST),
+            method: Some(http::Method::from(ActionKind::Accept)),
             _type: Some("application/json".to_owned()),
             fields: vec![siren::Field {
                 name: "alpha_ledger_redeem_identity".to_owned(),
@@ -64,7 +59,7 @@ impl ToSirenAction for Accept<Bitcoin, Ethereum> {
         siren::Action {
             name: "accept".to_owned(),
             href: new_action_link(id, "accept"),
-            method: Some(http::Method::POST),
+            method: Some(http::Method::from(ActionKind::Accept)),
             _type: Some("application/json".to_owned()),
             fields: vec![siren::Field {
                 name: "beta_ledger_refund_identity".to_owned(),
@@ -89,49 +84,4 @@ impl IntoAcceptResponseBody<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
             alpha_ledger_redeem_identity: secret_source.secp256k1_redeem().into(),
         }
     }
-}
-
-#[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_accept_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: &T,
-    state_store: &S,
-    id: SwapId,
-    body: serde_json::Value,
-) -> Result<(), HttpApiProblem> {
-    let metadata = metadata_store
-        .get(&id)?
-        .ok_or_else(problem::swap_not_found)?;
-
-    with_swap_types_bob!(
-        &metadata,
-        (|| serde_json::from_value::<BobAcceptBody>(body)
-            .map_err(|e| {
-                log::error!(
-                    "Failed to deserialize body of accept response for swap {}: {:?}",
-                    id,
-                    e
-                );
-                problem::deserialize(&e)
-            })
-            .and_then(|accept_body| {
-                let state = state_store
-                    .get::<ROLE>(id)?
-                    .ok_or_else(problem::state_store)?;
-
-                let accept_action = {
-                    state
-                        .actions()
-                        .into_iter()
-                        .find_map(move |action| match action {
-                            ActionKind::Accept(accept) => Some(Ok(accept)),
-                            _ => None,
-                        })
-                        .unwrap_or_else(|| Err(problem::invalid_action("accept")))?
-                };
-
-                accept_action
-                    .accept(accept_body)
-                    .map_err(|_| problem::action_already_done("accept"))
-            }))
-    )
 }

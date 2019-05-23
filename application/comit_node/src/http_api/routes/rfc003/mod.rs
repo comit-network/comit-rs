@@ -1,26 +1,29 @@
-mod action;
+pub mod accept;
+pub mod decline;
 mod handlers;
 mod swap_state;
 
 use crate::{
     http_api::{
-        action::ActionExecutionParameters, route_factory::swap_path, routes::into_rejection,
+        action::ActionExecutionParameters,
+        route_factory::swap_path,
+        routes::{
+            into_rejection,
+            rfc003::handlers::{
+                handle_action, handle_get_swap, handle_post_swap, SwapRequestBodyKind,
+            },
+        },
     },
     swap_protocols::{
-        rfc003::{alice::AliceSpawner, state_store::StateStore},
+        rfc003::{actions::ActionKind, alice::AliceSpawner, state_store::StateStore},
         MetadataStore, SwapId,
     },
 };
-use http_api_problem::HttpApiProblem;
 use hyper::header;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
 
-pub use self::{
-    action::{new_action_link, Action},
-    handlers::*,
-    swap_state::*,
-};
+pub use self::swap_state::SwapState;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
@@ -52,7 +55,7 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 pub fn action<T: MetadataStore<SwapId>, S: StateStore>(
     method: http::Method,
     id: SwapId,
-    action: Action,
+    action_kind: ActionKind,
     query_params: ActionExecutionParameters,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
@@ -61,33 +64,15 @@ pub fn action<T: MetadataStore<SwapId>, S: StateStore>(
     let metadata_store = metadata_store.as_ref();
     let state_store = state_store.as_ref();
 
-    let result = match action {
-        Action::Accept if method == http::Method::POST => {
-            handle_accept_action(metadata_store, state_store, id, body).map(|_| None)
-        }
-        Action::Decline if method == http::Method::POST => {
-            handle_decline_action(metadata_store, state_store, id, body).map(|_| None)
-        }
-        Action::Deploy if method == http::Method::GET => {
-            handle_deploy_action(metadata_store, state_store, &id, &query_params).map(Some)
-        }
-        Action::Fund if method == http::Method::GET => {
-            handle_fund_action(metadata_store, state_store, &id, &query_params).map(Some)
-        }
-        Action::Refund if method == http::Method::GET => {
-            handle_refund_action(metadata_store, state_store, &id, &query_params).map(Some)
-        }
-        Action::Redeem if method == http::Method::GET => {
-            handle_redeem_action(metadata_store, state_store, &id, &query_params).map(Some)
-        }
-        action => {
-            log::debug!(target: "http-api", "Attempt to invoke {} action with http method {}, which is an invalid combination.", action, method);
-            Err(HttpApiProblem::new("Invalid action invocation")
-                .set_status(http::StatusCode::METHOD_NOT_ALLOWED))
-        }
-    };
-
-    result
-        .map(|body| warp::reply::json(&body))
-        .map_err(into_rejection)
+    handle_action(
+        method,
+        id,
+        action_kind,
+        body,
+        query_params,
+        metadata_store,
+        state_store,
+    )
+    .map(|body| warp::reply::json(&body))
+    .map_err(into_rejection)
 }

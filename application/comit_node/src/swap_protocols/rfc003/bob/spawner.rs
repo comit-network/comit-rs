@@ -85,7 +85,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
         let state_store = Arc::clone(&self.state_store);
         state_store.insert(id, bob);
         tokio::spawn(receiver.for_each(move |update| {
-            state_store.update::<bob::State<AL, BL, AA, BA>>(id, update);
+            state_store.update::<bob::State<AL, BL, AA, BA>>(&id, update);
             Ok(())
         }));
 

@@ -41,8 +41,13 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
     ) -> Self::RedeemActionOutput;
 }
 
-#[derive(Debug)]
-pub enum ActionKind<Accept, Decline, Deploy, Fund, Redeem, Refund> {
+#[derive(Debug, strum_macros::EnumDiscriminants)]
+#[strum_discriminants(
+    name(ActionKind),
+    derive(Display, EnumString),
+    strum(serialize_all = "snake_case")
+)]
+pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Accept(Accept),
     Decline(Decline),
     Deploy(Deploy),

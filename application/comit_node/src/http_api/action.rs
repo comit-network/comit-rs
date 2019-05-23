@@ -55,6 +55,7 @@ pub enum ActionResponseBody {
         network: ethereum_support::Network,
         min_block_timestamp: Option<Timestamp>,
     },
+    None,
 }
 
 impl ActionResponseBody {
