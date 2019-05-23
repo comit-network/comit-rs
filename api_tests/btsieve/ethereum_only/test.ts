@@ -1,6 +1,5 @@
 import { Wallet } from "../../lib/wallet";
 import * as chai from "chai";
-import * as ethereum from "../../lib/ethereum";
 import { HarnessGlobal, sleep } from "../../lib/util";
 import {
     Btsieve,
@@ -25,27 +24,24 @@ const aliceWallet = new Wallet("alice", {
     ethereumNodeConfig: global.ledgers_config.ethereum,
 });
 
-const alice_wallet_address = aliceWallet.eth().address();
-
 setTimeout(async function() {
     describe("Test btsieve API - ethereum", () => {
-        let token_contract_address: string;
+        let tokenContractAddress: string;
         before(async function() {
             this.timeout(10000);
             await tobyWallet.eth().fund("20");
             await aliceWallet.eth().fund("1");
 
-            let receipt = await tobyWallet
+            let tokenContractAddress = await tobyWallet
                 .eth()
                 .deployErc20TokenContract(global.project_root);
-            token_contract_address = receipt.contractAddress;
-
-            await ethereum.mintErc20Tokens(
-                tobyWallet.eth(),
-                token_contract_address,
-                alice_wallet_address,
-                10
-            );
+            await tobyWallet
+                .eth()
+                .mintErc20To(
+                    aliceWallet.eth().address(),
+                    10,
+                    tokenContractAddress
+                );
         });
 
         describe("Ethereum", () => {
@@ -259,7 +255,10 @@ setTimeout(async function() {
                     "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
                 const from_address =
                     "0x000000000000000000000000" +
-                    alice_wallet_address.replace("0x", "");
+                    aliceWallet
+                        .eth()
+                        .address()
+                        .replace("0x", "");
                 const to_address =
                     "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
 
@@ -272,7 +271,7 @@ setTimeout(async function() {
                         .send({
                             event_matchers: [
                                 {
-                                    address: token_contract_address,
+                                    address: tokenContractAddress,
                                     data:
                                         "0x0000000000000000000000000000000000000000000000000000000000000001",
                                     topics: [
@@ -312,7 +311,7 @@ setTimeout(async function() {
                     let receipt = await aliceWallet
                         .eth()
                         .sendEthTransactionTo(
-                            token_contract_address,
+                            tokenContractAddress,
                             transfer_token_data,
                             0
                         );

@@ -1,9 +1,8 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
-import { BN, toBN, toWei } from "web3-utils";
+import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { ActionTrigger, createTests } from "../../test_creator";
 import "chai/register-should";
@@ -26,8 +25,8 @@ declare var global: HarnessGlobal;
         bitcoinNodeConfig: global.ledgers_config.bitcoin,
     });
 
+    const aliceInitialErc20 = toBN(toWei("10000", "ether"));
     const alphaAssetQuantity = toBN(toWei("5000", "ether"));
-
     const betaAssetQuantity = 100000000;
     const maxFeeInSatoshi = 5000;
 
@@ -41,10 +40,16 @@ declare var global: HarnessGlobal;
     await bitcoin.generate();
     await bob.wallet.eth().fund("1");
 
-    let deployReceipt = await tobyWallet
+    let tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
-    let tokenContractAddress: string = deployReceipt.contractAddress;
+    await tobyWallet
+        .eth()
+        .mintErc20To(
+            alice.wallet.eth().address(),
+            aliceInitialErc20,
+            tokenContractAddress
+        );
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -70,24 +75,12 @@ declare var global: HarnessGlobal;
         peer: await bob.peerId(),
     };
 
-    let aliceWalletAddress = await alice.wallet.eth().address();
+    let erc20Balance = await alice.wallet
+        .eth()
+        .erc20Balance(tokenContractAddress);
+    erc20Balance.eq(aliceInitialErc20).should.equal(true);
 
-    let mintReceipt = await ethereum.mintErc20Tokens(
-        tobyWallet.eth(),
-        tokenContractAddress,
-        aliceWalletAddress,
-        toBN(toWei("10000", "ether"))
-    );
-    mintReceipt.status.should.equal(true);
-
-    let erc20Balance = await ethereum.erc20Balance(
-        aliceWalletAddress,
-        tokenContractAddress
-    );
-
-    erc20Balance.eq(toBN(toWei("10000", "ether"))).should.equal(true);
-
-    let bobErc20BalanceBefore: BN = await bob.wallet
+    let bobErc20BalanceBefore = await bob.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
 

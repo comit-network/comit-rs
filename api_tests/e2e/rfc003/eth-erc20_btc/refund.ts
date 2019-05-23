@@ -1,5 +1,4 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
@@ -31,8 +30,8 @@ declare var global: HarnessGlobal;
     const betaAssetQuantity = 100000000;
     const maxFeeInSatoshi = 5000;
 
-    const alphaExpiry: number = Math.round(Date.now() / 1000) + 13;
-    const betaExpiry: number = Math.round(Date.now() / 1000) + 8;
+    const alphaExpiry = Math.round(Date.now() / 1000) + 13;
+    const betaExpiry = Math.round(Date.now() / 1000) + 8;
 
     await bitcoin.ensureFunding();
     await tobyWallet.eth().fund("10");
@@ -41,10 +40,16 @@ declare var global: HarnessGlobal;
     await bitcoin.generate();
     await bob.wallet.eth().fund("1");
 
-    let deployReceipt = await tobyWallet
+    let tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
-    let tokenContractAddress: string = deployReceipt.contractAddress;
+    await tobyWallet
+        .eth()
+        .mintErc20To(
+            alice.wallet.eth().address(),
+            aliceInitialErc20,
+            tokenContractAddress
+        );
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -70,19 +75,10 @@ declare var global: HarnessGlobal;
         peer: await bob.peerId(),
     };
 
-    let mintReceipt = await ethereum.mintErc20Tokens(
-        tobyWallet.eth(),
-        tokenContractAddress,
-        alice.wallet.eth().address(),
-        aliceInitialErc20
-    );
-    mintReceipt.status.should.equal(true);
-
     let erc20Balance = await alice.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
-
-    erc20Balance.eq(toBN(toWei("10000", "ether"))).should.equal(true);
+    erc20Balance.eq(aliceInitialErc20).should.equal(true);
 
     const actions: ActionTrigger[] = [
         {
@@ -107,7 +103,7 @@ declare var global: HarnessGlobal;
                         .eth()
                         .erc20Balance(tokenContractAddress);
                     erc20BalanceAfter
-                        .lt(toBN(toWei("10000", "ether")))
+                        .lt(aliceInitialErc20)
                         .should.be.equal(true);
                 },
             },
@@ -147,10 +143,9 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the alpha asset after the refund",
                 callback: async () => {
-                    let erc20BalanceAfter = await ethereum.erc20Balance(
-                        alice.wallet.eth().address(),
-                        tokenContractAddress
-                    );
+                    let erc20BalanceAfter = await alice.wallet
+                        .eth()
+                        .erc20Balance(tokenContractAddress);
                     erc20BalanceAfter
                         .eq(aliceInitialErc20)
                         .should.be.equal(true);

@@ -1,5 +1,4 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { toBN, toWei } from "web3-utils";
@@ -26,14 +25,16 @@ declare var global: HarnessGlobal;
     const betaAssetQuantity = toBN(toWei("10", "ether"));
     const maxFeeInSatoshi = 5000;
 
-    const alphaExpiry: number = Math.round(Date.now() / 1000) + 13;
-    const betaExpiry: number = Math.round(Date.now() / 1000) + 8;
+    const alphaExpiry = Math.round(Date.now() / 1000) + 13;
+    const betaExpiry = Math.round(Date.now() / 1000) + 8;
 
     await bitcoin.ensureFunding();
     await bob.wallet.eth().fund("11");
     await alice.wallet.eth().fund("0.1");
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
+
+    const bobInitialWei = await bob.wallet.eth().ethBalance();
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -79,14 +80,11 @@ declare var global: HarnessGlobal;
                 description:
                     "[bob] Should have less beta asset after the funding",
                 callback: async () => {
-                    const bobWeiBalanceAfter = await ethereum.ethBalance(
-                        bob.wallet.eth().address()
-                    );
-                    const bobWeiBalanceInit = toWei(toBN("11"));
+                    const bobWeiBalanceAfter = await bob.wallet
+                        .eth()
+                        .ethBalance();
 
-                    bobWeiBalanceAfter
-                        .lt(bobWeiBalanceInit)
-                        .should.be.equal(true);
+                    bobWeiBalanceAfter.lt(bobInitialWei).should.be.equal(true);
                 },
                 timeoutOverride: 10000,
             },
@@ -99,14 +97,11 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the beta asset after the refund",
                 callback: async () => {
-                    const bobWeiBalanceAfter = await ethereum.ethBalance(
-                        bob.wallet.eth().address()
-                    );
-                    const bobWeiBalanceInit = toWei(toBN("11"));
+                    const bobWeiBalanceAfter = await bob.wallet
+                        .eth()
+                        .ethBalance();
 
-                    bobWeiBalanceAfter
-                        .eq(bobWeiBalanceInit)
-                        .should.be.equal(true);
+                    bobWeiBalanceAfter.eq(bobInitialWei).should.be.equal(true);
                 },
             },
         },

@@ -1,5 +1,4 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
@@ -26,22 +25,29 @@ declare var global: HarnessGlobal;
 
     const alphaAssetQuantity = 100000000;
     const betaAssetQuantity = toBN(toWei("5000", "ether"));
+    const bobInitialErc20 = toBN(toWei("10000", "ether"));
 
-    const alphaExpiry: number =
-        new Date("2080-06-11T13:00:00Z").getTime() / 1000;
-    const betaExpiry: number = Math.round(Date.now() / 1000) + 9;
+    const alphaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const betaExpiry = Math.round(Date.now() / 1000) + 9;
 
     await bitcoin.ensureFunding();
-    await tobyWallet.eth().fund("10");
     await bob.wallet.eth().fund("5");
+
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
     await alice.wallet.eth().fund("1");
 
-    let deployReceipt = await tobyWallet
+    let tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
-    let tokenContractAddress: string = deployReceipt.contractAddress;
+    await tobyWallet.eth().fund("10");
+    await tobyWallet
+        .eth()
+        .mintErc20To(
+            bob.wallet.eth().address(),
+            bobInitialErc20,
+            tokenContractAddress
+        );
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -67,20 +73,10 @@ declare var global: HarnessGlobal;
         peer: await bob.peerId(),
     };
 
-    let bobWalletAddress = await bob.wallet.eth().address();
-
-    let mintReceipt = await ethereum.mintErc20Tokens(
-        tobyWallet.eth(),
-        tokenContractAddress,
-        bobWalletAddress,
-        toBN(toWei("10000", "ether"))
-    );
-    mintReceipt.status.should.equal(true);
-
     let erc20Balance = await bob.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
-    erc20Balance.eq(toBN(toWei("10000", "ether"))).should.equal(true);
+    erc20Balance.eq(bobInitialErc20).should.equal(true);
 
     const actions: ActionTrigger[] = [
         {
@@ -110,7 +106,7 @@ declare var global: HarnessGlobal;
                         .erc20Balance(tokenContractAddress);
 
                     bobErc20BalanceAfter
-                        .lt(toBN(toWei("10000", "ether")))
+                        .lt(bobInitialErc20)
                         .should.be.equal(true);
                 },
             },
@@ -128,7 +124,7 @@ declare var global: HarnessGlobal;
                         .erc20Balance(tokenContractAddress);
 
                     bobErc20BalanceAfter
-                        .eq(toBN(toWei("10000", "ether")))
+                        .eq(bobInitialErc20)
                         .should.be.equal(true);
                 },
             },

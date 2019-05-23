@@ -30,12 +30,12 @@ function createWeb3Client(ethConfig?: EthereumNodeConfig) {
     return _web3Client;
 }
 
-export async function ethBalance(address: string) {
+async function ethBalance(address: string) {
     const balance: string = await _web3Client.eth.getBalance(address);
     return utils.toBN(balance);
 }
 
-export async function erc20Balance(
+async function erc20Balance(
     tokenHolderAddress: string,
     contractAddress: string
 ) {
@@ -56,7 +56,7 @@ export async function erc20Balance(
     return utils.toBN(hex_balance);
 }
 
-export async function mintErc20Tokens(
+async function mintErc20Tokens(
     ownerWallet: EthereumWallet,
     contract_address: string,
     to_address: string,
@@ -78,8 +78,6 @@ export async function mintErc20Tokens(
 
     return ownerWallet.sendEthTransactionTo(contract_address, payload, "0x0");
 }
-
-module.exports.mintErc20Tokens = mintErc20Tokens;
 
 export class EthereumWallet {
     keypair: ECPair;
@@ -123,6 +121,27 @@ export class EthereumWallet {
         );
     }
 
+    async mintErc20To(
+        to_address: string,
+        amount: BN | string | number,
+        contract_address: string
+    ) {
+        let receipt = await mintErc20Tokens(
+            this,
+            contract_address,
+            to_address,
+            amount
+        );
+
+        if (!receipt.status) {
+            throw new Error(
+                `Minting ${amount} tokens to address ${to_address} failed`
+            );
+        }
+
+        return receipt;
+    }
+
     async sendEthTransactionTo(
         to: string,
         data: string = "0x0",
@@ -152,7 +171,7 @@ export class EthereumWallet {
         return this.signAndSend(tx);
     }
 
-    async deployErc20TokenContract(projectRoot: string) {
+    async deployErc20TokenContract(projectRoot: string): Promise<string> {
         const token_contract_deploy =
             "0x" +
             fs
@@ -162,7 +181,8 @@ export class EthereumWallet {
                     "utf8"
                 )
                 .trim();
-        return this.deploy_contract(token_contract_deploy);
+        let receipt = await this.deploy_contract(token_contract_deploy);
+        return receipt.contractAddress;
     }
 
     async deploy_contract(

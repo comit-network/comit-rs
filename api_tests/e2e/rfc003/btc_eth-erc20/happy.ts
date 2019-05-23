@@ -1,9 +1,8 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
-import { BN, toBN, toWei } from "web3-utils";
+import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { ActionTrigger, createTests } from "../../test_creator";
 import "chai/register-should";
@@ -41,10 +40,16 @@ declare var global: HarnessGlobal;
     await bitcoin.generate();
     await alice.wallet.eth().fund("1");
 
-    let deployReceipt = await tobyWallet
+    let tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
-    let tokenContractAddress: string = deployReceipt.contractAddress;
+    await tobyWallet
+        .eth()
+        .mintErc20To(
+            bob.wallet.eth().address(),
+            bobInitialErc20,
+            tokenContractAddress
+        );
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -70,24 +75,12 @@ declare var global: HarnessGlobal;
         peer: await bob.peerId(),
     };
 
-    let bobWalletAddress = await bob.wallet.eth().address();
-
-    let mintReceipt = await ethereum.mintErc20Tokens(
-        tobyWallet.eth(),
-        tokenContractAddress,
-        bobWalletAddress,
-        bobInitialErc20
-    );
-    mintReceipt.status.should.equal(true);
-
-    let erc20Balance = await ethereum.erc20Balance(
-        bobWalletAddress,
-        tokenContractAddress
-    );
-
+    let erc20Balance = await bob.wallet
+        .eth()
+        .erc20Balance(tokenContractAddress);
     erc20Balance.eq(bobInitialErc20).should.equal(true);
 
-    let aliceErc20BalanceBefore: BN = await alice.wallet
+    let aliceErc20BalanceBefore = await alice.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
 
