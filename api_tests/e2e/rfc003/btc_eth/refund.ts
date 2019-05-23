@@ -86,7 +86,6 @@ declare var global: HarnessGlobal;
 
                     bobWeiBalanceAfter.lt(bobInitialWei).should.be.equal(true);
                 },
-                timeoutOverride: 10000,
             },
         },
         {

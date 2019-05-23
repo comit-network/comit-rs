@@ -15,7 +15,6 @@ export interface Test {
      */
     description: string;
     callback: (body: any) => Promise<void>;
-    timeoutOverride?: number;
 }
 
 export interface ActionTrigger {
@@ -132,8 +131,7 @@ export function createTests(
 
         if (test) {
             it(`[${actor.name}] ${test.description}`, async function() {
-                let timeoutOverride = test.timeoutOverride;
-                this.timeout(timeoutOverride ? timeoutOverride : 10000);
+                this.timeout(10000);
 
                 return test.callback(body);
             });

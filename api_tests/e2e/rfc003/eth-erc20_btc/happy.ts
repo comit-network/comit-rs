@@ -123,7 +123,6 @@ declare var global: HarnessGlobal;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                timeoutOverride: 5000,
             },
         },
         {
@@ -146,7 +145,6 @@ declare var global: HarnessGlobal;
                         .eq(erc20BalanceExpected)
                         .should.be.equal(true);
                 },
-                timeoutOverride: 10000,
             },
         },
     ];

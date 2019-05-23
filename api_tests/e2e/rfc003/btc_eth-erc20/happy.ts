@@ -124,7 +124,6 @@ declare var global: HarnessGlobal;
                         .eq(aliceErc20BalanceExpected)
                         .should.equal(true);
                 },
-                timeoutOverride: 5000,
             },
         },
         {
@@ -146,7 +145,6 @@ declare var global: HarnessGlobal;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                timeoutOverride: 10000,
             },
         },
     ];

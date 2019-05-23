@@ -150,7 +150,6 @@ declare var global: HarnessGlobal;
                         .eq(aliceInitialErc20)
                         .should.be.equal(true);
                 },
-                timeoutOverride: 10000,
             },
         },
     ];
