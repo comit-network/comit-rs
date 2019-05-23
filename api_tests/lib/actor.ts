@@ -78,32 +78,21 @@ export class Actor {
         return response.body.id;
     }
 
-    pollComitNodeUntil(
+    async pollComitNodeUntil(
         location: string,
         predicate: (body: Entity) => boolean
     ): Promise<Entity> {
-        return new Promise((final_res, rej) => {
-            request(this.comit_node_url())
-                .get(location)
-                .end((err, res) => {
-                    if (err) {
-                        return rej(err);
-                    }
-                    res.should.have.status(200);
+        let response = await request(this.comit_node_url()).get(location);
 
-                    if (predicate(res.body)) {
-                        final_res(res.body);
-                    } else {
-                        setTimeout(async () => {
-                            const result = await this.pollComitNodeUntil(
-                                location,
-                                predicate
-                            );
-                            final_res(result);
-                        }, 500);
-                    }
-                });
-        });
+        expect(response).to.have.status(200);
+
+        if (predicate(response.body)) {
+            return response.body;
+        } else {
+            await sleep(500);
+
+            return this.pollComitNodeUntil(location, predicate);
+        }
     }
 
     async doComitAction(action: Action) {

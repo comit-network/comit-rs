@@ -3,43 +3,36 @@ import { expect, request } from "chai";
 import { Actor } from "../lib/actor";
 import "chai/register-should";
 import "../lib/setupChai";
-import { Action, EmbeddedRepresentationSubEntity } from "../gen/siren";
+import { Action, EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
 
 export interface Test {
     /**
      * To be triggered once an action is executed
-     *
-     * @property description: the description to use for the callback
-     * @property callback: an (async) function take the body of a swap state response as parameter
-     * @property timeoutOverride: if set, overrides the Mocha default timeout.
      */
     description: string;
-    callback: (body: any) => Promise<void>;
+    callback: (swapEntity: Entity) => Promise<void>;
 }
 
-export interface ActionTrigger {
+export interface Step {
     /**
-     * Triggers an action and doLedgerAction the callback
+     * Triggers an action and do the callback
      *
      * @property actor: the actor for which/that triggers the action
      * @property action: the name of the action that will be extracted from the COMIT-rs HTTP API
-     * @property requestBody: the requestBody to pass if the action requires a POST call on the COMIT-rs HTTP API
-     * @property uriQuery: the GET parameters to pass if the action requires a GET call on the COMIT-rs HTTP API
-     * @property timeout: the time to allow the action to be executed
-     * @property state: a predicate passed on the test after the action is executed
+     * @property waitUntil: a predicate passed on the test after the action is executed
      * @property test: a test to be executed after the action is executed, the body of a swap request is passed only if `state` property is set
      *
      */
     actor: Actor;
     action?: ActionKind;
-    state?: (state: any) => boolean;
+    waitUntil?: (state: any) => boolean;
     test?: Test;
 }
 
 export function createTests(
     alice: Actor,
     bob: Actor,
-    actionTriggers: ActionTrigger[],
+    steps: Step[],
     initialUrl: string,
     listUrl: string,
     initialRequest: object
@@ -81,8 +74,8 @@ export function createTests(
         swapLocations["bob"] = selfLink.href;
     });
 
-    while (actionTriggers.length !== 0) {
-        let { action, actor, state, test } = actionTriggers.shift();
+    while (steps.length !== 0) {
+        let { action, actor, waitUntil, test } = steps.shift();
 
         let sirenAction: Action;
 
@@ -116,20 +109,20 @@ export function createTests(
             });
         }
 
-        let body: any = null;
-        if (state) {
+        let body: Entity = null;
+        if (waitUntil) {
             it(`[${
                 actor.name
             }] transitions to correct state`, async function() {
                 this.timeout(10000);
                 body = await actor.pollComitNodeUntil(
                     swapLocations[actor.name],
-                    body => state(body.properties.state)
+                    body => waitUntil(body.properties.state)
                 );
             });
         }
 
-        if (test) {
+        if (test && body) {
             it(`[${actor.name}] ${test.description}`, async function() {
                 this.timeout(10000);
 

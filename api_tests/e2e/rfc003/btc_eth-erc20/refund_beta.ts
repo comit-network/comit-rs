@@ -4,7 +4,7 @@ import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, createTests } from "../../test_creator";
+import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
 import "../../../lib/setupChai";
 
@@ -78,26 +78,26 @@ declare var global: HarnessGlobal;
         .erc20Balance(tokenContractAddress);
     erc20Balance.eq(bobInitialErc20).should.equal(true);
 
-    const actions: ActionTrigger[] = [
+    const steps: Step[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
-            state: state => state.communication.status === "ACCEPTED",
+            waitUntil: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Deploy,
-            state: state => state.beta_ledger.status === "Deployed",
+            waitUntil: state => state.beta_ledger.status === "Deployed",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: state => state.beta_ledger.status === "Funded",
+            waitUntil: state => state.beta_ledger.status === "Funded",
             test: {
                 description: "Should have less beta asset after the funding",
                 callback: async () => {
@@ -114,7 +114,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Refund,
-            state: state => state.beta_ledger.status === "Refunded",
+            waitUntil: state => state.beta_ledger.status === "Refunded",
             test: {
                 description:
                     "Should have received the beta asset after the refund",
@@ -132,14 +132,7 @@ declare var global: HarnessGlobal;
     ];
 
     describe("RFC003: Bitcoin for ERC20 - ERC20 (beta) refunded to Bob", async () => {
-        createTests(
-            alice,
-            bob,
-            actions,
-            "/swaps/rfc003",
-            "/swaps",
-            swapRequest
-        );
+        createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();
 })();

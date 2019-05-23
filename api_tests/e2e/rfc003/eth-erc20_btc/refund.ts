@@ -4,7 +4,7 @@ import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { Wallet } from "../../../lib/wallet";
 import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, createTests } from "../../test_creator";
+import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
 import "../../../lib/setupChai";
 
@@ -80,24 +80,23 @@ declare var global: HarnessGlobal;
         .erc20Balance(tokenContractAddress);
     erc20Balance.eq(aliceInitialErc20).should.equal(true);
 
-    const actions: ActionTrigger[] = [
+    const steps: Step[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
-            state: state => state.communication.status === "ACCEPTED",
+            waitUntil: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Deploy,
-            state: state => state.alpha_ledger.status === "Deployed",
+            waitUntil: state => state.alpha_ledger.status === "Deployed",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "Funded",
             test: {
-                description:
-                    "[alice] Should have less alpha asset after the funding",
+                description: "Should have less alpha asset after the funding",
                 callback: async () => {
                     let erc20BalanceAfter = await alice.wallet
                         .eth()
@@ -111,14 +110,14 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: state =>
+            waitUntil: state =>
                 state.alpha_ledger.status === "Funded" &&
                 state.beta_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Refund,
-            state: state => state.beta_ledger.status === "Refunded",
+            waitUntil: state => state.beta_ledger.status === "Refunded",
             test: {
                 description:
                     "Should have received the beta asset after the refund",
@@ -138,7 +137,7 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             action: ActionKind.Refund,
-            state: state => state.alpha_ledger.status === "Refunded",
+            waitUntil: state => state.alpha_ledger.status === "Refunded",
             test: {
                 description:
                     "Should have received the alpha asset after the refund",
@@ -155,14 +154,7 @@ declare var global: HarnessGlobal;
     ];
 
     describe("RFC003: Ether for ERC20 - Both refunded", async () => {
-        createTests(
-            alice,
-            bob,
-            actions,
-            "/swaps/rfc003",
-            "/swaps",
-            swapRequest
-        );
+        createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();
 })();

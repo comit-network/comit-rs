@@ -3,7 +3,7 @@ import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, createTests } from "../../test_creator";
+import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
 import "../../../lib/setupChai";
 
@@ -60,26 +60,26 @@ declare var global: HarnessGlobal;
         peer: await bob.peerId(),
     };
 
-    const actions: ActionTrigger[] = [
+    const steps: Step[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
-            state: state => state.communication.status === "ACCEPTED",
+            waitUntil: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: state => state.beta_ledger.status === "Funded",
+            waitUntil: state => state.beta_ledger.status === "Funded",
         },
         {
             actor: alice,
             action: ActionKind.Redeem,
-            state: state => state.beta_ledger.status === "Redeemed",
+            waitUntil: state => state.beta_ledger.status === "Redeemed",
             test: {
                 description:
                     "Should have received the beta asset after the redeem",
@@ -99,7 +99,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Redeem,
-            state: state => state.alpha_ledger.status === "Redeemed",
+            waitUntil: state => state.alpha_ledger.status === "Redeemed",
             test: {
                 description:
                     "Should have received the alpha asset after the redeem",
@@ -120,14 +120,7 @@ declare var global: HarnessGlobal;
     ];
 
     describe("RFC003: Bitcoin for Ether", async () => {
-        createTests(
-            alice,
-            bob,
-            actions,
-            "/swaps/rfc003",
-            "/swaps",
-            swapRequest
-        );
+        createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();
 })();
