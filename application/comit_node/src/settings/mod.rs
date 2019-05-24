@@ -116,7 +116,7 @@ pub struct PollParameters {
 
 impl ComitNodeSettings {
     pub fn write_to(self, config_file: PathBuf) -> Result<Self, ConfigError> {
-        ComitNodeSettings::verify_directory_exists(&config_file)?;
+        ComitNodeSettings::ensure_directory_exists(&config_file)?;
 
         ComitNodeSettings::write_to_file(config_file, &self)?;
 
@@ -144,7 +144,7 @@ impl ComitNodeSettings {
         })
     }
 
-    fn verify_directory_exists(config_file: &PathBuf) -> Result<(), ConfigError> {
+    fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), ConfigError> {
         match config_file.parent() {
             None => {
                 log::trace!("Config path is root path");
@@ -225,9 +225,9 @@ mod tests {
 
         delete_tmp_files(&config_path, &config_file);
 
-        assert_that(&default_settings).is_ok();
-        assert_that(&settings).is_ok();
-        assert_that(&default_settings.unwrap()).is_equal_to(&settings.unwrap());
+        let default_settings = assert_that(&default_settings).is_ok().subject;
+        let settings = assert_that(&settings).is_ok().subject;
+        assert_that(default_settings).is_equal_to(settings);
     }
 
     fn delete_tmp_files(config_path: &PathBuf, config_file: &str) {

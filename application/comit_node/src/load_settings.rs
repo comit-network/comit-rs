@@ -26,6 +26,7 @@ pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
                 if config_path.exists() {
                     ComitNodeSettings::read(config_path)
                 } else {
+                    log::info!("config file was neither provided nor found at default location, generating default config at: {:?}", config_path);
                     ComitNodeSettings::default().write_to(config_path)
                 }
             }
