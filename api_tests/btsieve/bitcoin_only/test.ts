@@ -1,12 +1,9 @@
 import * as bitcoin from "../../lib/bitcoin";
 import { Wallet } from "../../lib/wallet";
-import * as chai from "chai";
+import { expect, request } from "chai";
 import { HarnessGlobal } from "../../lib/util";
-import { Btsieve, IdMatchResponse } from "../../lib/btsieve";
-import chaiHttp = require("chai-http");
-
-chai.should();
-chai.use(chaiHttp);
+import { Btsieve, IdMatch } from "../../lib/btsieve";
+import "../../lib/setupChai";
 
 declare var global: HarnessGlobal;
 
@@ -28,12 +25,11 @@ setTimeout(async function() {
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond not found when getting a non-existent bitcoin transaction query", async function() {
-                    return chai
-                        .request(btsieve.url())
-                        .get("/queries/bitcoin/regtest/transactions/1")
-                        .then(res => {
-                            res.should.have.status(404);
-                        });
+                    let res = await request(btsieve.url()).get(
+                        "/queries/bitcoin/regtest/transactions/1"
+                    );
+
+                    expect(res).to.have.status(404);
                 });
 
                 const to_address =
@@ -41,183 +37,157 @@ setTimeout(async function() {
                 let location: string;
 
                 it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
-                    return chai
-                        .request(btsieve.url())
+                    let res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/transactions")
                         .send({
                             to_address: to_address,
-                        })
-                        .then(res => {
-                            res.should.have.status(404);
                         });
+
+                    expect(res).to.have.status(404);
                 });
 
                 it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
-                    return chai
-                        .request(btsieve.url())
+                    let res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
                         .send({
                             to_address: to_address,
-                        })
-                        .then(res => {
-                            res.should.have.status(201);
-                            location = res.header.location;
-                            location.should.not.be.empty;
                         });
+
+                    location = res.header.location;
+
+                    expect(res).to.have.status(201);
+                    expect(location).to.not.be.empty;
                 });
 
                 it("btsieve should respond with no match when querying an existing bitcoin transaction query", async function() {
-                    return chai
-                        .request(btsieve.absoluteLocation(location))
-                        .get("")
-                        .then(res => {
-                            res.should.have.status(200);
-                            res.body.query.to_address.should.equal(to_address);
-                            res.body.matches.should.be.empty;
-                        });
+                    let res = await request(
+                        btsieve.absoluteLocation(location)
+                    ).get("");
+
+                    expect(res).to.have.status(200);
+                    expect(res.body.query.to_address).to.equal(to_address);
+                    expect(res.body.matches).to.be.empty;
                 });
 
                 it("btsieve should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
                     this.slow(1000);
-                    return tobyWallet
-                        .btc()
-                        .sendToAddress(to_address, 100000000)
-                        .then(() => {
-                            return bitcoin.generate(1).then(() => {
-                                return btsieve
-                                    .pollUntilMatches(
-                                        btsieve.absoluteLocation(location)
-                                    )
-                                    .then((body: IdMatchResponse) => {
-                                        body.query.to_address.should.equal(
-                                            to_address
-                                        );
-                                        body.matches.should.have.lengthOf(1);
-                                        body.matches[0].id.should.be.a(
-                                            "string"
-                                        );
-                                    });
-                            });
-                        });
+                    await tobyWallet.btc().sendToAddress(to_address, 100000000);
+
+                    await bitcoin.generate(1);
+
+                    let body = await btsieve.pollUntilMatches<IdMatch>(
+                        btsieve.absoluteLocation(location)
+                    );
+
+                    expect(body.query.to_address).to.equal(to_address);
+                    expect(body.matches).to.have.length(1);
+                    expect(body.matches)
+                        .each.property("id")
+                        .to.be.a("string");
                 });
 
                 it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `return_as=transaction`", async function() {
-                    return bitcoin.generate(1).then(() => {
-                        return chai
-                            .request(btsieve.absoluteLocation(location))
-                            .get("?return_as=transaction")
-                            .then(res => {
-                                res.body.query.to_address.should.equal(
-                                    to_address
-                                );
-                                res.body.matches.should.have.lengthOf(1);
-                                res.body.matches[0].transaction.output.should.have.lengthOf(
-                                    2
-                                );
-                                res.body.matches[0].transaction.output[0].should.be.a(
-                                    "object"
-                                );
-                            });
-                    });
+                    await bitcoin.generate(1);
+
+                    let res = await request(
+                        btsieve.absoluteLocation(location)
+                    ).get("?return_as=transaction");
+
+                    expect(res.body.query.to_address).to.equal(to_address);
+                    expect(res.body.matches).to.have.length(1);
+                    expect(
+                        res.body.matches[0].transaction.output
+                    ).to.have.length(2);
+                    expect(res.body.matches[0].transaction.output[0]).to.be.a(
+                        "object"
+                    );
                 });
 
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
-                    return chai
-                        .request(btsieve.absoluteLocation(location))
-                        .del("")
-                        .then(res => {
-                            res.should.have.status(204);
-                        });
+                    let res = await request(
+                        btsieve.absoluteLocation(location)
+                    ).del("");
+
+                    expect(res).to.have.status(204);
                 });
             });
 
             describe("Blocks", () => {
                 it("btsieve should respond not found when getting a non-existent bitcoin block query", async function() {
-                    return chai
-                        .request(btsieve.url())
-                        .get("/queries/bitcoin/regtest/blocks/1")
-                        .then(res => {
-                            res.should.have.status(404);
-                        });
+                    let res = await request(btsieve.url()).get(
+                        "/queries/bitcoin/regtest/blocks/1"
+                    );
+
+                    expect(res).to.have.status(404);
                 });
 
                 const min_height = 200;
                 let location: string;
                 it("btsieve should respond not found when creating a bitcoin block query for an invalid network", async function() {
-                    return chai
-                        .request(btsieve.url())
+                    let res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/blocks")
                         .send({
                             min_height: min_height,
-                        })
-                        .then(res => {
-                            res.should.have.status(404);
                         });
+
+                    expect(res).to.have.status(404);
                 });
 
                 it("btsieve should respond with location when creating a valid bitcoin block query", async function() {
-                    return chai
-                        .request(btsieve.url())
+                    let res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/blocks")
                         .send({
                             min_height: min_height,
-                        })
-                        .then(res => {
-                            res.should.have.status(201);
-                            location = res.header.location;
-                            location.should.not.be.empty;
                         });
+
+                    location = res.header.location;
+
+                    expect(res).to.have.status(201);
+                    expect(location).to.not.be.empty;
                 });
 
                 it("btsieve should respond with no match when querying an existing bitcoin block query", async function() {
-                    return chai
-                        .request(btsieve.absoluteLocation(location))
-                        .get("")
-                        .then(res => {
-                            res.should.have.status(200);
-                            res.body.query.min_height.should.equal(min_height);
-                            res.body.matches.should.be.empty;
-                        });
+                    let res = await request(
+                        btsieve.absoluteLocation(location)
+                    ).get("");
+
+                    expect(res).to.have.status(200);
+                    expect(res.body.query.min_height).to.equal(min_height);
+                    expect(res.body.matches).to.be.empty;
                 });
 
                 it("btsieve should respond with no block match (yet) when requesting on the min_height 600 bitcoin block query", async function() {
                     this.slow(500);
-                    return bitcoin.generate(50).then(() => {
-                        return chai
-                            .request(btsieve.absoluteLocation(location))
-                            .get("")
-                            .then(res => {
-                                res.should.have.status(200);
-                                res.body.query.min_height.should.equal(
-                                    min_height
-                                );
-                                res.body.matches.should.be.empty;
-                            });
-                    });
+                    await bitcoin.generate(50);
+
+                    let res = await request(
+                        btsieve.absoluteLocation(location)
+                    ).get("");
+
+                    expect(res).to.have.status(200);
+                    expect(res.body.query.min_height).to.equal(min_height);
+                    expect(res.body.matches).to.be.empty;
                 });
 
                 it("btsieve should respond with block match when requesting on the min_height 600 bitcoin block query", async function() {
                     this.slow(2000);
                     this.timeout(3000);
-                    return bitcoin.generate(200).then(() => {
-                        return btsieve
-                            .pollUntilMatches(
-                                btsieve.absoluteLocation(location)
-                            )
-                            .then((body: IdMatchResponse) => {
-                                body.query.min_height.should.equal(min_height);
-                                body.matches.length.should.greaterThan(1);
-                            });
-                    });
+
+                    await bitcoin.generate(50);
+                    let body = await btsieve.pollUntilMatches<IdMatch>(
+                        btsieve.absoluteLocation(location)
+                    );
+
+                    expect(body.query.min_height).to.equal(min_height);
+                    expect(body.matches).to.have.length.greaterThan(1);
                 });
 
                 it("btsieve should respond with no content when deleting an existing bitcoin block query", async function() {
-                    return chai
-                        .request(btsieve.absoluteLocation(location))
-                        .del("")
-                        .then(res => {
-                            res.should.have.status(204);
-                        });
+                    let res = await request(
+                        btsieve.absoluteLocation(location)
+                    ).del("");
+
+                    expect(res).to.have.status(204);
                 });
             });
         });
