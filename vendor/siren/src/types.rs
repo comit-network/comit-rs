@@ -72,8 +72,8 @@ impl Entity {
         }
     }
 
-    pub fn with_class_member(mut self, class_member: String) -> Self {
-        self.class.push(class_member);
+    pub fn with_class_member<S: Into<String>>(mut self, class_member: S) -> Self {
+        self.class.push(class_member.into());
 
         self
     }
