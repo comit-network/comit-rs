@@ -15,7 +15,7 @@ use crate::{
 use std::sync::Arc;
 
 /// Defines the set of actions available in the RFC003 protocol
-#[derive(Debug, strum_macros::EnumDiscriminants)]
+#[derive(Debug, Clone, PartialEq, strum_macros::EnumDiscriminants)]
 #[strum_discriminants(
     name(ActionKind),
     derive(Display, EnumString),

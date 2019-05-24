@@ -88,36 +88,6 @@ setTimeout(async function() {
             res.should.have.status(200);
             res.body.peers.should.have.length(0);
         });
-
-        it("[Alice] return 405 method not supported for wrong method on action endpoints", async () => {
-            let accept_get_res = await request(alice.comit_node_url()).get(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/accept"
-            );
-            let decline_get_res = await request(alice.comit_node_url()).get(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/decline"
-            );
-            let deploy_post_res = await request(alice.comit_node_url()).post(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/deploy"
-            );
-            let fund_post_res = await request(alice.comit_node_url()).post(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/fund"
-            );
-            let refund_post_res = await request(alice.comit_node_url()).post(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/refund"
-            );
-            let redeem_post_res = await request(alice.comit_node_url()).post(
-                "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/redeem"
-            );
-
-            expect([
-                accept_get_res,
-                decline_get_res,
-                deploy_post_res,
-                fund_post_res,
-                refund_post_res,
-                redeem_post_res,
-            ]).each.to.have.status(405);
-        });
     });
 
     run();
