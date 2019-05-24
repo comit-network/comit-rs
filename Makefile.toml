@@ -116,6 +116,9 @@ extend = "webgui-tests-flow"
 workspace = false
 extend = "api-tests-flow"
 
+[tasks.format]
+workspace = false
+
 ################
 # Custom tasks #
 
