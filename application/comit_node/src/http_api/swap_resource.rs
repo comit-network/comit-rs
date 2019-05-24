@@ -118,6 +118,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             };
 
             let entity = siren::Entity::default()
+                .with_class_member("swap")
                 .with_properties(swap)
                 .map_err(|e| {
                     log::error!("failed to set properties of entity: {:?}", e);
