@@ -8,7 +8,7 @@ pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
     metadata_store: &T,
     state_store: &S,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    let mut entity = siren::Entity::default();
+    let mut entity = siren::Entity::default().with_class_member("swaps");
 
     for (id, metadata) in metadata_store.all()?.into_iter() {
         let sub_entity = build_rfc003_siren_entity(state_store, id, metadata, IncludeState::No)?;
