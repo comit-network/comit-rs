@@ -121,7 +121,7 @@ declare var global: HarnessGlobal;
 
                     let satoshiReceived = await alice.wallet
                         .btc()
-                        .moneyReceivedInTx(refundTxId);
+                        .satoshiReceivedInTx(refundTxId);
                     const satoshiExpected =
                         alphaAssetQuantity - maxFeeInSatoshi;
 

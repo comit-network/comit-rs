@@ -146,7 +146,7 @@ export class BitcoinWallet {
         return this.addressForIncomingPayments;
     }
 
-    moneyReceivedInTx(redeemTxId: string) {
+    satoshiReceivedInTx(redeemTxId: string) {
         return getFirstUtxoValueTransferredTo(
             redeemTxId,
             this.addressForIncomingPayments

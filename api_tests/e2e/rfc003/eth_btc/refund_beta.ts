@@ -90,7 +90,7 @@ declare var global: HarnessGlobal;
 
                     let satoshiReceived = await bob.wallet
                         .btc()
-                        .moneyReceivedInTx(refundTxId);
+                        .satoshiReceivedInTx(refundTxId);
                     const satoshiExpected = betaAssetQuantity - maxFeeInSatoshi;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);

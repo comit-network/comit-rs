@@ -89,7 +89,7 @@ declare var global: HarnessGlobal;
 
                     let satoshiReceived = await alice.wallet
                         .btc()
-                        .moneyReceivedInTx(redeemTxId);
+                        .satoshiReceivedInTx(redeemTxId);
                     const satoshiExpected = betaAssetQuantity - maxFeeInSatoshi;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);

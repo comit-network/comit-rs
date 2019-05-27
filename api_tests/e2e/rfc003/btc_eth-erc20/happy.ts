@@ -139,7 +139,7 @@ declare var global: HarnessGlobal;
 
                     let satoshiReceived = await bob.wallet
                         .btc()
-                        .moneyReceivedInTx(redeemTxId);
+                        .satoshiReceivedInTx(redeemTxId);
                     const satoshiExpected =
                         alphaAssetQuantity - maxFeeInSatoshi;
 
