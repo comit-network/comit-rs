@@ -86,7 +86,6 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
         self.find(|action| ActionKind::from(action) == action_kind)
             .ok_or_else(|| problem::invalid_action(action_kind))
             .and_then(|action| {
-
                 if http::Method::from(action_kind) != method {
                     log::debug!(target: "http-api", "Attempt to invoke {} action with http method {}, which is an invalid combination.", action_kind, method);
                     return Err(HttpApiProblem::new("Invalid action invocation")
