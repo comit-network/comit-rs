@@ -1,10 +1,11 @@
 use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
-use serde::Deserialize;
+use rand::{rngs::OsRng, Rng};
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 pub const SEED_LENGTH: usize = 32;
-#[derive(Clone, Copy, Deserialize)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
 
 impl fmt::Debug for Seed {
@@ -26,6 +27,13 @@ impl Seed {
         let mut result = [0u8; SEED_LENGTH];
         sha.result(&mut result);
         result
+    }
+
+    pub fn new_random() -> Result<Seed, rand::Error> {
+        let mut rng = OsRng::new()?;
+        let mut arr = [0u8; 32];
+        rng.try_fill(&mut arr[..])?;
+        Ok(Seed(arr))
     }
 }
 
@@ -51,5 +59,13 @@ mod tests {
             seed1.sha256_with_seed(&[b"foo"]),
             seed2.sha256_with_seed(&[b"foo"])
         );
+    }
+
+    #[test]
+    fn test_two_random_seeds_are_different() {
+        let random1 = Seed::new_random().unwrap();
+        let random2 = Seed::new_random().unwrap();
+
+        assert_ne!(random1, random2);
     }
 }

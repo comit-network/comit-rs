@@ -1,5 +1,5 @@
 use log::LevelFilter;
-use serde::{de, export::fmt, Deserializer};
+use serde::{de, export::fmt, Deserializer, Serializer};
 use std::str::FromStr;
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<LevelFilter, D::Error>
@@ -26,4 +26,9 @@ where
     }
 
     deserializer.deserialize_str(Visitor)
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub fn serialize<S: Serializer>(value: &LevelFilter, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&value.to_string())
 }

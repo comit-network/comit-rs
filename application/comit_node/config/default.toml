@@ -1,6 +1,9 @@
 [comit]
 secret_seed = "c1fd6fc5bde7fee2c2fb6d868dc0f40368051fede1d83f814839d562c210aa27"
 
+[log_levels]
+comit_node="DEBUG"
+
 [network]
 listen = [
     "/ip4/0.0.0.0/tcp/8011"
@@ -11,7 +14,7 @@ address="0.0.0.0"
 port=8000
 
 [btsieve]
-url = "http://localhost:8001"
+url = "http://localhost:8181"
 
 [btsieve.bitcoin]
 poll_interval_secs = 300
