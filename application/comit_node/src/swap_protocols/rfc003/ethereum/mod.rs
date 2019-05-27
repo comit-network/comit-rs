@@ -1,7 +1,7 @@
 pub mod htlc_events;
 
 use crate::swap_protocols::{
-    actions::ethereum::ContractDeploy,
+    actions::ethereum::DeployContract,
     ledger::Ethereum,
     rfc003::{state_machine::HtlcParams, Ledger},
 };
@@ -78,12 +78,12 @@ impl HtlcParams<Ethereum, Erc20Token> {
     }
 }
 
-impl From<HtlcParams<Ethereum, EtherQuantity>> for ContractDeploy {
+impl From<HtlcParams<Ethereum, EtherQuantity>> for DeployContract {
     fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
         let htlc = EtherHtlc::from(htlc_params.clone());
         let gas_limit = htlc.deployment_gas_limit();
 
-        ContractDeploy {
+        DeployContract {
             data: htlc.into(),
             amount: htlc_params.asset,
             gas_limit,
@@ -92,12 +92,12 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for ContractDeploy {
     }
 }
 
-impl From<HtlcParams<Ethereum, Erc20Token>> for ContractDeploy {
+impl From<HtlcParams<Ethereum, Erc20Token>> for DeployContract {
     fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
         let htlc = Erc20Htlc::from(htlc_params.clone());
         let gas_limit = htlc.deployment_gas_limit();
 
-        ContractDeploy {
+        DeployContract {
             data: htlc.into(),
             amount: EtherQuantity::zero(),
             gas_limit,

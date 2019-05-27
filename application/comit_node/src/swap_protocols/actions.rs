@@ -45,7 +45,7 @@ pub mod ethereum {
     use serde::Serialize;
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
-    pub struct ContractDeploy {
+    pub struct DeployContract {
         pub data: Bytes,
         pub amount: EtherQuantity,
         pub gas_limit: U256,

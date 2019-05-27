@@ -22,7 +22,7 @@ where
     type ActionKind = Action<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
-        ethereum::ContractDeploy,
+        ethereum::DeployContract,
         ethereum::CallContract,
         <(BL, BA) as RedeemAction<BL, BA>>::RedeemActionOutput,
         ethereum::CallContract,

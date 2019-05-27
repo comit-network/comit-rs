@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    actions::ethereum::{CallContract, ContractDeploy},
+    actions::ethereum::{CallContract, DeployContract},
     ledger::Ethereum,
     rfc003::{
         actions::{FundAction, RedeemAction, RefundAction},
@@ -12,7 +12,7 @@ use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use ethereum_support::{Address as EthereumAddress, Bytes, EtherQuantity};
 
 impl FundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
-    type FundActionOutput = ContractDeploy;
+    type FundActionOutput = DeployContract;
 
     fn fund_action(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self::FundActionOutput {
         htlc_params.into()

@@ -193,12 +193,12 @@ impl ListRequiredFields for bitcoin::SpendOutput {
     }
 }
 
-impl IntoResponsePayload for ethereum::ContractDeploy {
+impl IntoResponsePayload for ethereum::DeployContract {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
-        let ethereum::ContractDeploy {
+        let ethereum::DeployContract {
             data,
             amount,
             gas_limit,
@@ -219,7 +219,7 @@ impl IntoResponsePayload for ethereum::ContractDeploy {
     }
 }
 
-impl ListRequiredFields for ethereum::ContractDeploy {
+impl ListRequiredFields for ethereum::DeployContract {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![]
     }
