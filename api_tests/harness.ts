@@ -61,7 +61,7 @@ class ComitRunner {
 
             this.running_nodes[name] = await spawn(
                 project_root + "/target/debug/comit_node",
-                ["--config", comit_config.config_dir],
+                ["--config", comit_config.config_file],
                 {
                     cwd: project_root,
                     stdio: [

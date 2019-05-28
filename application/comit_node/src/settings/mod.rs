@@ -169,13 +169,13 @@ impl ComitNodeSettings {
         }
     }
 
-    pub fn read<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
+    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
-        let default_config_file = Path::new(&default_config);
+        let config_file = Path::new(&config_file);
 
         // Start off by merging in the "default" configuration file
-        config.merge(File::from(default_config_file))?;
+        config.merge(File::from(config_file))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()

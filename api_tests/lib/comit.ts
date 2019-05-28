@@ -72,7 +72,7 @@ export enum ActionKind {
 export interface MetaComitNodeConfig {
     // snake_case as it comes from TOML file
     host: string;
-    config_dir: string;
+    config_file: string;
 }
 
 /// The comit-rs config file
