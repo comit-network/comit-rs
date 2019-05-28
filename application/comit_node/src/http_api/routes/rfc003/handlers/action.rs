@@ -283,9 +283,8 @@ where
 
         let media_type = match method {
             // GET + DELETE cannot have a body
-            http::Method::GET => "application/x-www-form-urlencoded",
-            http::Method::DELETE => "application/x-www-form-urlencoded",
-            _ => "application/json",
+            http::Method::GET | http::Method::DELETE => None,
+            _ => Some("application/json".to_owned()),
         };
 
         let fields = match self {
@@ -297,13 +296,13 @@ where
             Action::Refund(_) => Refund::list_required_fields(),
         };
 
-        log::debug!(target: "http-api", "Creating siren::Action from {:?} with HTTP method: {}, Media-Type: {}, Name: {}, Fields: {:?}", self, method, media_type, name, fields);
+        log::debug!(target: "http-api", "Creating siren::Action from {:?} with HTTP method: {}, Media-Type: {:?}, Name: {}, Fields: {:?}", self, method, media_type, name, fields);
 
         siren::Action {
             href: new_action_link(id, &name),
             name,
             method: Some(method),
-            _type: Some(media_type.to_owned()),
+            _type: media_type,
             fields,
             class: vec![],
             title: None,
