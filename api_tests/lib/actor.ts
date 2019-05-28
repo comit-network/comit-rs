@@ -1,13 +1,14 @@
 import { Wallet, WalletConfig } from "./wallet";
-import { use, request } from "chai";
-import { Action, ComitNodeConfig, MetaComitNodeConfig } from "./comit";
+import { use, request, expect } from "chai";
+import { LedgerAction, ComitNodeConfig, MetaComitNodeConfig } from "./comit";
 import * as bitcoin from "./bitcoin";
 import * as toml from "toml";
 import * as fs from "fs";
 import { seconds_until, sleep } from "./util";
 import { MetaBtsieveConfig } from "./btsieve";
-import { Entity } from "../gen/siren";
+import { Action, Entity } from "../gen/siren";
 import chaiHttp = require("chai-http");
+import URI from "urijs";
 
 use(chaiHttp);
 
@@ -20,19 +21,27 @@ export interface TestConfig {
     btsieve: { [key: string]: MetaBtsieveConfig };
 }
 
+/// If declined, what is the reason?
+interface DeclineConfig {
+    reason: string;
+}
+
 export class Actor {
     name: string;
     host: string;
     wallet: Wallet;
     comitNodeConfig: ComitNodeConfig;
+    private _declineConfig: DeclineConfig;
 
     constructor(
         name: string,
         testConfig?: TestConfig,
         root?: string,
-        walletConfig?: WalletConfig
+        walletConfig?: WalletConfig,
+        declineConfig?: DeclineConfig
     ) {
         this.name = name;
+        this._declineConfig = declineConfig;
         if (testConfig) {
             const metaComitNodeConfig = testConfig.comit_node[name];
             if (!metaComitNodeConfig) {
@@ -69,35 +78,113 @@ export class Actor {
         return response.body.id;
     }
 
-    pollComitNodeUntil(
+    async pollComitNodeUntil(
         location: string,
         predicate: (body: Entity) => boolean
     ): Promise<Entity> {
-        return new Promise((final_res, rej) => {
-            request(this.comit_node_url())
-                .get(location)
-                .end((err, res) => {
-                    if (err) {
-                        return rej(err);
-                    }
-                    res.should.have.status(200);
+        let response = await request(this.comit_node_url()).get(location);
 
-                    if (predicate(res.body)) {
-                        final_res(res.body);
-                    } else {
-                        setTimeout(async () => {
-                            const result = await this.pollComitNodeUntil(
-                                location,
-                                predicate
-                            );
-                            final_res(result);
-                        }, 500);
-                    }
-                });
-        });
+        expect(response).to.have.status(200);
+
+        if (predicate(response.body)) {
+            return response.body;
+        } else {
+            await sleep(500);
+
+            return this.pollComitNodeUntil(location, predicate);
+        }
     }
 
-    async do(action: Action) {
+    async doComitAction(action: Action) {
+        let { url, body, method } = this.buildRequestFromAction(action);
+
+        let agent = request(this.comit_node_url());
+        let response;
+
+        // let's ditch this stupid HTTP library ASAP to avoid this ...
+        switch (method) {
+            case "GET": {
+                response = await agent.get(url).send(body);
+                break;
+            }
+            case "POST": {
+                response = await agent.post(url).send(body);
+                break;
+            }
+        }
+
+        expect(response).to.have.status(200);
+
+        // We should check against our own content type here to describe "LedgerActions"
+        // Don't take it literally but something like `application/vnd.comit-ledger-action+json`
+        // For now, checking for `application/json` + the fields should do the job as well because accept & decline don't return a body
+        if (
+            response.type === "application/json" &&
+            response.body &&
+            response.body.type &&
+            response.body.payload
+        ) {
+            let body = response.body as LedgerAction;
+
+            return this.doLedgerAction(body);
+        } else {
+            return Promise.resolve(response);
+        }
+    }
+
+    public buildRequestFromAction(action: Action) {
+        const data: any = {};
+
+        for (const field of action.fields || []) {
+            if (
+                field.class.some((e: string) => e === "ethereum") &&
+                field.class.some((e: string) => e === "address")
+            ) {
+                data[field.name] = this.wallet.eth().address();
+            }
+
+            if (
+                field.class.some((e: string) => e === "bitcoin") &&
+                field.class.some((e: string) => e === "feePerByte")
+            ) {
+                data[field.name] = 20;
+            }
+
+            if (
+                field.class.some((e: string) => e === "bitcoin") &&
+                field.class.some((e: string) => e === "address")
+            ) {
+                data[field.name] = this.wallet.btc().getNewAddress();
+            }
+        }
+
+        if (action.name == "decline" && this._declineConfig) {
+            data[action.fields[0].name] = this._declineConfig.reason;
+        }
+
+        const method = action.method || "GET";
+        if (method === "GET") {
+            return {
+                method,
+                url: new URI(action.href).query(data).toString(),
+                body: {},
+            };
+        } else {
+            if (action.type !== "application/json") {
+                throw new Error(
+                    "Only application/json is supported for non-GET requests."
+                );
+            }
+
+            return {
+                method,
+                url: action.href,
+                body: data,
+            };
+        }
+    }
+
+    async doLedgerAction(action: LedgerAction) {
         let network = action.payload.network;
         if (network != "regtest") {
             throw Error("Expected network regtest, found " + network);

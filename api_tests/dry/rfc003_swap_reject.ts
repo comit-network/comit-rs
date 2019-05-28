@@ -26,12 +26,8 @@ declare var global: HarnessGlobal;
     const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
     const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-    const alice = new Actor("alice", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
-    });
-    const bob = new Actor("bob", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
-    });
+    const alice = new Actor("alice", global.config, global.project_root);
+    const bob = new Actor("bob", global.config, global.project_root);
     const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bob_comit_node_address = await bob.peerId();
 
@@ -195,8 +191,6 @@ declare var global: HarnessGlobal;
             ).href;
         });
 
-        let bob_decline_href_stingy: string;
-
         it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
             let res = await request(bob.comit_node_url()).get(
                 bob_stingy_swap_href
@@ -218,28 +212,36 @@ declare var global: HarnessGlobal;
 
             let body = res.body as Entity;
 
-            expect(body.links).containSubset([
+            expect(body.actions).containSubset([
                 {
-                    rel: (expected: string[]) => expected.includes("accept"),
+                    name: "accept",
                 },
                 {
-                    rel: (expected: string[]) => expected.includes("decline"),
+                    name: "decline",
                 },
             ]);
-
-            bob_decline_href_stingy = body.links.find(link =>
-                link.rel.includes("decline")
-            ).href;
         });
 
-        it("[Bob] Can execute a decline action providing a reason", async () => {
-            let bob_response = {
-                reason: "BadRate",
-            };
+        it("[Bob] Can execute a decline action", async () => {
+            let bob = new Actor(
+                "bob",
+                global.config,
+                global.project_root,
+                null,
+                {
+                    reason: "BadRate",
+                }
+            );
 
-            let decline_res = await request(bob.comit_node_url())
-                .post(bob_decline_href_stingy)
-                .send(bob_response);
+            let res = await request(bob.comit_node_url()).get(
+                bob_stingy_swap_href
+            );
+            let body = res.body as Entity;
+
+            let decline = body.actions.find(
+                action => action.name === "decline"
+            );
+            let decline_res = await bob.doComitAction(decline);
 
             decline_res.should.have.status(200);
         });
@@ -261,18 +263,17 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Can execute a decline action, without providing a reason", async () => {
+            let bob = new Actor("bob", global.config, global.project_root);
+
             let res = await request(bob.comit_node_url()).get(
                 bob_reasonable_swap_href
             );
-
             let body = res.body as Entity;
 
-            let decline = body.links.find(link => link.rel.includes("decline"))
-                .href;
-
-            let decline_res = await request(bob.comit_node_url())
-                .post(decline)
-                .send({});
+            let decline = body.actions.find(
+                action => action.name === "decline"
+            );
+            let decline_res = await bob.doComitAction(decline);
 
             decline_res.should.have.status(200);
         });

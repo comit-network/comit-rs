@@ -4,8 +4,7 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
-        "check": "tsc --noEmit",
-        "check-watch": "tsc --watch --noEmit",
+        "check": "tsc",
         "gen": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts"
     },
     "engines": {
@@ -30,6 +29,7 @@
         "prettier": "^1.15.2",
         "satoshi-bitcoin": "^1.0.4",
         "toml": "^2.3.3",
+        "typed-rest-client": "^1.4.0",
         "typedarray-to-buffer": "^3.1.5",
         "typescript": "^3.3.3333",
         "urijs": "^1.19.1",
@@ -46,7 +46,7 @@
         "@types/mocha": "^5.2.6",
         "@types/node": "^11.11.0",
         "@types/scrypt": "^6.0.0",
-        "@types/urijs": "^1.15.38",
+        "@types/urijs": "^1.19.1",
         "chai-bignumber": "^2.0.2",
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",

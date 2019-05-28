@@ -2,12 +2,7 @@
 
 import { BtsieveForComitNodeConfig } from "./actor";
 
-export interface AcceptRequestBody {
-    beta_ledger_refund_identity?: string;
-    alpha_ledger_redeem_identity?: string;
-}
-
-export type Action =
+export type LedgerAction =
     | {
           type: "bitcoin-send-amount-to-address";
           payload: { to: string; amount: string; network: string };
@@ -40,12 +35,6 @@ export type Action =
           };
       };
 
-export interface Swap {
-    parameters: any;
-    protocol: string;
-    status: string;
-}
-
 export interface Asset {
     name: string;
     quantity: string;
@@ -69,11 +58,6 @@ export interface SwapRequest {
     peer: string;
 }
 
-export enum Method {
-    Get,
-    Post,
-}
-
 export enum ActionKind {
     Accept = "accept",
     Decline = "decline",
@@ -81,25 +65,6 @@ export enum ActionKind {
     Fund = "fund",
     Redeem = "redeem",
     Refund = "refund",
-}
-
-export function getMethod(action: ActionKind): Method {
-    switch (action) {
-        case ActionKind.Accept:
-            return Method.Post;
-        case ActionKind.Decline:
-            return Method.Post;
-        case ActionKind.Deploy:
-            return Method.Get;
-        case ActionKind.Fund:
-            return Method.Get;
-        case ActionKind.Redeem:
-            return Method.Get;
-        case ActionKind.Refund:
-            return Method.Get;
-        default:
-            throw new Error("Method undefined for action " + action);
-    }
 }
 
 //**** Config files ****//

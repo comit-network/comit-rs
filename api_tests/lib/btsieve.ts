@@ -1,20 +1,21 @@
-import { use, request } from "chai";
+import { use, request, expect } from "chai";
 import { Transaction, TransactionReceipt } from "web3-core";
 import * as toml from "toml";
 import * as fs from "fs";
 import { TestConfig } from "./actor";
 import chaiHttp = require("chai-http");
+import { sleep } from "./util";
+import URI from "urijs";
 
 use(chaiHttp);
 
-export interface IdMatchResponse {
+export interface IdMatchResponse<M> {
     query: any;
-    matches: { id: string }[];
+    matches: M[];
 }
 
-export interface EthereumTransactionResponse {
-    query: any;
-    matches: EthereumMatch[];
+export interface IdMatch {
+    id: string;
 }
 
 export interface EthereumMatch {
@@ -56,29 +57,23 @@ export class Btsieve {
     }
 
     absoluteLocation(relative_location: string) {
-        return this.url() + relative_location;
+        return new URI(relative_location)
+            .protocol("http")
+            .host(this.host)
+            .port(this.port.toString())
+            .toString();
     }
 
-    pollUntilMatches(query_url: string) {
-        return new Promise((final_res, rej) => {
-            request(query_url)
-                .get("")
-                .end((err, res) => {
-                    if (err) {
-                        return rej(err);
-                    }
-                    res.should.have.status(200);
-                    if (res.body.matches.length !== 0) {
-                        final_res(res.body);
-                    } else {
-                        setTimeout(async () => {
-                            const result = await this.pollUntilMatches(
-                                query_url
-                            );
-                            final_res(result);
-                        }, 200);
-                    }
-                });
-        });
+    async pollUntilMatches<M>(query_url: string): Promise<IdMatchResponse<M>> {
+        let res = await request(query_url).get("");
+
+        expect(res).to.have.status(200);
+
+        if (res.body.matches.length !== 0) {
+            return res.body;
+        } else {
+            await sleep(200);
+            return this.pollUntilMatches(query_url);
+        }
     }
 }

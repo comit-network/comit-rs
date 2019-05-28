@@ -4,13 +4,11 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{Address, BitcoinQuantity, OutPoint};
 
-mod actions;
 mod extract_secret;
 mod htlc;
 mod htlc_events;
 
 pub use self::{
-    actions::*,
     htlc::{Htlc, UnlockingError},
     htlc_events::*,
 };

@@ -1,9 +1,6 @@
-use crate::{
-    http_api::routes::rfc003::action::ActionName,
-    swap_protocols::{
-        metadata_store,
-        rfc003::{self, state_store},
-    },
+use crate::swap_protocols::{
+    metadata_store,
+    rfc003::{self, actions::ActionKind, state_store},
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -55,7 +52,7 @@ pub fn unsupported() -> HttpApiProblem {
         .set_detail("The requested combination of ledgers and assets is not supported.")
 }
 
-pub fn deserialize(e: &serde_json::Error) -> HttpApiProblem {
+pub fn deserialize(e: serde_json::Error) -> HttpApiProblem {
     log::error!("Failed to deserialize body: {:?}", e);
     HttpApiProblem::new("Invalid body.")
         .set_status(StatusCode::BAD_REQUEST)
@@ -74,12 +71,12 @@ pub fn not_yet_implemented(feature: &str) -> HttpApiProblem {
         .set_detail(format!("{} is not yet implemented! Sorry :(", feature))
 }
 
-pub fn action_already_done(action: ActionName) -> HttpApiProblem {
+pub fn action_already_done(action: ActionKind) -> HttpApiProblem {
     log::error!("{} action has already been done", action);
     HttpApiProblem::new("Action already done.").set_status(StatusCode::GONE)
 }
 
-pub fn invalid_action(action: ActionName) -> HttpApiProblem {
+pub fn invalid_action(action: ActionKind) -> HttpApiProblem {
     log::error!("{} action is invalid for this swap", action);
     HttpApiProblem::new("Invalid action.")
         .set_status(StatusCode::CONFLICT)
@@ -108,7 +105,7 @@ pub fn missing_query_parameters(
     parameters: Vec<&MissingQueryParameter>,
 ) -> HttpApiProblem {
     log::error!(
-        "Unexpected GET parameters for a {} action type. Expected: {:?}",
+        "Missing GET parameters for a {} action type. Expected: {:?}",
         action,
         parameters
             .iter()
@@ -151,6 +148,8 @@ impl From<rfc003::state_machine::Error> for HttpApiProblem {
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = rejection.find_cause::<HttpApiProblemStdError>() {
+        log::debug!(target: "http-api", "HTTP request got rejected, returning HttpApiProblem response: {:?}", err);
+
         let code = err
             .inner
             .status

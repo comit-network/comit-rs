@@ -11,19 +11,17 @@ pub mod messages;
 pub mod state_machine;
 pub mod state_store;
 
-mod actions;
+pub mod actions;
 mod actor_state;
 mod error;
 mod ledger;
 mod save_state;
 mod secret;
 mod secret_source;
-mod timestamp;
 
 mod create_ledger_events;
 
 pub use self::{
-    actions::Actions,
     actor_state::ActorState,
     create_ledger_events::CreateLedgerEvents,
     error::Error,
@@ -32,5 +30,4 @@ pub use self::{
     save_state::SaveState,
     secret::{FromErr, Secret, SecretHash},
     secret_source::*,
-    timestamp::Timestamp,
 };

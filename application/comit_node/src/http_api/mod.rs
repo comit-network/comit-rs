@@ -1,7 +1,5 @@
 #[macro_use]
 pub mod with_swap_types;
-#[macro_use]
-pub mod with_swap_types_bob;
 pub mod route_factory;
 pub mod routes;
 pub mod serde_peer_id;
@@ -11,6 +9,7 @@ pub mod ledger;
 pub mod asset;
 #[macro_use]
 pub mod impl_serialize_http;
+pub mod action;
 mod problem;
 mod swap_resource;
 

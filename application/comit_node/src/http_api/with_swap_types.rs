@@ -1,6 +1,9 @@
 macro_rules! _match_role {
     ($role:ident, $fn:tt) => {{
-        use crate::swap_protocols::rfc003::{alice, bob};
+        use crate::swap_protocols::{
+            metadata_store::RoleKind,
+            rfc003::{alice, bob},
+        };
         #[allow(clippy::redundant_closure_call)]
         match $role {
             RoleKind::Alice => {
@@ -21,14 +24,14 @@ macro_rules! _match_role {
 macro_rules! with_swap_types {
     ($metadata:expr, $fn:tt) => {{
         use crate::swap_protocols::{
+            asset::AssetKind,
             ledger::{Bitcoin, Ethereum},
-            RoleKind,
+            metadata_store::Metadata,
+            LedgerKind,
         };
         use bitcoin_support::BitcoinQuantity;
-        use ethereum_support::EtherQuantity;
+        use ethereum_support::{Erc20Token, EtherQuantity};
         let metadata = $metadata;
-
-        use crate::swap_protocols::{asset::AssetKind, LedgerKind};
 
         match metadata {
             Metadata {
@@ -46,6 +49,8 @@ macro_rules! with_swap_types {
                 type AA = BitcoinQuantity;
                 #[allow(dead_code)]
                 type BA = EtherQuantity;
+                #[allow(dead_code)]
+                type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
 
                 _match_role!(role, $fn)
             }
@@ -64,6 +69,8 @@ macro_rules! with_swap_types {
                 type AA = BitcoinQuantity;
                 #[allow(dead_code)]
                 type BA = Erc20Token;
+                #[allow(dead_code)]
+                type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
 
                 _match_role!(role, $fn)
             }
@@ -82,6 +89,8 @@ macro_rules! with_swap_types {
                 type AA = EtherQuantity;
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
+                #[allow(dead_code)]
+                type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRedeem<AL>;
 
                 _match_role!(role, $fn)
             }
@@ -100,6 +109,8 @@ macro_rules! with_swap_types {
                 type AA = Erc20Token;
                 #[allow(dead_code)]
                 type BA = BitcoinQuantity;
+                #[allow(dead_code)]
+                type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRedeem<AL>;
 
                 _match_role!(role, $fn)
             }

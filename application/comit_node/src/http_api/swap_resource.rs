@@ -1,8 +1,11 @@
 use crate::{
-    http_api::{routes::rfc003::action::ToActionName, Http},
+    http_api::{
+        action::ToSirenAction, problem, route_factory::swap_path, routes::rfc003::SwapState, Http,
+    },
     swap_protocols::{
+        actions::Actions,
         asset::Asset,
-        rfc003::{self, state_store::StateStore, Actions, Ledger},
+        rfc003::{self, state_store::StateStore, Ledger},
         Metadata, SwapId, SwapProtocol,
     },
 };
@@ -70,18 +73,11 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     metadata: Metadata,
     include_state: IncludeState,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    use crate::http_api::{
-        problem,
-        route_factory::swap_path,
-        routes::rfc003::{action::new_action_link, SwapState},
-    };
-    use ethereum_support::Erc20Token;
-
     with_swap_types!(
         &metadata,
         (|| {
             let state = state_store
-                .get::<ROLE>(id)?
+                .get::<ROLE>(&id)?
                 .ok_or_else(problem::state_store)?;
 
             // TODO: Implement From<actor::State> for SwapOutcome
@@ -89,15 +85,8 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             let alpha_ledger = state.alpha_ledger_state.clone().into();
             let beta_ledger = state.beta_ledger_state.clone().into();
             let parameters = SwapParameters::from(state.clone().request());
+            let actions = state.clone().actions();
 
-            // The macro takes advantage of not needing to specify whether it uses
-            // alice::ActionKind::name() or bob::ActionKind::name()
-            #[allow(clippy::redundant_closure)]
-            let actions = state
-                .actions()
-                .iter()
-                .map(|action| action.to_action_name())
-                .collect::<Vec<_>>();
             let error = state.error;
             let status =
                 SwapStatus::new::<AL, BL>(&communication, &alpha_ledger, &beta_ledger, &error);
@@ -133,8 +122,8 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 ));
 
             let entity = actions.into_iter().fold(entity, |acc, action| {
-                let link = new_action_link(&id, action);
-                acc.with_link(siren::NavigationalLink::new(&[action], link))
+                let action = action.to_siren_action(&id);
+                acc.with_action(action)
             });
 
             Ok(entity)

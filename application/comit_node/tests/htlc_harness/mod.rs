@@ -1,4 +1,4 @@
-use comit_node::swap_protocols::rfc003::{SecretHash, Timestamp};
+use comit_node::swap_protocols::{rfc003::SecretHash, Timestamp};
 use crypto::{digest::Digest, sha2::Sha256};
 use hex::FromHexError;
 use std::{str::FromStr, thread::sleep, time::Duration};

@@ -92,7 +92,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
         let state_store = Arc::clone(&self.state_store);
         state_store.insert(id, alice);
         tokio::spawn(receiver.for_each(move |update| {
-            state_store.update::<alice::State<AL, BL, AA, BA>>(id, update);
+            state_store.update::<alice::State<AL, BL, AA, BA>>(&id, update);
             Ok(())
         }));
 

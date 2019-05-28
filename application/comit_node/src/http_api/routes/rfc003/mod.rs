@@ -1,14 +1,21 @@
-pub mod action;
+pub mod accept;
+pub mod decline;
 mod handlers;
 mod swap_state;
 
 use crate::{
     http_api::{
+        action::ActionExecutionParameters,
         route_factory::swap_path,
-        routes::{into_rejection, rfc003::action::ActionName},
+        routes::{
+            into_rejection,
+            rfc003::handlers::{
+                handle_action, handle_get_swap, handle_post_swap, SwapRequestBodyKind,
+            },
+        },
     },
     swap_protocols::{
-        rfc003::{alice::AliceSpawner, state_store::StateStore},
+        rfc003::{actions::ActionKind, alice::AliceSpawner, state_store::StateStore},
         MetadataStore, SwapId,
     },
 };
@@ -16,7 +23,7 @@ use hyper::header;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
 
-pub use self::{handlers::*, swap_state::*};
+pub use self::swap_state::SwapState;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
@@ -45,39 +52,27 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_action<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn action<T: MetadataStore<SwapId>, S: StateStore>(
+    method: http::Method,
+    id: SwapId,
+    action_kind: ActionKind,
+    query_params: ActionExecutionParameters,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    id: SwapId,
-    action: ActionName,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_action(
-        metadata_store.as_ref(),
-        state_store.as_ref(),
-        id,
-        action,
-        body,
-    )
-    .map(|_| warp::reply())
-    .map_err(into_rejection)
-}
+    let metadata_store = metadata_store.as_ref();
+    let state_store = state_store.as_ref();
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn get_action<T: MetadataStore<SwapId>, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    id: SwapId,
-    action: ActionName,
-    query_params: GetActionQueryParams,
-) -> Result<impl Reply, Rejection> {
-    handle_get_action(
-        metadata_store.as_ref(),
+    handle_action(
+        method,
+        id,
+        action_kind,
+        body,
+        query_params,
+        metadata_store,
         state_store,
-        &id,
-        action,
-        &query_params,
     )
-    .map(|swap_resource| warp::reply::json(&swap_resource))
+    .map(|body| warp::reply::json(&body))
     .map_err(into_rejection)
 }

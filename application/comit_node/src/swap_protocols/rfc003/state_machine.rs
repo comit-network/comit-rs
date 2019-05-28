@@ -10,8 +10,9 @@ use crate::{
             events::{self, Deployed, Funded, Redeemed, Refunded},
             ledger::Ledger,
             messages::AcceptResponseBody,
-            SaveState, SecretHash, Timestamp,
+            SaveState, SecretHash,
         },
+        Timestamp,
     },
 };
 use either::Either;

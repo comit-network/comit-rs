@@ -1,25 +1,24 @@
-version: '3'
+version: "3"
 services:
-  eth:
-    image: parity/parity:v2.5.0
-    command: --config dev --jsonrpc-apis=all --unsafe-expose --tracing=on --logging=debug,ethcore-miner=trace,miner=trace,rpc=trace,tokio_core=warn,tokio_reactor=warn --jsonrpc-cors="all"
-    ports:
-      - "8545:8545"
+    eth:
+        image: parity/parity:v2.5.0
+        command: --config dev --jsonrpc-apis=all --unsafe-expose --tracing=on --logging=debug,ethcore-miner=trace,miner=trace,rpc=trace,tokio_core=warn,tokio_reactor=warn --jsonrpc-cors="all"
+        ports:
+            - "8545:8545"
 
-  btc:
-    image: coblox/bitcoin-core:0.17.0
-    command:
-      -regtest
-      -server
-      -printtoconsole
-      -rpcbind=0.0.0.0:18443
-      -rpcauth=bitcoin:cb77f0957de88ff388cf817ddbc7273$$9eaa166ace0d94a29c6eceb831a42458e93faeb79f895a7ee4ce03f4343f8f55
-      -rpcallowip=0.0.0.0/0
-      -debug=1
-      -zmqpubrawblock=tcp://*:28332
-      -zmqpubrawtx=tcp://*:28333
-      -acceptnonstdtxn=0
-    ports:
-      - "18443:18443"
-      - "28332:28332"
-      - "28333:28333"
+    btc:
+        image: coblox/bitcoin-core:0.17.0
+        command: -regtest
+            -server
+            -printtoconsole
+            -rpcbind=0.0.0.0:18443
+            -rpcauth=bitcoin:cb77f0957de88ff388cf817ddbc7273$$9eaa166ace0d94a29c6eceb831a42458e93faeb79f895a7ee4ce03f4343f8f55
+            -rpcallowip=0.0.0.0/0
+            -debug=1
+            -zmqpubrawblock=tcp://*:28332
+            -zmqpubrawtx=tcp://*:28333
+            -acceptnonstdtxn=0
+        ports:
+            - "18443:18443"
+            - "28332:28332"
+            - "28333:28333"

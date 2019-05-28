@@ -51,7 +51,7 @@
         },
         "EmbeddedLinkSubEntity": {
             "type": "object",
-            "required": [ "rel", "href" ],
+            "required": ["rel", "href"],
             "properties": {
                 "class": {
                     "description": "Describes the nature of an entity's content based on the current representation. Possible values are implementation-dependent and should be documented.",
@@ -88,7 +88,7 @@
                     "$ref": "#"
                 },
                 {
-                    "required": [ "rel" ],
+                    "required": ["rel"],
                     "properties": {
                         "rel": {
                             "description": "Defines the relationship of the sub-entity to its parent, per Web Linking (RFC5899).",
@@ -105,10 +105,7 @@
         "Action": {
             "description": "Actions show available behaviors an entity exposes.",
             "type": "object",
-            "required": [
-                "name",
-                "href"
-            ],
+            "required": ["name", "href"],
             "properties": {
                 "class": {
                     "description": "Describes the nature of an action based on the current representation. Possible values are implementation-dependent and should be documented.",
@@ -124,13 +121,7 @@
                 "method": {
                     "description": "An enumerated attribute mapping to a protocol method. For HTTP, these values may be GET, PUT, POST, DELETE, or PATCH. As new methods are introduced, this list can be extended. If this attribute is omitted, GET should be assumed.",
                     "type": "string",
-                    "enum": [
-                        "DELETE",
-                        "GET",
-                        "PATCH",
-                        "POST",
-                        "PUT"
-                    ],
+                    "enum": ["DELETE", "GET", "PATCH", "POST", "PUT"],
                     "default": "GET"
                 },
                 "href": {
@@ -159,9 +150,7 @@
         "Field": {
             "description": "Fields represent controls inside of actions.",
             "type": "object",
-            "required": [
-                "name"
-            ],
+            "required": ["name"],
             "properties": {
                 "name": {
                     "description": "A name describing the control. Field names MUST be unique within the set of fields for an action. The behaviour of clients when parsing a Siren document that violates this constraint is undefined.",
@@ -201,7 +190,7 @@
                     "description": "A value assigned to the field.  May be a scalar value or a list of value objects.",
                     "oneOf": [
                         {
-                            "type": [ "string", "number" ]
+                            "type": ["string", "number"]
                         },
                         {
                             "type": "array",
@@ -216,7 +205,7 @@
         "FieldValueObject": {
             "description": "Value objects represent multiple selectable field values. Use in conjunction with field `\"type\" = \"radio\"` and `\"type\" = \"checkbox\"` to express that zero, one or many out of several possible values may be sent back to the server.",
             "type": "object",
-            "required": [ "value" ],
+            "required": ["value"],
             "properties": {
                 "title": {
                     "description": "Textual description of a field value.",
@@ -224,7 +213,7 @@
                 },
                 "value": {
                     "description": "Possible value for the field.",
-                    "type": [ "string", "number" ]
+                    "type": ["string", "number"]
                 },
                 "selected": {
                     "description": "A value object with a `\"selected\" = true` attribute indicates that this value should be considered preselected by the client. When missing, the default value is `false`.",
@@ -236,10 +225,7 @@
         "Link": {
             "description": "Links represent navigational transitions.",
             "type": "object",
-            "required": [
-                "rel",
-                "href"
-            ],
+            "required": ["rel", "href"],
             "properties": {
                 "class": {
                     "description": "Describes aspects of the link based on the current representation. Possible values are implementation-dependent and should be documented.",
@@ -275,7 +261,7 @@
             "pattern": "^(application|audio|image|message|model|multipart|text|video)\\/([A-Z]|[a-z]|[0-9]|[\\!\\#\\$\\&\\.\\+\\-\\^\\_]){1,127}(; ?(([\\!\\#\\$\\%\\&\\'\\(\\)\\*\\+-\\.\\/]|[0-9]|[A-Z]|[\\^\\_\\`\\]\\|]|[a-z]|[\\|\\~])+)+=((([\\!\\#\\$\\%\\&\\'\\(\\)\\*\\+-\\.\\/]|[0-9]|[A-Z]|[\\^\\_\\`\\]\\|]|[a-z]|[\\|\\~])+)|\"([\\!\\#\\$\\%\\&\\.\\(\\)\\*\\+\\,\\-\\.\\/]|[0-9]|[\\:\\;\\<\\=\\>\\?\\@]|[A-Z]|[\\[\\\\\\]\\^\\_\\`]|[a-z]|[\\{\\|\\}\\~])+\"))*$"
         },
         "RelValue": {
-               "anyOf": [
+            "anyOf": [
                 {
                     "type": "string",
                     "format": "uri"

@@ -1,51 +1,41 @@
 import * as bitcoin from "../../../lib/bitcoin";
-import * as ethereum from "../../../lib/ethereum";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { BN, toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
-import { ActionTrigger, createTests } from "../../test_creator";
+import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
 import "../../../lib/setupChai";
 
 declare var global: HarnessGlobal;
 
 (async function() {
-    const bobInitialEth = "11";
-    const aliceInitialEth = "0.1";
-
     const alice = new Actor("alice", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
-        btcConfig: global.ledgers_config.bitcoin,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
+        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+        addressForIncomingBitcoinPayments: null,
     });
     const bob = new Actor("bob", global.config, global.project_root, {
-        ethConfig: global.ledgers_config.ethereum,
-        btcConfig: global.ledgers_config.bitcoin,
+        ethereumNodeConfig: global.ledgers_config.ethereum,
+        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+        addressForIncomingBitcoinPayments:
+            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
     });
-
-    const aliceFinalAddress = "0x03a329c0248369a73afac7f9381e02fb43d2ea72";
-    const bobFinalAddress =
-        "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0";
-    const bobComitNode = await bob.peerId();
 
     const alphaAssetQuantity = 100000000;
     const betaAssetQuantity = toBN(toWei("10", "ether"));
-    const alphaMaxFee = 5000; // Max 5000 satoshis fee
+    const maxFeeInSatoshi = 5000;
 
     const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
     const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
 
-    const initialUrl = "/swaps/rfc003";
-    const listUrl = "/swaps";
-
     await bitcoin.ensureFunding();
-    await bob.wallet.eth().fund(bobInitialEth);
-    await alice.wallet.eth().fund(aliceInitialEth);
+    await bob.wallet.eth().fund("11");
+    await alice.wallet.eth().fund("0.1");
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
-    let aliceEthBalanceBefore: BN = await ethereum.ethBalance(
-        aliceFinalAddress
-    );
+
+    let aliceEthBalanceBefore: BN = await alice.wallet.eth().ethBalance();
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -64,42 +54,39 @@ declare var global: HarnessGlobal;
             name: "ether",
             quantity: betaAssetQuantity.toString(),
         },
-        beta_ledger_redeem_identity: aliceFinalAddress,
+        beta_ledger_redeem_identity: alice.wallet.eth().address(),
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
-        peer: bobComitNode,
+        peer: await bob.peerId(),
     };
 
-    const actions: ActionTrigger[] = [
+    const steps: Step[] = [
         {
             actor: bob,
             action: ActionKind.Accept,
-            requestBody: {
-                beta_ledger_refund_identity: bob.wallet.eth().address(),
-            },
-            state: state => state.communication.status === "ACCEPTED",
+            waitUntil: state => state.communication.status === "ACCEPTED",
         },
         {
             actor: alice,
             action: ActionKind.Fund,
-            state: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "Funded",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            state: state => state.beta_ledger.status === "Funded",
+            waitUntil: state => state.beta_ledger.status === "Funded",
         },
         {
             actor: alice,
             action: ActionKind.Redeem,
-            state: state => state.beta_ledger.status === "Redeemed",
+            waitUntil: state => state.beta_ledger.status === "Redeemed",
             test: {
                 description:
                     "Should have received the beta asset after the redeem",
                 callback: async () => {
-                    const aliceEthBalanceAfter = await ethereum.ethBalance(
-                        aliceFinalAddress
-                    );
+                    const aliceEthBalanceAfter = await alice.wallet
+                        .eth()
+                        .ethBalance();
                     const aliceEthBalanceExpected = aliceEthBalanceBefore.add(
                         betaAssetQuantity
                     );
@@ -112,8 +99,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Redeem,
-            uriQuery: { address: bobFinalAddress, fee_per_byte: 20 },
-            state: state => state.alpha_ledger.status === "Redeemed",
+            waitUntil: state => state.alpha_ledger.status === "Redeemed",
             test: {
                 description:
                     "Should have received the alpha asset after the redeem",
@@ -121,21 +107,20 @@ declare var global: HarnessGlobal;
                     let redeemTxId =
                         body.properties.state.alpha_ledger.redeem_tx;
 
-                    let satoshiReceived = await bitcoin.getFirstUtxoValueTransferredTo(
-                        redeemTxId,
-                        bobFinalAddress
-                    );
-                    const satoshiExpected = alphaAssetQuantity - alphaMaxFee;
+                    let satoshiReceived = await bob.wallet
+                        .btc()
+                        .satoshiReceivedInTx(redeemTxId);
+                    const satoshiExpected =
+                        alphaAssetQuantity - maxFeeInSatoshi;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
-                timeout: 10000,
             },
         },
     ];
 
     describe("RFC003: Bitcoin for Ether", async () => {
-        createTests(alice, bob, actions, initialUrl, listUrl, swapRequest);
+        createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();
 })();

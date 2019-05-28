@@ -1,6 +1,12 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
+// Cannot do `#[strum_discriminants(derive(strum_macros::EnumString))]` at the
+// moment. Hence we need to `#[macro_use]` in order to derive strum macros on
+// an enum created by `strum_discriminants`.
+#[macro_use]
+extern crate strum_macros;
+
 pub mod bam_api;
 pub mod bam_ext;
 pub mod btsieve;
