@@ -9,6 +9,6 @@ host = "127.0.0.1"
 config_file = "./api_tests/regtest/bob/comit_node.toml"
 
 [btsieve.main]
-config_dir = "./api_tests/regtest/btsieve/btsieve.toml"
+config_file = "./api_tests/regtest/btsieve/btsieve.toml"
 env = { RUST_LOG = "warn,btsieve=debug,warp=info" }
 
