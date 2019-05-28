@@ -25,7 +25,7 @@ export interface EthereumMatch {
 
 export interface MetaBtsieveConfig {
     host: string;
-    config_dir: string;
+    config_file: string;
     env: { [key: string]: string };
 }
 
@@ -42,10 +42,7 @@ export class Btsieve {
         this.host = metaBtsieveConfig[name].host;
         let btsieveConfig = toml.parse(
             fs.readFileSync(
-                root +
-                    "/" +
-                    metaBtsieveConfig[name].config_dir +
-                    "/default.toml",
+                `${root}/${metaBtsieveConfig[name].config_file}`,
                 "utf8"
             )
         );
@@ -53,7 +50,7 @@ export class Btsieve {
     }
 
     url() {
-        return "http://" + this.host + ":" + this.port;
+        return `http://${this.host}:${this.port}`;
     }
 
     absoluteLocation(relative_location: string) {
