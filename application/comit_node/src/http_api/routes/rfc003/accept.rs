@@ -23,7 +23,7 @@ impl ListRequiredFields for Accept<Ethereum, Bitcoin> {
             class: vec!["ethereum".to_owned(), "address".to_owned()],
             _type: Some("text".to_owned()),
             value: None,
-            title: None,
+            title: Some("Alpha ledger redeem identity".to_owned()),
         }]
     }
 }
@@ -52,7 +52,7 @@ impl ListRequiredFields for Accept<Bitcoin, Ethereum> {
             class: vec!["ethereum".to_owned(), "address".to_owned()],
             _type: Some("text".to_owned()),
             value: None,
-            title: None,
+            title: Some("Beta ledger refund identity".to_owned()),
         }]
     }
 }
