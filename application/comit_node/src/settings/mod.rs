@@ -189,7 +189,7 @@ mod tests {
     use std::{env, fs};
 
     fn comit_settings() -> Result<ComitNodeSettings, ConfigError> {
-        ComitNodeSettings::read("./config/default.toml")
+        ComitNodeSettings::read("./config/comit_node.toml")
     }
 
     #[test]
@@ -212,7 +212,7 @@ mod tests {
     fn config_folder_does_not_exist_will_create_folder_and_config_file() {
         let tmp_dir = env::temp_dir();
         let config_path = Path::join(&tmp_dir, "i_am_invincible");
-        let config_file = "default.toml";
+        let config_file = "comit_node.toml";
 
         delete_tmp_files(&config_path, config_file);
 
