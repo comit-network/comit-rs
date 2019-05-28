@@ -1,7 +1,7 @@
 import * as bitcoin from "../../../lib/bitcoin";
 import { Actor } from "../../../lib/actor";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
-import { BN, toBN, toWei } from "web3-utils";
+import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
@@ -35,7 +35,7 @@ declare var global: HarnessGlobal;
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
 
-    let aliceEthBalanceBefore: BN = await alice.wallet.eth().ethBalance();
+    let aliceEthBalanceBefore = await alice.wallet.eth().ethBalance();
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {

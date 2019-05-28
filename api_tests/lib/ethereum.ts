@@ -2,7 +2,7 @@ import { ECPair } from "bitcoinjs-lib";
 import * as util from "./util";
 import { HttpProvider } from "web3-providers";
 import * as utils from "web3-utils";
-import { BN } from "web3-utils";
+import BN from "bn.js";
 import * as fs from "fs";
 import EthereumTx = require("ethereumjs-tx");
 
@@ -24,6 +24,10 @@ function createWeb3Client(ethConfig?: EthereumNodeConfig) {
     if (!_web3Client || _ethConfig !== ethConfig) {
         const httpProvider = new HttpProvider(ethConfig.rpc_url);
         _web3Client = new Web3(httpProvider);
+
+        // https://github.com/ethereum/web3.js/issues/2822
+        _web3Client.eth.transactionConfirmationBlocks = 1;
+
         _ethConfig = ethConfig;
     }
 
