@@ -27,11 +27,11 @@ pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
                 "Unable to determine user's home directory".to_string(),
             )),
             Some(dirs) => {
-                let config_file = Path::join(dirs.home_dir(), ".config/comit_node/comit_node.toml");
+                let config_file = Path::join(dirs.home_dir(), ".config/comit/comit_node.toml");
                 if config_file.exists() {
                     ComitNodeSettings::read(config_file)
                 } else {
-                    log::info!("config file was neither provided nor found at default location, generating default config at: {:?}", config_file);
+                    log::info!("Config file was neither provided nor found at default location, generating default config at: {:?}", config_file);
                     ComitNodeSettings::default().write_to(config_file)
                 }
             }
