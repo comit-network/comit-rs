@@ -2,7 +2,7 @@ ledgers = []
 
 [btsieve.main]
 host = "127.0.0.1"
-config_dir= "./api_tests/regtest/btsieve/no_ledger"
+config_file= "./api_tests/regtest/btsieve/no_ledger/btsieve.toml"
 
 [btsieve.main.env]
 RUST_LOG = "btsieve=debug,warp=debug,btsieve::api"

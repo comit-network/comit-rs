@@ -43,17 +43,12 @@ pub struct Ethereum {
 }
 
 impl Settings {
-    pub fn create<D: AsRef<OsStr>>(default_config: D) -> Result<Self, ConfigError> {
+    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, ConfigError> {
         let mut config = Config::new();
 
-        let default_config_file = Path::new(&default_config);
+        let config_file = Path::new(&config_file);
 
-        // Start off by merging in the "default" configuration file
-        config.merge(File::from(default_config_file))?;
-
-        // Add in a local configuration file
-        // This file shouldn't be checked in to git
-        config.merge(File::with_name("config/local").required(false))?;
+        config.merge(File::from(config_file))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()
@@ -68,14 +63,14 @@ mod tests {
 
     #[test]
     fn can_read_default_config() {
-        let settings = Settings::create("./config/default.toml");
+        let settings = Settings::read("./config/btsieve.toml");
 
         assert_that(&settings).is_ok();
     }
 
     #[test]
     fn can_read_config_with_bitcoin_missing() -> Result<(), failure::Error> {
-        let settings = Settings::create("./config/ethereum_only.toml");
+        let settings = Settings::read("./config/ethereum_only.toml");
 
         let settings = settings?;
         assert_that(&settings.ethereum.is_some()).is_true();
@@ -86,7 +81,7 @@ mod tests {
 
     #[test]
     fn can_read_config_with_ethereum_missing() -> Result<(), failure::Error> {
-        let settings = Settings::create("./config/bitcoin_only.toml");
+        let settings = Settings::read("./config/bitcoin_only.toml");
 
         let settings = settings?;
         assert_that(&settings.ethereum.is_some()).is_false();
@@ -97,7 +92,7 @@ mod tests {
 
     #[test]
     fn can_deserialize_log_level() -> Result<(), failure::Error> {
-        let settings = Settings::create("./config/default.toml");
+        let settings = Settings::read("./config/btsieve.toml");
 
         let settings = settings?;
         assert_that(&settings.log_level).is_equal_to(LevelFilter::Info);

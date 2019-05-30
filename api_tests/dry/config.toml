@@ -1,11 +1,11 @@
 [comit_node.alice]
 host = "127.0.0.1"
-config_dir = "./api_tests/regtest/alice/"
+config_file = "./api_tests/regtest/alice/comit_node.toml"
 
 [comit_node.bob]
 host = "127.0.0.1"
-config_dir = "./api_tests/regtest/bob/"
+config_file = "./api_tests/regtest/bob/comit_node.toml"
 
 [comit_node.charlie]
 host = "127.0.0.1"
-config_dir = "./api_tests/regtest/charlie/"
+config_file = "./api_tests/regtest/charlie/comit_node.toml"

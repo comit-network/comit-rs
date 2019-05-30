@@ -25,7 +25,7 @@ export class BtsieveRunner {
 
             this.running_btsieves[name] = spawn(
                 this.btsieve_bin,
-                ["--config", btsieve_config.config_dir],
+                ["--config", btsieve_config.config_file],
                 {
                     cwd: this.project_root,
                     env: btsieve_config.env,
