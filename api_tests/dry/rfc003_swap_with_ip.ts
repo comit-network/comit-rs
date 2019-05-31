@@ -1,9 +1,7 @@
 import { Actor } from "../lib/actor";
 import { HarnessGlobal, sleep } from "../lib/util";
-import { expect, request } from "chai";
+import { request } from "chai";
 import "chai/register-should";
-import { EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
-import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { toWei } from "web3-utils";
 import "../lib/setupChai";
 
@@ -18,7 +16,6 @@ declare var global: HarnessGlobal;
 
     const alpha_asset_name = "bitcoin";
     const alpha_asset_reasonable_quantity = "100000000";
-    const alpha_asset_stingy_quantity = "100";
 
     const beta_asset_name = "ether";
     const beta_asset_quantity = toWei("10", "ether");
@@ -30,14 +27,13 @@ declare var global: HarnessGlobal;
     const bob = new Actor("bob", global.config, global.project_root);
     const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bob_peer_id = await bob.peerId();
-    const bob_comit_node_address = {
-        peer_id: await bob.peerId(),
+    const peer_input = {
+        peer_id: await alice.peerId(), // Incorrect peer id on purpose to see if Bob still appears in GET /swaps
         address: bob.comitNodelibp2pAddress(),
     };
 
-    describe("SWAP request REJECTED", () => {
-        let alice_reasonable_swap_href: string;
-        it("[Alice] Should be able to make first swap request via HTTP api", async () => {
+    describe("SWAP request with address", () => {
+        it("[Alice] Should be able to make a swap request via HTTP api using an ip address", async () => {
             let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
@@ -60,17 +56,16 @@ declare var global: HarnessGlobal;
                     beta_ledger_redeem_identity: alice_final_address,
                     alpha_expiry: alpha_expiry,
                     beta_expiry: beta_expiry,
-                    peer: bob_comit_node_address,
+                    peer: peer_input,
                 });
 
             res.error.should.equal(false);
             res.should.have.status(201);
             const swap_location = res.header.location;
             swap_location.should.be.a("string");
-            alice_reasonable_swap_href = swap_location;
         });
 
-        it("[Alice] Should see Bob in her list of peers after sending a swap request to him", async () => {
+        it("[Alice] Should see Bob peer_id in her list of peers after sending a swap request to him using his ip address", async () => {
             await sleep(1000);
             let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
@@ -87,215 +82,6 @@ declare var global: HarnessGlobal;
 
             res.should.have.status(200);
             res.body.peers.should.have.length(1);
-        });
-
-        let alice_stingy_swap_href: string;
-        it("[Alice] Should be able to make second swap request via HTTP api", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
-                .post("/swaps/rfc003")
-                .send({
-                    alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
-                    },
-                    beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
-                    },
-                    alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_stingy_quantity,
-                    },
-                    beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_quantity,
-                    },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry: alpha_expiry,
-                    beta_expiry: beta_expiry,
-                    peer: bob_comit_node_address,
-                });
-
-            res.error.should.equal(false);
-            res.should.have.status(201);
-
-            const swap_location = res.header.location;
-            swap_location.should.be.a("string");
-            alice_stingy_swap_href = swap_location;
-        });
-
-        it("[Alice] Should still only see Bob in her list of peers after sending a second swap request to him", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
-
-            res.should.have.status(200);
-            res.body.peers.should.containSubset([
-                {
-                    id: bob_peer_id,
-                },
-            ]);
-        });
-
-        it("[Bob] Should still only see one peer in his list of peers after receiving a second swap request from Alice", async () => {
-            let res = await request(bob.comitNodeHttpApiUrl()).get("/peers");
-
-            res.should.have.status(200);
-            res.body.peers.should.have.length(1);
-        });
-
-        it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/swaps");
-
-            res.should.have.status(200);
-
-            let swapEntities = res.body
-                .entities as EmbeddedRepresentationSubEntity[];
-
-            expect(swapEntities.map(entity => entity.properties))
-                .to.each.have.property("status")
-                .that.is.equal("IN_PROGRESS");
-        });
-
-        let bob_stingy_swap_href: string;
-        let bob_reasonable_swap_href: string;
-
-        it("[Bob] Shows the swaps as IN_PROGRESS in /swaps", async () => {
-            let body = await bob.pollComitNodeUntil(
-                "/swaps",
-                body => body.entities.length === 2
-            );
-            let swapEntities = body.entities as EmbeddedRepresentationSubEntity[];
-
-            expect(swapEntities.map(entity => entity.properties))
-                .to.each.have.property("protocol")
-                .that.is.equal("rfc003");
-            expect(swapEntities.map(entity => entity.properties))
-                .to.each.have.property("status")
-                .that.is.equal("IN_PROGRESS");
-
-            let stingy_swap = swapEntities.find(entity => {
-                return (
-                    parseInt(
-                        entity.properties.parameters.alpha_asset.quantity
-                    ) === parseInt(alpha_asset_stingy_quantity)
-                );
-            });
-            let reasonable_swap = swapEntities.find(entity => {
-                return (
-                    parseInt(
-                        entity.properties.parameters.alpha_asset.quantity
-                    ) === parseInt(alpha_asset_reasonable_quantity)
-                );
-            });
-
-            bob_stingy_swap_href = stingy_swap.links.find(link =>
-                link.rel.includes("self")
-            ).href;
-            bob_reasonable_swap_href = reasonable_swap.links.find(link =>
-                link.rel.includes("self")
-            ).href;
-        });
-
-        it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
-            let res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_stingy_swap_href
-            );
-
-            res.should.have.status(200);
-
-            let body = res.body as Entity;
-
-            expect(body.properties).jsonSchema(swapPropertiesJsonSchema);
-        });
-
-        it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
-            let res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_stingy_swap_href
-            );
-
-            res.should.have.status(200);
-
-            let body = res.body as Entity;
-
-            expect(body.actions).containSubset([
-                {
-                    name: "accept",
-                },
-                {
-                    name: "decline",
-                },
-            ]);
-        });
-
-        it("[Bob] Can execute a decline action", async () => {
-            let bob = new Actor(
-                "bob",
-                global.config,
-                global.project_root,
-                null,
-                {
-                    reason: "BadRate",
-                }
-            );
-
-            let res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_stingy_swap_href
-            );
-            let body = res.body as Entity;
-
-            let decline = body.actions.find(
-                action => action.name === "decline"
-            );
-            let decline_res = await bob.doComitAction(decline);
-
-            decline_res.should.have.status(200);
-        });
-
-        it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async function() {
-            await bob.pollComitNodeUntil(
-                bob_stingy_swap_href,
-                entity =>
-                    entity.properties.state.communication.status === "REJECTED"
-            );
-        });
-
-        it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
-            await alice.pollComitNodeUntil(
-                alice_stingy_swap_href,
-                body =>
-                    body.properties.state.communication.status === "REJECTED"
-            );
-        });
-
-        it("[Bob] Can execute a decline action, without providing a reason", async () => {
-            let bob = new Actor("bob", global.config, global.project_root);
-
-            let res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_reasonable_swap_href
-            );
-            let body = res.body as Entity;
-
-            let decline = body.actions.find(
-                action => action.name === "decline"
-            );
-            let decline_res = await bob.doComitAction(decline);
-
-            decline_res.should.have.status(200);
-        });
-
-        it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
-            await bob.pollComitNodeUntil(
-                bob_reasonable_swap_href,
-                entity =>
-                    entity.properties.state.communication.status === "REJECTED"
-            );
-        });
-
-        it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
-            await alice.pollComitNodeUntil(
-                alice_reasonable_swap_href,
-                entity =>
-                    entity.properties.state.communication.status === "REJECTED"
-            );
         });
     });
 
