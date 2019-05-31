@@ -70,6 +70,18 @@ setTimeout(async function() {
             );
         });
 
+        it("[David] Sets appropriate CORS headers on error responses", async () => {
+            let res = await request(david.comit_node_url())
+                .get("/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead")
+                .set("Origin", "http://localhost:8080");
+
+            res.should.have.status(404);
+            res.should.have.header(
+                "access-control-allow-origin",
+                "http://localhost:8080"
+            );
+        });
+
         it("[David] comit-i returns 200 OK", async () => {
             let res = await request(david.web_gui_url()).get("/");
 
