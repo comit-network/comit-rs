@@ -32,6 +32,18 @@ declare var global: HarnessGlobal;
         address: bob.comitNodelibp2pAddress(),
     };
 
+    it("[Alice] Should not yet see  Bob peer_id in her list of peers", async () => {
+        await sleep(1000);
+        let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
+
+        res.should.have.status(200);
+        res.body.peers.should.not.containSubset([
+            {
+                id: bob_peer_id,
+            },
+        ]);
+    });
+
     describe("SWAP request with address", () => {
         it("[Alice] Should be able to make a swap request via HTTP api using an ip address", async () => {
             let res = await request(alice.comitNodeHttpApiUrl())
