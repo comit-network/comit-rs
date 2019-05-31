@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
+    http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem, PeerDetails},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
@@ -98,8 +98,7 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, Partial
     beta_expiry: Timestamp,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
-    #[serde(with = "http_api::serde_peer_id")]
-    peer: PeerId,
+    peer: PeerDetails,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -183,6 +182,7 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 mod tests {
 
     use super::*;
+    use crate::http_api::{PeerDetails, PeerIdAndAddress};
     use spectral::prelude::*;
 
     #[test]
@@ -224,9 +224,59 @@ mod tests {
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 ),
             },
-            peer: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                .parse()
-                .unwrap(),
+            peer: PeerDetails::PeerIdOnly(
+                "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                    .parse()
+                    .unwrap(),
+            ),
+        })
+    }
+
+    #[test]
+    fn give_peer_id_with_address_can_deserialize_swap_request_body() {
+        let body = r#"{
+                "alpha_ledger": {
+                    "name": "bitcoin",
+                    "network": "regtest"
+                },
+                "beta_ledger": {
+                    "name": "ethereum",
+                    "network": "regtest"
+                },
+                "alpha_asset": {
+                    "name": "bitcoin",
+                    "quantity": "100000000"
+                },
+                "beta_asset": {
+                    "name": "ether",
+                    "quantity": "10000000000000000000"
+                },
+                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                "alpha_expiry": 2000000000,
+                "beta_expiry": 2000000000,
+                "peer": { "peer_id": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi", "address": "/ip4/8.9.0.1/tcp/9999" }
+            }"#;
+
+        let body = serde_json::from_str(body);
+
+        assert_that(&body).is_ok_containing(SwapRequestBody {
+            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
+            beta_asset: EtherQuantity::from_eth(10.0),
+            alpha_ledger: Bitcoin::default(),
+            beta_ledger: Ethereum::default(),
+            alpha_expiry: Timestamp::from(2000000000),
+            beta_expiry: Timestamp::from(2000000000),
+            partial_identities: OnlyRedeem::<Ethereum> {
+                beta_ledger_redeem_identity: ethereum_support::Address::from(
+                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                ),
+            },
+            peer: PeerDetails::PeerIdAndAddress(PeerIdAndAddress {
+                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                    .parse()
+                    .unwrap(),
+                address: "/ip4/8.9.0.1/tcp/9999".parse().unwrap(),
+            }),
         })
     }
 }

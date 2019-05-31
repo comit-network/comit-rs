@@ -6,7 +6,7 @@ pub use self::{actions::*, communication_events::*, spawner::*};
 
 use crate::{
     comit_client::{self, SwapReject},
-    node_id::NodeId,
+    http_api::PeerDetails,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -57,7 +57,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
         beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
         comit_client: Arc<C>,
-        bob_id: NodeId,
+        bob_id: PeerDetails,
         save_state: Arc<dyn SaveState<AL, BL, AA, BA>>,
     ) -> Box<FutureSwapOutcome<AL, BL, AA, BA>> {
         let swap_request = self.request();

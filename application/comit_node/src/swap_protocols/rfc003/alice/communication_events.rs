@@ -1,6 +1,6 @@
 use crate::{
     comit_client,
-    node_id::NodeId,
+    http_api::PeerDetails,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -18,11 +18,11 @@ pub struct AliceToBob<C, AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
     response_future: Option<Box<ResponseFuture<AL, BL>>>,
     client: Arc<C>,
-    bob_id: NodeId,
+    bob_id: PeerDetails,
 }
 
 impl<C, AL: Ledger, BL: Ledger> AliceToBob<C, AL, BL> {
-    pub fn new(client: Arc<C>, bob_id: NodeId) -> Self {
+    pub fn new(client: Arc<C>, bob_id: PeerDetails) -> Self {
         AliceToBob {
             client,
             bob_id,

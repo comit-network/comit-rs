@@ -29,7 +29,11 @@ declare var global: HarnessGlobal;
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
     const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bob_comit_node_address = await bob.peerId();
+    const bob_peer_id = await bob.peerId();
+    const bob_comit_node_address = {
+        peer_id: await bob.peerId(),
+        address: bob.comitNodelibp2pAddress(),
+    };
 
     describe("SWAP request REJECTED", () => {
         let alice_reasonable_swap_href: string;
@@ -73,7 +77,7 @@ declare var global: HarnessGlobal;
             res.should.have.status(200);
             res.body.peers.should.containSubset([
                 {
-                    id: bob_comit_node_address,
+                    id: bob_peer_id,
                 },
             ]);
         });
@@ -126,7 +130,7 @@ declare var global: HarnessGlobal;
             res.should.have.status(200);
             res.body.peers.should.containSubset([
                 {
-                    id: bob_comit_node_address,
+                    id: bob_peer_id,
                 },
             ]);
         });

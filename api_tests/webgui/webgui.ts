@@ -19,7 +19,7 @@ const david = new Actor("david", global.config, global.project_root);
 setTimeout(async function() {
     describe("Web GUI tests", () => {
         it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps request for GET", async () => {
-            let res = await request(david.comit_node_url())
+            let res = await request(david.comitNodeHttpApiUrl())
                 .options("/swaps")
                 .set("Origin", "http://localhost:4000")
                 .set("Access-Control-Request-Headers", "content-type")
@@ -29,7 +29,7 @@ setTimeout(async function() {
         });
 
         it("Returns 200 OK for preflight OPTIONS /swaps request for GET", async () => {
-            let res = await request(david.comit_node_url())
+            let res = await request(david.comitNodeHttpApiUrl())
                 .options("/swaps")
                 .set("Origin", "http://localhost:8080")
                 .set("Access-Control-Request-Headers", "content-type")
@@ -39,7 +39,7 @@ setTimeout(async function() {
         });
 
         it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps/rfc003 request for POST", async () => {
-            let res = await request(david.comit_node_url())
+            let res = await request(david.comitNodeHttpApiUrl())
                 .options("/swaps/rfc003")
                 .set("Origin", "http://localhost:4000")
                 .set("Access-Control-Request-Headers", "content-type")
@@ -49,7 +49,7 @@ setTimeout(async function() {
         });
 
         it("Returns 200 OK for preflight OPTIONS /swaps/rfc003 request for POST", async () => {
-            let res = await request(david.comit_node_url())
+            let res = await request(david.comitNodeHttpApiUrl())
                 .options("/swaps/rfc003")
                 .set("Origin", "http://localhost:8080")
                 .set("Access-Control-Request-Headers", "content-type")
@@ -59,7 +59,7 @@ setTimeout(async function() {
         });
 
         it("[David] Sets appropriate CORS headers", async () => {
-            let res = await request(david.comit_node_url())
+            let res = await request(david.comitNodeHttpApiUrl())
                 .get("/swaps")
                 .set("Origin", "http://localhost:8080");
 
@@ -83,13 +83,13 @@ setTimeout(async function() {
         });
 
         it("[David] comit-i returns 200 OK", async () => {
-            let res = await request(david.web_gui_url()).get("/");
+            let res = await request(david.webGuiUrl()).get("/");
 
             expect(res).to.have.status(200);
         });
 
         it("[David] returns comit_node http api settings on /config/comit_node.js for GET", async function() {
-            let res = await request(david.web_gui_url())
+            let res = await request(david.webGuiUrl())
                 .get("/config/comitNode.js?callback=callbackFunctionName")
                 .set("Accept", "application/javascript")
                 .buffer(true);

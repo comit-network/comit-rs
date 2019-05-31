@@ -26,6 +26,7 @@
         "grpc": "^1.17.0-pre1",
         "log4js": "^3.0.6",
         "mocha": "^5.2.0",
+        "multiaddr": "^6.0.6",
         "prettier": "^1.15.2",
         "satoshi-bitcoin": "^1.0.4",
         "toml": "^2.3.3",

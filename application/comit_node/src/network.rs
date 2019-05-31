@@ -1,6 +1,7 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::SwapReject,
+    http_api::PeerDetails,
     libp2p_bam::{BamBehaviour, PendingIncomingRequest},
     swap_protocols::{
         asset::{Asset, AssetKind},
@@ -64,7 +65,7 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
 
     pub fn send_request(
         &mut self,
-        peer_id: PeerId,
+        peer_id: PeerDetails,
         request: OutgoingRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         self.bam.send_request(peer_id, request)

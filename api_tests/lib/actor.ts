@@ -9,6 +9,7 @@ import { MetaBtsieveConfig } from "./btsieve";
 import { Action, Entity } from "../gen/siren";
 import chaiHttp = require("chai-http");
 import URI from "urijs";
+const multiaddr = require("multiaddr");
 
 use(chaiHttp);
 
@@ -63,16 +64,24 @@ export class Actor {
         }
     }
 
-    comit_node_url() {
+    comitNodeHttpApiUrl() {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
-    web_gui_url() {
+    comitNodelibp2pAddress() {
+        const addr = multiaddr(this.comitNodeConfig.network.listen[0]);
+        // Need to convert 0.0.0.0 to 127.0.0.1
+        return `/${addr.protoNames()[0]}/${this.host}/${addr.protoNames()[1]}/${
+            addr.nodeAddress().port
+        }`;
+    }
+
+    webGuiUrl() {
         return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
     }
 
     async peerId(): Promise<string> {
-        let response = await request(this.comit_node_url()).get("/");
+        let response = await request(this.comitNodeHttpApiUrl()).get("/");
 
         return response.body.id;
     }
@@ -81,7 +90,7 @@ export class Actor {
         location: string,
         predicate: (body: Entity) => boolean
     ): Promise<Entity> {
-        let response = await request(this.comit_node_url()).get(location);
+        let response = await request(this.comitNodeHttpApiUrl()).get(location);
 
         expect(response).to.have.status(200);
 
@@ -97,7 +106,7 @@ export class Actor {
     async doComitAction(action: Action) {
         let { url, body, method } = this.buildRequestFromAction(action);
 
-        let agent = request(this.comit_node_url());
+        let agent = request(this.comitNodeHttpApiUrl());
         let response;
 
         // let's ditch this stupid HTTP library ASAP to avoid this ...

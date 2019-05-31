@@ -1,5 +1,5 @@
 use crate::{
-    node_id::NodeId,
+    http_api::PeerDetails,
     swap_protocols::{self, asset::Asset},
 };
 use futures::Future;
@@ -14,7 +14,7 @@ pub trait Client: Send + Sync + 'static {
         BA: Asset,
     >(
         &self,
-        node_id: NodeId,
+        peer_identity: PeerDetails,
         request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Box<
         dyn Future<

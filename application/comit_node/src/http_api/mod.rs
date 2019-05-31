@@ -32,7 +32,9 @@ use crate::{
 };
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
-use serde::{ser::SerializeStruct, Serialize, Serializer};
+use libp2p::{Multiaddr, PeerId};
+use serde::{ser::SerializeStruct, Deserialize, Serialize, Serializer};
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct Http<I>(pub I);
@@ -112,6 +114,41 @@ impl Serialize for Http<SwapProtocol> {
         match &self.0 {
             SwapProtocol::Rfc003 => serializer.serialize_str("rfc003"),
             SwapProtocol::Unknown(name) => serializer.serialize_str(name.as_str()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+pub struct PeerIdAndAddress {
+    #[serde(with = "serde_peer_id")]
+    peer_id: PeerId,
+    pub address: Multiaddr,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum PeerDetails {
+    #[serde(with = "serde_peer_id")]
+    PeerIdOnly(PeerId),
+    PeerIdAndAddress(PeerIdAndAddress),
+}
+
+impl PeerDetails {
+    pub fn peer_id(self) -> PeerId {
+        match self {
+            PeerDetails::PeerIdOnly(peer_id) => peer_id,
+            PeerDetails::PeerIdAndAddress(peer_id_and_address) => peer_id_and_address.peer_id,
+        }
+    }
+}
+
+impl Display for PeerDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match &self {
+            PeerDetails::PeerIdOnly(peer_id) => write!(f, "{}", peer_id),
+            PeerDetails::PeerIdAndAddress(PeerIdAndAddress { peer_id, address }) => {
+                write!(f, "{}@{}", peer_id, address)
+            }
         }
     }
 }
