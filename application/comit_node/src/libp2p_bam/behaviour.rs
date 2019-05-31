@@ -79,9 +79,13 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_requests: vec![request],
                     });
                 }
-                PeerDetails::PeerIdAndAddress(PeerIdAndAddress { address, .. }) => {
+                PeerDetails::PeerIdAndAddress(PeerIdAndAddress { address, peer_id }) => {
                     self.events_sender
                         .unbounded_send(NetworkBehaviourAction::DialAddress { address })
+                        .expect("we own the receiver");
+                    // Still dial on the peer_id in case the address is outdated/incorrect
+                    self.events_sender
+                        .unbounded_send(NetworkBehaviourAction::DialPeer { peer_id })
                         .expect("we own the receiver");
                     entry.insert(ConnectionState::Connecting {
                         pending_requests: vec![request],

@@ -121,7 +121,7 @@ impl Serialize for Http<SwapProtocol> {
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct PeerIdAndAddress {
     #[serde(with = "serde_peer_id")]
-    peer_id: PeerId,
+    pub peer_id: PeerId,
     pub address: Multiaddr,
 }
 
