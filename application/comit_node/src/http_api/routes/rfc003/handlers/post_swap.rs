@@ -1,5 +1,6 @@
 use crate::{
-    http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem, PeerDetails},
+    http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
+    network::DialInformation,
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
@@ -10,7 +11,6 @@ use crate::{
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
-use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
 
 pub fn handle_post_swap<A: AliceSpawner>(
@@ -98,7 +98,7 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, Partial
     beta_expiry: Timestamp,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
-    peer: PeerDetails,
+    peer: DialInformation,
 }
 
 #[derive(Deserialize, Clone, Debug, PartialEq)]
@@ -131,8 +131,7 @@ pub struct UnsupportedSwapRequestBody {
     beta_ledger_redeem_identity: Option<String>,
     alpha_expiry: Timestamp,
     beta_expiry: Timestamp,
-    #[serde(with = "http_api::serde_peer_id")]
-    peer: PeerId,
+    peer: DialInformation,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
@@ -182,7 +181,7 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 mod tests {
 
     use super::*;
-    use crate::http_api::{PeerDetails, PeerIdAndAddress};
+    use crate::network::DialInformation;
     use spectral::prelude::*;
 
     #[test]
@@ -224,16 +223,17 @@ mod tests {
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 ),
             },
-            peer: PeerDetails::PeerIdOnly(
-                "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+            peer: DialInformation {
+                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
                     .parse()
                     .unwrap(),
-            ),
+                address_hint: None,
+            },
         })
     }
 
     #[test]
-    fn give_peer_id_with_address_can_deserialize_swap_request_body() {
+    fn given_peer_id_with_address_can_deserialize_swap_request_body() {
         let body = r#"{
                 "alpha_ledger": {
                     "name": "bitcoin",
@@ -254,7 +254,7 @@ mod tests {
                 "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 "alpha_expiry": 2000000000,
                 "beta_expiry": 2000000000,
-                "peer": { "peer_id": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi", "address": "/ip4/8.9.0.1/tcp/9999" }
+                "peer": { "peer_id": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi", "address_hint": "/ip4/8.9.0.1/tcp/9999" }
             }"#;
 
         let body = serde_json::from_str(body);
@@ -271,12 +271,12 @@ mod tests {
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
                 ),
             },
-            peer: PeerDetails::PeerIdAndAddress(PeerIdAndAddress {
+            peer: DialInformation {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
                     .parse()
                     .unwrap(),
-                address_hint: "/ip4/8.9.0.1/tcp/9999".parse().unwrap(),
-            }),
+                address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
+            },
         })
     }
 }
