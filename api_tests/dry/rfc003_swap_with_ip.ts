@@ -47,7 +47,7 @@ describe("SWAP request with address", () => {
                 alpha_expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
                 beta_expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
                 peer: {
-                    peer_id: await alice.peerId(), // Incorrect peer id on purpose to see if Bob still appears in GET /swaps
+                    peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb", // Random peer id on purpose to see if Bob still appears in GET /swaps using the multiaddress
                     address: bob.comitNodeNetworkListenAddress(),
                 },
             });
