@@ -47,7 +47,7 @@ commands:
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
 
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
-            which cargo-make || cargo install cargo-make
+            which cargo-make && test "$(cargo make --version)" = "cargo-make 0.19.4" || cargo install cargo-make --force
   print_current_versions:
     steps:
       - run:

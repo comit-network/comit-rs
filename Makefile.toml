@@ -58,10 +58,12 @@ git config core.hooksPath .githooks
 '''
 ]
 
+# Overridden because: workspace = false
+[tasks.install-clippy-any]
+workspace = false
+
 # Overridden because: we want to fail if there are warnings (-D warn)
 [tasks.clippy]
-dependencies = []
-install_crate = { rustup_component_name = "clippy", binary = "cargo-clippy", test_arg = "--help" }
 workspace = false
 args = [
     "clippy",
