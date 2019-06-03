@@ -1,7 +1,7 @@
 pull_request_rules:
   - name: merge on CI success and 2 approvals
     conditions:
-      - "status-success=Travis CI - Pull Request"
+      - "status-success=ci/circleci: build"
       - "#approved-reviews-by>=2"
       - label!=work-in-progress
       - label!=blocked

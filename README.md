@@ -1,6 +1,6 @@
 # COMIT-rs
 
-[![Build Status](https://travis-ci.com/comit-network/comit-rs.svg?branch=master)](https://travis-ci.com/comit-network/comit-rs)
+[![CircleCI](https://circleci.com/gh/comit-network/comit-rs.svg?style=svg)](https://circleci.com/gh/comit-network/comit-rs)
 
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 

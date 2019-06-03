@@ -26,6 +26,8 @@ interface DeclineConfig {
     reason: string;
 }
 
+const MOVE_CURSOR_UP_ONE_LINE = "\x1b[1A";
+
 export class Actor {
     name: string;
     host: string;
@@ -216,6 +218,8 @@ export class Actor {
                             min_median_block_time
                         );
 
+                        let escapeSequence = "";
+
                         while (diff > 0) {
                             await sleep(1000);
 
@@ -224,9 +228,10 @@ export class Actor {
                                 min_median_block_time - currentMedianBlockTime;
 
                             console.log(
-                                `Current median time:            %d`,
+                                `${escapeSequence}Current median time:            %d`,
                                 currentMedianBlockTime
                             );
+                            escapeSequence = MOVE_CURSOR_UP_ONE_LINE;
                         }
                     }
                 }
