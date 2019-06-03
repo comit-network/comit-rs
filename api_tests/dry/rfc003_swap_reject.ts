@@ -155,11 +155,14 @@ declare var global: HarnessGlobal;
         let bob_reasonable_swap_href: string;
 
         it("[Bob] Shows the swaps as IN_PROGRESS in /swaps", async () => {
-            let swapEntities = await bob.pollComitNodeUntil(
-                "/swaps",
-                body => body.entities.length === 2,
-                body => body.entities as EmbeddedRepresentationSubEntity[]
-            );
+            let swapEntities = await bob
+                .pollComitNodeUntil(
+                    "/swaps",
+                    body => body.entities.length === 2
+                )
+                .then(
+                    body => body.entities as EmbeddedRepresentationSubEntity[]
+                );
 
             expect(swapEntities.map(entity => entity.properties))
                 .to.each.have.property("protocol")
