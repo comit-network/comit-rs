@@ -102,9 +102,7 @@ declare var global: HarnessGlobal;
             res.error.should.equal(false);
             res.should.have.status(201);
 
-            const swap_location = res.header.location;
-            swap_location.should.be.a("string");
-            alice_swap_with_charlie_href = swap_location;
+            alice_swap_with_charlie_href = res.header.location;
         });
 
         it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
