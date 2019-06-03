@@ -68,7 +68,7 @@ export class Actor {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
-    comitNodelibp2pAddress() {
+    comitNodeNetworkListenAddress() {
         const addr = multiaddr(this.comitNodeConfig.network.listen[0]);
         // Need to convert 0.0.0.0 to 127.0.0.1
         return `/${addr.protoNames()[0]}/${this.host}/${addr.protoNames()[1]}/${
