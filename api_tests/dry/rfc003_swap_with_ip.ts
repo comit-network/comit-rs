@@ -1,6 +1,6 @@
 import { Actor } from "../lib/actor";
 import { HarnessGlobal, sleep } from "../lib/util";
-import { request } from "chai";
+import { request, expect } from "chai";
 import "chai/register-should";
 import { toWei } from "web3-utils";
 import "../lib/setupChai";
@@ -22,7 +22,7 @@ describe("SWAP request with address", () => {
         ]);
     });
 
-    it("[Alice] Should be able to make a swap request via HTTP api using an ip address", async () => {
+    it("[Alice] Should be able to make a swap request via HTTP api using a peer id and an ip address", async () => {
         let res = await request(alice.comitNodeHttpApiUrl())
             .post("/swaps/rfc003")
             .send({
@@ -52,17 +52,17 @@ describe("SWAP request with address", () => {
                 },
             });
 
-        res.error.should.equal(false);
-        res.should.have.status(201);
-        res.header.location.should.be.a("string");
+        expect(res.error).to.be.false;
+        expect(res.status).to.equal(201);
+        expect(res.header.location).to.be.a("string");
     });
 
     it("[Alice] Should see Bob peer_id in her list of peers after sending a swap request to him using his ip address", async () => {
         await sleep(1000);
         let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
-        res.should.have.status(200);
-        res.body.peers.should.containSubset([
+        expect(res.status).to.equal(200);
+        expect(res.body.peers).to.containSubset([
             {
                 id: await bob.peerId(),
             },
@@ -72,7 +72,7 @@ describe("SWAP request with address", () => {
     it("[Bob] Should see a new peer in his list of peers after receiving a swap request from Alice", async () => {
         let res = await request(bob.comitNodeHttpApiUrl()).get("/peers");
 
-        res.should.have.status(200);
-        res.body.peers.should.have.length(1);
+        expect(res.status).to.equal(200);
+        expect(res.body.peers).to.have.length(1);
     });
 });
