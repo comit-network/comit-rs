@@ -32,6 +32,7 @@ use crate::{
 };
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
+use libp2p::PeerId;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 
 #[derive(Debug)]
@@ -113,6 +114,15 @@ impl Serialize for Http<SwapProtocol> {
             SwapProtocol::Rfc003 => serializer.serialize_str("rfc003"),
             SwapProtocol::Unknown(name) => serializer.serialize_str(name.as_str()),
         }
+    }
+}
+
+impl Serialize for Http<PeerId> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_base58()[..])
     }
 }
 
