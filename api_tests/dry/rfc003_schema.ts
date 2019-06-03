@@ -77,12 +77,12 @@ declare var global: HarnessGlobal;
         it("[Alice] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
             let swapsEntity = await alice.pollComitNodeUntil(
                 "/swaps",
-                body => body.entities.length > 0
+                body => body.entities.length > 0,
+                body => body.entities[0] as EmbeddedRepresentationSubEntity
             );
 
-            let selfLink = (swapsEntity
-                .entities[0] as EmbeddedRepresentationSubEntity).links.find(
-                (link: Link) => link.rel.includes("self")
+            let selfLink = swapsEntity.links.find((link: Link) =>
+                link.rel.includes("self")
             ).href;
 
             let swapResponse = await request(alice.comit_node_url()).get(
@@ -99,12 +99,12 @@ declare var global: HarnessGlobal;
         it("[Bob] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
             let swapsEntity = await bob.pollComitNodeUntil(
                 "/swaps",
-                body => body.entities.length > 0
+                body => body.entities.length > 0,
+                body => body.entities[0] as EmbeddedRepresentationSubEntity
             );
 
-            let selfLink = (swapsEntity
-                .entities[0] as EmbeddedRepresentationSubEntity).links.find(
-                (link: Link) => link.rel.includes("self")
+            let selfLink = swapsEntity.links.find((link: Link) =>
+                link.rel.includes("self")
             ).href;
 
             let swapResponse = await request(bob.comit_node_url()).get(
