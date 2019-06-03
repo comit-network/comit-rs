@@ -38,15 +38,6 @@ declare var global: HarnessGlobal;
     let alice_swap_with_charlie_href: string;
     let alice_swap_with_bob_href: string;
 
-    async function fetchSingleSwap(actor: Actor) {
-        let body = await actor.pollComitNodeUntil(
-            "/swaps",
-            body => body.entities.length > 0
-        );
-
-        return body.entities[0] as EmbeddedRepresentationSubEntity;
-    }
-
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
             let res = await request(alice.comit_node_url())
@@ -141,7 +132,11 @@ declare var global: HarnessGlobal;
         });
 
         it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-            let swapEntity = await fetchSingleSwap(charlie);
+            let swapEntity = await charlie.pollComitNodeUntil(
+                "/swaps",
+                body => body.entities.length > 0,
+                body => body.entities[0] as EmbeddedRepresentationSubEntity
+            );
 
             expect(swapEntity.properties).to.have.property(
                 "protocol",
@@ -160,7 +155,11 @@ declare var global: HarnessGlobal;
         });
 
         it("[Charlie] Should be able to see Alice's peer-id after receiving the request", async function() {
-            let swapEntity = await fetchSingleSwap(charlie);
+            let swapEntity = await charlie.pollComitNodeUntil(
+                "/swaps",
+                body => body.entities.length > 0,
+                body => body.entities[0] as EmbeddedRepresentationSubEntity
+            );
 
             expect(swapEntity.properties).to.have.property(
                 "counterparty",

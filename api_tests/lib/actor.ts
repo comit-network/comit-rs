@@ -77,18 +77,22 @@ export class Actor {
 
     async pollComitNodeUntil(
         location: string,
-        predicate: (body: Entity) => boolean
+        predicate: (body: Entity) => boolean,
+        filter?: (body: Entity) => Entity
     ): Promise<Entity> {
         let response = await request(this.comit_node_url()).get(location);
 
         expect(response).to.have.status(200);
 
         if (predicate(response.body)) {
+            if (filter) {
+                return filter(response.body);
+            }
             return response.body;
         } else {
             await sleep(500);
 
-            return this.pollComitNodeUntil(location, predicate);
+            return this.pollComitNodeUntil(location, predicate, filter);
         }
     }
 
