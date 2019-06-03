@@ -1,6 +1,5 @@
 use crate::{
     comit_client::Client,
-    node_id::NodeId,
     swap_protocols::{
         self,
         asset::Asset,
@@ -17,6 +16,7 @@ use crate::{
 };
 use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
+use libp2p::PeerId;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -39,7 +39,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
-        bob_id: NodeId,
+        bob_id: PeerId,
         swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
     ) -> Result<(), Error>
     where
@@ -52,7 +52,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
-        bob_id: NodeId,
+        bob_id: PeerId,
         partial_swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
     ) -> Result<(), Error>
     where

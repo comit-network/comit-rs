@@ -7,7 +7,6 @@ use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{Client, RequestError, SwapDeclineReason, SwapReject},
     network::Behaviour,
-    node_id::NodeId,
     swap_protocols::{
         self,
         asset::Asset,
@@ -17,7 +16,7 @@ use crate::{
 };
 use bam::{self, json, Status};
 use futures::Future;
-use libp2p::{Swarm, Transport};
+use libp2p::{PeerId, Swarm, Transport};
 use serde::Deserialize;
 use std::sync::Mutex;
 use tokio::{io::AsyncRead, prelude::AsyncWrite};
@@ -51,7 +50,7 @@ where
         BA: Asset,
     >(
         &self,
-        node_id: NodeId,
+        peer_id: PeerId,
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
         let request = build_swap_request(request)
@@ -59,22 +58,22 @@ where
 
         let response = {
             let mut swarm = self.lock().unwrap();
-            log::debug!("Making swap request to {}: {:?}", node_id.clone(), request);
+            log::debug!("Making swap request to {}: {:?}", peer_id.clone(), request);
 
-            swarm.send_request(node_id.clone(), request)
+            swarm.send_request(peer_id.clone(), request)
         };
 
         let response = response.then(move |result| match result {
             Ok(mut response) => match response.status() {
                 Status::OK(_) => {
-                    log::info!("{} accepted swap request: {:?}", node_id.clone(), response);
+                    log::info!("{} accepted swap request: {:?}", peer_id.clone(), response);
                     match serde_json::from_value(response.body().clone()) {
                         Ok(response) => Ok(Ok(response)),
                         Err(_e) => Err(RequestError::InvalidResponse),
                     }
                 }
                 Status::SE(20) => {
-                    log::info!("{} declined swap request: {:?}", node_id.clone(), response);
+                    log::info!("{} declined swap request: {:?}", peer_id.clone(), response);
                     Ok(Err({
                         let reason = response
                             .take_header("REASON")
@@ -93,13 +92,13 @@ where
                     }))
                 }
                 Status::SE(_) => {
-                    log::info!("{} rejected swap request: {:?}", node_id.clone(), response);
+                    log::info!("{} rejected swap request: {:?}", peer_id.clone(), response);
                     Ok(Err(SwapReject::Rejected))
                 }
                 Status::RE(_) => {
                     log::error!(
                         "{} rejected swap request because of an internal error: {:?}",
-                        node_id.clone(),
+                        peer_id.clone(),
                         response
                     );
                     Err(RequestError::InternalError)
@@ -108,7 +107,7 @@ where
             Err(e) => {
                 log::error!(
                     "Unable to request over connection {:?}:{:?}",
-                    node_id.clone(),
+                    peer_id.clone(),
                     e
                 );
                 Err(RequestError::Connection)

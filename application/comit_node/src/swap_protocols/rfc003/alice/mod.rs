@@ -6,7 +6,6 @@ pub use self::{actions::*, communication_events::*, spawner::*};
 
 use crate::{
     comit_client::{self, SwapReject},
-    node_id::NodeId,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -23,6 +22,7 @@ use crate::{
     },
 };
 use derivative::Derivative;
+use libp2p::PeerId;
 use std::sync::Arc;
 
 #[derive(Clone, Derivative)]
@@ -57,7 +57,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
         beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
         comit_client: Arc<C>,
-        bob_id: NodeId,
+        bob_id: PeerId,
         save_state: Arc<dyn SaveState<AL, BL, AA, BA>>,
     ) -> Box<FutureSwapOutcome<AL, BL, AA, BA>> {
         let swap_request = self.request();

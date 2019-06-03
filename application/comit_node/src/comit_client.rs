@@ -1,8 +1,6 @@
-use crate::{
-    node_id::NodeId,
-    swap_protocols::{self, asset::Asset},
-};
+use crate::swap_protocols::{self, asset::Asset};
 use futures::Future;
+use libp2p::PeerId;
 use serde::{Deserialize, Serialize};
 use std::io;
 
@@ -14,7 +12,7 @@ pub trait Client: Send + Sync + 'static {
         BA: Asset,
     >(
         &self,
-        node_id: NodeId,
+        peer_id: PeerId,
         request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Box<
         dyn Future<

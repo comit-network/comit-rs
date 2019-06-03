@@ -1,6 +1,5 @@
 use crate::{
     comit_client,
-    node_id::NodeId,
     swap_protocols::{
         asset::Asset,
         rfc003::{
@@ -11,6 +10,7 @@ use crate::{
     },
 };
 use futures::Future;
+use libp2p::PeerId;
 use std::sync::Arc;
 
 #[allow(missing_debug_implementations)]
@@ -18,11 +18,11 @@ pub struct AliceToBob<C, AL: Ledger, BL: Ledger> {
     #[allow(clippy::type_complexity)]
     response_future: Option<Box<ResponseFuture<AL, BL>>>,
     client: Arc<C>,
-    bob_id: NodeId,
+    bob_id: PeerId,
 }
 
 impl<C, AL: Ledger, BL: Ledger> AliceToBob<C, AL, BL> {
-    pub fn new(client: Arc<C>, bob_id: NodeId) -> Self {
+    pub fn new(client: Arc<C>, bob_id: PeerId) -> Self {
         AliceToBob {
             client,
             bob_id,
