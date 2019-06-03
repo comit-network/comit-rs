@@ -1,5 +1,6 @@
 use crate::swap_protocols::{asset::AssetKind, LedgerKind};
 use failure::Fail;
+use libp2p::PeerId;
 use std::{
     collections::HashMap,
     fmt::{Debug, Display},
@@ -20,6 +21,7 @@ pub struct Metadata {
     pub alpha_asset: AssetKind,
     pub beta_asset: AssetKind,
     pub role: RoleKind,
+    pub counterparty: PeerId,
 }
 
 #[derive(Debug, Fail)]

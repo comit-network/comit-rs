@@ -1,7 +1,7 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::SwapReject,
-    libp2p_bam::{BamBehaviour, PendingIncomingRequest},
+    libp2p_bam::{BamBehaviour, BehaviourOutEvent, PendingIncomingRequest},
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents},
@@ -91,25 +91,29 @@ where
     }
 }
 
-impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<PendingIncomingRequest>
+impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
     for Behaviour<TSubstream, B>
 {
-    fn inject_event(&mut self, event: PendingIncomingRequest) {
-        let PendingIncomingRequest { request, channel } = event;
+    fn inject_event(&mut self, event: BehaviourOutEvent) {
+        match event {
+            BehaviourOutEvent::PendingIncomingRequest { request, peer_id } => {
+                let PendingIncomingRequest { request, channel } = request;
 
-        let generated_response = handle_request(&self.bob, request);
+                let generated_response = handle_request(&self.bob, peer_id, request);
 
-        let future = generated_response
-            .and_then(|response| {
-                channel
-                    .send(response)
-                    .unwrap_or_else(|_| log::debug!("failed to send response through channel"));
+                let future = generated_response
+                    .and_then(|response| {
+                        channel.send(response).unwrap_or_else(|_| {
+                            log::debug!("failed to send response through channel")
+                        });
 
-                Ok(())
-            })
-            .map_err(|_| unreachable!("error is Infallible"));
+                        Ok(())
+                    })
+                    .map_err(|_| unreachable!("error is Infallible"));
 
-        self.task_executor.spawn(future);
+                self.task_executor.spawn(future);
+            }
+        }
     }
 }
 
@@ -134,6 +138,7 @@ impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
 
 fn handle_request<B: BobSpawner>(
     bob: &B,
+    counterparty: PeerId,
     mut request: ValidatedIncomingRequest,
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
     match request.request_type() {
@@ -167,11 +172,14 @@ fn handle_request<B: BobSpawner>(
                         ) => spawn(
                             bob,
                             swap_id,
-                            alpha_ledger,
-                            beta_ledger,
-                            alpha_asset,
-                            beta_asset,
-                            bam::body!(request.take_body_as()),
+                            counterparty,
+                            rfc003_swap_request(
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                bam::body!(request.take_body_as()),
+                            ),
                         ),
                         (
                             LedgerKind::Ethereum(alpha_ledger),
@@ -181,11 +189,14 @@ fn handle_request<B: BobSpawner>(
                         ) => spawn(
                             bob,
                             swap_id,
-                            alpha_ledger,
-                            beta_ledger,
-                            alpha_asset,
-                            beta_asset,
-                            bam::body!(request.take_body_as()),
+                            counterparty,
+                            rfc003_swap_request(
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                bam::body!(request.take_body_as()),
+                            ),
                         ),
                         (
                             LedgerKind::Bitcoin(alpha_ledger),
@@ -195,11 +206,14 @@ fn handle_request<B: BobSpawner>(
                         ) => spawn(
                             bob,
                             swap_id,
-                            alpha_ledger,
-                            beta_ledger,
-                            alpha_asset,
-                            beta_asset,
-                            bam::body!(request.take_body_as()),
+                            counterparty,
+                            rfc003_swap_request(
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                bam::body!(request.take_body_as()),
+                            ),
                         ),
                         (
                             LedgerKind::Ethereum(alpha_ledger),
@@ -209,11 +223,14 @@ fn handle_request<B: BobSpawner>(
                         ) => spawn(
                             bob,
                             swap_id,
-                            alpha_ledger,
-                            beta_ledger,
-                            alpha_asset,
-                            beta_asset,
-                            bam::body!(request.take_body_as()),
+                            counterparty,
+                            rfc003_swap_request(
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                bam::body!(request.take_body_as()),
+                            ),
                         ),
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
                             log::warn!(
@@ -237,32 +254,36 @@ fn handle_request<B: BobSpawner>(
     }
 }
 
-fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
-    bob_spawner: &B,
-    swap_id: SwapId,
+fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
     alpha_ledger: AL,
     beta_ledger: BL,
     alpha_asset: AA,
     beta_asset: BA,
     body: rfc003::messages::RequestBody<AL, BL>,
+) -> rfc003::messages::Request<AL, BL, AA, BA> {
+    rfc003::messages::Request::<AL, BL, AA, BA> {
+        alpha_asset,
+        beta_asset,
+        alpha_ledger,
+        beta_ledger,
+        alpha_ledger_refund_identity: body.alpha_ledger_refund_identity,
+        beta_ledger_redeem_identity: body.beta_ledger_redeem_identity,
+        alpha_expiry: body.alpha_expiry,
+        beta_expiry: body.beta_expiry,
+        secret_hash: body.secret_hash,
+    }
+}
+
+fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
+    bob_spawner: &B,
+    swap_id: SwapId,
+    counterparty: PeerId,
+    swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send + 'static>
 where
     LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
 {
-    match bob_spawner.spawn(
-        swap_id,
-        rfc003::messages::Request::<AL, BL, AA, BA> {
-            alpha_asset,
-            beta_asset,
-            alpha_ledger,
-            beta_ledger,
-            alpha_ledger_refund_identity: body.alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity: body.beta_ledger_redeem_identity,
-            alpha_expiry: body.alpha_expiry,
-            beta_expiry: body.beta_expiry,
-            secret_hash: body.secret_hash,
-        },
-    ) {
+    match bob_spawner.spawn(swap_id, counterparty, swap_request) {
         Ok(response_future) => Box::new(response_future.then(move |result| {
             let response = match result {
                 Ok(Ok(response)) => {

@@ -22,6 +22,7 @@ use serde::Serialize;
 )]
 pub struct SwapResource<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: Serialize> {
     pub role: String,
+    pub counterparty: String,
     pub protocol: Http<SwapProtocol>,
     pub status: SwapStatus,
     pub parameters: SwapParameters<AL, BL, AA, BA>,
@@ -96,6 +97,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 protocol: Http(SwapProtocol::Rfc003),
                 parameters,
                 role: format!("{}", metadata.role),
+                counterparty: format!("{}", metadata.counterparty),
                 state: match include_state {
                     IncludeState::Yes => Some(SwapState::<AL, BL> {
                         communication,

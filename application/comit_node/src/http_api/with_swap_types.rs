@@ -40,6 +40,7 @@ macro_rules! with_swap_types {
                 alpha_asset: AssetKind::Bitcoin(_),
                 beta_asset: AssetKind::Ether(_),
                 role,
+                ..
             } => {
                 #[allow(dead_code)]
                 type AL = Bitcoin;
@@ -60,6 +61,7 @@ macro_rules! with_swap_types {
                 alpha_asset: AssetKind::Bitcoin(_),
                 beta_asset: AssetKind::Erc20(_),
                 role,
+                ..
             } => {
                 #[allow(dead_code)]
                 type AL = Bitcoin;
@@ -80,6 +82,7 @@ macro_rules! with_swap_types {
                 alpha_asset: AssetKind::Ether(_),
                 beta_asset: AssetKind::Bitcoin(_),
                 role,
+                ..
             } => {
                 #[allow(dead_code)]
                 type AL = Ethereum;
@@ -100,6 +103,7 @@ macro_rules! with_swap_types {
                 alpha_asset: AssetKind::Erc20(_),
                 beta_asset: AssetKind::Bitcoin(_),
                 role,
+                ..
             } => {
                 #[allow(dead_code)]
                 type AL = Ethereum;
