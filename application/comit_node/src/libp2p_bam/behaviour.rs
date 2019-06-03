@@ -79,13 +79,18 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_requests: vec![request],
                     });
                 }
-                PeerDetails::PeerIdAndAddress(PeerIdAndAddress { address, peer_id }) => {
-                    self.events_sender
-                        .unbounded_send(NetworkBehaviourAction::DialAddress { address })
-                        .expect("we own the receiver");
-                    // Still dial on the peer_id in case the address is outdated/incorrect
+                PeerDetails::PeerIdAndAddress(PeerIdAndAddress {
+                    address_hint,
+                    peer_id,
+                }) => {
                     self.events_sender
                         .unbounded_send(NetworkBehaviourAction::DialPeer { peer_id })
+                        .expect("we own the receiver");
+                    // Also dial the hinted address
+                    self.events_sender
+                        .unbounded_send(NetworkBehaviourAction::DialAddress {
+                            address: address_hint,
+                        })
                         .expect("we own the receiver");
                     entry.insert(ConnectionState::Connecting {
                         pending_requests: vec![request],
@@ -158,7 +163,7 @@ where
     }
 
     fn inject_connected(&mut self, peer_id: PeerId, endpoint: ConnectedPoint) {
-        log::debug ! (target: "sub-libp2p", "connected to {} at {:?}", peer_id, endpoint);
+        log::debug!(target: "sub-libp2p", "connected to {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
             ConnectedPoint::Dialer { address } => address,

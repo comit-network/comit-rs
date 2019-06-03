@@ -275,7 +275,7 @@ mod tests {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
                     .parse()
                     .unwrap(),
-                address: "/ip4/8.9.0.1/tcp/9999".parse().unwrap(),
+                address_hint: "/ip4/8.9.0.1/tcp/9999".parse().unwrap(),
             }),
         })
     }

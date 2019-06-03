@@ -122,7 +122,7 @@ impl Serialize for Http<SwapProtocol> {
 pub struct PeerIdAndAddress {
     #[serde(with = "serde_peer_id")]
     pub peer_id: PeerId,
-    pub address: Multiaddr,
+    pub address_hint: Multiaddr,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -146,9 +146,10 @@ impl Display for PeerDetails {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match &self {
             PeerDetails::PeerIdOnly(peer_id) => write!(f, "{}", peer_id),
-            PeerDetails::PeerIdAndAddress(PeerIdAndAddress { peer_id, address }) => {
-                write!(f, "{}@{}", peer_id, address)
-            }
+            PeerDetails::PeerIdAndAddress(PeerIdAndAddress {
+                peer_id,
+                address_hint,
+            }) => write!(f, "{}@{}", peer_id, address_hint),
         }
     }
 }
