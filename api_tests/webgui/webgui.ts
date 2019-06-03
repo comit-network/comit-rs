@@ -25,7 +25,7 @@ setTimeout(async function() {
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "GET");
 
-            res.should.have.status(403);
+            expect(res).to.have.status(403);
         });
 
         it("Returns 200 OK for preflight OPTIONS /swaps request for GET", async () => {
@@ -35,7 +35,7 @@ setTimeout(async function() {
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "GET");
 
-            res.should.have.status(200);
+            expect(res).to.have.status(200);
         });
 
         it("Returns 403 'Forbidden for invalid origins or headers' for invalid preflight OPTIONS /swaps/rfc003 request for POST", async () => {
@@ -45,7 +45,7 @@ setTimeout(async function() {
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "POST");
 
-            res.should.have.status(403);
+            expect(res).to.have.status(403);
         });
 
         it("Returns 200 OK for preflight OPTIONS /swaps/rfc003 request for POST", async () => {
@@ -55,7 +55,7 @@ setTimeout(async function() {
                 .set("Access-Control-Request-Headers", "content-type")
                 .set("Access-Control-Request-Method", "POST");
 
-            res.should.have.status(200);
+            expect(res).to.have.status(200);
         });
 
         it("[David] Sets appropriate CORS headers", async () => {
@@ -63,8 +63,20 @@ setTimeout(async function() {
                 .get("/swaps")
                 .set("Origin", "http://localhost:8080");
 
-            res.should.have.status(200);
-            res.should.have.header(
+            expect(res).to.have.status(200);
+            expect(res).to.have.header(
+                "access-control-allow-origin",
+                "http://localhost:8080"
+            );
+        });
+
+        it("[David] Sets appropriate CORS headers on error responses", async () => {
+            let res = await request(david.comit_node_url())
+                .get("/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead")
+                .set("Origin", "http://localhost:8080");
+
+            expect(res).to.have.status(404);
+            expect(res).to.have.header(
                 "access-control-allow-origin",
                 "http://localhost:8080"
             );
@@ -73,7 +85,7 @@ setTimeout(async function() {
         it("[David] comit-i returns 200 OK", async () => {
             let res = await request(david.web_gui_url()).get("/");
 
-            res.should.have.status(200);
+            expect(res).to.have.status(200);
         });
 
         it("[David] returns comit_node http api settings on /config/comit_node.js for GET", async function() {
@@ -82,11 +94,10 @@ setTimeout(async function() {
                 .set("Accept", "application/javascript")
                 .buffer(true);
 
-            res.should.have.status(200);
-            const body: string = res.text;
-            expect(body).to.match(/^function callbackFunctionName/);
+            expect(res).to.have.status(200);
+            expect(res.text).to.match(/^function callbackFunctionName/);
 
-            let fn = eval("(" + body + ")");
+            let fn = eval("(" + res.text + ")");
             let connDetails = fn();
             expect(connDetails).to.have.property("host", "127.0.0.1");
             expect(connDetails).to.have.property("port", 8123);

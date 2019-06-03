@@ -95,8 +95,8 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
         .or(get_swaps)
         .or(get_peers)
         .or(get_info)
+        .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)
-        .recover(http_api::unpack_problem)
         .boxed()
 }
