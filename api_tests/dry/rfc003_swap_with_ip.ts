@@ -8,30 +8,9 @@ import "../lib/setupChai";
 declare var global: HarnessGlobal;
 
 (async function() {
-    const alpha_ledger_name = "bitcoin";
-    const alpha_ledger_network = "regtest";
-
-    const beta_ledger_name = "ethereum";
-    const beta_ledger_network = "regtest";
-
-    const alpha_asset_name = "bitcoin";
-    const alpha_asset_reasonable_quantity = "100000000";
-
-    const beta_asset_name = "ether";
-    const beta_asset_quantity = toWei("10", "ether");
-
-    const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
-
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
-    const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bob_peer_id = await bob.peerId();
-    const peer_input = {
-        peer_id: await alice.peerId(), // Incorrect peer id on purpose to see if Bob still appears in GET /swaps
-        address: bob.comitNodelibp2pAddress(),
-    };
-
     it("[Alice] Should not yet see  Bob peer_id in her list of peers", async () => {
         await sleep(1000);
         let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
@@ -50,25 +29,31 @@ declare var global: HarnessGlobal;
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
+                        name: "bitcoin",
+                        network: "regtest",
                     },
                     beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
+                        name: "ethereum",
+                        network: "regtest",
                     },
                     alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_reasonable_quantity,
+                        name: "bitcoin",
+                        quantity: "100000000",
                     },
                     beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_quantity,
+                        name: "ether",
+                        quantity: toWei("10", "ether"),
                     },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry: alpha_expiry,
-                    beta_expiry: beta_expiry,
-                    peer: peer_input,
+                    beta_ledger_redeem_identity:
+                        "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                    alpha_expiry:
+                        new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+                    beta_expiry:
+                        new Date("2080-06-11T13:00:00Z").getTime() / 1000,
+                    peer: {
+                        peer_id: await alice.peerId(), // Incorrect peer id on purpose to see if Bob still appears in GET /swaps
+                        address: bob.comitNodelibp2pAddress(),
+                    },
                 });
 
             res.error.should.equal(false);
