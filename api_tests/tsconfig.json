@@ -10,5 +10,6 @@
         "noUnusedParameters": true,
         "resolveJsonModule": true,
         "esModuleInterop": true
-    }
+    },
+    "include": ["dry", "btsieve", "e2e", "webgui"]
 }
