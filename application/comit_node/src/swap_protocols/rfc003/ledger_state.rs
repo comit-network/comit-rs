@@ -37,3 +37,17 @@ impl Default for HtlcState {
         HtlcState::NotDeployed
     }
 }
+
+#[cfg(test)]
+impl quickcheck::Arbitrary for HtlcState {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        match g.next_u32() % 5 {
+            0 => HtlcState::NotDeployed,
+            1 => HtlcState::Deployed,
+            2 => HtlcState::Funded,
+            3 => HtlcState::Redeemed,
+            4 => HtlcState::Refunded,
+            _ => unreachable!(),
+        }
+    }
+}
