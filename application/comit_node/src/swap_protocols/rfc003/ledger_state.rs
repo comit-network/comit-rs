@@ -31,3 +31,9 @@ pub enum LedgerState<L: Ledger> {
         refund_transaction: L::Transaction,
     },
 }
+
+impl Default for HtlcState {
+    fn default() -> Self {
+        HtlcState::NotDeployed
+    }
+}
