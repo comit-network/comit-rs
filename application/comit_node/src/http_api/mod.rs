@@ -25,6 +25,7 @@ use crate::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
     },
+    network::DialInformation,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         SwapProtocol,
@@ -32,7 +33,12 @@ use crate::{
 };
 use bitcoin_support::BitcoinQuantity;
 use ethereum_support::{Erc20Token, EtherQuantity};
-use serde::{ser::SerializeStruct, Serialize, Serializer};
+use libp2p::PeerId;
+use serde::{
+    de::{self, MapAccess},
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 
 #[derive(Debug)]
 pub struct Http<I>(pub I);
@@ -113,6 +119,98 @@ impl Serialize for Http<SwapProtocol> {
             SwapProtocol::Rfc003 => serializer.serialize_str("rfc003"),
             SwapProtocol::Unknown(name) => serializer.serialize_str(name.as_str()),
         }
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<PeerId> {
+    fn deserialize<D>(deserializer: D) -> Result<Http<PeerId>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = Http<PeerId>;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a peer id")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Http<PeerId>, E>
+            where
+                E: de::Error,
+            {
+                let peer_id = value.parse().map_err(E::custom)?;
+                Ok(Http(peer_id))
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl<'de> Deserialize<'de> for DialInformation {
+    fn deserialize<D>(deserializer: D) -> Result<DialInformation, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> de::Visitor<'de> for Visitor {
+            type Value = DialInformation;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                formatter.write_str("a peer id or a dial information struct")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<DialInformation, E>
+            where
+                E: de::Error,
+            {
+                let peer_id = value.parse().map_err(E::custom)?;
+                Ok(DialInformation {
+                    peer_id,
+                    address_hint: None,
+                })
+            }
+
+            fn visit_map<M>(self, mut map: M) -> Result<DialInformation, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let mut peer_id = None;
+                let mut address_hint = None;
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        "peer_id" => {
+                            if peer_id.is_some() {
+                                return Err(de::Error::duplicate_field("peer_id"));
+                            }
+                            peer_id = Some(map.next_value::<Http<PeerId>>()?)
+                        }
+                        "address_hint" => {
+                            if address_hint.is_some() {
+                                return Err(de::Error::duplicate_field("address_hint"));
+                            }
+                            address_hint = Some(map.next_value()?)
+                        }
+                        _ => {
+                            return Err(de::Error::unknown_field(
+                                key,
+                                &["peer_id", "address_hint"],
+                            ));
+                        }
+                    }
+                }
+                let peer_id = peer_id.ok_or_else(|| de::Error::missing_field("peer_id"))?;
+                Ok(DialInformation {
+                    peer_id: peer_id.0,
+                    address_hint,
+                })
+            }
+        }
+
+        deserializer.deserialize_any(Visitor)
     }
 }
 

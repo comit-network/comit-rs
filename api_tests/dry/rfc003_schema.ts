@@ -33,7 +33,7 @@ declare var global: HarnessGlobal;
 
     describe("Response shape", () => {
         before(async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -63,13 +63,13 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Response for GET /swaps is a valid siren document", async () => {
-            let res = await request(alice.comit_node_url()).get("/swaps");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/swaps");
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
         it("[Bob] Response for GET /swaps is a valid siren document", async () => {
-            let res = await request(bob.comit_node_url()).get("/swaps");
+            let res = await request(bob.comitNodeHttpApiUrl()).get("/swaps");
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
@@ -85,7 +85,7 @@ declare var global: HarnessGlobal;
                 (link: Link) => link.rel.includes("self")
             ).href;
 
-            let swapResponse = await request(alice.comit_node_url()).get(
+            let swapResponse = await request(alice.comitNodeHttpApiUrl()).get(
                 selfLink
             );
             let swapEntity = swapResponse.body as Entity;
@@ -107,7 +107,7 @@ declare var global: HarnessGlobal;
                 (link: Link) => link.rel.includes("self")
             ).href;
 
-            let swapResponse = await request(bob.comit_node_url()).get(
+            let swapResponse = await request(bob.comitNodeHttpApiUrl()).get(
                 selfLink
             );
             let swapEntity = swapResponse.body as Entity;

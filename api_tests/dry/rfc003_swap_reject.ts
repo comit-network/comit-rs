@@ -34,7 +34,7 @@ declare var global: HarnessGlobal;
     describe("SWAP request REJECTED", () => {
         let alice_reasonable_swap_href: string;
         it("[Alice] Should be able to make first swap request via HTTP api", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -68,7 +68,7 @@ declare var global: HarnessGlobal;
 
         it("[Alice] Should see Bob in her list of peers after sending a swap request to him", async () => {
             await sleep(1000);
-            let res = await request(alice.comit_node_url()).get("/peers");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.containSubset([
@@ -79,7 +79,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Should see a new peer in his list of peers after receiving a swap request from Alice", async () => {
-            let res = await request(bob.comit_node_url()).get("/peers");
+            let res = await request(bob.comitNodeHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.have.length(1);
@@ -87,7 +87,7 @@ declare var global: HarnessGlobal;
 
         let alice_stingy_swap_href: string;
         it("[Alice] Should be able to make second swap request via HTTP api", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -121,7 +121,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should still only see Bob in her list of peers after sending a second swap request to him", async () => {
-            let res = await request(alice.comit_node_url()).get("/peers");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.containSubset([
@@ -132,14 +132,14 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Should still only see one peer in his list of peers after receiving a second swap request from Alice", async () => {
-            let res = await request(bob.comit_node_url()).get("/peers");
+            let res = await request(bob.comitNodeHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.have.length(1);
         });
 
         it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
-            let res = await request(alice.comit_node_url()).get("/swaps");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/swaps");
 
             res.should.have.status(200);
 
@@ -192,7 +192,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
-            let res = await request(bob.comit_node_url()).get(
+            let res = await request(bob.comitNodeHttpApiUrl()).get(
                 bob_stingy_swap_href
             );
 
@@ -204,7 +204,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
-            let res = await request(bob.comit_node_url()).get(
+            let res = await request(bob.comitNodeHttpApiUrl()).get(
                 bob_stingy_swap_href
             );
 
@@ -233,7 +233,7 @@ declare var global: HarnessGlobal;
                 }
             );
 
-            let res = await request(bob.comit_node_url()).get(
+            let res = await request(bob.comitNodeHttpApiUrl()).get(
                 bob_stingy_swap_href
             );
             let body = res.body as Entity;
@@ -265,7 +265,7 @@ declare var global: HarnessGlobal;
         it("[Bob] Can execute a decline action, without providing a reason", async () => {
             let bob = new Actor("bob", global.config, global.project_root);
 
-            let res = await request(bob.comit_node_url()).get(
+            let res = await request(bob.comitNodeHttpApiUrl()).get(
                 bob_reasonable_swap_href
             );
             let body = res.body as Entity;

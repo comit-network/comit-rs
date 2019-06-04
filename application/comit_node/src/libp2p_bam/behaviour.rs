@@ -1,6 +1,9 @@
-use crate::libp2p_bam::{
-    handler::{self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
-    BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
+use crate::{
+    libp2p_bam::{
+        handler::{self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
+        BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
+    },
+    network::DialInformation,
 };
 use bam::json::{OutgoingRequest, Response};
 use futures::{
@@ -56,7 +59,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
 
     pub fn send_request(
         &mut self,
-        peer_id: PeerId,
+        dial_information: DialInformation,
         request: OutgoingRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         let (sender, receiver) = futures::oneshot();
@@ -66,11 +69,19 @@ impl<TSubstream> BamBehaviour<TSubstream> {
             channel: sender,
         };
 
-        match self.connections.entry(peer_id.clone()) {
+        match self.connections.entry(dial_information.clone().peer_id) {
             Entry::Vacant(entry) => {
                 self.events_sender
-                    .unbounded_send(NetworkBehaviourAction::DialPeer { peer_id })
+                    .unbounded_send(NetworkBehaviourAction::DialPeer {
+                        peer_id: dial_information.peer_id,
+                    })
                     .expect("we own the receiver");
+                if let Some(address) = dial_information.address_hint {
+                    // Also dial the hint address
+                    self.events_sender
+                        .unbounded_send(NetworkBehaviourAction::DialAddress { address })
+                        .expect("we own the receiver");
+                }
                 entry.insert(ConnectionState::Connecting {
                     pending_requests: vec![request],
                 });
@@ -85,7 +96,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                     ConnectionState::Connected { .. } => {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
-                                peer_id,
+                                peer_id: dial_information.peer_id,
                                 event: request,
                             })
                             .expect("we own the receiver");
