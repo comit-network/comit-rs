@@ -235,7 +235,7 @@ where
             InnerEvent::Error {
                 error: handler::Error::Stream(error),
             } => {
-                log::error ! (target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
+                log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
             }
             InnerEvent::Error {
                 error: handler::Error::DroppedResponseSender(_),
@@ -245,19 +245,19 @@ where
                 // the application or the application consciously does not want to answer the
                 // SWAP REQUEST. In either way, we should signal this to the remote peer by
                 // closing the substream.
-                log::error ! (target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
+                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
             }
             InnerEvent::BadIncomingResponse => {
-                log::error ! (target: "sub-libp2p", "badly formatted response from {:?}", peer);
+                log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
             }
             InnerEvent::UnexpectedFrameType {
                 bad_frame,
                 expected_type,
             } => {
-                log::error ! (target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
+                log::error!(target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
             }
             InnerEvent::UnexpectedEOF => {
-                log::error ! (target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
+                log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
             }
         }
     }
