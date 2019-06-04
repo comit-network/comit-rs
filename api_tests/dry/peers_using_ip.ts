@@ -11,10 +11,9 @@ declare var global: HarnessGlobal;
     const bob = new Actor("bob", global.config, global.project_root);
     const bobPeerId = await bob.peerId();
     const bobMultiAddress = bob.comitNodeNetworkListenAddress();
-    console.log(bobMultiAddress);
 
     describe("SWAP request with address", () => {
-        it("[Alice] Should not yet see Bob peer id in her list of peers", async () => {
+        it("[Alice] Should not yet see Bob's peer id in her list of peers", async () => {
             let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
             expect(res.status).to.equal(200);
@@ -63,7 +62,7 @@ declare var global: HarnessGlobal;
             expect(res.header.location).to.be.a("string");
         });
 
-        it("[Alice] Should see Bob peer id in her list of peers after sending a swap request to him using his ip address", async () => {
+        it("[Alice] Should see Bob's peer id in her list of peers after sending a swap request to him using his ip address", async () => {
             await sleep(1000);
             let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 

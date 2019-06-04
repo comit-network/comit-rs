@@ -196,7 +196,7 @@ where
     }
 
     fn inject_disconnected(&mut self, peer_id: &PeerId, endpoint: ConnectedPoint) {
-        log::debug ! (target: "sub-libp2p", "disconnected from {} at {:?}", peer_id, endpoint);
+        log::debug!(target: "sub-libp2p", "disconnected from {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
             ConnectedPoint::Dialer { address } => address,
