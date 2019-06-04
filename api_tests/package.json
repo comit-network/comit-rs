@@ -5,7 +5,7 @@
     "main": "index.js",
     "scripts": {
         "check": "tsc",
-        "gen": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts"
+        "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts"
     },
     "engines": {
         "node": "^10.14"

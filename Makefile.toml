@@ -21,6 +21,7 @@ workspace = false
 dependencies = [
     "check-rs-format",
     "check-ts-format",
+    "check-ts",
     "clippy"
 ]
 
@@ -138,6 +139,12 @@ script = [
 '''
 ]
 
+[tasks.check-ts]
+description = "Runs tsc to validate TypeScript syntax."
+workspace = false
+install_script = ["(cd ./api_tests; yarn install;)"]
+script = ["cd api_tests; yarn run check"]
+
 [tasks.ci]
 workspace = false
 run_task = "ci-flow"
@@ -148,7 +155,7 @@ run_task = "ci-flow"
 description = "Install/build dependencies for api tests"
 workspace = false
 private = true
-script = [ "( cd ./api_tests && yarn install; yarn run gen; )" ]
+script = [ "( cd ./api_tests && yarn install;)" ]
 
 #####################
 # Dry api Test flow #
@@ -173,7 +180,7 @@ script = [
 ]
 
 #########################
-# WEb GUI api Test flow #
+# Web GUI api Test flow #
 [tasks.webgui-tests-flow]
 description = "Defines the web GUI tests flow."
 workspace = false
