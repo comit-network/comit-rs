@@ -50,7 +50,7 @@ where
         BA: Asset,
     >(
         &self,
-        node_id: DialInformation,
+        dial_information: DialInformation,
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
         let request = build_swap_request(request)
@@ -58,22 +58,34 @@ where
 
         let response = {
             let mut swarm = self.lock().unwrap();
-            log::debug!("Making swap request to {}: {:?}", node_id.clone(), request);
+            log::debug!(
+                "Making swap request to {}: {:?}",
+                dial_information.clone(),
+                request
+            );
 
-            swarm.send_request(node_id.clone(), request)
+            swarm.send_request(dial_information.clone(), request)
         };
 
         let response = response.then(move |result| match result {
             Ok(mut response) => match response.status() {
                 Status::OK(_) => {
-                    log::info!("{} accepted swap request: {:?}", node_id.clone(), response);
+                    log::info!(
+                        "{} accepted swap request: {:?}",
+                        dial_information.clone(),
+                        response
+                    );
                     match serde_json::from_value(response.body().clone()) {
                         Ok(response) => Ok(Ok(response)),
                         Err(_e) => Err(RequestError::InvalidResponse),
                     }
                 }
                 Status::SE(20) => {
-                    log::info!("{} declined swap request: {:?}", node_id.clone(), response);
+                    log::info!(
+                        "{} declined swap request: {:?}",
+                        dial_information.clone(),
+                        response
+                    );
                     Ok(Err({
                         let reason = response
                             .take_header("REASON")
@@ -92,13 +104,17 @@ where
                     }))
                 }
                 Status::SE(_) => {
-                    log::info!("{} rejected swap request: {:?}", node_id.clone(), response);
+                    log::info!(
+                        "{} rejected swap request: {:?}",
+                        dial_information.clone(),
+                        response
+                    );
                     Ok(Err(SwapReject::Rejected))
                 }
                 Status::RE(_) => {
                     log::error!(
                         "{} rejected swap request because of an internal error: {:?}",
-                        node_id.clone(),
+                        dial_information.clone(),
                         response
                     );
                     Err(RequestError::InternalError)
@@ -107,7 +123,7 @@ where
             Err(e) => {
                 log::error!(
                     "Unable to request over connection {:?}:{:?}",
-                    node_id.clone(),
+                    dial_information.clone(),
                     e
                 );
                 Err(RequestError::Connection)
