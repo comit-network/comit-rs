@@ -71,7 +71,7 @@ setTimeout(async function() {
         });
 
         it("[David] Sets appropriate CORS headers on error responses", async () => {
-            let res = await request(david.comit_node_url())
+            let res = await request(david.comitNodeHttpApiUrl())
                 .get("/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead")
                 .set("Origin", "http://localhost:8080");
 
