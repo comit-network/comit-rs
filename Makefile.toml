@@ -142,7 +142,7 @@ script = [
 [tasks.check-ts]
 description = "Runs tsc to validate TypeScript syntax."
 workspace = false
-install_script = ["(cd ./api_tests; yarn install;)"]
+install_script = ["(cd ./api_tests; yarn install; yarn run gen;)"]
 script = ["./api_tests/node_modules/.bin/tsc --project ./api_tests/tsconfig.json"]
 
 [tasks.ci]
