@@ -23,14 +23,14 @@ pub struct SwapState<AL: Ledger, BL: Ledger> {
 #[derive(Debug, Serialize)]
 #[serde(bound = "Http<AI>: Serialize, Http<BI>: Serialize")]
 pub struct SwapCommunication<AI, BI> {
-    status: SwapCommunicationState,
-    alpha_expiry: Timestamp,
-    beta_expiry: Timestamp,
-    alpha_redeem_identity: Option<Http<AI>>,
-    beta_redeem_identity: Http<BI>,
-    alpha_refund_identity: Http<AI>,
-    beta_refund_identity: Option<Http<BI>>,
-    secret_hash: SecretHash,
+    pub status: SwapCommunicationState,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
+    pub alpha_redeem_identity: Option<Http<AI>>,
+    pub beta_redeem_identity: Http<BI>,
+    pub alpha_refund_identity: Http<AI>,
+    pub beta_refund_identity: Option<Http<BI>>,
+    pub secret_hash: SecretHash,
 }
 
 #[derive(Debug, Serialize, derivative::Derivative)]
@@ -38,15 +38,15 @@ pub struct SwapCommunication<AI, BI> {
 // All type variables are used inside `Option`, hence we have safe defaults without any bounds.
 #[derivative(Default(bound = ""))]
 pub struct LedgerState<H, T> {
-    status: rfc003::HtlcState,
-    htlc_location: Option<Http<H>>,
-    deploy_tx: Option<Http<T>>,
-    fund_tx: Option<Http<T>>,
-    redeem_tx: Option<Http<T>>,
-    refund_tx: Option<Http<T>>,
+    pub status: rfc003::HtlcState,
+    pub htlc_location: Option<Http<H>>,
+    pub deploy_tx: Option<Http<T>>,
+    pub fund_tx: Option<Http<T>>,
+    pub redeem_tx: Option<Http<T>>,
+    pub refund_tx: Option<Http<T>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SwapCommunicationState {
     Sent,
@@ -194,22 +194,19 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
 }
 
 impl SwapStatus {
-    pub fn new<AL: Ledger, BL: Ledger>(
-        swap_communication: &SwapCommunication<AL::Identity, BL::Identity>,
-        alpha_ledger: &LedgerState<AL::HtlcLocation, AL::Transaction>,
-        beta_ledger: &LedgerState<BL::HtlcLocation, BL::Transaction>,
+    pub fn new(
+        swap_communication_state: SwapCommunicationState,
+        alpha_ledger: rfc003::HtlcState,
+        beta_ledger: rfc003::HtlcState,
         error: &Option<rfc003::Error>,
     ) -> Self {
-        let swap_communication_state = &swap_communication.status;
-        let alpha_ledger = &alpha_ledger.status;
-        let beta_ledger = &beta_ledger.status;
-
         use self::SwapCommunicationState::*;
         use crate::swap_protocols::rfc003::HtlcState::*;
         match (swap_communication_state, alpha_ledger, beta_ledger, error) {
             (Rejected, _, _, None)
             | (Accepted, Redeemed, Refunded, None)
             | (Accepted, Refunded, Redeemed, None)
+            | (Accepted, Refunded, NotDeployed, None)
             | (Accepted, Refunded, Refunded, None) => SwapStatus::NotSwapped,
             (Accepted, Redeemed, Redeemed, None) => SwapStatus::Swapped,
             (Sent, NotDeployed, NotDeployed, None) | (Accepted, _, _, None) => {
@@ -228,4 +225,22 @@ impl SwapStatus {
             }
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn given_alice_refunded_and_bob_never_funded_should_be_not_swapped() {
+        let status = SwapStatus::new(
+            SwapCommunicationState::Accepted,
+            rfc003::HtlcState::Refunded,
+            rfc003::HtlcState::NotDeployed,
+            &None,
+        );
+
+        assert_eq!(status, SwapStatus::NotSwapped)
+    }
+
 }

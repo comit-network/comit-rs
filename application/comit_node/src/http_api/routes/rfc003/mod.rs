@@ -23,7 +23,7 @@ use hyper::header;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
 
-pub use self::swap_state::SwapState;
+pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
