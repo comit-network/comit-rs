@@ -1,25 +1,26 @@
 import { Actor } from "../lib/actor";
 import { HarnessGlobal, sleep } from "../lib/util";
 import { request, expect } from "chai";
-import "chai/register-should";
 import { toWei } from "web3-utils";
 import "../lib/setupChai";
 
 declare var global: HarnessGlobal;
 
-(async function() {
+(async () => {
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
+    const bobPeerId = await bob.peerId();
+    const bobMultiAddress = bob.comitNodeNetworkListenAddress();
+    console.log(bobMultiAddress);
 
     describe("SWAP request with address", () => {
-        it("[Alice] Should not yet see  Bob peer_id in her list of peers", async () => {
-            await sleep(1000);
+        it("[Alice] Should not yet see Bob peer id in her list of peers", async () => {
             let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
-            res.should.have.status(200);
-            res.body.peers.should.not.containSubset([
+            expect(res.status).to.equal(200);
+            expect(res.body.peers).to.not.containSubset([
                 {
-                    id: await bob.peerId(),
+                    id: bobPeerId,
                 },
             ]);
         });
@@ -53,7 +54,7 @@ declare var global: HarnessGlobal;
                     peer: {
                         peer_id:
                             "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb", // Random peer id on purpose to see if Bob still appears in GET /swaps using the multiaddress
-                        address: bob.comitNodeNetworkListenAddress(),
+                        address_hint: bobMultiAddress,
                     },
                 });
 
@@ -62,14 +63,14 @@ declare var global: HarnessGlobal;
             expect(res.header.location).to.be.a("string");
         });
 
-        it("[Alice] Should see Bob peer_id in her list of peers after sending a swap request to him using his ip address", async () => {
+        it("[Alice] Should see Bob peer id in her list of peers after sending a swap request to him using his ip address", async () => {
             await sleep(1000);
             let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
             expect(res.status).to.equal(200);
             expect(res.body.peers).to.containSubset([
                 {
-                    id: await bob.peerId(),
+                    id: bobPeerId,
                 },
             ]);
         });
