@@ -17,7 +17,6 @@ pub mod libp2p_bam;
 pub mod load_settings;
 pub mod logging;
 pub mod network;
-pub mod node_id;
 pub mod seed;
 pub mod settings;
 pub mod swap_protocols;
