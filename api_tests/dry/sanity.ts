@@ -17,7 +17,7 @@ const alice = new Actor("alice", global.config, global.project_root);
 setTimeout(async function() {
     describe("Sanity tests", () => {
         it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
-            let res = await request(alice.comit_node_url()).get(
+            let res = await request(alice.comitNodeHttpApiUrl()).get(
                 "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
             );
 
@@ -25,7 +25,7 @@ setTimeout(async function() {
         });
 
         it("Returns a 404 for an action on a non-existent swap", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post(
                     "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/accept"
                 )
@@ -35,7 +35,7 @@ setTimeout(async function() {
         });
 
         it("Returns an empty list when calling GET /swaps when there are no swaps", async () => {
-            let res = await request(alice.comit_node_url()).get("/swaps");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/swaps");
 
             let body = res.body as Entity;
 
@@ -43,7 +43,7 @@ setTimeout(async function() {
         });
 
         it("[Alice] Returns 400 Swap not supported for an unsupported combination of parameters", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -72,7 +72,7 @@ setTimeout(async function() {
         });
 
         it("[Alice] Returns 400 bad request for malformed requests", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     garbage: true,
@@ -83,7 +83,7 @@ setTimeout(async function() {
         });
 
         it("[Alice] Should have no peers before making a swap request", async () => {
-            let res = await request(alice.comit_node_url()).get("/peers");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.have.length(0);

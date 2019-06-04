@@ -40,7 +40,7 @@ declare var global: HarnessGlobal;
 
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -73,7 +73,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
-            let res = await request(alice.comit_node_url())
+            let res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -165,7 +165,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {
-            let res = await request(alice.comit_node_url()).get("/peers");
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.have.containSubset([

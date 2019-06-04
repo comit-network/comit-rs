@@ -45,7 +45,9 @@ export function createTests(
         "[alice] Should be able to make a request via HTTP api to " +
             initialUrl,
         async () => {
-            let res: ChaiHttp.Response = await request(alice.comit_node_url())
+            let res: ChaiHttp.Response = await request(
+                alice.comitNodeHttpApiUrl()
+            )
                 .post(initialUrl)
                 .send(initialRequest);
             res.should.have.status(201);

@@ -22,6 +22,7 @@ use libp2p::{
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
+    fmt::Display,
     io,
     sync::Mutex,
 };
@@ -40,6 +41,21 @@ pub struct Behaviour<TSubstream, B> {
     bob: B,
     #[behaviour(ignore)]
     task_executor: TaskExecutor,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct DialInformation {
+    pub peer_id: PeerId,
+    pub address_hint: Option<Multiaddr>,
+}
+
+impl Display for DialInformation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match &self.address_hint {
+            None => write!(f, "{}", self.peer_id),
+            Some(address_hint) => write!(f, "{}@{}", self.peer_id, address_hint),
+        }
+    }
 }
 
 impl<TSubstream, B> Behaviour<TSubstream, B> {
@@ -64,7 +80,7 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
 
     pub fn send_request(
         &mut self,
-        peer_id: PeerId,
+        peer_id: DialInformation,
         request: OutgoingRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         self.bam.send_request(peer_id, request)

@@ -6,8 +6,7 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{Client, RequestError, SwapDeclineReason, SwapReject},
-    network::Behaviour,
-    node_id::NodeId,
+    network::{Behaviour, DialInformation},
     swap_protocols::{
         self,
         asset::Asset,
@@ -51,7 +50,7 @@ where
         BA: Asset,
     >(
         &self,
-        node_id: NodeId,
+        node_id: DialInformation,
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
         let request = build_swap_request(request)
