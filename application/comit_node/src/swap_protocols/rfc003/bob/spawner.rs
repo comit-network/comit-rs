@@ -13,6 +13,7 @@ use crate::swap_protocols::{
 };
 use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
+use libp2p::PeerId;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -36,6 +37,7 @@ pub trait BobSpawner: Send + Sync + 'static {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
+        counterparty: PeerId,
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Result<Box<ResponseFuture<AL, BL>>, Error>
     where
@@ -49,6 +51,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
+        counterparty: PeerId,
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Result<Box<ResponseFuture<AL, BL>>, Error>
     where
@@ -70,6 +73,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
                     alpha_asset: swap_request.alpha_asset.into(),
                     beta_asset: swap_request.beta_asset.into(),
                     role: RoleKind::Bob,
+                    counterparty,
                 },
             )
             .map_err(Error::Metadata)?;

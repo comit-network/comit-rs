@@ -31,10 +31,12 @@ declare var global: HarnessGlobal;
     const charlie = new Actor("charlie", global.config, global.project_root);
 
     const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+    const alice_comit_node_address = await alice.peerId();
     const bob_comit_node_address = await bob.peerId();
     const charlie_comit_node_address = await charlie.peerId();
 
     let alice_swap_with_charlie_href: string;
+    let alice_swap_with_bob_href: string;
 
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
@@ -65,6 +67,9 @@ declare var global: HarnessGlobal;
 
             res.error.should.equal(false);
             res.should.have.status(201);
+
+            alice_swap_with_bob_href = res.header.location;
+            alice_swap_with_bob_href.should.be.a("string");
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
@@ -96,9 +101,7 @@ declare var global: HarnessGlobal;
             res.error.should.equal(false);
             res.should.have.status(201);
 
-            const swap_location = res.header.location;
-            swap_location.should.be.a("string");
-            alice_swap_with_charlie_href = swap_location;
+            alice_swap_with_charlie_href = res.header.location;
         });
 
         it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
@@ -110,14 +113,27 @@ declare var global: HarnessGlobal;
             );
         });
 
-        it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-            let body = await charlie.pollComitNodeUntil(
-                "/swaps",
-                body => body.entities.length > 0
+        it("[Alice] Should be able to see Bob's peer-id after sending the swap request to Bob", async function() {
+            return alice.pollComitNodeUntil(
+                alice_swap_with_bob_href,
+                body => body.properties.counterparty === bob_comit_node_address
             );
+        });
 
-            let swapEntity = body
-                .entities[0] as EmbeddedRepresentationSubEntity;
+        it("[Alice] Should be able to see Charlie's peer-id after sending the swap request to Charlie", async function() {
+            return alice.pollComitNodeUntil(
+                alice_swap_with_charlie_href,
+                body =>
+                    body.properties.counterparty === charlie_comit_node_address
+            );
+        });
+
+        it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
+            let swapEntity = await charlie
+                .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
+                .then(
+                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                );
 
             expect(swapEntity.properties).to.have.property(
                 "protocol",
@@ -133,6 +149,19 @@ declare var global: HarnessGlobal;
                         expectedValue.includes("self"),
                 },
             ]);
+        });
+
+        it("[Charlie] Should be able to see Alice's peer-id after receiving the request", async function() {
+            let swapEntity = await charlie
+                .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
+                .then(
+                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+
+            expect(swapEntity.properties).to.have.property(
+                "counterparty",
+                alice_comit_node_address
+            );
         });
 
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {

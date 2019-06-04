@@ -11,6 +11,7 @@ use crate::{
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
+use libp2p::PeerId;
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -22,6 +23,7 @@ use serde::Serialize;
 )]
 pub struct SwapResource<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: Serialize> {
     pub role: String,
+    pub counterparty: Http<PeerId>,
     pub protocol: Http<SwapProtocol>,
     pub status: SwapStatus,
     pub parameters: SwapParameters<AL, BL, AA, BA>,
@@ -96,6 +98,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 protocol: Http(SwapProtocol::Rfc003),
                 parameters,
                 role: format!("{}", metadata.role),
+                counterparty: Http(metadata.counterparty),
                 state: match include_state {
                     IncludeState::Yes => Some(SwapState::<AL, BL> {
                         communication,

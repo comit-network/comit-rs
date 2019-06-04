@@ -122,6 +122,15 @@ impl Serialize for Http<SwapProtocol> {
     }
 }
 
+impl Serialize for Http<PeerId> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_base58()[..])
+    }
+}
+
 impl<'de> Deserialize<'de> for Http<PeerId> {
     fn deserialize<D>(deserializer: D) -> Result<Http<PeerId>, D::Error>
     where

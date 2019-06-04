@@ -27,18 +27,29 @@ enum ConnectionState {
         addresses: HashSet<Multiaddr>,
     },
     Connecting {
-        pending_requests: Vec<PendingOutgoingRequest>,
+        pending_events: Vec<BehaviourInEvent>,
     },
+}
+
+#[derive(Debug)]
+pub enum BehaviourOutEvent {
+    PendingIncomingRequest {
+        request: PendingIncomingRequest,
+        peer_id: PeerId,
+    },
+}
+
+#[derive(Debug)]
+pub enum BehaviourInEvent {
+    PendingIncomingRequest { request: PendingOutgoingRequest },
 }
 
 #[derive(Debug)]
 pub struct BamBehaviour<TSubstream> {
     marker: PhantomData<TSubstream>,
 
-    events_sender:
-        UnboundedSender<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>>,
-    events:
-        UnboundedReceiver<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>>,
+    events_sender: UnboundedSender<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>>,
+    events: UnboundedReceiver<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>>,
 
     known_request_headers: HashMap<String, HashSet<String>>,
     connections: HashMap<PeerId, ConnectionState>,
@@ -83,21 +94,21 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         .expect("we own the receiver");
                 }
                 entry.insert(ConnectionState::Connecting {
-                    pending_requests: vec![request],
+                    pending_events: vec![BehaviourInEvent::PendingIncomingRequest { request }],
                 });
             }
             Entry::Occupied(mut entry) => {
                 let connection_state = entry.get_mut();
 
                 match connection_state {
-                    ConnectionState::Connecting { pending_requests } => {
-                        pending_requests.push(request);
+                    ConnectionState::Connecting { pending_events } => {
+                        pending_events.push(BehaviourInEvent::PendingIncomingRequest { request });
                     }
                     ConnectionState::Connected { .. } => {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
                                 peer_id: dial_information.peer_id,
-                                event: request,
+                                event: BehaviourInEvent::PendingIncomingRequest { request },
                             })
                             .expect("we own the receiver");
                     }
@@ -133,7 +144,7 @@ where
     TSubstream: AsyncRead + AsyncWrite,
 {
     type ProtocolsHandler = BamHandler<TSubstream>;
-    type OutEvent = PendingIncomingRequest;
+    type OutEvent = BehaviourOutEvent;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         BamHandler::new(self.known_request_headers.clone())
@@ -169,12 +180,12 @@ where
                         self.connections
                             .insert(peer_id.clone(), ConnectionState::Connected { addresses });
                     }
-                    ConnectionState::Connecting { pending_requests } => {
-                        for request in pending_requests {
+                    ConnectionState::Connecting { pending_events } => {
+                        for event in pending_events {
                             self.events_sender
                                 .unbounded_send(NetworkBehaviourAction::SendEvent {
                                     peer_id: peer_id.clone(),
-                                    event: request,
+                                    event,
                                 })
                                 .expect("we own the receiver");
                         }
@@ -219,7 +230,10 @@ where
             InnerEvent::IncomingRequest(pending_incoming_request) => {
                 self.events_sender
                     .unbounded_send(NetworkBehaviourAction::GenerateEvent(
-                        pending_incoming_request,
+                        BehaviourOutEvent::PendingIncomingRequest {
+                            request: pending_incoming_request,
+                            peer_id: peer,
+                        },
                     ))
                     .expect("we own the receiver");
             }
@@ -265,7 +279,7 @@ where
     fn poll(
         &mut self,
         _params: &mut PollParameters<'_>,
-    ) -> Async<NetworkBehaviourAction<PendingOutgoingRequest, PendingIncomingRequest>> {
+    ) -> Async<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>> {
         self.events
             .poll()
             .expect("unbounded channel can never fail")

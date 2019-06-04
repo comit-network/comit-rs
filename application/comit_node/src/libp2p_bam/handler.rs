@@ -1,4 +1,4 @@
-use crate::libp2p_bam::{protocol::BamProtocol, BamStream};
+use crate::libp2p_bam::{protocol::BamProtocol, BamStream, BehaviourInEvent};
 use bam::{
     json::{
         Frame, FrameType, Header, JsonFrameCodec, OutgoingRequest, Response,
@@ -380,7 +380,7 @@ pub enum InnerEvent {
 type BamHandlerEvent = ProtocolsHandlerEvent<BamProtocol, PendingOutgoingRequest, InnerEvent>;
 
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
-    type InEvent = PendingOutgoingRequest;
+    type InEvent = BehaviourInEvent;
     type OutEvent = InnerEvent;
     type Error = bam::json::Error;
     type Substream = TSubstream;
@@ -423,11 +423,15 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     }
 
     fn inject_event(&mut self, event: Self::InEvent) {
-        self.substreams
-            .push(SubstreamState::OutPendingOpen { req: event });
+        match event {
+            BehaviourInEvent::PendingIncomingRequest { request } => {
+                self.substreams
+                    .push(SubstreamState::OutPendingOpen { req: request });
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+                if let Some(task) = &self.current_task {
+                    task.notify()
+                }
+            }
         }
     }
 

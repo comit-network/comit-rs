@@ -58,13 +58,9 @@ export function createTests(
     );
 
     it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
-        let swapsEntity = await bob.pollComitNodeUntil(
-            listUrl,
-            body => body.entities.length > 0
-        );
-
-        let swapEntity = swapsEntity
-            .entities[0] as EmbeddedRepresentationSubEntity;
+        let swapEntity = await bob
+            .pollComitNodeUntil(listUrl, body => body.entities.length > 0)
+            .then(body => body.entities[0] as EmbeddedRepresentationSubEntity);
 
         expect(swapEntity.properties).to.have.property("protocol", "rfc003");
         expect(swapEntity.properties).to.have.property("status", "IN_PROGRESS");
@@ -85,17 +81,19 @@ export function createTests(
             it(`[${actor.name}] has the ${action} action`, async function() {
                 this.timeout(5000);
 
-                let body = await actor.pollComitNodeUntil(
-                    swapLocations[actor.name],
-                    body =>
-                        body.actions.findIndex(
+                sirenAction = await actor
+                    .pollComitNodeUntil(
+                        swapLocations[actor.name],
+                        body =>
+                            body.actions.findIndex(
+                                candidate => candidate.name === action
+                            ) != -1
+                    )
+                    .then(body =>
+                        body.actions.find(
                             candidate => candidate.name === action
-                        ) != -1
-                );
-
-                sirenAction = body.actions.find(
-                    candidate => candidate.name === action
-                );
+                        )
+                    );
             });
 
             it(`[${
