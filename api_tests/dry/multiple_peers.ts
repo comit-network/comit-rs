@@ -68,9 +68,8 @@ declare var global: HarnessGlobal;
             res.error.should.equal(false);
             res.should.have.status(201);
 
-            const swap_location = res.header.location;
-            swap_location.should.be.a("string");
-            alice_swap_with_bob_href = swap_location;
+            alice_swap_with_bob_href = res.header.location;
+            alice_swap_with_bob_href.should.be.a("string");
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
