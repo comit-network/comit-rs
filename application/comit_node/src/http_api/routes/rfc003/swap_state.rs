@@ -33,8 +33,10 @@ pub struct SwapCommunication<AI, BI> {
     secret_hash: SecretHash,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, derivative::Derivative)]
 #[serde(bound = "Http<T>: Serialize, Http<H>: Serialize")]
+// All type variables are used inside `Option`, hence we have safe defaults without any bounds.
+#[derivative(Default(bound = ""))]
 pub struct LedgerState<H, T> {
     status: rfc003::HtlcState,
     htlc_location: Option<Http<H>>,
@@ -129,26 +131,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 secret_hash: request.secret_hash,
             },
         }
-    }
-}
-
-// Implementation needed because Ledger doesn't have a Default
-impl<H, T> Default for LedgerState<H, T> {
-    fn default() -> Self {
-        Self {
-            status: rfc003::HtlcState::default(),
-            htlc_location: None,
-            deploy_tx: None,
-            fund_tx: None,
-            redeem_tx: None,
-            refund_tx: None,
-        }
-    }
-}
-
-impl Default for rfc003::HtlcState {
-    fn default() -> Self {
-        rfc003::HtlcState::NotDeployed
     }
 }
 
