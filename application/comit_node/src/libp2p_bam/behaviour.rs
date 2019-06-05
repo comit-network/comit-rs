@@ -123,7 +123,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
         }))
     }
 
-    pub fn addresses(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
+    pub fn peer_addresses(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         let addresses = self
             .connections
             .iter()
@@ -151,7 +151,7 @@ where
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
-        self.addresses()
+        self.peer_addresses()
             .find_map(|(candidate, addresses)| {
                 if &candidate == peer_id {
                     Some(addresses)

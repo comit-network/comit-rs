@@ -15,7 +15,10 @@ use bam::{
 };
 use futures::future::Future;
 use libp2p::{
-    core::swarm::NetworkBehaviourEventProcess,
+    core::{
+        muxing::{StreamMuxer, SubstreamRef},
+        swarm::NetworkBehaviourEventProcess,
+    },
     mdns::{Mdns, MdnsEvent},
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
@@ -24,7 +27,7 @@ use std::{
     convert::Infallible,
     fmt::Display,
     io,
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 use tokio::{
     prelude::{AsyncRead, AsyncWrite},
@@ -103,7 +106,33 @@ where
     fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.lock().unwrap();
 
-        Box::new(swarm.bam.addresses())
+        Box::new(swarm.bam.peer_addresses())
+    }
+}
+
+pub trait ListenAddresses: Send + Sync + 'static {
+    fn listen_addresses(&self) -> Vec<Multiaddr>;
+}
+
+impl<TTransport: Transport + Send + 'static, B: BobSpawner + Send + 'static, TMuxer> ListenAddresses
+    for Mutex<Swarm<TTransport, Behaviour<SubstreamRef<Arc<TMuxer>>, B>>>
+where
+    <TTransport as Transport>::Listener: Send,
+    <TTransport as Transport>::Error: Send,
+    <TTransport as Transport>::Dial: Send,
+    <TTransport as Transport>::ListenerUpgrade: Send,
+    TTransport: Transport<Output = (PeerId, TMuxer)> + Clone,
+    TMuxer: StreamMuxer + Send + Sync + 'static,
+    <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
+    <TMuxer as StreamMuxer>::Substream: Send + 'static,
+{
+    fn listen_addresses(&self) -> Vec<Multiaddr> {
+        let swarm = self.lock().unwrap();
+
+        Swarm::listeners(&swarm)
+            .chain(Swarm::external_addresses(&swarm))
+            .cloned()
+            .collect()
     }
 }
 

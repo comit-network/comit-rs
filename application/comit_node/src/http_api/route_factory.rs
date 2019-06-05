@@ -1,7 +1,7 @@
 use crate::{
     comit_client::Client,
     http_api,
-    network::BamPeers,
+    network::{BamPeers, ListenAddresses},
     swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
 };
 use libp2p::PeerId;
@@ -18,13 +18,20 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, BP: BamPeers>(
+pub fn create<
+    T: MetadataStore<SwapId>,
+    S: state_store::StateStore,
+    C: Client,
+    BP: BamPeers,
+    L: ListenAddresses,
+>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
     origin_auth: String,
     get_bam_peers: Arc<BP>,
     peer_id: PeerId,
+    get_listen_addresses: Arc<L>,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
@@ -33,6 +40,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
     let get_bam_peers = warp::any().map(move || Arc::clone(&get_bam_peers));
     let peer_id = warp::any().map(move || peer_id.clone());
+    let swarm = warp::any().map(move || Arc::clone(&get_listen_addresses));
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
 
     let rfc003_post_swap = rfc003
@@ -79,6 +87,7 @@ pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, B
     let get_info = warp::get2()
         .and(warp::path::end())
         .and(peer_id.clone())
+        .and(swarm.clone())
         .and_then(http_api::routes::index::get_info);
 
     let preflight_cors_route = warp::options().map(warp::reply);

@@ -94,6 +94,14 @@ setTimeout(async function() {
             expect(res.status).to.equal(200);
             expect(res.body.id).to.be.a("string");
         });
+
+        it("[Alice] Returns the addresses it listens on when you GET /", async () => {
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/");
+            expect(res.status).to.equal(200);
+            expect(res.body.listen_addresses).to.be.an("array");
+            // At least 2 ipv4 addresses, lookup and external interface
+            expect(res.body.listen_addresses.length).to.be.greaterThan(2);
+        });
     });
 
     run();
