@@ -88,6 +88,12 @@ setTimeout(async function() {
             res.should.have.status(200);
             res.body.peers.should.have.length(0);
         });
+
+        it("[Alice] Returns its peer ID when you GET /", async () => {
+            let res = await request(alice.comitNodeHttpApiUrl()).get("/");
+            expect(res.status).to.equal(200);
+            expect(res.body.id).to.be.a("string");
+        });
     });
 
     run();
