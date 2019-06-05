@@ -1,6 +1,10 @@
 use crate::{
     http_api::{
-        action::ToSirenAction, problem, route_factory::swap_path, routes::rfc003::SwapState, Http,
+        action::ToSirenAction,
+        problem,
+        route_factory::swap_path,
+        routes::rfc003::{LedgerState, SwapCommunication, SwapState},
+        Http,
     },
     swap_protocols::{
         actions::Actions,
@@ -42,7 +46,7 @@ pub struct SwapParameters<AL, BL, AA, BA> {
     beta_asset: Http<BA>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SwapStatus {
     InProgress,
@@ -82,16 +86,19 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 .get::<ROLE>(&id)?
                 .ok_or_else(problem::state_store)?;
 
-            // TODO: Implement From<actor::State> for SwapOutcome
-            let communication = state.swap_communication.clone().into();
-            let alpha_ledger = state.alpha_ledger_state.clone().into();
-            let beta_ledger = state.beta_ledger_state.clone().into();
+            let communication = SwapCommunication::from(state.swap_communication.clone());
+            let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
+            let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
             let parameters = SwapParameters::from(state.clone().request());
             let actions = state.clone().actions();
 
             let error = state.error;
-            let status =
-                SwapStatus::new::<AL, BL>(&communication, &alpha_ledger, &beta_ledger, &error);
+            let status = SwapStatus::new(
+                communication.status,
+                alpha_ledger.status,
+                beta_ledger.status,
+                &error,
+            );
 
             let swap = SwapResource {
                 status,

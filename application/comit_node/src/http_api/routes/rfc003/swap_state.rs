@@ -23,14 +23,14 @@ pub struct SwapState<AL: Ledger, BL: Ledger> {
 #[derive(Debug, Serialize)]
 #[serde(bound = "Http<AI>: Serialize, Http<BI>: Serialize")]
 pub struct SwapCommunication<AI, BI> {
-    status: SwapCommunicationState,
-    alpha_expiry: Timestamp,
-    beta_expiry: Timestamp,
-    alpha_redeem_identity: Option<Http<AI>>,
-    beta_redeem_identity: Http<BI>,
-    alpha_refund_identity: Http<AI>,
-    beta_refund_identity: Option<Http<BI>>,
-    secret_hash: SecretHash,
+    pub status: SwapCommunicationState,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
+    pub alpha_redeem_identity: Option<Http<AI>>,
+    pub beta_redeem_identity: Http<BI>,
+    pub alpha_refund_identity: Http<AI>,
+    pub beta_refund_identity: Option<Http<BI>>,
+    pub secret_hash: SecretHash,
 }
 
 #[derive(Debug, Serialize, derivative::Derivative)]
@@ -38,15 +38,15 @@ pub struct SwapCommunication<AI, BI> {
 // All type variables are used inside `Option`, hence we have safe defaults without any bounds.
 #[derivative(Default(bound = ""))]
 pub struct LedgerState<H, T> {
-    status: rfc003::HtlcState,
-    htlc_location: Option<Http<H>>,
-    deploy_tx: Option<Http<T>>,
-    fund_tx: Option<Http<T>>,
-    redeem_tx: Option<Http<T>>,
-    refund_tx: Option<Http<T>>,
+    pub status: rfc003::HtlcState,
+    pub htlc_location: Option<Http<H>>,
+    pub deploy_tx: Option<Http<T>>,
+    pub fund_tx: Option<Http<T>>,
+    pub redeem_tx: Option<Http<T>>,
+    pub refund_tx: Option<Http<T>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, PartialEq, Copy, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SwapCommunicationState {
     Sent,
@@ -194,38 +194,120 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
 }
 
 impl SwapStatus {
-    pub fn new<AL: Ledger, BL: Ledger>(
-        swap_communication: &SwapCommunication<AL::Identity, BL::Identity>,
-        alpha_ledger: &LedgerState<AL::HtlcLocation, AL::Transaction>,
-        beta_ledger: &LedgerState<BL::HtlcLocation, BL::Transaction>,
+    pub fn new(
+        swap_communication_state: SwapCommunicationState,
+        alpha_ledger: rfc003::HtlcState,
+        beta_ledger: rfc003::HtlcState,
         error: &Option<rfc003::Error>,
     ) -> Self {
-        let swap_communication_state = &swap_communication.status;
-        let alpha_ledger = &alpha_ledger.status;
-        let beta_ledger = &beta_ledger.status;
-
         use self::SwapCommunicationState::*;
         use crate::swap_protocols::rfc003::HtlcState::*;
-        match (swap_communication_state, alpha_ledger, beta_ledger, error) {
-            (Rejected, _, _, None)
-            | (Accepted, Redeemed, Refunded, None)
-            | (Accepted, Refunded, Redeemed, None)
-            | (Accepted, Refunded, Refunded, None) => SwapStatus::NotSwapped,
-            (Accepted, Redeemed, Redeemed, None) => SwapStatus::Swapped,
-            (Sent, NotDeployed, NotDeployed, None) | (Accepted, _, _, None) => {
-                SwapStatus::InProgress
-            }
-            (swap_communication_state, alpha_ledger, beta_ledger, error) => {
-                log::warn!(
-                    "Internal failure with swap communication state {:?},\
-                     alpha ledger state {:?}, beta ledger state {:?} and error {:?}",
-                    swap_communication_state,
-                    alpha_ledger,
-                    beta_ledger,
-                    error
-                );
-                SwapStatus::InternalFailure
-            }
+
+        if let Some(e) = error {
+            log::debug!(target: "http-api", "derived SwapStatus is InternalFailure because: {:?}", e);
+            return SwapStatus::InternalFailure;
         }
+
+        if swap_communication_state == Rejected {
+            return SwapStatus::NotSwapped;
+        }
+
+        match (alpha_ledger, beta_ledger) {
+            (Redeemed, Redeemed) => SwapStatus::Swapped,
+            (Refunded, _) | (_, Refunded) => SwapStatus::NotSwapped,
+            _ => SwapStatus::InProgress,
+        }
+    }
+}
+
+#[cfg(test)]
+impl quickcheck::Arbitrary for SwapCommunicationState {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        match g.next_u32() % 3 {
+            0 => SwapCommunicationState::Rejected,
+            1 => SwapCommunicationState::Accepted,
+            2 => SwapCommunicationState::Sent,
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        http_api::routes::rfc003::swap_state::SwapCommunicationState::*,
+        swap_protocols::rfc003::ledger_state::HtlcState::*,
+    };
+
+    #[test]
+    fn given_alpha_refunded_and_beta_never_funded_should_be_not_swapped() {
+        assert_eq!(
+            SwapStatus::new(Accepted, Refunded, NotDeployed, &None),
+            SwapStatus::NotSwapped
+        )
+    }
+
+    #[test]
+    fn given_both_refund_should_not_be_swapped() {
+        assert_eq!(
+            SwapStatus::new(Accepted, Refunded, Refunded, &None),
+            SwapStatus::NotSwapped
+        )
+    }
+
+    #[test]
+    fn given_rejected_should_not_be_swapped() {
+        assert_eq!(
+            SwapStatus::new(Rejected, NotDeployed, NotDeployed, &None),
+            SwapStatus::NotSwapped
+        )
+    }
+
+    #[test]
+    fn given_both_redeem_should_be_swapped() {
+        assert_eq!(
+            SwapStatus::new(Accepted, Redeemed, Redeemed, &None),
+            SwapStatus::Swapped
+        )
+    }
+
+    #[test]
+    fn given_alpha_redeemed_and_beta_refunded_should_not_be_swapped() {
+        assert_eq!(
+            SwapStatus::new(Accepted, Redeemed, Refunded, &None),
+            SwapStatus::NotSwapped
+        )
+    }
+
+    #[test]
+    fn given_sent_should_be_in_progress() {
+        assert_eq!(
+            SwapStatus::new(Sent, NotDeployed, NotDeployed, &None),
+            SwapStatus::InProgress
+        )
+    }
+
+    #[test]
+    fn given_error_should_be_internal_error() {
+        assert_eq!(
+            SwapStatus::new(
+                Sent,
+                NotDeployed,
+                NotDeployed,
+                &Some(rfc003::Error::TimerError)
+            ),
+            SwapStatus::InternalFailure
+        )
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn given_no_error_should_never_be_internal_failure(
+        swap_communication_state: SwapCommunicationState,
+        alpha_state: rfc003::HtlcState,
+        beta_state: rfc003::HtlcState,
+    ) -> bool {
+        SwapStatus::new(swap_communication_state, alpha_state, beta_state, &None)
+            != SwapStatus::InternalFailure
     }
 }
