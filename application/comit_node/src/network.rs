@@ -109,7 +109,7 @@ where
     fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.lock().unwrap();
 
-        Box::new(swarm.bam.peer_addresses())
+        Box::new(swarm.bam.connected_peers())
     }
 
     fn listen_addresses(&self) -> Vec<Multiaddr> {
