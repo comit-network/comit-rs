@@ -4,8 +4,22 @@
     "$id": "http://example.com/root.json",
     "type": "object",
     "title": "Properties of a SWAP",
-    "required": ["role", "protocol", "status", "parameters", "counterparty"],
+    "required": [
+        "id",
+        "role",
+        "protocol",
+        "status",
+        "parameters",
+        "counterparty"
+    ],
     "properties": {
+        "id": {
+            "$id": "#/properties/id",
+            "type": "string",
+            "description": "The id of the swap.",
+            "default": "",
+            "examples": ["db1325ee-e6e6-42da-94f0-79e4b9143196"]
+        },
         "counterparty": {
             "$id": "#/properties/counterparty",
             "type": "string",

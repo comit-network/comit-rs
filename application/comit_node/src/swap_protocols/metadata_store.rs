@@ -1,4 +1,4 @@
-use crate::swap_protocols::{asset::AssetKind, LedgerKind};
+use crate::swap_protocols::{asset::AssetKind, swap_id::SwapId, LedgerKind};
 use failure::Fail;
 use libp2p::PeerId;
 use std::{
@@ -22,6 +22,7 @@ pub struct Metadata {
     pub beta_asset: AssetKind,
     pub role: RoleKind,
     pub counterparty: PeerId,
+    pub swap_id: SwapId,
 }
 
 #[derive(Debug, Fail)]

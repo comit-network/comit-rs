@@ -73,6 +73,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
                     beta_asset: swap_request.beta_asset.into(),
                     role: RoleKind::Alice,
                     counterparty: bob_dial_info.peer_id.to_owned(),
+                    swap_id: id,
                 },
             )
             .map_err(Error::Metadata)?;

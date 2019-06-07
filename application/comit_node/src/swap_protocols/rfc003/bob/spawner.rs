@@ -74,6 +74,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
                     beta_asset: swap_request.beta_asset.into(),
                     role: RoleKind::Bob,
                     counterparty,
+                    swap_id: id,
                 },
             )
             .map_err(Error::Metadata)?;
