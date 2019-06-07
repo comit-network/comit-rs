@@ -28,7 +28,7 @@ use crate::{
     network::DialInformation,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        SwapProtocol,
+        SwapId, SwapProtocol,
     },
 };
 use bitcoin_support::BitcoinQuantity;
@@ -158,6 +158,15 @@ impl<'de> Deserialize<'de> for Http<PeerId> {
     }
 }
 
+impl Serialize for Http<SwapId> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
 impl<'de> Deserialize<'de> for DialInformation {
     fn deserialize<D>(deserializer: D) -> Result<DialInformation, D::Error>
     where
@@ -227,7 +236,10 @@ impl<'de> Deserialize<'de> for DialInformation {
 mod tests {
     use crate::{
         http_api::Http,
-        swap_protocols::ledger::{Bitcoin, Ethereum},
+        swap_protocols::{
+            ledger::{Bitcoin, Ethereum},
+            SwapId,
+        },
     };
     use bitcoin_support::{
         self, BitcoinQuantity, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn,
@@ -235,7 +247,7 @@ mod tests {
     use ethereum_support::{
         self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
     };
-    use std::convert::TryFrom;
+    use std::{convert::TryFrom, str::FromStr};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -373,5 +385,17 @@ mod tests {
             &bitcoin_htlc_location_serialized,
             r#"{"txid":"ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024","vout":1}"#
         );
+    }
+
+    #[test]
+    fn http_swap_id_serializes_correctly_to_json() {
+        let swap_id = SwapId::from_str("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
+        let swap_id = Http(swap_id);
+
+        let swap_id_serialized = serde_json::to_string(&swap_id).unwrap();
+        assert_eq!(
+            swap_id_serialized,
+            r#""ad2652ca-ecf2-4cc6-b35c-b4351ac28a34""#
+        )
     }
 }

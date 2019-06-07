@@ -23,9 +23,10 @@ use serde::Serialize;
     bound = "Http<AL>: Serialize, Http<BL>: Serialize, Http<AA>: Serialize, Http<BA>: Serialize,\
              Http<AL::Identity>: Serialize, Http<BL::Identity>: Serialize,\
              Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
-             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
+             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize,"
 )]
 pub struct SwapResource<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: Serialize> {
+    pub swap_id: Http<SwapId>,
     pub role: String,
     pub counterparty: Http<PeerId>,
     pub protocol: Http<SwapProtocol>,
@@ -101,6 +102,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             );
 
             let swap = SwapResource {
+                swap_id: Http(metadata.swap_id),
                 status,
                 protocol: Http(SwapProtocol::Rfc003),
                 parameters,

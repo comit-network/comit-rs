@@ -6,6 +6,13 @@
     "title": "Properties of a SWAP",
     "required": ["role", "protocol", "status", "parameters", "counterparty"],
     "properties": {
+        "swap_id": {
+            "$id": "#/properties/swap_id",
+            "type": "string",
+            "description": "The id of the swap.",
+            "default": "",
+            "examples": ["db1325ee-e6e6-42da-94f0-79e4b9143196"]
+        },
         "counterparty": {
             "$id": "#/properties/counterparty",
             "type": "string",

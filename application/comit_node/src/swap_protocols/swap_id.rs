@@ -25,8 +25,8 @@ impl From<Uuid> for SwapId {
 }
 
 impl From<SwapId> for Uuid {
-    fn from(trade_id: SwapId) -> Self {
-        trade_id.0
+    fn from(swap_id: SwapId) -> Self {
+        swap_id.0
     }
 }
 
