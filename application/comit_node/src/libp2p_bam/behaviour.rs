@@ -136,16 +136,14 @@ impl<TSubstream> BamBehaviour<TSubstream> {
         }))
     }
 
-    pub fn peer_addresses(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
+    pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         let addresses = self
             .connections
             .iter()
-            .map(|(peer, connection_state)| match connection_state {
-                ConnectionState::Connecting { address_hints, .. } => {
-                    (peer.clone(), address_hints.clone())
-                }
+            .filter_map(|(peer, connection_state)| match connection_state {
+                ConnectionState::Connecting { .. } => None,
                 ConnectionState::Connected { addresses } => {
-                    (peer.clone(), addresses.clone().into_iter().collect())
+                    Some((peer.clone(), addresses.clone().into_iter().collect()))
                 }
             })
             .collect::<Vec<_>>();
@@ -166,13 +164,18 @@ where
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {
-        self.peer_addresses()
+        self.connections
+            .iter()
             .find_map(|(candidate, addresses)| {
-                if &candidate == peer_id {
+                if candidate == peer_id {
                     Some(addresses)
                 } else {
                     None
                 }
+            })
+            .map(|connection_state| match connection_state {
+                ConnectionState::Connecting { address_hints, .. } => address_hints.clone(),
+                ConnectionState::Connected { addresses } => addresses.iter().cloned().collect(),
             })
             .unwrap_or_else(Vec::new)
     }
