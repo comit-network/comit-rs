@@ -8,7 +8,7 @@ use comit_node::{
     http_api::route_factory,
     load_settings::{load_settings, Opt},
     logging,
-    network::{self, BamPeers},
+    network::{self, SwarmInfo},
     seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{
@@ -60,7 +60,10 @@ fn main() -> Result<(), failure::Error> {
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
     for addr in settings.network.listen.clone() {
-        Swarm::listen_on(&mut swarm, addr)?;
+        // FIXME: Replace `expect` with `?`
+        // This can be solved by building our own Transport instead of using
+        // `build_development_transport`
+        Swarm::listen_on(&mut swarm, addr).expect("Could not listen on specified address");
     }
 
     let swarm = Arc::new(Mutex::new(swarm));
@@ -114,12 +117,12 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
     )
 }
 
-fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, BP: BamPeers>(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: SwarmInfo>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
-    get_bam_peers: Arc<BP>,
+    swarm_info: Arc<SI>,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
 ) {
@@ -128,7 +131,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, BP: B
         state_store,
         protocol_dependencies,
         auth_origin(&settings),
-        get_bam_peers,
+        swarm_info,
         peer_id,
     );
 
