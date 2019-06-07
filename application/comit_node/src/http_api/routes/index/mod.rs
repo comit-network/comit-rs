@@ -3,7 +3,7 @@ mod handlers;
 use self::handlers::handle_get_swaps;
 use crate::{
     http_api::routes::into_rejection,
-    network::ListenAddresses,
+    network::SwarmInfo,
     swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
 };
 use libp2p::{Multiaddr, PeerId};
@@ -19,11 +19,8 @@ pub struct InfoResource {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_info<L: ListenAddresses>(
-    id: PeerId,
-    get_listen_addresses: Arc<L>,
-) -> Result<impl Reply, Rejection> {
-    let listen_addresses: Vec<Multiaddr> = get_listen_addresses.listen_addresses().to_vec();
+pub fn get_info<SI: SwarmInfo>(id: PeerId, swarm_info: Arc<SI>) -> Result<impl Reply, Rejection> {
+    let listen_addresses: Vec<Multiaddr> = swarm_info.listen_addresses().to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id,

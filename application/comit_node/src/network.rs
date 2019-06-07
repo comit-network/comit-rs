@@ -29,10 +29,7 @@ use std::{
     io,
     sync::{Arc, Mutex},
 };
-use tokio::{
-    prelude::{AsyncRead, AsyncWrite},
-    runtime::TaskExecutor,
-};
+use tokio::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -90,42 +87,31 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
     }
 }
 
-pub trait BamPeers: Send + Sync + 'static {
+pub trait SwarmInfo: Send + Sync + 'static {
     fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
+    fn listen_addresses(&self) -> Vec<Multiaddr>;
 }
 
 impl<
         TTransport: Transport + Send + 'static,
-        TSubstream: AsyncRead + AsyncWrite + Send + 'static,
         B: BobSpawner + Send + 'static,
-    > BamPeers for Mutex<Swarm<TTransport, Behaviour<TSubstream, B>>>
+        TMuxer: StreamMuxer + Send + Sync + 'static,
+    > SwarmInfo for Mutex<Swarm<TTransport, Behaviour<SubstreamRef<Arc<TMuxer>>, B>>>
 where
-    <TTransport as Transport>::Listener: Send,
+    <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
+    <TMuxer as StreamMuxer>::Substream: Send + 'static,
+    <TTransport as Transport>::Dial: Send,
     <TTransport as Transport>::Error: Send,
+    <TTransport as Transport>::Listener: Send,
+    <TTransport as Transport>::ListenerUpgrade: Send,
+    TTransport: Transport<Output = (PeerId, TMuxer)> + Clone,
 {
     fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.lock().unwrap();
 
         Box::new(swarm.bam.peer_addresses())
     }
-}
 
-pub trait ListenAddresses: Send + Sync + 'static {
-    fn listen_addresses(&self) -> Vec<Multiaddr>;
-}
-
-impl<TTransport: Transport + Send + 'static, B: BobSpawner + Send + 'static, TMuxer> ListenAddresses
-    for Mutex<Swarm<TTransport, Behaviour<SubstreamRef<Arc<TMuxer>>, B>>>
-where
-    <TTransport as Transport>::Listener: Send,
-    <TTransport as Transport>::Error: Send,
-    <TTransport as Transport>::Dial: Send,
-    <TTransport as Transport>::ListenerUpgrade: Send,
-    TTransport: Transport<Output = (PeerId, TMuxer)> + Clone,
-    TMuxer: StreamMuxer + Send + Sync + 'static,
-    <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
-    <TMuxer as StreamMuxer>::Substream: Send + 'static,
-{
     fn listen_addresses(&self) -> Vec<Multiaddr> {
         let swarm = self.lock().unwrap();
 

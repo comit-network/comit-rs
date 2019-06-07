@@ -1,4 +1,4 @@
-use crate::network::BamPeers;
+use crate::network::SwarmInfo;
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use std::sync::Arc;
@@ -17,7 +17,7 @@ pub struct Peer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_peers<BP: BamPeers>(get_bam_peers: Arc<BP>) -> Result<impl Reply, Rejection> {
+pub fn get_peers<BP: SwarmInfo>(get_bam_peers: Arc<BP>) -> Result<impl Reply, Rejection> {
     let peers = get_bam_peers
         .bam_peers()
         .map(|(peer, addresses)| Peer {

@@ -8,7 +8,7 @@ use comit_node::{
     http_api::route_factory,
     load_settings::{load_settings, Opt},
     logging,
-    network::{self, BamPeers, ListenAddresses},
+    network::{self, SwarmInfo},
     seed::Seed,
     settings::ComitNodeSettings,
     swap_protocols::{
@@ -83,7 +83,6 @@ fn main() -> Result<(), failure::Error> {
         alice_protocol_dependencies,
         Arc::clone(&swarm),
         local_peer_id,
-        Arc::clone(&swarm),
         &mut runtime,
     );
 
@@ -118,20 +117,13 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
     )
 }
 
-fn spawn_warp_instance<
-    T: MetadataStore<SwapId>,
-    S: StateStore,
-    C: Client,
-    BP: BamPeers,
-    LA: ListenAddresses,
->(
+fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: SwarmInfo>(
     settings: &ComitNodeSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
-    get_bam_peers: Arc<BP>,
+    swarm_info: Arc<SI>,
     peer_id: PeerId,
-    get_listen_addresses: Arc<LA>,
     runtime: &mut tokio::runtime::Runtime,
 ) {
     let routes = route_factory::create(
@@ -139,9 +131,8 @@ fn spawn_warp_instance<
         state_store,
         protocol_dependencies,
         auth_origin(&settings),
-        get_bam_peers,
+        swarm_info,
         peer_id,
-        get_listen_addresses,
     );
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
