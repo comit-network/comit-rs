@@ -10,7 +10,13 @@ pub struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
 
 impl fmt::Debug for Seed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Seed")
+        write!(f, "do not implement")
+    }
+}
+
+impl fmt::Display for Seed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "do not implement")
     }
 }
 
@@ -67,5 +73,15 @@ mod tests {
         let random2 = Seed::new_random().unwrap();
 
         assert_ne!(random1, random2);
+    }
+
+    #[test]
+    fn test_display_and_debug_not_implemented() {
+        let seed = Seed::new_random().unwrap();
+
+        let out = format!("{}", seed);
+        assert_eq!(out, "do not implement".to_string());
+        let debug = format!("{:?}", seed);
+        assert_eq!(debug, "do not implement".to_string());
     }
 }
