@@ -4,9 +4,16 @@
     "$id": "http://example.com/root.json",
     "type": "object",
     "title": "Properties of a SWAP",
-    "required": ["role", "protocol", "status", "parameters", "counterparty"],
+    "required": [
+        "id",
+        "role",
+        "protocol",
+        "status",
+        "parameters",
+        "counterparty"
+    ],
     "properties": {
-        "swap_id": {
+        "id": {
             "$id": "#/properties/swap_id",
             "type": "string",
             "description": "The id of the swap.",
