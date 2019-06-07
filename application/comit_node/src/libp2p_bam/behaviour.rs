@@ -28,6 +28,7 @@ enum ConnectionState {
     },
     Connecting {
         pending_events: Vec<BehaviourInEvent>,
+        address_hints: Vec<Multiaddr>,
     },
 }
 
@@ -87,22 +88,34 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         peer_id: dial_information.peer_id,
                     })
                     .expect("we own the receiver");
-                if let Some(address) = dial_information.address_hint {
-                    // Also dial the hint address
-                    self.events_sender
-                        .unbounded_send(NetworkBehaviourAction::DialAddress { address })
-                        .expect("we own the receiver");
-                }
+
+                let address_hints = dial_information
+                    .address_hint
+                    .map(|address| vec![address])
+                    .unwrap_or_else(Vec::new);
+
                 entry.insert(ConnectionState::Connecting {
                     pending_events: vec![BehaviourInEvent::PendingIncomingRequest { request }],
+                    address_hints,
                 });
             }
             Entry::Occupied(mut entry) => {
                 let connection_state = entry.get_mut();
 
                 match connection_state {
-                    ConnectionState::Connecting { pending_events } => {
+                    ConnectionState::Connecting {
+                        pending_events,
+                        address_hints,
+                    } => {
                         pending_events.push(BehaviourInEvent::PendingIncomingRequest { request });
+
+                        if let Some(address) = dial_information.address_hint {
+                            // We insert at the front because we consider the new address to be the
+                            // most likely one to succeed. The order of this vector is important
+                            // when returning it from `addresses_of_peer` because it will be tried
+                            // by libp2p in the returned order.
+                            address_hints.insert(0, address);
+                        }
                     }
                     ConnectionState::Connected { .. } => {
                         self.events_sender
@@ -128,7 +141,9 @@ impl<TSubstream> BamBehaviour<TSubstream> {
             .connections
             .iter()
             .map(|(peer, connection_state)| match connection_state {
-                ConnectionState::Connecting { .. } => (peer.clone(), vec![]),
+                ConnectionState::Connecting { address_hints, .. } => {
+                    (peer.clone(), address_hints.clone())
+                }
                 ConnectionState::Connected { addresses } => {
                     (peer.clone(), addresses.clone().into_iter().collect())
                 }
@@ -180,7 +195,10 @@ where
                         self.connections
                             .insert(peer_id.clone(), ConnectionState::Connected { addresses });
                     }
-                    ConnectionState::Connecting { pending_events } => {
+                    ConnectionState::Connecting {
+                        pending_events,
+                        address_hints: _we_no_longer_care_at_this_stage,
+                    } => {
                         for event in pending_events {
                             self.events_sender
                                 .unbounded_send(NetworkBehaviourAction::SendEvent {
