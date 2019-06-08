@@ -3,7 +3,6 @@ use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
-use bitcoin_rpc_client::BitcoinCoreClient;
 use bitcoin_support::MinedBlock;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
@@ -28,13 +27,13 @@ pub enum ReturnAs {
 }
 
 impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = BitcoinCoreClient;
+    type Client = bitcoincore_rpc::Client;
     type Item = PayloadKind;
 
     fn to_http_payload(
         &self,
         return_as: &ReturnAs,
-        _: &BitcoinCoreClient,
+        _: &bitcoincore_rpc::Client,
     ) -> Result<Vec<Self::Item>, Error> {
         Ok(self
             .0

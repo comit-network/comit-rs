@@ -10,7 +10,7 @@ secp256k1_support = { path = "../secp256k1_support" }
 failure = "0.1"
 
 [dev-dependencies]
-bitcoin_rpc_client = "0.6"
+bitcoincore-rpc = "0.6"
 bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
 env_logger = "0.6"
 hex = "0.3"

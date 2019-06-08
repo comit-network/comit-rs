@@ -3,10 +3,10 @@ use crate::{
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
-use bitcoin_rpc_client::{BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::{
     Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction, TransactionId,
 };
+use bitcoincore_rpc::RpcApi;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
@@ -33,13 +33,13 @@ pub enum ReturnAs {
 }
 
 impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = BitcoinCoreClient;
+    type Client = bitcoincore_rpc::Client;
     type Item = PayloadKind;
 
     fn to_http_payload(
         &self,
         return_as: &ReturnAs,
-        client: &BitcoinCoreClient,
+        client: &bitcoincore_rpc::Client,
     ) -> Result<Vec<Self::Item>, Error> {
         // Close over some local variables for easier usage of the method
         let to_payload = |id: TransactionId| to_payload(client, return_as, id);
@@ -59,19 +59,22 @@ impl ToHttpPayload<ReturnAs> for QueryResult {
 }
 
 fn to_payload(
-    client: &BitcoinCoreClient,
+    client: &bitcoincore_rpc::Client,
     return_as: &ReturnAs,
     id: TransactionId,
 ) -> Result<PayloadKind, Error> {
     match return_as {
         ReturnAs::TransactionId => Ok(PayloadKind::Id { id }),
-        ReturnAs::Transaction => match client.get_raw_transaction_verbose(&id) {
-            Ok(Ok(transaction)) => Ok(PayloadKind::Transaction {
-                transaction: transaction.into(),
-            }),
-            Ok(Err(e)) => Err(Error::BitcoinRpcResponse(e)),
-            Err(e) => Err(Error::BitcoinRpcConnection(e)),
-        },
+        ReturnAs::Transaction => {
+            match client
+                .get_raw_transaction_verbose(&id, None)
+                .map(|result| result.transaction())
+            {
+                Ok(Ok(transaction)) => Ok(PayloadKind::Transaction { transaction }),
+                Ok(Err(e)) => Err(Error::BitcoinRpc(e.into())),
+                Err(e) => Err(Error::BitcoinRpc(e)),
+            }
+        }
     }
 }
 

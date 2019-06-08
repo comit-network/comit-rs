@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 binary_macros = "0.6"
-bitcoin_rpc_client = "0.6"
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
@@ -85,6 +84,7 @@ features = ["serde", "v4"]
 version = "0.7"
 
 [dev-dependencies]
+bitcoincore-rpc = "0.6"
 lazy_static = "1"
 maplit = "1"
 memsocket = "0.1"
