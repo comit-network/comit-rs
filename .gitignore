@@ -50,3 +50,6 @@ fabric.properties
 
 # vi swap files
 *.swp
+
+# Emacs
+TAGS
