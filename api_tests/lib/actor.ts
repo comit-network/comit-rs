@@ -153,8 +153,13 @@ export class Actor {
 
             if (
                 field.class.some((e: string) => e === "bitcoin") &&
-                field.class.some((e: string) => e === "feePerByte")
+                field.class.some((e: string) => e === "feePerWU")
             ) {
+                expect(field.class).contains(
+                    "feePerByte",
+                    "API should be backwards compatible"
+                );
+
                 data[field.name] = 20;
             }
 

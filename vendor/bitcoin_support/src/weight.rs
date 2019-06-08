@@ -14,16 +14,13 @@ pub struct Weight(u64);
     clippy::cast_possible_truncation
 )]
 impl Weight {
-    pub fn to_virtual_bytes(&self) -> f64 {
-        (self.0 as f64) / 4.0
-    }
+    pub fn calculate_fee(&self, sats_per_wu: u64) -> Result<BitcoinQuantity, Error> {
+        let sats = self
+            .0
+            .checked_mul(sats_per_wu)
+            .ok_or_else(|| Error::FeeTooHigh)?;
 
-    pub fn calculate_fee(&self, sats_per_byte: f64) -> Result<BitcoinQuantity, Error> {
-        let sats = (self.to_virtual_bytes() * sats_per_byte).ceil();
-        if sats > std::u64::MAX as f64 {
-            return Err(Error::FeeTooHigh);
-        }
-        Ok(BitcoinQuantity::from_satoshi(sats as u64))
+        Ok(BitcoinQuantity::from_satoshi(sats))
     }
 }
 
@@ -46,16 +43,22 @@ mod tests {
     use spectral::prelude::*;
 
     #[test]
-    fn given_a_rate_and_transaction_size_can_calculate_estimated_fee() {
-        let per_byte = 10.0;
-        let fees = Weight::from(400_u64).calculate_fee(per_byte);
-        assert_that(&fees).is_ok_containing(BitcoinQuantity::from_satoshi(1000));
-    }
-
-    #[test]
-    fn number_overflow_due_to_casting() {
-        let per_byte = 10.0;
+    fn number_overflow() {
+        let per_byte = 10;
         let fees = Weight::from(std::u64::MAX).calculate_fee(per_byte);
         assert_that(&fees).is_err_containing(Error::FeeTooHigh);
+    }
+
+    // Data taken from:
+    // https://www.blockchain.com/btc/tx/8c7e14ed71e6821d941d102c2fe6ad56f4b12bbc9348e3de6872048f4cec17cf
+    #[test]
+    fn should_calculate_correct_fee() {
+        let fee = Weight(574).calculate_fee(22).unwrap();
+
+        let diff = (fee - BitcoinQuantity::from_satoshi(12578)).satoshi();
+
+        // Unfortunately, we can't use the exact numbers from the above TX becaues of
+        // float numbers.
+        assert_that(&diff).is_less_than(100);
     }
 }

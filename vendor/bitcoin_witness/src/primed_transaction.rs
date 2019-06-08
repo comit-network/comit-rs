@@ -109,7 +109,7 @@ impl PrimedTransaction {
             .max()
     }
 
-    pub fn sign_with_rate(self, fee_per_byte: f64) -> Result<Transaction, Error> {
+    pub fn sign_with_rate(self, fee_per_byte: u64) -> Result<Transaction, Error> {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight: Weight = transaction.get_weight().into();
@@ -196,7 +196,7 @@ mod test {
         };
         let total_input_value = primed_txn.total_input_value();
 
-        let rate = 42.0;
+        let rate = 42;
 
         let estimated_weight = primed_txn.estimate_weight();
         let transaction = primed_txn.sign_with_rate(rate).unwrap();
@@ -205,7 +205,7 @@ mod test {
         let fee = total_input_value.satoshi() - transaction.output[0].value;
 
         assert_eq!(estimated_weight, actual_weight, "weight is correct");
-        assert_eq!(fee, 4589, "actual fee paid is correct");
+        assert_eq!(fee, 18354, "actual fee paid is correct");
         Ok(())
     }
 }

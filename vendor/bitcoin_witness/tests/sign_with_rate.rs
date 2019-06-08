@@ -23,7 +23,7 @@ fn sign_with_rate() {
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
-    let rate = 42.0;
+    let rate = 42;
 
     let primed_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
