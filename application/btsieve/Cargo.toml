@@ -24,7 +24,7 @@ pretty_env_logger = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 structopt = "0.2"
-tokio = "0.1"
+tokio = "=0.1.11"
 url = "1.7"
 url_serde = "0.2.0"
 warp = "0.1"
