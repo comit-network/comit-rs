@@ -12,4 +12,5 @@ poll_interval_secs = 17
 address_bind="0.0.0.0"
 port_bind=8181
 
-log_level="INFO"
+[log_levels]
+btsieve="DEBUG"
